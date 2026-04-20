@@ -27,6 +27,7 @@ import {
   categoriesTable,
   postCategories,
   auditLogTable,
+  teamMembersTable,
 } from "@workspace/db";
 import { PostsFileSchema, type Post, type PostImage } from "./schema.js";
 
@@ -35,6 +36,14 @@ const POSTS_PATH = `${OUTPUT_DIR}/posts.json`;
 const REPLIT_SIDECAR = "http://127.0.0.1:1106";
 const SYSTEM_AUTHOR_CLERK_ID = "system:imported-from-wix";
 const SYSTEM_AUTHOR_NAME = "Imported from Wix";
+const IMPORT_AUTHOR_CLERK_PREFIX = "import:wix:";
+
+// Wix exports occasionally surface a login handle instead of the display name.
+// Map known handle variants back to the canonical name so posts by the same
+// author collapse onto a single user record.
+const AUTHOR_NAME_ALIASES: Record<string, string> = {
+  andrewborg88: "Andrew Borg",
+};
 
 const FORCE = process.argv.includes("--force");
 const YES = process.argv.includes("--yes");
@@ -150,6 +159,53 @@ async function ensureSystemAuthor(): Promise<string> {
   return row.id;
 }
 
+function normalizeAuthorName(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return AUTHOR_NAME_ALIASES[trimmed] ?? trimmed;
+}
+
+/**
+ * Resolve a per-author user record for an imported post. Posts authored by the
+ * same person share one row (keyed by `clerkUserId = import:wix:<slug>`) so
+ * their display name shows up on the blog. Falls back to the generic system
+ * author when the source post has no `authorName`.
+ */
+async function ensureAuthorForName(
+  rawName: string | null,
+  systemUserId: string,
+): Promise<string> {
+  const name = normalizeAuthorName(rawName);
+  if (!name) return systemUserId;
+  const slug = slugify(name);
+  if (!slug) return systemUserId;
+  const clerkId = `${IMPORT_AUTHOR_CLERK_PREFIX}${slug}`;
+
+  const existing = await db.query.usersTable.findFirst({
+    where: eq(usersTable.clerkUserId, clerkId),
+  });
+  if (existing) return existing.id;
+
+  // If this author also has a public team-member profile, reuse its photo and
+  // short bio so the "Written by" card on the post page looks complete.
+  const teamMember = await db.query.teamMembersTable.findFirst({
+    where: eq(teamMembersTable.slug, slug),
+  });
+
+  const [row] = await db
+    .insert(usersTable)
+    .values({
+      clerkUserId: clerkId,
+      email: null,
+      displayName: name,
+      avatarUrl: teamMember?.imageUrl ?? null,
+      bio: teamMember?.shortDescription ?? null,
+    })
+    .returning({ id: usersTable.id });
+  return row.id;
+}
+
 async function ensureCategory(name: string): Promise<string> {
   const slug = slugify(name);
   const existing = await db.query.categoriesTable.findFirst({
@@ -217,6 +273,7 @@ async function ingestPost(
   const publishedAt = post.publishedAt ? new Date(post.publishedAt) : new Date();
   const seoTitle = post.seo.title;
   const seoDescription = post.seo.description ?? post.excerpt ?? null;
+  const authorId = await ensureAuthorForName(post.authorName, systemUserId);
 
   let postId: string;
   if (existing) {
@@ -230,6 +287,7 @@ async function ingestPost(
         bodyMarkdown: post.bodyMarkdown,
         heroImageId: heroMediaId ?? existing.heroImageId,
         ogImageId: heroMediaId ?? existing.ogImageId,
+        authorId,
         seoTitle,
         seoDescription,
         seoCanonicalUrl: post.sourceUrl,
@@ -254,7 +312,7 @@ async function ingestPost(
         bodyMarkdown: post.bodyMarkdown,
         heroImageId: heroMediaId,
         ogImageId: heroMediaId,
-        authorId: systemUserId,
+        authorId,
         status: "published",
         publishedAt,
         seoTitle,
