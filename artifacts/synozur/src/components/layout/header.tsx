@@ -54,9 +54,10 @@ export function Header() {
     {
       title: "Resources",
       links: [
-        { label: "Webinars", href: "/" },
-        { label: "White Papers", href: "/" },
+        { label: "Webinars", href: "/webinars" },
+        { label: "White Papers", href: "/items" },
         { label: "Workshops", href: "/workshops" },
+        { label: "Browse Library", href: "/library" },
       ]
     }
   ];

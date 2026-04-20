@@ -40,6 +40,12 @@ import TaxonomyPage from "@/pages/admin/taxonomy";
 import CommentsModeration from "@/pages/admin/comments";
 import UsersAndRoles from "@/pages/admin/users";
 import { AdminGate } from "@/components/admin/AdminGate";
+import Library from "@/pages/library";
+import LibraryDetail from "@/pages/library-detail";
+import Webinars from "@/pages/webinars";
+import WebinarDetail from "@/pages/webinar-detail";
+import Items from "@/pages/items";
+import ItemDetail from "@/pages/item-detail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -100,6 +106,12 @@ function Router() {
             <Route path="/applications/:slug" component={ApplicationDetail} />
             <Route path="/workshops" component={Workshops} />
             <Route path="/workshops/:slug" component={WorkshopDetail} />
+            <Route path="/library" component={Library} />
+            <Route path="/library/:slug" component={LibraryDetail} />
+            <Route path="/webinars" component={Webinars} />
+            <Route path="/webinars/:slug" component={WebinarDetail} />
+            <Route path="/items" component={Items} />
+            <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/team" component={Team} />
             <Route path="/partners" component={Partners} />
             <Route path="/insights" component={Insights} />

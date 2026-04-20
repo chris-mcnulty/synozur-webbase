@@ -12,46 +12,30 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { feedItems } from "@/data/feed";
+import { fetchFeatured, type Collateral } from "@/data/collateral";
+import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { rotatorLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
-
-function FeedCard({ item }: { item: typeof feedItems[number] }) {
-  const inner = (
-    <div className="group relative block aspect-[4/5] md:aspect-[3/4] overflow-hidden rounded-2xl border border-border/60 bg-card">
-      <img
-        src={item.image}
-        alt={item.title}
-        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 z-10" />
-      <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-8">
-        <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/25 text-white text-[11px] tracking-[0.2em] font-semibold backdrop-blur-md mb-4">
-          {item.category}
-        </span>
-        <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
-          {item.title}
-        </h3>
-      </div>
-    </div>
-  );
-  if (item.external) {
-    return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" className="block">
-        {inner}
-      </a>
-    );
-  }
-  return (
-    <Link href={item.href} className="block">
-      {inner}
-    </Link>
-  );
-}
 
 function FromTheFeedCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
   const [current, setCurrent] = useState(0);
+  const [items, setItems] = useState<Collateral[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchFeatured()
+      .then((res) => {
+        if (!cancelled) setItems(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!api) return;
@@ -64,6 +48,38 @@ function FromTheFeedCarousel() {
       window.clearInterval(id);
     };
   }, [api]);
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
+        Couldn’t load the feed right now.
+      </div>
+    );
+  }
+
+  if (!items) {
+    return (
+      <div>
+        <div className="flex items-end justify-between mb-6 gap-4">
+          <p className="text-sm uppercase tracking-[0.25em] text-primary">From The Feed</p>
+        </div>
+        <CollateralCardSkeleton variant="carousel" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div>
+        <div className="flex items-end justify-between mb-6 gap-4">
+          <p className="text-sm uppercase tracking-[0.25em] text-primary">From The Feed</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
+          New stories coming soon.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -80,9 +96,9 @@ function FromTheFeedCarousel() {
         className="w-full"
       >
         <CarouselContent>
-          {feedItems.map((item) => (
+          {items.map((item) => (
             <CarouselItem key={item.id} className="basis-full">
-              <FeedCard item={item} />
+              <CollateralCard item={item} variant="carousel" />
             </CarouselItem>
           ))}
         </CarouselContent>
@@ -90,7 +106,7 @@ function FromTheFeedCarousel() {
         <CarouselNext className="md:hidden -right-2" />
       </Carousel>
       <div className="flex items-center justify-center gap-2 mt-6">
-        {feedItems.map((it, i) => (
+        {items.map((it, i) => (
           <button
             key={it.id}
             type="button"
