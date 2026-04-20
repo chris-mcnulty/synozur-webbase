@@ -447,6 +447,12 @@ export interface AdminFormSubmissionsPage {
   pageSize: number;
 }
 
+export interface RetryFailedSubmissionsResult {
+  retried: number;
+  succeeded: number;
+  failed: number;
+}
+
 export interface FormSubmissionAck {
   ok: boolean;
   id: number;
@@ -1087,6 +1093,11 @@ export type ListAdminFormSubmissionsParams = {
 };
 
 export type ExportAdminFormSubmissionsParams = {
+  formType?: string;
+  search?: string;
+};
+
+export type RetryFailedAdminFormSubmissionsParams = {
   formType?: string;
   search?: string;
 };

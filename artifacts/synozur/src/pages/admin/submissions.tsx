@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/react";
-import { ArrowLeft, Copy, Download, LogOut, Search } from "lucide-react";
+import { ArrowLeft, Copy, Download, LogOut, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import type { AdminFormSubmission } from "@workspace/api-zod";
+import type { AdminFormSubmission } from "@workspace/api-zod/types";
 
 const PAGE_SIZE = 25;
 const FORM_TYPES: { value: string; label: string }[] = [
@@ -57,10 +57,15 @@ function statusBadgeClass(status: string | null | undefined): string {
   return "bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200";
 }
 
+function isFailedStatus(status: string | null | undefined): boolean {
+  return status !== "ok" && status !== "skipped";
+}
+
 export default function AdminSubmissionsList() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const [formType, setFormType] = useState<string>("all");
@@ -68,6 +73,8 @@ export default function AdminSubmissionsList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminFormSubmission | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   const copyEmail = async (email: string) => {
     try {
@@ -88,6 +95,47 @@ export default function AdminSubmissionsList() {
         page,
         pageSize: PAGE_SIZE,
       }),
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+
+  const retryOne = useMutation({
+    mutationFn: (id: number) => api.retrySubmission(id),
+    onSuccess: (row) => {
+      setRetryError(null);
+      setRetryMessage(
+        row.webhookStatus === "ok"
+          ? `Retry succeeded for #${row.id}.`
+          : `Retry for #${row.id} returned “${row.webhookStatus ?? "error"}”.`,
+      );
+      void invalidate();
+    },
+    onError: (err) => {
+      setRetryMessage(null);
+      setRetryError(err instanceof Error ? err.message : "Retry failed");
+    },
+  });
+
+  const retryAll = useMutation({
+    mutationFn: () =>
+      api.retryFailedSubmissions({
+        formType: effectiveType,
+        search: search || undefined,
+      }),
+    onSuccess: (result) => {
+      setRetryError(null);
+      setRetryMessage(
+        result.retried === 0
+          ? "No failed submissions to retry."
+          : `Retried ${result.retried}: ${result.succeeded} succeeded, ${result.failed} failed.`,
+      );
+      void invalidate();
+    },
+    onError: (err) => {
+      setRetryMessage(null);
+      setRetryError(err instanceof Error ? err.message : "Bulk retry failed");
+    },
   });
 
   const total = data?.total ?? 0;
@@ -116,6 +164,15 @@ export default function AdminSubmissionsList() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => retryAll.mutate()}
+            disabled={retryAll.isPending}
+            data-testid="button-retry-all-failed"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${retryAll.isPending ? "animate-spin" : ""}`} />
+            {retryAll.isPending ? "Retrying…" : "Retry all failed"}
+          </Button>
           <a href={csvHref} download data-testid="link-export-csv">
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" /> Export CSV
@@ -193,6 +250,19 @@ export default function AdminSubmissionsList() {
         )}
       </form>
 
+      {(retryMessage || retryError) && (
+        <div
+          className={`mb-3 text-sm rounded border px-3 py-2 ${
+            retryError
+              ? "border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-900/30 dark:text-red-100"
+              : "border-green-300 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-900/30 dark:text-green-100"
+          }`}
+          data-testid="text-retry-feedback"
+        >
+          {retryError ?? retryMessage}
+        </div>
+      )}
+
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -202,19 +272,20 @@ export default function AdminSubmissionsList() {
               <TableHead>Contact</TableHead>
               <TableHead>Message / Details</TableHead>
               <TableHead className="w-[120px]">Webhook</TableHead>
+              <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No submissions found.
                 </TableCell>
               </TableRow>
@@ -260,6 +331,29 @@ export default function AdminSubmissionsList() {
                     >
                       {s.webhookStatus ?? "—"}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isFailedStatus(s.webhookStatus) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={retryOne.isPending && retryOne.variables === s.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          retryOne.mutate(s.id);
+                        }}
+                        data-testid={`button-retry-${s.id}`}
+                      >
+                        <RefreshCw
+                          className={`h-3.5 w-3.5 mr-1 ${
+                            retryOne.isPending && retryOne.variables === s.id ? "animate-spin" : ""
+                          }`}
+                        />
+                        Retry
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               );

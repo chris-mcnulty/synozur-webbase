@@ -1872,6 +1872,77 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/forms/submissions/{id}/retry:
+    post:
+      tags: [Forms]
+      operationId: retryAdminFormSubmission
+      summary: Retry a failed webhook delivery (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFormSubmission"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/forms/submissions/retry-failed:
+    post:
+      tags: [Forms]
+      operationId: retryFailedAdminFormSubmissions
+      summary: Retry all failed webhook deliveries matching the current filters (admin)
+      parameters:
+        - name: formType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bulk retry result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetryFailedSubmissionsResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /forms/contact:
     post:
       tags:
@@ -2963,6 +3034,16 @@ components:
         page:
           type: integer
         pageSize:
+          type: integer
+    RetryFailedSubmissionsResult:
+      type: object
+      required: [retried, succeeded, failed]
+      properties:
+        retried:
+          type: integer
+        succeeded:
+          type: integer
+        failed:
           type: integer
     FormSubmissionAck:
       type: object

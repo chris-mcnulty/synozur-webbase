@@ -62,6 +62,8 @@ export * from "./publicTeamMember";
 export * from "./registerMediaBody";
 export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";
+export * from "./retryFailedAdminFormSubmissionsParams";
+export * from "./retryFailedSubmissionsResult";
 export * from "./roleName";
 export * from "./scheduleCmsPostBody";
 export * from "./service";

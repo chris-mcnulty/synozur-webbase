@@ -18,6 +18,7 @@ import type {
 
 import type {
   AdminEvent,
+  AdminFormSubmission,
   AdminFormSubmissionsPage,
   AdminTeamMember,
   AdminUser,
@@ -65,6 +66,8 @@ import type {
   RegisterMediaBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
+  RetryFailedAdminFormSubmissionsParams,
+  RetryFailedSubmissionsResult,
   ScheduleCmsPostBody,
   Service,
   ServiceDetail,
@@ -6637,6 +6640,194 @@ export function useExportAdminFormSubmissions<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Retry a failed webhook delivery (admin)
+ */
+export const getRetryAdminFormSubmissionUrl = (id: number) => {
+  return `/api/admin/forms/submissions/${id}/retry`;
+};
+
+export const retryAdminFormSubmission = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AdminFormSubmission> => {
+  return customFetch<AdminFormSubmission>(getRetryAdminFormSubmissionUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRetryAdminFormSubmissionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryAdminFormSubmission>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof retryAdminFormSubmission>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["retryAdminFormSubmission"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof retryAdminFormSubmission>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return retryAdminFormSubmission(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RetryAdminFormSubmissionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof retryAdminFormSubmission>>
+>;
+
+export type RetryAdminFormSubmissionMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Retry a failed webhook delivery (admin)
+ */
+export const useRetryAdminFormSubmission = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryAdminFormSubmission>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof retryAdminFormSubmission>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRetryAdminFormSubmissionMutationOptions(options));
+};
+
+/**
+ * @summary Retry all failed webhook deliveries matching the current filters (admin)
+ */
+export const getRetryFailedAdminFormSubmissionsUrl = (
+  params?: RetryFailedAdminFormSubmissionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/forms/submissions/retry-failed?${stringifiedParams}`
+    : `/api/admin/forms/submissions/retry-failed`;
+};
+
+export const retryFailedAdminFormSubmissions = async (
+  params?: RetryFailedAdminFormSubmissionsParams,
+  options?: RequestInit,
+): Promise<RetryFailedSubmissionsResult> => {
+  return customFetch<RetryFailedSubmissionsResult>(
+    getRetryFailedAdminFormSubmissionsUrl(params),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRetryFailedAdminFormSubmissionsMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>,
+    TError,
+    { params?: RetryFailedAdminFormSubmissionsParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>,
+  TError,
+  { params?: RetryFailedAdminFormSubmissionsParams },
+  TContext
+> => {
+  const mutationKey = ["retryFailedAdminFormSubmissions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>,
+    { params?: RetryFailedAdminFormSubmissionsParams }
+  > = (props) => {
+    const { params } = props ?? {};
+
+    return retryFailedAdminFormSubmissions(params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RetryFailedAdminFormSubmissionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>
+>;
+
+export type RetryFailedAdminFormSubmissionsMutationError =
+  ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Retry all failed webhook deliveries matching the current filters (admin)
+ */
+export const useRetryFailedAdminFormSubmissions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>,
+    TError,
+    { params?: RetryFailedAdminFormSubmissionsParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof retryFailedAdminFormSubmissions>>,
+  TError,
+  { params?: RetryFailedAdminFormSubmissionsParams },
+  TContext
+> => {
+  return useMutation(
+    getRetryFailedAdminFormSubmissionsMutationOptions(options),
+  );
+};
 
 /**
  * @summary Submit the public contact form

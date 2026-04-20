@@ -2004,6 +2004,41 @@ export const ExportAdminFormSubmissionsQueryParams = zod.object({
 });
 
 /**
+ * @summary Retry a failed webhook delivery (admin)
+ */
+export const RetryAdminFormSubmissionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RetryAdminFormSubmissionResponse = zod.object({
+  id: zod.number(),
+  formType: zod.string(),
+  email: zod.string().nullish(),
+  name: zod.string().nullish(),
+  company: zod.string().nullish(),
+  payload: zod.record(zod.string(), zod.unknown()),
+  ipAddress: zod.string().nullish(),
+  userAgent: zod.string().nullish(),
+  webhookStatus: zod.string().nullish(),
+  webhookError: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Retry all failed webhook deliveries matching the current filters (admin)
+ */
+export const RetryFailedAdminFormSubmissionsQueryParams = zod.object({
+  formType: zod.coerce.string().optional(),
+  search: zod.coerce.string().optional(),
+});
+
+export const RetryFailedAdminFormSubmissionsResponse = zod.object({
+  retried: zod.number(),
+  succeeded: zod.number(),
+  failed: zod.number(),
+});
+
+/**
  * @summary Submit the public contact form
  */
 export const submitContactBodyNameMin = 2;

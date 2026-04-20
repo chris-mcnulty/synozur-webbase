@@ -8,10 +8,12 @@ import type {
   SubscribeFormInput,
   StartFormInput,
   FormSubmissionAck,
+  AdminFormSubmission,
   AdminFormSubmissionsPage,
   PublicTeamMember,
   AdminTeamMember,
   TeamMemberInput,
+  RetryFailedSubmissionsResult,
 } from "@workspace/api-zod/types";
 
 export interface SubmissionsQuery {
@@ -233,4 +235,13 @@ export const api = {
     }),
   deleteTeamMember: (id: number) =>
     jsonFetch<void>(url(`/admin/team-members/${id}`), { method: "DELETE" }),
+  retrySubmission: (id: number) =>
+    jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/retry`), {
+      method: "POST",
+    }),
+  retryFailedSubmissions: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+    jsonFetch<RetryFailedSubmissionsResult>(
+      url(`/admin/forms/submissions/retry-failed${submissionsQueryString(q)}`),
+      { method: "POST" },
+    ),
 };

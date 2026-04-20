@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
-import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import {
   SubmitContactBody,
   SubmitSubscribeBody,
@@ -8,6 +8,10 @@ import {
   ListAdminFormSubmissionsQueryParams,
   ListAdminFormSubmissionsResponse,
   ExportAdminFormSubmissionsQueryParams,
+  RetryAdminFormSubmissionParams,
+  RetryAdminFormSubmissionResponse,
+  RetryFailedAdminFormSubmissionsQueryParams,
+  RetryFailedAdminFormSubmissionsResponse,
 } from "@workspace/api-zod";
 import { db, formSubmissionsTable, type FormSubmission } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
@@ -271,6 +275,81 @@ router.get("/admin/forms/submissions.csv", requireAdmin, async (req, res): Promi
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send(lines.join("\n") + "\n");
 });
+
+function buildRetryPayload(row: FormSubmission): Record<string, unknown> {
+  const stored = (row.payload ?? {}) as Record<string, unknown>;
+  return { ...stored, formType: row.formType };
+}
+
+router.post(
+  "/admin/forms/submissions/:id/retry",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = RetryAdminFormSubmissionParams.safeParse(req.params);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const id = parsed.data.id;
+    const [row] = await db
+      .select()
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.id, id))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+    const result = await forwardToWebhook(buildRetryPayload(row));
+    const [updated] = await db
+      .update(formSubmissionsTable)
+      .set({ webhookStatus: result.status, webhookError: result.error })
+      .where(eq(formSubmissionsTable.id, id))
+      .returning();
+    res.json(RetryAdminFormSubmissionResponse.parse(adminSubmissionShape(updated!)));
+  },
+);
+
+router.post(
+  "/admin/forms/submissions/retry-failed",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = RetryFailedAdminFormSubmissionsQueryParams.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const filter = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+    const failedClause = or(
+      isNull(formSubmissionsTable.webhookStatus),
+      notInArray(formSubmissionsTable.webhookStatus, ["ok", "skipped"]),
+    )!;
+    const where = filter ? and(filter, failedClause) : failedClause;
+
+    const rows = await db.select().from(formSubmissionsTable).where(where);
+    let succeeded = 0;
+    let failed = 0;
+    for (const row of rows) {
+      const result = await forwardToWebhook(buildRetryPayload(row));
+      await db
+        .update(formSubmissionsTable)
+        .set({ webhookStatus: result.status, webhookError: result.error })
+        .where(eq(formSubmissionsTable.id, row.id));
+      if (result.status === "ok" || result.status === "skipped") {
+        succeeded += 1;
+      } else {
+        failed += 1;
+      }
+    }
+    res.json(
+      RetryFailedAdminFormSubmissionsResponse.parse({
+        retried: rows.length,
+        succeeded,
+        failed,
+      }),
+    );
+  },
+);
 
 router.post("/forms/contact", async (req, res): Promise<void> => {
   const parsed = SubmitContactBody.safeParse(req.body);
