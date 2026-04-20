@@ -1,8 +1,10 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Plus, Pencil, Trash2, Star, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, ExternalLink, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,6 +16,7 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import {
   useCmsListCollateral,
   useCmsUpdateCollateral,
@@ -91,6 +94,79 @@ export default function AdminCollateralList() {
     deleteMut.mutate({ id: item.id });
   };
 
+  const featuredItems = useMemo(
+    () =>
+      items
+        .filter((i) => i.featured)
+        .slice()
+        .sort((a, b) => {
+          const ra = a.featuredRank ?? Number.POSITIVE_INFINITY;
+          const rb = b.featuredRank ?? Number.POSITIVE_INFINITY;
+          if (ra !== rb) return ra - rb;
+          return a.title.localeCompare(b.title);
+        }),
+    [items],
+  );
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const [reordering, setReordering] = useState(false);
+
+  const displayOrder = useMemo(() => {
+    if (localOrder) {
+      const byId = new Map(featuredItems.map((f) => [f.id, f]));
+      const ordered = localOrder
+        .map((id) => byId.get(id))
+        .filter((x): x is CollateralItem => !!x);
+      const extras = featuredItems.filter((f) => !localOrder.includes(f.id));
+      return [...ordered, ...extras];
+    }
+    return featuredItems;
+  }, [featuredItems, localOrder]);
+
+  const commitReorder = async (newIds: string[]) => {
+    setLocalOrder(newIds);
+    setReordering(true);
+    try {
+      await api.reorderFeaturedCollateral(newIds);
+      toast({ title: "Order saved" });
+      await listQ.refetch();
+      setLocalOrder(null);
+    } catch (e) {
+      toast({
+        title: "Reorder failed",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+      setLocalOrder(null);
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    const currentIds = displayOrder.map((f) => f.id);
+    const from = currentIds.indexOf(dragId);
+    const to = currentIds.indexOf(targetId);
+    if (from < 0 || to < 0) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    const next = currentIds.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setDragId(null);
+    setOverId(null);
+    void commitReorder(next);
+  };
+
   return (
     <AdminLayout
       title="Library"
@@ -105,6 +181,79 @@ export default function AdminCollateralList() {
         )
       }
     >
+      {featuredItems.length > 0 && (
+        <Card className="mb-6 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-semibold">Featured items</h3>
+              <p className="text-xs text-muted-foreground">
+                Drag to reorder the home carousel and featured library row.
+                {reordering ? " Saving…" : ""}
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {featuredItems.length} item{featuredItems.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <ul className="space-y-1" data-testid="featured-reorder-list">
+            {displayOrder.map((item, idx) => {
+              const isDragging = dragId === item.id;
+              const isOver = overId === item.id && dragId !== item.id;
+              return (
+                <li
+                  key={item.id}
+                  draggable={canWrite && !reordering}
+                  onDragStart={(e) => {
+                    if (!canWrite || reordering) return;
+                    setDragId(item.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", item.id);
+                  }}
+                  onDragOver={(e) => {
+                    if (!dragId) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (overId !== item.id) setOverId(item.id);
+                  }}
+                  onDragLeave={() => {
+                    if (overId === item.id) setOverId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDrop(item.id);
+                  }}
+                  onDragEnd={() => {
+                    setDragId(null);
+                    setOverId(null);
+                  }}
+                  className={
+                    "flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm transition-colors " +
+                    (isDragging ? "opacity-50 " : "") +
+                    (isOver ? "border-primary bg-primary/5 " : "") +
+                    (canWrite && !reordering ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed")
+                  }
+                  data-testid={`featured-row-${item.id}`}
+                >
+                  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="w-6 text-xs text-muted-foreground tabular-nums">
+                    {idx + 1}
+                  </span>
+                  <Link
+                    href={`/collateral/${item.id}/edit`}
+                    className="flex-1 font-medium hover:underline truncate"
+                  >
+                    {item.title}
+                  </Link>
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {TYPE_LABELS[item.type] ?? item.type}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
           <TableHeader>

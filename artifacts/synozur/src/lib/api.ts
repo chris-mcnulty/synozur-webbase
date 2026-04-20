@@ -248,4 +248,9 @@ export const api = {
       url(`/admin/forms/submissions/retry-failed${submissionsQueryString(q)}`),
       { method: "POST" },
     ),
+  reorderFeaturedCollateral: (ids: string[]) =>
+    jsonFetch<{ updated: number }>(url("/cms/collateral/reorder"), {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
 };

@@ -7,6 +7,8 @@ import {
   CreateAssetBody,
   ListAssetsQueryParams,
   DeleteAssetParams,
+  ASSET_CATEGORIES,
+  isAssetCategory,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
@@ -42,6 +44,12 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
   const { originalName, mimeType, size, storageKey, category } = parsed.data;
+  if (category != null && !isAssetCategory(category)) {
+    res.status(400).json({
+      error: `Unknown category "${category}". Allowed: ${ASSET_CATEGORIES.join(", ")}`,
+    });
+    return;
+  }
   const filename = originalName;
   const [row] = await db
     .insert(assetsTable)

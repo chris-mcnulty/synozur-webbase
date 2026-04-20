@@ -323,6 +323,64 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   res.json(serializeAdminItem(updated));
 });
 
+const ReorderBody = z.object({
+  ids: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(500)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "ids must contain unique values",
+    }),
+});
+
+router.post("/cms/collateral/reorder", ...adminGuard, async (req, res) => {
+  const parsed = ReorderBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const { ids } = parsed.data;
+
+  const rows = await db
+    .select({ id: collateralTable.id, featured: collateralTable.featured })
+    .from(collateralTable)
+    .where(and(inArray(collateralTable.id, ids), isNull(collateralTable.deletedAt)));
+  const known = new Map(rows.map((r) => [r.id, r.featured]));
+  const missing = ids.filter((id) => !known.has(id));
+  if (missing.length) {
+    res.status(400).json({ error: "Unknown collateral ids", missing });
+    return;
+  }
+  const notFeatured = ids.filter((id) => known.get(id) !== true);
+  if (notFeatured.length) {
+    res
+      .status(400)
+      .json({ error: "Only featured items may be reordered", nonFeatured: notFeatured });
+    return;
+  }
+
+  const updatedAt = new Date();
+  const featuredRankCase = sql<number>`case ${sql.join(
+    ids.map((id, index) => sql`when ${collateralTable.id} = ${id} then ${index + 1}`),
+    sql` `,
+  )} end`;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(collateralTable)
+      .set({ featuredRank: featuredRankCase, updatedAt })
+      .where(inArray(collateralTable.id, ids));
+  });
+
+  await audit({
+    actorId: req.authedUser!.id,
+    action: "collateral.reorder",
+    entity: "collateral",
+    entityId: ids.join(","),
+  });
+
+  res.json({ updated: ids.length });
+});
+
 router.delete("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   const id = String(req.params.id);
   const existing = await db.query.collateralTable.findFirst({
