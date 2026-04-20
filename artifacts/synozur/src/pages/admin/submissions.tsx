@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/react";
-import { ArrowLeft, Download, LogOut, Search } from "lucide-react";
+import { ArrowLeft, Copy, Download, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -20,7 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import type { AdminFormSubmission } from "@workspace/api-zod";
 
 const PAGE_SIZE = 25;
 const FORM_TYPES: { value: string; label: string }[] = [
@@ -51,12 +60,23 @@ function statusBadgeClass(status: string | null | undefined): string {
 export default function AdminSubmissionsList() {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { toast } = useToast();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const [formType, setFormType] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<AdminFormSubmission | null>(null);
+
+  const copyEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      toast({ title: "Email copied", description: email });
+    } catch {
+      toast({ title: "Copy failed", description: email, variant: "destructive" });
+    }
+  };
 
   const effectiveType = formType === "all" ? undefined : formType;
   const { data, isLoading } = useQuery({
@@ -207,7 +227,12 @@ export default function AdminSubmissionsList() {
                 (typeof payload.source === "string" && `source: ${payload.source}`) ||
                 "";
               return (
-                <TableRow key={s.id} data-testid={`row-submission-${s.id}`}>
+                <TableRow
+                  key={s.id}
+                  data-testid={`row-submission-${s.id}`}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelected(s)}
+                >
                   <TableCell className="text-sm whitespace-nowrap">
                     {formatDateTime(s.createdAt)}
                   </TableCell>
@@ -273,6 +298,125 @@ export default function AdminSubmissionsList() {
           </Button>
         </div>
       </div>
+
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-xl overflow-y-auto"
+          data-testid="drawer-submission-detail"
+        >
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle>
+                  <span className="text-xs uppercase tracking-wide px-2 py-1 rounded bg-muted mr-2">
+                    {selected.formType}
+                  </span>
+                  Submission #{selected.id}
+                </SheetTitle>
+                <SheetDescription>
+                  Received {formatDateTime(selected.createdAt)}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6 text-sm">
+                <section>
+                  <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                    Contact
+                  </h3>
+                  <dl className="space-y-2">
+                    <div className="flex gap-3">
+                      <dt className="w-20 text-muted-foreground">Name</dt>
+                      <dd className="flex-1" data-testid="text-detail-name">
+                        {selected.name ?? "—"}
+                      </dd>
+                    </div>
+                    <div className="flex gap-3 items-center">
+                      <dt className="w-20 text-muted-foreground">Email</dt>
+                      <dd className="flex-1 break-all" data-testid="text-detail-email">
+                        {selected.email ?? "—"}
+                      </dd>
+                      {selected.email && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyEmail(selected.email!)}
+                          data-testid="button-copy-email"
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-20 text-muted-foreground">Company</dt>
+                      <dd className="flex-1" data-testid="text-detail-company">
+                        {selected.company ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section>
+                  <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                    Webhook
+                  </h3>
+                  <div className="flex items-start gap-2">
+                    <span
+                      className={`text-xs uppercase tracking-wide px-2 py-1 rounded ${statusBadgeClass(selected.webhookStatus)}`}
+                      data-testid="text-detail-webhook-status"
+                    >
+                      {selected.webhookStatus ?? "—"}
+                    </span>
+                    {selected.webhookError && (
+                      <pre
+                        className="flex-1 text-xs whitespace-pre-wrap break-words text-red-700 dark:text-red-300"
+                        data-testid="text-detail-webhook-error"
+                      >
+                        {selected.webhookError}
+                      </pre>
+                    )}
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                    Request
+                  </h3>
+                  <dl className="space-y-2">
+                    <div className="flex gap-3">
+                      <dt className="w-20 text-muted-foreground">IP</dt>
+                      <dd className="flex-1 font-mono text-xs" data-testid="text-detail-ip">
+                        {selected.ipAddress ?? "—"}
+                      </dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-20 text-muted-foreground">User agent</dt>
+                      <dd
+                        className="flex-1 font-mono text-xs break-all"
+                        data-testid="text-detail-user-agent"
+                      >
+                        {selected.userAgent ?? "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section>
+                  <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                    Payload
+                  </h3>
+                  <pre
+                    className="rounded-md border border-border bg-muted/40 p-3 text-xs overflow-x-auto whitespace-pre-wrap break-words"
+                    data-testid="text-detail-payload"
+                  >
+                    {JSON.stringify(selected.payload, null, 2)}
+                  </pre>
+                </section>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
