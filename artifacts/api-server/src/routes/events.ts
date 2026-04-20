@@ -14,6 +14,10 @@ import {
   DeleteEventParams,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import {
+  upsertCollateralFromEvent,
+  softDeleteCollateralForEvent,
+} from "../lib/syncCollateral";
 
 const router: IRouter = Router();
 
@@ -148,6 +152,14 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
     })
     .returning();
   const { imageUrl } = await loadEventWithImage(event);
+  try {
+    await upsertCollateralFromEvent(event, imageUrl);
+  } catch (error) {
+    console.error("Failed to sync collateral after event create", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.status(201).json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
 });
 
@@ -185,6 +197,14 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   const { imageUrl } = await loadEventWithImage(event);
+  try {
+    await upsertCollateralFromEvent(event, imageUrl);
+  } catch (error) {
+    console.error("Failed to sync collateral after event update", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
 });
 
@@ -202,7 +222,38 @@ router.delete("/admin/events/:id", requireAdmin, async (req, res): Promise<void>
     res.status(404).json({ error: "Event not found" });
     return;
   }
+  try {
+    await softDeleteCollateralForEvent(event.id);
+  } catch (error) {
+    console.error("Failed to soft-delete collateral after event delete", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.sendStatus(204);
 });
+
+router.post(
+  "/admin/events/:id/sync-to-collateral",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const params = GetAdminEventParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const [event] = await db
+      .select()
+      .from(eventsTable)
+      .where(eq(eventsTable.id, params.data.id));
+    if (!event) {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+    const { imageUrl } = await loadEventWithImage(event);
+    await upsertCollateralFromEvent(event, imageUrl);
+    res.json({ ok: true });
+  },
+);
 
 export default router;

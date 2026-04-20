@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, ArrowLeft, X } from "lucide-react";
+import { Image as ImageIcon, ArrowLeft, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +50,7 @@ export default function EventForm({ id }: Props) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-event", eventId],
@@ -87,6 +88,16 @@ export default function EventForm({ id }: Props) {
       navigate("/");
     },
     onError: (e: Error) => setError(e.message),
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () => api.syncEventToCollateral(eventId!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/cms/collateral"] });
+      qc.invalidateQueries({ queryKey: ["collateral"] });
+      setSyncStatus("Synced to collateral.");
+    },
+    onError: (e: Error) => setSyncStatus(`Sync failed: ${e.message}`),
   });
 
   if (!isNew && isLoading) {
@@ -288,7 +299,31 @@ export default function EventForm({ id }: Props) {
           <Button type="button" variant="outline" onClick={() => navigate("/")}>
             Cancel
           </Button>
+          {!isNew && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSyncStatus(null);
+                syncMutation.mutate();
+              }}
+              disabled={syncMutation.isPending}
+              className="ml-auto"
+              data-testid="button-sync-collateral"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              {syncMutation.isPending ? "Syncing…" : "Sync to Collateral"}
+            </Button>
+          )}
         </div>
+        {syncStatus && (
+          <div
+            className="text-sm text-muted-foreground"
+            data-testid="text-sync-status"
+          >
+            {syncStatus}
+          </div>
+        )}
       </form>
 
       <AssetLibraryModal
