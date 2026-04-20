@@ -1996,6 +1996,27 @@ export const ListAdminFormSubmissionsResponse = zod.object({
 });
 
 /**
+ * @summary Re-post the original payload to the configured webhook for a submission
+ */
+export const ResendAdminFormSubmissionWebhookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResendAdminFormSubmissionWebhookResponse = zod.object({
+  id: zod.number(),
+  formType: zod.string(),
+  email: zod.string().nullish(),
+  name: zod.string().nullish(),
+  company: zod.string().nullish(),
+  payload: zod.record(zod.string(), zod.unknown()),
+  ipAddress: zod.string().nullish(),
+  userAgent: zod.string().nullish(),
+  webhookStatus: zod.string().nullish(),
+  webhookError: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Export form submissions as CSV (admin)
  */
 export const ExportAdminFormSubmissionsQueryParams = zod.object({

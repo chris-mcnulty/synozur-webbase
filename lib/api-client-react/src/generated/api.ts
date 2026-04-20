@@ -6536,6 +6536,96 @@ export function useListAdminFormSubmissions<
 }
 
 /**
+ * @summary Re-post the original payload to the configured webhook for a submission
+ */
+export const getResendAdminFormSubmissionWebhookUrl = (id: number) => {
+  return `/api/admin/forms/submissions/${id}/resend-webhook`;
+};
+
+export const resendAdminFormSubmissionWebhook = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AdminFormSubmission> => {
+  return customFetch<AdminFormSubmission>(
+    getResendAdminFormSubmissionWebhookUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getResendAdminFormSubmissionWebhookMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["resendAdminFormSubmissionWebhook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return resendAdminFormSubmissionWebhook(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResendAdminFormSubmissionWebhookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>
+>;
+
+export type ResendAdminFormSubmissionWebhookMutationError =
+  ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Re-post the original payload to the configured webhook for a submission
+ */
+export const useResendAdminFormSubmissionWebhook = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resendAdminFormSubmissionWebhook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(
+    getResendAdminFormSubmissionWebhookMutationOptions(options),
+  );
+};
+
+/**
  * @summary Export form submissions as CSV (admin)
  */
 export const getExportAdminFormSubmissionsUrl = (

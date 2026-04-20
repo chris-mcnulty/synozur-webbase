@@ -180,6 +180,35 @@ function adminSubmissionShape(row: FormSubmission) {
   };
 }
 
+router.post(
+  "/admin/forms/submissions/:id/resend-webhook",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const id = Number.parseInt(String(req.params.id ?? ""), 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid submission id" });
+      return;
+    }
+    const [row] = await db
+      .select()
+      .from(formSubmissionsTable)
+      .where(eq(formSubmissionsTable.id, id))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+    const payload = (row.payload ?? {}) as Record<string, unknown>;
+    const webhook = await forwardToWebhook({ formType: row.formType, ...payload });
+    const [updated] = await db
+      .update(formSubmissionsTable)
+      .set({ webhookStatus: webhook.status, webhookError: webhook.error })
+      .where(eq(formSubmissionsTable.id, id))
+      .returning();
+    res.json(adminSubmissionShape(updated!));
+  },
+);
+
 router.get("/admin/forms/submissions", requireAdmin, async (req, res): Promise<void> => {
   const parsed = ListAdminFormSubmissionsQueryParams.safeParse(req.query);
   if (!parsed.success) {

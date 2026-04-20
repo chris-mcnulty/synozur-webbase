@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/react";
-import { ArrowLeft, Copy, Download, LogOut, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, Copy, Download, Loader2, LogOut, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -75,6 +75,33 @@ export default function AdminSubmissionsList() {
   const [selected, setSelected] = useState<AdminFormSubmission | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+
+  const resendWebhook = async (id: number) => {
+    setResending(true);
+    try {
+      const updated = await api.resendSubmissionWebhook(id);
+      setSelected(updated);
+      await queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+      if (updated.webhookStatus === "ok") {
+        toast({ title: "Webhook resent", description: "Delivery succeeded." });
+      } else {
+        toast({
+          title: "Webhook still failing",
+          description: updated.webhookError ?? updated.webhookStatus ?? "Unknown error",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Resend failed",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setResending(false);
+    }
+  };
 
   const copyEmail = async (email: string) => {
     try {
@@ -470,6 +497,24 @@ export default function AdminSubmissionsList() {
                       </pre>
                     )}
                   </div>
+                  {selected.webhookStatus !== "ok" && (
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => resendWebhook(selected.id)}
+                        disabled={resending}
+                        data-testid="button-resend-webhook"
+                      >
+                        {resending ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        {resending ? "Resending…" : "Resend webhook"}
+                      </Button>
+                    </div>
+                  )}
                 </section>
 
                 <section>

@@ -212,6 +212,10 @@ export const api = {
     jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
   submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
     url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
+  resendSubmissionWebhook: (id: number) =>
+    jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/resend-webhook`), {
+      method: "POST",
+    }),
   getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
   getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),
   updateAdminSiteSettings: (body: UpdateSiteSettingsBody) =>

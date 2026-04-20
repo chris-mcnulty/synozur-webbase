@@ -1837,6 +1837,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/forms/submissions/{id}/resend-webhook:
+    post:
+      tags: [Forms]
+      operationId: resendAdminFormSubmissionWebhook
+      summary: Re-post the original payload to the configured webhook for a submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated submission with new webhook status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFormSubmission"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /admin/forms/submissions.csv:
     get:
       tags: [Forms]
