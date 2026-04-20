@@ -1,16 +1,42 @@
-import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+
+type NavLink = { label: string; href: string };
+type NavGroup = { title: string; links: NavLink[]; nested?: { label: string; href: string; children: NavLink[] }[] };
 
 const LOGO_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
 
 export function Header() {
-  const [location] = useLocation();
+  useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navGroups = [
+  const servicesQuery = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api.listServices(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pillars = (servicesQuery.data?.items ?? []).filter(
+    (s) => s.slug !== "our-services",
+  );
+
+  const servicesGroup: NavGroup = {
+    title: "Services",
+    links: [{ label: "Services Overview", href: "/services-overview/default" }],
+    nested: pillars.map((p) => ({
+      label: p.title,
+      href: `/services/${p.slug}`,
+      children: p.solutions.map((s) => ({
+        label: s.title,
+        href: `/solutions/${s.slug}`,
+      })),
+    })),
+  };
+
+  const navGroups: NavGroup[] = [
     {
       title: "Our Story",
       links: [
@@ -20,16 +46,7 @@ export function Header() {
         { label: "Contact", href: "/contact" },
       ]
     },
-    {
-      title: "Services",
-      links: [
-        { label: "Services Overview", href: "/services-overview/default" },
-        { label: "Strategic Transformation", href: "/services/strategic-transformation" },
-        { label: "Technology Transformation", href: "/services/technology-transformation" },
-        { label: "Experiences", href: "/services/experiences" },
-        { label: "Go-to-Market Transformation", href: "/services/go-to-market-transformation" },
-      ]
-    },
+    servicesGroup,
     {
       title: "The Feed",
       links: [
@@ -80,7 +97,11 @@ export function Header() {
                 {group.title}
               </button>
               <div className="absolute left-0 top-full pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                <div className="bg-popover border border-border rounded-md shadow-md p-4 w-64 flex flex-col gap-2">
+                <div
+                  className={`bg-popover border border-border rounded-md shadow-md p-4 flex flex-col gap-2 ${
+                    group.nested && group.nested.length > 0 ? "w-[28rem]" : "w-64"
+                  }`}
+                >
                   {group.links.map((link) => (
                     <Link
                       key={link.label}
@@ -90,6 +111,34 @@ export function Header() {
                       {link.label}
                     </Link>
                   ))}
+                  {group.nested && group.nested.length > 0 ? (
+                    <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
+                      {group.nested.map((pillar) => (
+                        <div key={pillar.label}>
+                          <Link
+                            href={pillar.href}
+                            className="block text-sm font-semibold text-popover-foreground hover:text-primary px-3 py-1 rounded-md"
+                          >
+                            {pillar.label}
+                          </Link>
+                          {pillar.children.length > 0 ? (
+                            <ul className="pl-3 mt-1 space-y-0.5">
+                              {pillar.children.map((c) => (
+                                <li key={c.href}>
+                                  <Link
+                                    href={c.href}
+                                    className="block text-xs text-popover-foreground/70 hover:text-primary hover:bg-muted/40 px-3 py-1 rounded-md"
+                                  >
+                                    {c.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -131,6 +180,32 @@ export function Header() {
                     >
                       {link.label}
                     </Link>
+                  ))}
+                  {group.nested?.map((pillar) => (
+                    <div key={pillar.label} className="mt-2">
+                      <Link
+                        href={pillar.href}
+                        className="block font-medium text-foreground/90 hover:text-primary py-1"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {pillar.label}
+                      </Link>
+                      {pillar.children.length > 0 ? (
+                        <ul className="pl-4 border-l border-border/40 ml-1 mt-1 space-y-1">
+                          {pillar.children.map((c) => (
+                            <li key={c.href}>
+                              <Link
+                                href={c.href}
+                                className="block text-sm text-muted-foreground hover:text-primary py-0.5"
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {c.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
               </div>

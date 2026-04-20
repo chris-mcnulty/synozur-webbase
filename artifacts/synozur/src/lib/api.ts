@@ -82,7 +82,84 @@ export interface AdminSiteSettings {
   updatedAt: string;
 }
 
+export interface ServiceDto {
+  id: string;
+  slug: string;
+  title: string;
+  displayOrder: number | null;
+  parentServiceId: string | null;
+  iconId: string | null;
+  iconUrl: string | null;
+  servicePath: string | null;
+  overviewPath: string | null;
+  buttonText: string | null;
+  heroTextHtml: string | null;
+  secondaryTitle: string | null;
+  secondaryTextHtml: string | null;
+  tertiaryTitle: string | null;
+  tertiaryTextHtml: string | null;
+  blurbHtml: string | null;
+  blogCategory: string | null;
+  active: boolean;
+}
+
+export interface SolutionDto {
+  id: string;
+  slug: string;
+  title: string;
+  displayOrder: number | null;
+  parentServiceId: string | null;
+  iconId: string | null;
+  iconUrl: string | null;
+  routePath: string | null;
+  buttonText: string | null;
+  heroTextHtml: string | null;
+  secondaryTitle: string | null;
+  secondaryTextHtml: string | null;
+  ourApproachTitle: string | null;
+  ourApproachTextHtml: string | null;
+  blurbHtml: string | null;
+  blurbCopy: string | null;
+  heroTextColor: string | null;
+  tagsText: string | null;
+  active: boolean;
+}
+
+export interface MethodologyDto {
+  id: string;
+  serviceId: string;
+  title: string;
+  displayOrder: number;
+  iconId: string | null;
+  iconUrl: string | null;
+  bodyHtml: string | null;
+  hidden: boolean;
+}
+
+export interface CapabilityDto {
+  id: string;
+  solutionId: string;
+  title: string;
+  displayOrder: number;
+  iconId: string | null;
+  iconUrl: string | null;
+  bodyHtml: string | null;
+  hidden: boolean;
+}
+
+export type ServiceWithSolutions = ServiceDto & { solutions: SolutionDto[] };
+export type ServiceWithMethodologies = ServiceDto & { methodologies: MethodologyDto[] };
+export type SolutionWithCapabilities = SolutionDto & {
+  parentService: ServiceDto | null;
+  capabilities: CapabilityDto[];
+};
+
 export const api = {
+  listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
+  getService: (slug: string) =>
+    jsonFetch<ServiceWithMethodologies>(url(`/services/${encodeURIComponent(slug)}`)),
+  getSolution: (slug: string) =>
+    jsonFetch<SolutionWithCapabilities>(url(`/solutions/${encodeURIComponent(slug)}`)),
   publicEvents: () => jsonFetch<PublicEvent[]>(url("/events")),
   me: () => jsonFetch<AdminMe>(url("/admin/me")),
   adminEvents: () => jsonFetch<AdminEvent[]>(url("/admin/events")),
