@@ -15,6 +15,7 @@ import cmsUsersRouter from "./cms/users";
 import siteSettingsRouter from "./siteSettings";
 import servicesRouter from "./services";
 import collateralRouter from "./collateral";
+import teamMembersRouter from "./teamMembers";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(cmsUsersRouter);
 router.use(siteSettingsRouter);
 router.use(servicesRouter);
 router.use(collateralRouter);
+router.use(teamMembersRouter);
 
 export default router;

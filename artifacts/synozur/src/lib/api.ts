@@ -9,6 +9,9 @@ import type {
   StartFormInput,
   FormSubmissionAck,
   AdminFormSubmissionsPage,
+  PublicTeamMember,
+  AdminTeamMember,
+  TeamMemberInput,
 } from "@workspace/api-zod/types";
 
 export interface SubmissionsQuery {
@@ -214,4 +217,20 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  publicTeamMembers: () => jsonFetch<PublicTeamMember[]>(url("/team-members")),
+  adminTeamMembers: () => jsonFetch<AdminTeamMember[]>(url("/admin/team-members")),
+  getTeamMember: (id: number) =>
+    jsonFetch<AdminTeamMember>(url(`/admin/team-members/${id}`)),
+  createTeamMember: (body: TeamMemberInput) =>
+    jsonFetch<AdminTeamMember>(url("/admin/team-members"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTeamMember: (id: number, body: TeamMemberInput) =>
+    jsonFetch<AdminTeamMember>(url(`/admin/team-members/${id}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteTeamMember: (id: number) =>
+    jsonFetch<void>(url(`/admin/team-members/${id}`), { method: "DELETE" }),
 };

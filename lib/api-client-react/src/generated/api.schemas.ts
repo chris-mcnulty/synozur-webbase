@@ -817,6 +817,77 @@ export interface UpsertCapabilityBody {
   hidden?: boolean;
 }
 
+export interface PublicTeamMember {
+  id: number;
+  name: string;
+  slug: string;
+  jobTitle: string;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  active: boolean;
+  manualSort?: string;
+  tags?: string[];
+}
+
+export interface AdminTeamMember {
+  id: number;
+  name: string;
+  slug: string;
+  jobTitle: string;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  longDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  active: boolean;
+  manualSort: string;
+  tags: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TeamMemberInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  slug?: string | null;
+  jobTitle?: string;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  longDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  active?: boolean;
+  manualSort?: string;
+  tags?: string[];
+}
+
 /**
  * Unauthorized
  */

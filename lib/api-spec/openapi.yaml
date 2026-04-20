@@ -35,6 +35,12 @@ tags:
     description: Admin authentication helpers.
   - name: SiteSettings
     description: Public site settings.
+  - name: Services
+    description: Public services, solutions, methodologies and capabilities.
+  - name: CmsServices
+    description: Admin service, solution, methodology and capability management.
+  - name: Team
+    description: Team member roster (public + admin).
 paths:
   /healthz:
     get:
@@ -1554,6 +1560,138 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /team-members:
+    get:
+      tags:
+        - Team
+      operationId: listPublicTeamMembers
+      summary: List active team members
+      responses:
+        '200':
+          description: Team member list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicTeamMember'
+  /admin/team-members:
+    get:
+      tags:
+        - Team
+      operationId: listAdminTeamMembers
+      summary: List all team members (admin)
+      responses:
+        '200':
+          description: Team member list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminTeamMember'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags:
+        - Team
+      operationId: createTeamMember
+      summary: Create team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMemberInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeamMember'
+        '400':
+          description: Invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/team-members/{id}:
+    get:
+      tags:
+        - Team
+      operationId: getAdminTeamMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeamMember'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags:
+        - Team
+      operationId: updateTeamMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMemberInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeamMember'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+        - Team
+      operationId: deleteTeamMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /admin/forms/submissions:
     get:
       tags: [Forms]
@@ -2963,12 +3101,11 @@ components:
           type:
             - string
             - 'null'
-        active:
-          type: boolean
         createdAt:
           type: string
         updatedAt:
           type: string
+
     Solution:
       type: object
       required:
@@ -3065,12 +3202,11 @@ components:
           type:
             - string
             - 'null'
-        active:
-          type: boolean
         createdAt:
           type: string
         updatedAt:
           type: string
+
     Methodology:
       type: object
       required:
@@ -3112,6 +3248,7 @@ components:
           type: string
         updatedAt:
           type: string
+
     Capability:
       type: object
       required:
@@ -3153,6 +3290,7 @@ components:
           type: string
         updatedAt:
           type: string
+
     ServiceWithSolutions:
       allOf:
         - $ref: '#/components/schemas/Service'
@@ -3164,6 +3302,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Solution'
+
     ServiceListResponse:
       type: object
       required:
@@ -3173,6 +3312,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ServiceWithSolutions'
+
     ServiceDetail:
       allOf:
         - $ref: '#/components/schemas/Service'
@@ -3184,6 +3324,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Methodology'
+
     SolutionDetail:
       allOf:
         - $ref: '#/components/schemas/Solution'
@@ -3199,6 +3340,7 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Capability'
+
     ServiceItemsResponse:
       type: object
       required:
@@ -3208,6 +3350,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Service'
+
     SolutionItemsResponse:
       type: object
       required:
@@ -3217,6 +3360,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Solution'
+
     MethodologyItemsResponse:
       type: object
       required:
@@ -3226,6 +3370,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Methodology'
+
     CapabilityItemsResponse:
       type: object
       required:
@@ -3235,6 +3380,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Capability'
+
     UpsertServiceBody:
       type: object
       required:
@@ -3300,6 +3446,7 @@ components:
             - 'null'
         active:
           type: boolean
+
     UpsertSolutionBody:
       type: object
       required:
@@ -3385,6 +3532,7 @@ components:
             - 'null'
         active:
           type: boolean
+
     UpsertMethodologyBody:
       type: object
       required:
@@ -3407,6 +3555,7 @@ components:
             - 'null'
         hidden:
           type: boolean
+
     UpsertCapabilityBody:
       type: object
       required:
@@ -3429,3 +3578,156 @@ components:
             - 'null'
         hidden:
           type: boolean
+
+    PublicTeamMember:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - jobTitle
+        - active
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        jobTitle:
+          type: string
+        shortDescription:
+          type:
+            - string
+            - 'null'
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        linkedinUrl:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        email:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+
+    AdminTeamMember:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - jobTitle
+        - active
+        - manualSort
+        - tags
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        jobTitle:
+          type: string
+        shortDescription:
+          type:
+            - string
+            - 'null'
+        longDescription:
+          type:
+            - string
+            - 'null'
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        email:
+          type:
+            - string
+            - 'null'
+        phone:
+          type:
+            - string
+            - 'null'
+        linkedinUrl:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        manualSort:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TeamMemberInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type:
+            - string
+            - 'null'
+        jobTitle:
+          type: string
+        shortDescription:
+          type:
+            - string
+            - 'null'
+        longDescription:
+          type:
+            - string
+            - 'null'
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        email:
+          type:
+            - string
+            - 'null'
+        phone:
+          type:
+            - string
+            - 'null'
+        linkedinUrl:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        manualSort:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string

@@ -46,6 +46,8 @@ import ServiceMethodologiesPage from "@/pages/admin/service-methodologies";
 import AdminSolutionsList from "@/pages/admin/solutions-list";
 import SolutionEdit from "@/pages/admin/solution-edit";
 import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
+import AdminTeamList from "@/pages/admin/team-list";
+import TeamForm from "@/pages/admin/team-form";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -104,6 +106,13 @@ function AdminRoutes() {
         </Route>
         <Route path="/events/:id">
           {(params) => <EventForm id={params.id} />}
+        </Route>
+        <Route path="/team-members" component={AdminTeamList} />
+        <Route path="/team-members/new">
+          <TeamForm />
+        </Route>
+        <Route path="/team-members/:id">
+          {(params) => <TeamForm id={params.id} />}
         </Route>
         <Route component={NotFound} />
       </Switch>

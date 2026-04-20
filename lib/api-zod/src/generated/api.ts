@@ -1636,6 +1636,138 @@ export const DeleteEventParams = zod.object({
 });
 
 /**
+ * @summary List active team members
+ */
+export const ListPublicTeamMembersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  jobTitle: zod.string(),
+  shortDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  active: zod.boolean(),
+  manualSort: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+export const ListPublicTeamMembersResponse = zod.array(
+  ListPublicTeamMembersResponseItem,
+);
+
+/**
+ * @summary List all team members (admin)
+ */
+export const ListAdminTeamMembersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  jobTitle: zod.string(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  manualSort: zod.string(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+export const ListAdminTeamMembersResponse = zod.array(
+  ListAdminTeamMembersResponseItem,
+);
+
+/**
+ * @summary Create team member
+ */
+
+export const CreateTeamMemberBody = zod.object({
+  name: zod.string().min(1),
+  slug: zod.string().nullish(),
+  jobTitle: zod.string().optional(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+  manualSort: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+export const GetAdminTeamMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAdminTeamMemberResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  jobTitle: zod.string(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  manualSort: zod.string(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+
+export const UpdateTeamMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateTeamMemberBody = zod.object({
+  name: zod.string().min(1),
+  slug: zod.string().nullish(),
+  jobTitle: zod.string().optional(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+  manualSort: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+export const UpdateTeamMemberResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  jobTitle: zod.string(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  manualSort: zod.string(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+
+export const DeleteTeamMemberParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List form submissions (admin)
  */
 

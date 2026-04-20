@@ -2,82 +2,36 @@ import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Linkedin } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
-type Person = {
-  name: string;
-  title: string;
-  bio: string;
-  image: string;
-  linkedin: string;
-};
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-const people: Person[] = [
-  {
-    name: "Michelle Caldwell",
-    title: "Chief Executive Officer",
-    bio: "A workplace experience leader with over 25 years delivering transformative solutions to diverse organizations powered by Ethical AI.",
-    image: "/images/team-michelle-caldwell.png",
-    linkedin: "https://www.linkedin.com/in/michellecaldwell/",
-  },
-  {
-    name: "Matt Shaffer",
-    title: "Organizational Design and Executive Coaching",
-    bio: "Matt focuses on company-wide management consulting alongside C-level operational expertise.",
-    image: "/images/team-matt-shaffer.png",
-    linkedin: "https://www.linkedin.com/in/mattshaffer/",
-  },
-  {
-    name: "Rob Asen",
-    title: "Transformation Officer",
-    bio: "Rob offers transformation program strategies, guidance, and implementation to address business and technology challenges.",
-    image: "/images/team-rob-asen.png",
-    linkedin: "https://www.linkedin.com/in/robasen/",
-  },
-  {
-    name: "Chris McNulty",
-    title: "Chief Technology Officer",
-    bio: "Chris is a product, marketing and technology executive with product creation experience for generative AI, Copilot, and Microsoft 365.",
-    image: "/images/team-chris-mcnulty.png",
-    linkedin: "https://www.linkedin.com/in/cmcnulty",
-  },
-  {
-    name: "Shari L. Oswald",
-    title: "Learning Experience Officer",
-    bio: "Developing dynamic, enthusiastic, and imaginative learning experiences aimed at addressing real business challenges.",
-    image: "/images/team-shari-oswald.png",
-    linkedin: "https://www.linkedin.com/in/shortcutshari/",
-  },
-  {
-    name: "Eric Riz",
-    title: "Organizational Governance & Operational Excellence",
-    bio: "Eric's proficiency in Microsoft 365 and project management drives excellence in implementing changes that influence corporate strategies and efficiencies.",
-    image: "/images/team-eric-riz.png",
-    linkedin: "https://www.linkedin.com/in/ericriz/",
-  },
-  {
-    name: "Michelle Boyd",
-    title: "Head of Delivery Excellence",
-    bio: "Michelle is a key driver of client success, renowned for delivering substantial business value and product and project benefits.",
-    image: "/images/team-michelle-boyd.png",
-    linkedin: "https://www.linkedin.com/in/michelleboyd01/",
-  },
-  {
-    name: "Andrew Borg",
-    title: "Ethical AI and Nonprofits",
-    bio: "An Innovation Catalyst for AI ethics and Digital Transformation, Andrew is at the forefront of introducing positive disruptive experience and innovation culture to nonprofit organizations.",
-    image: "/images/team-andrew-borg.png",
-    linkedin: "https://www.linkedin.com/in/andrewborg",
-  },
-  {
-    name: "Joshua Christensen",
-    title: "Future of Work & Product Strategy Leader",
-    bio: "Joshua is a Workplace Experience and Product Strategy leader focused on designing digital solutions that enhance how employees work, collaborate, and engage with technology.",
-    image: "/images/team-joshua-christensen.png",
-    linkedin: "https://www.linkedin.com/in/joshuachr/",
-  },
-];
+function resolveImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/")) return `${BASE_PATH}${url}`;
+  return url;
+}
+
+function stripHtml(input: string | null | undefined): string {
+  if (!input) return "";
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export default function Team() {
+  const { data: people = [], isLoading } = useQuery({
+    queryKey: ["public-team-members"],
+    queryFn: () => api.publicTeamMembers(),
+  });
+
   return (
     <div className="w-full">
       <Meta
@@ -108,41 +62,63 @@ export default function Team() {
             Team Members
           </p>
           <h2 className="text-3xl md:text-4xl font-bold mb-12">Leadership</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {people.map((p, i) => (
-              <motion.article
-                key={p.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: i * 0.05 }}
-                className="group"
-              >
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                </div>
-                <h3 className="text-lg font-bold leading-tight">{p.name}</h3>
-                <p className="text-sm text-primary mb-3">{p.title}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  {p.bio}
-                </p>
-                <a
-                  href={p.linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
-                  aria-label={`${p.name} on LinkedIn`}
-                >
-                  <Linkedin className="h-4 w-4" /> LinkedIn
-                </a>
-              </motion.article>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="text-muted-foreground">Loading…</div>
+          ) : (
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+              data-testid="team-grid"
+            >
+              {people.map((p, i) => {
+                const bio = stripHtml(p.shortDescription);
+                const imageSrc = resolveImageUrl(p.imageUrl);
+                return (
+                  <motion.article
+                    key={p.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45, delay: i * 0.05 }}
+                    className="group"
+                    data-testid={`team-card-${p.slug}`}
+                  >
+                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
+                      {imageSrc ? (
+                        <img
+                          src={imageSrc}
+                          alt={p.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                          {p.name}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                    </div>
+                    <h3 className="text-lg font-bold leading-tight">{p.name}</h3>
+                    <p className="text-sm text-primary mb-3">{p.jobTitle}</p>
+                    {bio && (
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                        {bio}
+                      </p>
+                    )}
+                    {p.linkedinUrl && (
+                      <a
+                        href={p.linkedinUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        aria-label={`${p.name} on LinkedIn`}
+                      >
+                        <Linkedin className="h-4 w-4" /> LinkedIn
+                      </a>
+                    )}
+                  </motion.article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

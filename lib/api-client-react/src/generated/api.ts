@@ -19,6 +19,7 @@ import type {
 import type {
   AdminEvent,
   AdminFormSubmissionsPage,
+  AdminTeamMember,
   AdminUser,
   Asset,
   AssetInput,
@@ -58,6 +59,7 @@ import type {
   PublicPost,
   PublicPostListResponse,
   PublicSiteSettings,
+  PublicTeamMember,
   RegisterMediaBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -77,6 +79,7 @@ import type {
   SubmitCommentResponse,
   SubscribeFormInput,
   Tag,
+  TeamMemberInput,
   UnauthorizedResponse,
   UpdateMediaBody,
   UpdatePostBody,
@@ -5557,6 +5560,481 @@ export const useDeleteEvent = <
   TContext
 > => {
   return useMutation(getDeleteEventMutationOptions(options));
+};
+
+/**
+ * @summary List active team members
+ */
+export const getListPublicTeamMembersUrl = () => {
+  return `/api/team-members`;
+};
+
+export const listPublicTeamMembers = async (
+  options?: RequestInit,
+): Promise<PublicTeamMember[]> => {
+  return customFetch<PublicTeamMember[]>(getListPublicTeamMembersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicTeamMembersQueryKey = () => {
+  return [`/api/team-members`] as const;
+};
+
+export const getListPublicTeamMembersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicTeamMembers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicTeamMembers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicTeamMembersQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicTeamMembers>>
+  > = ({ signal }) => listPublicTeamMembers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicTeamMembers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicTeamMembersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicTeamMembers>>
+>;
+export type ListPublicTeamMembersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active team members
+ */
+
+export function useListPublicTeamMembers<
+  TData = Awaited<ReturnType<typeof listPublicTeamMembers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicTeamMembers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicTeamMembersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all team members (admin)
+ */
+export const getListAdminTeamMembersUrl = () => {
+  return `/api/admin/team-members`;
+};
+
+export const listAdminTeamMembers = async (
+  options?: RequestInit,
+): Promise<AdminTeamMember[]> => {
+  return customFetch<AdminTeamMember[]>(getListAdminTeamMembersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdminTeamMembersQueryKey = () => {
+  return [`/api/admin/team-members`] as const;
+};
+
+export const getListAdminTeamMembersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminTeamMembers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminTeamMembers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminTeamMembersQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminTeamMembers>>
+  > = ({ signal }) => listAdminTeamMembers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminTeamMembers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminTeamMembersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminTeamMembers>>
+>;
+export type ListAdminTeamMembersQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List all team members (admin)
+ */
+
+export function useListAdminTeamMembers<
+  TData = Awaited<ReturnType<typeof listAdminTeamMembers>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminTeamMembers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminTeamMembersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create team member
+ */
+export const getCreateTeamMemberUrl = () => {
+  return `/api/admin/team-members`;
+};
+
+export const createTeamMember = async (
+  teamMemberInput: TeamMemberInput,
+  options?: RequestInit,
+): Promise<AdminTeamMember> => {
+  return customFetch<AdminTeamMember>(getCreateTeamMemberUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(teamMemberInput),
+  });
+};
+
+export const getCreateTeamMemberMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTeamMember>>,
+    TError,
+    { data: BodyType<TeamMemberInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTeamMember>>,
+  TError,
+  { data: BodyType<TeamMemberInput> },
+  TContext
+> => {
+  const mutationKey = ["createTeamMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTeamMember>>,
+    { data: BodyType<TeamMemberInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createTeamMember(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTeamMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTeamMember>>
+>;
+export type CreateTeamMemberMutationBody = BodyType<TeamMemberInput>;
+export type CreateTeamMemberMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create team member
+ */
+export const useCreateTeamMember = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTeamMember>>,
+    TError,
+    { data: BodyType<TeamMemberInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTeamMember>>,
+  TError,
+  { data: BodyType<TeamMemberInput> },
+  TContext
+> => {
+  return useMutation(getCreateTeamMemberMutationOptions(options));
+};
+
+export const getGetAdminTeamMemberUrl = (id: number) => {
+  return `/api/admin/team-members/${id}`;
+};
+
+export const getAdminTeamMember = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AdminTeamMember> => {
+  return customFetch<AdminTeamMember>(getGetAdminTeamMemberUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminTeamMemberQueryKey = (id: number) => {
+  return [`/api/admin/team-members/${id}`] as const;
+};
+
+export const getGetAdminTeamMemberQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminTeamMember>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminTeamMember>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminTeamMemberQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminTeamMember>>
+  > = ({ signal }) => getAdminTeamMember(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminTeamMember>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminTeamMemberQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminTeamMember>>
+>;
+export type GetAdminTeamMemberQueryError = ErrorType<ErrorEnvelope>;
+
+export function useGetAdminTeamMember<
+  TData = Awaited<ReturnType<typeof getAdminTeamMember>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminTeamMember>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminTeamMemberQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateTeamMemberUrl = (id: number) => {
+  return `/api/admin/team-members/${id}`;
+};
+
+export const updateTeamMember = async (
+  id: number,
+  teamMemberInput: TeamMemberInput,
+  options?: RequestInit,
+): Promise<AdminTeamMember> => {
+  return customFetch<AdminTeamMember>(getUpdateTeamMemberUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(teamMemberInput),
+  });
+};
+
+export const getUpdateTeamMemberMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTeamMember>>,
+    TError,
+    { id: number; data: BodyType<TeamMemberInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTeamMember>>,
+  TError,
+  { id: number; data: BodyType<TeamMemberInput> },
+  TContext
+> => {
+  const mutationKey = ["updateTeamMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTeamMember>>,
+    { id: number; data: BodyType<TeamMemberInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateTeamMember(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTeamMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTeamMember>>
+>;
+export type UpdateTeamMemberMutationBody = BodyType<TeamMemberInput>;
+export type UpdateTeamMemberMutationError = ErrorType<ErrorEnvelope>;
+
+export const useUpdateTeamMember = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTeamMember>>,
+    TError,
+    { id: number; data: BodyType<TeamMemberInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateTeamMember>>,
+  TError,
+  { id: number; data: BodyType<TeamMemberInput> },
+  TContext
+> => {
+  return useMutation(getUpdateTeamMemberMutationOptions(options));
+};
+
+export const getDeleteTeamMemberUrl = (id: number) => {
+  return `/api/admin/team-members/${id}`;
+};
+
+export const deleteTeamMember = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteTeamMemberUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteTeamMemberMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTeamMember>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteTeamMember>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteTeamMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteTeamMember>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteTeamMember(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteTeamMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteTeamMember>>
+>;
+
+export type DeleteTeamMemberMutationError = ErrorType<ErrorEnvelope>;
+
+export const useDeleteTeamMember = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTeamMember>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteTeamMember>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteTeamMemberMutationOptions(options));
 };
 
 /**

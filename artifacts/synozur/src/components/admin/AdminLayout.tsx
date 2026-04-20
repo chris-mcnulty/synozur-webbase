@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Users,
   CalendarDays,
+  UserSquare2,
   Inbox,
   LogOut,
   ChevronRight,
@@ -90,6 +91,13 @@ const NAV: NavItem[] = [
     icon: CalendarDays,
     show: (a) => !!a?.isAllowListed,
     testId: "nav-admin-events",
+  },
+  {
+    href: "/admin/team-members",
+    label: "Team",
+    icon: UserSquare2,
+    show: (a) => !!a?.isAllowListed,
+    testId: "nav-admin-team",
   },
   {
     href: "/admin/submissions",
