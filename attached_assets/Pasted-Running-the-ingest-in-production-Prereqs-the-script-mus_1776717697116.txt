@@ -1,0 +1,30 @@
+Running the ingest in production
+Prereqs — the script must run inside a Replit environment (the Replit sidecar at http://127.0.0.1:1106 is how it signs App Storage uploads; it doesn't exist outside Replit). It also needs:
+
+env var	source
+DATABASE_URL	the production Postgres (same one the api-server uses)
+PRIVATE_OBJECT_DIR	the production App Storage bucket path
+Step-by-step
+Land this branch on main (or run from the branch) in the production Replit workspace — tools/insights-crawler/output/posts.json + output/images/ must be on disk, since the crawler is build-time and the ingester reads them directly. Since output/ is gitignored, you have two choices:
+Re-run discover+crawl in prod: pnpm --filter @workspace/insights-crawler run all (clean, ~350 MiB download, ~10 min), or
+Commit output/posts.json + output/images/ temporarily, pull, then revert the commit.
+I'd do the first — it's idempotent, leaves the tree clean, and produces a fresh report.md.
+Pre-flight dry run against the production DB — I'd strongly recommend adding a --dry-run flag before first prod run (prints what would change, touches nothing). Right now the script goes straight to writes on --yes. Want me to add --dry-run?
+Pilot with a single slug to confirm end-to-end (DB row + image upload + category link + audit log all succeed):
+pnpm --filter @workspace/insights-crawler run ingest -- --yes --slug=copilot-goes-ubiquitous
+Then spot-check in the CMS UI: post appears, hero image renders from /objects/uploads/<uuid>, categories attached, audit log row written.
+Full run:
+pnpm --filter @workspace/insights-crawler run ingest -- --yes
+Expected: 135 created, 0 updated, 0 skipped, 0 failed. ~365 image PUTs to App Storage, ~135 post rows, ~N category rows, 135 audit-log rows.
+Re-run safety — the script is idempotent by slug. Re-running without --force skips existing; with --force it updates in place and re-uploads images (creating new media rows — old ones orphan). Don't use --force casually.
+What to watch for during the run
+PRIVATE_OBJECT_DIR is not set → bucket not provisioned / env var missing.
+Failed to sign upload URL: 4xx → sidecar not reachable; confirm you're in Replit, not a shell outside it.
+First ingest in a fresh DB: the system:imported-from-wix user gets auto-created on first call.
+All posts land as status: "published" with publishedAt from the source; change the script if you want them staged as draft first.
+My recommendation before you pull the trigger
+Add these two safety rails — both quick:
+
+--dry-run mode on ingest (no writes, prints plan + counts).
+A one-liner pre-flight check that asserts posts.json length === discovered.json length === 135 and status counts are ok=135.
+Want me to add them on this branch and push?
