@@ -60,12 +60,12 @@ const quotes = [
 
 function LogoCell({ entry }: { entry: LogoEntry }) {
   const inner = (
-    <div className="bg-white aspect-[3/2] flex items-center justify-center px-8 py-6 transition-colors group-hover:bg-zinc-50">
+    <div className="bg-white aspect-[5/3] flex items-center justify-center px-6 py-5 transition-colors group-hover:bg-zinc-50">
       <img
         src={entry.src}
         alt={`${entry.name} logo`}
         loading="lazy"
-        className="max-h-12 md:max-h-14 max-w-[80%] w-auto h-auto object-contain"
+        className="max-h-16 md:max-h-20 max-w-[85%] w-auto h-auto object-contain"
       />
     </div>
   );
