@@ -27,15 +27,23 @@ function parseQuery(search: string) {
     .filter(Boolean) as Pillar[];
   const page = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
   const featured = params.get("featured") === "true";
-  return { types, pillars, page, featured };
+  const q = params.get("q") ?? "";
+  return { types, pillars, page, featured, q };
 }
 
-function buildQuery(types: CollateralType[], pillars: Pillar[], page: number, featured: boolean) {
+function buildQuery(
+  types: CollateralType[],
+  pillars: Pillar[],
+  page: number,
+  featured: boolean,
+  q: string,
+) {
   const params = new URLSearchParams();
   if (types.length) params.set("type", types.join(","));
   if (pillars.length) params.set("pillar", pillars.join(","));
   if (page > 1) params.set("page", String(page));
   if (featured) params.set("featured", "true");
+  if (q.trim()) params.set("q", q.trim());
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -43,15 +51,23 @@ function buildQuery(types: CollateralType[], pillars: Pillar[], page: number, fe
 export default function Library() {
   const [location, navigate] = useLocation();
   const search = typeof window !== "undefined" ? window.location.search : "";
-  const { types, pillars, page, featured } = useMemo(() => parseQuery(search), [search, location]);
+  const { types, pillars, page, featured, q } = useMemo(
+    () => parseQuery(search),
+    [search, location],
+  );
 
   const [result, setResult] = useState<ListResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qInput, setQInput] = useState(q);
+
+  useEffect(() => {
+    setQInput(q);
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchLibrary({ type: types, pillar: pillars, page, pageSize: PAGE_SIZE, featured })
+    fetchLibrary({ type: types, pillar: pillars, page, pageSize: PAGE_SIZE, featured, q })
       .then((res) => {
         if (!cancelled) {
           setResult(res);
@@ -64,10 +80,15 @@ export default function Library() {
     return () => {
       cancelled = true;
     };
-  }, [types, pillars, page, featured]);
+  }, [types, pillars, page, featured, q]);
 
-  function update(nextTypes: CollateralType[], nextPillars: Pillar[], nextPage = 1) {
-    navigate(`/library${buildQuery(nextTypes, nextPillars, nextPage, featured)}`);
+  function update(
+    nextTypes: CollateralType[],
+    nextPillars: Pillar[],
+    nextPage = 1,
+    nextQ: string = q,
+  ) {
+    navigate(`/library${buildQuery(nextTypes, nextPillars, nextPage, featured, nextQ)}`);
   }
 
   function toggleType(t: CollateralType) {
@@ -77,6 +98,10 @@ export default function Library() {
   function togglePillar(p: Pillar) {
     const next = pillars.includes(p) ? pillars.filter((x) => x !== p) : [...pillars, p];
     update(types, next, 1);
+  }
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    update(types, pillars, 1, qInput);
   }
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
@@ -103,6 +128,41 @@ export default function Library() {
 
       <section className="bg-background py-12">
         <div className="container mx-auto px-4 max-w-6xl">
+          {/* Search */}
+          <form onSubmit={submitSearch} className="mb-8">
+            <label htmlFor="library-search" className="sr-only">
+              Search the library
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                id="library-search"
+                type="search"
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                placeholder="Search titles, descriptions, and tags…"
+                className="flex-1 px-4 py-2 rounded-md border border-border bg-card text-sm"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90"
+              >
+                Search
+              </button>
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQInput("");
+                    update(types, pillars, 1, "");
+                  }}
+                  className="px-4 py-2 rounded-md border border-border text-sm hover:bg-muted"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
             <div>
@@ -151,10 +211,13 @@ export default function Library() {
             </div>
           </div>
 
-          {(types.length > 0 || pillars.length > 0 || featured) && (
+          {(types.length > 0 || pillars.length > 0 || featured || q) && (
             <button
               type="button"
-              onClick={() => navigate("/library")}
+              onClick={() => {
+                setQInput("");
+                navigate("/library");
+              }}
               className="text-sm text-primary hover:text-primary/80 mb-6"
             >
               Clear filters
@@ -170,7 +233,11 @@ export default function Library() {
             </div>
           ) : !result || result.items.length === 0 ? (
             <div className="rounded-2xl border border-border/60 bg-card p-12 text-center text-muted-foreground">
-              No items match these filters.
+              {q
+                ? `No items match “${q}”${
+                    types.length || pillars.length ? " with the selected filters" : ""
+                  }.`
+                : "No items match these filters."}
             </div>
           ) : (
             <>

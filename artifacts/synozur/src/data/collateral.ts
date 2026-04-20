@@ -260,6 +260,8 @@ export interface ListOptions {
   pillar?: Pillar[];
   /** Case-insensitive substring match against tags. */
   topic?: string;
+  /** Case-insensitive substring match against title, subtitle, description, and tags. */
+  q?: string;
   featured?: boolean;
   page?: number;
   pageSize?: number;
@@ -284,6 +286,7 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
     type = [],
     pillar = [],
     topic,
+    q,
     featured,
     page = 1,
     pageSize = 12,
@@ -295,6 +298,20 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
   if (topic && topic.trim()) {
     const needle = topic.trim().toLowerCase();
     items = items.filter((c) => c.tags.some((t) => t.toLowerCase().includes(needle)));
+  }
+  if (q && q.trim()) {
+    const needle = q.trim().toLowerCase();
+    items = items.filter((c) => {
+      const haystack = [
+        c.title,
+        c.subtitle ?? "",
+        c.description,
+        ...c.tags,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
   }
   if (featured) {
     items = items

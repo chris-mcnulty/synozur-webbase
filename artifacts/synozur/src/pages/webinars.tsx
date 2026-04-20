@@ -11,19 +11,33 @@ export default function Webinars() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = useMemo(() => new URLSearchParams(search), [search, location]);
   const topic = params.get("topic") ?? "";
+  const q = params.get("q") ?? "";
   const page = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
 
   const [result, setResult] = useState<ListResult | null>(null);
+  const [qInput, setQInput] = useState(q);
+
+  useEffect(() => {
+    setQInput(q);
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
-    fetchLibrary({ type: ["webinar"], topic, page, pageSize: PAGE_SIZE }).then((res) => {
+    fetchLibrary({ type: ["webinar"], topic, q, page, pageSize: PAGE_SIZE }).then((res) => {
       if (!cancelled) setResult(res);
     });
     return () => {
       cancelled = true;
     };
-  }, [topic, page]);
+  }, [topic, q, page]);
+
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const next = new URLSearchParams();
+    if (topic) next.set("topic", topic);
+    if (qInput.trim()) next.set("q", qInput.trim());
+    navigate(`/webinars${next.toString() ? `?${next.toString()}` : ""}`);
+  }
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
@@ -49,19 +63,41 @@ export default function Webinars() {
 
       <section className="bg-background py-12">
         <div className="container mx-auto px-4 max-w-6xl">
-          <div className="mb-8 flex items-center gap-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Topic</label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => {
-                const next = new URLSearchParams();
-                if (e.target.value) next.set("topic", e.target.value);
-                navigate(`/webinars${next.toString() ? `?${next.toString()}` : ""}`);
-              }}
-              placeholder="Filter by topic…"
-              className="px-3 py-2 rounded-md border border-border bg-card text-sm w-64"
-            />
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Topic</label>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => {
+                  const next = new URLSearchParams();
+                  if (e.target.value) next.set("topic", e.target.value);
+                  if (q) next.set("q", q);
+                  navigate(`/webinars${next.toString() ? `?${next.toString()}` : ""}`);
+                }}
+                placeholder="Filter by topic…"
+                className="px-3 py-2 rounded-md border border-border bg-card text-sm w-64"
+              />
+            </div>
+            <form onSubmit={submitSearch} className="flex items-center gap-2">
+              <label htmlFor="webinars-search" className="sr-only">
+                Search webinars
+              </label>
+              <input
+                id="webinars-search"
+                type="search"
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                placeholder="Search webinars…"
+                className="px-3 py-2 rounded-md border border-border bg-card text-sm w-64"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90"
+              >
+                Search
+              </button>
+            </form>
           </div>
 
           {!result ? (
@@ -72,7 +108,9 @@ export default function Webinars() {
             </div>
           ) : result.items.length === 0 ? (
             <div className="rounded-2xl border border-border/60 bg-card p-12 text-center text-muted-foreground">
-              No webinars match this topic yet.
+              {q
+                ? `No webinars match “${q}”${topic ? " with this topic" : ""}.`
+                : "No webinars match this topic yet."}
             </div>
           ) : (
             <>
