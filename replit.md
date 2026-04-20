@@ -26,6 +26,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Tools
+
+- `tools/insights-crawler` — standalone, build-time crawler that mirrors the public Wix-hosted blog at `https://www.synozur.com/insights` into a typed JSON dataset for downstream DB ingest. Outputs to `tools/insights-crawler/output/`: `discovered.json`, `posts.json` (sorted by publishedAt desc, image URLs are local relative paths), `images/<slug>/...` (resized to ≤1920px wide), and `report.md`. Idempotent (HTML cache in `output/.cache/`, skips already-extracted posts unless `--force`). Runs locally only — does not run on the production server. Commands: `pnpm --filter @workspace/insights-crawler run discover` then `... run crawl` (or `run all`). See its README for details.
+
 ## Artifacts
 
 - `artifacts/synozur` — React + Vite marketing site for **The Synozur Alliance** ("The Transformation Company"). Cosmic / North Star brand, violet `#810FFB` primary with a custom `nebula-gradient` utility defined in `src/index.css`. Routing via wouter under `BASE_URL` (mounted at `/`).

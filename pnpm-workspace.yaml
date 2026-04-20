@@ -39,6 +39,7 @@ packages:
   - lib/*
   - lib/integrations/*
   - scripts
+  - tools/*
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
@@ -71,6 +72,7 @@ onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
   - msw
+  - sharp
   - unrs-resolver
 
 overrides:

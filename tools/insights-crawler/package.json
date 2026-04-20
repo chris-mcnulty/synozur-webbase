@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/insights-crawler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "discover": "tsx ./src/discover.ts",
+    "crawl": "tsx ./src/crawl.ts",
+    "all": "tsx ./src/discover.ts && tsx ./src/crawl.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "sanitize-html": "^2.17.0",
+    "turndown": "^7.2.1",
+    "sharp": "^0.34.4",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/sanitize-html": "^2.16.0",
+    "@types/turndown": "^5.0.5",
+    "tsx": "catalog:",
+    "typescript": "~5.9.2"
+  }
+}
