@@ -84,6 +84,76 @@ router.get("/insights", async (req, res) => {
   res.json({ items: publicItems, page, pageSize, total: totalRow[0]?.c ?? 0 });
 });
 
+router.get("/insights/rss.xml", async (_req, res) => {
+  const items = await db
+    .select()
+    .from(postsTable)
+    .where(
+      and(
+        isNull(postsTable.deletedAt),
+        eq(postsTable.status, "published"),
+        lte(postsTable.publishedAt, new Date()),
+      ),
+    )
+    .orderBy(desc(postsTable.publishedAt))
+    .limit(50);
+
+  const serialized = await serializePosts(items);
+  const siteUrl = (process.env.SITE_URL || "https://www.synozur.com").replace(/\/$/, "");
+  const feedSelf = `${siteUrl}/api/insights/rss.xml`;
+
+  const escape = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  const cdata = (s: string) => `<![CDATA[${s.replace(/\]\]>/g, "]]]]><![CDATA[>")}]]>`;
+
+  const xmlItems = serialized
+    .map((p) => {
+      const link = `${siteUrl}/insights/${p.slug}`;
+      const pub = p.publishedAt ? new Date(p.publishedAt).toUTCString() : new Date().toUTCString();
+      const cats = (p.categories || []).map((c) => `<category>${escape(c.name)}</category>`).join("");
+      const author = p.author?.displayName ? `<dc:creator>${escape(p.author.displayName)}</dc:creator>` : "";
+      const desc = p.excerpt ? `<description>${cdata(p.excerpt)}</description>` : "";
+      const content = p.bodyHtml
+        ? `<content:encoded>${cdata(p.bodyHtml)}</content:encoded>`
+        : "";
+      return [
+        "<item>",
+        `<title>${escape(p.title)}</title>`,
+        `<link>${escape(link)}</link>`,
+        `<guid isPermaLink="true">${escape(link)}</guid>`,
+        `<pubDate>${pub}</pubDate>`,
+        cats,
+        author,
+        desc,
+        content,
+        "</item>",
+      ].join("");
+    })
+    .join("");
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>The Synozur Alliance — The Feed</title>
+<link>${escape(siteUrl)}/insights</link>
+<atom:link href="${escape(feedSelf)}" rel="self" type="application/rss+xml" />
+<description>Original writing from The Synozur Alliance on transformation, technology, leadership, and the operating disciplines that let strategy ship.</description>
+<language>en-us</language>
+<lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+${xmlItems}
+</channel>
+</rss>`;
+
+  res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.send(xml);
+});
+
 router.get("/insights/:slug", async (req, res) => {
   const post = await db.query.postsTable.findFirst({
     where: and(

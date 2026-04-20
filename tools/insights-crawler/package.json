@@ -7,10 +7,13 @@
     "discover": "tsx ./src/discover.ts",
     "crawl": "tsx ./src/crawl.ts",
     "all": "tsx ./src/discover.ts && tsx ./src/crawl.ts",
+    "ingest": "tsx ./src/ingest.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@workspace/db": "workspace:*",
     "cheerio": "^1.1.2",
+    "drizzle-orm": "catalog:",
     "sanitize-html": "^2.17.0",
     "turndown": "^7.2.1",
     "sharp": "^0.34.4",

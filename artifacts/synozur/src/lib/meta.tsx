@@ -11,6 +11,8 @@ interface MetaProps {
   type?: "website" | "article";
   /** If true, do not append the site name to the title. */
   rawTitle?: boolean;
+  /** Optional RSS/Atom feed URL — adds <link rel="alternate" type="application/rss+xml">. */
+  feedHref?: string;
 }
 
 const SITE_NAME = "The Synozur Alliance";
@@ -44,6 +46,7 @@ export function Meta({
   image = DEFAULT_OG_IMAGE,
   type = "website",
   rawTitle = false,
+  feedHref,
 }: MetaProps) {
   useEffect(() => {
     const fullTitle = rawTitle ? title : `${title} | ${SITE_NAME}`;
@@ -68,7 +71,23 @@ export function Meta({
     upsertMeta("name", "twitter:title", fullTitle);
     upsertMeta("name", "twitter:image", absImage);
     upsertLink("canonical", url);
-  }, [title, description, path, image, type, rawTitle]);
+
+    // RSS autodiscovery (per-page). Always remove first so navigation away
+    // from the feed page strips it cleanly.
+    const existing = document.head.querySelector(
+      'link[rel="alternate"][type="application/rss+xml"][data-feed="page"]',
+    );
+    if (existing) existing.remove();
+    if (feedHref) {
+      const link = document.createElement("link");
+      link.setAttribute("rel", "alternate");
+      link.setAttribute("type", "application/rss+xml");
+      link.setAttribute("title", `${SITE_NAME} — The Feed`);
+      link.setAttribute("href", feedHref);
+      link.setAttribute("data-feed", "page");
+      document.head.appendChild(link);
+    }
+  }, [title, description, path, image, type, rawTitle, feedHref]);
 
   return null;
 }

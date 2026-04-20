@@ -18,6 +18,7 @@ import WorkshopDetail from "@/pages/workshop-detail";
 import Team from "@/pages/team";
 import Partners from "@/pages/partners";
 import Insights from "@/pages/insights";
+import InsightDetail from "@/pages/insight-detail";
 import Polaris from "@/pages/polaris";
 import Contact from "@/pages/contact";
 import Start from "@/pages/start";
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/team" component={Team} />
         <Route path="/partners" component={Partners} />
         <Route path="/insights" component={Insights} />
+        <Route path="/insights/:slug" component={InsightDetail} />
         <Route path="/polaris" component={Polaris} />
         <Route path="/contact" component={Contact} />
         <Route path="/start" component={Start} />
