@@ -93,8 +93,8 @@ export default function EventForm({ id }: Props) {
   const syncMutation = useMutation({
     mutationFn: () => api.syncEventToCollateral(eventId!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-collateral"] });
-      qc.invalidateQueries({ queryKey: ["collateral-featured"] });
+      qc.invalidateQueries({ queryKey: ["/api/cms/collateral"] });
+      qc.invalidateQueries({ queryKey: ["collateral"] });
       setSyncStatus("Synced to collateral.");
     },
     onError: (e: Error) => setSyncStatus(`Sync failed: ${e.message}`),
