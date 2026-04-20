@@ -5,27 +5,18 @@ import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 
 const articles = [
-  { category: "AI", date: "Apr 2026", title: "The honest case for slowing your AI roadmap", excerpt: "Most enterprise AI programs are over-funded and under-governed. A measured rebalance creates more value than another pilot." },
-  { category: "Strategy", date: "Mar 2026", title: "Operating cadence is the underrated strategic asset", excerpt: "The companies that out-execute their strategy do not have better plans. They have better weeks." },
-  { category: "Leadership", date: "Mar 2026", title: "Why fractional leadership is finally entering the executive suite", excerpt: "Senior, time-boxed leadership is changing how transformation gets staffed inside the Fortune 500." },
-  { category: "Technology", date: "Feb 2026", title: "Modernization without theater", excerpt: "How to retire legacy platforms in a way the board can defend and the engineering team can actually deliver." },
-  { category: "Experiences", date: "Feb 2026", title: "Designing for the Monday morning experience", excerpt: "A simple test for whether your strategy will survive contact with the people expected to live it." },
-  { category: "Go-to-Market", date: "Jan 2026", title: "Repositioning is a leadership decision, not a marketing exercise", excerpt: "When the market reframes your category, the response begins in the executive team — not the brand brief." },
-  { category: "AI", date: "Jan 2026", title: "What the AI Maturity Model is actually measuring", excerpt: "A guided tour of the model and how leaders use it to set their next investment cycle." },
-  { category: "Strategy", date: "Dec 2025", title: "The Company OS, in plain language", excerpt: "Why we keep coming back to the operating model — and what it actually contains." },
-  { category: "Leadership", date: "Dec 2025", title: "Decision rights are the deliverable", excerpt: "Most transformation programs ship artifacts. The ones that change companies ship clarity." },
+  { category: "AI", date: "Apr 2026", title: "The honest case for slowing your AI roadmap", excerpt: "Most enterprise AI programs are over-funded and under-governed. A measured rebalance creates more value than another pilot.", image: "/images/insight-1.png" },
+  { category: "Strategy", date: "Mar 2026", title: "Operating cadence is the underrated strategic asset", excerpt: "The companies that out-execute their strategy do not have better plans. They have better weeks.", image: "/images/insight-2.png" },
+  { category: "Leadership", date: "Mar 2026", title: "Why fractional leadership is finally entering the executive suite", excerpt: "Senior, time-boxed leadership is changing how transformation gets staffed inside the Fortune 500.", image: "/images/insight-3.png" },
+  { category: "Technology", date: "Feb 2026", title: "Modernization without theater", excerpt: "How to retire legacy platforms in a way the board can defend and the engineering team can actually deliver.", image: "/images/insight-4.png" },
+  { category: "Experiences", date: "Feb 2026", title: "Designing for the Monday morning experience", excerpt: "A simple test for whether your strategy will survive contact with the people expected to live it.", image: "/images/insight-5.png" },
+  { category: "Go-to-Market", date: "Jan 2026", title: "Repositioning is a leadership decision, not a marketing exercise", excerpt: "When the market reframes your category, the response begins in the executive team — not the brand brief.", image: "/images/insight-6.png" },
+  { category: "AI", date: "Jan 2026", title: "What the AI Maturity Model is actually measuring", excerpt: "A guided tour of the model and how leaders use it to set their next investment cycle.", image: "/images/insight-7.png" },
+  { category: "Strategy", date: "Dec 2025", title: "The Company OS, in plain language", excerpt: "Why we keep coming back to the operating model — and what it actually contains.", image: "/images/insight-8.png" },
+  { category: "Leadership", date: "Dec 2025", title: "Decision rights are the deliverable", excerpt: "Most transformation programs ship artifacts. The ones that change companies ship clarity.", image: "/images/insight-9.png" },
 ];
 
 const categories = ["All", "AI", "Strategy", "Technology", "Experiences", "Leadership", "Go-to-Market"];
-
-const palettes = [
-  "from-indigo-700 to-purple-800",
-  "from-blue-700 to-fuchsia-700",
-  "from-purple-700 to-violet-900",
-  "from-fuchsia-700 to-indigo-800",
-  "from-violet-800 to-blue-800",
-  "from-indigo-900 to-purple-700",
-];
 
 export default function Insights() {
   const [active, setActive] = useState("All");
@@ -80,9 +71,13 @@ export default function Insights() {
                 transition={{ duration: 0.4, delay: i * 0.04 }}
                 className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
               >
-                <div className={`relative aspect-[16/9] bg-gradient-to-br ${palettes[i % palettes.length]}`}>
-                  <div className="absolute inset-0 nebula-gradient opacity-30 mix-blend-overlay" />
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.35),transparent_60%)]" />
+                <div className="relative aspect-[16/9] overflow-hidden bg-card">
+                  <img
+                    src={a.image}
+                    alt={a.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground mb-3">

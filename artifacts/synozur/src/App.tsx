@@ -10,6 +10,7 @@ import ServicesOverview from "@/pages/services-overview";
 import ServiceDetail from "@/pages/service-detail";
 import Clients from "@/pages/clients";
 import CaseStudies from "@/pages/case-studies";
+import CaseStudyDetail from "@/pages/case-study-detail";
 import Team from "@/pages/team";
 import Partners from "@/pages/partners";
 import Insights from "@/pages/insights";
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/services/:slug" component={ServiceDetail} />
         <Route path="/clients" component={Clients} />
         <Route path="/case-studies" component={CaseStudies} />
+        <Route path="/case-studies/:slug" component={CaseStudyDetail} />
         <Route path="/team" component={Team} />
         <Route path="/partners" component={Partners} />
         <Route path="/insights" component={Insights} />

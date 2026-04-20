@@ -1,9 +1,9 @@
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Compass, Layers, Zap, Users, Shield, Lightbulb } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, Compass, Layers, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { caseStudies } from "@/data/case-studies";
 
 export default function Home() {
   return (
@@ -90,77 +90,68 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               className="relative aspect-square rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent z-10 opacity-50 mix-blend-overlay" />
-              <img 
-                src="/images/pillar-strategy.png" 
-                alt="Strategic Direction" 
+              <img
+                src="/images/home-hero-editorial.png"
+                alt="Editorial: leadership team in a modern conference room"
                 className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent z-10 opacity-30 mix-blend-overlay" />
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Featured Capabilities / From The Feed */}
+      {/* Featured Case Studies / From The Feed */}
       <section className="py-24 bg-card border-y border-border">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">From The Feed</h2>
+              <p className="text-sm uppercase tracking-widest text-primary mb-3">From The Feed</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Selected client work</h2>
               <p className="text-muted-foreground text-lg max-w-2xl">
-                Insights, models, and platforms designed to accelerate your transformation journey.
+                A small sample of the engagements we are able to share publicly — the strategies, the work, and the outcomes.
               </p>
             </div>
-            <Link href="/insights" className="inline-flex items-center text-sm font-medium border border-border rounded-md px-4 py-2 hover:bg-muted transition-colors shrink-0">
-              View All Insights
+            <Link href="/case-studies" className="inline-flex items-center text-sm font-medium border border-border rounded-md px-4 py-2 hover:bg-muted transition-colors shrink-0">
+              View All Case Studies <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="group overflow-hidden border-border/50 bg-background/50 hover:bg-background transition-colors hover:border-primary/30">
-              <CardContent className="p-0">
-                <div className="aspect-[2/1] relative overflow-hidden bg-muted">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
-                  <div className="absolute bottom-6 left-6 z-20">
-                    <span className="inline-block py-1 px-3 rounded-full bg-primary/20 border border-primary/30 text-primary-foreground text-xs font-medium mb-3 backdrop-blur-md">
-                      Model
-                    </span>
-                    <h3 className="text-2xl font-bold text-white">AI Maturity Model</h3>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <p className="text-muted-foreground mb-6">
-                    Assess your organization's readiness for artificial intelligence. Our comprehensive model evaluates strategy, data, technology, and people capabilities to provide a clear roadmap for AI adoption.
-                  </p>
-                  <Link href="/insights" className="inline-flex items-center text-primary font-medium hover:text-primary/80 transition-colors">
-                    Explore the Model <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            {caseStudies.slice(0, 2).map((s) => (
+              <Card key={s.slug} className="group overflow-hidden border-border/50 bg-background/50 hover:bg-background transition-colors hover:border-primary/30">
+                <CardContent className="p-0">
+                  <Link href={`/case-studies/${s.slug}`} className="block">
+                    <div className="aspect-[2/1] relative overflow-hidden bg-muted">
+                      <img
+                        src={s.heroImage}
+                        alt={s.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+                      <div className="absolute bottom-6 left-6 right-6 z-20">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <span className="inline-block py-1 px-3 rounded-full bg-white/15 border border-white/25 text-white text-xs font-medium backdrop-blur-md">
+                            {s.industry}
+                          </span>
+                          <span className="inline-block py-1 px-3 rounded-full bg-primary/30 border border-primary/40 text-white text-xs font-medium backdrop-blur-md">
+                            Case Study
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-bold text-white leading-tight">{s.title}</h3>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <p className="text-sm font-semibold text-primary mb-3">{s.headline}</p>
+                      <p className="text-muted-foreground mb-6 line-clamp-3">{s.summary}</p>
+                      <span className="inline-flex items-center text-primary font-medium">
+                        Read the case study <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    </div>
                   </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="group overflow-hidden border-border/50 bg-background/50 hover:bg-background transition-colors hover:border-primary/30">
-              <CardContent className="p-0">
-                <div className="aspect-[2/1] relative overflow-hidden bg-muted">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
-                  <div className="absolute inset-0 nebula-gradient opacity-40 z-0 mix-blend-overlay" />
-                  <div className="absolute bottom-6 left-6 z-20">
-                    <span className="inline-block py-1 px-3 rounded-full bg-white/20 border border-white/30 text-white text-xs font-medium mb-3 backdrop-blur-md">
-                      Platform
-                    </span>
-                    <h3 className="text-2xl font-bold text-white">Vega: Company OS</h3>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <p className="text-muted-foreground mb-6">
-                    The flagship platform for operationalizing strategy. Vega connects your highest-level objectives to daily execution, providing unprecedented visibility across your entire organization.
-                  </p>
-                  <Link href="/" className="inline-flex items-center text-primary font-medium hover:text-primary/80 transition-colors">
-                    Discover Vega <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>

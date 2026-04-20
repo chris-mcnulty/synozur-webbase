@@ -2,92 +2,225 @@ import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Quote } from "lucide-react";
+import { caseStudies } from "@/data/case-studies";
 
-const logos = [
-  "Northwind",
-  "Contoso",
-  "Fabrikam",
-  "Trey Research",
-  "Adventure Works",
-  "Lucerne Publishing",
-  "Litware",
-  "Tailspin Toys",
-  "Wide World",
-  "Wingtip",
-  "Proseware",
-  "Margie's Travel",
+type LogoEntry = {
+  name: string;
+  src: string;
+  /**
+   * "dark" logos look correct on a light tile (we render them as-is).
+   * "light" logos look correct on a dark tile.
+   * "invert" means it is a dark mark we will invert/brighten on the light tile via CSS filter.
+   */
+  variant: "dark" | "light" | "invert";
+  href?: string;
+};
+
+const clientLogos: LogoEntry[] = [
+  {
+    name: "Microsoft",
+    src: "/images/logos/microsoft.svg",
+    variant: "dark",
+    href: "/case-studies/transforming-management-frameworks-at-microsoft",
+  },
+];
+
+const partnerLogos: LogoEntry[] = [
+  { name: "Microsoft Partner Network", src: "/images/logos/microsoft-partner.png", variant: "dark" },
+  { name: "Protiviti", src: "/images/logos/protiviti.jpg", variant: "dark" },
+  { name: "Salient7", src: "/images/logos/salient7.jpg", variant: "dark" },
+  { name: "PS Hummingbird", src: "/images/logos/ps-hummingbird.jpg", variant: "dark" },
+  { name: "Crush Networks", src: "/images/logos/crush-networks.jpg", variant: "dark" },
+  { name: "Creospark", src: "/images/logos/creospark.jpg", variant: "dark" },
+  { name: "eMark Consulting", src: "/images/logos/emark-consulting.jpg", variant: "dark" },
+  { name: "Akumina", src: "/images/logos/akumina.png", variant: "dark" },
+  { name: "Orchestry", src: "/images/logos/orchestry.jpg", variant: "dark" },
 ];
 
 const quotes = [
   {
     quote:
-      "Synozur did not arrive with a deck. They arrived with a point of view, sat with our team for a week, and left with a roadmap our board immediately approved.",
-    name: "Chief Strategy Officer",
-    org: "Fortune 100 financial services",
+      "Our journey with the Company Operating System has truly transformed the way we operate and lead. The clear focus on priorities and performance metrics have empowered us to make strategic decisions more effectively.",
+    name: "Senior leader",
+    org: "North American luxury manufacturer",
   },
   {
     quote:
-      "The clearest, most operationally honest assessment of our AI program we have ever received. They told us what to stop doing as forcefully as what to start.",
-    name: "Chief Information Officer",
-    org: "Fortune 500 manufacturer",
+      "Synozur's impact through this project has truly revolutionized how our employees interact and collaborate, positioning us for greater innovation and success.",
+    name: "Vice President of Digital Collaboration",
+    org: "North American Energy Company",
   },
   {
     quote:
-      "They felt like part of the leadership team within a month. The transition out felt like a member of the family moving on, not a vendor closing an SOW.",
-    name: "Chief Executive Officer",
-    org: "Series D enterprise SaaS",
+      "The team finally had a shared way to plan, measure, and adjust together — instead of reinventing the playbook every quarter.",
+    name: "Product Marketing Group leader",
+    org: "Microsoft Modern Work",
   },
 ];
+
+function LogoCell({ entry }: { entry: LogoEntry }) {
+  const inner = (
+    <div className="bg-white aspect-[3/2] flex items-center justify-center px-8 py-6 transition-colors group-hover:bg-zinc-50">
+      <img
+        src={entry.src}
+        alt={`${entry.name} logo`}
+        loading="lazy"
+        className="max-h-12 md:max-h-14 max-w-[80%] w-auto h-auto object-contain"
+      />
+    </div>
+  );
+  return entry.href ? (
+    <a href={entry.href} className="group block" aria-label={entry.name}>
+      {inner}
+    </a>
+  ) : (
+    <div className="group" aria-label={entry.name}>
+      {inner}
+    </div>
+  );
+}
 
 export default function Clients() {
   return (
     <div className="w-full">
       <Meta
-        title="Clients"
-        description="Synozur partners with Fortune 500 enterprises and category-defining growth companies on the work that matters most."
+        title="Our Clients"
+        description="Synozur partners with global enterprises and breakout growth companies. With years of experience working with global customers across various industries, we have the insights to tackle complex challenges and drive meaningful change."
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Clients
+            Our Clients
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            The companies we walk beside.
+            Global experience and deep expertise.
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            From Fortune 100 institutions to the breakout companies redefining their
-            categories, our clients share one trait — they are willing to be honest
-            about where they are, and ambitious about where they are going.
+            With years of experience working with global customers across various
+            industries, we have the insights to tackle complex challenges and
+            drive meaningful change.
           </p>
         </div>
       </section>
 
+      {/* Clients */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
+          <div className="max-w-2xl mb-10">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Clients
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Selected client engagements
+            </h2>
+            <p className="text-muted-foreground mt-4">
+              Most of our clients prefer not to be named publicly. The named work below
+              has been published with their permission — see our case studies for the
+              full story.
+            </p>
+          </div>
+          <div className="max-w-md mx-auto">
+            <div className="rounded-xl overflow-hidden border border-border">
+              {clientLogos.map((logo, i) => (
+                <motion.div
+                  key={logo.name}
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.04 }}
+                >
+                  <LogoCell entry={logo} />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Case Studies preview */}
+      <section className="py-24 bg-card border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+            <div className="max-w-2xl">
+              <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                Case studies
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold">
+                The work, in their words
+              </h2>
+            </div>
+            <Link
+              href="/case-studies"
+              className="inline-flex items-center text-sm font-medium border border-border rounded-md px-4 py-2 hover:bg-muted transition-colors shrink-0"
+            >
+              View all case studies <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {caseStudies.map((s) => (
+              <Link
+                key={s.slug}
+                href={`/case-studies/${s.slug}`}
+                className="group rounded-2xl border border-border/60 bg-background overflow-hidden hover:border-primary/40 transition-colors block"
+              >
+                <div className="aspect-[16/9] overflow-hidden">
+                  <img
+                    src={s.heroImage}
+                    alt={s.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                <div className="p-6">
+                  <p className="text-xs uppercase tracking-widest text-primary mb-2">
+                    {s.industry}
+                  </p>
+                  <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors leading-snug">
+                    {s.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {s.summary}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Partners */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mb-10">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Alliance Implementation & ISV Partners
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold">
+              The partner network
+            </h2>
+            <p className="text-muted-foreground mt-4">
+              We deliver alongside a curated network of implementation partners and
+              ISVs — anchored in our Microsoft practice.
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-border rounded-xl overflow-hidden border border-border">
-            {logos.map((logo, i) => (
+            {partnerLogos.map((logo, i) => (
               <motion.div
-                key={logo}
+                key={logo.name}
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.03 }}
-                className="bg-card aspect-[3/2] flex items-center justify-center px-6"
               >
-                <span className="text-lg md:text-xl font-semibold tracking-tight text-foreground/70">
-                  {logo}
-                </span>
+                <LogoCell entry={logo} />
               </motion.div>
             ))}
           </div>
-          <p className="text-sm text-muted-foreground text-center mt-6">
-            Representative engagements. Many of our clients prefer not to be named.
-          </p>
         </div>
       </section>
 
+      {/* Quotes */}
       <section className="py-24 bg-card border-y border-border">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="max-w-2xl mb-16">
@@ -101,7 +234,7 @@ export default function Clients() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {quotes.map((q, i) => (
               <motion.figure
-                key={q.name}
+                key={q.org}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
