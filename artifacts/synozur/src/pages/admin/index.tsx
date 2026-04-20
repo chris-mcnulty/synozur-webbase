@@ -47,17 +47,17 @@ export default function AdminEventsList() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/admin/submissions">
+          <Link href="/submissions">
             <Button variant="outline" data-testid="button-view-submissions">
               <Inbox className="h-4 w-4 mr-2" /> Submissions
             </Button>
           </Link>
-          <Link href="/admin/site-settings">
+          <Link href="/site-settings">
             <Button variant="outline" data-testid="button-site-settings">
               <Settings className="h-4 w-4 mr-2" /> Site settings
             </Button>
           </Link>
-          <Link href="/admin/events/new">
+          <Link href="/events/new">
             <Button data-testid="button-new-event">
               <Plus className="h-4 w-4 mr-2" /> New Event
             </Button>
@@ -108,7 +108,7 @@ export default function AdminEventsList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-2">
-                      <Link href={`/admin/events/${e.id}`}>
+                      <Link href={`/events/${e.id}`}>
                         <Button variant="ghost" size="icon" data-testid={`button-edit-${e.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Button>

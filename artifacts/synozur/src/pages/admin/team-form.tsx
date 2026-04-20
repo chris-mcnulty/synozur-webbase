@@ -81,7 +81,7 @@ export default function TeamForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-team-members"] });
       qc.invalidateQueries({ queryKey: ["admin-team-member", memberId] });
       qc.invalidateQueries({ queryKey: ["public-team-members"] });
-      navigate("/admin/team-members");
+      navigate("/team-members");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -98,13 +98,13 @@ export default function TeamForm({ id }: Props) {
     <AdminLayout
       title={isNew ? "New Team Member" : `Edit ${form.name}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Team", href: "/admin/team-members" },
+        { label: "Admin", href: "/" },
+        { label: "Team", href: "/team-members" },
         { label: isNew ? "New" : "Edit" },
       ]}
     >
       <button
-        onClick={() => navigate("/admin/team-members")}
+        onClick={() => navigate("/team-members")}
         className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
         data-testid="button-back"
       >
@@ -297,7 +297,7 @@ export default function TeamForm({ id }: Props) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/admin/team-members")}
+            onClick={() => navigate("/team-members")}
           >
             Cancel
           </Button>

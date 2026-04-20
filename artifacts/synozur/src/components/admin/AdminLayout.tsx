@@ -31,84 +31,84 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   {
-    href: "/admin",
+    href: "/",
     label: "Dashboard",
     icon: LayoutDashboard,
     show: () => true,
     testId: "nav-admin-dashboard",
   },
   {
-    href: "/admin/posts",
+    href: "/posts",
     label: "Posts",
     icon: FileText,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-posts",
   },
   {
-    href: "/admin/media",
+    href: "/media",
     label: "Media",
     icon: ImageIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-media",
   },
   {
-    href: "/admin/taxonomy",
+    href: "/taxonomy",
     label: "Taxonomy",
     icon: Tags,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-taxonomy",
   },
   {
-    href: "/admin/services",
+    href: "/services",
     label: "Services",
     icon: Compass,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-services",
   },
   {
-    href: "/admin/solutions",
+    href: "/solutions",
     label: "Solutions",
     icon: Layers,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-solutions",
   },
   {
-    href: "/admin/collateral",
+    href: "/collateral",
     label: "Library",
     icon: LibraryIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-collateral",
   },
   {
-    href: "/admin/comments",
+    href: "/comments",
     label: "Comments",
     icon: MessageSquare,
     show: (a) => !!a?.isEditorOrAbove,
     testId: "nav-admin-comments",
   },
   {
-    href: "/admin/users",
+    href: "/users",
     label: "Users & Roles",
     icon: Users,
     show: (a) => !!a?.isAdmin,
     testId: "nav-admin-users",
   },
   {
-    href: "/admin/events",
+    href: "/events",
     label: "Events",
     icon: CalendarDays,
     show: (a) => !!a?.isAllowListed,
     testId: "nav-admin-events",
   },
   {
-    href: "/admin/team-members",
+    href: "/team-members",
     label: "Team",
     icon: UserSquare2,
     show: (a) => !!a?.isAllowListed,
     testId: "nav-admin-team",
   },
   {
-    href: "/admin/submissions",
+    href: "/submissions",
     label: "Submissions",
     icon: Inbox,
     show: (a) => !!a?.isAllowListed,
@@ -140,7 +140,7 @@ export function AdminLayout({
   const items = NAV.filter((n) => n.show(access));
 
   const isActive = (href: string) => {
-    if (href === "/admin") return location === "/admin";
+    if (href === "/") return location === "/" || location === "";
     return location === href || location.startsWith(`${href}/`);
   };
 
@@ -149,7 +149,7 @@ export function AdminLayout({
       <div className="flex">
         <aside className="w-60 shrink-0 border-r border-border min-h-screen sticky top-0 hidden md:flex flex-col">
           <div className="p-5 border-b border-border">
-            <Link href="/admin">
+            <Link href="/">
               <a className="block">
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
                   Synozur

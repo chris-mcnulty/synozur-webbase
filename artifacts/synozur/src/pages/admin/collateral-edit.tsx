@@ -189,7 +189,7 @@ export default function CollateralEdit({ id }: Props) {
       onSuccess: (item) => {
         toast({ title: "Library item created" });
         invalidatePublic();
-        navigate(`/admin/collateral/${item.id}/edit`);
+        navigate(`/collateral/${item.id}/edit`);
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -236,13 +236,13 @@ export default function CollateralEdit({ id }: Props) {
     <AdminLayout
       title={isNew ? "New Library Item" : `Edit: ${existing?.title ?? ""}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Library", href: "/admin/collateral" },
+        { label: "Admin", href: "/" },
+        { label: "Library", href: "/collateral" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/admin/collateral")}>
+          <Button variant="ghost" onClick={() => navigate("/collateral")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (

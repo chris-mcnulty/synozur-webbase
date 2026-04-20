@@ -13,8 +13,8 @@ export default function PostPreview({ id }: Props) {
     <AdminLayout
       title="Post Preview"
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Posts", href: "/admin/posts" },
+        { label: "Admin", href: "/" },
+        { label: "Posts", href: "/posts" },
         { label: post?.title ?? "Preview" },
       ]}
     >

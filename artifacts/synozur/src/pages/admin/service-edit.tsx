@@ -166,7 +166,7 @@ export default function ServiceEdit({ id }: Props) {
       onSuccess: (s) => {
         toast({ title: "Service created" });
         qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
-        navigate(`/admin/services/${s.id}/edit`);
+        navigate(`/services/${s.id}/edit`);
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -214,13 +214,13 @@ export default function ServiceEdit({ id }: Props) {
     <AdminLayout
       title={isNew ? "New Service" : `Edit: ${existing?.title ?? ""}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Services", href: "/admin/services" },
+        { label: "Admin", href: "/" },
+        { label: "Services", href: "/services" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/admin/services")}>
+          <Button variant="ghost" onClick={() => navigate("/services")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (

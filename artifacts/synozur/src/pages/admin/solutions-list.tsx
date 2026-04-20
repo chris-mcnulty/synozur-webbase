@@ -107,10 +107,10 @@ export default function AdminSolutionsList() {
   return (
     <AdminLayout
       title="Solutions"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Solutions" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Solutions" }]}
       actions={
         canWrite && (
-          <Link href="/admin/solutions/new">
+          <Link href="/solutions/new">
             <Button data-testid="button-create-solution">
               <Plus className="h-4 w-4 mr-2" /> New solution
             </Button>
@@ -171,7 +171,7 @@ export default function AdminSolutionsList() {
                 return (
                   <TableRow key={s.id} data-testid={`row-solution-${s.id}`}>
                     <TableCell className="font-medium">
-                      <Link href={`/admin/solutions/${s.id}/edit`}>
+                      <Link href={`/solutions/${s.id}/edit`}>
                         <a className="hover:underline">{s.title}</a>
                       </Link>
                     </TableCell>
@@ -183,7 +183,7 @@ export default function AdminSolutionsList() {
                       {s.displayOrder ?? "—"}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/admin/solutions/${s.id}/capabilities`}>
+                      <Link href={`/solutions/${s.id}/capabilities`}>
                         <a
                           className="hover:underline"
                           data-testid={`link-capabilities-${s.id}`}
@@ -205,7 +205,7 @@ export default function AdminSolutionsList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex gap-1">
-                        <Link href={`/admin/solutions/${s.id}/capabilities`}>
+                        <Link href={`/solutions/${s.id}/capabilities`}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -214,7 +214,7 @@ export default function AdminSolutionsList() {
                             <ListOrdered className="h-4 w-4 mr-1" /> Capabilities
                           </Button>
                         </Link>
-                        <Link href={`/admin/solutions/${s.id}/edit`}>
+                        <Link href={`/solutions/${s.id}/edit`}>
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />
                           </Button>

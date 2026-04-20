@@ -32,9 +32,9 @@ export default function AdminTeamList() {
   return (
     <AdminLayout
       title="Team"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Team" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Team" }]}
       actions={
-        <Link href="/admin/team-members/new">
+        <Link href="/team-members/new">
           <Button data-testid="button-new-team-member">
             <Plus className="h-4 w-4 mr-2" /> New Member
           </Button>
@@ -82,7 +82,7 @@ export default function AdminTeamList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-2">
-                      <Link href={`/admin/team-members/${m.id}`}>
+                      <Link href={`/team-members/${m.id}`}>
                         <Button
                           variant="ghost"
                           size="icon"

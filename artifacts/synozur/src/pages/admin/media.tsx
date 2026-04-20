@@ -64,7 +64,7 @@ export default function MediaLibrary() {
   return (
     <AdminLayout
       title="Media Library"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Media" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Media" }]}
       actions={
         <ObjectUploader
           maxNumberOfFiles={10}

@@ -66,13 +66,13 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
     <AdminLayout
       title={`Methodologies${service ? `: ${service.title}` : ""}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Services", href: "/admin/services" },
+        { label: "Admin", href: "/" },
+        { label: "Services", href: "/services" },
         { label: service?.title ?? "Service" },
         { label: "Methodologies" },
       ]}
       actions={
-        <Button variant="ghost" onClick={() => navigate("/admin/services")}>
+        <Button variant="ghost" onClick={() => navigate("/services")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to services
         </Button>
       }

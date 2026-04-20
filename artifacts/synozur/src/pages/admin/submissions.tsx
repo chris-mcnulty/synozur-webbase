@@ -179,7 +179,7 @@ export default function AdminSubmissionsList() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <Link href="/admin">
+            <Link href="/">
               <a className="inline-flex items-center hover:text-foreground" data-testid="link-back-to-events">
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Events
               </a>

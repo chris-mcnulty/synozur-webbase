@@ -69,7 +69,7 @@ export default function AdminSiteSettings() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <div className="mb-6">
-        <Link href="/admin">
+        <Link href="/">
           <Button variant="ghost" size="sm" data-testid="button-back-to-admin">
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to admin
           </Button>

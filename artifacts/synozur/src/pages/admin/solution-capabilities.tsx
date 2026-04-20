@@ -66,13 +66,13 @@ export default function SolutionCapabilitiesPage({ id }: { id: string }) {
     <AdminLayout
       title={`Capabilities${solution ? `: ${solution.title}` : ""}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Solutions", href: "/admin/solutions" },
+        { label: "Admin", href: "/" },
+        { label: "Solutions", href: "/solutions" },
         { label: solution?.title ?? "Solution" },
         { label: "Capabilities" },
       ]}
       actions={
-        <Button variant="ghost" onClick={() => navigate("/admin/solutions")}>
+        <Button variant="ghost" onClick={() => navigate("/solutions")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to solutions
         </Button>
       }

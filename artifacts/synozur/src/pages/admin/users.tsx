@@ -30,7 +30,7 @@ export default function UsersAndRoles() {
   return (
     <AdminLayout
       title="Users & Roles"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Users" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Users" }]}
     >
       {isLoading ? (
         <div className="text-muted-foreground">Loading…</div>

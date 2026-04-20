@@ -44,7 +44,7 @@ export default function CommentsModeration() {
   return (
     <AdminLayout
       title="Comments"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Comments" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Comments" }]}
       actions={
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CommentStatus | "all")}>
           <SelectTrigger className="w-[160px]" data-testid="select-comment-status">

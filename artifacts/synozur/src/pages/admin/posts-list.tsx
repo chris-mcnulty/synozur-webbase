@@ -152,9 +152,9 @@ export default function AdminPostsList() {
   return (
     <AdminLayout
       title="Posts"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Posts" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Posts" }]}
       actions={
-        <Link href="/admin/posts/new">
+        <Link href="/posts/new">
           <Button data-testid="button-create-post">
             <Plus className="h-4 w-4 mr-2" /> New post
           </Button>
@@ -278,7 +278,7 @@ export default function AdminPostsList() {
                     />
                   </TableCell>
                   <TableCell className="font-medium">
-                    <Link href={`/admin/posts/${p.id}/edit`}>
+                    <Link href={`/posts/${p.id}/edit`}>
                       <a className="hover:underline">{p.title}</a>
                     </Link>
                     <div className="text-xs text-muted-foreground">/{p.slug}</div>
@@ -300,13 +300,13 @@ export default function AdminPostsList() {
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
                       {p.status === "published" && (
-                        <Link href={`/admin/posts/${p.id}/analytics`}>
+                        <Link href={`/posts/${p.id}/analytics`}>
                           <Button variant="ghost" size="icon" title="Analytics" data-testid={`button-analytics-${p.id}`}>
                             <BarChart2 className="h-4 w-4" />
                           </Button>
                         </Link>
                       )}
-                      <Link href={`/admin/posts/${p.id}/edit`}>
+                      <Link href={`/posts/${p.id}/edit`}>
                         <Button variant="ghost" size="icon" data-testid={`button-edit-${p.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Button>

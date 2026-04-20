@@ -32,7 +32,7 @@ export default function TaxonomyPage() {
   return (
     <AdminLayout
       title="Taxonomy"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Taxonomy" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Taxonomy" }]}
     >
       <Tabs defaultValue="categories">
         <TabsList>

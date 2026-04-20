@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock, Monitor } from "lucide-react";
+import { ArrowRight, Clock, Monitor, Lock, Settings2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@clerk/react";
+import { useAdminAccess } from "@/components/admin/AdminGate";
 
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -159,6 +161,41 @@ function CarouselNextProxy({ api }: { api: CarouselApi | null }) {
     >
       <ArrowRight className="h-4 w-4" />
     </button>
+  );
+}
+
+function HomeShortcuts() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const { access, isLoading: accessLoading } = useAdminAccess();
+  const basePath = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+  if (!isLoaded || accessLoading) return null;
+
+  const isAdmin = access?.isAllowListed || access?.hasCmsRole;
+
+  return (
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+      {isSignedIn && isAdmin && (
+        <a
+          href={`${basePath}/admin`}
+          className="flex items-center gap-1.5 rounded-full bg-[#810FFB]/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 shadow-lg hover:bg-[#810FFB] transition-colors"
+          title="Open admin panel"
+        >
+          <Settings2 className="h-3 w-3" />
+          Admin
+        </a>
+      )}
+      {!isSignedIn && (
+        <a
+          href={`${basePath}/sign-in`}
+          className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/40 text-xs px-3 py-1.5 hover:text-white/70 hover:bg-white/10 transition-colors"
+          title="Sign in"
+        >
+          <Lock className="h-3 w-3" />
+          Sign in
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -399,6 +436,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <HomeShortcuts />
     </div>
   );
 }

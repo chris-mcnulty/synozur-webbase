@@ -94,10 +94,10 @@ export default function AdminCollateralList() {
   return (
     <AdminLayout
       title="Library"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Library" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Library" }]}
       actions={
         canWrite && (
-          <Link href="/admin/collateral/new">
+          <Link href="/collateral/new">
             <Button data-testid="button-create-collateral">
               <Plus className="h-4 w-4 mr-2" /> New item
             </Button>
@@ -135,7 +135,7 @@ export default function AdminCollateralList() {
               items.map((item) => (
                 <TableRow key={item.id} data-testid={`row-collateral-${item.id}`}>
                   <TableCell className="font-medium">
-                    <Link href={`/admin/collateral/${item.id}/edit`}>
+                    <Link href={`/collateral/${item.id}/edit`}>
                       <a
                         className="hover:underline"
                         data-testid={`link-edit-collateral-${item.id}`}
@@ -196,7 +196,7 @@ export default function AdminCollateralList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/admin/collateral/${item.id}/edit`}>
+                      <Link href={`/collateral/${item.id}/edit`}>
                         <Button variant="ghost" size="icon">
                           <Pencil className="h-4 w-4" />
                         </Button>

@@ -82,10 +82,10 @@ export default function AdminServicesList() {
   return (
     <AdminLayout
       title="Services"
-      crumbs={[{ label: "Admin", href: "/admin" }, { label: "Services" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Services" }]}
       actions={
         canWrite && (
-          <Link href="/admin/services/new">
+          <Link href="/services/new">
             <Button data-testid="button-create-service">
               <Plus className="h-4 w-4 mr-2" /> New service
             </Button>
@@ -126,7 +126,7 @@ export default function AdminServicesList() {
                 return (
                   <TableRow key={s.id} data-testid={`row-service-${s.id}`}>
                     <TableCell className="font-medium">
-                      <Link href={`/admin/services/${s.id}/edit`}>
+                      <Link href={`/services/${s.id}/edit`}>
                         <a className="hover:underline" data-testid={`link-edit-service-${s.id}`}>
                           {s.title}
                         </a>
@@ -137,14 +137,14 @@ export default function AdminServicesList() {
                     </TableCell>
                     <TableCell className="text-right text-sm">{s.displayOrder ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/admin/solutions?service=${s.id}`}>
+                      <Link href={`/solutions?service=${s.id}`}>
                         <a className="hover:underline" data-testid={`link-solutions-${s.id}`}>
                           {solutionCounts.get(s.id) ?? 0}
                         </a>
                       </Link>
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/admin/services/${s.id}/methodologies`}>
+                      <Link href={`/services/${s.id}/methodologies`}>
                         <a
                           className="hover:underline"
                           data-testid={`link-methodologies-${s.id}`}
@@ -163,7 +163,7 @@ export default function AdminServicesList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex gap-1">
-                        <Link href={`/admin/services/${s.id}/methodologies`}>
+                        <Link href={`/services/${s.id}/methodologies`}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -172,12 +172,12 @@ export default function AdminServicesList() {
                             <ListOrdered className="h-4 w-4 mr-1" /> Methodologies
                           </Button>
                         </Link>
-                        <Link href={`/admin/solutions?service=${s.id}`}>
+                        <Link href={`/solutions?service=${s.id}`}>
                           <Button variant="ghost" size="sm">
                             <Layers className="h-4 w-4 mr-1" /> Solutions
                           </Button>
                         </Link>
-                        <Link href={`/admin/services/${s.id}/edit`}>
+                        <Link href={`/services/${s.id}/edit`}>
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />
                           </Button>

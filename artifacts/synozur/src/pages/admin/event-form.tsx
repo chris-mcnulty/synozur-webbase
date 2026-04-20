@@ -84,7 +84,7 @@ export default function EventForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-events"] });
       qc.invalidateQueries({ queryKey: ["admin-event", eventId] });
       qc.invalidateQueries({ queryKey: ["public-events"] });
-      navigate("/admin");
+      navigate("/");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -101,7 +101,7 @@ export default function EventForm({ id }: Props) {
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <button
-        onClick={() => navigate("/admin")}
+        onClick={() => navigate("/")}
         className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
         data-testid="button-back"
       >
@@ -285,7 +285,7 @@ export default function EventForm({ id }: Props) {
           <Button type="submit" disabled={saveMutation.isPending} data-testid="button-save">
             {saveMutation.isPending ? "Saving…" : isNew ? "Create Event" : "Save Changes"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate("/admin")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/")}>
             Cancel
           </Button>
         </div>

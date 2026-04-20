@@ -85,14 +85,14 @@ export default function PostAnalytics({ id }: { id: string }) {
     <AdminLayout
       title={isLoading ? "Loading…" : `Analytics — ${postTitle}`}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Posts", href: "/admin/posts" },
+        { label: "Admin", href: "/" },
+        { label: "Posts", href: "/posts" },
         { label: postTitle, href: `/admin/posts/${id}/edit` },
         { label: "Analytics" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Link href={`/admin/posts/${id}/edit`}>
+          <Link href={`/posts/${id}/edit`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back to editor
             </Button>

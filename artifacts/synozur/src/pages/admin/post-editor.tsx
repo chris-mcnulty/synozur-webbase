@@ -233,7 +233,7 @@ export default function PostEditor({ id }: Props) {
       onSuccess: () => {
         toast({ title: "Post archived" });
         qc.invalidateQueries();
-        navigate("/admin/posts");
+        navigate("/posts");
       },
       onError: (e: Error) => toast({ title: "Archive failed", description: e.message, variant: "destructive" }),
     },
@@ -358,13 +358,13 @@ export default function PostEditor({ id }: Props) {
     <AdminLayout
       title={isNew ? "New Post" : "Edit Post"}
       crumbs={[
-        { label: "Admin", href: "/admin" },
-        { label: "Posts", href: "/admin/posts" },
+        { label: "Admin", href: "/" },
+        { label: "Posts", href: "/posts" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/admin/posts")}>
+          <Button variant="ghost" onClick={() => navigate("/posts")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {previewUrl && (
