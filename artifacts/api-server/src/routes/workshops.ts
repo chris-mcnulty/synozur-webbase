@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq, ne, asc } from "drizzle-orm";
+import { and, eq, isNull, ne, asc } from "drizzle-orm";
 import { db, workshopsTable, type Workshop } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -131,7 +131,21 @@ const WorkshopBody = z.object({
   active: z.boolean().optional(),
 });
 type WorkshopBodyT = z.infer<typeof WorkshopBody>;
-const WorkshopPatch = WorkshopBody.partial();
+const WorkshopPatch = WorkshopBody.partial().extend({
+  primaryCTA: CtaSchema.partial().optional(),
+  secondaryCTA: CtaSchema.partial().optional(),
+  pain: PainSchema.partial().optional(),
+  scope: ScopeSchema.partial().optional(),
+  process: ProcessSchema.partial().optional(),
+  deliverables: DeliverablesSchema.partial().optional(),
+  price: PriceSchema.partial().optional(),
+  diagnostic: DiagnosticSchema.partial().nullish(),
+  competitiveIntel: CompetitiveIntelSchema.partial().nullish(),
+  outcomes: OutcomesSchema.partial().optional(),
+  sampleDeliverables: SampleDeliverablesSchema.partial().optional(),
+  faq: FaqSchema.partial().optional(),
+  seo: SeoSchema.partial().optional(),
+});
 
 // ---- Serializer --------------------------------------------------------
 
@@ -235,10 +249,9 @@ router.get("/workshops", async (_req, res) => {
   const rows = await db
     .select()
     .from(workshopsTable)
-    .where(eq(workshopsTable.active, true))
+    .where(and(eq(workshopsTable.active, true), isNull(workshopsTable.deletedAt)))
     .orderBy(asc(workshopsTable.displayOrder), asc(workshopsTable.title));
-  const visible = rows.filter((w) => !w.deletedAt);
-  res.json({ items: visible.map(shape) });
+  res.json({ items: rows.map(shape) });
 });
 
 router.get("/workshops/:slug", async (req, res) => {
@@ -262,9 +275,9 @@ router.get("/cms/workshops", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(workshopsTable)
+    .where(isNull(workshopsTable.deletedAt))
     .orderBy(asc(workshopsTable.displayOrder), asc(workshopsTable.title));
-  const visible = rows.filter((w) => !w.deletedAt);
-  res.json({ items: visible.map(shape) });
+  res.json({ items: rows.map(shape) });
 });
 
 router.get("/cms/workshops/:id", ...readGuard, async (req, res) => {
@@ -316,8 +329,13 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
   }
   const d = parsed.data;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (d.slug !== undefined && d.slug !== null) {
-    updates.slug = await ensureUniqueSlug(d.slug, id);
+  if (d.slug !== undefined) {
+    const requestedSlug = typeof d.slug === "string" ? d.slug.trim() : "";
+    if (requestedSlug) {
+      updates.slug = await ensureUniqueSlug(requestedSlug, id);
+    } else if (typeof d.title === "string") {
+      updates.slug = await ensureUniqueSlug(toSlug(d.title), id);
+    }
   }
   for (const k of [
     "title", "category", "shortDescription", "heroHeadline", "heroSubhead",

@@ -12,7 +12,7 @@ const ALL = "All";
 export default function Workshops() {
   const [category, setCategory] = useState<string>(ALL);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["public-workshops"],
     queryFn: () => workshopsApi.listPublic(),
   });
@@ -103,6 +103,13 @@ export default function Workshops() {
               data-testid="workshop-loading"
             >
               <p className="text-muted-foreground">Loading workshops…</p>
+            </div>
+          ) : isError ? (
+            <div
+              className="rounded-2xl border border-dashed border-destructive/40 bg-card/50 py-20 text-center px-6"
+              data-testid="workshop-error"
+            >
+              <p className="text-destructive">Failed to load workshops. Please try again.</p>
             </div>
           ) : filtered.length === 0 ? (
             <div

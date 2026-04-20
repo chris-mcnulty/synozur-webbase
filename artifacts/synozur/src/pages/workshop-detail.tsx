@@ -13,7 +13,7 @@ import {
   UserCheck,
   ListChecks,
 } from "lucide-react";
-import { workshopsApi, type WorkshopCTA as CTA } from "@/lib/api-workshops";
+import { workshopsApi, WorkshopsApiError, type WorkshopCTA as CTA } from "@/lib/api-workshops";
 import NotFound from "@/pages/not-found";
 
 function isExternal(href: string) {
@@ -97,6 +97,17 @@ export default function WorkshopDetail() {
     return (
       <div className="w-full py-24 text-center text-muted-foreground">
         Loading…
+      </div>
+    );
+  }
+
+  if (detailQ.isError) {
+    const is404 =
+      detailQ.error instanceof WorkshopsApiError && detailQ.error.status === 404;
+    if (is404) return <NotFound />;
+    return (
+      <div className="w-full py-24 text-center text-destructive">
+        Failed to load workshop. Please try again.
       </div>
     );
   }

@@ -33,6 +33,7 @@ export default function AdminWorkshopsList() {
     onSuccess: () => {
       toast({ title: "Workshop updated" });
       qc.invalidateQueries({ queryKey: LIST_KEY });
+      qc.invalidateQueries({ queryKey: ["public-workshops"] });
     },
     onError: (e: Error) =>
       toast({ title: "Update failed", description: e.message, variant: "destructive" }),
@@ -43,6 +44,7 @@ export default function AdminWorkshopsList() {
     onSuccess: () => {
       toast({ title: "Workshop archived" });
       qc.invalidateQueries({ queryKey: LIST_KEY });
+      qc.invalidateQueries({ queryKey: ["public-workshops"] });
     },
     onError: (e: Error) =>
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
