@@ -100,8 +100,8 @@ export function Footer() {
               © {new Date().getFullYear()} The Synozur Alliance, LLC. All rights reserved. Synozur and The Synozur Alliance are trademarks of The Synozur Alliance, LLC.
             </p>
             <div className="flex gap-6 shrink-0">
-              <Link href="/" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-              <Link href="/" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
