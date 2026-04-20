@@ -74,6 +74,7 @@ export * from "./submitCommentResponse";
 export * from "./subscribeFormInput";
 export * from "./tag";
 export * from "./unauthorizedResponse";
+export * from "./updateMediaBody";
 export * from "./updatePostBody";
 export * from "./uploadUrlRequest";
 export * from "./uploadUrlResponse";

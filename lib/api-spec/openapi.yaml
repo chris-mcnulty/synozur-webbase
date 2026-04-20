@@ -489,6 +489,39 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
   /cms/media/{id}:
+    patch:
+      operationId: updateCmsMedia
+      tags:
+        - CMS Media
+      summary: Update editable metadata for a media item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMediaBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       operationId: deleteCmsMedia
       tags:
@@ -1871,6 +1904,21 @@ components:
           nullable: true
         altText:
           type: string
+          nullable: true
+    UpdateMediaBody:
+      type: object
+      properties:
+        altText:
+          type: string
+          nullable: true
+        mime:
+          type: string
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
           nullable: true
     AuthorSummary:
       type: object

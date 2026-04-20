@@ -121,6 +121,13 @@ export interface RegisterMediaBody {
   altText?: string | null;
 }
 
+export interface UpdateMediaBody {
+  altText?: string | null;
+  mime?: string | null;
+  width?: number | null;
+  height?: number | null;
+}
+
 export interface AuthorSummary {
   id: string;
   displayName?: string | null;

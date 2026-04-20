@@ -524,6 +524,33 @@ export const RegisterCmsMediaBody = zod.object({
   altText: zod.string().nullish(),
 });
 
+/**
+ * @summary Update editable metadata for a media item
+ */
+export const UpdateCmsMediaParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCmsMediaBody = zod.object({
+  altText: zod.string().nullish(),
+  mime: zod.string().nullish(),
+  width: zod.number().nullish(),
+  height: zod.number().nullish(),
+});
+
+export const UpdateCmsMediaResponse = zod.object({
+  id: zod.string().uuid(),
+  storageKey: zod.string(),
+  publicUrl: zod.string(),
+  mime: zod.string().nullish(),
+  width: zod.number().nullish(),
+  height: zod.number().nullish(),
+  byteSize: zod.number().nullish(),
+  altText: zod.string().nullish(),
+  uploadedBy: zod.string().uuid().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
 export const DeleteCmsMediaParams = zod.object({
   id: zod.coerce.string().uuid(),
 });

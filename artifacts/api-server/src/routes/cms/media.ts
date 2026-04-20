@@ -71,6 +71,58 @@ router.post(
   },
 );
 
+const UpdateBody = z.object({
+  altText: z.string().nullish(),
+  mime: z.string().nullish(),
+  width: z.number().int().nullish(),
+  height: z.number().int().nullish(),
+});
+
+router.patch(
+  "/cms/media/:id",
+  requireAuth,
+  requireRole("admin", "editor", "author", "contributor"),
+  async (req, res) => {
+    const parsed = UpdateBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const updates: Partial<typeof mediaTable.$inferInsert> = {};
+    if (parsed.data.altText !== undefined) updates.altText = parsed.data.altText ?? null;
+    if (parsed.data.mime !== undefined) updates.mime = parsed.data.mime ?? null;
+    if (parsed.data.width !== undefined) updates.width = parsed.data.width ?? null;
+    if (parsed.data.height !== undefined) updates.height = parsed.data.height ?? null;
+    if (Object.keys(updates).length === 0) {
+      const existing = await db.query.mediaTable.findFirst({
+        where: eq(mediaTable.id, String(req.params.id)),
+      });
+      if (!existing) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      res.json(existing);
+      return;
+    }
+    const [row] = await db
+      .update(mediaTable)
+      .set(updates)
+      .where(eq(mediaTable.id, String(req.params.id)))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "media.update",
+      entity: "media",
+      entityId: row.id,
+    });
+    res.json(row);
+  },
+);
+
 router.delete(
   "/cms/media/:id",
   requireAuth,

@@ -77,6 +77,7 @@ import type {
   SubscribeFormInput,
   Tag,
   UnauthorizedResponse,
+  UpdateMediaBody,
   UpdatePostBody,
   UpsertCapabilityBody,
   UpsertCategoryBody,
@@ -1735,6 +1736,108 @@ export const useRegisterCmsMedia = <
   TContext
 > => {
   return useMutation(getRegisterCmsMediaMutationOptions(options));
+};
+
+/**
+ * @summary Update editable metadata for a media item
+ */
+export const getUpdateCmsMediaUrl = (id: string) => {
+  return `/api/cms/media/${id}`;
+};
+
+export const updateCmsMedia = async (
+  id: string,
+  updateMediaBody: UpdateMediaBody,
+  options?: RequestInit,
+): Promise<MediaItem> => {
+  return customFetch<MediaItem>(getUpdateCmsMediaUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMediaBody),
+  });
+};
+
+export const getUpdateCmsMediaMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsMedia>>,
+    TError,
+    { id: string; data: BodyType<UpdateMediaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCmsMedia>>,
+  TError,
+  { id: string; data: BodyType<UpdateMediaBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCmsMedia"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCmsMedia>>,
+    { id: string; data: BodyType<UpdateMediaBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCmsMedia(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCmsMediaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCmsMedia>>
+>;
+export type UpdateCmsMediaMutationBody = BodyType<UpdateMediaBody>;
+export type UpdateCmsMediaMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Update editable metadata for a media item
+ */
+export const useUpdateCmsMedia = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsMedia>>,
+    TError,
+    { id: string; data: BodyType<UpdateMediaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCmsMedia>>,
+  TError,
+  { id: string; data: BodyType<UpdateMediaBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCmsMediaMutationOptions(options));
 };
 
 export const getDeleteCmsMediaUrl = (id: string) => {
