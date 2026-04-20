@@ -337,6 +337,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/forms/submissions:
+    get:
+      tags: [Forms]
+      operationId: listAdminFormSubmissions
+      summary: List form submissions (admin)
+      parameters:
+        - name: formType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Submissions page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFormSubmissionsPage"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/forms/submissions.csv:
+    get:
+      tags: [Forms]
+      operationId: exportAdminFormSubmissions
+      summary: Export form submissions as CSV (admin)
+      parameters:
+        - name: formType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /forms/contact:
     post:
       tags: [Forms]
@@ -556,6 +639,48 @@ components:
         updatedAt:
           type: string
           format: date-time
+    AdminFormSubmission:
+      type: object
+      required: [id, formType, payload, createdAt]
+      properties:
+        id:
+          type: integer
+        formType:
+          type: string
+        email:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        payload:
+          type: object
+          additionalProperties: true
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        webhookStatus:
+          type: ["string", "null"]
+        webhookError:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+    AdminFormSubmissionsPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminFormSubmission"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
     FormSubmissionAck:
       type: object
       required: [ok, id]

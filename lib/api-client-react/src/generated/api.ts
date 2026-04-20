@@ -18,14 +18,17 @@ import type {
 
 import type {
   AdminEvent,
+  AdminFormSubmissionsPage,
   AdminUser,
   Asset,
   AssetInput,
   ContactFormInput,
   ErrorEnvelope,
   EventInput,
+  ExportAdminFormSubmissionsParams,
   FormSubmissionAck,
   HealthStatus,
+  ListAdminFormSubmissionsParams,
   ListAssetsParams,
   PublicEvent,
   StartFormInput,
@@ -1193,6 +1196,215 @@ export const useDeleteEvent = <
 > => {
   return useMutation(getDeleteEventMutationOptions(options));
 };
+
+/**
+ * @summary List form submissions (admin)
+ */
+export const getListAdminFormSubmissionsUrl = (
+  params?: ListAdminFormSubmissionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/forms/submissions?${stringifiedParams}`
+    : `/api/admin/forms/submissions`;
+};
+
+export const listAdminFormSubmissions = async (
+  params?: ListAdminFormSubmissionsParams,
+  options?: RequestInit,
+): Promise<AdminFormSubmissionsPage> => {
+  return customFetch<AdminFormSubmissionsPage>(
+    getListAdminFormSubmissionsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminFormSubmissionsQueryKey = (
+  params?: ListAdminFormSubmissionsParams,
+) => {
+  return [`/api/admin/forms/submissions`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAdminFormSubmissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminFormSubmissions>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListAdminFormSubmissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminFormSubmissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminFormSubmissionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminFormSubmissions>>
+  > = ({ signal }) =>
+    listAdminFormSubmissions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminFormSubmissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminFormSubmissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminFormSubmissions>>
+>;
+export type ListAdminFormSubmissionsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List form submissions (admin)
+ */
+
+export function useListAdminFormSubmissions<
+  TData = Awaited<ReturnType<typeof listAdminFormSubmissions>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListAdminFormSubmissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminFormSubmissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminFormSubmissionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Export form submissions as CSV (admin)
+ */
+export const getExportAdminFormSubmissionsUrl = (
+  params?: ExportAdminFormSubmissionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/forms/submissions.csv?${stringifiedParams}`
+    : `/api/admin/forms/submissions.csv`;
+};
+
+export const exportAdminFormSubmissions = async (
+  params?: ExportAdminFormSubmissionsParams,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getExportAdminFormSubmissionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportAdminFormSubmissionsQueryKey = (
+  params?: ExportAdminFormSubmissionsParams,
+) => {
+  return [
+    `/api/admin/forms/submissions.csv`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getExportAdminFormSubmissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportAdminFormSubmissions>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ExportAdminFormSubmissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAdminFormSubmissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getExportAdminFormSubmissionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportAdminFormSubmissions>>
+  > = ({ signal }) =>
+    exportAdminFormSubmissions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportAdminFormSubmissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportAdminFormSubmissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportAdminFormSubmissions>>
+>;
+export type ExportAdminFormSubmissionsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Export form submissions as CSV (admin)
+ */
+
+export function useExportAdminFormSubmissions<
+  TData = Awaited<ReturnType<typeof exportAdminFormSubmissions>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ExportAdminFormSubmissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAdminFormSubmissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportAdminFormSubmissionsQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Submit the public contact form

@@ -1,11 +1,16 @@
 import { Router, type IRouter, type Request } from "express";
+import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import {
   SubmitContactBody,
   SubmitSubscribeBody,
   SubmitStartBody,
   SubmitContactResponse,
+  ListAdminFormSubmissionsQueryParams,
+  ListAdminFormSubmissionsResponse,
+  ExportAdminFormSubmissionsQueryParams,
 } from "@workspace/api-zod";
-import { db, formSubmissionsTable } from "@workspace/db";
+import { db, formSubmissionsTable, type FormSubmission } from "@workspace/db";
+import { requireAdmin } from "../middlewares/requireAdmin";
 import { logger } from "../lib/logger";
 import { sendVisitorConfirmation, sendInternalNotification } from "../lib/email";
 
@@ -135,6 +140,137 @@ async function persist(args: PersistArgs): Promise<number> {
     .returning({ id: formSubmissionsTable.id });
   return row!.id;
 }
+
+function buildSubmissionFilter(formType?: string, search?: string): SQL | undefined {
+  const conditions: SQL[] = [];
+  if (formType && formType.length > 0) {
+    conditions.push(eq(formSubmissionsTable.formType, formType));
+  }
+  if (search && search.trim().length > 0) {
+    const needle = `%${search.trim()}%`;
+    const orClause = or(
+      ilike(formSubmissionsTable.email, needle),
+      ilike(formSubmissionsTable.name, needle),
+      ilike(formSubmissionsTable.company, needle),
+    );
+    if (orClause) conditions.push(orClause);
+  }
+  if (conditions.length === 0) return undefined;
+  if (conditions.length === 1) return conditions[0];
+  return and(...conditions);
+}
+
+function adminSubmissionShape(row: FormSubmission) {
+  return {
+    id: row.id,
+    formType: row.formType,
+    email: row.email,
+    name: row.name,
+    company: row.company,
+    payload: (row.payload ?? {}) as Record<string, unknown>,
+    ipAddress: row.ipAddress,
+    userAgent: row.userAgent,
+    webhookStatus: row.webhookStatus,
+    webhookError: row.webhookError,
+    createdAt: row.createdAt,
+  };
+}
+
+router.get("/admin/forms/submissions", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = ListAdminFormSubmissionsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const page = parsed.data.page ?? 1;
+  const pageSize = parsed.data.pageSize ?? 25;
+  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+
+  const baseQuery = db.select().from(formSubmissionsTable);
+  const filtered = where ? baseQuery.where(where) : baseQuery;
+  const rows = await filtered
+    .orderBy(desc(formSubmissionsTable.createdAt))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  const countQuery = db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(formSubmissionsTable);
+  const totalRows = where ? await countQuery.where(where) : await countQuery;
+  const total = totalRows[0]?.count ?? 0;
+
+  res.json(
+    ListAdminFormSubmissionsResponse.parse({
+      items: rows.map(adminSubmissionShape),
+      total,
+      page,
+      pageSize,
+    }),
+  );
+});
+
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  let str = typeof value === "string" ? value : JSON.stringify(value);
+  // Neutralize spreadsheet formula injection: cells starting with =, +, -, @
+  // (and tab/CR which some apps treat as formula leaders) are prefixed with
+  // a leading apostrophe so Excel/Sheets render them as text.
+  if (str.length > 0 && /^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+router.get("/admin/forms/submissions.csv", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = ExportAdminFormSubmissionsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+  const baseQuery = db.select().from(formSubmissionsTable);
+  const filtered = where ? baseQuery.where(where) : baseQuery;
+  const rows = await filtered.orderBy(desc(formSubmissionsTable.createdAt));
+
+  const header = [
+    "id",
+    "createdAt",
+    "formType",
+    "name",
+    "email",
+    "company",
+    "ipAddress",
+    "webhookStatus",
+    "webhookError",
+    "payload",
+  ];
+  const lines = [header.join(",")];
+  for (const row of rows) {
+    lines.push(
+      [
+        row.id,
+        row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+        row.formType,
+        row.name,
+        row.email,
+        row.company,
+        row.ipAddress,
+        row.webhookStatus,
+        row.webhookError,
+        row.payload,
+      ]
+        .map(csvEscape)
+        .join(","),
+    );
+  }
+  const filename = `form-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(lines.join("\n") + "\n");
+});
 
 router.post("/forms/contact", async (req, res): Promise<void> => {
   const parsed = SubmitContactBody.safeParse(req.body);

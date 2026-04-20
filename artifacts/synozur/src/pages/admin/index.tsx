@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/react";
-import { Pencil, Trash2, Plus, LogOut } from "lucide-react";
+import { Pencil, Trash2, Plus, LogOut, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -47,6 +47,11 @@ export default function AdminEventsList() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/admin/submissions">
+            <Button variant="outline" data-testid="button-view-submissions">
+              <Inbox className="h-4 w-4 mr-2" /> Submissions
+            </Button>
+          </Link>
           <Link href="/admin/events/new">
             <Button data-testid="button-new-event">
               <Plus className="h-4 w-4 mr-2" /> New Event

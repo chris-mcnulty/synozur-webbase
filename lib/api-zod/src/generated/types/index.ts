@@ -7,14 +7,19 @@
  */
 
 export * from "./adminEvent";
+export * from "./adminFormSubmission";
+export * from "./adminFormSubmissionPayload";
+export * from "./adminFormSubmissionsPage";
 export * from "./adminUser";
 export * from "./asset";
 export * from "./assetInput";
 export * from "./contactFormInput";
 export * from "./errorEnvelope";
 export * from "./eventInput";
+export * from "./exportAdminFormSubmissionsParams";
 export * from "./formSubmissionAck";
 export * from "./healthStatus";
+export * from "./listAdminFormSubmissionsParams";
 export * from "./listAssetsParams";
 export * from "./publicEvent";
 export * from "./startFormInput";

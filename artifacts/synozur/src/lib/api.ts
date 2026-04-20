@@ -8,7 +8,25 @@ import type {
   SubscribeFormInput,
   StartFormInput,
   FormSubmissionAck,
+  AdminFormSubmissionsPage,
 } from "@workspace/api-zod";
+
+export interface SubmissionsQuery {
+  formType?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+function submissionsQueryString(q: SubmissionsQuery): string {
+  const params = new URLSearchParams();
+  if (q.formType) params.set("formType", q.formType);
+  if (q.search) params.set("search", q.search);
+  if (q.page) params.set("page", String(q.page));
+  if (q.pageSize) params.set("pageSize", String(q.pageSize));
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -72,4 +90,8 @@ export const api = {
     jsonFetch<FormSubmissionAck>(url("/forms/subscribe"), { method: "POST", body: JSON.stringify(body) }),
   submitStart: (body: StartFormInput) =>
     jsonFetch<FormSubmissionAck>(url("/forms/start"), { method: "POST", body: JSON.stringify(body) }),
+  listSubmissions: (q: SubmissionsQuery = {}) =>
+    jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
+  submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+    url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
 };

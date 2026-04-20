@@ -97,6 +97,36 @@ export interface AdminEvent {
   updatedAt?: string;
 }
 
+export type AdminFormSubmissionPayload = { [key: string]: unknown };
+
+export interface AdminFormSubmission {
+  id: number;
+  formType: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  company?: string | null;
+  payload: AdminFormSubmissionPayload;
+  /** @nullable */
+  ipAddress?: string | null;
+  /** @nullable */
+  userAgent?: string | null;
+  /** @nullable */
+  webhookStatus?: string | null;
+  /** @nullable */
+  webhookError?: string | null;
+  createdAt: string;
+}
+
+export interface AdminFormSubmissionsPage {
+  items: AdminFormSubmission[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface FormSubmissionAck {
   ok: boolean;
   id: number;
@@ -213,5 +243,24 @@ export interface EventInput {
 }
 
 export type ListAssetsParams = {
+  search?: string;
+};
+
+export type ListAdminFormSubmissionsParams = {
+  formType?: string;
+  search?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 200
+   */
+  pageSize?: number;
+};
+
+export type ExportAdminFormSubmissionsParams = {
+  formType?: string;
   search?: string;
 };

@@ -213,6 +213,52 @@ export const DeleteEventParams = zod.object({
 });
 
 /**
+ * @summary List form submissions (admin)
+ */
+
+export const listAdminFormSubmissionsQueryPageSizeMax = 200;
+
+export const ListAdminFormSubmissionsQueryParams = zod.object({
+  formType: zod.coerce.string().optional(),
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().min(1).optional(),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listAdminFormSubmissionsQueryPageSizeMax)
+    .optional(),
+});
+
+export const ListAdminFormSubmissionsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      formType: zod.string(),
+      email: zod.string().nullish(),
+      name: zod.string().nullish(),
+      company: zod.string().nullish(),
+      payload: zod.record(zod.string(), zod.unknown()),
+      ipAddress: zod.string().nullish(),
+      userAgent: zod.string().nullish(),
+      webhookStatus: zod.string().nullish(),
+      webhookError: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+});
+
+/**
+ * @summary Export form submissions as CSV (admin)
+ */
+export const ExportAdminFormSubmissionsQueryParams = zod.object({
+  formType: zod.coerce.string().optional(),
+  search: zod.coerce.string().optional(),
+});
+
+/**
  * @summary Submit the public contact form
  */
 export const submitContactBodyNameMin = 2;
