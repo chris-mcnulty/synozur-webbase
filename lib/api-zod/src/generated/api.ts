@@ -770,6 +770,29 @@ export const GetCmsAnalyticsOverviewResponse = zod.object({
 });
 
 /**
+ * @summary Batch view counts for multiple posts (last N days)
+ */
+export const getCmsBatchViewsQueryDaysDefault = 30;
+export const getCmsBatchViewsQueryDaysMax = 365;
+
+export const GetCmsBatchViewsQueryParams = zod.object({
+  postIds: zod.coerce
+    .string()
+    .describe("Comma-separated list of post UUIDs (max 100)"),
+  days: zod.coerce
+    .number()
+    .min(1)
+    .max(getCmsBatchViewsQueryDaysMax)
+    .default(getCmsBatchViewsQueryDaysDefault),
+});
+
+export const GetCmsBatchViewsResponse = zod.object({
+  views: zod
+    .record(zod.string(), zod.number())
+    .describe("Map of post ID to view count"),
+});
+
+/**
  * @summary Per-post analytics
  */
 export const GetCmsPostAnalyticsParams = zod.object({
@@ -1018,6 +1041,7 @@ export const ListServicesResponse = zod.object({
         id: zod.string(),
         slug: zod.string(),
         title: zod.string(),
+        active: zod.boolean(),
         displayOrder: zod.number().nullish(),
         parentServiceId: zod.string().nullish(),
         iconId: zod.string().nullish(),
@@ -1032,6 +1056,8 @@ export const ListServicesResponse = zod.object({
         tertiaryTextHtml: zod.string().nullish(),
         blurbHtml: zod.string().nullish(),
         blogCategory: zod.string().nullish(),
+        seoTitle: zod.string().nullish(),
+        seoDescription: zod.string().nullish(),
         sourceId: zod.string().nullish(),
         createdAt: zod.string(),
         updatedAt: zod.string(),
@@ -1043,6 +1069,7 @@ export const ListServicesResponse = zod.object({
               id: zod.string(),
               slug: zod.string(),
               title: zod.string(),
+              active: zod.boolean(),
               displayOrder: zod.number().nullish(),
               parentServiceId: zod.string().nullish(),
               iconId: zod.string().nullish(),
@@ -1062,6 +1089,8 @@ export const ListServicesResponse = zod.object({
               blogTag: zod.string().nullish(),
               primaryBlogCategoryFilter: zod.string().nullish(),
               buttonUrl: zod.string().nullish(),
+              seoTitle: zod.string().nullish(),
+              seoDescription: zod.string().nullish(),
               sourceId: zod.string().nullish(),
               createdAt: zod.string(),
               updatedAt: zod.string(),
@@ -1081,6 +1110,7 @@ export const GetServiceResponse = zod
     id: zod.string(),
     slug: zod.string(),
     title: zod.string(),
+    active: zod.boolean(),
     displayOrder: zod.number().nullish(),
     parentServiceId: zod.string().nullish(),
     iconId: zod.string().nullish(),
@@ -1095,6 +1125,8 @@ export const GetServiceResponse = zod
     tertiaryTextHtml: zod.string().nullish(),
     blurbHtml: zod.string().nullish(),
     blogCategory: zod.string().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
     sourceId: zod.string().nullish(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
@@ -1128,6 +1160,7 @@ export const GetSolutionResponse = zod
     id: zod.string(),
     slug: zod.string(),
     title: zod.string(),
+    active: zod.boolean(),
     displayOrder: zod.number().nullish(),
     parentServiceId: zod.string().nullish(),
     iconId: zod.string().nullish(),
@@ -1147,6 +1180,8 @@ export const GetSolutionResponse = zod
     blogTag: zod.string().nullish(),
     primaryBlogCategoryFilter: zod.string().nullish(),
     buttonUrl: zod.string().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
     sourceId: zod.string().nullish(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
@@ -1159,6 +1194,7 @@ export const GetSolutionResponse = zod
             id: zod.string(),
             slug: zod.string(),
             title: zod.string(),
+            active: zod.boolean(),
             displayOrder: zod.number().nullish(),
             parentServiceId: zod.string().nullish(),
             iconId: zod.string().nullish(),
@@ -1173,6 +1209,8 @@ export const GetSolutionResponse = zod
             tertiaryTextHtml: zod.string().nullish(),
             blurbHtml: zod.string().nullish(),
             blogCategory: zod.string().nullish(),
+            seoTitle: zod.string().nullish(),
+            seoDescription: zod.string().nullish(),
             sourceId: zod.string().nullish(),
             createdAt: zod.string(),
             updatedAt: zod.string(),
@@ -1394,6 +1432,7 @@ export const CmsListServicesResponse = zod.object({
       id: zod.string(),
       slug: zod.string(),
       title: zod.string(),
+      active: zod.boolean(),
       displayOrder: zod.number().nullish(),
       parentServiceId: zod.string().nullish(),
       iconId: zod.string().nullish(),
@@ -1408,6 +1447,8 @@ export const CmsListServicesResponse = zod.object({
       tertiaryTextHtml: zod.string().nullish(),
       blurbHtml: zod.string().nullish(),
       blogCategory: zod.string().nullish(),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
       sourceId: zod.string().nullish(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -1431,6 +1472,8 @@ export const CmsCreateServiceBody = zod.object({
   tertiaryTextHtml: zod.string().nullish(),
   blurbHtml: zod.string().nullish(),
   blogCategory: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -1454,6 +1497,8 @@ export const CmsUpdateServiceBody = zod.object({
   tertiaryTextHtml: zod.string().nullish(),
   blurbHtml: zod.string().nullish(),
   blogCategory: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -1461,6 +1506,7 @@ export const CmsUpdateServiceResponse = zod.object({
   id: zod.string(),
   slug: zod.string(),
   title: zod.string(),
+  active: zod.boolean(),
   displayOrder: zod.number().nullish(),
   parentServiceId: zod.string().nullish(),
   iconId: zod.string().nullish(),
@@ -1475,6 +1521,8 @@ export const CmsUpdateServiceResponse = zod.object({
   tertiaryTextHtml: zod.string().nullish(),
   blurbHtml: zod.string().nullish(),
   blogCategory: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   sourceId: zod.string().nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1490,6 +1538,7 @@ export const CmsListSolutionsResponse = zod.object({
       id: zod.string(),
       slug: zod.string(),
       title: zod.string(),
+      active: zod.boolean(),
       displayOrder: zod.number().nullish(),
       parentServiceId: zod.string().nullish(),
       iconId: zod.string().nullish(),
@@ -1509,6 +1558,8 @@ export const CmsListSolutionsResponse = zod.object({
       blogTag: zod.string().nullish(),
       primaryBlogCategoryFilter: zod.string().nullish(),
       buttonUrl: zod.string().nullish(),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
       sourceId: zod.string().nullish(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -1537,6 +1588,8 @@ export const CmsCreateSolutionBody = zod.object({
   blogTag: zod.string().nullish(),
   primaryBlogCategoryFilter: zod.string().nullish(),
   buttonUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -1565,6 +1618,8 @@ export const CmsUpdateSolutionBody = zod.object({
   blogTag: zod.string().nullish(),
   primaryBlogCategoryFilter: zod.string().nullish(),
   buttonUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -1572,6 +1627,7 @@ export const CmsUpdateSolutionResponse = zod.object({
   id: zod.string(),
   slug: zod.string(),
   title: zod.string(),
+  active: zod.boolean(),
   displayOrder: zod.number().nullish(),
   parentServiceId: zod.string().nullish(),
   iconId: zod.string().nullish(),
@@ -1591,6 +1647,8 @@ export const CmsUpdateSolutionResponse = zod.object({
   blogTag: zod.string().nullish(),
   primaryBlogCategoryFilter: zod.string().nullish(),
   buttonUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   sourceId: zod.string().nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),

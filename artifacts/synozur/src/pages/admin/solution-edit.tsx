@@ -70,6 +70,8 @@ interface FormState {
   blogCategory: string;
   blogTag: string;
   primaryBlogCategoryFilter: string;
+  seoTitle: string;
+  seoDescription: string;
   active: boolean;
 }
 
@@ -95,6 +97,8 @@ const EMPTY: FormState = {
   blogCategory: "",
   blogTag: "",
   primaryBlogCategoryFilter: "",
+  seoTitle: "",
+  seoDescription: "",
   active: true,
 };
 
@@ -121,6 +125,8 @@ function fromSolution(s: Solution): FormState {
     blogCategory: s.blogCategory ?? "",
     blogTag: s.blogTag ?? "",
     primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
+    seoTitle: s.seoTitle ?? "",
+    seoDescription: s.seoDescription ?? "",
     active: s.active,
   };
 }
@@ -147,6 +153,8 @@ function toBody(f: FormState): UpsertSolutionBody {
     blogCategory: f.blogCategory || null,
     blogTag: f.blogTag || null,
     primaryBlogCategoryFilter: f.primaryBlogCategoryFilter || null,
+    seoTitle: f.seoTitle || null,
+    seoDescription: f.seoDescription || null,
     active: f.active,
   };
 }
@@ -484,6 +492,48 @@ export default function SolutionEdit({ id }: Props) {
                   }
                   disabled={!canWrite}
                 />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">SEO</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Overrides the page title and meta description on this
+                solution's public detail page. Leave blank to use the title and
+                blurb.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="seoTitle">SEO title</Label>
+              <Input
+                id="seoTitle"
+                value={form.seoTitle}
+                maxLength={70}
+                placeholder="e.g. AI Strategy & Roadmap | Synozur"
+                onChange={(e) => update({ seoTitle: e.target.value })}
+                disabled={!canWrite}
+                data-testid="input-solution-seo-title"
+              />
+              <div className="mt-1 text-xs text-muted-foreground">
+                {form.seoTitle.length}/70 characters — Google typically
+                truncates past ~60.
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="seoDescription">SEO description</Label>
+              <Textarea
+                id="seoDescription"
+                rows={3}
+                maxLength={300}
+                value={form.seoDescription}
+                onChange={(e) => update({ seoDescription: e.target.value })}
+                disabled={!canWrite}
+                data-testid="input-solution-seo-description"
+              />
+              <div className="mt-1 text-xs text-muted-foreground">
+                {form.seoDescription.length}/300 characters — aim for 150–160.
               </div>
             </div>
           </Card>

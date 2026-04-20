@@ -9,6 +9,8 @@ import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-
 import { fetchLibrary, type Pillar } from "@/data/collateral";
 import NotFound from "./not-found";
 import { workshops } from "@/data/workshops";
+import { JsonLd } from "@/components/jsonld";
+import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 
 const PILLAR_BY_SLUG: Record<string, Pillar> = {
   "strategic-transformation": "strategic",
@@ -144,13 +146,50 @@ export default function ServiceDetail() {
     (WORKSHOP_CATEGORIES_BY_SLUG[slug] ?? []).includes(w.category),
   );
 
+  const seoDescription =
+    service?.seoDescription ?? stripHtml(service?.blurbHtml) ?? undefined;
+  const serviceJsonLd = service
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: service.title,
+        url: `${SITE_ORIGIN}/services/${service.slug}`,
+        ...(seoDescription ? { description: seoDescription } : {}),
+        ...(service.iconUrl ? { image: service.iconUrl } : {}),
+        provider: {
+          "@type": "Organization",
+          name: SITE_NAME,
+          url: SITE_ORIGIN,
+        },
+        ...(solutions.length > 0
+          ? {
+              hasOfferCatalog: {
+                "@type": "OfferCatalog",
+                name: `${service.title} solutions`,
+                itemListElement: solutions.map((s, i) => ({
+                  "@type": "Offer",
+                  position: i + 1,
+                  itemOffered: {
+                    "@type": "Service",
+                    name: s.title,
+                    url: `${SITE_ORIGIN}/solutions/${s.slug}`,
+                  },
+                })),
+              },
+            }
+          : {}),
+      }
+    : null;
+
   return (
     <div className="w-full">
       <Meta
-        title={service?.title ?? "Services"}
-        description={stripHtml(service?.blurbHtml) || undefined}
+        title={service?.seoTitle || service?.title || "Services"}
+        description={seoDescription || undefined}
         image={service?.iconUrl ?? undefined}
+        rawTitle={!!service?.seoTitle}
       />
+      {serviceJsonLd ? <JsonLd data={serviceJsonLd} id="service-jsonld" /> : null}
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />

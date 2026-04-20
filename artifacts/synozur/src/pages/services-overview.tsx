@@ -68,13 +68,15 @@ function DefaultOverview() {
   return (
     <PageShell>
       <Meta
-        title="Services Overview"
+        title={heroService?.seoTitle || "Services Overview"}
         description={
+          heroService?.seoDescription ||
           stripHtml(heroService?.heroTextHtml) ||
           stripHtml(heroService?.blurbHtml) ||
           "Four service pillars built to power transformation that is rooted in people, powered by technology, and driven by purpose."
         }
         image={heroService?.iconUrl ?? undefined}
+        rawTitle={!!heroService?.seoTitle}
       />
 
       {list.isLoading ? (
@@ -211,9 +213,13 @@ function PillarOverview({ slug }: { slug: string }) {
   return (
     <PageShell>
       <Meta
-        title={service?.title ?? "Services"}
-        description={service?.blurbHtml ? stripHtml(service.blurbHtml) : undefined}
+        title={service?.seoTitle || service?.title || "Services"}
+        description={
+          service?.seoDescription ||
+          (service?.blurbHtml ? stripHtml(service.blurbHtml) : undefined)
+        }
         image={service?.iconUrl ?? undefined}
+        rawTitle={!!service?.seoTitle}
       />
 
       {detail.isLoading || !service ? (

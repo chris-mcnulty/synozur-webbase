@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import NotFound from "./not-found";
+import { JsonLd } from "@/components/jsonld";
+import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 
 function stripHtml(html: string | null | undefined): string {
   if (!html) return "";
@@ -83,13 +85,42 @@ export default function SolutionDetail() {
   const heroStyle =
     heroColor && isLightHex(heroColor) ? { color: heroColor } : undefined;
 
+  const seoDescription =
+    sol?.seoDescription ?? stripHtml(sol?.blurbHtml) ?? sol?.blurbCopy ?? undefined;
+  const solutionJsonLd = sol
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: sol.title,
+        url: `${SITE_ORIGIN}/solutions/${sol.slug}`,
+        ...(seoDescription ? { description: seoDescription } : {}),
+        ...(sol.iconUrl ? { image: sol.iconUrl } : {}),
+        provider: {
+          "@type": "Organization",
+          name: SITE_NAME,
+          url: SITE_ORIGIN,
+        },
+        ...(sol.parentService
+          ? {
+              isRelatedTo: {
+                "@type": "Service",
+                name: sol.parentService.title,
+                url: `${SITE_ORIGIN}/services/${sol.parentService.slug}`,
+              },
+            }
+          : {}),
+      }
+    : null;
+
   return (
     <div className="w-full">
       <Meta
-        title={sol?.title ?? "Solution"}
-        description={stripHtml(sol?.blurbHtml) || sol?.blurbCopy || undefined}
+        title={sol?.seoTitle || sol?.title || "Solution"}
+        description={seoDescription || undefined}
         image={sol?.iconUrl ?? undefined}
+        rawTitle={!!sol?.seoTitle}
       />
+      {solutionJsonLd ? <JsonLd data={solutionJsonLd} id="solution-jsonld" /> : null}
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />

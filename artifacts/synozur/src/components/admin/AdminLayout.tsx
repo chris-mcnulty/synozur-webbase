@@ -16,6 +16,7 @@ import {
   Compass,
   Layers,
   Library as LibraryIcon,
+  CornerDownRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -113,6 +114,13 @@ const NAV: NavItem[] = [
     icon: Inbox,
     show: (a) => !!a?.isAllowListed,
     testId: "nav-admin-submissions",
+  },
+  {
+    href: "/wix-redirects",
+    label: "Wix redirects",
+    icon: CornerDownRight,
+    show: (a) => !!a?.isEditorOrAbove,
+    testId: "nav-admin-wix-redirects",
   },
 ];
 

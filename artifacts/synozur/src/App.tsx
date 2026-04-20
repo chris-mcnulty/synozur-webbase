@@ -51,6 +51,7 @@ import AdminTeamList from "@/pages/admin/team-list";
 import TeamForm from "@/pages/admin/team-form";
 import AdminCollateralList from "@/pages/admin/collateral-list";
 import CollateralEdit from "@/pages/admin/collateral-edit";
+import AdminWixRedirects from "@/pages/admin/wix-redirects";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -112,6 +113,7 @@ function AdminRoutes() {
           {(params) => <CollateralEdit id={params.id} />}
         </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
+        <Route path="/wix-redirects" component={AdminWixRedirects} />
         <Route path="/events" component={AdminEventsList} />
         <Route path="/submissions" component={AdminSubmissionsList} />
         <Route path="/events/new">
