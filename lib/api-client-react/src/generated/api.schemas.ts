@@ -1123,6 +1123,19 @@ export type SetCmsUserRolesBody = {
   roles: RoleName[];
 };
 
+export interface BatchViewsResult {
+  views: { [key: string]: number };
+}
+
+export type GetCmsBatchViewsParams = {
+  postIds: string;
+  /**
+   * @minimum 1
+   * @maximum 365
+   */
+  days?: number;
+};
+
 export type GetCmsAnalyticsOverviewParams = {
   /**
    * @minimum 1

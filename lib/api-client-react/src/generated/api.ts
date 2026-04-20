@@ -23,6 +23,8 @@ import type {
   AdminTeamMember,
   AdminUser,
   AnalyticsOverview,
+  BatchViewsResult,
+  GetCmsBatchViewsParams,
   Asset,
   AssetInput,
   BadRequestResponse,
@@ -7488,3 +7490,99 @@ export const useSubmitStart = <
 > => {
   return useMutation(getSubmitStartMutationOptions(options));
 };
+
+/**
+ * @summary Batch view counts for multiple posts (last N days)
+ */
+export const getGetCmsBatchViewsUrl = (params: GetCmsBatchViewsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/analytics/batch-views?${stringifiedParams}`
+    : `/api/cms/analytics/batch-views`;
+};
+
+export const getCmsBatchViews = async (
+  params: GetCmsBatchViewsParams,
+  options?: RequestInit,
+): Promise<BatchViewsResult> => {
+  return customFetch<BatchViewsResult>(getGetCmsBatchViewsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsBatchViewsQueryKey = (params: GetCmsBatchViewsParams) => {
+  return [`/api/cms/analytics/batch-views`, params] as const;
+};
+
+export const getGetCmsBatchViewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsBatchViews>>,
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+>(
+  params: GetCmsBatchViewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsBatchViews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsBatchViewsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCmsBatchViews>>> = ({
+    signal,
+  }) => getCmsBatchViews(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsBatchViews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsBatchViewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsBatchViews>>
+>;
+export type GetCmsBatchViewsQueryError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Batch view counts for multiple posts (last N days)
+ */
+export function useGetCmsBatchViews<
+  TData = Awaited<ReturnType<typeof getCmsBatchViews>>,
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+>(
+  params: GetCmsBatchViewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsBatchViews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsBatchViewsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

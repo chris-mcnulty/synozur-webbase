@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, gte, sql, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, sql, isNull, inArray } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -193,6 +193,59 @@ router.get("/cms/analytics/overview", requireAuth, async (req, res) => {
     series: series.map((d) => ({ day: d.day, views: d.views })),
     activity,
   });
+});
+
+router.get("/cms/analytics/batch-views", requireAuth, async (req, res) => {
+  const parsed = z
+    .object({
+      postIds: z.string().min(1),
+      days: z.coerce.number().int().min(1).max(365).default(30),
+    })
+    .safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query" });
+    return;
+  }
+  const { postIds: postIdsRaw, days } = parsed.data;
+  const postIds = postIdsRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 100);
+  if (postIds.length === 0) {
+    res.json({ views: {} });
+    return;
+  }
+  const user = req.authedUser!;
+  const since = rangeStart(days);
+  const scope = authorScopeFilter(user);
+
+  const rows = await db
+    .select({
+      postId: postViewsTable.postId,
+      views: sql<number>`count(*)::int`,
+    })
+    .from(postViewsTable)
+    .innerJoin(postsTable, eq(postViewsTable.postId, postsTable.id))
+    .where(
+      and(
+        isNull(postsTable.deletedAt),
+        gte(postViewsTable.viewedAt, since),
+        inArray(postViewsTable.postId, postIds),
+        ...(scope ? [scope] : []),
+      ),
+    )
+    .groupBy(postViewsTable.postId);
+
+  const views: Record<string, number> = {};
+  for (const id of postIds) {
+    views[id] = 0;
+  }
+  for (const row of rows) {
+    views[row.postId] = row.views;
+  }
+
+  res.json({ views });
 });
 
 router.get("/cms/analytics/posts/:id", requireAuth, async (req, res) => {

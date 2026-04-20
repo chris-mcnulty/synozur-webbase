@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { Plus, Search, Trash2, Pencil, Archive, BarChart2 } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, Archive, BarChart2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,7 @@ import {
   useListCmsPosts,
   useDeleteCmsPost,
   useArchiveCmsPost,
+  useGetCmsBatchViews,
   type Post,
   type PostStatus,
 } from "@workspace/api-client-react";
@@ -49,6 +50,8 @@ function formatDate(d?: string | null): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+type SortDir = "asc" | "desc";
+
 export default function AdminPostsList() {
   const { toast } = useToast();
   const { access } = useAdminAccess();
@@ -58,6 +61,7 @@ export default function AdminPostsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [viewsSort, setViewsSort] = useState<SortDir | null>(null);
 
   const { data: postsData, isLoading, refetch } = useListCmsPosts(
     {
@@ -89,9 +93,33 @@ export default function AdminPostsList() {
     },
   });
 
-  const items: Post[] = postsData?.items ?? [];
+  const rawItems: Post[] = postsData?.items ?? [];
   const total = postsData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / 20));
+
+  const publishedIds = rawItems
+    .filter((p) => p.status === "published")
+    .map((p) => p.id);
+
+  const { data: batchViewsData } = useGetCmsBatchViews(
+    { postIds: publishedIds.join(","), days: 30 },
+    {
+      query: {
+        enabled: publishedIds.length > 0 && !!access?.hasCmsRole,
+      } as never,
+    },
+  );
+
+  const viewsMap: Record<string, number> = batchViewsData?.views ?? {};
+
+  const items = useMemo(() => {
+    if (viewsSort === null) return rawItems;
+    return [...rawItems].sort((a, b) => {
+      const va = a.status === "published" ? (viewsMap[a.id] ?? 0) : -1;
+      const vb = b.status === "published" ? (viewsMap[b.id] ?? 0) : -1;
+      return viewsSort === "desc" ? vb - va : va - vb;
+    });
+  }, [rawItems, viewsMap, viewsSort]);
 
   const toggleAll = () => {
     if (selected.size === items.length) setSelected(new Set());
@@ -203,19 +231,39 @@ export default function AdminPostsList() {
               <TableHead>Categories</TableHead>
               <TableHead>Published</TableHead>
               <TableHead>Updated</TableHead>
+              <TableHead
+                className="cursor-pointer select-none whitespace-nowrap"
+                onClick={() =>
+                  setViewsSort((prev) =>
+                    prev === "desc" ? "asc" : "desc",
+                  )
+                }
+                data-testid="th-views"
+              >
+                <span className="inline-flex items-center gap-1">
+                  Views (30d)
+                  {viewsSort === "desc" ? (
+                    <ArrowDown className="h-3 w-3" />
+                  ) : viewsSort === "asc" ? (
+                    <ArrowUp className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </span>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   No posts match these filters.
                 </TableCell>
               </TableRow>
@@ -244,6 +292,11 @@ export default function AdminPostsList() {
                   </TableCell>
                   <TableCell className="text-sm">{formatDate(p.publishedAt)}</TableCell>
                   <TableCell className="text-sm">{formatDate(p.updatedAt)}</TableCell>
+                  <TableCell className="text-sm tabular-nums" data-testid={`views-${p.id}`}>
+                    {p.status === "published"
+                      ? (viewsMap[p.id] ?? 0).toLocaleString()
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
                       {p.status === "published" && (

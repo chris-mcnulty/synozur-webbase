@@ -751,6 +751,37 @@ paths:
                 $ref: '#/components/schemas/AnalyticsOverview'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /cms/analytics/batch-views:
+    get:
+      operationId: getCmsBatchViews
+      tags:
+        - CMS Analytics
+      summary: Batch view counts for multiple posts (last N days)
+      parameters:
+        - in: query
+          name: postIds
+          required: true
+          schema:
+            type: string
+          description: Comma-separated list of post UUIDs (max 100)
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+      responses:
+        '200':
+          description: View counts keyed by post ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchViewsResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /cms/analytics/posts/{id}:
     get:
       operationId: getCmsPostAnalytics
@@ -4282,6 +4313,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AnalyticsActivityItem'
+    BatchViewsResult:
+      type: object
+      required:
+        - views
+      properties:
+        views:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Map of post ID to view count
     AnalyticsReferrer:
       type: object
       required:
