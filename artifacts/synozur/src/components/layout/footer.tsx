@@ -91,11 +91,18 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} The Synozur Alliance. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link href="/" className="hover:text-foreground transition-colors">Terms of Service</Link>
+        <div className="pt-8 border-t border-border flex flex-col gap-6 text-sm text-muted-foreground">
+          <address className="not-italic text-center md:text-left">
+            13300 Bothell Everett Hwy, Suite 303, Mill Creek, WA 98012
+          </address>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-center md:text-left">
+              © {new Date().getFullYear()} The Synozur Alliance, LLC. All rights reserved. Synozur and The Synozur Alliance are trademarks of The Synozur Alliance, LLC.
+            </p>
+            <div className="flex gap-6 shrink-0">
+              <Link href="/" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link href="/" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </div>

@@ -33,6 +33,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - Application content lives in `src/data/applications.ts`; assets in `public/images/applications/` (downloaded from Wix CDN, resized).
   - Layout in `src/components/layout` (Header with nav dropdowns + mobile drawer, Footer with subscribe + columns).
   - Forms use `react-hook-form` + `zod`; submissions are simulated client-side (no backend).
-  - SEO via `src/lib/meta.tsx` (sets `document.title` and meta description per page).
+  - SEO via `src/lib/meta.tsx` (per-page title, description, OG/Twitter, canonical). Global Organization JSON-LD via `src/components/organization-jsonld.tsx`.
+  - Analytics + cookie consent via `src/components/analytics.tsx`. Reads `VITE_GA4_ID`, `VITE_LINKEDIN_PARTNER_ID` (defaults to `7337793`), `VITE_META_PIXEL_ID`. Marketing tags load only after consent (stored in `localStorage` under `synozur.cookieConsent.v1`).
+  - Home "From The Feed" carousel data lives in `src/data/feed.ts`; carousel images in `public/images/home/feed/` (downloaded from Wix CDN, originals resized).
   - Initial prompt baseline saved at `.local/baselines/peanut-baseline.md`.
   - **Events system** (`/events`): Public Upcoming + Past listings backed by `GET /api/events`. Admin area at `/admin` (Clerk-auth'd, allow-listed via `ADMIN_EMAILS` env var) provides full CRUD over events with an Asset Library modal that uploads images via Uppy + Object Storage (`POST /api/storage/uploads/request-url`). Sign-in / sign-up at `/sign-in` and `/sign-up` (Clerk hosted components, dev keys via `VITE_CLERK_PUBLISHABLE_KEY`). Events are linked to assets through `events.image_asset_id`. Seeding script: `pnpm dlx tsx artifacts/api-server/src/scripts/seedEvents.ts` (reads `attached_assets/events_1776704614264.csv`).
