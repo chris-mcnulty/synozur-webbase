@@ -8,3 +8,114 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorEnvelope {
+  error: string;
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
+export interface AdminUser {
+  userId: string;
+  email: string;
+  authorized: boolean;
+}
+
+export interface Asset {
+  id: number;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  storageKey: string;
+  /** @nullable */
+  uploadedBy?: string | null;
+  uploadedAt: string;
+}
+
+export interface AssetInput {
+  /** @minLength 1 */
+  originalName: string;
+  /** @minLength 1 */
+  mimeType: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  storageKey: string;
+}
+
+export interface PublicEvent {
+  id: number;
+  title: string;
+  slug: string;
+  startDate: string;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  registrationUrl?: string | null;
+  registrationStatus?: string;
+  eventType?: string;
+  status: string;
+  /** @nullable */
+  imageUrl?: string | null;
+}
+
+export interface AdminEvent {
+  id: number;
+  title: string;
+  slug: string;
+  startDate: string;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  registrationUrl?: string | null;
+  registrationStatus: string;
+  eventType: string;
+  status: string;
+  /** @nullable */
+  imageAssetId?: number | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EventInput {
+  /** @minLength 1 */
+  title: string;
+  /** @nullable */
+  slug?: string | null;
+  startDate: string;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  registrationUrl?: string | null;
+  registrationStatus?: string;
+  eventType?: string;
+  status?: string;
+  /** @nullable */
+  imageAssetId?: number | null;
+}
+
+export type ListAssetsParams = {
+  search?: string;
+};

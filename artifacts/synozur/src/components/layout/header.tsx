@@ -36,6 +36,7 @@ export function Header() {
         { label: "Insights", href: "/insights" },
         { label: "Polaris Podcast", href: "/polaris" },
         { label: "Case Studies", href: "/case-studies" },
+        { label: "Events", href: "/events" },
       ]
     },
     {

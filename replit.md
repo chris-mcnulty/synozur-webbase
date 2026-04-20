@@ -35,3 +35,4 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - Forms use `react-hook-form` + `zod`; submissions are simulated client-side (no backend).
   - SEO via `src/lib/meta.tsx` (sets `document.title` and meta description per page).
   - Initial prompt baseline saved at `.local/baselines/peanut-baseline.md`.
+  - **Events system** (`/events`): Public Upcoming + Past listings backed by `GET /api/events`. Admin area at `/admin` (Clerk-auth'd, allow-listed via `ADMIN_EMAILS` env var) provides full CRUD over events with an Asset Library modal that uploads images via Uppy + Object Storage (`POST /api/storage/uploads/request-url`). Sign-in / sign-up at `/sign-in` and `/sign-up` (Clerk hosted components, dev keys via `VITE_CLERK_PUBLISHABLE_KEY`). Events are linked to assets through `events.image_asset_id`. Seeding script: `pnpm dlx tsx artifacts/api-server/src/scripts/seedEvents.ts` (reads `attached_assets/events_1776704614264.csv`).

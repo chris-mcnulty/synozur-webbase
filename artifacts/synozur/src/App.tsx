@@ -19,6 +19,12 @@ import Insights from "@/pages/insights";
 import Polaris from "@/pages/polaris";
 import Contact from "@/pages/contact";
 import Start from "@/pages/start";
+import Events from "@/pages/events";
+import SignInPage from "@/pages/sign-in";
+import SignUpPage from "@/pages/sign-up";
+import AdminEventsList from "@/pages/admin";
+import EventForm from "@/pages/admin/event-form";
+import { AdminGate } from "@/components/admin/AdminGate";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -43,6 +49,26 @@ function Router() {
         <Route path="/polaris" component={Polaris} />
         <Route path="/contact" component={Contact} />
         <Route path="/start" component={Start} />
+        <Route path="/events" component={Events} />
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/admin">
+          <AdminGate>
+            <AdminEventsList />
+          </AdminGate>
+        </Route>
+        <Route path="/admin/events/new">
+          <AdminGate>
+            <EventForm />
+          </AdminGate>
+        </Route>
+        <Route path="/admin/events/:id">
+          {(params) => (
+            <AdminGate>
+              <EventForm id={params.id} />
+            </AdminGate>
+          )}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

@@ -14,3 +14,200 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Returns current admin user info if authorized
+ */
+export const GetAdminMeResponse = zod.object({
+  userId: zod.string(),
+  email: zod.string(),
+  authorized: zod.boolean(),
+});
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Serve a public asset
+ */
+export const GetPublicObjectParams = zod.object({
+  filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Serve an object entity from PRIVATE_OBJECT_DIR
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
+});
+
+/**
+ * @summary List uploaded image assets
+ */
+export const ListAssetsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+});
+
+export const ListAssetsResponseItem = zod.object({
+  id: zod.number(),
+  filename: zod.string(),
+  originalName: zod.string(),
+  mimeType: zod.string(),
+  size: zod.number(),
+  storageKey: zod.string(),
+  uploadedBy: zod.string().nullish(),
+  uploadedAt: zod.coerce.date(),
+});
+export const ListAssetsResponse = zod.array(ListAssetsResponseItem);
+
+/**
+ * @summary Register a newly-uploaded asset in the library
+ */
+
+export const CreateAssetBody = zod.object({
+  originalName: zod.string().min(1),
+  mimeType: zod.string().min(1),
+  size: zod.number().min(1),
+  storageKey: zod.string().min(1),
+});
+
+/**
+ * @summary Delete an asset
+ */
+export const DeleteAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List public events
+ */
+export const ListPublicEventsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  slug: zod.string(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string().optional(),
+  eventType: zod.string().optional(),
+  status: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
+
+/**
+ * @summary List events (admin)
+ */
+export const ListAdminEventsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  slug: zod.string(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string(),
+  eventType: zod.string(),
+  status: zod.string(),
+  imageAssetId: zod.number().nullish(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+export const ListAdminEventsResponse = zod.array(ListAdminEventsResponseItem);
+
+/**
+ * @summary Create event
+ */
+
+export const CreateEventBody = zod.object({
+  title: zod.string().min(1),
+  slug: zod.string().nullish(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string().optional(),
+  eventType: zod.string().optional(),
+  status: zod.string().optional(),
+  imageAssetId: zod.number().nullish(),
+});
+
+export const GetAdminEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAdminEventResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  slug: zod.string(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string(),
+  eventType: zod.string(),
+  status: zod.string(),
+  imageAssetId: zod.number().nullish(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+
+export const UpdateEventParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateEventBody = zod.object({
+  title: zod.string().min(1),
+  slug: zod.string().nullish(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string().optional(),
+  eventType: zod.string().optional(),
+  status: zod.string().optional(),
+  imageAssetId: zod.number().nullish(),
+});
+
+export const UpdateEventResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  slug: zod.string(),
+  startDate: zod.coerce.date(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  registrationUrl: zod.string().nullish(),
+  registrationStatus: zod.string(),
+  eventType: zod.string(),
+  status: zod.string(),
+  imageAssetId: zod.number().nullish(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+
+export const DeleteEventParams = zod.object({
+  id: zod.coerce.number(),
+});
