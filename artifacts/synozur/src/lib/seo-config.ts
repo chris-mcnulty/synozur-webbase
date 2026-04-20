@@ -208,6 +208,23 @@ export function derivePageType(pathname: string): PageType {
   }
 }
 
+/**
+ * First path segments that have dedicated detail routes (/:segment/:slug).
+ * Two-segment paths whose first segment is NOT in this set (e.g.
+ * `/services-overview/default`) are hub pages, not detail pages.
+ */
+export const DETAIL_PREFIXES = new Set<string>([
+  "services",
+  "solutions",
+  "case-studies",
+  "applications",
+  "workshops",
+  "library",
+  "webinars",
+  "items",
+  "insights",
+]);
+
 /** Build the document title from a page-type config and a leaf title. */
 export function buildTitle(
   leafTitle: string,

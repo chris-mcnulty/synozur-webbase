@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import {
   DEFAULT_OG_IMAGE,
+  DETAIL_PREFIXES,
   PAGE_TYPES,
   SITE_NAME,
   SITE_ORIGIN,
@@ -62,10 +63,17 @@ function upsertLink(rel: string, href: string) {
   el.setAttribute("href", href);
 }
 
-/** A pathname is "detail" when it has a second segment under a known section. */
+/**
+ * A pathname is "detail" when it has a non-empty slug under a section prefix
+ * that is known to have detail routes. This excludes hub pages (e.g.
+ * `/services-overview/default`) and single-segment pages.
+ */
 function inferIsDetail(pathname: string): boolean {
   const segments = pathname.replace(/^\/+|\/+$/g, "").split("/");
-  return segments.length >= 2 && segments[1].length > 0;
+  if (segments.length < 2 || !segments[1] || segments[1] === "default") {
+    return false;
+  }
+  return DETAIL_PREFIXES.has(segments[0]);
 }
 
 export function Meta({
@@ -81,12 +89,22 @@ export function Meta({
   noindex,
 }: MetaProps) {
   useEffect(() => {
-    const pathname =
+    // The raw browser pathname includes the Vite/Wouter base path prefix.
+    // Strip it before classification so derivePageType / inferIsDetail receive
+    // the Wouter-relative path (e.g. "/services/my-slug" not "/subdir/services/my-slug").
+    // The full raw pathname is kept for canonical / og:url.
+    const base = (import.meta.env.BASE_URL ?? "").replace(/\/$/, "");
+    const rawPathname =
       path ?? (typeof window !== "undefined" ? window.location.pathname : "/");
-    const resolvedType: PageType = pageType ?? derivePageType(pathname);
+    const normalizedPathname =
+      base && rawPathname.startsWith(base)
+        ? rawPathname.slice(base.length) || "/"
+        : rawPathname;
+
+    const resolvedType: PageType = pageType ?? derivePageType(normalizedPathname);
     const config = PAGE_TYPES[resolvedType];
 
-    const detail = isDetail ?? inferIsDetail(pathname);
+    const detail = isDetail ?? inferIsDetail(normalizedPathname);
     const fullTitle = buildTitle(title, resolvedType, {
       isDetail: detail,
       rawTitle,
@@ -99,7 +117,7 @@ export function Meta({
 
     document.title = fullTitle;
 
-    const url = `${SITE_ORIGIN}${pathname}`;
+    const url = `${SITE_ORIGIN}${rawPathname}`;
     const absImage = resolvedImage.startsWith("http")
       ? resolvedImage
       : `${SITE_ORIGIN}${resolvedImage}`;
