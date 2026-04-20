@@ -46,6 +46,7 @@ export * from "./moderateCmsCommentBodyAction";
 export * from "./notFoundResponse";
 export * from "./post";
 export * from "./postListResponse";
+export * from "./postRevision";
 export * from "./postStatus";
 export * from "./publicComment";
 export * from "./publicEvent";

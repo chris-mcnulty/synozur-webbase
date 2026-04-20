@@ -6,6 +6,7 @@ import {
   postCategories,
   postTags,
   revisionsTable,
+  usersTable,
 } from "@workspace/db";
 import { z } from "zod";
 import { requireAuth, hasRole } from "../../middlewares/auth";
@@ -326,6 +327,143 @@ router.post("/cms/posts/:id/schedule", requireAuth, async (req, res) => {
   });
   res.json(await serializePost(updated));
 });
+
+type PostRow = typeof postsTable.$inferSelect;
+
+const RESTORABLE_FIELDS = [
+  "title",
+  "slug",
+  "subtitle",
+  "bodyHtml",
+  "bodyMarkdown",
+  "excerpt",
+  "heroImageId",
+  "ogImageId",
+  "seoTitle",
+  "seoDescription",
+  "seoCanonicalUrl",
+  "readingTimeMin",
+] as const;
+
+router.get("/cms/posts/:id/revisions", requireAuth, async (req, res) => {
+  const post = await db.query.postsTable.findFirst({
+    where: eq(postsTable.id, String(req.params.id)),
+  });
+  if (!post || post.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const user = req.authedUser!;
+  if (!canEdit(user, post)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: revisionsTable.id,
+      postId: revisionsTable.postId,
+      editedAt: revisionsTable.editedAt,
+      editedBy: revisionsTable.editedBy,
+      snapshotJson: revisionsTable.snapshotJson,
+      editorId: usersTable.id,
+      editorDisplayName: usersTable.displayName,
+      editorAvatarUrl: usersTable.avatarUrl,
+    })
+    .from(revisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, revisionsTable.editedBy))
+    .where(eq(revisionsTable.postId, post.id))
+    .orderBy(desc(revisionsTable.editedAt));
+
+  res.json(
+    rows.map((r) => {
+      const snap = (r.snapshotJson ?? {}) as Partial<PostRow>;
+      return {
+        id: r.id,
+        postId: r.postId,
+        editedAt: r.editedAt.toISOString(),
+        editor: r.editorId
+          ? {
+              id: r.editorId,
+              displayName: r.editorDisplayName ?? null,
+              avatarUrl: r.editorAvatarUrl ?? null,
+            }
+          : null,
+        snapshotTitle: snap.title ?? null,
+        snapshotExcerpt: snap.excerpt ?? null,
+      };
+    }),
+  );
+});
+
+router.post(
+  "/cms/posts/:id/revisions/:revisionId/restore",
+  requireAuth,
+  async (req, res) => {
+    const post = await db.query.postsTable.findFirst({
+      where: eq(postsTable.id, String(req.params.id)),
+    });
+    if (!post || post.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const user = req.authedUser!;
+    if (!canEdit(user, post)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const revision = await db.query.revisionsTable.findFirst({
+      where: and(
+        eq(revisionsTable.id, String(req.params.revisionId)),
+        eq(revisionsTable.postId, post.id),
+      ),
+    });
+    if (!revision) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (revision.snapshotJson ?? {}) as Partial<PostRow>;
+
+    const updates: Partial<typeof postsTable.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    for (const field of RESTORABLE_FIELDS) {
+      if (field in snap) {
+        (updates as Record<string, unknown>)[field] =
+          (snap as Record<string, unknown>)[field] ?? null;
+      }
+    }
+    if (typeof updates.slug === "string" && updates.slug !== post.slug) {
+      updates.slug = await ensureUniqueSlug(toSlug(updates.slug), post.id);
+    }
+
+    // Wrap snapshot + update in a transaction so a failure in either step
+    // does not leave the data in an inconsistent state.
+    const [updated] = await db.transaction(async (tx) => {
+      // Snapshot the current persisted state before overwriting it so the
+      // editor can roll back the restore from the revisions panel.
+      await tx.insert(revisionsTable).values({
+        postId: post.id,
+        snapshotJson: post as never,
+        editedBy: user.id,
+      });
+
+      return tx
+        .update(postsTable)
+        .set(updates)
+        .where(eq(postsTable.id, post.id))
+        .returning();
+    });
+
+    await audit({
+      actorId: user.id,
+      action: "post.revision.restore",
+      entity: "post",
+      entityId: post.id,
+      diff: { revisionId: revision.id },
+    });
+    res.json(await serializePost(updated));
+  },
+);
 
 router.post("/cms/posts/:id/archive", requireAuth, async (req, res) => {
   const user = req.authedUser!;

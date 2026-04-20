@@ -201,6 +201,15 @@ export interface UpdatePostBody {
   tagIds?: string[] | null;
 }
 
+export interface PostRevision {
+  id: string;
+  postId: string;
+  editedAt: string;
+  editor?: AuthorSummary | null;
+  snapshotTitle?: string | null;
+  snapshotExcerpt?: string | null;
+}
+
 export interface Comment {
   id: string;
   postId: string;

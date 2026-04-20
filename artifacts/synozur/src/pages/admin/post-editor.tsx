@@ -39,8 +39,12 @@ import {
   useListCmsCategories,
   useListCmsTags,
   useCreateCmsTag,
+  useListCmsPostRevisions,
+  useRestoreCmsPostRevision,
+  getListCmsPostRevisionsQueryKey,
   type CreatePostBody,
   type Post,
+  type PostRevision,
   type Tag,
   type Category,
   type MediaItem,
@@ -703,14 +707,87 @@ function formatRelative(d: Date): string {
 }
 
 function RevisionsPanel({ postId }: { postId: string }) {
-  // Lightweight: revisions endpoint isn't part of the OpenAPI spec yet,
-  // so we surface a placeholder list with a refresh hint until the API
-  // exposes them. The backend already snapshots on every update.
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data, isLoading, isError, refetch } = useListCmsPostRevisions(postId);
+  const restoreMut = useRestoreCmsPostRevision({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Revision restored" });
+        qc.invalidateQueries({ queryKey: [`/api/cms/posts/${postId}`] });
+        qc.invalidateQueries({ queryKey: getListCmsPostRevisionsQueryKey(postId) });
+        qc.invalidateQueries({ queryKey: ["/api/cms/posts"] });
+      },
+      onError: (e: Error) =>
+        toast({ title: "Restore failed", description: e.message, variant: "destructive" }),
+    },
+  });
+
+  const onRestore = (rev: PostRevision) => {
+    const when = new Date(rev.editedAt).toLocaleString();
+    if (
+      !confirm(
+        `Restore this post to the version from ${when}?\n\nThe last saved version of the current draft will be kept as a new revision entry so you can undo this. Any unsaved local changes will not be preserved — save first if you want to keep them.`,
+      )
+    ) {
+      return;
+    }
+    restoreMut.mutate({ id: postId, revisionId: rev.id });
+  };
+
+  if (isLoading) {
+    return <div className="mt-3 text-xs text-muted-foreground">Loading revisions…</div>;
+  }
+  if (isError) {
+    return (
+      <div className="mt-3 text-xs text-muted-foreground">
+        Could not load revisions.{" "}
+        <button className="underline" onClick={() => void refetch()} data-testid="revisions-retry">
+          Retry
+        </button>
+      </div>
+    );
+  }
+  const revisions = data ?? [];
+  if (revisions.length === 0) {
+    return (
+      <div className="mt-3 text-xs text-muted-foreground">
+        No revisions yet. A snapshot is recorded each time the post is saved.
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-3 text-xs text-muted-foreground">
-      Revisions are snapshotted on every save. View / restore actions become
-      available when the revisions API is exposed publicly. Post ID:{" "}
-      <span className="font-mono">{postId}</span>
-    </div>
+    <ul className="mt-3 space-y-2" data-testid="revisions-list">
+      {revisions.map((rev) => {
+        const author = rev.editor?.displayName?.trim() || "Unknown";
+        const when = new Date(rev.editedAt).toLocaleString();
+        return (
+          <li
+            key={rev.id}
+            className="flex items-start justify-between gap-3 rounded-md border border-border p-2.5 text-sm"
+            data-testid={`revision-${rev.id}`}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-medium truncate" data-testid={`revision-title-${rev.id}`}>
+                {rev.snapshotTitle?.trim() || "Untitled"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {when} · {author}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRestore(rev)}
+              disabled={restoreMut.isPending}
+              data-testid={`button-restore-${rev.id}`}
+            >
+              Restore
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

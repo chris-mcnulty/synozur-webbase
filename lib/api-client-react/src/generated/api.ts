@@ -52,6 +52,7 @@ import type {
   NotFoundResponse,
   Post,
   PostListResponse,
+  PostRevision,
   PublicComment,
   PublicEvent,
   PublicPost,
@@ -937,6 +938,194 @@ export const useArchiveCmsPost = <
   TContext
 > => {
   return useMutation(getArchiveCmsPostMutationOptions(options));
+};
+
+/**
+ * @summary List revisions for a post (most recent first)
+ */
+export const getListCmsPostRevisionsUrl = (id: string) => {
+  return `/api/cms/posts/${id}/revisions`;
+};
+
+export const listCmsPostRevisions = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PostRevision[]> => {
+  return customFetch<PostRevision[]>(getListCmsPostRevisionsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsPostRevisionsQueryKey = (id: string) => {
+  return [`/api/cms/posts/${id}/revisions`] as const;
+};
+
+export const getListCmsPostRevisionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsPostRevisions>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsPostRevisions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCmsPostRevisionsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCmsPostRevisions>>
+  > = ({ signal }) => listCmsPostRevisions(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsPostRevisions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsPostRevisionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsPostRevisions>>
+>;
+export type ListCmsPostRevisionsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary List revisions for a post (most recent first)
+ */
+
+export function useListCmsPostRevisions<
+  TData = Awaited<ReturnType<typeof listCmsPostRevisions>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsPostRevisions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsPostRevisionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Restore a post to a previous revision (snapshots current state first)
+ */
+export const getRestoreCmsPostRevisionUrl = (
+  id: string,
+  revisionId: string,
+) => {
+  return `/api/cms/posts/${id}/revisions/${revisionId}/restore`;
+};
+
+export const restoreCmsPostRevision = async (
+  id: string,
+  revisionId: string,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getRestoreCmsPostRevisionUrl(id, revisionId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreCmsPostRevisionMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreCmsPostRevision>>,
+    TError,
+    { id: string; revisionId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreCmsPostRevision>>,
+  TError,
+  { id: string; revisionId: string },
+  TContext
+> => {
+  const mutationKey = ["restoreCmsPostRevision"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreCmsPostRevision>>,
+    { id: string; revisionId: string }
+  > = (props) => {
+    const { id, revisionId } = props ?? {};
+
+    return restoreCmsPostRevision(id, revisionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreCmsPostRevisionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreCmsPostRevision>>
+>;
+
+export type RestoreCmsPostRevisionMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Restore a post to a previous revision (snapshots current state first)
+ */
+export const useRestoreCmsPostRevision = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreCmsPostRevision>>,
+    TError,
+    { id: string; revisionId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreCmsPostRevision>>,
+  TError,
+  { id: string; revisionId: string },
+  TContext
+> => {
+  return useMutation(getRestoreCmsPostRevisionMutationOptions(options));
 };
 
 export const getListCmsCategoriesUrl = () => {

@@ -408,6 +408,87 @@ export const ArchiveCmsPostResponse = zod.object({
   updatedAt: zod.coerce.date(),
 });
 
+/**
+ * @summary List revisions for a post (most recent first)
+ */
+export const ListCmsPostRevisionsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListCmsPostRevisionsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  postId: zod.string().uuid(),
+  editedAt: zod.coerce.date(),
+  editor: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .nullish(),
+  snapshotTitle: zod.string().nullish(),
+  snapshotExcerpt: zod.string().nullish(),
+});
+export const ListCmsPostRevisionsResponse = zod.array(
+  ListCmsPostRevisionsResponseItem,
+);
+
+/**
+ * @summary Restore a post to a previous revision (snapshots current state first)
+ */
+export const RestoreCmsPostRevisionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  revisionId: zod.coerce.string().uuid(),
+});
+
+export const RestoreCmsPostRevisionResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
 export const ListCmsCategoriesResponseItem = zod.object({
   id: zod.string().uuid(),
   slug: zod.string(),

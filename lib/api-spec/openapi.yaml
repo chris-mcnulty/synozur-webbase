@@ -286,6 +286,66 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /cms/posts/{id}/revisions:
+    get:
+      operationId: listCmsPostRevisions
+      tags:
+        - CMS Posts
+      summary: List revisions for a post (most recent first)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostRevision'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/posts/{id}/revisions/{revisionId}/restore:
+    post:
+      operationId: restoreCmsPostRevision
+      tags:
+        - CMS Posts
+      summary: Restore a post to a previous revision (snapshots current state first)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: revisionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Restored post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /cms/categories:
     get:
       operationId: listCmsCategories
@@ -2135,6 +2195,32 @@ components:
           items:
             type: string
             format: uuid
+    PostRevision:
+      type: object
+      required:
+        - id
+        - postId
+        - editedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        postId:
+          type: string
+          format: uuid
+        editedAt:
+          type: string
+          format: date-time
+        editor:
+          allOf:
+            - $ref: '#/components/schemas/AuthorSummary'
+          nullable: true
+        snapshotTitle:
+          type: string
+          nullable: true
+        snapshotExcerpt:
+          type: string
+          nullable: true
     Comment:
       type: object
       required:
