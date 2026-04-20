@@ -1,7 +1,7 @@
 /**
  * Seed the `wix_redirects` table with the URL patterns inherited from the
- * previous Wix site.  Idempotent: rows are upserted by `sourcePath`, and hit
- * counters are never reset.  Run with:
+ * previous Wix site. Idempotent: missing rows are inserted by `sourcePath`,
+ * existing rows are skipped, and hit counters are never reset.  Run with:
  *
  *     pnpm dlx tsx artifacts/api-server/src/scripts/seedWixRedirects.ts
  */

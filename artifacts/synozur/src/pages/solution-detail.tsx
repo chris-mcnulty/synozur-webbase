@@ -86,7 +86,7 @@ export default function SolutionDetail() {
     heroColor && isLightHex(heroColor) ? { color: heroColor } : undefined;
 
   const seoDescription =
-    sol?.seoDescription ?? stripHtml(sol?.blurbHtml) ?? sol?.blurbCopy ?? undefined;
+    sol?.seoDescription || stripHtml(sol?.blurbHtml) || sol?.blurbCopy || undefined;
   const solutionJsonLd = sol
     ? {
         "@context": "https://schema.org",

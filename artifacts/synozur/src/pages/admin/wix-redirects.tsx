@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -98,6 +105,8 @@ export default function AdminWixRedirects() {
   });
 
   const [draft, setDraft] = useState<UpsertInput>(emptyDraft());
+  const [editTarget, setEditTarget] = useState<Redirect | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<UpsertInput>>({});
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/cms/wix-redirects"] });
 
@@ -117,6 +126,7 @@ export default function AdminWixRedirects() {
       updateRedirect(id, body),
     onSuccess: () => {
       toast({ title: "Redirect updated" });
+      setEditTarget(null);
       invalidate();
     },
     onError: (e: Error) =>
@@ -132,6 +142,43 @@ export default function AdminWixRedirects() {
     onError: (e: Error) =>
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
+
+  const onEdit = (r: Redirect) => {
+    setEditDraft({
+      sourcePath: r.sourcePath,
+      targetPath: r.targetPath,
+      statusCode: r.statusCode as 301 | 302,
+      active: r.active,
+      notes: r.notes ?? "",
+    });
+    setEditTarget(r);
+  };
+
+  const onSaveEdit = () => {
+    if (!editTarget) return;
+    const sourcePath = editDraft.sourcePath?.trim() ?? "";
+    const targetPath = editDraft.targetPath?.trim() ?? "";
+    if (!sourcePath || !targetPath) {
+      toast({ title: "Source and target are required", variant: "destructive" });
+      return;
+    }
+    if (!sourcePath.startsWith("/") || !targetPath.startsWith("/")) {
+      toast({ title: "Paths must start with /", variant: "destructive" });
+      return;
+    }
+    updateMut.mutate({
+      id: editTarget.id,
+      body: {
+        sourcePath,
+        targetPath,
+        statusCode: editDraft.statusCode ?? 301,
+        active: editDraft.active ?? true,
+        notes: editDraft.notes?.trim() || null,
+      },
+    });
+  };
+
+  const items = listQ.data?.items ?? [];
 
   const onAdd = () => {
     if (!draft.sourcePath.trim() || !draft.targetPath.trim()) {
@@ -150,8 +197,6 @@ export default function AdminWixRedirects() {
       notes: draft.notes?.trim() || null,
     });
   };
-
-  const items = listQ.data?.items ?? [];
 
   return (
     <AdminLayout
@@ -229,7 +274,7 @@ export default function AdminWixRedirects() {
                 <TableHead className="w-[80px]">Code</TableHead>
                 <TableHead className="w-[80px]">Hits</TableHead>
                 <TableHead className="w-[100px]">Active</TableHead>
-                <TableHead className="w-[80px] text-right">Actions</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,6 +282,12 @@ export default function AdminWixRedirects() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-muted-foreground">
                     Loading…
+                  </TableCell>
+                </TableRow>
+              ) : listQ.isError ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-destructive">
+                    Failed to load redirects: {listQ.error?.message}
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -261,20 +312,29 @@ export default function AdminWixRedirects() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
                       {canWrite && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!confirm(`Delete redirect ${r.sourcePath} → ${r.targetPath}?`)) {
-                              return;
-                            }
-                            deleteMut.mutate(r.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEdit(r)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (!confirm(`Delete redirect ${r.sourcePath} → ${r.targetPath}?`)) {
+                                return;
+                              }
+                              deleteMut.mutate(r.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>
@@ -284,6 +344,74 @@ export default function AdminWixRedirects() {
           </Table>
         </Card>
       </div>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit redirect</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="edit-sourcePath">Old Wix path</Label>
+              <Input
+                id="edit-sourcePath"
+                value={editDraft.sourcePath ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, sourcePath: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-targetPath">New path</Label>
+              <Input
+                id="edit-targetPath"
+                value={editDraft.targetPath ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, targetPath: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-statusCode">Status</Label>
+              <select
+                id="edit-statusCode"
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={editDraft.statusCode ?? 301}
+                onChange={(e) =>
+                  setEditDraft((d) => ({
+                    ...d,
+                    statusCode: Number(e.target.value) === 302 ? 302 : 301,
+                  }))
+                }
+              >
+                <option value={301}>301 Permanent</option>
+                <option value={302}>302 Temporary</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="edit-notes">Notes (optional)</Label>
+              <Input
+                id="edit-notes"
+                value={editDraft.notes ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="edit-active"
+                checked={editDraft.active ?? true}
+                onCheckedChange={(v) => setEditDraft((d) => ({ ...d, active: v }))}
+              />
+              <Label htmlFor="edit-active">Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>
+              Cancel
+            </Button>
+            <Button onClick={onSaveEdit} disabled={updateMut.isPending}>
+              {updateMut.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

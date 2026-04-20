@@ -8,6 +8,7 @@ import { invalidateRedirectCache, normalizePath } from "../lib/wixRedirects";
 
 const router: IRouter = Router();
 
+const readGuard = [requireAuth];
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
 
 function serialize(row: WixRedirect) {
@@ -41,7 +42,7 @@ const CreateBody = z.object({
 });
 const UpdateBody = CreateBody.partial();
 
-router.get("/cms/wix-redirects", ...adminGuard, async (_req, res) => {
+router.get("/cms/wix-redirects", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(wixRedirectsTable)
