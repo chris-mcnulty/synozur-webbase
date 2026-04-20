@@ -56,7 +56,7 @@ export function Header() {
       links: [
         { label: "Webinars", href: "/" },
         { label: "White Papers", href: "/" },
-        { label: "Workshops", href: "/" },
+        { label: "Workshops", href: "/workshops" },
       ]
     }
   ];
