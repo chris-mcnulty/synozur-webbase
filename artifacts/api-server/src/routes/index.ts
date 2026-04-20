@@ -14,6 +14,7 @@ import cmsCommentsRouter from "./cms/comments";
 import cmsUsersRouter from "./cms/users";
 import siteSettingsRouter from "./siteSettings";
 import servicesRouter from "./services";
+import collateralRouter from "./collateral";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(cmsCommentsRouter);
 router.use(cmsUsersRouter);
 router.use(siteSettingsRouter);
 router.use(servicesRouter);
+router.use(collateralRouter);
 
 export default router;

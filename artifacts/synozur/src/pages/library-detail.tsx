@@ -59,9 +59,13 @@ export default function LibraryDetail() {
   useEffect(() => {
     let cancelled = false;
     if (!slug) return;
-    fetchCollateralBySlug(slug).then((res) => {
-      if (!cancelled) setItem(res);
-    });
+    fetchCollateralBySlug(slug)
+      .then((res) => {
+        if (!cancelled) setItem(res);
+      })
+      .catch(() => {
+        if (!cancelled) setItem(null);
+      });
     return () => {
       cancelled = true;
     };

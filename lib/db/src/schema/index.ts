@@ -9,3 +9,4 @@ export * from "./comments";
 export * from "./auditLog";
 export * from "./siteSettings";
 export * from "./services";
+export * from "./collateral";

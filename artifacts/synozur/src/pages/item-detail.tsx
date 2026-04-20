@@ -13,9 +13,13 @@ export default function ItemDetail() {
   useEffect(() => {
     let cancelled = false;
     if (!slug) return;
-    fetchCollateralBySlug(slug).then((res) => {
-      if (!cancelled) setItem(res && res.type === "white_paper" ? res : null);
-    });
+    fetchCollateralBySlug(slug)
+      .then((res) => {
+        if (!cancelled) setItem(res && res.type === "white_paper" ? res : null);
+      })
+      .catch(() => {
+        if (!cancelled) setItem(null);
+      });
     return () => {
       cancelled = true;
     };
