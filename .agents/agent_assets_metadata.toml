@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "Yu-dBHMAzoO2RnrzOkDLa"
@@ -276,3 +275,9 @@ id = "JTj36mGYJoXD-4KWBRJpI"
 uri = "file://attached_assets/generated_images/go-to-market-proxy-pitch-assessment-sample-3.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "9geBfNj3OBCTpdLhPec3Q"
+uri = "file://backlog.md"
+type = "text"
+title = "Synozur Alliance — Product Backlog"
