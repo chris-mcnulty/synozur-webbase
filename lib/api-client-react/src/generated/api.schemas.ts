@@ -806,6 +806,85 @@ export interface UpsertMethodologyBody {
   hidden?: boolean;
 }
 
+export type CollateralType =
+  (typeof CollateralType)[keyof typeof CollateralType];
+
+export const CollateralType = {
+  webinar: "webinar",
+  white_paper: "white_paper",
+  case_study: "case_study",
+  podcast: "podcast",
+  model: "model",
+  training: "training",
+  event: "event",
+  insight: "insight",
+} as const;
+
+export type CollateralPillar =
+  (typeof CollateralPillar)[keyof typeof CollateralPillar];
+
+export const CollateralPillar = {
+  strategic: "strategic",
+  technology: "technology",
+  experiences: "experiences",
+  gtm: "gtm",
+} as const;
+
+export interface CollateralItem {
+  id: string;
+  slug: string;
+  type: CollateralType;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  description: string;
+  heroImage: string;
+  pillar?: CollateralPillar | null;
+  tags: string[];
+  url: string;
+  external: boolean;
+  publishedAt: string;
+  featured: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
+  /** @nullable */
+  videoUrl?: string | null;
+  /** @nullable */
+  downloadUrl?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollateralItemsResponse {
+  items: CollateralItem[];
+}
+
+export interface UpsertCollateralBody {
+  /** @nullable */
+  slug?: string | null;
+  type: CollateralType;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  description?: string;
+  heroImage?: string;
+  pillar?: CollateralPillar | null;
+  tags?: string[];
+  url?: string;
+  external?: boolean;
+  /** @nullable */
+  publishedAt?: string | null;
+  featured?: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
+  /** @nullable */
+  videoUrl?: string | null;
+  /** @nullable */
+  downloadUrl?: string | null;
+  active?: boolean;
+}
+
 export interface UpsertCapabilityBody {
   solutionId: string;
   title: string;

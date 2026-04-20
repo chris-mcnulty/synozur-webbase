@@ -48,6 +48,8 @@ import SolutionEdit from "@/pages/admin/solution-edit";
 import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
 import AdminTeamList from "@/pages/admin/team-list";
 import TeamForm from "@/pages/admin/team-form";
+import AdminCollateralList from "@/pages/admin/collateral-list";
+import CollateralEdit from "@/pages/admin/collateral-edit";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -97,6 +99,13 @@ function AdminRoutes() {
         </Route>
         <Route path="/solutions/:id/capabilities">
           {(params) => <SolutionCapabilitiesPage id={params.id} />}
+        </Route>
+        <Route path="/collateral" component={AdminCollateralList} />
+        <Route path="/collateral/new">
+          <CollateralEdit />
+        </Route>
+        <Route path="/collateral/:id/edit">
+          {(params) => <CollateralEdit id={params.id} />}
         </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/events" component={AdminEventsList} />

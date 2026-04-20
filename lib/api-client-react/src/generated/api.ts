@@ -28,6 +28,8 @@ import type {
   CapabilityItemsResponse,
   Category,
   CmsUser,
+  CollateralItem,
+  CollateralItemsResponse,
   Comment,
   CommentListResponse,
   ContactFormInput,
@@ -85,6 +87,7 @@ import type {
   UpdatePostBody,
   UpsertCapabilityBody,
   UpsertCategoryBody,
+  UpsertCollateralBody,
   UpsertMethodologyBody,
   UpsertServiceBody,
   UpsertSolutionBody,
@@ -3227,6 +3230,395 @@ export function useGetSolution<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getCmsListCollateralUrl = () => {
+  return `/api/cms/collateral`;
+};
+
+export const cmsListCollateral = async (
+  options?: RequestInit,
+): Promise<CollateralItemsResponse> => {
+  return customFetch<CollateralItemsResponse>(getCmsListCollateralUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsListCollateralQueryKey = () => {
+  return [`/api/cms/collateral`] as const;
+};
+
+export const getCmsListCollateralQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListCollateral>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateral>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCmsListCollateralQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListCollateral>>
+  > = ({ signal }) => cmsListCollateral({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateral>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListCollateralQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListCollateral>>
+>;
+export type CmsListCollateralQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+export function useCmsListCollateral<
+  TData = Awaited<ReturnType<typeof cmsListCollateral>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateral>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListCollateralQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateCollateralUrl = () => {
+  return `/api/cms/collateral`;
+};
+
+export const cmsCreateCollateral = async (
+  upsertCollateralBody: UpsertCollateralBody,
+  options?: RequestInit,
+): Promise<CollateralItem> => {
+  return customFetch<CollateralItem>(getCmsCreateCollateralUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCollateralBody),
+  });
+};
+
+export const getCmsCreateCollateralMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCollateral>>,
+    TError,
+    { data: BodyType<UpsertCollateralBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateCollateral>>,
+  TError,
+  { data: BodyType<UpsertCollateralBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateCollateral>>,
+    { data: BodyType<UpsertCollateralBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsCreateCollateral(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateCollateral>>
+>;
+export type CmsCreateCollateralMutationBody = BodyType<UpsertCollateralBody>;
+export type CmsCreateCollateralMutationError = ErrorType<BadRequestResponse>;
+
+export const useCmsCreateCollateral = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCollateral>>,
+    TError,
+    { data: BodyType<UpsertCollateralBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateCollateral>>,
+  TError,
+  { data: BodyType<UpsertCollateralBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateCollateralMutationOptions(options));
+};
+
+export const getCmsGetCollateralUrl = (id: string) => {
+  return `/api/cms/collateral/${id}`;
+};
+
+export const cmsGetCollateral = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CollateralItem> => {
+  return customFetch<CollateralItem>(getCmsGetCollateralUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsGetCollateralQueryKey = (id: string) => {
+  return [`/api/cms/collateral/${id}`] as const;
+};
+
+export const getCmsGetCollateralQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsGetCollateral>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCmsGetCollateralQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsGetCollateral>>
+  > = ({ signal }) => cmsGetCollateral(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsGetCollateral>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsGetCollateralQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsGetCollateral>>
+>;
+export type CmsGetCollateralQueryError = ErrorType<NotFoundResponse>;
+
+export function useCmsGetCollateral<
+  TData = Awaited<ReturnType<typeof cmsGetCollateral>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsGetCollateralQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsUpdateCollateralUrl = (id: string) => {
+  return `/api/cms/collateral/${id}`;
+};
+
+export const cmsUpdateCollateral = async (
+  id: string,
+  upsertCollateralBody: UpsertCollateralBody,
+  options?: RequestInit,
+): Promise<CollateralItem> => {
+  return customFetch<CollateralItem>(getCmsUpdateCollateralUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCollateralBody),
+  });
+};
+
+export const getCmsUpdateCollateralMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCollateral>>,
+    TError,
+    { id: string; data: BodyType<UpsertCollateralBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateCollateral>>,
+  TError,
+  { id: string; data: BodyType<UpsertCollateralBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateCollateral>>,
+    { id: string; data: BodyType<UpsertCollateralBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsUpdateCollateral(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateCollateral>>
+>;
+export type CmsUpdateCollateralMutationBody = BodyType<UpsertCollateralBody>;
+export type CmsUpdateCollateralMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateCollateral = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCollateral>>,
+    TError,
+    { id: string; data: BodyType<UpsertCollateralBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateCollateral>>,
+  TError,
+  { id: string; data: BodyType<UpsertCollateralBody> },
+  TContext
+> => {
+  return useMutation(getCmsUpdateCollateralMutationOptions(options));
+};
+
+export const getCmsDeleteCollateralUrl = (id: string) => {
+  return `/api/cms/collateral/${id}`;
+};
+
+export const cmsDeleteCollateral = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteCollateralUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteCollateralMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteCollateral>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cmsDeleteCollateral(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteCollateral>>
+>;
+
+export type CmsDeleteCollateralMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteCollateral = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteCollateralMutationOptions(options));
+};
 
 export const getCmsListServicesUrl = () => {
   return `/api/cms/services`;

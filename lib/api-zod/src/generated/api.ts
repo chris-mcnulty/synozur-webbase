@@ -1098,6 +1098,196 @@ export const GetSolutionResponse = zod
     }),
   );
 
+export const CmsListCollateralResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      type: zod.enum([
+        "webinar",
+        "white_paper",
+        "case_study",
+        "podcast",
+        "model",
+        "training",
+        "event",
+        "insight",
+      ]),
+      title: zod.string(),
+      subtitle: zod.string().nullish(),
+      description: zod.string(),
+      heroImage: zod.string(),
+      pillar: zod
+        .union([
+          zod.enum(["strategic", "technology", "experiences", "gtm"]),
+          zod.null(),
+        ])
+        .optional(),
+      tags: zod.array(zod.string()),
+      url: zod.string(),
+      external: zod.boolean(),
+      publishedAt: zod.string(),
+      featured: zod.boolean(),
+      featuredRank: zod.number().nullish(),
+      videoUrl: zod.string().nullish(),
+      downloadUrl: zod.string().nullish(),
+      active: zod.boolean(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const CmsCreateCollateralBody = zod.object({
+  slug: zod.string().nullish(),
+  type: zod.enum([
+    "webinar",
+    "white_paper",
+    "case_study",
+    "podcast",
+    "model",
+    "training",
+    "event",
+    "insight",
+  ]),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  description: zod.string().optional(),
+  heroImage: zod.string().optional(),
+  pillar: zod
+    .union([
+      zod.enum(["strategic", "technology", "experiences", "gtm"]),
+      zod.null(),
+    ])
+    .optional(),
+  tags: zod.array(zod.string()).optional(),
+  url: zod.string().optional(),
+  external: zod.boolean().optional(),
+  publishedAt: zod.string().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
+  videoUrl: zod.string().nullish(),
+  downloadUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsGetCollateralParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsGetCollateralResponse = zod.object({
+  id: zod.string(),
+  slug: zod.string(),
+  type: zod.enum([
+    "webinar",
+    "white_paper",
+    "case_study",
+    "podcast",
+    "model",
+    "training",
+    "event",
+    "insight",
+  ]),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  description: zod.string(),
+  heroImage: zod.string(),
+  pillar: zod
+    .union([
+      zod.enum(["strategic", "technology", "experiences", "gtm"]),
+      zod.null(),
+    ])
+    .optional(),
+  tags: zod.array(zod.string()),
+  url: zod.string(),
+  external: zod.boolean(),
+  publishedAt: zod.string(),
+  featured: zod.boolean(),
+  featuredRank: zod.number().nullish(),
+  videoUrl: zod.string().nullish(),
+  downloadUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsUpdateCollateralParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsUpdateCollateralBody = zod.object({
+  slug: zod.string().nullish(),
+  type: zod.enum([
+    "webinar",
+    "white_paper",
+    "case_study",
+    "podcast",
+    "model",
+    "training",
+    "event",
+    "insight",
+  ]),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  description: zod.string().optional(),
+  heroImage: zod.string().optional(),
+  pillar: zod
+    .union([
+      zod.enum(["strategic", "technology", "experiences", "gtm"]),
+      zod.null(),
+    ])
+    .optional(),
+  tags: zod.array(zod.string()).optional(),
+  url: zod.string().optional(),
+  external: zod.boolean().optional(),
+  publishedAt: zod.string().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
+  videoUrl: zod.string().nullish(),
+  downloadUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsUpdateCollateralResponse = zod.object({
+  id: zod.string(),
+  slug: zod.string(),
+  type: zod.enum([
+    "webinar",
+    "white_paper",
+    "case_study",
+    "podcast",
+    "model",
+    "training",
+    "event",
+    "insight",
+  ]),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  description: zod.string(),
+  heroImage: zod.string(),
+  pillar: zod
+    .union([
+      zod.enum(["strategic", "technology", "experiences", "gtm"]),
+      zod.null(),
+    ])
+    .optional(),
+  tags: zod.array(zod.string()),
+  url: zod.string(),
+  external: zod.boolean(),
+  publishedAt: zod.string(),
+  featured: zod.boolean(),
+  featuredRank: zod.number().nullish(),
+  videoUrl: zod.string().nullish(),
+  downloadUrl: zod.string().nullish(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsDeleteCollateralParams = zod.object({
+  id: zod.coerce.string(),
+});
+
 export const CmsListServicesResponse = zod.object({
   items: zod.array(
     zod.object({

@@ -41,6 +41,8 @@ tags:
     description: Admin service, solution, methodology and capability management.
   - name: Team
     description: Team member roster (public + admin).
+  - name: CmsCollateral
+    description: Admin endpoints for managing collateral library items.
 paths:
   /healthz:
     get:
@@ -952,6 +954,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SolutionDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral:
+    get:
+      operationId: cmsListCollateral
+      tags:
+        - CmsCollateral
+      responses:
+        '200':
+          description: All non-deleted collateral items (incl. inactive)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralItemsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: cmsCreateCollateral
+      tags:
+        - CmsCollateral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCollateralBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /cms/collateral/{id}:
+    get:
+      operationId: cmsGetCollateral
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collateral item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: cmsUpdateCollateral
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCollateralBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteCollateral
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
   /cms/services:
@@ -3556,6 +3653,155 @@ components:
         hidden:
           type: boolean
 
+    CollateralType:
+      type: string
+      enum:
+        - webinar
+        - white_paper
+        - case_study
+        - podcast
+        - model
+        - training
+        - event
+        - insight
+    CollateralPillar:
+      type: string
+      enum:
+        - strategic
+        - technology
+        - experiences
+        - gtm
+    CollateralItem:
+      type: object
+      required:
+        - id
+        - slug
+        - type
+        - title
+        - description
+        - heroImage
+        - tags
+        - url
+        - external
+        - publishedAt
+        - featured
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        type:
+          $ref: '#/components/schemas/CollateralType'
+        title:
+          type: string
+        subtitle:
+          type:
+            - string
+            - 'null'
+        description:
+          type: string
+        heroImage:
+          type: string
+        pillar:
+          oneOf:
+            - $ref: '#/components/schemas/CollateralPillar'
+            - type: 'null'
+        tags:
+          type: array
+          items:
+            type: string
+        url:
+          type: string
+        external:
+          type: boolean
+        publishedAt:
+          type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        videoUrl:
+          type:
+            - string
+            - 'null'
+        downloadUrl:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    CollateralItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralItem'
+    UpsertCollateralBody:
+      type: object
+      required:
+        - type
+        - title
+      properties:
+        slug:
+          type:
+            - string
+            - 'null'
+        type:
+          $ref: '#/components/schemas/CollateralType'
+        title:
+          type: string
+        subtitle:
+          type:
+            - string
+            - 'null'
+        description:
+          type: string
+        heroImage:
+          type: string
+        pillar:
+          oneOf:
+            - $ref: '#/components/schemas/CollateralPillar'
+            - type: 'null'
+        tags:
+          type: array
+          items:
+            type: string
+        url:
+          type: string
+        external:
+          type: boolean
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        videoUrl:
+          type:
+            - string
+            - 'null'
+        downloadUrl:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
     UpsertCapabilityBody:
       type: object
       required:

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Compass,
   Layers,
+  Library as LibraryIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -70,6 +71,13 @@ const NAV: NavItem[] = [
     icon: Layers,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-solutions",
+  },
+  {
+    href: "/admin/collateral",
+    label: "Library",
+    icon: LibraryIcon,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-collateral",
   },
   {
     href: "/admin/comments",
