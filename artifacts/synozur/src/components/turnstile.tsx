@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const SCRIPT_ID = "cf-turnstile-script";
@@ -50,13 +50,28 @@ function loadTurnstileScript(): Promise<void> {
 
 export const TURNSTILE_SITE_KEY: string | undefined = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
+const BOT_CHECK_ERROR_MARKER = "Bot check failed";
+
+export function isBotCheckError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes(BOT_CHECK_ERROR_MARKER);
+}
+
+export interface TurnstileHandle {
+  reset: () => void;
+}
+
 export interface TurnstileProps {
   onVerify: (token: string | null) => void;
   theme?: "light" | "dark" | "auto";
   className?: string;
 }
 
-export function Turnstile({ onVerify, theme = "auto", className }: TurnstileProps) {
+export const Turnstile = forwardRef<TurnstileHandle, TurnstileProps>(function Turnstile(
+  { onVerify, theme = "auto", className },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const onVerifyRef = useRef(onVerify);
@@ -65,6 +80,26 @@ export function Turnstile({ onVerify, theme = "auto", className }: TurnstileProp
   useEffect(() => {
     onVerifyRef.current = onVerify;
   }, [onVerify]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      reset: () => {
+        if (typeof window === "undefined" || !window.turnstile) return;
+        try {
+          if (widgetIdRef.current) {
+            window.turnstile.reset(widgetIdRef.current);
+          } else {
+            window.turnstile.reset();
+          }
+        } catch {
+          /* ignore */
+        }
+        onVerifyRef.current(null);
+      },
+    }),
+    [],
+  );
 
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return;
@@ -98,4 +133,4 @@ export function Turnstile({ onVerify, theme = "auto", className }: TurnstileProp
 
   if (!TURNSTILE_SITE_KEY) return null;
   return <div ref={containerRef} id={`cf-turnstile-${id}`} className={className} />;
-}
+});

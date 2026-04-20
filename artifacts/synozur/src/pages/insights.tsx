@@ -1,18 +1,25 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/turnstile";
+import {
+  Turnstile,
+  TURNSTILE_SITE_KEY,
+  isBotCheckError,
+  type TurnstileHandle,
+} from "@/components/turnstile";
+import { BotCheckCallout } from "@/components/bot-check-callout";
 
 function InsightsSubscribeForm() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error" | "bot-check-failed">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +36,13 @@ function InsightsSubscribeForm() {
       setStatus("success");
       setEmail("");
     } catch (err) {
+      if (isBotCheckError(err)) {
+        setStatus("bot-check-failed");
+        setErrorMessage(null);
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+        return;
+      }
       setStatus("error");
       setErrorMessage(
         err instanceof Error ? err.message : "Could not subscribe. Please try again.",
@@ -76,7 +90,8 @@ function InsightsSubscribeForm() {
           {status === "submitting" ? "Subscribing..." : "Subscribe"}
         </Button>
       </div>
-      <Turnstile onVerify={setTurnstileToken} />
+      <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+      {status === "bot-check-failed" && <BotCheckCallout className="max-w-md text-left" />}
       {status === "error" && errorMessage && (
         <p className="text-sm text-destructive" role="alert">
           {errorMessage}

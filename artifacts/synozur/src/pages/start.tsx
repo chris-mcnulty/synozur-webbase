@@ -1,6 +1,6 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,7 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/turnstile";
+import {
+  Turnstile,
+  TURNSTILE_SITE_KEY,
+  isBotCheckError,
+  type TurnstileHandle,
+} from "@/components/turnstile";
+import { BotCheckCallout } from "@/components/bot-check-callout";
 
 const schema = z.object({
   name: z.string().min(2, "Your name, please"),
@@ -45,7 +51,9 @@ const budgets: FormData["budget"][] = ["< $250k", "$250k – $1M", "$1M – $5M"
 export default function Start() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [botCheckFailed, setBotCheckFailed] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const {
     register,
     handleSubmit,
@@ -57,6 +65,7 @@ export default function Start() {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
+    setBotCheckFailed(false);
     if (TURNSTILE_SITE_KEY && !turnstileToken) {
       setSubmitError("Please complete the bot check before sending.");
       return;
@@ -76,6 +85,12 @@ export default function Start() {
       });
       setSubmitted(true);
     } catch (err) {
+      if (isBotCheckError(err)) {
+        setBotCheckFailed(true);
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+        return;
+      }
       setSubmitError(
         err instanceof Error
           ? err.message
@@ -222,7 +237,8 @@ export default function Start() {
                 className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
                 {...register("website")}
               />
-              <Turnstile onVerify={setTurnstileToken} />
+              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+              {botCheckFailed && <BotCheckCallout />}
               {submitError && (
                 <p className="text-sm text-destructive" role="alert">
                   {submitError}
