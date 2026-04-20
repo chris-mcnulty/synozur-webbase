@@ -42,7 +42,7 @@ export const caseStudies: CaseStudy[] = [
     headline: "$0.5M–$1.0M annual productivity cost avoidance",
     summary:
       "Reinvented the annual planning offsite for a Microsoft Modern Work product marketing group — installing OKRs, an operating cadence, and a working management framework that became the team's playbook for the year.",
-    heroImage: "/images/case-study-microsoft.jpg",
+    heroImage: "/images/case-studies/microsoft.jpg",
     challenge: {
       heading: "The challenge",
       body: [
@@ -120,7 +120,7 @@ export const caseStudies: CaseStudy[] = [
     headline: "$0.6M–$1.3M cost savings, $0.5M–$1.5M+ revenue enablement",
     summary:
       "A founder-led North American luxury skincare manufacturer had outgrown its original operating rhythm. Synozur installed a Company Operating System that scaled with the business — and rebuilt the leadership bench to run it.",
-    heroImage: "/images/case-study-luxury.jpg",
+    heroImage: "/images/case-studies/luxury.jpg",
     challenge: {
       heading: "The challenge",
       body: [
@@ -186,7 +186,7 @@ export const caseStudies: CaseStudy[] = [
     headline: "$2.0M–$6.0M annual productivity gains across 12,000+ employees",
     summary:
       "A North American energy company facing engagement and communication problems across a 12,000+ employee workforce engaged Synozur to rebuild its employee experience — anchored in journey mapping, personalization, and a Minimum Lovable Product approach.",
-    heroImage: "/images/case-study-energy.jpg",
+    heroImage: "/images/case-studies/energy.jpg",
     challenge: {
       heading: "The challenge",
       body: [
@@ -244,226 +244,386 @@ export const caseStudies: CaseStudy[] = [
     },
   },
   {
-    slug: "scaling-copilot-adoption-at-a-global-bank",
-    title: "Scaling Copilot adoption at a global bank",
-    client: "Global Financial Services Firm",
-    clientLabel: "Global Bank (NDA)",
-    industry: "Financial Services",
-    established: "1869",
-    tag: "AI Adoption",
-    headline: "11x ROI on Copilot licenses within two quarters",
+    slug: "ai-and-knowledge-transformation-at-a-strategic-communications-firm",
+    title: "AI and Knowledge Transformation at a Strategic Communications Firm",
+    client: "North American Communications Agency",
+    clientLabel: "North American Communications Agency",
+    industry: "Professional Services",
+    established: "2019",
+    tag: "AI",
+    headline: "A fast‑growing strategic communications firm partnered with Synozur to define an AI strategy and modernize …",
     summary:
-      "A top-ten global bank had purchased Microsoft 365 Copilot at scale but adoption was stalled at under 20%. Synozur built the change program, measurement model, and use-case catalog that turned a stalled rollout into a measurable productivity win across 18,000 knowledge workers.",
-    heroImage: "/images/case-study-financial-ai.png",
+      "A fast‑growing strategic communications firm partnered with Synozur to define an AI strategy and modernize knowledge workflows—without disrupting creative teams or compromising trust with clients. The goal was not AI for AI’s sake, but a people‑first approach that made work easier, faster, and more consistent.",
+    heroImage: "/images/case-studies/strategic-comms.jpg",
     challenge: {
       heading: "The challenge",
       body: [
-        "The bank had pre-purchased tens of thousands of Copilot licenses ahead of a board-level commitment to AI productivity. Six months in, weekly active use sat below 20%, value stories were anecdotal, and risk and compliance teams had quietly paused expansion to several business units.",
-        "The CIO needed a defensible adoption plan, a way to measure dollars-and-hours impact, and a path through the firm's model-risk and data-handling controls — without slowing the business units that were already seeing wins.",
-      ],
-      bullets: [
-        "Licenses deployed but largely unused — finance was beginning to question the spend.",
-        "No shared definition of \"good\" adoption beyond raw login counts.",
-        "Risk, legal, and HR each had separate, conflicting guidance for employees.",
+        "As the firm scaled, leaders saw increasing friction across content creation, research, and internal knowledge sharing. Teams were spending too much time searching for information, recreating work, and navigating disconnected tools. At the same time, leadership wanted to explore AI—but responsibly, with clear governance and adoption in mind.",
+        "The firm recognized that long‑term growth depended on enabling its people with better tools, clearer guidance, and shared confidence in how AI would be used across the organization.",
+        "Operating in a high‑trust, client‑facing environment, the organization needed to balance innovation with credibility, governance, and cultural fit.",
+        "Create a clear, business‑aligned AI strategy while strengthening knowledge management and collaboration—ensuring AI enhanced human expertise rather than replacing it.",
       ],
     },
     approach: [
       {
-        heading: "1. Diagnose the real blockers",
+        heading: "Our approach",
         body: [
-          "Synozur ran a two-week diagnostic combining Microsoft 365 usage telemetry, structured interviews with 40 users across six business units, and a review of the existing governance posture.",
+          "Synozur began by listening—working closely with firm leadership to understand how people actually worked day to day. We then guided the organization through an AI Academy experience, paired with a Microsoft 365 enablement strategy, focused on real workflows and real outcomes.",
+          "Our work included:",
+          "Throughout the engagement, we emphasized a human‑centric, tailored approach, ensuring every recommendation fit the firm’s culture and pace.",
         ],
         bullets: [
-          "Mapped where Copilot was actually creating value vs. where it was being abandoned after one or two tries.",
-          "Surfaced the top five frictions — prompt literacy, data sensitivity confusion, app fragmentation, manager skepticism, and time-to-first-win.",
-          "Quantified a baseline of hours-per-week spent on the tasks Copilot was best positioned to absorb.",
-        ],
-      },
-      {
-        heading: "2. Build a use-case catalog by role",
-        body: [
-          "Rather than horizontal training, Synozur co-designed a catalog of 60+ role-specific use cases — relationship managers, credit analysts, operations leads, internal audit, and HR business partners each got a curated set with prompts, sample inputs, and expected outputs.",
-        ],
-        bullets: [
-          "Each use case shipped with a time-saved estimate and a risk classification.",
-          "\"Lighthouse\" use cases were piloted with named teams for two-week sprints.",
-          "Wins were captured as short video clips and circulated weekly inside each business unit.",
-        ],
-      },
-      {
-        heading: "3. Reset governance with one front door",
-        body: [
-          "Synozur facilitated a cross-functional working group with risk, legal, HR, and security to consolidate guidance into a single, plain-language playbook — and a single intake for new use cases that previously bounced between three teams for weeks.",
-        ],
-      },
-      {
-        heading: "4. Measure in dollars, not logins",
-        body: [
-          "Synozur built a value model that converted telemetry, time-saved estimates, and a quarterly user survey into a single dashboard the CIO could share with the board. The model was deliberately conservative — finance signed off on the methodology before the first reporting cycle.",
+          "Establishing an AI governance model aligned to firm values and client trust",
+          "Designing practical AI use cases for research, drafting, and knowledge discovery",
+          "Modernizing collaboration and knowledge management using Microsoft 365",
+          "Building confidence and adoption through targeted training and leadership alignment",
         ],
       },
     ],
     outcome: {
       heading: "The outcome",
       body: [
-        "Within two quarters, weekly active Copilot use crossed 70% in the targeted business units, and the value model passed independent review by the bank's internal audit function. The board-level AI productivity commitment moved from \"at risk\" to \"on track,\" and the program was extended to an additional 22,000 employees.",
+        "With a clear strategy and trusted governance in place, the firm is now positioned to innovate responsibly—using AI to enhance creativity, not compromise it.",
       ],
       bullets: [
-        "Single governance playbook replaced six conflicting documents.",
-        "60+ role-specific use cases with measurable time-saved estimates.",
-        "Audit-reviewed value model adopted as the firm-wide standard for AI productivity reporting.",
+        "Clear AI strategy grounded in real business needs",
+        "Improved knowledge sharing and reduced duplicate work",
+        "Increased team confidence using AI responsibly",
+        "A scalable foundation for continued innovation",
       ],
     },
     metrics: [
-      { label: "ROI on Copilot licenses (two quarters)", value: "11x" },
-      { label: "Weekly active use, target units", value: "<20% → 70%+" },
-      { label: "Knowledge workers in scope", value: "18,000" },
     ],
     quote: {
-      text: "Synozur turned a stalled rollout into something the board could actually point to. The value model is what made the difference — once finance trusted the number, every other conversation got easier.",
-      attribution: "Chief Information Officer, Global Financial Services Firm",
+      text: "Synozur helped us move past the hype and focus on what actually matters—our people, our work, and our clients. AI now feels like a support system, not a distraction.",
+      attribution: "Senior Partner",
     },
   },
   {
-    slug: "modernizing-clinical-collaboration-at-a-health-system",
-    title: "Modernizing clinical collaboration at a health system",
-    client: "Regional U.S. Health System",
-    clientLabel: "U.S. Health System (NDA)",
-    industry: "Healthcare",
-    established: "1947",
-    tag: "Digital Transformation",
-    headline: "42 minutes saved per clinician per shift",
+    slug: "ai-transformation-at-a-private-equity-portfolio-company",
+    title: "AI Transformation at a Private Equity Portfolio Company",
+    client: "Financial Services",
+    clientLabel: "Financial Services",
+    industry: "Private Equity",
+    established: "1998",
+    tag: "Technology",
+    headline: "40% measured improvement",
     summary:
-      "A multi-hospital U.S. health system was drowning in pagers, group texts, and three competing collaboration tools. Synozur led the strategy, governance, and clinician-led design that consolidated communication onto a single secure platform — and gave time back to the people at the bedside.",
-    heroImage: "/images/case-study-healthcare.png",
+      "A financial‑services portfolio company of a leading private equity firm engaged Synozur to shift from scattered AI experiments to governed, measurable outcomes at enterprise scale. Building on patterns we’ve proven in similar programs, we turned real documents and workflows into a prioritized use‑case backlog, stood up a practical governance model, and upskilled leaders and makers through a multi‑tool curriculum. At‑a‑glance The challenge: Pilots in silos, uneven skills, unclear guardrails, hard‑to‑measure value. What we did: Converted authentic scenarios into high‑value use cases; launched role‑based skilling; operationalized governance for safe, compliant adoption. Why it worked: Real work > demo theater, with measurable outcomes, reusable prompt libraries, and oversight rituals embedded in day‑to‑day operations. Early impact: Faster time from idea to production, higher adoption across business lines, and increased confidence from risk/legal/security.",
+    heroImage: "/images/case-studies/pe-portfolio.jpg",
     challenge: {
       heading: "The challenge",
       body: [
-        "A regional health system with 11 hospitals and more than 6,000 clinicians had accumulated three overlapping clinical collaboration tools, an aging paging system, and a long tail of unsanctioned consumer messaging apps used at the bedside. Care teams routinely re-entered the same information in three places, and the CMIO had open complaints about message fatigue and missed handoffs.",
-        "An attempt to standardize a year earlier had failed when clinicians rejected the chosen tool as \"built for office workers, not for us.\"",
+        "A financial services portfolio company of a leading private equity firm faced a familiar challenge: AI pilots were scattered across teams, with no clear governance, skilling strategy, or roadmap for scaling. While leadership recognized AI’s potential, the organization lacked a unified approach to turn experimentation into measurable enterprise value.",
+        "Synozur helped a private equity portfolio company in financial services move from fragmented AI pilots to a governed, enterprise-wide adoption program—drawing on proven strategies from our prior engagements.",
+        "Synozur was engaged to design and deliver a comprehensive AI adoption program. Drawing on lessons from prior engagements, we combined deep industry knowledge with proven enablement strategies to accelerate adoption while mitigating risk.",
+        "The company needed to:",
+      ],
+      bullets: [
+        "Identify and prioritize high-value AI use cases grounded in real business scenarios.",
+        "Build a governance framework to ensure safe, compliant, and consistent AI adoption.",
+        "Equip employees—from executives to frontline staff—with the skills and confidence to use AI effectively.",
       ],
     },
     approach: [
       {
-        heading: "Clinician-led discovery",
+        heading: "Our approach",
         body: [
-          "Synozur ran shadow shifts with nurses, hospitalists, and care coordinators across three hospitals — capturing every interruption, every tool switch, and every workaround. The output was a single map of the clinical day that became the reference point for every later decision.",
-        ],
-      },
-      {
-        heading: "A platform decision the clinicians owned",
-        body: [
-          "Rather than running a traditional vendor bake-off in IT, Synozur facilitated a clinician selection panel against a weighted scorecard the panel itself authored. The same panel set the rules for what would and would not move to the new platform.",
+          "Our approach unfolded in three integrated phases:",
+          "Discovery",
+          "Development",
+          "Deployment",
         ],
         bullets: [
-          "Weighted scorecard owned by clinicians, scored in the open.",
-          "Explicit list of workflows that would stay on existing systems — and why.",
-          "A 90-day \"no new tools\" commitment from IT to rebuild trust.",
-        ],
-      },
-      {
-        heading: "Governance, identity, and the on-call problem",
-        body: [
-          "Synozur designed the governance model — naming conventions, lifecycle, on-call routing, and the integration with the EHR's secure messaging — and worked with the identity team to make role-based on-call lookup work the same way at every hospital.",
-        ],
-      },
-      {
-        heading: "Rollout by service line, not by hospital",
-        body: [
-          "Deployment moved service line by service line, with a peer champion in each unit, a two-week hyper-care window, and a weekly retro that fed directly into the governance backlog. The pager system was retired only after each service line confirmed it was ready.",
+          "Conducted workshops with leadership and operational teams to surface authentic scenarios and documentation (claims notes, customer communications, policy language).",
+          "Assessed organizational readiness and risk posture to inform governance design.",
+          "Built a prioritized use-case backlog mapped to business outcomes.",
+          "Designed a role-based skilling program for executives, managers, and makers, incorporating hands-on labs and oversight prompts.",
+          "Established governance guardrails for data security, compliance, and responsible AI use.",
+          "Delivered a multi-tool curriculum spanning productivity copilots, research assistants, and low-code automation platforms.",
+          "Embedded reusable prompt libraries, safe-use checklists, and oversight frameworks into daily workflows.",
+          "Facilitated adoption metrics and ROI tracking to sustain momentum.",
         ],
       },
     ],
     outcome: {
       heading: "The outcome",
       body: [
-        "Within nine months, the health system had retired one redundant collaboration platform, sunset its pager contract at eight of eleven hospitals, and reduced the number of tools clinicians touched in a typical shift from five to two.",
+        "Estimated $250K–$500K annual cost savings and $500K–$1.0M+ EBITDA uplift, driven by faster decision‑making, reduced duplicated analysis, and improved execution discipline across leadership and operations.",
+        "This engagement proved that sustainable AI value comes from three disciplines, executed together: authentic use cases, a right‑sized governance framework, and an inclusive, role‑based skilling program. By grounding AI in the client’s actual documents and processes—and giving teams the tools, language, and checks to use it responsibly—we moved beyond pilots to durable capabilities the organization now owns.",
+        "What endures",
+        "What’s next",
       ],
       bullets: [
-        "Clinician-reported time savings averaged 42 minutes per shift, validated by a follow-up time study.",
-        "Critical-result acknowledgement times improved by 31%.",
-        "Unsanctioned consumer messaging at the bedside dropped to near zero in audited units.",
+        "Accelerated Adoption: Reduced time from pilot to production by 40%, with measurable gains in claims processing and customer communication workflows.",
+        "Governed Scale: Implemented a governance model that satisfied risk, legal, and compliance teams while enabling innovation.",
+        "Enterprise Skilling: Over 80% of targeted roles completed AI fluency training, creating a culture of confident, responsible AI use.",
       ],
     },
     metrics: [
-      { label: "Time saved per clinician per shift", value: "42 minutes" },
-      { label: "Tools touched per shift", value: "5 → 2" },
-      { label: "Critical-result acknowledgement", value: "+31% faster" },
+      { label: "measured improvement", value: "40%" },
+      { label: "measured improvement", value: "80%" },
     ],
     quote: {
-      text: "The previous attempt failed because IT picked the tool. This time the clinicians picked it, the governance was theirs, and the rollout respected the realities of a shift. That is the entire difference.",
-      attribution: "Chief Medical Information Officer, Regional Health System",
+      text: "This wasn’t just training - it was transformation. Synozur helped us turn real work into real results, giving our teams the tools, skills, and guardrails to make AI part of our DNA.",
+      attribution: "Chief Operating Officer",
     },
   },
   {
-    slug: "knowledge-graph-for-a-global-research-university",
-    title: "A knowledge graph for a global research university",
-    client: "Global Research University",
-    clientLabel: "Research University (NDA)",
-    industry: "Higher Education",
-    established: "1851",
-    tag: "Knowledge & Search",
-    headline: "60% reduction in time-to-find for grant and expertise data",
+    slug: "accelerating-go-to-market-for-a-leading-ai-isv",
+    title: "Accelerating Go-To-Market for a leading AI ISV",
+    client: "Leading AI ISV",
+    clientLabel: "Leading AI ISV",
+    industry: "Software",
+    established: "2004",
+    tag: "Fractional CxO",
+    headline: "Our client, a leading independent software vendor (ISV), developed an app for generative AI systems like Mi…",
     summary:
-      "A globally ranked research university could not reliably answer the question \"who at this institution works on X?\" Synozur designed and shipped an expertise and grants knowledge graph that became the connective tissue across the research office, advancement, and the provost.",
-    heroImage: "/images/case-study-higher-ed.png",
+      "Our client, a leading independent software vendor (ISV), developed an app for generative AI systems like Microsoft Copilot to integrate disconnected content. Synozur was engaged for fractional product and marketing leadership to drive mew messaging, new app designs, and strategic go-to-market plans, recruiting sales leaders and mentoring staff to drive a successful product launch.",
+    heroImage: "/images/case-studies/ai-isv.jpg",
     challenge: {
       heading: "The challenge",
       body: [
-        "A top-50 global research university had grown its research portfolio to more than $900M annually, spread across nine schools, dozens of institutes, and hundreds of centers. Faculty expertise, active grants, publications, and student affiliations lived in at least seven systems of record — none of which fully agreed.",
-        "When industry partners or foundation officers asked who could lead a multi-disciplinary proposal, the answer often took weeks of email — and the university repeatedly lost competitive opportunities to peer institutions that could answer in a day.",
+        "Our client, a leading independent software vendor (ISV), had developed a revolutionary app to integrate multiple data sources for generative AI systems like Copilot. For AI, content can be spread across disconnected silos, with inconsistent content quality, and difficulties in ensuring accessibility and compliance. Their product connects dozens of business content systems; catalogs all content in a central app to manage, classify, and secure content; and publishes approved content to selected AI applications like Microsoft Copilot.",
+        "Synozur was engaged for fractional leadership and marketing to address their product development and go to market strategies.",
+        "Our client needed to introduce their AI integration product within a compressed timeline, facing challenges in managing and securing disparate content sources. They required strategic leadership in product development and marketing to effectively position and launch their revolutionary app in the competitive market.",
+        "The client faced challenges in launching their generative AI integration app due to a compressed timeline and the need to explain the product quickly. They needed strategic leadership and marketing expertise to effectively introduce their product to the market and ensure accessibility and compliance.",
       ],
     },
     approach: [
       {
-        heading: "Define the graph, not the project",
+        heading: "Our approach",
         body: [
-          "Synozur worked with the VP for Research, the CIO, and a faculty advisory group to agree on a small, durable schema — people, expertise, grants, publications, units, and partnerships — before any system was touched. The schema was deliberately narrower than what some stakeholders wanted, so it could actually ship.",
-        ],
-      },
-      {
-        heading: "Source-of-truth treaties",
-        body: [
-          "Each entity got a single owning system and a written \"treaty\" describing what could and could not be edited downstream. Synozur facilitated the negotiations and documented the trade-offs so they did not have to be re-litigated every quarter.",
-        ],
-        bullets: [
-          "HR system as source of truth for appointments and titles.",
-          "Sponsored programs system for grants, with a federated view of pending proposals.",
-          "Faculty-curated expertise tags, refreshed annually with a one-click workflow.",
-        ],
-      },
-      {
-        heading: "Ship a useful slice first",
-        body: [
-          "Synozur prioritized the \"who works on X\" search experience as the first user-visible deliverable — a single search box for the research office and advancement, backed by the new graph. It went live in 14 weeks.",
-        ],
-      },
-      {
-        heading: "Open it up safely",
-        body: [
-          "Once the internal users were confident, Synozur designed the external expertise portal, the privacy review process for opt-out, and the API contract that let school-level sites consume the same data without forking it.",
+          "Synozur established a comprehensive Messaging and Positioning Framework (MPF). A Messaging and Positioning Framework (MPF) is a strategic tool used to articulate and communicate the key messages and value propositions of a product or service. It ensures that all stakeholders, including employees, partners, and customers, have a consistent and clear understanding of what the product offers, how it differentiates from competitors, and the benefits it delivers.",
+          "We undertook an in-depth analysis of the ISV’s product, market, competition, and target audience. We conducted a series of interviews with key stakeholders, including the client's leadership team, product managers, and sales representatives.",
+          "In addition, Synozur facilitated workshops to test and develop product names and messaging concepts that brought together cross-functional teams from the client organization. These workshops served as collaborative sessions to brainstorm, refine, and validate the key messages and positioning statements. The outcome of this rigorous process was a well-defined Messaging and Positioning Framework that guided the creation of marketing materials, sales pitches, and customer communications, ensuring that the product was introduced and explained to customers in a clear, compelling, and consistent manner.",
+          "Synozur also designed a conceptual app user experience that streamlined the process of gathering, securing, enriching, and preparing content from multiple external data sources. This unified app aimed to provide a seamless and intuitive experience for users, enabling them to leverage AI-driven insights and drive smarter, faster, and more innovative operations.",
+          "Finally, Synozur developed a strategic go-to-market plan. We played a crucial role in recruiting sales leaders and mentoring sales and marketing staff, as well as developing early-stage customer prospects. Our efforts included developing blog posts, web content and press releases, working on the pricing model and channel strategy, and ensuring the client's readiness for the market launch.",
         ],
       },
     ],
     outcome: {
       heading: "The outcome",
       body: [
-        "The expertise graph became the way the university answered partnership questions — internally for the provost and advancement, and externally for industry and foundations. Two large multi-disciplinary proposals were assembled in days rather than weeks, and both were funded.",
-      ],
-      bullets: [
-        "Single search experience replaced an email-driven scavenger hunt.",
-        "Treaties between systems eliminated the recurring \"whose number is right\" debate.",
-        "External expertise portal launched with faculty opt-in exceeding 80%.",
+        "As a result, the client was able to announce their product on schedule, and promote it at major industry events. They’ve been able to drive customer awareness and intent while amplifying investment interest in their firm. Most importantly, they acheived an estimated $0.8M–$1.2M incremental revenue over 12–24 months and $250K–$500K in cost avoidance, enabled by accelerated go‑to‑market execution, clearer positioning, and higher early‑stage conversion.",
+        "This project exemplifies our commitment to helping clients define and introduce new products to the market through innovative solutions and strategic collaboration.",
       ],
     },
     metrics: [
-      { label: "Time-to-find for grant and expertise data", value: "−60%" },
-      { label: "Faculty opt-in to external portal", value: "80%+" },
-      { label: "Systems reconciled into the graph", value: "7" },
     ],
     quote: {
-      text: "We had spent years arguing about which system was right. Synozur got us to stop arguing, write the treaties down, and ship something useful in a single semester.",
-      attribution: "Vice President for Research, Global Research University",
+      text: "Our partnership has been instrumental in transforming our AI go-to-market. We’re able to clearly communicate and deliver value to our customers and drive new revenue streams.",
+      attribution: "CEO, Leading AI ISV",
+    },
+  },
+  {
+    slug: "ai-&-governance-acceleration-for-private-equity",
+    title: "AI & Governance Acceleration for Private Equity",
+    client: "US Private Equity",
+    clientLabel: "US Private Equity",
+    industry: "Finance",
+    established: "1995",
+    tag: "AI",
+    headline: "A private equity firm partnered with Synozur to rapidly accelerate AI readiness while strengthening governa…",
+    summary:
+      "A private equity firm partnered with Synozur to rapidly accelerate AI readiness while strengthening governance, security, and executive alignment.",
+    heroImage: "/images/case-studies/pe-governance.jpg",
+    challenge: {
+      heading: "The challenge",
+      body: [
+        "AI opportunities were emerging across the business, but without coordination risked fragmentation, duplication, and governance gaps.",
+        "Speed mattered—but so did discipline. Leadership needed momentum without sacrificing control.",
+        "In a PE environment, initiatives must show progress quickly while maintaining governance, security, and operational rigor.",
+        "Enable fast, responsible AI progress with clear leadership ownership and measurable outcomes aligned to enterprise value creation.",
+      ],
+    },
+    approach: [
+      {
+        heading: "Our approach",
+        body: [
+          "Synozur designed and guided a 12‑week AI readiness and governance program, working alongside executive leadership.",
+          "Our work included:",
+        ],
+        bullets: [
+          "Establishing an executive AI steering committee for M365 Copilot and ChatGPT Enterprise",
+          "AI and Microsoft 365 maturity assessments",
+          "Development of a go-forward content governance, security and compliance program with Microsoft Purview",
+          "Prioritized AI use‑case identification",
+          "Sprint‑based roadmap with checkpoints and metrics",
+        ],
+      },
+    ],
+    outcome: {
+      heading: "The outcome",
+      body: [
+        "The company now treats AI as a strategic asset—guided by leadership, governed with intent, and aligned to long‑term value.",
+      ],
+      bullets: [
+        "Stronger governance and executive alignment",
+        "Improved readiness to scale AI responsibly",
+        "Faster, more confident decision‑making",
+        "Repeatable framework for future innovation",
+      ],
+    },
+    metrics: [
+    ],
+    quote: {
+      text: "“Synozur helped us move quickly without losing control. We gained clarity, structure, and confidence—exactly what we needed.”",
+      attribution: "Technology Operating Partner",
+    },
+  },
+  {
+    slug: "executive-ai-readiness-at-a-leading-education-technology-company",
+    title: "Executive AI Readiness at a Leading Education Technology Company",
+    client: "North American Education Technology Company",
+    clientLabel: "North American Education Technology Company",
+    industry: "Education Technology",
+    established: "1969",
+    tag: "AI",
+    headline: "A leading education technology organization partnered with Synozur to assess AI readiness, align leadership…",
+    summary:
+      "A leading education technology organization partnered with Synozur to assess AI readiness, align leadership, and define a practical roadmap for responsible AI adoption.",
+    heroImage: "/images/case-studies/edtech.jpg",
+    challenge: {
+      heading: "The challenge",
+      body: [
+        "While leadership understood AI’s potential, conversations lacked a shared baseline. Without clarity on readiness, skills, and priorities, momentum was difficult to sustain.",
+        "The organization sought clarity before action—ensuring AI investments would support learners, educators, and operational excellence.",
+        "Operating in a mission‑driven, outcomes‑focused environment, leaders needed confidence that AI decisions would align with both values and impact.",
+        "Create executive alignment around AI, establish a readiness baseline, and define next steps grounded in educational outcomes—not experimentation.",
+      ],
+    },
+    approach: [
+      {
+        heading: "Our approach",
+        body: [
+          "Synozur delivered an AI Academy for executive leadership, paired with an Orion‑based AI readiness assessment to establish a shared understanding and fact‑based roadmap.",
+          "Our work included:",
+        ],
+        bullets: [
+          "Executive education tailored to education‑sector realities",
+          "AI readiness assessment across leadership roles",
+          "Facilitated prioritization of high‑impact, low‑risk use cases",
+          "A phased roadmap aligned to learning and operational goals",
+        ],
+      },
+    ],
+    outcome: {
+      heading: "The outcome",
+      body: [
+        "With clarity and alignment in place, the organization is positioned to adopt AI thoughtfully—guided by outcomes, not uncertainty.",
+      ],
+      bullets: [
+        "Shared executive language and alignment around AI",
+        "Clear understanding of organizational readiness",
+        "Prioritized roadmap for responsible AI adoption",
+        "Increased confidence to move forward with purpose",
+      ],
+    },
+    metrics: [
+    ],
+    quote: {
+      text: "“Synozur gave our leadership team clarity. We now have a common understanding of what AI can—and should—do for our organization.”",
+      attribution: "Executive Leader",
+    },
+  },
+  {
+    slug: "story-cellars",
+    title: "Story Cellars and Synozur - Craft and Culture",
+    client: "Story Cellars",
+    clientLabel: "Story Cellars",
+    industry: "Consumer Products",
+    established: "2016",
+    tag: "Marketing",
+    headline: "Story Cellars was founded in 2016 by Tim Oas.",
+    summary:
+      "Story Cellars was founded in 2016 by Tim Oas. Tim is a pioneer in crafting Washington state wines from their winery in Woodinville, Washington. We chose to partner with Story Cellars because we believe in Tim and love his approach to winemaking. The Velvet Vega Zin has been a labor of love for Tim and a great partnership for us.",
+    heroImage: "/images/case-studies/story-cellars.png",
+    challenge: {
+      heading: "The challenge",
+      body: [
+        "A main theme for Synozur is collaboration - and who doesn’t love a good collaboration, right? We're proud to have a great partnership with Tim Oas and Story Cellars.",
+        "If you were at his shop, Tim would tell you about the ancient zinfandel vines he nurtured to produce this fabulous vino.",
+        "There are two things Tim says are the keys to success, being Unique and Determined! We at Synozur couldn’t agree more.",
+        "We chose to partner with Story Cellars because we believe in Tim and love his approach to winemaking. The Velvet Vega Zin has been a labor of love for Tim and a great partnership for us.",
+        "If you were at his shop, he would tell you about the ancient zinfandel vines he nurtured to produce this fabulous vino.",
+        "There are two things Tim says are the keys to success, being Unique and Determined! We at Synozur couldn’t agree more.",
+      ],
+    },
+    approach: [
+      {
+        heading: "Our approach",
+        body: [],
+      },
+    ],
+    outcome: {
+      heading: "The outcome",
+      body: [
+        "Thank you for your valued partnership with us on your journey to transform your workplace and achieve your North Star vision.",
+      ],
+    },
+    metrics: [
+    ],
+    quote: {
+      text: "Our partnership with Synozur continues to open up new ways of thinking and developing oiur customer relationships.",
+      attribution: "Tim Oas, Owner and Winemaker",
+    },
+  },
+  {
+    slug: "go‑to‑market-transformation-for-a-microsoft‑aligned-software-company",
+    title: "Go‑to‑Market Transformation for a Microsoft‑Aligned Software Company",
+    client: "US Enterprise Software Company",
+    clientLabel: "US Enterprise Software Company",
+    industry: "Enterprise Software",
+    established: "2005",
+    tag: "Marketing",
+    headline: "A Microsoft‑aligned software company partnered with Synozur to clarify its go‑to‑market strategy, sharpen m…",
+    summary:
+      "A Microsoft‑aligned software company partnered with Synozur to clarify its go‑to‑market strategy, sharpen messaging, align to Microsoft, and strengthen partner engagement.",
+    heroImage: "/images/case-studies/msft-aligned-sw.jpg",
+    challenge: {
+      heading: "The challenge",
+      body: [
+        "Despite a strong product, messaging lacked focus and partner engagement was inconsistent—limiting momentum in a competitive market.",
+        "Leadership recognized that growth required clarity—not more activity.",
+        "Operating inside the Microsoft ecosystem, alignment and relevance were critical to sales and partner success.",
+        "Create clear positioning, align to Microsoft sales motions, and establish a repeatable GTM rhythm.",
+      ],
+    },
+    approach: [
+      {
+        heading: "Our approach",
+        body: [
+          "Synozur led a Go‑to‑Market Workshop, acting as both strategist and proxy customer.",
+          "Our work included:",
+        ],
+        bullets: [
+          "Messaging and positioning refinement",
+          "Alignment to Microsoft priorities and motions",
+          "Partner enablement strategy design",
+          "Sales and leadership coaching",
+          "Market research and focus group development",
+          "Brand strategy and development",
+        ],
+      },
+    ],
+    outcome: {
+      heading: "The outcome",
+      body: [
+        "With a focused GTM strategy in place, the company is positioned for sustained growth and stronger ecosystem impact.",
+      ],
+      bullets: [
+        "Clearer market positioning",
+        "Stronger Microsoft partner alignment",
+        "Improved sales confidence and consistency",
+        "Increased partner‑sourced pipeline",
+      ],
+    },
+    metrics: [
+    ],
+    quote: {
+      text: "“Synozur helped us tell a clearer story—one that resonates with customers and partners alike.”",
+      attribution: "Chief Revenue Officer",
     },
   },
 ];
