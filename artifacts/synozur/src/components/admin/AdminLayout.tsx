@@ -12,6 +12,8 @@ import {
   Inbox,
   LogOut,
   ChevronRight,
+  Compass,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -53,6 +55,20 @@ const NAV: NavItem[] = [
     icon: Tags,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-taxonomy",
+  },
+  {
+    href: "/admin/services",
+    label: "Services",
+    icon: Compass,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-services",
+  },
+  {
+    href: "/admin/solutions",
+    label: "Solutions",
+    icon: Layers,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-solutions",
   },
   {
     href: "/admin/comments",

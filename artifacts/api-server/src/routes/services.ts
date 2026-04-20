@@ -51,6 +51,7 @@ router.get("/solutions/:slug", async (req, res) => {
 // ----- Admin -------------------------------------------------------------
 
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
+const readGuard = [requireAuth];
 
 async function ensureUniqueServiceSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
@@ -150,7 +151,7 @@ const CapabilityBody = z.object({
 const CapabilityPatch = CapabilityBody.partial();
 
 // --- admin: services list (includes inactive) ---
-router.get("/cms/services", ...adminGuard, async (_req, res) => {
+router.get("/cms/services", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(servicesTable)
@@ -257,7 +258,7 @@ router.delete("/cms/services/:id", ...adminGuard, async (req, res) => {
 });
 
 // --- admin: solutions ---
-router.get("/cms/solutions", ...adminGuard, async (_req, res) => {
+router.get("/cms/solutions", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(solutionsTable)
@@ -370,7 +371,7 @@ router.delete("/cms/solutions/:id", ...adminGuard, async (req, res) => {
 });
 
 // --- admin: methodologies (scoped to a service) ---
-router.get("/cms/services/:serviceId/methodologies", ...adminGuard, async (req, res) => {
+router.get("/cms/services/:serviceId/methodologies", ...readGuard, async (req, res) => {
   const serviceId = String(req.params.serviceId);
   const rows = await db
     .select()
@@ -460,7 +461,7 @@ router.delete("/cms/methodologies/:id", ...adminGuard, async (req, res) => {
 });
 
 // --- admin: capabilities (scoped to a solution) ---
-router.get("/cms/solutions/:solutionId/capabilities", ...adminGuard, async (req, res) => {
+router.get("/cms/solutions/:solutionId/capabilities", ...readGuard, async (req, res) => {
   const solutionId = String(req.params.solutionId);
   const rows = await db
     .select()

@@ -39,6 +39,12 @@ import MediaLibrary from "@/pages/admin/media";
 import TaxonomyPage from "@/pages/admin/taxonomy";
 import CommentsModeration from "@/pages/admin/comments";
 import UsersAndRoles from "@/pages/admin/users";
+import AdminServicesList from "@/pages/admin/services-list";
+import ServiceEdit from "@/pages/admin/service-edit";
+import ServiceMethodologiesPage from "@/pages/admin/service-methodologies";
+import AdminSolutionsList from "@/pages/admin/solutions-list";
+import SolutionEdit from "@/pages/admin/solution-edit";
+import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -69,6 +75,26 @@ function AdminRoutes() {
         <Route path="/taxonomy" component={TaxonomyPage} />
         <Route path="/comments" component={CommentsModeration} />
         <Route path="/users" component={UsersAndRoles} />
+        <Route path="/services" component={AdminServicesList} />
+        <Route path="/services/new">
+          <ServiceEdit />
+        </Route>
+        <Route path="/services/:id/edit">
+          {(params) => <ServiceEdit id={params.id} />}
+        </Route>
+        <Route path="/services/:id/methodologies">
+          {(params) => <ServiceMethodologiesPage id={params.id} />}
+        </Route>
+        <Route path="/solutions" component={AdminSolutionsList} />
+        <Route path="/solutions/new">
+          <SolutionEdit />
+        </Route>
+        <Route path="/solutions/:id/edit">
+          {(params) => <SolutionEdit id={params.id} />}
+        </Route>
+        <Route path="/solutions/:id/capabilities">
+          {(params) => <SolutionCapabilitiesPage id={params.id} />}
+        </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/events" component={AdminEventsList} />
         <Route path="/submissions" component={AdminSubmissionsList} />
