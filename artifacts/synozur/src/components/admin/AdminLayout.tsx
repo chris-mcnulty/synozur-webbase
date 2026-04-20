@@ -16,6 +16,7 @@ import {
   Compass,
   Layers,
   Library as LibraryIcon,
+  Video as VideoIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -78,6 +79,13 @@ const NAV: NavItem[] = [
     icon: LibraryIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-collateral",
+  },
+  {
+    href: "/videos",
+    label: "Videos",
+    icon: VideoIcon,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-videos",
   },
   {
     href: "/comments",

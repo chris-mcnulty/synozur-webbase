@@ -51,11 +51,15 @@ import AdminTeamList from "@/pages/admin/team-list";
 import TeamForm from "@/pages/admin/team-form";
 import AdminCollateralList from "@/pages/admin/collateral-list";
 import CollateralEdit from "@/pages/admin/collateral-edit";
+import AdminVideosList from "@/pages/admin/videos-list";
+import VideoEdit from "@/pages/admin/video-edit";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
 import WebinarDetail from "@/pages/webinar-detail";
+import Videos from "@/pages/videos";
+import VideoDetail from "@/pages/video-detail";
 import Items from "@/pages/items";
 import ItemDetail from "@/pages/item-detail";
 import NotFound from "@/pages/not-found";
@@ -111,6 +115,13 @@ function AdminRoutes() {
         <Route path="/collateral/:id/edit">
           {(params) => <CollateralEdit id={params.id} />}
         </Route>
+        <Route path="/videos" component={AdminVideosList} />
+        <Route path="/videos/new">
+          <VideoEdit />
+        </Route>
+        <Route path="/videos/:id/edit">
+          {(params) => <VideoEdit id={params.id} />}
+        </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/events" component={AdminEventsList} />
         <Route path="/submissions" component={AdminSubmissionsList} />
@@ -160,6 +171,8 @@ function Router() {
             <Route path="/library/:slug" component={LibraryDetail} />
             <Route path="/webinars" component={Webinars} />
             <Route path="/webinars/:slug" component={WebinarDetail} />
+            <Route path="/videos" component={Videos} />
+            <Route path="/videos/:slug" component={VideoDetail} />
             <Route path="/items" component={Items} />
             <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/team" component={Team} />
