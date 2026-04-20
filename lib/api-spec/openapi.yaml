@@ -2259,6 +2259,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        website:
+          type: string
+          nullable: true
+          description: Honeypot field. Must be empty for human submissions; populated submissions are silently dropped.
     SubmitCommentResponse:
       type: object
       required:

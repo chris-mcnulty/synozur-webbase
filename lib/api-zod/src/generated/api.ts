@@ -751,6 +751,12 @@ export const SubmitInsightCommentBody = zod.object({
   authorEmail: zod.string().email(),
   bodyText: zod.string().min(1).max(submitInsightCommentBodyBodyTextMax),
   parentCommentId: zod.string().uuid().nullish(),
+  website: zod
+    .string()
+    .nullish()
+    .describe(
+      "Honeypot field. Must be empty for human submissions; populated submissions are silently dropped.",
+    ),
 });
 
 /**

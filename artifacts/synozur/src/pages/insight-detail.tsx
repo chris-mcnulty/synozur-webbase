@@ -1,10 +1,15 @@
 import { useEffect, useMemo } from "react";
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { Button } from "@/components/ui/button";
 import { useInsight, useInsightsList, resolveMediaUrl, resolveBodyHtml } from "@/lib/insights";
 import NotFound from "./not-found";
+import { CommentThread } from "@/components/comments/comment-thread";
+import {
+  useListInsightComments,
+  getListInsightCommentsQueryKey,
+} from "@workspace/api-client-react";
 import type { PublicPost } from "@workspace/api-client-react";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -68,6 +73,29 @@ function RelatedRail({ post }: { post: PublicPost }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function CommentCountChip({ slug }: { slug: string }) {
+  const { data } = useListInsightComments(slug, {
+    query: {
+      queryKey: getListInsightCommentsQueryKey(slug),
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+    },
+  });
+  const count = data?.length ?? 0;
+  return (
+    <a
+      href="#discussion"
+      className="inline-flex items-center gap-1.5 text-zinc-300 hover:text-primary transition-colors"
+      data-testid="comment-count-chip"
+    >
+      <MessageSquare className="h-3.5 w-3.5" />
+      <span>
+        {count} comment{count === 1 ? "" : "s"}
+      </span>
+    </a>
   );
 }
 
@@ -158,6 +186,8 @@ export default function InsightDetail() {
                   <span>{post.readingTimeMin} min read</span>
                 </>
               )}
+              <span className="h-1 w-1 rounded-full bg-zinc-500" />
+              <CommentCountChip slug={post.slug} />
             </div>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6 leading-tight">
               {post.title}
@@ -207,6 +237,8 @@ export default function InsightDetail() {
           )}
         </div>
       </article>
+
+      <CommentThread slug={post.slug} />
 
       <RelatedRail post={post} />
 

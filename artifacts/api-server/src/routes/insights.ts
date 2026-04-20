@@ -209,27 +209,58 @@ const SubmitBody = z.object({
   authorEmail: z.string().email(),
   bodyText: z.string().min(1).max(5000),
   parentCommentId: z.string().uuid().nullish(),
+  website: z.string().optional().nullable(),
 });
 
-const submitLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  limit: 5,
-  standardHeaders: "draft-7",
+function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
+  const xff = Array.isArray(req.headers["x-forwarded-for"])
+    ? (req.headers["x-forwarded-for"] as string[])[0]
+    : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+  const ip = xff || req.ip || "0.0.0.0";
+  return ipKeyGenerator(ip);
+}
+
+// Per-task: 3 / minute and 20 / day per IP. When tripped, we *silently*
+// return a 202 (matching the success shape) and only log internally so
+// bots can't tell they've been throttled.
+const minuteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 3,
+  standardHeaders: false,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
-    const xff = Array.isArray(req.headers["x-forwarded-for"])
-      ? req.headers["x-forwarded-for"][0]
-      : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
-    const ip = xff || req.ip || "";
-    return ip ? ipKeyGenerator(ip) : ipKeyGenerator(req.ip ?? "0.0.0.0");
-  },
-  message: { error: "Too many comments submitted. Please try again later." },
+  keyGenerator: (req) => `c:m:${ipKey(req)}`,
+  handler: silentLimitHandler,
 });
 
-router.post("/insights/:slug/comments", submitLimiter, async (req, res) => {
+const dailyLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `c:d:${ipKey(req)}`,
+  handler: silentLimitHandler,
+});
+
+function silentLimitHandler(req: import("express").Request, res: import("express").Response): void {
+  void audit({
+    action: "comment.rate_limited",
+    entity: "comment",
+    entityId: "",
+    actorId: ipKey(req),
+  });
+  res.status(202).json({ id: "00000000-0000-0000-0000-000000000000", status: "pending" });
+}
+
+router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req, res) => {
   const parsed = SubmitBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  // Honeypot — silently accept and discard so bots can't tell they were caught.
+  if (parsed.data.website && parsed.data.website.trim() !== "") {
+    await audit({ action: "comment.honeypot", entity: "comment", entityId: "" });
+    res.status(202).json({ id: "00000000-0000-0000-0000-000000000000", status: "pending" });
     return;
   }
   const post = await db.query.postsTable.findFirst({

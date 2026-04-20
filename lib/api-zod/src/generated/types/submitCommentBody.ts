@@ -19,4 +19,6 @@ export interface SubmitCommentBody {
    */
   bodyText: string;
   parentCommentId?: string | null;
+  /** Honeypot field. Must be empty for human submissions; populated submissions are silently dropped. */
+  website?: string | null;
 }
