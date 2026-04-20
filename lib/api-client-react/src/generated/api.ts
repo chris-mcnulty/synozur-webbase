@@ -21,11 +21,15 @@ import type {
   AdminUser,
   Asset,
   AssetInput,
+  ContactFormInput,
   ErrorEnvelope,
   EventInput,
+  FormSubmissionAck,
   HealthStatus,
   ListAssetsParams,
   PublicEvent,
+  StartFormInput,
+  SubscribeFormInput,
   UploadUrlRequest,
   UploadUrlResponse,
 } from "./api.schemas";
@@ -1188,4 +1192,262 @@ export const useDeleteEvent = <
   TContext
 > => {
   return useMutation(getDeleteEventMutationOptions(options));
+};
+
+/**
+ * @summary Submit the public contact form
+ */
+export const getSubmitContactUrl = () => {
+  return `/api/forms/contact`;
+};
+
+export const submitContact = async (
+  contactFormInput: ContactFormInput,
+  options?: RequestInit,
+): Promise<FormSubmissionAck> => {
+  return customFetch<FormSubmissionAck>(getSubmitContactUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(contactFormInput),
+  });
+};
+
+export const getSubmitContactMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContact>>,
+    TError,
+    { data: BodyType<ContactFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitContact>>,
+  TError,
+  { data: BodyType<ContactFormInput> },
+  TContext
+> => {
+  const mutationKey = ["submitContact"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitContact>>,
+    { data: BodyType<ContactFormInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitContact(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitContactMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitContact>>
+>;
+export type SubmitContactMutationBody = BodyType<ContactFormInput>;
+export type SubmitContactMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Submit the public contact form
+ */
+export const useSubmitContact = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContact>>,
+    TError,
+    { data: BodyType<ContactFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitContact>>,
+  TError,
+  { data: BodyType<ContactFormInput> },
+  TContext
+> => {
+  return useMutation(getSubmitContactMutationOptions(options));
+};
+
+/**
+ * @summary Submit a newsletter subscribe request
+ */
+export const getSubmitSubscribeUrl = () => {
+  return `/api/forms/subscribe`;
+};
+
+export const submitSubscribe = async (
+  subscribeFormInput: SubscribeFormInput,
+  options?: RequestInit,
+): Promise<FormSubmissionAck> => {
+  return customFetch<FormSubmissionAck>(getSubmitSubscribeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(subscribeFormInput),
+  });
+};
+
+export const getSubmitSubscribeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitSubscribe>>,
+    TError,
+    { data: BodyType<SubscribeFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitSubscribe>>,
+  TError,
+  { data: BodyType<SubscribeFormInput> },
+  TContext
+> => {
+  const mutationKey = ["submitSubscribe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitSubscribe>>,
+    { data: BodyType<SubscribeFormInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitSubscribe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitSubscribeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitSubscribe>>
+>;
+export type SubmitSubscribeMutationBody = BodyType<SubscribeFormInput>;
+export type SubmitSubscribeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Submit a newsletter subscribe request
+ */
+export const useSubmitSubscribe = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitSubscribe>>,
+    TError,
+    { data: BodyType<SubscribeFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitSubscribe>>,
+  TError,
+  { data: BodyType<SubscribeFormInput> },
+  TContext
+> => {
+  return useMutation(getSubmitSubscribeMutationOptions(options));
+};
+
+/**
+ * @summary Submit the Get Started intake form
+ */
+export const getSubmitStartUrl = () => {
+  return `/api/forms/start`;
+};
+
+export const submitStart = async (
+  startFormInput: StartFormInput,
+  options?: RequestInit,
+): Promise<FormSubmissionAck> => {
+  return customFetch<FormSubmissionAck>(getSubmitStartUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(startFormInput),
+  });
+};
+
+export const getSubmitStartMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitStart>>,
+    TError,
+    { data: BodyType<StartFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitStart>>,
+  TError,
+  { data: BodyType<StartFormInput> },
+  TContext
+> => {
+  const mutationKey = ["submitStart"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitStart>>,
+    { data: BodyType<StartFormInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitStart(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitStartMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitStart>>
+>;
+export type SubmitStartMutationBody = BodyType<StartFormInput>;
+export type SubmitStartMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Submit the Get Started intake form
+ */
+export const useSubmitStart = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitStart>>,
+    TError,
+    { data: BodyType<StartFormInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitStart>>,
+  TError,
+  { data: BodyType<StartFormInput> },
+  TContext
+> => {
+  return useMutation(getSubmitStartMutationOptions(options));
 };

@@ -1,7 +1,81 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import { ArrowRight, Linkedin, Twitter, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+
+function FooterSubscribeForm() {
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (status === "submitting") return;
+    setStatus("submitting");
+    setErrorMessage(null);
+    try {
+      await api.submitSubscribe({ email, source: "footer", website: website || null });
+      setStatus("success");
+      setEmail("");
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not subscribe. Please try again.",
+      );
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <p className="text-sm text-primary" role="status">
+        Thanks — we&apos;ll be in touch with the next edition of The Feed.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={handleSubmit}
+      aria-label="Subscribe to The Feed"
+    >
+      <div className="flex gap-2">
+        <label htmlFor="footer-subscribe-email" className="sr-only">
+          Email address
+        </label>
+        <Input
+          id="footer-subscribe-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email address"
+          className="max-w-[240px]"
+        />
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+        />
+        <Button type="submit" disabled={status === "submitting"}>
+          {status === "submitting" ? "..." : "Subscribe"}
+        </Button>
+      </div>
+      {status === "error" && errorMessage && (
+        <p className="text-xs text-destructive" role="alert">
+          {errorMessage}
+        </p>
+      )}
+    </form>
+  );
+}
 
 export function Footer() {
   return (
@@ -20,24 +94,7 @@ export function Footer() {
             <p className="text-muted-foreground text-sm mb-4">
               Get the latest insights, models, and episodes of Polaris delivered to your inbox.
             </p>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-              }}
-              aria-label="Subscribe to The Feed"
-            >
-              <label htmlFor="footer-subscribe-email" className="sr-only">
-                Email address
-              </label>
-              <Input
-                id="footer-subscribe-email"
-                type="email"
-                placeholder="Email address"
-                className="max-w-[240px]"
-              />
-              <Button type="submit">Subscribe</Button>
-            </form>
+            <FooterSubscribeForm />
           </div>
 
           <div>

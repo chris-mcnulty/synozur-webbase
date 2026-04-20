@@ -211,3 +211,116 @@ export const UpdateEventResponse = zod.object({
 export const DeleteEventParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary Submit the public contact form
+ */
+export const submitContactBodyNameMin = 2;
+export const submitContactBodyNameMax = 200;
+
+export const submitContactBodyCompanyMin = 2;
+export const submitContactBodyCompanyMax = 200;
+
+export const submitContactBodyEmailMax = 320;
+
+export const submitContactBodyMessageMin = 10;
+export const submitContactBodyMessageMax = 5000;
+
+export const SubmitContactBody = zod.object({
+  name: zod
+    .string()
+    .min(submitContactBodyNameMin)
+    .max(submitContactBodyNameMax),
+  company: zod
+    .string()
+    .min(submitContactBodyCompanyMin)
+    .max(submitContactBodyCompanyMax),
+  email: zod.string().email().max(submitContactBodyEmailMax),
+  message: zod
+    .string()
+    .min(submitContactBodyMessageMin)
+    .max(submitContactBodyMessageMax),
+  turnstileToken: zod.string().nullish(),
+  website: zod.string().nullish().describe("Honeypot field — must be empty."),
+});
+
+export const SubmitContactResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Submit a newsletter subscribe request
+ */
+export const submitSubscribeBodyEmailMax = 320;
+
+export const SubmitSubscribeBody = zod.object({
+  email: zod.string().email().max(submitSubscribeBodyEmailMax),
+  source: zod
+    .string()
+    .nullish()
+    .describe("Optional originating surface (e.g. footer, insights)."),
+  turnstileToken: zod.string().nullish(),
+  website: zod.string().nullish().describe("Honeypot field — must be empty."),
+});
+
+export const SubmitSubscribeResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Submit the Get Started intake form
+ */
+export const submitStartBodyNameMin = 2;
+export const submitStartBodyNameMax = 200;
+
+export const submitStartBodyRoleMin = 2;
+export const submitStartBodyRoleMax = 200;
+
+export const submitStartBodyCompanyMin = 2;
+export const submitStartBodyCompanyMax = 200;
+
+export const submitStartBodyEmailMax = 320;
+
+export const submitStartBodyPillarMin = 2;
+export const submitStartBodyPillarMax = 200;
+
+export const submitStartBodyTimelineMin = 2;
+export const submitStartBodyTimelineMax = 200;
+
+export const submitStartBodyBudgetMin = 2;
+export const submitStartBodyBudgetMax = 200;
+
+export const submitStartBodyBriefMin = 20;
+export const submitStartBodyBriefMax = 8000;
+
+export const SubmitStartBody = zod.object({
+  name: zod.string().min(submitStartBodyNameMin).max(submitStartBodyNameMax),
+  role: zod.string().min(submitStartBodyRoleMin).max(submitStartBodyRoleMax),
+  company: zod
+    .string()
+    .min(submitStartBodyCompanyMin)
+    .max(submitStartBodyCompanyMax),
+  email: zod.string().email().max(submitStartBodyEmailMax),
+  pillar: zod
+    .string()
+    .min(submitStartBodyPillarMin)
+    .max(submitStartBodyPillarMax),
+  timeline: zod
+    .string()
+    .min(submitStartBodyTimelineMin)
+    .max(submitStartBodyTimelineMax),
+  budget: zod
+    .string()
+    .min(submitStartBodyBudgetMin)
+    .max(submitStartBodyBudgetMax),
+  brief: zod.string().min(submitStartBodyBriefMin).max(submitStartBodyBriefMax),
+  turnstileToken: zod.string().nullish(),
+  website: zod.string().nullish().describe("Honeypot field — must be empty."),
+});
+
+export const SubmitStartResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number(),
+});

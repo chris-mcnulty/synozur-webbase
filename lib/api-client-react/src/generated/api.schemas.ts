@@ -97,6 +97,102 @@ export interface AdminEvent {
   updatedAt?: string;
 }
 
+export interface FormSubmissionAck {
+  ok: boolean;
+  id: number;
+}
+
+export interface ContactFormInput {
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  name: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  company: string;
+  /** @maxLength 320 */
+  email: string;
+  /**
+   * @minLength 10
+   * @maxLength 5000
+   */
+  message: string;
+  /** @nullable */
+  turnstileToken?: string | null;
+  /**
+   * Honeypot field — must be empty.
+   * @nullable
+   */
+  website?: string | null;
+}
+
+export interface SubscribeFormInput {
+  /** @maxLength 320 */
+  email: string;
+  /**
+   * Optional originating surface (e.g. footer, insights).
+   * @nullable
+   */
+  source?: string | null;
+  /** @nullable */
+  turnstileToken?: string | null;
+  /**
+   * Honeypot field — must be empty.
+   * @nullable
+   */
+  website?: string | null;
+}
+
+export interface StartFormInput {
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  name: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  role: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  company: string;
+  /** @maxLength 320 */
+  email: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  pillar: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  timeline: string;
+  /**
+   * @minLength 2
+   * @maxLength 200
+   */
+  budget: string;
+  /**
+   * @minLength 20
+   * @maxLength 8000
+   */
+  brief: string;
+  /** @nullable */
+  turnstileToken?: string | null;
+  /**
+   * Honeypot field — must be empty.
+   * @nullable
+   */
+  website?: string | null;
+}
+
 export interface EventInput {
   /** @minLength 1 */
   title: string;

@@ -1,8 +1,82 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+
+function InsightsSubscribeForm() {
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (status === "submitting") return;
+    setStatus("submitting");
+    setErrorMessage(null);
+    try {
+      await api.submitSubscribe({ email, source: "insights", website: website || null });
+      setStatus("success");
+      setEmail("");
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not subscribe. Please try again.",
+      );
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <p className="text-base text-primary" role="status">
+        Thanks — we&apos;ll send the next edition of The Feed to your inbox.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      aria-label="Subscribe to The Feed"
+      className="flex flex-col items-center gap-3"
+    >
+      <div className="flex w-full max-w-md gap-2">
+        <label htmlFor="insights-subscribe-email" className="sr-only">
+          Email address
+        </label>
+        <Input
+          id="insights-subscribe-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com"
+          className="flex-1"
+        />
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+        />
+        <Button type="submit" disabled={status === "submitting"} className="h-10 px-6">
+          {status === "submitting" ? "Subscribing..." : "Subscribe"}
+        </Button>
+      </div>
+      {status === "error" && errorMessage && (
+        <p className="text-sm text-destructive" role="alert">
+          {errorMessage}
+        </p>
+      )}
+    </form>
+  );
+}
 
 const articles = [
   { category: "AI", date: "Apr 2026", title: "The honest case for slowing your AI roadmap", excerpt: "Most enterprise AI programs are over-funded and under-governed. A measured rebalance creates more value than another pilot.", image: "/images/insight-1.png" },
@@ -107,12 +181,7 @@ export default function Insights() {
           <p className="text-lg text-muted-foreground mb-6">
             New essays, models, and Polaris episodes — delivered to your inbox.
           </p>
-          <Link
-            href="/contact"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Subscribe
-          </Link>
+          <InsightsSubscribeForm />
         </div>
       </section>
     </div>

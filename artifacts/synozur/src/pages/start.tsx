@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 
 const schema = z.object({
   name: z.string().min(2, "Your name, please"),
@@ -25,6 +26,7 @@ const schema = z.object({
   timeline: z.enum(["Immediate", "This quarter", "Next quarter", "Exploring"]),
   budget: z.enum(["< $250k", "$250k – $1M", "$1M – $5M", "$5M+", "Not yet defined"]),
   brief: z.string().min(20, "A short brief helps us route this to the right partner"),
+  website: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -41,6 +43,7 @@ const budgets: FormData["budget"][] = ["< $250k", "$250k – $1M", "$1M – $5M"
 
 export default function Start() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -50,9 +53,28 @@ export default function Start() {
     defaultValues: { pillar: "Not sure yet", timeline: "Exploring", budget: "Not yet defined" },
   });
 
-  const onSubmit = async (_data: FormData) => {
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitted(true);
+  const onSubmit = async (data: FormData) => {
+    setSubmitError(null);
+    try {
+      await api.submitStart({
+        name: data.name,
+        role: data.role,
+        company: data.company,
+        email: data.email,
+        pillar: data.pillar,
+        timeline: data.timeline,
+        budget: data.budget,
+        brief: data.brief,
+        website: data.website ?? null,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again or email hello@synozur.com.",
+      );
+    }
   };
 
   return (
@@ -185,6 +207,19 @@ export default function Start() {
                 </div>
               </fieldset>
 
+              <input
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+                {...register("website")}
+              />
+              {submitError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {submitError}
+                </p>
+              )}
               <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
                 {isSubmitting ? "Sending..." : (
                   <>Send brief <ArrowRight className="ml-2 h-4 w-4" /></>

@@ -337,6 +337,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /forms/contact:
+    post:
+      tags: [Forms]
+      operationId: submitContact
+      summary: Submit the public contact form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFormInput"
+      responses:
+        "200":
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormSubmissionAck"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /forms/subscribe:
+    post:
+      tags: [Forms]
+      operationId: submitSubscribe
+      summary: Submit a newsletter subscribe request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscribeFormInput"
+      responses:
+        "200":
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormSubmissionAck"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /forms/start:
+    post:
+      tags: [Forms]
+      operationId: submitStart
+      summary: Submit the Get Started intake form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartFormInput"
+      responses:
+        "200":
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormSubmissionAck"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
@@ -484,6 +556,96 @@ components:
         updatedAt:
           type: string
           format: date-time
+    FormSubmissionAck:
+      type: object
+      required: [ok, id]
+      properties:
+        ok:
+          type: boolean
+        id:
+          type: integer
+    ContactFormInput:
+      type: object
+      required: [name, company, email, message]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+        company:
+          type: string
+          minLength: 2
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        message:
+          type: string
+          minLength: 10
+          maxLength: 5000
+        turnstileToken:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+          description: Honeypot field — must be empty.
+    SubscribeFormInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        source:
+          type: ["string", "null"]
+          description: Optional originating surface (e.g. footer, insights).
+        turnstileToken:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+          description: Honeypot field — must be empty.
+    StartFormInput:
+      type: object
+      required: [name, role, company, email, pillar, timeline, budget, brief]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+        role:
+          type: string
+          minLength: 2
+          maxLength: 200
+        company:
+          type: string
+          minLength: 2
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        pillar:
+          type: string
+          minLength: 2
+          maxLength: 200
+        timeline:
+          type: string
+          minLength: 2
+          maxLength: 200
+        budget:
+          type: string
+          minLength: 2
+          maxLength: 200
+        brief:
+          type: string
+          minLength: 20
+          maxLength: 8000
+        turnstileToken:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+          description: Honeypot field — must be empty.
     EventInput:
       type: object
       required: [title, startDate]

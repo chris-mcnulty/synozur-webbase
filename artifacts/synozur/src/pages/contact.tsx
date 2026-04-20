@@ -9,27 +9,45 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 
 const schema = z.object({
   name: z.string().min(2, "Please share your name"),
   company: z.string().min(2, "Please share your company"),
   email: z.string().email("Please share a valid email"),
   message: z.string().min(10, "A few sentences helps us route this well"),
+  website: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (_data: FormData) => {
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitted(true);
+  const onSubmit = async (data: FormData) => {
+    setSubmitError(null);
+    try {
+      await api.submitContact({
+        name: data.name,
+        company: data.company,
+        email: data.email,
+        message: data.message,
+        website: data.website ?? null,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again or email hello@synozur.com.",
+      );
+    }
   };
 
   return (
@@ -142,6 +160,19 @@ export default function Contact() {
                     <p className="text-sm text-destructive">{errors.message.message}</p>
                   )}
                 </div>
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+                  {...register("website")}
+                />
+                {submitError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {submitError}
+                  </p>
+                )}
                 <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
                   {isSubmitting ? "Sending..." : "Send message"}
                 </Button>

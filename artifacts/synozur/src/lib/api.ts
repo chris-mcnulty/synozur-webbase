@@ -1,4 +1,14 @@
-import type { PublicEvent, AdminEvent, Asset, EventInput, AssetInput } from "@workspace/api-zod";
+import type {
+  PublicEvent,
+  AdminEvent,
+  Asset,
+  EventInput,
+  AssetInput,
+  ContactFormInput,
+  SubscribeFormInput,
+  StartFormInput,
+  FormSubmissionAck,
+} from "@workspace/api-zod";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -56,4 +66,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  submitContact: (body: ContactFormInput) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/contact"), { method: "POST", body: JSON.stringify(body) }),
+  submitSubscribe: (body: SubscribeFormInput) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/subscribe"), { method: "POST", body: JSON.stringify(body) }),
+  submitStart: (body: StartFormInput) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/start"), { method: "POST", body: JSON.stringify(body) }),
 };
