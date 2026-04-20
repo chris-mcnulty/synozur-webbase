@@ -8,14 +8,14 @@ type LogoRotatorProps = {
 function LogoTile({ entry, ariaHidden = false }: { entry: LogoEntry; ariaHidden?: boolean }) {
   return (
     <div
-      className="flex-shrink-0 mx-3 bg-white rounded-md flex items-center justify-center px-6 py-4 w-[180px] md:w-[200px] h-[96px] md:h-[110px]"
+      className="flex-shrink-0 mx-6 md:mx-8 flex items-center justify-center w-[160px] md:w-[180px] h-[80px] md:h-[96px]"
       aria-hidden={ariaHidden || undefined}
     >
       <img
         src={entry.src}
         alt={ariaHidden ? "" : `${entry.name} logo`}
         loading="lazy"
-        className="max-h-12 md:max-h-14 max-w-full w-auto h-auto object-contain"
+        className="max-h-10 md:max-h-12 max-w-full w-auto h-auto object-contain"
       />
     </div>
   );
@@ -27,7 +27,7 @@ export function LogoRotator({ logos, speedSeconds = 40 }: LogoRotatorProps) {
   return (
     <div
       className="logo-rotator group relative w-full overflow-hidden"
-      aria-label="Client and partner logos"
+      aria-label="Client logos"
       role="region"
       style={
         {

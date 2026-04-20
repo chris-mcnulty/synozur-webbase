@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/carousel";
 import { fetchFeatured, type Collateral } from "@/data/collateral";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
-import { rotatorLogos } from "@/data/logos";
+import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 
 function FromTheFeedCarousel() {
@@ -257,7 +257,7 @@ export default function Home() {
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
             Trusted by
           </p>
-          <LogoRotator logos={rotatorLogos} />
+          <LogoRotator logos={clientLogos} />
         </div>
       </section>
 

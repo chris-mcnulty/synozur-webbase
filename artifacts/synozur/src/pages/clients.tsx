@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Quote } from "lucide-react";
 import { caseStudies } from "@/data/case-studies";
-import { clientLogos, partnerLogos, rotatorLogos, type LogoEntry } from "@/data/logos";
+import { clientLogos, type LogoEntry } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 
 const quotes = [
@@ -29,12 +29,12 @@ const quotes = [
 
 function LogoCell({ entry }: { entry: LogoEntry }) {
   const inner = (
-    <div className="bg-white aspect-[5/3] flex items-center justify-center px-6 py-5 transition-colors group-hover:bg-zinc-50">
+    <div className="aspect-[5/3] flex items-center justify-center px-6 py-5 transition-opacity group-hover:opacity-80">
       <img
         src={entry.src}
         alt={`${entry.name} logo`}
         loading="lazy"
-        className="max-h-16 md:max-h-20 max-w-[85%] w-auto h-auto object-contain"
+        className="max-h-12 md:max-h-14 max-w-[80%] w-auto h-auto object-contain"
       />
     </div>
   );
@@ -80,7 +80,7 @@ export default function Clients() {
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
             Trusted by
           </p>
-          <LogoRotator logos={rotatorLogos} />
+          <LogoRotator logos={clientLogos} />
         </div>
       </section>
 
@@ -100,20 +100,18 @@ export default function Clients() {
               full story.
             </p>
           </div>
-          <div className="max-w-md mx-auto">
-            <div className="rounded-xl overflow-hidden border border-border">
-              {clientLogos.map((logo, i) => (
-                <motion.div
-                  key={logo.name}
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.04 }}
-                >
-                  <LogoCell entry={logo} />
-                </motion.div>
-              ))}
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-4">
+            {clientLogos.map((logo, i) => (
+              <motion.div
+                key={logo.name}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.03 }}
+              >
+                <LogoCell entry={logo} />
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -163,37 +161,6 @@ export default function Clients() {
                   </p>
                 </div>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Partners */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mb-10">
-            <p className="text-sm uppercase tracking-widest text-primary mb-3">
-              Alliance Implementation & ISV Partners
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold">
-              The partner network
-            </h2>
-            <p className="text-muted-foreground mt-4">
-              We deliver alongside a curated network of implementation partners and
-              ISVs — anchored in our Microsoft practice.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px bg-border rounded-xl overflow-hidden border border-border">
-            {partnerLogos.map((logo, i) => (
-              <motion.div
-                key={logo.name}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.03 }}
-              >
-                <LogoCell entry={logo} />
-              </motion.div>
             ))}
           </div>
         </div>
