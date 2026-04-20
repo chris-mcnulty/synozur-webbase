@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { db, formSubmissionsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { sendVisitorConfirmation, sendInternalNotification } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -80,6 +81,43 @@ interface PersistArgs {
   webhook: ForwardResult;
 }
 
+async function sendEmails(args: {
+  formType: "contact" | "subscribe" | "start";
+  submissionId: number;
+  email: string | null;
+  name: string | null;
+  payload: Record<string, unknown>;
+}): Promise<void> {
+  const tasks: Array<Promise<unknown>> = [];
+  if (args.email) {
+    tasks.push(
+      sendVisitorConfirmation(args.formType, args.email, args.name).then((r) => {
+        if (r.status === "error") {
+          logger.warn(
+            { submissionId: args.submissionId, formType: args.formType, error: r.error },
+            "Visitor confirmation email failed",
+          );
+        }
+      }),
+    );
+  }
+  tasks.push(
+    sendInternalNotification(args).then((r) => {
+      if (r.status === "error") {
+        logger.warn(
+          { submissionId: args.submissionId, formType: args.formType, error: r.error },
+          "Internal notification email failed",
+        );
+      }
+    }),
+  );
+  try {
+    await Promise.all(tasks);
+  } catch (err) {
+    logger.warn({ err }, "Email dispatch threw");
+  }
+}
+
 async function persist(args: PersistArgs): Promise<number> {
   const [row] = await db
     .insert(formSubmissionsTable)
@@ -125,6 +163,13 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     req,
     webhook,
   });
+  void sendEmails({
+    formType: "contact",
+    submissionId: id,
+    email: payload.email,
+    name: payload.name,
+    payload,
+  });
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 
@@ -155,6 +200,13 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     req,
     webhook,
   });
+  void sendEmails({
+    formType: "subscribe",
+    submissionId: id,
+    email: payload.email,
+    name: null,
+    payload,
+  });
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 
@@ -184,6 +236,13 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     payload,
     req,
     webhook,
+  });
+  void sendEmails({
+    formType: "start",
+    submissionId: id,
+    email: payload.email,
+    name: payload.name,
+    payload,
   });
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
