@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ingest:services": "tsx src/scripts/ingestServices.ts",
+    "seed:workshops": "tsx src/scripts/seedWorkshops.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts"
   },
   "dependencies": {
