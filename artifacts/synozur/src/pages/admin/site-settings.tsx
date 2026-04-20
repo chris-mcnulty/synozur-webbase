@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, type AdminSiteSettings, type UpdateSiteSettingsBody } from "@/lib/api";
+import { AssetLibraryModal } from "@/components/admin/AssetLibraryModal";
+import type { Asset } from "@workspace/api-zod/types";
+
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+const DEFAULT_HERO = `${BASE_PATH}/images/hero-bg.png`;
+const DEFAULT_EDITORIAL = `${BASE_PATH}/images/home-hero-editorial.png`;
 
 export default function AdminSiteSettings() {
   const qc = useQueryClient();
   const [showSaved, setShowSaved] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState<null | "hero" | "editorial">(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-site-settings"],
@@ -23,28 +30,41 @@ export default function AdminSiteSettings() {
   }, [data, requireConsent]);
 
   const updateMutation = useMutation({
-    mutationFn: (next: boolean) => api.updateAdminSiteSettings({ requireCookieConsent: next }),
-    onMutate: async (next) => {
-      await qc.cancelQueries({ queryKey: ["admin-site-settings"] });
-      const prev = qc.getQueryData(["admin-site-settings"]);
-      setRequireConsent(next);
-      return { prev };
-    },
-    onError: (_err, _next, ctx) => {
-      if (ctx?.prev) {
-        const prevTyped = ctx.prev as { requireCookieConsent: boolean };
-        setRequireConsent(prevTyped.requireCookieConsent);
-      }
-    },
+    mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
     onSuccess: (result) => {
       qc.setQueryData(["admin-site-settings"], result);
       qc.invalidateQueries({ queryKey: ["public-site-settings"] });
+      setRequireConsent(result.requireCookieConsent);
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     },
   });
 
   const current = requireConsent ?? data?.requireCookieConsent ?? false;
+
+  const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
+    requireCookieConsent: current,
+    homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
+    homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
+    ...overrides,
+  });
+
+  const handlePickAsset = (asset: Asset) => {
+    if (pickerOpen === "hero") {
+      updateMutation.mutate(buildPayload({ homeHeroImageAssetId: asset.id }));
+    } else if (pickerOpen === "editorial") {
+      updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: asset.id }));
+    }
+    setPickerOpen(null);
+  };
+
+  const handleReset = (which: "hero" | "editorial") => {
+    if (which === "hero") {
+      updateMutation.mutate(buildPayload({ homeHeroImageAssetId: null }));
+    } else {
+      updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: null }));
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -63,34 +83,51 @@ export default function AdminSiteSettings() {
       {isLoading ? (
         <div className="text-muted-foreground">Loading…</div>
       ) : (
-        <div className="rounded-md border border-border p-6 space-y-4">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Require cookie consent</h2>
-              <p className="text-sm text-muted-foreground max-w-xl">
-                When ON, visitors see a cookie consent banner and marketing tags
-                (GA4, LinkedIn Insight, Meta Pixel) only load after they click Accept.
-                When OFF, the banner is hidden and marketing tags load for everyone.
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={current}
-              disabled={updateMutation.isPending}
-              onClick={() => updateMutation.mutate(!current)}
-              data-testid="toggle-require-cookie-consent"
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
-                current ? "bg-primary" : "bg-muted"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
-                  current ? "translate-x-5" : "translate-x-0"
+        <div className="space-y-6">
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h2 className="text-lg font-semibold mb-1">Require cookie consent</h2>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  When ON, visitors see a cookie consent banner and marketing tags
+                  (GA4, LinkedIn Insight, Meta Pixel) only load after they click Accept.
+                  When OFF, the banner is hidden and marketing tags load for everyone.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={current}
+                disabled={updateMutation.isPending}
+                onClick={() => updateMutation.mutate(buildPayload({ requireCookieConsent: !current }))}
+                data-testid="toggle-require-cookie-consent"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  current ? "bg-primary" : "bg-muted"
                 }`}
-              />
-            </button>
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
+                    current ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
+
+          <HomePageSection
+            title="Home page"
+            description="Pick the imagery used at the top of the public home page. Each picker is filtered to a curated category from the asset library. Reset to use the original built-in image."
+            heroUrl={data?.homeHeroImageUrl ?? null}
+            heroFallback={DEFAULT_HERO}
+            editorialUrl={data?.homeEditorialImageUrl ?? null}
+            editorialFallback={DEFAULT_EDITORIAL}
+            onOpenHero={() => setPickerOpen("hero")}
+            onOpenEditorial={() => setPickerOpen("editorial")}
+            onResetHero={() => handleReset("hero")}
+            onResetEditorial={() => handleReset("editorial")}
+            disabled={updateMutation.isPending}
+          />
+
           <div className="h-5 text-sm text-muted-foreground flex items-center gap-2">
             {showSaved && (
               <span className="inline-flex items-center gap-1 text-green-600" data-testid="text-saved-indicator">
@@ -103,6 +140,125 @@ export default function AdminSiteSettings() {
           </div>
         </div>
       )}
+
+      <AssetLibraryModal
+        open={pickerOpen !== null}
+        onClose={() => setPickerOpen(null)}
+        onSelect={handlePickAsset}
+        selectedId={
+          pickerOpen === "hero"
+            ? data?.homeHeroImageAssetId ?? null
+            : pickerOpen === "editorial"
+              ? data?.homeEditorialImageAssetId ?? null
+              : null
+        }
+        category={pickerOpen === "hero" ? "north-star" : pickerOpen === "editorial" ? "people" : undefined}
+      />
+    </div>
+  );
+}
+
+interface HomeSectionProps {
+  title: string;
+  description: string;
+  heroUrl: string | null;
+  heroFallback: string;
+  editorialUrl: string | null;
+  editorialFallback: string;
+  onOpenHero: () => void;
+  onOpenEditorial: () => void;
+  onResetHero: () => void;
+  onResetEditorial: () => void;
+  disabled: boolean;
+}
+
+function HomePageSection(props: HomeSectionProps) {
+  return (
+    <div className="rounded-md border border-border p-6 space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">{props.title}</h2>
+        <p className="text-sm text-muted-foreground">{props.description}</p>
+      </div>
+
+      <ImagePicker
+        label="Hero background"
+        helper="Cosmic / starry background that sits behind the home page hero. Filter: north-star."
+        previewUrl={props.heroUrl ?? props.heroFallback}
+        isOverridden={props.heroUrl != null}
+        testIdPrefix="home-hero"
+        onPick={props.onOpenHero}
+        onReset={props.onResetHero}
+        disabled={props.disabled}
+      />
+
+      <ImagePicker
+        label="Editorial image (Find Your North Star)"
+        helper="Square editorial image shown beside the Find Your North Star copy. Filter: people."
+        previewUrl={props.editorialUrl ?? props.editorialFallback}
+        isOverridden={props.editorialUrl != null}
+        testIdPrefix="home-editorial"
+        onPick={props.onOpenEditorial}
+        onReset={props.onResetEditorial}
+        disabled={props.disabled}
+      />
+    </div>
+  );
+}
+
+interface ImagePickerProps {
+  label: string;
+  helper: string;
+  previewUrl: string;
+  isOverridden: boolean;
+  testIdPrefix: string;
+  onPick: () => void;
+  onReset: () => void;
+  disabled: boolean;
+}
+
+function ImagePicker({ label, helper, previewUrl, isOverridden, testIdPrefix, onPick, onReset, disabled }: ImagePickerProps) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="text-sm font-medium">{label}</div>
+        <p className="text-xs text-muted-foreground">{helper}</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="w-40 h-24 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={`${label} preview`}
+              className="h-full w-full object-cover"
+              data-testid={`${testIdPrefix}-preview`}
+            />
+          ) : (
+            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onPick}
+            disabled={disabled}
+            data-testid={`${testIdPrefix}-pick`}
+          >
+            {isOverridden ? "Change image" : "Pick from library"}
+          </Button>
+          {isOverridden && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onReset}
+              disabled={disabled}
+              data-testid={`${testIdPrefix}-reset`}
+            >
+              <X className="h-4 w-4 mr-1" /> Reset to default
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

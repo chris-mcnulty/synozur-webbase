@@ -15,4 +15,6 @@ export interface AssetInput {
   size: number;
   /** @minLength 1 */
   storageKey: string;
+  /** @nullable */
+  category?: string | null;
 }

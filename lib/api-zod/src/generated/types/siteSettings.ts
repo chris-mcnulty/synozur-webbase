@@ -8,5 +8,13 @@
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageUrl?: string | null;
   updatedAt: Date;
 }

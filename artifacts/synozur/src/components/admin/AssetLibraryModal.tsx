@@ -25,9 +25,15 @@ interface Props {
   onClose: () => void;
   onSelect: (asset: Asset) => void;
   selectedId?: number | null;
+  /**
+   * Optional category filter (e.g. "people", "north-star").
+   * When set, the library only shows assets in that category and new uploads
+   * are automatically tagged with it.
+   */
+  category?: string;
 }
 
-export function AssetLibraryModal({ open, onClose, onSelect, selectedId }: Props) {
+export function AssetLibraryModal({ open, onClose, onSelect, selectedId, category }: Props) {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [picked, setPicked] = useState<number | null>(selectedId ?? null);
@@ -43,8 +49,8 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId }: Props
   }, [open, selectedId]);
 
   const { data: assets = [], isLoading } = useQuery({
-    queryKey: ["assets", debounced],
-    queryFn: () => api.listAssets(debounced || undefined),
+    queryKey: ["assets", debounced, category ?? null],
+    queryFn: () => api.listAssets(debounced || undefined, category),
     enabled: open,
   });
 
@@ -127,6 +133,7 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId }: Props
                   mimeType: String(f.type ?? "application/octet-stream"),
                   size: Number(f.size ?? 0),
                   storageKey,
+                  ...(category ? { category } : {}),
                 });
               }
             }}

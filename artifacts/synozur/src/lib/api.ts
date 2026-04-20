@@ -75,10 +75,16 @@ export interface AdminMe {
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroImageUrl?: string | null;
+  homeEditorialImageUrl?: string | null;
 }
 
 export interface AdminSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroImageAssetId?: number | null;
+  homeHeroImageUrl?: string | null;
+  homeEditorialImageAssetId?: number | null;
+  homeEditorialImageUrl?: string | null;
   updatedAt: string;
 }
 
@@ -154,6 +160,13 @@ export type SolutionWithCapabilities = SolutionDto & {
   capabilities: CapabilityDto[];
 };
 
+export interface UpdateSiteSettingsBody {
+  requireCookieConsent: boolean;
+  homeHeroImageAssetId?: number | null;
+  homeEditorialImageAssetId?: number | null;
+}
+
+
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
   getService: (slug: string) =>
@@ -169,9 +182,12 @@ export const api = {
   updateEvent: (id: number, body: EventInput) =>
     jsonFetch<AdminEvent>(url(`/admin/events/${id}`), { method: "PATCH", body: JSON.stringify(body) }),
   deleteEvent: (id: number) => jsonFetch<void>(url(`/admin/events/${id}`), { method: "DELETE" }),
-  listAssets: (search?: string) => {
-    const q = search ? `?search=${encodeURIComponent(search)}` : "";
-    return jsonFetch<Asset[]>(url(`/assets${q}`));
+  listAssets: (search?: string, category?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (category) params.set("category", category);
+    const q = params.toString();
+    return jsonFetch<Asset[]>(url(`/assets${q ? `?${q}` : ""}`));
   },
   createAsset: (body: AssetInput) =>
     jsonFetch<Asset>(url("/assets"), { method: "POST", body: JSON.stringify(body) }),
@@ -193,7 +209,7 @@ export const api = {
     url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
   getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
   getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),
-  updateAdminSiteSettings: (body: { requireCookieConsent: boolean }) =>
+  updateAdminSiteSettings: (body: UpdateSiteSettingsBody) =>
     jsonFetch<AdminSiteSettings>(url("/admin/site-settings"), {
       method: "PATCH",
       body: JSON.stringify(body),

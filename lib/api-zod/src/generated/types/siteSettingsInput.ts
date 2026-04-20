@@ -8,4 +8,8 @@
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageAssetId?: number | null;
 }

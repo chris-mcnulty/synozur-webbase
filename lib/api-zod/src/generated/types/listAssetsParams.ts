@@ -8,4 +8,8 @@
 
 export type ListAssetsParams = {
   search?: string;
+  /**
+   * Filter by asset category (e.g. people, north-star)
+   */
+  category?: string;
 };

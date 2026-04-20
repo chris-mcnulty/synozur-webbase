@@ -1350,6 +1350,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: category
+          in: query
+          required: false
+          description: Filter by asset category (e.g. people, north-star)
+          schema:
+            type: string
       responses:
         '200':
           description: Asset list
@@ -2471,12 +2477,36 @@ components:
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroImageUrl:
+          type:
+            - string
+            - 'null'
+        homeEditorialImageUrl:
+          type:
+            - string
+            - 'null'
     SiteSettings:
       type: object
       required: [requireCookieConsent, updatedAt]
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroImageAssetId:
+          type:
+            - integer
+            - 'null'
+        homeHeroImageUrl:
+          type:
+            - string
+            - 'null'
+        homeEditorialImageAssetId:
+          type:
+            - integer
+            - 'null'
+        homeEditorialImageUrl:
+          type:
+            - string
+            - 'null'
         updatedAt:
           type: string
           format: date-time
@@ -2486,6 +2516,14 @@ components:
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroImageAssetId:
+          type:
+            - integer
+            - 'null'
+        homeEditorialImageAssetId:
+          type:
+            - integer
+            - 'null'
     AdminUser:
       type: object
       required:
@@ -2526,6 +2564,10 @@ components:
           type:
             - string
             - 'null'
+        category:
+          type:
+            - string
+            - 'null'
         uploadedAt:
           type: string
           format: date-time
@@ -2549,6 +2591,10 @@ components:
         storageKey:
           type: string
           minLength: 1
+        category:
+          type:
+            - string
+            - 'null'
     PublicEvent:
       type: object
       required:

@@ -8,4 +8,8 @@
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeEditorialImageUrl?: string | null;
 }

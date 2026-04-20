@@ -10,6 +10,7 @@ export const assetsTable = pgTable("assets", {
   size: integer("size").notNull(),
   storageKey: text("storage_key").notNull(),
   uploadedBy: text("uploaded_by"),
+  category: text("category"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

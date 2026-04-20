@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
+
+const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+const DEFAULT_HERO_BG = "/images/hero-bg.png";
+const DEFAULT_EDITORIAL = "/images/home-hero-editorial.png";
+
+function resolveImageUrl(url: string | null | undefined, fallback: string): string {
+  if (!url) return fallback;
+  // Backend returns paths like "/api/storage/objects/uploads/<id>"; prepend base path.
+  if (url.startsWith("/api/")) return `${BASE_PATH_HOME}${url}`;
+  return url;
+}
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
@@ -148,6 +161,12 @@ function CarouselNextProxy({ api }: { api: CarouselApi | null }) {
 }
 
 export default function Home() {
+  const { data: settings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+  });
+  const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
+  const editorial = resolveImageUrl(settings?.homeEditorialImageUrl, DEFAULT_EDITORIAL);
   return (
     <div className="w-full">
       <Meta
@@ -163,9 +182,10 @@ export default function Home() {
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
           <img
-            src="/images/hero-bg.png"
+            src={heroBg}
             alt="Cosmic nebula background"
             className="w-full h-full object-cover"
+            data-testid="img-home-hero-bg"
           />
         </div>
 
@@ -241,9 +261,10 @@ export default function Home() {
               className="relative aspect-square rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
             >
               <img
-                src="/images/home-hero-editorial.png"
+                src={editorial}
                 alt="Editorial: leadership team in a modern conference room"
                 className="w-full h-full object-cover"
+                data-testid="img-home-editorial"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent z-10 opacity-30 mix-blend-overlay" />
             </motion.div>

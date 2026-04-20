@@ -15,5 +15,7 @@ export interface Asset {
   storageKey: string;
   /** @nullable */
   uploadedBy?: string | null;
+  /** @nullable */
+  category?: string | null;
   uploadedAt: Date;
 }

@@ -872,6 +872,8 @@ export const SubmitInsightCommentBody = zod.object({
  */
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  homeHeroImageUrl: zod.string().nullish(),
+  homeEditorialImageUrl: zod.string().nullish(),
 });
 
 /**
@@ -879,6 +881,10 @@ export const GetPublicSiteSettingsResponse = zod.object({
  */
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroImageUrl: zod.string().nullish(),
+  homeEditorialImageAssetId: zod.number().nullish(),
+  homeEditorialImageUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -887,10 +893,16 @@ export const GetAdminSiteSettingsResponse = zod.object({
  */
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
+  homeHeroImageAssetId: zod.number().nullish(),
+  homeEditorialImageAssetId: zod.number().nullish(),
 });
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroImageUrl: zod.string().nullish(),
+  homeEditorialImageAssetId: zod.number().nullish(),
+  homeEditorialImageUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1470,6 +1482,10 @@ export const GetAdminMeResponse = zod.object({
  */
 export const ListAssetsQueryParams = zod.object({
   search: zod.coerce.string().optional(),
+  category: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by asset category (e.g. people, north-star)"),
 });
 
 export const ListAssetsResponseItem = zod.object({
@@ -1480,6 +1496,7 @@ export const ListAssetsResponseItem = zod.object({
   size: zod.number(),
   storageKey: zod.string(),
   uploadedBy: zod.string().nullish(),
+  category: zod.string().nullish(),
   uploadedAt: zod.coerce.date(),
 });
 export const ListAssetsResponse = zod.array(ListAssetsResponseItem);
@@ -1493,6 +1510,7 @@ export const CreateAssetBody = zod.object({
   mimeType: zod.string().min(1),
   size: zod.number().min(1),
   storageKey: zod.string().min(1),
+  category: zod.string().nullish(),
 });
 
 /**

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, desc } from "drizzle-orm";
+import { eq, and, ilike, desc, type SQL } from "drizzle-orm";
 import { db, assetsTable } from "@workspace/db";
 import {
   ListAssetsResponseItem,
@@ -19,12 +19,18 @@ router.get("/assets", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
   const search = params.data.search?.trim();
-  const rows = search
-    ? await db
-        .select()
-        .from(assetsTable)
-        .where(ilike(assetsTable.originalName, `%${search}%`))
-        .orderBy(desc(assetsTable.uploadedAt))
+  const category = params.data.category?.trim();
+  const conditions: SQL[] = [];
+  if (search) conditions.push(ilike(assetsTable.originalName, `%${search}%`));
+  if (category) conditions.push(eq(assetsTable.category, category));
+  const where =
+    conditions.length === 0
+      ? undefined
+      : conditions.length === 1
+        ? conditions[0]
+        : and(...conditions);
+  const rows = where
+    ? await db.select().from(assetsTable).where(where).orderBy(desc(assetsTable.uploadedAt))
     : await db.select().from(assetsTable).orderBy(desc(assetsTable.uploadedAt));
   res.json(ListAssetsResponse.parse(rows));
 });
@@ -35,7 +41,7 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { originalName, mimeType, size, storageKey } = parsed.data;
+  const { originalName, mimeType, size, storageKey, category } = parsed.data;
   const filename = originalName;
   const [row] = await db
     .insert(assetsTable)
@@ -45,6 +51,7 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
       mimeType,
       size,
       storageKey,
+      category: category ?? null,
       uploadedBy: req.admin?.email ?? null,
     })
     .returning();

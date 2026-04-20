@@ -317,15 +317,31 @@ export interface UploadUrlResponse {
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeEditorialImageUrl?: string | null;
 }
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageUrl?: string | null;
   updatedAt: string;
 }
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
+  /** @nullable */
+  homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageAssetId?: number | null;
 }
 
 export interface AdminUser {
@@ -343,6 +359,8 @@ export interface Asset {
   storageKey: string;
   /** @nullable */
   uploadedBy?: string | null;
+  /** @nullable */
+  category?: string | null;
   uploadedAt: string;
 }
 
@@ -355,6 +373,8 @@ export interface AssetInput {
   size: number;
   /** @minLength 1 */
   storageKey: string;
+  /** @nullable */
+  category?: string | null;
 }
 
 export interface PublicEvent {
@@ -896,6 +916,10 @@ export type ListInsightsParams = {
 
 export type ListAssetsParams = {
   search?: string;
+  /**
+   * Filter by asset category (e.g. people, north-star)
+   */
+  category?: string;
 };
 
 export type ListAdminFormSubmissionsParams = {
