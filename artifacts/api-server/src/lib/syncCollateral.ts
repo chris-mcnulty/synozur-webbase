@@ -38,6 +38,7 @@ export async function upsertCollateralFromEvent(
   const syncedFields = {
     type: "event" as const,
     title: event.title,
+    subtitle: event.location ?? null,
     description: event.description ?? "",
     heroImage: imageUrl ?? "",
     url: event.registrationUrl ?? "",
@@ -62,7 +63,6 @@ export async function upsertCollateralFromEvent(
   await db.insert(collateralTable).values({
     ...syncedFields,
     slug,
-    subtitle: event.location ?? null,
     tags: [],
     featured: false,
     featuredRank: null,

@@ -152,7 +152,14 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
     })
     .returning();
   const { imageUrl } = await loadEventWithImage(event);
-  await upsertCollateralFromEvent(event, imageUrl);
+  try {
+    await upsertCollateralFromEvent(event, imageUrl);
+  } catch (error) {
+    console.error("Failed to sync collateral after event create", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.status(201).json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
 });
 
@@ -215,7 +222,14 @@ router.delete("/admin/events/:id", requireAdmin, async (req, res): Promise<void>
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  await softDeleteCollateralForEvent(event.id);
+  try {
+    await softDeleteCollateralForEvent(event.id);
+  } catch (error) {
+    console.error("Failed to soft-delete collateral after event delete", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.sendStatus(204);
 });
 
