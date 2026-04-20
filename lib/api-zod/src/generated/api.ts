@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -16,12 +15,742 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary Returns current admin user info if authorized
+ * @summary Returns the current authenticated user with roles
  */
-export const GetAdminMeResponse = zod.object({
-  userId: zod.string(),
-  email: zod.string(),
-  authorized: zod.boolean(),
+export const GetCurrentUserResponse = zod.object({
+  id: zod.string().uuid(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+});
+
+/**
+ * @summary List posts (admin)
+ */
+export const listCmsPostsQueryPageDefault = 1;
+
+export const listCmsPostsQueryPageSizeDefault = 20;
+export const listCmsPostsQueryPageSizeMax = 100;
+
+export const ListCmsPostsQueryParams = zod.object({
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  authorId: zod.coerce.string().uuid().optional(),
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().min(1).default(listCmsPostsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listCmsPostsQueryPageSizeMax)
+    .default(listCmsPostsQueryPageSizeDefault),
+});
+
+export const ListCmsPostsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      slug: zod.string(),
+      title: zod.string(),
+      subtitle: zod.string().nullish(),
+      bodyHtml: zod.string().nullish(),
+      bodyMarkdown: zod.string().nullish(),
+      excerpt: zod.string().nullish(),
+      heroImageUrl: zod.string().nullish(),
+      ogImageUrl: zod.string().nullish(),
+      authorId: zod.string().uuid(),
+      author: zod
+        .object({
+          id: zod.string().uuid(),
+          displayName: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+        })
+        .optional(),
+      status: zod.enum(["draft", "scheduled", "published", "archived"]),
+      publishedAt: zod.coerce.date().nullish(),
+      scheduledFor: zod.coerce.date().nullish(),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
+      seoCanonicalUrl: zod.string().nullish(),
+      readingTimeMin: zod.number().nullish(),
+      categories: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        )
+        .optional(),
+      tags: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  page: zod.number(),
+  pageSize: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Create a draft post
+ */
+
+export const CreateCmsPostBody = zod.object({
+  title: zod.string().min(1),
+  slug: zod.string().nullish(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageId: zod.string().uuid().nullish(),
+  ogImageId: zod.string().uuid().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categoryIds: zod.array(zod.string().uuid()).optional(),
+  tagIds: zod.array(zod.string().uuid()).optional(),
+});
+
+export const GetCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetCmsPostResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const UpdateCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCmsPostBody = zod.object({
+  title: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageId: zod.string().uuid().nullish(),
+  ogImageId: zod.string().uuid().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categoryIds: zod.array(zod.string().uuid()).nullish(),
+  tagIds: zod.array(zod.string().uuid()).nullish(),
+});
+
+export const UpdateCmsPostResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const PublishCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const PublishCmsPostResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const ScheduleCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ScheduleCmsPostBody = zod.object({
+  scheduledFor: zod.coerce.date(),
+});
+
+export const ScheduleCmsPostResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const ArchiveCmsPostParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ArchiveCmsPostResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  bodyMarkdown: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  authorId: zod.string().uuid(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledFor: zod.coerce.date().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const ListCmsCategoriesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+});
+export const ListCmsCategoriesResponse = zod.array(
+  ListCmsCategoriesResponseItem,
+);
+
+export const CreateCmsCategoryBody = zod.object({
+  slug: zod.string().min(1),
+  name: zod.string().min(1),
+  description: zod.string().nullish(),
+});
+
+export const UpdateCmsCategoryParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCmsCategoryBody = zod.object({
+  slug: zod.string().min(1),
+  name: zod.string().min(1),
+  description: zod.string().nullish(),
+});
+
+export const UpdateCmsCategoryResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+});
+
+export const DeleteCmsCategoryParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListCmsTagsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  name: zod.string(),
+});
+export const ListCmsTagsResponse = zod.array(ListCmsTagsResponseItem);
+
+export const CreateCmsTagBody = zod.object({
+  slug: zod.string().min(1),
+  name: zod.string().min(1),
+});
+
+export const UpdateCmsTagParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCmsTagBody = zod.object({
+  slug: zod.string().min(1),
+  name: zod.string().min(1),
+});
+
+export const UpdateCmsTagResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  name: zod.string(),
+});
+
+export const DeleteCmsTagParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const listCmsMediaQueryPageDefault = 1;
+
+export const listCmsMediaQueryPageSizeDefault = 50;
+export const listCmsMediaQueryPageSizeMax = 100;
+
+export const ListCmsMediaQueryParams = zod.object({
+  page: zod.coerce.number().min(1).default(listCmsMediaQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listCmsMediaQueryPageSizeMax)
+    .default(listCmsMediaQueryPageSizeDefault),
+});
+
+export const ListCmsMediaResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      storageKey: zod.string(),
+      publicUrl: zod.string(),
+      mime: zod.string().nullish(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+      byteSize: zod.number().nullish(),
+      altText: zod.string().nullish(),
+      uploadedBy: zod.string().uuid().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  page: zod.number(),
+  pageSize: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Register an uploaded media object (after presigned upload)
+ */
+
+export const RegisterCmsMediaBody = zod.object({
+  storageKey: zod.string().min(1),
+  publicUrl: zod.string().min(1),
+  mime: zod.string().nullish(),
+  width: zod.number().nullish(),
+  height: zod.number().nullish(),
+  byteSize: zod.number().nullish(),
+  altText: zod.string().nullish(),
+});
+
+export const DeleteCmsMediaParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const listCmsCommentsQueryPageDefault = 1;
+
+export const listCmsCommentsQueryPageSizeDefault = 50;
+export const listCmsCommentsQueryPageSizeMax = 100;
+
+export const ListCmsCommentsQueryParams = zod.object({
+  status: zod.enum(["pending", "approved", "spam", "deleted"]).optional(),
+  postId: zod.coerce.string().uuid().optional(),
+  page: zod.coerce.number().min(1).default(listCmsCommentsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listCmsCommentsQueryPageSizeMax)
+    .default(listCmsCommentsQueryPageSizeDefault),
+});
+
+export const ListCmsCommentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      postId: zod.string().uuid(),
+      parentCommentId: zod.string().uuid().nullish(),
+      authorName: zod.string(),
+      authorEmail: zod.string(),
+      bodyText: zod.string(),
+      status: zod.enum(["pending", "approved", "spam", "deleted"]),
+      createdAt: zod.coerce.date(),
+      moderatedAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  page: zod.number(),
+  pageSize: zod.number(),
+  total: zod.number(),
+});
+
+export const ModerateCmsCommentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ModerateCmsCommentBody = zod.object({
+  action: zod.enum(["approve", "reject", "spam", "delete"]),
+});
+
+export const ModerateCmsCommentResponse = zod.object({
+  id: zod.string().uuid(),
+  postId: zod.string().uuid(),
+  parentCommentId: zod.string().uuid().nullish(),
+  authorName: zod.string(),
+  authorEmail: zod.string(),
+  bodyText: zod.string(),
+  status: zod.enum(["pending", "approved", "spam", "deleted"]),
+  createdAt: zod.coerce.date(),
+  moderatedAt: zod.coerce.date().nullish(),
+});
+
+export const ListCmsUsersResponseItem = zod.object({
+  id: zod.string().uuid(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  createdAt: zod.coerce.date().optional(),
+});
+export const ListCmsUsersResponse = zod.array(ListCmsUsersResponseItem);
+
+export const SetCmsUserRolesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const SetCmsUserRolesBody = zod.object({
+  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+});
+
+export const SetCmsUserRolesResponse = zod.object({
+  id: zod.string().uuid(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  createdAt: zod.coerce.date().optional(),
+});
+
+export const listInsightsQueryPageDefault = 1;
+
+export const listInsightsQueryPageSizeDefault = 12;
+export const listInsightsQueryPageSizeMax = 50;
+
+export const ListInsightsQueryParams = zod.object({
+  categorySlug: zod.coerce.string().optional(),
+  tagSlug: zod.coerce.string().optional(),
+  page: zod.coerce.number().min(1).default(listInsightsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listInsightsQueryPageSizeMax)
+    .default(listInsightsQueryPageSizeDefault),
+});
+
+export const ListInsightsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      slug: zod.string(),
+      title: zod.string(),
+      subtitle: zod.string().nullish(),
+      excerpt: zod.string().nullish(),
+      bodyHtml: zod.string().nullish(),
+      heroImageUrl: zod.string().nullish(),
+      ogImageUrl: zod.string().nullish(),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
+      seoCanonicalUrl: zod.string().nullish(),
+      readingTimeMin: zod.number().nullish(),
+      publishedAt: zod.coerce.date().nullable(),
+      author: zod
+        .object({
+          id: zod.string().uuid(),
+          displayName: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+        })
+        .optional(),
+      categories: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        )
+        .optional(),
+      tags: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+  page: zod.number(),
+  pageSize: zod.number(),
+  total: zod.number(),
+});
+
+export const GetInsightParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetInsightResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  title: zod.string(),
+  subtitle: zod.string().nullish(),
+  excerpt: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  heroImageUrl: zod.string().nullish(),
+  ogImageUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  seoCanonicalUrl: zod.string().nullish(),
+  readingTimeMin: zod.number().nullish(),
+  publishedAt: zod.coerce.date().nullable(),
+  author: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .optional(),
+  categories: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const ListInsightCommentsParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const ListInsightCommentsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  parentCommentId: zod.string().uuid().nullish(),
+  authorName: zod.string(),
+  bodyText: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListInsightCommentsResponse = zod.array(
+  ListInsightCommentsResponseItem,
+);
+
+export const SubmitInsightCommentParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const submitInsightCommentBodyAuthorNameMax = 120;
+
+export const submitInsightCommentBodyBodyTextMax = 5000;
+
+export const SubmitInsightCommentBody = zod.object({
+  authorName: zod.string().min(1).max(submitInsightCommentBodyAuthorNameMax),
+  authorEmail: zod.string().email(),
+  bodyText: zod.string().min(1).max(submitInsightCommentBodyBodyTextMax),
+  parentCommentId: zod.string().uuid().nullish(),
 });
 
 /**
@@ -35,7 +764,7 @@ export const RequestUploadUrlBody = zod.object({
 });
 
 export const RequestUploadUrlResponse = zod.object({
-  uploadURL: zod.string(),
+  uploadURL: zod.string().url(),
   objectPath: zod.string(),
   metadata: zod
     .object({
@@ -46,18 +775,21 @@ export const RequestUploadUrlResponse = zod.object({
     .optional(),
 });
 
-/**
- * @summary Serve a public asset
- */
 export const GetPublicObjectParams = zod.object({
   filePath: zod.coerce.string(),
 });
 
-/**
- * @summary Serve an object entity from PRIVATE_OBJECT_DIR
- */
 export const GetStorageObjectParams = zod.object({
   objectPath: zod.coerce.string(),
+});
+
+/**
+ * @summary Returns current admin user info if authorized
+ */
+export const GetAdminMeResponse = zod.object({
+  userId: zod.string(),
+  email: zod.string(),
+  authorized: zod.boolean(),
 });
 
 /**

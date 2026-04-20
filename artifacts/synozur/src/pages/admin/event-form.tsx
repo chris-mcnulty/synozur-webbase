@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { AssetLibraryModal } from "@/components/admin/AssetLibraryModal";
-import type { Asset, EventInput } from "@workspace/api-zod";
+import type { Asset, EventInput } from "@workspace/api-zod/types";
 
 interface Props {
   id?: string;

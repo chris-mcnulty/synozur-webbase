@@ -22,19 +22,50 @@ import type {
   AdminUser,
   Asset,
   AssetInput,
+  BadRequestResponse,
+  Category,
+  CmsUser,
+  Comment,
+  CommentListResponse,
   ContactFormInput,
+  CreatePostBody,
+  CurrentUser,
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
+  ForbiddenResponse,
   FormSubmissionAck,
   HealthStatus,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
+  ListCmsCommentsParams,
+  ListCmsMediaParams,
+  ListCmsPostsParams,
+  ListInsightsParams,
+  MediaItem,
+  MediaListResponse,
+  ModerateCmsCommentBody,
+  NotFoundResponse,
+  Post,
+  PostListResponse,
+  PublicComment,
   PublicEvent,
+  PublicPost,
+  PublicPostListResponse,
+  RegisterMediaBody,
+  RequestUploadUrlBody,
+  RequestUploadUrlResponse,
+  ScheduleCmsPostBody,
+  SetCmsUserRolesBody,
   StartFormInput,
+  SubmitCommentBody,
+  SubmitCommentResponse,
   SubscribeFormInput,
-  UploadUrlRequest,
-  UploadUrlResponse,
+  Tag,
+  UnauthorizedResponse,
+  UpdatePostBody,
+  UpsertCategoryBody,
+  UpsertTagBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -47,7 +78,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -123,6 +153,2556 @@ export function useHealthCheck<
 }
 
 /**
+ * @summary Returns the current authenticated user with roles
+ */
+export const getGetCurrentUserUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getCurrentUser = async (
+  options?: RequestInit,
+): Promise<CurrentUser> => {
+  return customFetch<CurrentUser>(getGetCurrentUserUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCurrentUserQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetCurrentUserQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCurrentUser>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({
+    signal,
+  }) => getCurrentUser({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCurrentUserQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCurrentUser>>
+>;
+export type GetCurrentUserQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Returns the current authenticated user with roles
+ */
+
+export function useGetCurrentUser<
+  TData = Awaited<ReturnType<typeof getCurrentUser>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCurrentUserQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List posts (admin)
+ */
+export const getListCmsPostsUrl = (params?: ListCmsPostsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/posts?${stringifiedParams}`
+    : `/api/cms/posts`;
+};
+
+export const listCmsPosts = async (
+  params?: ListCmsPostsParams,
+  options?: RequestInit,
+): Promise<PostListResponse> => {
+  return customFetch<PostListResponse>(getListCmsPostsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsPostsQueryKey = (params?: ListCmsPostsParams) => {
+  return [`/api/cms/posts`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCmsPostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsPosts>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListCmsPostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsPosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsPostsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsPosts>>> = ({
+    signal,
+  }) => listCmsPosts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsPosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsPostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsPosts>>
+>;
+export type ListCmsPostsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List posts (admin)
+ */
+
+export function useListCmsPosts<
+  TData = Awaited<ReturnType<typeof listCmsPosts>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListCmsPostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsPosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsPostsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a draft post
+ */
+export const getCreateCmsPostUrl = () => {
+  return `/api/cms/posts`;
+};
+
+export const createCmsPost = async (
+  createPostBody: CreatePostBody,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getCreateCmsPostUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPostBody),
+  });
+};
+
+export const getCreateCmsPostMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsPost>>,
+    TError,
+    { data: BodyType<CreatePostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCmsPost>>,
+  TError,
+  { data: BodyType<CreatePostBody> },
+  TContext
+> => {
+  const mutationKey = ["createCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCmsPost>>,
+    { data: BodyType<CreatePostBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCmsPost(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCmsPost>>
+>;
+export type CreateCmsPostMutationBody = BodyType<CreatePostBody>;
+export type CreateCmsPostMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Create a draft post
+ */
+export const useCreateCmsPost = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsPost>>,
+    TError,
+    { data: BodyType<CreatePostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCmsPost>>,
+  TError,
+  { data: BodyType<CreatePostBody> },
+  TContext
+> => {
+  return useMutation(getCreateCmsPostMutationOptions(options));
+};
+
+export const getGetCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}`;
+};
+
+export const getCmsPost = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getGetCmsPostUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsPostQueryKey = (id: string) => {
+  return [`/api/cms/posts/${id}`] as const;
+};
+
+export const getGetCmsPostQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsPost>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCmsPostQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCmsPost>>> = ({
+    signal,
+  }) => getCmsPost(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsPost>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsPostQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsPost>>
+>;
+export type GetCmsPostQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetCmsPost<
+  TData = Awaited<ReturnType<typeof getCmsPost>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsPostQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}`;
+};
+
+export const updateCmsPost = async (
+  id: string,
+  updatePostBody: UpdatePostBody,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getUpdateCmsPostUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePostBody),
+  });
+};
+
+export const getUpdateCmsPostMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsPost>>,
+    TError,
+    { id: string; data: BodyType<UpdatePostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCmsPost>>,
+  TError,
+  { id: string; data: BodyType<UpdatePostBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCmsPost>>,
+    { id: string; data: BodyType<UpdatePostBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCmsPost(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCmsPost>>
+>;
+export type UpdateCmsPostMutationBody = BodyType<UpdatePostBody>;
+export type UpdateCmsPostMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+export const useUpdateCmsPost = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsPost>>,
+    TError,
+    { id: string; data: BodyType<UpdatePostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCmsPost>>,
+  TError,
+  { id: string; data: BodyType<UpdatePostBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCmsPostMutationOptions(options));
+};
+
+export const getDeleteCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}`;
+};
+
+export const deleteCmsPost = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCmsPostUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCmsPostMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCmsPost>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCmsPost(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCmsPost>>
+>;
+
+export type DeleteCmsPostMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useDeleteCmsPost = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteCmsPostMutationOptions(options));
+};
+
+export const getPublishCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}/publish`;
+};
+
+export const publishCmsPost = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getPublishCmsPostUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPublishCmsPostMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof publishCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["publishCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof publishCmsPost>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return publishCmsPost(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PublishCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof publishCmsPost>>
+>;
+
+export type PublishCmsPostMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const usePublishCmsPost = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof publishCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getPublishCmsPostMutationOptions(options));
+};
+
+export const getScheduleCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}/schedule`;
+};
+
+export const scheduleCmsPost = async (
+  id: string,
+  scheduleCmsPostBody: ScheduleCmsPostBody,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getScheduleCmsPostUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(scheduleCmsPostBody),
+  });
+};
+
+export const getScheduleCmsPostMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scheduleCmsPost>>,
+    TError,
+    { id: string; data: BodyType<ScheduleCmsPostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof scheduleCmsPost>>,
+  TError,
+  { id: string; data: BodyType<ScheduleCmsPostBody> },
+  TContext
+> => {
+  const mutationKey = ["scheduleCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof scheduleCmsPost>>,
+    { id: string; data: BodyType<ScheduleCmsPostBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return scheduleCmsPost(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ScheduleCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof scheduleCmsPost>>
+>;
+export type ScheduleCmsPostMutationBody = BodyType<ScheduleCmsPostBody>;
+export type ScheduleCmsPostMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+export const useScheduleCmsPost = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scheduleCmsPost>>,
+    TError,
+    { id: string; data: BodyType<ScheduleCmsPostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof scheduleCmsPost>>,
+  TError,
+  { id: string; data: BodyType<ScheduleCmsPostBody> },
+  TContext
+> => {
+  return useMutation(getScheduleCmsPostMutationOptions(options));
+};
+
+export const getArchiveCmsPostUrl = (id: string) => {
+  return `/api/cms/posts/${id}/archive`;
+};
+
+export const archiveCmsPost = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Post> => {
+  return customFetch<Post>(getArchiveCmsPostUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getArchiveCmsPostMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof archiveCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof archiveCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["archiveCmsPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof archiveCmsPost>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return archiveCmsPost(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ArchiveCmsPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof archiveCmsPost>>
+>;
+
+export type ArchiveCmsPostMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+export const useArchiveCmsPost = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof archiveCmsPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof archiveCmsPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getArchiveCmsPostMutationOptions(options));
+};
+
+export const getListCmsCategoriesUrl = () => {
+  return `/api/cms/categories`;
+};
+
+export const listCmsCategories = async (
+  options?: RequestInit,
+): Promise<Category[]> => {
+  return customFetch<Category[]>(getListCmsCategoriesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsCategoriesQueryKey = () => {
+  return [`/api/cms/categories`] as const;
+};
+
+export const getListCmsCategoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsCategoriesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCmsCategories>>
+  > = ({ signal }) => listCmsCategories({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsCategories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsCategoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsCategories>>
+>;
+export type ListCmsCategoriesQueryError = ErrorType<unknown>;
+
+export function useListCmsCategories<
+  TData = Awaited<ReturnType<typeof listCmsCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsCategoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateCmsCategoryUrl = () => {
+  return `/api/cms/categories`;
+};
+
+export const createCmsCategory = async (
+  upsertCategoryBody: UpsertCategoryBody,
+  options?: RequestInit,
+): Promise<Category> => {
+  return customFetch<Category>(getCreateCmsCategoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCategoryBody),
+  });
+};
+
+export const getCreateCmsCategoryMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsCategory>>,
+    TError,
+    { data: BodyType<UpsertCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCmsCategory>>,
+  TError,
+  { data: BodyType<UpsertCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["createCmsCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCmsCategory>>,
+    { data: BodyType<UpsertCategoryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCmsCategory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCmsCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCmsCategory>>
+>;
+export type CreateCmsCategoryMutationBody = BodyType<UpsertCategoryBody>;
+export type CreateCmsCategoryMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+export const useCreateCmsCategory = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsCategory>>,
+    TError,
+    { data: BodyType<UpsertCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCmsCategory>>,
+  TError,
+  { data: BodyType<UpsertCategoryBody> },
+  TContext
+> => {
+  return useMutation(getCreateCmsCategoryMutationOptions(options));
+};
+
+export const getUpdateCmsCategoryUrl = (id: string) => {
+  return `/api/cms/categories/${id}`;
+};
+
+export const updateCmsCategory = async (
+  id: string,
+  upsertCategoryBody: UpsertCategoryBody,
+  options?: RequestInit,
+): Promise<Category> => {
+  return customFetch<Category>(getUpdateCmsCategoryUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCategoryBody),
+  });
+};
+
+export const getUpdateCmsCategoryMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsCategory>>,
+    TError,
+    { id: string; data: BodyType<UpsertCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCmsCategory>>,
+  TError,
+  { id: string; data: BodyType<UpsertCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCmsCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCmsCategory>>,
+    { id: string; data: BodyType<UpsertCategoryBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCmsCategory(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCmsCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCmsCategory>>
+>;
+export type UpdateCmsCategoryMutationBody = BodyType<UpsertCategoryBody>;
+export type UpdateCmsCategoryMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useUpdateCmsCategory = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsCategory>>,
+    TError,
+    { id: string; data: BodyType<UpsertCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCmsCategory>>,
+  TError,
+  { id: string; data: BodyType<UpsertCategoryBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCmsCategoryMutationOptions(options));
+};
+
+export const getDeleteCmsCategoryUrl = (id: string) => {
+  return `/api/cms/categories/${id}`;
+};
+
+export const deleteCmsCategory = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCmsCategoryUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCmsCategoryMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsCategory>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCmsCategory>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteCmsCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCmsCategory>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCmsCategory(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCmsCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCmsCategory>>
+>;
+
+export type DeleteCmsCategoryMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+export const useDeleteCmsCategory = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsCategory>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCmsCategory>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteCmsCategoryMutationOptions(options));
+};
+
+export const getListCmsTagsUrl = () => {
+  return `/api/cms/tags`;
+};
+
+export const listCmsTags = async (options?: RequestInit): Promise<Tag[]> => {
+  return customFetch<Tag[]>(getListCmsTagsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsTagsQueryKey = () => {
+  return [`/api/cms/tags`] as const;
+};
+
+export const getListCmsTagsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsTags>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsTags>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsTagsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsTags>>> = ({
+    signal,
+  }) => listCmsTags({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsTags>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsTagsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsTags>>
+>;
+export type ListCmsTagsQueryError = ErrorType<unknown>;
+
+export function useListCmsTags<
+  TData = Awaited<ReturnType<typeof listCmsTags>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsTags>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsTagsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateCmsTagUrl = () => {
+  return `/api/cms/tags`;
+};
+
+export const createCmsTag = async (
+  upsertTagBody: UpsertTagBody,
+  options?: RequestInit,
+): Promise<Tag> => {
+  return customFetch<Tag>(getCreateCmsTagUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertTagBody),
+  });
+};
+
+export const getCreateCmsTagMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsTag>>,
+    TError,
+    { data: BodyType<UpsertTagBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCmsTag>>,
+  TError,
+  { data: BodyType<UpsertTagBody> },
+  TContext
+> => {
+  const mutationKey = ["createCmsTag"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCmsTag>>,
+    { data: BodyType<UpsertTagBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCmsTag(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCmsTagMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCmsTag>>
+>;
+export type CreateCmsTagMutationBody = BodyType<UpsertTagBody>;
+export type CreateCmsTagMutationError = ErrorType<unknown>;
+
+export const useCreateCmsTag = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsTag>>,
+    TError,
+    { data: BodyType<UpsertTagBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCmsTag>>,
+  TError,
+  { data: BodyType<UpsertTagBody> },
+  TContext
+> => {
+  return useMutation(getCreateCmsTagMutationOptions(options));
+};
+
+export const getUpdateCmsTagUrl = (id: string) => {
+  return `/api/cms/tags/${id}`;
+};
+
+export const updateCmsTag = async (
+  id: string,
+  upsertTagBody: UpsertTagBody,
+  options?: RequestInit,
+): Promise<Tag> => {
+  return customFetch<Tag>(getUpdateCmsTagUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertTagBody),
+  });
+};
+
+export const getUpdateCmsTagMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsTag>>,
+    TError,
+    { id: string; data: BodyType<UpsertTagBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCmsTag>>,
+  TError,
+  { id: string; data: BodyType<UpsertTagBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCmsTag"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCmsTag>>,
+    { id: string; data: BodyType<UpsertTagBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCmsTag(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCmsTagMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCmsTag>>
+>;
+export type UpdateCmsTagMutationBody = BodyType<UpsertTagBody>;
+export type UpdateCmsTagMutationError = ErrorType<unknown>;
+
+export const useUpdateCmsTag = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsTag>>,
+    TError,
+    { id: string; data: BodyType<UpsertTagBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCmsTag>>,
+  TError,
+  { id: string; data: BodyType<UpsertTagBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCmsTagMutationOptions(options));
+};
+
+export const getDeleteCmsTagUrl = (id: string) => {
+  return `/api/cms/tags/${id}`;
+};
+
+export const deleteCmsTag = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCmsTagUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCmsTagMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsTag>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCmsTag>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteCmsTag"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCmsTag>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCmsTag(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCmsTagMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCmsTag>>
+>;
+
+export type DeleteCmsTagMutationError = ErrorType<unknown>;
+
+export const useDeleteCmsTag = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsTag>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCmsTag>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteCmsTagMutationOptions(options));
+};
+
+export const getListCmsMediaUrl = (params?: ListCmsMediaParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/media?${stringifiedParams}`
+    : `/api/cms/media`;
+};
+
+export const listCmsMedia = async (
+  params?: ListCmsMediaParams,
+  options?: RequestInit,
+): Promise<MediaListResponse> => {
+  return customFetch<MediaListResponse>(getListCmsMediaUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsMediaQueryKey = (params?: ListCmsMediaParams) => {
+  return [`/api/cms/media`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCmsMediaQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsMedia>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCmsMediaParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsMedia>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsMediaQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsMedia>>> = ({
+    signal,
+  }) => listCmsMedia(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsMedia>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsMediaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsMedia>>
+>;
+export type ListCmsMediaQueryError = ErrorType<unknown>;
+
+export function useListCmsMedia<
+  TData = Awaited<ReturnType<typeof listCmsMedia>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCmsMediaParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsMedia>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsMediaQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Register an uploaded media object (after presigned upload)
+ */
+export const getRegisterCmsMediaUrl = () => {
+  return `/api/cms/media`;
+};
+
+export const registerCmsMedia = async (
+  registerMediaBody: RegisterMediaBody,
+  options?: RequestInit,
+): Promise<MediaItem> => {
+  return customFetch<MediaItem>(getRegisterCmsMediaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerMediaBody),
+  });
+};
+
+export const getRegisterCmsMediaMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerCmsMedia>>,
+    TError,
+    { data: BodyType<RegisterMediaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerCmsMedia>>,
+  TError,
+  { data: BodyType<RegisterMediaBody> },
+  TContext
+> => {
+  const mutationKey = ["registerCmsMedia"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerCmsMedia>>,
+    { data: BodyType<RegisterMediaBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerCmsMedia(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterCmsMediaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerCmsMedia>>
+>;
+export type RegisterCmsMediaMutationBody = BodyType<RegisterMediaBody>;
+export type RegisterCmsMediaMutationError = ErrorType<BadRequestResponse>;
+
+/**
+ * @summary Register an uploaded media object (after presigned upload)
+ */
+export const useRegisterCmsMedia = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerCmsMedia>>,
+    TError,
+    { data: BodyType<RegisterMediaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerCmsMedia>>,
+  TError,
+  { data: BodyType<RegisterMediaBody> },
+  TContext
+> => {
+  return useMutation(getRegisterCmsMediaMutationOptions(options));
+};
+
+export const getDeleteCmsMediaUrl = (id: string) => {
+  return `/api/cms/media/${id}`;
+};
+
+export const deleteCmsMedia = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCmsMediaUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCmsMediaMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsMedia>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCmsMedia>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteCmsMedia"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCmsMedia>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCmsMedia(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCmsMediaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCmsMedia>>
+>;
+
+export type DeleteCmsMediaMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useDeleteCmsMedia = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsMedia>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCmsMedia>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteCmsMediaMutationOptions(options));
+};
+
+export const getListCmsCommentsUrl = (params?: ListCmsCommentsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/comments?${stringifiedParams}`
+    : `/api/cms/comments`;
+};
+
+export const listCmsComments = async (
+  params?: ListCmsCommentsParams,
+  options?: RequestInit,
+): Promise<CommentListResponse> => {
+  return customFetch<CommentListResponse>(getListCmsCommentsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsCommentsQueryKey = (params?: ListCmsCommentsParams) => {
+  return [`/api/cms/comments`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCmsCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsComments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCmsCommentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsCommentsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsComments>>> = ({
+    signal,
+  }) => listCmsComments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsComments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsComments>>
+>;
+export type ListCmsCommentsQueryError = ErrorType<unknown>;
+
+export function useListCmsComments<
+  TData = Awaited<ReturnType<typeof listCmsComments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListCmsCommentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsCommentsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getModerateCmsCommentUrl = (id: string) => {
+  return `/api/cms/comments/${id}/moderate`;
+};
+
+export const moderateCmsComment = async (
+  id: string,
+  moderateCmsCommentBody: ModerateCmsCommentBody,
+  options?: RequestInit,
+): Promise<Comment> => {
+  return customFetch<Comment>(getModerateCmsCommentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moderateCmsCommentBody),
+  });
+};
+
+export const getModerateCmsCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof moderateCmsComment>>,
+    TError,
+    { id: string; data: BodyType<ModerateCmsCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof moderateCmsComment>>,
+  TError,
+  { id: string; data: BodyType<ModerateCmsCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["moderateCmsComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof moderateCmsComment>>,
+    { id: string; data: BodyType<ModerateCmsCommentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return moderateCmsComment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ModerateCmsCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof moderateCmsComment>>
+>;
+export type ModerateCmsCommentMutationBody = BodyType<ModerateCmsCommentBody>;
+export type ModerateCmsCommentMutationError = ErrorType<unknown>;
+
+export const useModerateCmsComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof moderateCmsComment>>,
+    TError,
+    { id: string; data: BodyType<ModerateCmsCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof moderateCmsComment>>,
+  TError,
+  { id: string; data: BodyType<ModerateCmsCommentBody> },
+  TContext
+> => {
+  return useMutation(getModerateCmsCommentMutationOptions(options));
+};
+
+export const getListCmsUsersUrl = () => {
+  return `/api/cms/users`;
+};
+
+export const listCmsUsers = async (
+  options?: RequestInit,
+): Promise<CmsUser[]> => {
+  return customFetch<CmsUser[]>(getListCmsUsersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsUsersQueryKey = () => {
+  return [`/api/cms/users`] as const;
+};
+
+export const getListCmsUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsUsersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsUsers>>> = ({
+    signal,
+  }) => listCmsUsers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsUsers>>
+>;
+export type ListCmsUsersQueryError = ErrorType<unknown>;
+
+export function useListCmsUsers<
+  TData = Awaited<ReturnType<typeof listCmsUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsUsersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSetCmsUserRolesUrl = (id: string) => {
+  return `/api/cms/users/${id}/roles`;
+};
+
+export const setCmsUserRoles = async (
+  id: string,
+  setCmsUserRolesBody: SetCmsUserRolesBody,
+  options?: RequestInit,
+): Promise<CmsUser> => {
+  return customFetch<CmsUser>(getSetCmsUserRolesUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(setCmsUserRolesBody),
+  });
+};
+
+export const getSetCmsUserRolesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setCmsUserRoles>>,
+    TError,
+    { id: string; data: BodyType<SetCmsUserRolesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setCmsUserRoles>>,
+  TError,
+  { id: string; data: BodyType<SetCmsUserRolesBody> },
+  TContext
+> => {
+  const mutationKey = ["setCmsUserRoles"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setCmsUserRoles>>,
+    { id: string; data: BodyType<SetCmsUserRolesBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return setCmsUserRoles(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetCmsUserRolesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setCmsUserRoles>>
+>;
+export type SetCmsUserRolesMutationBody = BodyType<SetCmsUserRolesBody>;
+export type SetCmsUserRolesMutationError = ErrorType<unknown>;
+
+export const useSetCmsUserRoles = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setCmsUserRoles>>,
+    TError,
+    { id: string; data: BodyType<SetCmsUserRolesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setCmsUserRoles>>,
+  TError,
+  { id: string; data: BodyType<SetCmsUserRolesBody> },
+  TContext
+> => {
+  return useMutation(getSetCmsUserRolesMutationOptions(options));
+};
+
+export const getListInsightsUrl = (params?: ListInsightsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/insights?${stringifiedParams}`
+    : `/api/insights`;
+};
+
+export const listInsights = async (
+  params?: ListInsightsParams,
+  options?: RequestInit,
+): Promise<PublicPostListResponse> => {
+  return customFetch<PublicPostListResponse>(getListInsightsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListInsightsQueryKey = (params?: ListInsightsParams) => {
+  return [`/api/insights`, ...(params ? [params] : [])] as const;
+};
+
+export const getListInsightsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInsights>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListInsightsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInsights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListInsightsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listInsights>>> = ({
+    signal,
+  }) => listInsights(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInsights>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListInsightsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInsights>>
+>;
+export type ListInsightsQueryError = ErrorType<unknown>;
+
+export function useListInsights<
+  TData = Awaited<ReturnType<typeof listInsights>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListInsightsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInsights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListInsightsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetInsightUrl = (slug: string) => {
+  return `/api/insights/${slug}`;
+};
+
+export const getInsight = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<PublicPost> => {
+  return customFetch<PublicPost>(getGetInsightUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInsightQueryKey = (slug: string) => {
+  return [`/api/insights/${slug}`] as const;
+};
+
+export const getGetInsightQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInsight>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInsight>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInsightQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInsight>>> = ({
+    signal,
+  }) => getInsight(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInsight>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetInsightQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInsight>>
+>;
+export type GetInsightQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetInsight<
+  TData = Awaited<ReturnType<typeof getInsight>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInsight>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetInsightQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getListInsightCommentsUrl = (slug: string) => {
+  return `/api/insights/${slug}/comments`;
+};
+
+export const listInsightComments = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<PublicComment[]> => {
+  return customFetch<PublicComment[]>(getListInsightCommentsUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListInsightCommentsQueryKey = (slug: string) => {
+  return [`/api/insights/${slug}/comments`] as const;
+};
+
+export const getListInsightCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInsightComments>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInsightComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListInsightCommentsQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listInsightComments>>
+  > = ({ signal }) => listInsightComments(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInsightComments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListInsightCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInsightComments>>
+>;
+export type ListInsightCommentsQueryError = ErrorType<unknown>;
+
+export function useListInsightComments<
+  TData = Awaited<ReturnType<typeof listInsightComments>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInsightComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListInsightCommentsQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSubmitInsightCommentUrl = (slug: string) => {
+  return `/api/insights/${slug}/comments`;
+};
+
+export const submitInsightComment = async (
+  slug: string,
+  submitCommentBody: SubmitCommentBody,
+  options?: RequestInit,
+): Promise<SubmitCommentResponse> => {
+  return customFetch<SubmitCommentResponse>(getSubmitInsightCommentUrl(slug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(submitCommentBody),
+  });
+};
+
+export const getSubmitInsightCommentMutationOptions = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitInsightComment>>,
+    TError,
+    { slug: string; data: BodyType<SubmitCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitInsightComment>>,
+  TError,
+  { slug: string; data: BodyType<SubmitCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["submitInsightComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitInsightComment>>,
+    { slug: string; data: BodyType<SubmitCommentBody> }
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return submitInsightComment(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitInsightCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitInsightComment>>
+>;
+export type SubmitInsightCommentMutationBody = BodyType<SubmitCommentBody>;
+export type SubmitInsightCommentMutationError = ErrorType<
+  BadRequestResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+export const useSubmitInsightComment = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitInsightComment>>,
+    TError,
+    { slug: string; data: BodyType<SubmitCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitInsightComment>>,
+  TError,
+  { slug: string; data: BodyType<SubmitCommentBody> },
+  TContext
+> => {
+  return useMutation(getSubmitInsightCommentMutationOptions(options));
+};
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  requestUploadUrlBody: RequestUploadUrlBody,
+  options?: RequestInit,
+): Promise<RequestUploadUrlResponse> => {
+  return customFetch<RequestUploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestUploadUrlBody),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<RequestUploadUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<RequestUploadUrlBody>;
+export type RequestUploadUrlMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+export const getGetPublicObjectUrl = (filePath: string) => {
+  return `/api/storage/public-objects/${filePath}`;
+};
+
+export const getPublicObject = async (
+  filePath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetPublicObjectUrl(filePath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicObjectQueryKey = (filePath: string) => {
+  return [`/api/storage/public-objects/${filePath}`] as const;
+};
+
+export const getGetPublicObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({
+    signal,
+  }) => getPublicObject(filePath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!filePath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicObject>>
+>;
+export type GetPublicObjectQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetPublicObject<
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetStorageObjectUrl = (objectPath: string) => {
+  return `/api/storage/objects/${objectPath}`;
+};
+
+export const getStorageObject = async (
+  objectPath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetStorageObjectUrl(objectPath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStorageObjectQueryKey = (objectPath: string) => {
+  return [`/api/storage/objects/${objectPath}`] as const;
+};
+
+export const getGetStorageObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStorageObject>>
+  > = ({ signal }) =>
+    getStorageObject(objectPath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!objectPath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStorageObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStorageObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStorageObject>>
+>;
+export type GetStorageObjectQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetStorageObject<
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Returns current admin user info if authorized
  */
 export const getGetAdminMeUrl = () => {
@@ -187,269 +2767,6 @@ export function useGetAdminMe<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAdminMeQueryOptions(options);
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Request a presigned URL for file upload
- */
-export const getRequestUploadUrlUrl = () => {
-  return `/api/storage/uploads/request-url`;
-};
-
-export const requestUploadUrl = async (
-  uploadUrlRequest: UploadUrlRequest,
-  options?: RequestInit,
-): Promise<UploadUrlResponse> => {
-  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(uploadUrlRequest),
-  });
-};
-
-export const getRequestUploadUrlMutationOptions = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    TError,
-    { data: BodyType<UploadUrlRequest> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof requestUploadUrl>>,
-  TError,
-  { data: BodyType<UploadUrlRequest> },
-  TContext
-> => {
-  const mutationKey = ["requestUploadUrl"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    { data: BodyType<UploadUrlRequest> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return requestUploadUrl(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type RequestUploadUrlMutationResult = NonNullable<
-  Awaited<ReturnType<typeof requestUploadUrl>>
->;
-export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
-export type RequestUploadUrlMutationError = ErrorType<ErrorEnvelope>;
-
-/**
- * @summary Request a presigned URL for file upload
- */
-export const useRequestUploadUrl = <
-  TError = ErrorType<ErrorEnvelope>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof requestUploadUrl>>,
-    TError,
-    { data: BodyType<UploadUrlRequest> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof requestUploadUrl>>,
-  TError,
-  { data: BodyType<UploadUrlRequest> },
-  TContext
-> => {
-  return useMutation(getRequestUploadUrlMutationOptions(options));
-};
-
-/**
- * @summary Serve a public asset
- */
-export const getGetPublicObjectUrl = (filePath: string) => {
-  return `/api/storage/public-objects/${filePath}`;
-};
-
-export const getPublicObject = async (
-  filePath: string,
-  options?: RequestInit,
-): Promise<Blob> => {
-  return customFetch<Blob>(getGetPublicObjectUrl(filePath), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetPublicObjectQueryKey = (filePath: string) => {
-  return [`/api/storage/public-objects/${filePath}`] as const;
-};
-
-export const getGetPublicObjectQueryOptions = <
-  TData = Awaited<ReturnType<typeof getPublicObject>>,
-  TError = ErrorType<ErrorEnvelope>,
->(
-  filePath: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getPublicObject>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({
-    signal,
-  }) => getPublicObject(filePath, { signal, ...requestOptions });
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!filePath,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getPublicObject>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetPublicObjectQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getPublicObject>>
->;
-export type GetPublicObjectQueryError = ErrorType<ErrorEnvelope>;
-
-/**
- * @summary Serve a public asset
- */
-
-export function useGetPublicObject<
-  TData = Awaited<ReturnType<typeof getPublicObject>>,
-  TError = ErrorType<ErrorEnvelope>,
->(
-  filePath: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getPublicObject>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Serve an object entity from PRIVATE_OBJECT_DIR
- */
-export const getGetStorageObjectUrl = (objectPath: string) => {
-  return `/api/storage/objects/${objectPath}`;
-};
-
-export const getStorageObject = async (
-  objectPath: string,
-  options?: RequestInit,
-): Promise<Blob> => {
-  return customFetch<Blob>(getGetStorageObjectUrl(objectPath), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetStorageObjectQueryKey = (objectPath: string) => {
-  return [`/api/storage/objects/${objectPath}`] as const;
-};
-
-export const getGetStorageObjectQueryOptions = <
-  TData = Awaited<ReturnType<typeof getStorageObject>>,
-  TError = ErrorType<ErrorEnvelope>,
->(
-  objectPath: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getStorageObject>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getStorageObject>>
-  > = ({ signal }) =>
-    getStorageObject(objectPath, { signal, ...requestOptions });
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!objectPath,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getStorageObject>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetStorageObjectQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getStorageObject>>
->;
-export type GetStorageObjectQueryError = ErrorType<ErrorEnvelope>;
-
-/**
- * @summary Serve an object entity from PRIVATE_OBJECT_DIR
- */
-
-export function useGetStorageObject<
-  TData = Awaited<ReturnType<typeof getStorageObject>>,
-  TError = ErrorType<ErrorEnvelope>,
->(
-  objectPath: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getStorageObject>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

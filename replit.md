@@ -43,3 +43,27 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - Home "From The Feed" carousel data lives in `src/data/feed.ts`; carousel images in `public/images/home/feed/` (downloaded from Wix CDN, originals resized).
   - Initial prompt baseline saved at `.local/baselines/peanut-baseline.md`.
   - **Events system** (`/events`): Public Upcoming + Past listings backed by `GET /api/events`. Admin area at `/admin` (Clerk-auth'd, allow-listed via `ADMIN_EMAILS` env var) provides full CRUD over events with an Asset Library modal that uploads images via Uppy + Object Storage (`POST /api/storage/uploads/request-url`). Sign-in / sign-up at `/sign-in` and `/sign-up` (Clerk hosted components, dev keys via `VITE_CLERK_PUBLISHABLE_KEY`). Events are linked to assets through `events.image_asset_id`. Seeding script: `pnpm dlx tsx artifacts/api-server/src/scripts/seedEvents.ts` (reads `attached_assets/events_1776704614264.csv`).
+- `artifacts/api-server` — Express 5 API server hosting the **Insights CMS** backend.
+  - Auth: Clerk (`@clerk/express`); Clerk frontend API is reverse-proxied at `/__clerk/*` (must be mounted before body parsers). First user to sign in is auto-promoted to `admin`.
+  - Authorization: role-based — `admin`, `editor`, `author`, `contributor`. Authors/contributors can only see/edit their own draft posts; only admin/editor can publish, archive, moderate, or manage taxonomy/users.
+  - Routes:
+    - `GET /api/auth/me`
+    - `GET/POST/PATCH/DELETE /api/cms/posts` + `/:id/publish|schedule|archive`
+    - `GET/POST/PATCH/DELETE /api/cms/categories|tags`
+    - `GET/POST/DELETE /api/cms/media` (registers Replit App Storage uploads)
+    - `GET /api/cms/comments` + `POST /api/cms/comments/:id/moderate`
+    - `GET /api/cms/users` + `PUT /api/cms/users/:id/roles`
+    - Public: `GET /api/insights`, `GET /api/insights/:slug`, `GET /api/insights/:slug/comments`, `POST /api/insights/:slug/comments` (rate-limited per IP, comments land as `pending`)
+    - Storage: object-storage upload-url + serve routes from the standard template
+  - Scheduler: in-process `setInterval` worker (60s tick) promotes `scheduled` posts whose `scheduledFor <= now` to `published`.
+  - Audit log on every mutation in the `audit_log` table.
+- `lib/db` — Drizzle schema for the CMS:
+  - `users` (linked to `clerk_user_id`), `roles`, `user_roles`
+  - `posts` (uuid PK, `slug` unique, soft-delete via `deletedAt`, status `draft|scheduled|published|archived`, hero/og media refs), `revisions` (snapshot JSON on every update)
+  - `categories`, `tags`, `post_categories`, `post_tags`
+  - `media` (object-storage entity URLs)
+  - `comments` (status `pending|approved|spam|deleted`, IP/user-agent captured)
+  - `audit_log` (actor, action, entity, diff JSON)
+  - Seed (`pnpm --filter @workspace/db run seed`) ensures the four roles + a default `general` category.
+- `lib/api-spec` / `lib/api-zod` / `lib/api-client-react` — OpenAPI is the source of truth; `pnpm --filter @workspace/api-spec run codegen` regenerates Zod schemas (`@workspace/api-zod`) and React Query hooks/types (`@workspace/api-client-react`).
+  - Note: `lib/api-zod` only re-exports the Zod schemas to avoid name collisions with the generated TS types; consume types via `z.infer<typeof Schema>` or from `@workspace/api-client-react/api.schemas`.

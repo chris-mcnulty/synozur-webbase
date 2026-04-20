@@ -11,6 +11,275 @@ export interface HealthStatus {
 
 export interface ErrorEnvelope {
   error: string;
+  details?: unknown;
+}
+
+export type RoleName = (typeof RoleName)[keyof typeof RoleName];
+
+export const RoleName = {
+  admin: "admin",
+  editor: "editor",
+  author: "author",
+  contributor: "contributor",
+} as const;
+
+export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus];
+
+export const PostStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+export type CommentStatus = (typeof CommentStatus)[keyof typeof CommentStatus];
+
+export const CommentStatus = {
+  pending: "pending",
+  approved: "approved",
+  spam: "spam",
+  deleted: "deleted",
+} as const;
+
+export interface CurrentUser {
+  id: string;
+  clerkUserId: string;
+  email?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  roles: RoleName[];
+}
+
+export interface CmsUser {
+  id: string;
+  clerkUserId: string;
+  email?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  roles: RoleName[];
+  createdAt?: string;
+}
+
+export interface Category {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface UpsertCategoryBody {
+  /** @minLength 1 */
+  slug: string;
+  /** @minLength 1 */
+  name: string;
+  description?: string | null;
+}
+
+export interface Tag {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface UpsertTagBody {
+  /** @minLength 1 */
+  slug: string;
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface MediaItem {
+  id: string;
+  storageKey: string;
+  publicUrl: string;
+  mime?: string | null;
+  width?: number | null;
+  height?: number | null;
+  byteSize?: number | null;
+  altText?: string | null;
+  uploadedBy?: string | null;
+  createdAt: string;
+}
+
+export interface MediaListResponse {
+  items: MediaItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface RegisterMediaBody {
+  /** @minLength 1 */
+  storageKey: string;
+  /** @minLength 1 */
+  publicUrl: string;
+  mime?: string | null;
+  width?: number | null;
+  height?: number | null;
+  byteSize?: number | null;
+  altText?: string | null;
+}
+
+export interface AuthorSummary {
+  id: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface Post {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  bodyHtml?: string | null;
+  bodyMarkdown?: string | null;
+  excerpt?: string | null;
+  heroImageUrl?: string | null;
+  ogImageUrl?: string | null;
+  authorId: string;
+  author?: AuthorSummary;
+  status: PostStatus;
+  publishedAt?: string | null;
+  scheduledFor?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoCanonicalUrl?: string | null;
+  readingTimeMin?: number | null;
+  categories?: Category[];
+  tags?: Tag[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PostListResponse {
+  items: Post[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface CreatePostBody {
+  /** @minLength 1 */
+  title: string;
+  slug?: string | null;
+  subtitle?: string | null;
+  bodyHtml?: string | null;
+  bodyMarkdown?: string | null;
+  excerpt?: string | null;
+  heroImageId?: string | null;
+  ogImageId?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoCanonicalUrl?: string | null;
+  readingTimeMin?: number | null;
+  categoryIds?: string[];
+  tagIds?: string[];
+}
+
+export interface UpdatePostBody {
+  title?: string | null;
+  slug?: string | null;
+  subtitle?: string | null;
+  bodyHtml?: string | null;
+  bodyMarkdown?: string | null;
+  excerpt?: string | null;
+  heroImageId?: string | null;
+  ogImageId?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoCanonicalUrl?: string | null;
+  readingTimeMin?: number | null;
+  categoryIds?: string[] | null;
+  tagIds?: string[] | null;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  parentCommentId?: string | null;
+  authorName: string;
+  authorEmail: string;
+  bodyText: string;
+  status: CommentStatus;
+  createdAt: string;
+  moderatedAt?: string | null;
+}
+
+export interface CommentListResponse {
+  items: Comment[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface PublicPost {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  excerpt?: string | null;
+  bodyHtml?: string | null;
+  heroImageUrl?: string | null;
+  ogImageUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoCanonicalUrl?: string | null;
+  readingTimeMin?: number | null;
+  publishedAt: string | null;
+  author?: AuthorSummary;
+  categories?: Category[];
+  tags?: Tag[];
+}
+
+export interface PublicPostListResponse {
+  items: PublicPost[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface PublicComment {
+  id: string;
+  parentCommentId?: string | null;
+  authorName: string;
+  bodyText: string;
+  createdAt: string;
+}
+
+export interface SubmitCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  authorName: string;
+  authorEmail: string;
+  /**
+   * @minLength 1
+   * @maxLength 5000
+   */
+  bodyText: string;
+  parentCommentId?: string | null;
+}
+
+export interface SubmitCommentResponse {
+  id: string;
+  status: CommentStatus;
+}
+
+export interface RequestUploadUrlBody {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface RequestUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: RequestUploadUrlBody;
 }
 
 export interface UploadUrlRequest {
@@ -241,6 +510,103 @@ export interface EventInput {
   /** @nullable */
   imageAssetId?: number | null;
 }
+
+/**
+ * Unauthorized
+ */
+export type UnauthorizedResponse = ErrorEnvelope;
+
+/**
+ * Forbidden
+ */
+export type ForbiddenResponse = ErrorEnvelope;
+
+/**
+ * Not found
+ */
+export type NotFoundResponse = ErrorEnvelope;
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorEnvelope;
+
+export type ListCmsPostsParams = {
+  status?: PostStatus;
+  authorId?: string;
+  search?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ScheduleCmsPostBody = {
+  scheduledFor: string;
+};
+
+export type ListCmsMediaParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ListCmsCommentsParams = {
+  status?: CommentStatus;
+  postId?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ModerateCmsCommentBodyAction =
+  (typeof ModerateCmsCommentBodyAction)[keyof typeof ModerateCmsCommentBodyAction];
+
+export const ModerateCmsCommentBodyAction = {
+  approve: "approve",
+  reject: "reject",
+  spam: "spam",
+  delete: "delete",
+} as const;
+
+export type ModerateCmsCommentBody = {
+  action: ModerateCmsCommentBodyAction;
+};
+
+export type SetCmsUserRolesBody = {
+  roles: RoleName[];
+};
+
+export type ListInsightsParams = {
+  categorySlug?: string;
+  tagSlug?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
+};
 
 export type ListAssetsParams = {
   search?: string;

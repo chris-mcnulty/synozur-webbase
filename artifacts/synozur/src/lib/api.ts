@@ -9,7 +9,7 @@ import type {
   StartFormInput,
   FormSubmissionAck,
   AdminFormSubmissionsPage,
-} from "@workspace/api-zod";
+} from "@workspace/api-zod/types";
 
 export interface SubmissionsQuery {
   formType?: string;
