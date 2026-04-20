@@ -57,8 +57,12 @@ export function Header() {
       ]
     },
     {
-      title: "Applications",
+      title: "Resources",
       links: [
+        { label: "Webinars", href: "/webinars" },
+        { label: "White Papers", href: "/items" },
+        { label: "Workshops", href: "/workshops" },
+        { label: "Browse Library", href: "/library" },
         { label: "All Applications", href: "/applications" },
         { label: "Vega", href: "/applications/vega" },
         { label: "Nebula", href: "/applications/nebula" },
@@ -66,15 +70,6 @@ export function Header() {
         { label: "Orion (Models)", href: "/applications/orion" },
         { label: "Orbit", href: "/applications/orbit" },
         { label: "Zenith", href: "/applications/zenith" },
-      ]
-    },
-    {
-      title: "Resources",
-      links: [
-        { label: "Webinars", href: "/webinars" },
-        { label: "White Papers", href: "/items" },
-        { label: "Workshops", href: "/workshops" },
-        { label: "Browse Library", href: "/library" },
       ]
     }
   ];
