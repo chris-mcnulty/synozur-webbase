@@ -13,6 +13,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { feedItems } from "@/data/feed";
+import { rotatorLogos } from "@/data/logos";
+import { LogoRotator } from "@/components/logo-rotator";
 
 function FeedCard({ item }: { item: typeof feedItems[number] }) {
   const inner = (
@@ -230,6 +232,16 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent z-10 opacity-30 mix-blend-overlay" />
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Trusted by — client/partner logo rotator */}
+      <section className="py-16 bg-card border-y border-border">
+        <div className="container mx-auto px-4">
+          <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
+            Trusted by
+          </p>
+          <LogoRotator logos={rotatorLogos} />
         </div>
       </section>
 

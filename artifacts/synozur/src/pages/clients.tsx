@@ -3,39 +3,8 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Quote } from "lucide-react";
 import { caseStudies } from "@/data/case-studies";
-
-type LogoEntry = {
-  name: string;
-  src: string;
-  /**
-   * "dark" logos look correct on a light tile (we render them as-is).
-   * "light" logos look correct on a dark tile.
-   * "invert" means it is a dark mark we will invert/brighten on the light tile via CSS filter.
-   */
-  variant: "dark" | "light" | "invert";
-  href?: string;
-};
-
-const clientLogos: LogoEntry[] = [
-  {
-    name: "Microsoft",
-    src: "/images/logos/microsoft.svg",
-    variant: "dark",
-    href: "/case-studies/transforming-management-frameworks-at-microsoft",
-  },
-];
-
-const partnerLogos: LogoEntry[] = [
-  { name: "Microsoft Partner Network", src: "/images/logos/microsoft-partner.png", variant: "dark" },
-  { name: "Protiviti", src: "/images/logos/protiviti.jpg", variant: "dark" },
-  { name: "Salient7", src: "/images/logos/salient7.jpg", variant: "dark" },
-  { name: "PS Hummingbird", src: "/images/logos/ps-hummingbird.jpg", variant: "dark" },
-  { name: "Crush Networks", src: "/images/logos/crush-networks.jpg", variant: "dark" },
-  { name: "Creospark", src: "/images/logos/creospark.jpg", variant: "dark" },
-  { name: "eMark Consulting", src: "/images/logos/emark-consulting.jpg", variant: "dark" },
-  { name: "Akumina", src: "/images/logos/akumina.png", variant: "dark" },
-  { name: "Orchestry", src: "/images/logos/orchestry.jpg", variant: "dark" },
-];
+import { clientLogos, partnerLogos, rotatorLogos, type LogoEntry } from "@/data/logos";
+import { LogoRotator } from "@/components/logo-rotator";
 
 const quotes = [
   {
@@ -102,6 +71,16 @@ export default function Clients() {
             industries, we have the insights to tackle complex challenges and
             drive meaningful change.
           </p>
+        </div>
+      </section>
+
+      {/* Logo rotator */}
+      <section className="py-12 md:py-16 bg-card border-b border-border">
+        <div className="container mx-auto px-4">
+          <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
+            Trusted by
+          </p>
+          <LogoRotator logos={rotatorLogos} />
         </div>
       </section>
 

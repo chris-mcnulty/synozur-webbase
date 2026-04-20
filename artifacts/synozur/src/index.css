@@ -252,3 +252,39 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+@keyframes logo-rotator-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.logo-rotator-track {
+  animation: logo-rotator-scroll var(--logo-rotator-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+.logo-rotator:hover .logo-rotator-track,
+.logo-rotator:focus-within .logo-rotator-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-rotator {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  .logo-rotator-track {
+    animation: none;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .logo-rotator-track > [aria-hidden="true"] {
+    display: none;
+  }
+  .logo-rotator-track > div {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
