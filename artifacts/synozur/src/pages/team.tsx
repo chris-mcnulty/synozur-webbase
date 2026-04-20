@@ -143,9 +143,6 @@ export default function Team() {
               </motion.article>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-10 max-w-2xl">
-            Editorial portraits shown. Replace with supplied headshots when available.
-          </p>
         </div>
       </section>
 
