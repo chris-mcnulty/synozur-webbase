@@ -9,6 +9,7 @@ import { CommentThread } from "@/components/comments/comment-thread";
 import {
   useListInsightComments,
   getListInsightCommentsQueryKey,
+  trackInsightView,
 } from "@workspace/api-client-react";
 import type { PublicPost } from "@workspace/api-client-react";
 
@@ -108,6 +109,13 @@ export default function InsightDetail() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [slug]);
+
+  // Fire view tracking once the post data is known.
+  useEffect(() => {
+    if (!post?.slug) return;
+    const ref = document.referrer || null;
+    trackInsightView(post.slug, { referrer: ref }).catch(() => {});
+  }, [post?.slug]);
 
   const bodyHtml = useMemo(() => resolveBodyHtml(post?.bodyHtml), [post?.bodyHtml]);
   const hero = resolveMediaUrl(post?.heroImageUrl);

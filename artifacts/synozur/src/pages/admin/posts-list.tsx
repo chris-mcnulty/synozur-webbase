@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Plus, Search, Trash2, Pencil, Archive } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, Archive, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -246,6 +246,13 @@ export default function AdminPostsList() {
                   <TableCell className="text-sm">{formatDate(p.updatedAt)}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
+                      {p.status === "published" && (
+                        <Link href={`/admin/posts/${p.id}/analytics`}>
+                          <Button variant="ghost" size="icon" title="Analytics" data-testid={`button-analytics-${p.id}`}>
+                            <BarChart2 className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
                       <Link href={`/admin/posts/${p.id}/edit`}>
                         <Button variant="ghost" size="icon" data-testid={`button-edit-${p.id}`}>
                           <Pencil className="h-4 w-4" />

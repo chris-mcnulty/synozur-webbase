@@ -40,7 +40,6 @@ export interface Service {
   blogCategory?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  active: boolean;
   createdAt: string;
   updatedAt: string;
 }

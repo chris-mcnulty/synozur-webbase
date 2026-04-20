@@ -11,3 +11,4 @@ export * from "./siteSettings";
 export * from "./services";
 export * from "./collateral";
 export * from "./teamMembers";
+export * from "./analytics";

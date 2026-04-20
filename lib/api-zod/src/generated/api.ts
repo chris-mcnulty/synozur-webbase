@@ -720,6 +720,111 @@ export const SetCmsUserRolesResponse = zod.object({
   createdAt: zod.coerce.date().optional(),
 });
 
+/**
+ * @summary Dashboard analytics overview
+ */
+export const getCmsAnalyticsOverviewQueryDaysDefault = 30;
+export const getCmsAnalyticsOverviewQueryDaysMax = 365;
+
+export const GetCmsAnalyticsOverviewQueryParams = zod.object({
+  days: zod.coerce
+    .number()
+    .min(1)
+    .max(getCmsAnalyticsOverviewQueryDaysMax)
+    .default(getCmsAnalyticsOverviewQueryDaysDefault),
+});
+
+export const GetCmsAnalyticsOverviewResponse = zod.object({
+  rangeDays: zod.number(),
+  totals: zod.object({
+    views: zod.number(),
+    published: zod.number(),
+    comments: zod.number(),
+  }),
+  topPosts: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      slug: zod.string(),
+      title: zod.string(),
+      publishedAt: zod.coerce.date().nullish(),
+      views: zod.number(),
+    }),
+  ),
+  series: zod.array(
+    zod.object({
+      day: zod.string(),
+      views: zod.number(),
+    }),
+  ),
+  activity: zod.array(
+    zod.object({
+      kind: zod.enum(["comment", "publish"]),
+      postId: zod.string().uuid(),
+      postTitle: zod.string(),
+      postSlug: zod.string(),
+      authorName: zod.string().nullish(),
+      status: zod.string(),
+      at: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Per-post analytics
+ */
+export const GetCmsPostAnalyticsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const getCmsPostAnalyticsQueryDaysDefault = 30;
+export const getCmsPostAnalyticsQueryDaysMax = 365;
+
+export const GetCmsPostAnalyticsQueryParams = zod.object({
+  days: zod.coerce
+    .number()
+    .min(1)
+    .max(getCmsPostAnalyticsQueryDaysMax)
+    .default(getCmsPostAnalyticsQueryDaysDefault),
+});
+
+export const GetCmsPostAnalyticsResponse = zod.object({
+  post: zod.object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    publishedAt: zod.coerce.date().nullish(),
+  }),
+  rangeDays: zod.number(),
+  totals: zod.object({
+    views: zod.number(),
+    viewsAllTime: zod.number(),
+    comments: zod.number(),
+  }),
+  series: zod.array(
+    zod.object({
+      day: zod.string(),
+      views: zod.number(),
+    }),
+  ),
+  referrers: zod.array(
+    zod.object({
+      host: zod.string(),
+      views: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Record a public post view
+ */
+export const TrackInsightViewParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const TrackInsightViewBody = zod.object({
+  referrer: zod.string().nullish(),
+});
+
 export const listInsightsQueryPageDefault = 1;
 
 export const listInsightsQueryPageSizeDefault = 12;
@@ -928,7 +1033,6 @@ export const ListServicesResponse = zod.object({
         blurbHtml: zod.string().nullish(),
         blogCategory: zod.string().nullish(),
         sourceId: zod.string().nullish(),
-        active: zod.boolean(),
         createdAt: zod.string(),
         updatedAt: zod.string(),
       })
@@ -959,7 +1063,6 @@ export const ListServicesResponse = zod.object({
               primaryBlogCategoryFilter: zod.string().nullish(),
               buttonUrl: zod.string().nullish(),
               sourceId: zod.string().nullish(),
-              active: zod.boolean(),
               createdAt: zod.string(),
               updatedAt: zod.string(),
             }),
@@ -993,7 +1096,6 @@ export const GetServiceResponse = zod
     blurbHtml: zod.string().nullish(),
     blogCategory: zod.string().nullish(),
     sourceId: zod.string().nullish(),
-    active: zod.boolean(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   })
@@ -1046,7 +1148,6 @@ export const GetSolutionResponse = zod
     primaryBlogCategoryFilter: zod.string().nullish(),
     buttonUrl: zod.string().nullish(),
     sourceId: zod.string().nullish(),
-    active: zod.boolean(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   })
@@ -1073,7 +1174,6 @@ export const GetSolutionResponse = zod
             blurbHtml: zod.string().nullish(),
             blogCategory: zod.string().nullish(),
             sourceId: zod.string().nullish(),
-            active: zod.boolean(),
             createdAt: zod.string(),
             updatedAt: zod.string(),
           }),
@@ -1309,7 +1409,6 @@ export const CmsListServicesResponse = zod.object({
       blurbHtml: zod.string().nullish(),
       blogCategory: zod.string().nullish(),
       sourceId: zod.string().nullish(),
-      active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
     }),
@@ -1377,7 +1476,6 @@ export const CmsUpdateServiceResponse = zod.object({
   blurbHtml: zod.string().nullish(),
   blogCategory: zod.string().nullish(),
   sourceId: zod.string().nullish(),
-  active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -1412,7 +1510,6 @@ export const CmsListSolutionsResponse = zod.object({
       primaryBlogCategoryFilter: zod.string().nullish(),
       buttonUrl: zod.string().nullish(),
       sourceId: zod.string().nullish(),
-      active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
     }),
@@ -1495,7 +1592,6 @@ export const CmsUpdateSolutionResponse = zod.object({
   primaryBlogCategoryFilter: zod.string().nullish(),
   buttonUrl: zod.string().nullish(),
   sourceId: zod.string().nullish(),
-  active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -1839,8 +1935,6 @@ export const ListPublicTeamMembersResponseItem = zod.object({
   website: zod.string().nullish(),
   email: zod.string().nullish(),
   active: zod.boolean(),
-  manualSort: zod.string().optional(),
-  tags: zod.array(zod.string()).optional(),
 });
 export const ListPublicTeamMembersResponse = zod.array(
   ListPublicTeamMembersResponseItem,

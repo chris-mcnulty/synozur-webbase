@@ -22,6 +22,7 @@ import type {
   AdminFormSubmissionsPage,
   AdminTeamMember,
   AdminUser,
+  AnalyticsOverview,
   Asset,
   AssetInput,
   BadRequestResponse,
@@ -41,6 +42,8 @@ import type {
   ExportAdminFormSubmissionsParams,
   ForbiddenResponse,
   FormSubmissionAck,
+  GetCmsAnalyticsOverviewParams,
+  GetCmsPostAnalyticsParams,
   HealthStatus,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
@@ -55,6 +58,7 @@ import type {
   ModerateCmsCommentBody,
   NotFoundResponse,
   Post,
+  PostAnalytics,
   PostListResponse,
   PostRevision,
   PublicComment,
@@ -85,6 +89,8 @@ import type {
   SubscribeFormInput,
   Tag,
   TeamMemberInput,
+  TrackInsightView202,
+  TrackInsightViewBody,
   UnauthorizedResponse,
   UpdateMediaBody,
   UpdatePostBody,
@@ -2437,6 +2443,312 @@ export const useSetCmsUserRoles = <
   TContext
 > => {
   return useMutation(getSetCmsUserRolesMutationOptions(options));
+};
+
+/**
+ * @summary Dashboard analytics overview
+ */
+export const getGetCmsAnalyticsOverviewUrl = (
+  params?: GetCmsAnalyticsOverviewParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/analytics/overview?${stringifiedParams}`
+    : `/api/cms/analytics/overview`;
+};
+
+export const getCmsAnalyticsOverview = async (
+  params?: GetCmsAnalyticsOverviewParams,
+  options?: RequestInit,
+): Promise<AnalyticsOverview> => {
+  return customFetch<AnalyticsOverview>(getGetCmsAnalyticsOverviewUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsAnalyticsOverviewQueryKey = (
+  params?: GetCmsAnalyticsOverviewParams,
+) => {
+  return [`/api/cms/analytics/overview`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCmsAnalyticsOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsAnalyticsOverview>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: GetCmsAnalyticsOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsAnalyticsOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsAnalyticsOverviewQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsAnalyticsOverview>>
+  > = ({ signal }) =>
+    getCmsAnalyticsOverview(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsAnalyticsOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsAnalyticsOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsAnalyticsOverview>>
+>;
+export type GetCmsAnalyticsOverviewQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Dashboard analytics overview
+ */
+
+export function useGetCmsAnalyticsOverview<
+  TData = Awaited<ReturnType<typeof getCmsAnalyticsOverview>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: GetCmsAnalyticsOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsAnalyticsOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsAnalyticsOverviewQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Per-post analytics
+ */
+export const getGetCmsPostAnalyticsUrl = (
+  id: string,
+  params?: GetCmsPostAnalyticsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/analytics/posts/${id}?${stringifiedParams}`
+    : `/api/cms/analytics/posts/${id}`;
+};
+
+export const getCmsPostAnalytics = async (
+  id: string,
+  params?: GetCmsPostAnalyticsParams,
+  options?: RequestInit,
+): Promise<PostAnalytics> => {
+  return customFetch<PostAnalytics>(getGetCmsPostAnalyticsUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsPostAnalyticsQueryKey = (
+  id: string,
+  params?: GetCmsPostAnalyticsParams,
+) => {
+  return [
+    `/api/cms/analytics/posts/${id}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetCmsPostAnalyticsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsPostAnalytics>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  params?: GetCmsPostAnalyticsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPostAnalytics>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsPostAnalyticsQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsPostAnalytics>>
+  > = ({ signal }) =>
+    getCmsPostAnalytics(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsPostAnalytics>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsPostAnalyticsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsPostAnalytics>>
+>;
+export type GetCmsPostAnalyticsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Per-post analytics
+ */
+
+export function useGetCmsPostAnalytics<
+  TData = Awaited<ReturnType<typeof getCmsPostAnalytics>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  params?: GetCmsPostAnalyticsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPostAnalytics>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsPostAnalyticsQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record a public post view
+ */
+export const getTrackInsightViewUrl = (slug: string) => {
+  return `/api/insights/${slug}/view`;
+};
+
+export const trackInsightView = async (
+  slug: string,
+  trackInsightViewBody?: TrackInsightViewBody,
+  options?: RequestInit,
+): Promise<TrackInsightView202> => {
+  return customFetch<TrackInsightView202>(getTrackInsightViewUrl(slug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(trackInsightViewBody),
+  });
+};
+
+export const getTrackInsightViewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackInsightView>>,
+    TError,
+    { slug: string; data: BodyType<TrackInsightViewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackInsightView>>,
+  TError,
+  { slug: string; data: BodyType<TrackInsightViewBody> },
+  TContext
+> => {
+  const mutationKey = ["trackInsightView"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackInsightView>>,
+    { slug: string; data: BodyType<TrackInsightViewBody> }
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return trackInsightView(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackInsightViewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackInsightView>>
+>;
+export type TrackInsightViewMutationBody = BodyType<TrackInsightViewBody>;
+export type TrackInsightViewMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Record a public post view
+ */
+export const useTrackInsightView = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackInsightView>>,
+    TError,
+    { slug: string; data: BodyType<TrackInsightViewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackInsightView>>,
+  TError,
+  { slug: string; data: BodyType<TrackInsightViewBody> },
+  TContext
+> => {
+  return useMutation(getTrackInsightViewMutationOptions(options));
 };
 
 export const getListInsightsUrl = (params?: ListInsightsParams) => {

@@ -36,6 +36,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminPostsList from "@/pages/admin/posts-list";
 import PostEditor from "@/pages/admin/post-editor";
 import PostPreview from "@/pages/admin/post-preview";
+import PostAnalytics from "@/pages/admin/post-analytics";
 import MediaLibrary from "@/pages/admin/media";
 import TaxonomyPage from "@/pages/admin/taxonomy";
 import CommentsModeration from "@/pages/admin/comments";
@@ -75,6 +76,9 @@ function AdminRoutes() {
         </Route>
         <Route path="/posts/:id/preview">
           {(params) => <PostPreview id={params.id} />}
+        </Route>
+        <Route path="/posts/:id/analytics">
+          {(params) => <PostAnalytics id={params.id} />}
         </Route>
         <Route path="/media" component={MediaLibrary} />
         <Route path="/taxonomy" component={TaxonomyPage} />

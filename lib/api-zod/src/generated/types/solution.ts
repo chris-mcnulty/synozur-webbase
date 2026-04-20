@@ -50,7 +50,6 @@ export interface Solution {
   buttonUrl?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  active: boolean;
   createdAt: string;
   updatedAt: string;
 }

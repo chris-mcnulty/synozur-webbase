@@ -22,6 +22,4 @@ export interface PublicTeamMember {
   /** @nullable */
   email?: string | null;
   active: boolean;
-  manualSort?: string;
-  tags?: string[];
 }

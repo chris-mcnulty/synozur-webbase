@@ -12,7 +12,9 @@ import {
   postTags,
   mediaTable,
   usersTable,
+  postViewsTable,
 } from "@workspace/db";
+import crypto from "node:crypto";
 import { serializePosts } from "../lib/postSerializer";
 import { audit } from "../lib/audit";
 
@@ -295,6 +297,92 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     .returning({ id: commentsTable.id, status: commentsTable.status });
   await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
   res.status(202).json({ id: row.id, status: row.status });
+});
+
+// Lightweight view tracker. Public endpoint; rate-limited per IP.
+// Same-session repeat hits within 30 min are deduped via a session hash.
+const viewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `v:m:${ipKey(req)}`,
+  handler: (_req, res) => {
+    res.status(202).json({ ok: true });
+  },
+});
+
+const ViewBody = z.object({
+  referrer: z.string().max(2048).optional().nullable(),
+});
+
+function hostFromReferrer(ref: string | null | undefined, selfHost: string | null): string | null {
+  if (!ref) return null;
+  try {
+    const u = new URL(ref);
+    const h = u.hostname.toLowerCase();
+    if (selfHost && h === selfHost.toLowerCase()) return null;
+    return h;
+  } catch {
+    return null;
+  }
+}
+
+router.post("/insights/:slug/view", viewLimiter, async (req, res) => {
+  const parsed = ViewBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(202).json({ ok: true });
+    return;
+  }
+  const post = await db.query.postsTable.findFirst({
+    where: and(
+      eq(postsTable.slug, String(req.params.slug)),
+      isNull(postsTable.deletedAt),
+      eq(postsTable.status, "published"),
+    ),
+  });
+  if (!post || (post.publishedAt && post.publishedAt > new Date())) {
+    res.status(202).json({ ok: true });
+    return;
+  }
+
+  const ip = ipKey(req);
+  const ua = (req.headers["user-agent"] as string | undefined) ?? "";
+  // 30-minute session bucket to dedupe repeated hits per (ip,ua,post).
+  const bucket = Math.floor(Date.now() / (30 * 60 * 1000));
+  const sessionHash = crypto
+    .createHash("sha256")
+    .update(`${ip}|${ua}|${post.id}|${bucket}`)
+    .digest("hex")
+    .slice(0, 32);
+
+  const existing = await db
+    .select({ id: postViewsTable.id })
+    .from(postViewsTable)
+    .where(and(eq(postViewsTable.postId, post.id), eq(postViewsTable.sessionHash, sessionHash)))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(202).json({ ok: true });
+    return;
+  }
+
+  const selfHost = (() => {
+    const h = req.headers.host as string | undefined;
+    if (!h) return null;
+    return h.split(":")[0];
+  })();
+  const referrerUrl = parsed.data.referrer?.trim() || null;
+  const referrerHost = hostFromReferrer(referrerUrl, selfHost);
+
+  await db.insert(postViewsTable).values({
+    postId: post.id,
+    sessionHash,
+    referrerUrl: referrerUrl?.slice(0, 2048) ?? null,
+    referrerHost,
+    userAgent: ua.slice(0, 512) || null,
+  });
+
+  res.status(202).json({ ok: true });
 });
 
 export default router;

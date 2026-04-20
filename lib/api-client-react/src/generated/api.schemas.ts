@@ -602,7 +602,6 @@ export interface Service {
   blogCategory?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -651,7 +650,6 @@ export interface Solution {
   buttonUrl?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -918,8 +916,6 @@ export interface PublicTeamMember {
   /** @nullable */
   email?: string | null;
   active: boolean;
-  manualSort?: string;
-  tags?: string[];
 }
 
 export interface AdminTeamMember {
@@ -971,6 +967,77 @@ export interface TeamMemberInput {
   active?: boolean;
   manualSort?: string;
   tags?: string[];
+}
+
+export interface AnalyticsTopPost {
+  id: string;
+  slug: string;
+  title: string;
+  publishedAt?: string | null;
+  views: number;
+}
+
+export interface AnalyticsSeriesPoint {
+  day: string;
+  views: number;
+}
+
+export type AnalyticsActivityItemKind =
+  (typeof AnalyticsActivityItemKind)[keyof typeof AnalyticsActivityItemKind];
+
+export const AnalyticsActivityItemKind = {
+  comment: "comment",
+  publish: "publish",
+} as const;
+
+export interface AnalyticsActivityItem {
+  kind: AnalyticsActivityItemKind;
+  postId: string;
+  postTitle: string;
+  postSlug: string;
+  authorName?: string | null;
+  status: string;
+  at: string;
+}
+
+export type AnalyticsOverviewTotals = {
+  views: number;
+  published: number;
+  comments: number;
+};
+
+export interface AnalyticsOverview {
+  rangeDays: number;
+  totals: AnalyticsOverviewTotals;
+  topPosts: AnalyticsTopPost[];
+  series: AnalyticsSeriesPoint[];
+  activity: AnalyticsActivityItem[];
+}
+
+export interface AnalyticsReferrer {
+  host: string;
+  views: number;
+}
+
+export type PostAnalyticsPost = {
+  id: string;
+  slug: string;
+  title: string;
+  publishedAt?: string | null;
+};
+
+export type PostAnalyticsTotals = {
+  views: number;
+  viewsAllTime: number;
+  comments: number;
+};
+
+export interface PostAnalytics {
+  post: PostAnalyticsPost;
+  rangeDays: number;
+  totals: PostAnalyticsTotals;
+  series: AnalyticsSeriesPoint[];
+  referrers: AnalyticsReferrer[];
 }
 
 /**
@@ -1054,6 +1121,30 @@ export type ModerateCmsCommentBody = {
 
 export type SetCmsUserRolesBody = {
   roles: RoleName[];
+};
+
+export type GetCmsAnalyticsOverviewParams = {
+  /**
+   * @minimum 1
+   * @maximum 365
+   */
+  days?: number;
+};
+
+export type GetCmsPostAnalyticsParams = {
+  /**
+   * @minimum 1
+   * @maximum 365
+   */
+  days?: number;
+};
+
+export type TrackInsightViewBody = {
+  referrer?: string | null;
+};
+
+export type TrackInsightView202 = {
+  ok?: boolean;
 };
 
 export type ListInsightsParams = {

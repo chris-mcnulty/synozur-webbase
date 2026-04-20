@@ -1,13 +1,42 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { Plus, FileText, Clock, CheckCircle2, MessageSquare } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  Clock,
+  CheckCircle2,
+  MessageSquare,
+  Eye,
+  TrendingUp,
+  Activity,
+  BarChart2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   useListCmsPosts,
   useListCmsComments,
+  useGetCmsAnalyticsOverview,
 } from "@workspace/api-client-react";
+import type { AnalyticsActivityItem } from "@workspace/api-client-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
@@ -18,6 +47,11 @@ function formatDate(iso?: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatShortDate(iso?: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function StatCard({
@@ -48,8 +82,29 @@ function StatCard({
   );
 }
 
+function activityLabel(item: AnalyticsActivityItem): string {
+  if (item.kind === "publish") return `Published "${item.postTitle}"`;
+  const who = item.authorName ? `${item.authorName} commented on` : `New comment on`;
+  const status = item.status !== "approved" ? ` (${item.status})` : "";
+  return `${who} "${item.postTitle}"${status}`;
+}
+
+function activityIcon(kind: AnalyticsActivityItem["kind"]) {
+  if (kind === "publish") return <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />;
+  return <MessageSquare className="h-4 w-4 text-blue-400 shrink-0" />;
+}
+
+const TOOLTIP_STYLE = {
+  backgroundColor: "hsl(var(--card))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: 8,
+  color: "hsl(var(--foreground))",
+  fontSize: 12,
+};
+
 export default function AdminDashboard() {
   const { access } = useAdminAccess();
+  const [rangeDays, setRangeDays] = useState<7 | 30>(30);
 
   const enabledCms = { query: { enabled: !!access?.hasCmsRole } as never };
   const drafts = useListCmsPosts({ status: "draft", pageSize: 5 }, enabledCms);
@@ -63,6 +118,16 @@ export default function AdminDashboard() {
     { status: "pending", pageSize: 5 },
     { query: { enabled: !!access?.isEditorOrAbove } as never },
   );
+
+  const analytics = useGetCmsAnalyticsOverview(
+    { days: rangeDays },
+    { query: { enabled: !!access?.hasCmsRole } as never },
+  );
+
+  const seriesData = (analytics.data?.series ?? []).map((d) => ({
+    day: new Date(d.day + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    views: d.views,
+  }));
 
   return (
     <AdminLayout
@@ -88,6 +153,7 @@ export default function AdminDashboard() {
 
       {access?.hasCmsRole && (
         <>
+          {/* Post status counts */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               label="Drafts"
@@ -109,7 +175,129 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+          {/* Analytics stats + range picker */}
+          <div className="mt-6 flex items-center justify-between flex-wrap gap-2 mb-3">
+            <h2 className="font-semibold flex items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4" /> Performance
+            </h2>
+            <Select
+              value={String(rangeDays)}
+              onValueChange={(v) => setRangeDays(Number(v) as 7 | 30)}
+            >
+              <SelectTrigger className="w-[120px] h-8 text-xs" data-testid="select-analytics-range">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <StatCard
+              label={`Views (${rangeDays}d)`}
+              value={analytics.data?.totals.views ?? 0}
+              icon={Eye}
+              testId="stat-views"
+            />
+            <StatCard
+              label={`Published posts`}
+              value={analytics.data?.totals.published ?? 0}
+              icon={BarChart2}
+              testId="stat-published-analytics"
+            />
+            <StatCard
+              label={`Comments (${rangeDays}d)`}
+              value={analytics.data?.totals.comments ?? 0}
+              icon={MessageSquare}
+              testId="stat-comments-analytics"
+            />
+          </div>
+
+          {/* Views sparkline */}
+          {seriesData.length > 0 && (
+            <Card className="p-5 mb-4">
+              <div className="text-sm font-medium mb-3 text-muted-foreground">
+                Views per day — last {rangeDays} days
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={seriesData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                  <defs>
+                    <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Area
+                    type="monotone"
+                    dataKey="views"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    fill="url(#viewsGrad)"
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2">
+            {/* Top posts */}
+            <Card className="p-5 col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold text-sm">Top posts ({rangeDays}d)</h2>
+              </div>
+              {analytics.isLoading ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : (analytics.data?.topPosts.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted-foreground py-6 text-center">
+                  No view data yet. Views are tracked when visitors read posts.
+                </div>
+              ) : (
+                <ol className="divide-y divide-border">
+                  {analytics.data?.topPosts.map((p, idx) => (
+                    <li key={p.id} className="py-2.5 flex items-center gap-3">
+                      <span className="text-xs font-mono text-muted-foreground w-4 shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/admin/posts/${p.id}/analytics`}>
+                          <a className="text-sm font-medium truncate hover:underline block">
+                            {p.title}
+                          </a>
+                        </Link>
+                        <div className="text-xs text-muted-foreground">
+                          {formatShortDate(p.publishedAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                        <Eye className="h-3 w-3" />
+                        {p.views.toLocaleString()}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Card>
+
+            {/* Recent posts */}
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Your recent posts</h2>
@@ -141,37 +329,67 @@ export default function AdminDashboard() {
               )}
             </Card>
 
-            {access.isEditorOrAbove && (
-              <Card className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" /> Comments awaiting moderation
-                  </h2>
-                  <Link href="/admin/comments">
-                    <a className="text-xs text-primary hover:underline">View all</a>
-                  </Link>
+            {/* Activity feed */}
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold text-sm">Recent activity ({rangeDays}d)</h2>
+              </div>
+              {analytics.isLoading ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : (analytics.data?.activity.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted-foreground py-6 text-center">
+                  No activity yet in this window.
                 </div>
-                {pendingComments.isLoading ? (
-                  <div className="text-sm text-muted-foreground">Loading…</div>
-                ) : (pendingComments.data?.items.length ?? 0) === 0 ? (
-                  <div className="text-sm text-muted-foreground py-6 text-center">
-                    No comments awaiting moderation.
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {pendingComments.data?.items.map((c) => (
-                      <li key={c.id} className="py-2.5">
-                        <div className="text-sm font-medium">{c.authorName}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-2">
-                          {c.bodyText}
+              ) : (
+                <ul className="divide-y divide-border">
+                  {analytics.data?.activity.map((item, i) => (
+                    <li key={i} className="py-2.5 flex items-start gap-2">
+                      {activityIcon(item.kind)}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs leading-snug">{activityLabel(item)}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {formatDate(item.at)}
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           </div>
+
+          {/* Comments moderation (editors+) */}
+          {access.isEditorOrAbove && (
+            <Card className="p-5 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" /> Comments awaiting moderation
+                </h2>
+                <Link href="/admin/comments">
+                  <a className="text-xs text-primary hover:underline">View all</a>
+                </Link>
+              </div>
+              {pendingComments.isLoading ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : (pendingComments.data?.items.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted-foreground py-6 text-center">
+                  No comments awaiting moderation.
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {pendingComments.data?.items.map((c) => (
+                    <li key={c.id} className="py-2.5">
+                      <div className="text-sm font-medium">{c.authorName}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">
+                        {c.bodyText}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
         </>
       )}
     </AdminLayout>

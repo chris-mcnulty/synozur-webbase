@@ -43,6 +43,8 @@ tags:
     description: Team member roster (public + admin).
   - name: CmsCollateral
     description: Admin endpoints for managing collateral library items.
+  - name: CMS Analytics
+    description: Aggregate analytics for posts and dashboard.
 paths:
   /healthz:
     get:
@@ -726,6 +728,94 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CmsUser'
+  /cms/analytics/overview:
+    get:
+      operationId: getCmsAnalyticsOverview
+      tags:
+        - CMS Analytics
+      summary: Dashboard analytics overview
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+      responses:
+        '200':
+          description: Overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /cms/analytics/posts/{id}:
+    get:
+      operationId: getCmsPostAnalytics
+      tags:
+        - CMS Analytics
+      summary: Per-post analytics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+      responses:
+        '200':
+          description: Post analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAnalytics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /insights/{slug}/view:
+    post:
+      operationId: trackInsightView
+      tags:
+        - Insights
+      summary: Record a public post view
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                referrer:
+                  type: string
+                  nullable: true
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
   /insights:
     get:
       operationId: listInsights
@@ -4094,3 +4184,161 @@ components:
           type: array
           items:
             type: string
+
+    AnalyticsTopPost:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - views
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        views:
+          type: integer
+    AnalyticsSeriesPoint:
+      type: object
+      required:
+        - day
+        - views
+      properties:
+        day:
+          type: string
+        views:
+          type: integer
+    AnalyticsActivityItem:
+      type: object
+      required:
+        - kind
+        - postId
+        - postTitle
+        - postSlug
+        - status
+        - at
+      properties:
+        kind:
+          type: string
+          enum:
+            - comment
+            - publish
+        postId:
+          type: string
+          format: uuid
+        postTitle:
+          type: string
+        postSlug:
+          type: string
+        authorName:
+          type: string
+          nullable: true
+        status:
+          type: string
+        at:
+          type: string
+          format: date-time
+    AnalyticsOverview:
+      type: object
+      required:
+        - rangeDays
+        - totals
+        - topPosts
+        - series
+        - activity
+      properties:
+        rangeDays:
+          type: integer
+        totals:
+          type: object
+          required:
+            - views
+            - published
+            - comments
+          properties:
+            views:
+              type: integer
+            published:
+              type: integer
+            comments:
+              type: integer
+        topPosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsTopPost'
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsSeriesPoint'
+        activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsActivityItem'
+    AnalyticsReferrer:
+      type: object
+      required:
+        - host
+        - views
+      properties:
+        host:
+          type: string
+        views:
+          type: integer
+    PostAnalytics:
+      type: object
+      required:
+        - post
+        - rangeDays
+        - totals
+        - series
+        - referrers
+      properties:
+        post:
+          type: object
+          required:
+            - id
+            - slug
+            - title
+          properties:
+            id:
+              type: string
+              format: uuid
+            slug:
+              type: string
+            title:
+              type: string
+            publishedAt:
+              type: string
+              format: date-time
+              nullable: true
+        rangeDays:
+          type: integer
+        totals:
+          type: object
+          required:
+            - views
+            - viewsAllTime
+            - comments
+          properties:
+            views:
+              type: integer
+            viewsAllTime:
+              type: integer
+            comments:
+              type: integer
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsSeriesPoint'
+        referrers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsReferrer'
