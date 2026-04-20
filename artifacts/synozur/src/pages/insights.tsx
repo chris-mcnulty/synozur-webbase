@@ -5,20 +5,27 @@ import { ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/turnstile";
 
 function InsightsSubscribeForm() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status === "submitting") return;
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setStatus("error");
+      setErrorMessage("Please complete the bot check before subscribing.");
+      return;
+    }
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      await api.submitSubscribe({ email, source: "insights", website: website || null });
+      await api.submitSubscribe({ email, source: "insights", website: website || null, turnstileToken });
       setStatus("success");
       setEmail("");
     } catch (err) {
@@ -69,6 +76,7 @@ function InsightsSubscribeForm() {
           {status === "submitting" ? "Subscribing..." : "Subscribe"}
         </Button>
       </div>
+      <Turnstile onVerify={setTurnstileToken} />
       {status === "error" && errorMessage && (
         <p className="text-sm text-destructive" role="alert">
           {errorMessage}

@@ -4,20 +4,27 @@ import { ArrowRight, Linkedin, Twitter, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { Turnstile, TURNSTILE_SITE_KEY } from "@/components/turnstile";
 
 function FooterSubscribeForm() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status === "submitting") return;
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setStatus("error");
+      setErrorMessage("Please complete the bot check before subscribing.");
+      return;
+    }
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      await api.submitSubscribe({ email, source: "footer", website: website || null });
+      await api.submitSubscribe({ email, source: "footer", website: website || null, turnstileToken });
       setStatus("success");
       setEmail("");
     } catch (err) {
@@ -68,6 +75,7 @@ function FooterSubscribeForm() {
           {status === "submitting" ? "..." : "Subscribe"}
         </Button>
       </div>
+      <Turnstile onVerify={setTurnstileToken} theme="dark" />
       {status === "error" && errorMessage && (
         <p className="text-xs text-destructive" role="alert">
           {errorMessage}
