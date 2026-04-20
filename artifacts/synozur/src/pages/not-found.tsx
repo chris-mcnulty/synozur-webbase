@@ -5,7 +5,7 @@ import { Compass } from "lucide-react";
 export default function NotFound() {
   return (
     <div className="relative w-full min-h-[80vh] flex items-center justify-center overflow-hidden bg-[#0B0B1A]">
-      <Meta title="Lost in the constellation" description="The page you were looking for is not on the map." />
+      <Meta title="Lost in the constellation" description="The page you were looking for is not on the map." pageType="not-found" />
       <div className="absolute inset-0 nebula-gradient opacity-25" />
       <div
         className="absolute inset-0 opacity-50"
