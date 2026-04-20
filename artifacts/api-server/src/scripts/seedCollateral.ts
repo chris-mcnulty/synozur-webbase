@@ -26,7 +26,7 @@ const objectStorage = new ObjectStorageService();
 // Resolve relative to this script so the seeder works regardless of cwd:
 //   <repo>/artifacts/api-server/src/scripts/seedCollateral.ts -> <repo>/attached_assets
 const ASSETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../attached_assets");
-const COLLATERAL_CSV = "Collateral_1776706603387.csv";
+const COLLATERAL_CSV = "Collateral_1776714742837.csv";
 const FEED_CSV = "From+The+Feed_1776706589115.csv";
 
 // ---------------------------------------------------------------------------

@@ -25,6 +25,16 @@ const ITEMS: SeedItem[] = [
   { file: "AdobeStock_167081726_1776708217612.jpeg", displayName: "People — lone figure under sky (167081726)", category: "people" },
   { file: "AdobeStock_362805421_1776708217610.jpeg", displayName: "People — figure on horizon (362805421)", category: "people" },
   { file: "Homepage-Filler-A_1776708217619.png", displayName: "People — homepage filler A", category: "people" },
+  // People — additional business / editorial shots (second batch)
+  { file: "AdobeStock_216576334_1776708643442.jpeg", displayName: "People — business editorial (216576334)", category: "people" },
+  { file: "AdobeStock_289923630_1776708643444.jpeg", displayName: "People — business editorial (289923630)", category: "people" },
+  { file: "AdobeStock_491131853_1776708643445.jpeg", displayName: "People — business editorial (491131853)", category: "people" },
+  { file: "AdobeStock_504114321_1776708643446.jpeg", displayName: "People — business editorial (504114321)", category: "people" },
+  { file: "AdobeStock_621274472_1776708643447.jpeg", displayName: "People — business editorial (621274472)", category: "people" },
+  { file: "AdobeStock_670678012_1776708643448.jpeg", displayName: "People — business editorial (670678012)", category: "people" },
+  { file: "AdobeStock_844256800_1776708643449.jpeg", displayName: "People — business editorial (844256800)", category: "people" },
+  { file: "AdobeStock_1216450441_1776708643450.jpeg", displayName: "People — business editorial (1216450441)", category: "people" },
+  { file: "AdobeStock_1897009755_1776708643451.jpeg", displayName: "People — business editorial (1897009755)", category: "people" },
   // North-star — cosmic / starry shots
   { file: "AdobeStock_244105520_1776708217613.jpeg", displayName: "North star — cosmic field (244105520)", category: "north-star" },
   { file: "AdobeStock_1238508882_1776708217615.jpeg", displayName: "North star — starry sky (1238508882)", category: "north-star" },
