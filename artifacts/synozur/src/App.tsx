@@ -31,69 +31,92 @@ import AdminEventsList from "@/pages/admin";
 import EventForm from "@/pages/admin/event-form";
 import AdminSubmissionsList from "@/pages/admin/submissions";
 import AdminSiteSettings from "@/pages/admin/site-settings";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminPostsList from "@/pages/admin/posts-list";
+import PostEditor from "@/pages/admin/post-editor";
+import PostPreview from "@/pages/admin/post-preview";
+import MediaLibrary from "@/pages/admin/media";
+import TaxonomyPage from "@/pages/admin/taxonomy";
+import CommentsModeration from "@/pages/admin/comments";
+import UsersAndRoles from "@/pages/admin/users";
 import { AdminGate } from "@/components/admin/AdminGate";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-function Router() {
+function AdminRoutes() {
   return (
-    <Layout>
+    <AdminGate>
       <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/about" component={About} />
-        <Route path="/services-overview/default" component={ServicesOverview} />
-        <Route path="/services-overview/:slug" component={ServicesOverview} />
-        <Route path="/services/:slug" component={ServiceDetail} />
-        <Route path="/clients" component={Clients} />
-        <Route path="/case-studies" component={CaseStudies} />
-        <Route path="/case-studies/:slug" component={CaseStudyDetail} />
-        <Route path="/applications" component={Applications} />
-        <Route path="/applications/:slug" component={ApplicationDetail} />
-        <Route path="/workshops" component={Workshops} />
-        <Route path="/workshops/:slug" component={WorkshopDetail} />
-        <Route path="/team" component={Team} />
-        <Route path="/partners" component={Partners} />
-        <Route path="/insights" component={Insights} />
-        <Route path="/insights/:slug" component={InsightDetail} />
-        <Route path="/polaris" component={Polaris} />
-        <Route path="/contact" component={Contact} />
-        <Route path="/start" component={Start} />
-        <Route path="/events" component={Events} />
-        <Route path="/privacy" component={Privacy} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/sign-in/*?" component={SignInPage} />
-        <Route path="/sign-up/*?" component={SignUpPage} />
-        <Route path="/admin">
-          <AdminGate>
-            <AdminEventsList />
-          </AdminGate>
+        <Route path="/" component={AdminDashboard} />
+        <Route path="/posts" component={AdminPostsList} />
+        <Route path="/posts/new">
+          <PostEditor />
         </Route>
-        <Route path="/admin/submissions">
-          <AdminGate>
-            <AdminSubmissionsList />
-          </AdminGate>
+        <Route path="/posts/:id/edit">
+          {(params) => <PostEditor id={params.id} />}
         </Route>
-        <Route path="/admin/site-settings">
-          <AdminGate>
-            <AdminSiteSettings />
-          </AdminGate>
+        <Route path="/posts/:id/preview">
+          {(params) => <PostPreview id={params.id} />}
         </Route>
-        <Route path="/admin/events/new">
-          <AdminGate>
-            <EventForm />
-          </AdminGate>
+        <Route path="/media" component={MediaLibrary} />
+        <Route path="/taxonomy" component={TaxonomyPage} />
+        <Route path="/comments" component={CommentsModeration} />
+        <Route path="/users" component={UsersAndRoles} />
+        <Route path="/site-settings" component={AdminSiteSettings} />
+        <Route path="/events" component={AdminEventsList} />
+        <Route path="/submissions" component={AdminSubmissionsList} />
+        <Route path="/events/new">
+          <EventForm />
         </Route>
-        <Route path="/admin/events/:id">
-          {(params) => (
-            <AdminGate>
-              <EventForm id={params.id} />
-            </AdminGate>
-          )}
+        <Route path="/events/:id">
+          {(params) => <EventForm id={params.id} />}
         </Route>
         <Route component={NotFound} />
       </Switch>
-    </Layout>
+    </AdminGate>
+  );
+}
+
+function Router() {
+  return (
+    <Switch>
+      {/* Admin routes render outside the marketing site Layout. */}
+      <Route path="/admin" nest>
+        <AdminRoutes />
+      </Route>
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/about" component={About} />
+            <Route path="/services-overview/default" component={ServicesOverview} />
+            <Route path="/services-overview/:slug" component={ServicesOverview} />
+            <Route path="/services/:slug" component={ServiceDetail} />
+            <Route path="/clients" component={Clients} />
+            <Route path="/case-studies" component={CaseStudies} />
+            <Route path="/case-studies/:slug" component={CaseStudyDetail} />
+            <Route path="/applications" component={Applications} />
+            <Route path="/applications/:slug" component={ApplicationDetail} />
+            <Route path="/workshops" component={Workshops} />
+            <Route path="/workshops/:slug" component={WorkshopDetail} />
+            <Route path="/team" component={Team} />
+            <Route path="/partners" component={Partners} />
+            <Route path="/insights" component={Insights} />
+            <Route path="/insights/:slug" component={InsightDetail} />
+            <Route path="/polaris" component={Polaris} />
+            <Route path="/contact" component={Contact} />
+            <Route path="/start" component={Start} />
+            <Route path="/events" component={Events} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/sign-in/*?" component={SignInPage} />
+            <Route path="/sign-up/*?" component={SignUpPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
