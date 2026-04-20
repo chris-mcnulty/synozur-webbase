@@ -187,6 +187,10 @@ export const api = {
   updateEvent: (id: number, body: EventInput) =>
     jsonFetch<AdminEvent>(url(`/admin/events/${id}`), { method: "PATCH", body: JSON.stringify(body) }),
   deleteEvent: (id: number) => jsonFetch<void>(url(`/admin/events/${id}`), { method: "DELETE" }),
+  syncEventToCollateral: (id: number) =>
+    jsonFetch<{ ok: boolean }>(url(`/admin/events/${id}/sync-to-collateral`), {
+      method: "POST",
+    }),
   listAssets: (search?: string, category?: string) => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
