@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "Yu-dBHMAzoO2RnrzOkDLa"
+uri = "file://artifacts/synozur/public/images/hero-bg.png"
+type = "image"
+title = "Cosmic nebula starfield background"
+
+[[generated]]
+id = "t0NXp7ETI20C4RJqEgVgc"
+uri = "file://artifacts/synozur/public/images/pillar-strategy.png"
+type = "image"
+title = "Abstract strategic transformation concept"
+
+[[generated]]
+id = "3-5M6jMS3L6I1zht4MzIg"
+uri = "file://artifacts/synozur/public/images/pillar-tech.png"
+type = "image"
+title = "Abstract technology transformation concept"

@@ -1,0 +1,160 @@
+You are building a pixel-faithful, production-ready duplicate of the website currently hosted at https://www.synozur.com (The Synozur Alliance). The current site is built on Wix. I want to move off Wix onto a self-hosted stack I control, with identical visual design, full content parity, a real CMS, working internal redirects, and analytics hooks. Treat this as a serious engineering project, not a quick clone.
+1. Tech stack (use this exactly unless you have a strong reason otherwise)
+	•	Framework: Next.js 14+ (App Router) with TypeScript
+	•	Styling: Tailwind CSS + a small set of hand-written CSS modules for anything Tailwind can’t cleanly express
+	•	CMS: Payload CMS (self-hosted, runs in the same Replit project) OR Sanity if Payload is too heavy for the Replit environment — pick one and justify the choice in the README
+	•	Database: PostgreSQL (via Replit’s managed Postgres, or Neon if that’s easier)
+	•	Image handling: next/image with remote patterns configured; store originals in the CMS media library
+	•	Forms: React Hook Form + a server action that posts to a configurable webhook (leave the webhook URL as an env var)
+	•	Deployment target: Replit Deployments, with a clean path to move to Vercel later if needed
+	•	Package manager: pnpm
+2. Site structure to replicate
+Build every one of these routes. Preserve the exact URL paths so internal links and any external backlinks keep working:
+Top-level pages
+	•	/ (home)
+	•	/about (Our Story)
+	•	/clients
+	•	/team
+	•	/partners
+	•	/careers
+	•	/contact
+	•	/start (Get Started CTA landing)
+	•	/join (subscribe)
+	•	/privacy
+	•	/terms
+	•	/faq
+Services hub + four pillars
+	•	/services-overview/default
+	•	/services-overview/strategic-transformation
+	•	/services-overview/technology-transformation
+	•	/services-overview/go-to-market-transformation
+	•	/services/strategic-transformation
+	•	/services/technology-transformation
+	•	/services/experiences
+	•	/services/go-to-market-transformation
+Solutions (child pages under services)
+	•	/solutions/company-os
+	•	/solutions/fractional-leadership
+	•	/solutions/delivery-management
+	•	/solutions/strategic-roadmaps
+	•	/solutions/ai-strategy-and-design
+	•	/solutions/employee-effectiveness
+	•	/solutions/employee-strategies
+	•	/solutions/communication-strategies
+	•	/solutions/design-strategies
+	•	/solutions/brand-and-messaging
+	•	/solutions/gtm-strategy-and-execution
+	•	/solutions/microsoft-partner-development
+The Feed
+	•	/event-list (events index)
+	•	/event-list/[slug] (event detail)
+	•	/insights (blog index with pagination, category and tag filters, search)
+	•	/insights/[slug] (blog post detail)
+	•	/polaris (podcast index)
+	•	/polaris/[slug] (podcast episode detail with embedded player)
+Resources
+	•	/items (white papers + eBooks index, gated download form)
+	•	/items/[slug]
+	•	/webinars
+	•	/webinars/[slug]
+	•	/case-studies
+	•	/case-studies/[slug]
+	•	/workshops
+	•	/workshops/[slug]
+	•	/models (index)
+	•	/models/[slug] (e.g. /models/ai-maturity-model)
+	•	/applications (software index)
+	•	/applications/[slug] (e.g. /applications/vega)
+3. Visual fidelity requirements
+The duplicate must look indistinguishable from the Wix original to a non-technical viewer. To achieve this:
+	1.	Scrape the live site first. For every route above, fetch the rendered HTML, pull down every referenced image, icon, and font file, and save them to /public/assets/scraped/ organized by route. Use a headless browser (Playwright) so JS-rendered content is captured.
+	2.	Extract the design tokens. Parse the computed styles from the homepage, services pages, and a blog post. Produce a design-tokens.json that captures:
+	•	Full color palette (primary, secondary, accents, neutrals, gradient stops — the site uses a “Nebula Gradient” and North Star / night-sky visual language, capture those exactly)
+	•	Typography scale (font families, weights, sizes, line heights, letter spacing for h1–h6, body, small, caption, button)
+	•	Spacing scale
+	•	Border radii, shadows, and any blur/backdrop-filter values
+	•	Breakpoints
+	3.	Map those tokens into tailwind.config.ts as the single source of truth. Do NOT hardcode colors or font sizes in components.
+	4.	Fonts. Identify every font family in use. For each, either (a) self-host via next/font/local if the license allows, or (b) load the closest open-source equivalent from Google Fonts and flag the substitution in the README so I can swap it for a properly licensed copy before launch. Common Wix fonts like Avenir/Proxima/Futura should be noted explicitly.
+	5.	Icons and decorative graphics. Download every icon used in “Find Your North Star,” “Our Services,” “Our Projects,” “Our Clients,” the footer social icons, and the navigation. Store them as optimized SVG where possible, PNG otherwise.
+	6.	Layout. Rebuild the header (logo left, nav with multi-level dropdowns for Our Story, Services, The Feed, Resources), hero section, three-up feature cards, “From The Feed” carousel, and the multi-column footer exactly. Mobile nav should collapse to a hamburger with the same dropdown behavior.
+	7.	Animations and micro-interactions. Match any scroll-triggered fades, hover states on cards, and transitions on the nav. Use Framer Motion.
+	8.	Responsive behavior. Test at 360, 768, 1024, 1440, and 1920 widths and match the original’s breakpoint behavior.
+4. Content migration
+Because I can’t hand you direct Wix CMS access, do this:
+	1.	Scrape every public page listed in section 2 and save the raw HTML and extracted text/images to /content-dump/ organized by route.
+	2.	For each CMS-driven collection (blog posts at /insights, case studies, events, podcast episodes, webinars, white papers, models, applications), crawl the index page, discover all detail URLs, and scrape each one. Capture title, slug, publish date, author, body (as HTML, preserving headings/lists/images/embeds), featured image, category, tags, and any metadata.
+	3.	Import the scraped content into the CMS as draft entries. Build a one-shot import script at scripts/import-from-scrape.ts that reads /content-dump/ and creates CMS records. Re-runnable and idempotent.
+	4.	If the user provides CSV exports from Wix (they may upload them to /wix-exports/), prefer those over the scraped HTML and merge intelligently: CSV is the source of truth for structured fields, scraped HTML fills in rich body content.
+	5.	Define these CMS collections with proper schemas:
+	•	posts (blog)
+	•	caseStudies
+	•	events
+	•	podcastEpisodes
+	•	webinars
+	•	whitepapers (with gated-download form field)
+	•	workshops
+	•	models
+	•	applications
+	•	teamMembers
+	•	clients (logo + case-study link)
+	•	partners
+	•	services (the four pillars)
+	•	solutions (children of services)
+	•	pages (for one-off pages like About, FAQ, Privacy, Terms)
+	•	navigation (so I can edit the nav without a deploy)
+	•	siteSettings (footer text, social URLs, address, copyright)
+5. Internal redirects and SEO
+	1.	Preserve every existing URL. No trailing-slash changes, no case changes, no restructuring.
+	2.	Build a redirects.ts config loaded by next.config.js. Seed it with any URL variants discovered during scraping (e.g. old Wix /post/ URLs that might still get traffic). Make this file easy for me to edit.
+	3.	Sitemap. Auto-generate sitemap.xml from the CMS plus static routes. Submit-ready.
+	4.	robots.txt with production vs. preview handling.
+	5.	Per-page metadata. Each page and CMS entry must support title, description, OG image, Twitter card, and canonical URL, editable in the CMS. Scrape the current site’s meta tags and populate defaults.
+	6.	Structured data. Add JSON-LD for Organization on every page, Article on blog posts, Event on events, Podcast on podcast episodes, and BreadcrumbList site-wide.
+	7.	301 redirects for any Wix-specific paths that don’t exist in the new structure (e.g. /post/<old-slug> → /insights/<new-slug>).
+6. Analytics, tracking, and integrations
+Scrape the current site and detect every tracking script in use. At minimum the current site has a LinkedIn Insight Tag (partner ID 7337793 based on the pixel). Build a centralized <Analytics /> component that loads:
+	•	Google Analytics 4 (env var: NEXT_PUBLIC_GA4_ID)
+	•	LinkedIn Insight Tag (env var: NEXT_PUBLIC_LINKEDIN_PARTNER_ID, pre-filled with 7337793)
+	•	Meta Pixel (env var: NEXT_PUBLIC_META_PIXEL_ID)
+	•	Any other tags detected during scraping — list them in the README with the env var name
+Load all tags via next/script with strategy="afterInteractive". Respect a cookie consent banner (build a minimal GDPR-friendly one using a well-known small library or a hand-rolled component — no external consent platform required). Don’t fire marketing tags until consent is granted.
+7. Forms
+	•	Contact form on /contact
+	•	Subscribe form on /join and in the footer
+	•	“Get Started” intake form on /start
+	•	Gated-download forms on each white paper / eBook
+All forms post to server actions that (a) validate server-side with Zod, (b) forward the submission to a configurable webhook (env var), and (c) also write a record to a submissions table in Postgres for redundancy. Include basic spam protection (honeypot + Turnstile if a site key is provided via env var).
+8. Podcast (/polaris)
+The Polaris podcast section needs an audio player on each episode page, episode list with cover art, show notes as rich text, and an RSS feed at /polaris/rss.xml generated from the CMS so the show can be syndicated to Apple/Spotify from my own domain.
+9. Search
+Add site-wide search over posts, case studies, events, webinars, white papers, and models. Use Postgres full-text search (no external dependency). Accessible at /search?q=... and via a header icon.
+10. Accessibility and performance
+	•	WCAG 2.1 AA. Run axe during build and fail the build on violations.
+	•	Core Web Vitals: LCP < 2.5s, CLS < 0.1, INP < 200ms on the homepage and a representative blog post, tested via Lighthouse CI in the build pipeline.
+	•	All images lazy-loaded below the fold with proper alt text (pull alt text from scraped content; flag missing alts in a report).
+	•	Semantic HTML, skip-to-content link, visible focus rings, proper landmark regions.
+11. Developer experience and handoff
+	•	README.md with: setup, env var list, how to run the scraper, how to run the importer, how to add a new page, how to deploy, known font substitutions, and a checklist of things I need to do before cutting DNS.
+	•	.env.example with every variable.
+	•	Prettier + ESLint + TypeScript strict mode.
+	•	A single pnpm dev starts both Next.js and the Payload admin (or the Sanity Studio equivalent) on clearly separated ports.
+	•	Seed script so a fresh clone can come up with demo content in one command.
+	•	A MIGRATION.md that maps each old Wix URL to the new route and flags anything that couldn’t be faithfully reproduced (e.g. a Wix-proprietary widget) along with the workaround chosen.
+12. Build order (do it in this sequence)
+	1.	Initialize the Next.js + Tailwind + TypeScript + Payload project and get / showing “Hello.”
+	2.	Write the Playwright scraper and dump all public pages and assets to /content-dump/ and /public/assets/scraped/.
+	3.	Extract design tokens, configure Tailwind, self-host fonts, build the header and footer components.
+	4.	Build the homepage pixel-for-pixel against the scraped reference.
+	5.	Define CMS schemas and run the importer to populate drafts.
+	6.	Build the blog (/insights), case studies, and one services pillar end-to-end as the template for the rest.
+	7.	Generate the remaining pages and detail routes from the templates.
+	8.	Wire forms, analytics, search, sitemap, redirects.
+	9.	Accessibility and performance pass.
+	10.	Write README.md and MIGRATION.md, produce a side-by-side visual diff report of the top 20 pages (old vs. new screenshots) and list any remaining discrepancies.
+13. Ground rules
+	•	Ask me clarifying questions before guessing on anything material (font licensing, which CMS to pick if Payload has environment issues, where form submissions should be routed, which analytics accounts are mine).
+	•	When you can’t achieve perfect fidelity, show me the diff and propose options rather than silently approximating.
+	•	Do not invent content. If a page’s copy can’t be scraped, leave a clearly-labeled TODO: placeholder in the CMS draft and list it in MIGRATION.md.
+	•	Commit frequently with clear messages. Open the project with main as a stable branch and do work on feat/* branches.
+When you’re ready to start, confirm the stack choice, list any clarifying questions, and then begin with step 1.
