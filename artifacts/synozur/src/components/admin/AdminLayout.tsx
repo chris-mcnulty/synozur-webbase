@@ -17,6 +17,7 @@ import {
   Layers,
   Library as LibraryIcon,
   Video as VideoIcon,
+  BookOpen as BookOpenIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -86,6 +87,13 @@ const NAV: NavItem[] = [
     icon: VideoIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-videos",
+  },
+  {
+    href: "/white-papers",
+    label: "White Papers",
+    icon: BookOpenIcon,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-white-papers",
   },
   {
     href: "/comments",

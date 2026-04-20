@@ -53,6 +53,8 @@ import AdminCollateralList from "@/pages/admin/collateral-list";
 import CollateralEdit from "@/pages/admin/collateral-edit";
 import AdminVideosList from "@/pages/admin/videos-list";
 import VideoEdit from "@/pages/admin/video-edit";
+import AdminWhitePapersList from "@/pages/admin/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/white-paper-edit";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -60,6 +62,8 @@ import Webinars from "@/pages/webinars";
 import WebinarDetail from "@/pages/webinar-detail";
 import Videos from "@/pages/videos";
 import VideoDetail from "@/pages/video-detail";
+import WhitePapers from "@/pages/white-papers";
+import WhitePaperDetail from "@/pages/white-paper-detail";
 import Items from "@/pages/items";
 import ItemDetail from "@/pages/item-detail";
 import NotFound from "@/pages/not-found";
@@ -122,6 +126,13 @@ function AdminRoutes() {
         <Route path="/videos/:id/edit">
           {(params) => <VideoEdit id={params.id} />}
         </Route>
+        <Route path="/white-papers" component={AdminWhitePapersList} />
+        <Route path="/white-papers/new">
+          <WhitePaperEdit />
+        </Route>
+        <Route path="/white-papers/:id/edit">
+          {(params) => <WhitePaperEdit id={params.id} />}
+        </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/events" component={AdminEventsList} />
         <Route path="/submissions" component={AdminSubmissionsList} />
@@ -173,6 +184,8 @@ function Router() {
             <Route path="/webinars/:slug" component={WebinarDetail} />
             <Route path="/videos" component={Videos} />
             <Route path="/videos/:slug" component={VideoDetail} />
+            <Route path="/white-papers" component={WhitePapers} />
+            <Route path="/white-papers/:slug" component={WhitePaperDetail} />
             <Route path="/items" component={Items} />
             <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/team" component={Team} />

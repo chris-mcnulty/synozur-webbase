@@ -4,12 +4,14 @@ import {
   collateralTable,
   type Event,
   type Video,
+  type WhitePaper,
   type CollateralPillar,
 } from "@workspace/db";
 import { toSlug } from "./slug";
 
 const EVENT_SOURCE_PREFIX = "event:";
 const VIDEO_SOURCE_PREFIX = "video:";
+const WHITE_PAPER_SOURCE_PREFIX = "white_paper:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
@@ -17,6 +19,10 @@ export function eventSourceId(eventId: number): string {
 
 export function videoSourceId(videoId: string): string {
   return `${VIDEO_SOURCE_PREFIX}${videoId}`;
+}
+
+export function whitePaperSourceId(whitePaperId: string): string {
+  return `${WHITE_PAPER_SOURCE_PREFIX}${whitePaperId}`;
 }
 
 async function ensureUniqueCollateralSlug(base: string, excludeId?: string): Promise<string> {
@@ -153,6 +159,68 @@ export async function upsertCollateralFromVideo(video: Video): Promise<void> {
 
 export async function softDeleteCollateralForVideo(videoId: string): Promise<void> {
   const sourceId = videoSourceId(videoId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
+}
+
+export async function upsertCollateralFromWhitePaper(
+  whitePaper: WhitePaper,
+): Promise<void> {
+  const sourceId = whitePaperSourceId(whitePaper.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const isPublished =
+    whitePaper.status === "published" && whitePaper.active && !whitePaper.deletedAt;
+  const now = new Date();
+  const collateralType = whitePaper.docType === "ebook" ? "ebook" : "white_paper";
+  const downloadUrl = whitePaper.documentUrl || whitePaper.externalUrl || null;
+
+  const syncedFields = {
+    type: collateralType as "white_paper" | "ebook",
+    title: whitePaper.title,
+    subtitle: whitePaper.subtitle,
+    description: whitePaper.shortDescription ?? "",
+    heroImage: whitePaper.heroImage ?? "",
+    pillar: normalizePillar(whitePaper.pillar),
+    tags: whitePaper.tags ?? [],
+    url: `/white-papers/${whitePaper.slug}`,
+    external: false,
+    publishedAt: whitePaper.publishedAt,
+    downloadUrl,
+    featured: whitePaper.featured,
+    featuredRank: whitePaper.featuredRank,
+    active: isPublished,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({
+        ...syncedFields,
+        deletedAt: isPublished ? null : existing.deletedAt,
+      })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(whitePaper.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForWhitePaper(
+  whitePaperId: string,
+): Promise<void> {
+  const sourceId = whitePaperSourceId(whitePaperId);
   const now = new Date();
   await db
     .update(collateralTable)
