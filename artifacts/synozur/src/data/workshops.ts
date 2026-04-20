@@ -195,7 +195,7 @@ export type CTA = {
     "afterExample": "“We have a prioritized AI opportunity blueprint, owners, and a practical first-pilot plan.”",
     "sampleDeliverables": {
       "header": "Sample deliverables (available on request)",
-      "thumbs": ["/images/workshops/ai-academy-sample1.jpg","/images/workshops/ai-academy-sample2.jpg","/images/workshops/ai-academy-sample3.jpg"]
+      "thumbs": ["/images/workshops/ai-academy-immersive-ai-leadership-day-sample-1.jpg","/images/workshops/ai-academy-immersive-ai-leadership-day-sample-2.jpg","/images/workshops/ai-academy-immersive-ai-leadership-day-sample-3.jpg"]
     },
     "faq": {
       "header": "FAQ",
@@ -343,7 +343,7 @@ export type CTA = {
     "afterExample": "“We have a prioritized modernization roadmap and a clear governance and adoption path.”",
     "sampleDeliverables": {
       "header": "Sample deliverables (available on request)",
-      "thumbs": ["/images/workshops/m365-sample1.jpg","/images/workshops/m365-sample2.jpg","/images/workshops/m365-sample3.jpg"]
+      "thumbs": ["/images/workshops/m365-academy-microsoft-365-transformation-day-sample-1.jpg","/images/workshops/m365-academy-microsoft-365-transformation-day-sample-2.jpg","/images/workshops/m365-academy-microsoft-365-transformation-day-sample-3.jpg"]
     },
     "faq": {
       "header": "FAQ",
@@ -489,7 +489,7 @@ export type CTA = {
     "afterExample": "“We have a clear operating rhythm and a blueprint for accountable execution.”",
     "sampleDeliverables": {
       "header": "Sample deliverables (available on request)",
-      "thumbs": ["/images/workshops/cos-sample1.jpg","/images/workshops/cos-sample2.jpg","/images/workshops/cos-sample3.jpg"]
+      "thumbs": ["/images/workshops/company-operating-system-bootcamp-two-day-sample-1.jpg","/images/workshops/company-operating-system-bootcamp-two-day-sample-2.jpg","/images/workshops/company-operating-system-bootcamp-two-day-sample-3.jpg"]
     },
     "faq": {
       "header": "FAQ",
@@ -656,7 +656,7 @@ export type CTA = {
     "afterExample": "“We have a defensible story, proof points, and talk tracks tailored to each buyer persona.”",
     "sampleDeliverables": {
       "header": "Sample deliverables (available on request)",
-      "thumbs": ["/images/workshops/gtm-sample1.jpg","/images/workshops/gtm-sample2.jpg","/images/workshops/gtm-sample3.jpg"]
+      "thumbs": ["/images/workshops/go-to-market-proxy-pitch-assessment-sample-1.jpg","/images/workshops/go-to-market-proxy-pitch-assessment-sample-2.jpg","/images/workshops/go-to-market-proxy-pitch-assessment-sample-3.jpg"]
     },
     "faq": {
       "header": "FAQ",
