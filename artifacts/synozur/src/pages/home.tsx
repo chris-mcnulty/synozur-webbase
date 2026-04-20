@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock, Monitor } from "lucide-react";
 import { api } from "@/lib/api";
 
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -16,6 +16,7 @@ function resolveImageUrl(url: string | null | undefined, fallback: string): stri
   if (url.startsWith("/api/")) return `${BASE_PATH_HOME}${url}`;
   return url;
 }
+
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
@@ -29,6 +30,7 @@ import { fetchFeatured, type Collateral } from "@/data/collateral";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
+import { workshops } from "@/data/workshops";
 
 function FromTheFeedCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -65,7 +67,7 @@ function FromTheFeedCarousel() {
   if (error) {
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
-        Couldn’t load the feed right now.
+        Couldn't load the feed right now.
       </div>
     );
   }
@@ -321,6 +323,79 @@ export default function Home() {
                 </Link>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Workshops Teaser */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12"
+          >
+            <div>
+              <p className="text-sm uppercase tracking-[0.25em] text-primary mb-3">Workshops</p>
+              <h2 className="text-3xl md:text-4xl font-bold">
+                Transform your team in a day
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
+                Focused, facilitated intensives that turn leadership conversations into prioritized plans — with deliverables you can act on immediately.
+              </p>
+            </div>
+            <Link
+              href="/workshops"
+              className="inline-flex shrink-0 items-center text-primary font-semibold hover:text-primary/80 transition-colors"
+            >
+              View all workshops <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {workshops.map((workshop, i) => (
+              <motion.div
+                key={workshop.slug}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              >
+                <Link href={`/workshops/${workshop.slug}`} className="group block h-full">
+                  <div className="flex flex-col h-full rounded-2xl border border-border/60 bg-card overflow-hidden hover-elevate">
+                    <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+                      <img
+                        src={workshop.heroImage}
+                        alt={workshop.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <span className="absolute bottom-3 left-3 inline-block py-0.5 px-2.5 rounded-full bg-white/10 border border-white/25 text-white text-[10px] tracking-[0.15em] font-semibold backdrop-blur-md">
+                        {workshop.category}
+                      </span>
+                    </div>
+                    <div className="flex flex-col flex-1 p-6">
+                      <h3 className="font-bold text-base leading-snug mb-2 group-hover:text-primary transition-colors">
+                        {workshop.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                        {workshop.shortDescription}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {workshop.duration}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Monitor className="h-3 w-3" /> {workshop.deliveryFormat}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>

@@ -1,19 +1,27 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight, Clock, Layers, Monitor } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { fetchLibrary, type Pillar } from "@/data/collateral";
 import NotFound from "./not-found";
+import { workshops } from "@/data/workshops";
 
 const PILLAR_BY_SLUG: Record<string, Pillar> = {
   "strategic-transformation": "strategic",
   "technology-transformation": "technology",
   experiences: "experiences",
   "go-to-market-transformation": "gtm",
+};
+
+const WORKSHOP_CATEGORIES_BY_SLUG: Record<string, string[]> = {
+  "strategic-transformation": ["AI Strategy & Design", "Leadership & Organizational Transformation"],
+  "technology-transformation": ["AI Strategy & Design", "Microsoft 365 Transformation"],
+  experiences: [],
+  "go-to-market-transformation": ["Go-to-Market Transformation"],
 };
 
 function stripHtml(html: string | null | undefined): string {
@@ -131,6 +139,10 @@ export default function ServiceDetail() {
   const service = detail.data;
   const solutions: ServiceWithSolutions["solutions"] =
     list.data?.items.find((s) => s.slug === slug)?.solutions ?? [];
+
+  const relatedWorkshops = workshops.filter((w) =>
+    (WORKSHOP_CATEGORIES_BY_SLUG[slug] ?? []).includes(w.category),
+  );
 
   return (
     <div className="w-full">
@@ -296,6 +308,78 @@ export default function ServiceDetail() {
       </section>
 
       {service ? <CollateralRail slug={slug} title={service.title} /> : null}
+
+      {relatedWorkshops.length > 0 && (
+        <section className="py-24 bg-card border-y border-border">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+              <div>
+                <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                  Workshops
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold">
+                  Accelerate with a focused workshop
+                </h2>
+                <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
+                  Jump-start your {service?.title?.toLowerCase() ?? "transformation"} journey with a structured, facilitated intensive — designed to produce clear deliverables in a single session.
+                </p>
+              </div>
+              <Link
+                href="/workshops"
+                className="inline-flex shrink-0 items-center text-primary font-semibold hover:text-primary/80 transition-colors"
+              >
+                All workshops <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {relatedWorkshops.map((workshop, i) => (
+                <motion.div
+                  key={workshop.slug}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.08 }}
+                >
+                  <Link href={`/workshops/${workshop.slug}`} className="group block h-full">
+                    <div className="flex flex-col h-full rounded-2xl border border-border/60 bg-background overflow-hidden hover-elevate">
+                      <div className="relative aspect-[16/7] overflow-hidden bg-muted">
+                        <img
+                          src={workshop.heroImage}
+                          alt={workshop.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <span className="absolute bottom-3 left-3 inline-block py-0.5 px-2.5 rounded-full bg-white/10 border border-white/25 text-white text-[10px] tracking-[0.15em] font-semibold backdrop-blur-md">
+                          {workshop.category}
+                        </span>
+                      </div>
+                      <div className="flex flex-col flex-1 p-6">
+                        <h3 className="font-bold text-lg leading-snug mb-2 group-hover:text-primary transition-colors">
+                          {workshop.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                          {workshop.shortDescription}
+                        </p>
+                        <div className="mt-5 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {workshop.duration}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Monitor className="h-3 w-3" /> {workshop.deliveryFormat}
+                          </span>
+                        </div>
+                        <div className="mt-4 inline-flex items-center text-primary text-sm font-semibold">
+                          Learn more <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="relative overflow-hidden bg-card border-t border-border py-24">
         <div className="absolute inset-0 nebula-gradient opacity-10" />
