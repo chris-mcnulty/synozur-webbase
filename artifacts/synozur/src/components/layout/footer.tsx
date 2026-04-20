@@ -14,7 +14,7 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-16">
           <div className="lg:col-span-2">
             <h3 className="font-semibold mb-4 text-foreground">Subscribe to The Feed</h3>
             <p className="text-muted-foreground text-sm mb-4">
@@ -47,6 +47,17 @@ export function Footer() {
               <li><Link href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</Link></li>
               <li><Link href="/services/experiences" className="hover:text-primary transition-colors">Experiences</Link></li>
               <li><Link href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-4 text-foreground">Applications</h3>
+            <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
+              <li><Link href="/applications" className="hover:text-primary transition-colors">All Applications</Link></li>
+              <li><Link href="/applications/vega" className="hover:text-primary transition-colors">Vega</Link></li>
+              <li><Link href="/applications/nebula" className="hover:text-primary transition-colors">Nebula</Link></li>
+              <li><Link href="/applications/orion" className="hover:text-primary transition-colors">Orion (Models)</Link></li>
+              <li><Link href="/applications/zenith" className="hover:text-primary transition-colors">Zenith</Link></li>
             </ul>
           </div>
 

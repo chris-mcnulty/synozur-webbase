@@ -39,13 +39,23 @@ export function Header() {
       ]
     },
     {
+      title: "Applications",
+      links: [
+        { label: "All Applications", href: "/applications" },
+        { label: "Vega", href: "/applications/vega" },
+        { label: "Nebula", href: "/applications/nebula" },
+        { label: "Constellation", href: "/applications/constellation" },
+        { label: "Orion (Models)", href: "/applications/orion" },
+        { label: "Orbit", href: "/applications/orbit" },
+        { label: "Zenith", href: "/applications/zenith" },
+      ]
+    },
+    {
       title: "Resources",
       links: [
         { label: "Webinars", href: "/" },
         { label: "White Papers", href: "/" },
         { label: "Workshops", href: "/" },
-        { label: "Models", href: "/" },
-        { label: "Applications / Vega", href: "/" },
       ]
     }
   ];
