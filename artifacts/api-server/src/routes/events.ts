@@ -190,7 +190,14 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   const { imageUrl } = await loadEventWithImage(event);
-  await upsertCollateralFromEvent(event, imageUrl);
+  try {
+    await upsertCollateralFromEvent(event, imageUrl);
+  } catch (error) {
+    console.error("Failed to sync collateral after event update", {
+      eventId: event.id,
+      error,
+    });
+  }
   res.json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
 });
 
