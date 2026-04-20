@@ -8,3 +8,4 @@ export * from "./taxonomy";
 export * from "./comments";
 export * from "./auditLog";
 export * from "./siteSettings";
+export * from "./services";

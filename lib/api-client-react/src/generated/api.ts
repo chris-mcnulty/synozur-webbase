@@ -23,6 +23,8 @@ import type {
   Asset,
   AssetInput,
   BadRequestResponse,
+  Capability,
+  CapabilityItemsResponse,
   Category,
   CmsUser,
   Comment,
@@ -44,6 +46,8 @@ import type {
   ListInsightsParams,
   MediaItem,
   MediaListResponse,
+  Methodology,
+  MethodologyItemsResponse,
   ModerateCmsCommentBody,
   NotFoundResponse,
   Post,
@@ -57,9 +61,16 @@ import type {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   ScheduleCmsPostBody,
+  Service,
+  ServiceDetail,
+  ServiceItemsResponse,
+  ServiceListResponse,
   SetCmsUserRolesBody,
   SiteSettings,
   SiteSettingsInput,
+  Solution,
+  SolutionDetail,
+  SolutionItemsResponse,
   StartFormInput,
   SubmitCommentBody,
   SubmitCommentResponse,
@@ -67,7 +78,11 @@ import type {
   Tag,
   UnauthorizedResponse,
   UpdatePostBody,
+  UpsertCapabilityBody,
   UpsertCategoryBody,
+  UpsertMethodologyBody,
+  UpsertServiceBody,
+  UpsertSolutionBody,
   UpsertTagBody,
 } from "./api.schemas";
 
@@ -2688,6 +2703,1505 @@ export const useUpdateAdminSiteSettings = <
   TContext
 > => {
   return useMutation(getUpdateAdminSiteSettingsMutationOptions(options));
+};
+
+export const getListServicesUrl = () => {
+  return `/api/services`;
+};
+
+export const listServices = async (
+  options?: RequestInit,
+): Promise<ServiceListResponse> => {
+  return customFetch<ServiceListResponse>(getListServicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListServicesQueryKey = () => {
+  return [`/api/services`] as const;
+};
+
+export const getListServicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listServices>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listServices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListServicesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listServices>>> = ({
+    signal,
+  }) => listServices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listServices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListServicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listServices>>
+>;
+export type ListServicesQueryError = ErrorType<unknown>;
+
+export function useListServices<
+  TData = Awaited<ReturnType<typeof listServices>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listServices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListServicesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetServiceUrl = (slug: string) => {
+  return `/api/services/${slug}`;
+};
+
+export const getService = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<ServiceDetail> => {
+  return customFetch<ServiceDetail>(getGetServiceUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetServiceQueryKey = (slug: string) => {
+  return [`/api/services/${slug}`] as const;
+};
+
+export const getGetServiceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getService>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getService>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetServiceQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getService>>> = ({
+    signal,
+  }) => getService(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getService>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetServiceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getService>>
+>;
+export type GetServiceQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetService<
+  TData = Awaited<ReturnType<typeof getService>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getService>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetServiceQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSolutionUrl = (slug: string) => {
+  return `/api/solutions/${slug}`;
+};
+
+export const getSolution = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<SolutionDetail> => {
+  return customFetch<SolutionDetail>(getGetSolutionUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSolutionQueryKey = (slug: string) => {
+  return [`/api/solutions/${slug}`] as const;
+};
+
+export const getGetSolutionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSolution>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSolution>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSolutionQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSolution>>> = ({
+    signal,
+  }) => getSolution(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSolution>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSolutionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSolution>>
+>;
+export type GetSolutionQueryError = ErrorType<NotFoundResponse>;
+
+export function useGetSolution<
+  TData = Awaited<ReturnType<typeof getSolution>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSolution>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSolutionQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsListServicesUrl = () => {
+  return `/api/cms/services`;
+};
+
+export const cmsListServices = async (
+  options?: RequestInit,
+): Promise<ServiceItemsResponse> => {
+  return customFetch<ServiceItemsResponse>(getCmsListServicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsListServicesQueryKey = () => {
+  return [`/api/cms/services`] as const;
+};
+
+export const getCmsListServicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListServices>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListServices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCmsListServicesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof cmsListServices>>> = ({
+    signal,
+  }) => cmsListServices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListServices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListServicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListServices>>
+>;
+export type CmsListServicesQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+export function useCmsListServices<
+  TData = Awaited<ReturnType<typeof cmsListServices>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListServices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListServicesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateServiceUrl = () => {
+  return `/api/cms/services`;
+};
+
+export const cmsCreateService = async (
+  upsertServiceBody: UpsertServiceBody,
+  options?: RequestInit,
+): Promise<Service> => {
+  return customFetch<Service>(getCmsCreateServiceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertServiceBody),
+  });
+};
+
+export const getCmsCreateServiceMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateService>>,
+    TError,
+    { data: BodyType<UpsertServiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateService>>,
+  TError,
+  { data: BodyType<UpsertServiceBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateService"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateService>>,
+    { data: BodyType<UpsertServiceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsCreateService(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateServiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateService>>
+>;
+export type CmsCreateServiceMutationBody = BodyType<UpsertServiceBody>;
+export type CmsCreateServiceMutationError = ErrorType<BadRequestResponse>;
+
+export const useCmsCreateService = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateService>>,
+    TError,
+    { data: BodyType<UpsertServiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateService>>,
+  TError,
+  { data: BodyType<UpsertServiceBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateServiceMutationOptions(options));
+};
+
+export const getCmsUpdateServiceUrl = (id: string) => {
+  return `/api/cms/services/${id}`;
+};
+
+export const cmsUpdateService = async (
+  id: string,
+  upsertServiceBody: UpsertServiceBody,
+  options?: RequestInit,
+): Promise<Service> => {
+  return customFetch<Service>(getCmsUpdateServiceUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertServiceBody),
+  });
+};
+
+export const getCmsUpdateServiceMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateService>>,
+    TError,
+    { id: string; data: BodyType<UpsertServiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateService>>,
+  TError,
+  { id: string; data: BodyType<UpsertServiceBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateService"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateService>>,
+    { id: string; data: BodyType<UpsertServiceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsUpdateService(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateServiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateService>>
+>;
+export type CmsUpdateServiceMutationBody = BodyType<UpsertServiceBody>;
+export type CmsUpdateServiceMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateService = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateService>>,
+    TError,
+    { id: string; data: BodyType<UpsertServiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateService>>,
+  TError,
+  { id: string; data: BodyType<UpsertServiceBody> },
+  TContext
+> => {
+  return useMutation(getCmsUpdateServiceMutationOptions(options));
+};
+
+export const getCmsDeleteServiceUrl = (id: string) => {
+  return `/api/cms/services/${id}`;
+};
+
+export const cmsDeleteService = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteServiceUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteServiceMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteService>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteService>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteService"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteService>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cmsDeleteService(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteServiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteService>>
+>;
+
+export type CmsDeleteServiceMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteService = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteService>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteService>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteServiceMutationOptions(options));
+};
+
+export const getCmsListSolutionsUrl = () => {
+  return `/api/cms/solutions`;
+};
+
+export const cmsListSolutions = async (
+  options?: RequestInit,
+): Promise<SolutionItemsResponse> => {
+  return customFetch<SolutionItemsResponse>(getCmsListSolutionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsListSolutionsQueryKey = () => {
+  return [`/api/cms/solutions`] as const;
+};
+
+export const getCmsListSolutionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListSolutions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListSolutions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCmsListSolutionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListSolutions>>
+  > = ({ signal }) => cmsListSolutions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListSolutions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListSolutionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListSolutions>>
+>;
+export type CmsListSolutionsQueryError = ErrorType<unknown>;
+
+export function useCmsListSolutions<
+  TData = Awaited<ReturnType<typeof cmsListSolutions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListSolutions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListSolutionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateSolutionUrl = () => {
+  return `/api/cms/solutions`;
+};
+
+export const cmsCreateSolution = async (
+  upsertSolutionBody: UpsertSolutionBody,
+  options?: RequestInit,
+): Promise<Solution> => {
+  return customFetch<Solution>(getCmsCreateSolutionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertSolutionBody),
+  });
+};
+
+export const getCmsCreateSolutionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateSolution>>,
+    TError,
+    { data: BodyType<UpsertSolutionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateSolution>>,
+  TError,
+  { data: BodyType<UpsertSolutionBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateSolution"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateSolution>>,
+    { data: BodyType<UpsertSolutionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsCreateSolution(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateSolutionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateSolution>>
+>;
+export type CmsCreateSolutionMutationBody = BodyType<UpsertSolutionBody>;
+export type CmsCreateSolutionMutationError = ErrorType<unknown>;
+
+export const useCmsCreateSolution = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateSolution>>,
+    TError,
+    { data: BodyType<UpsertSolutionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateSolution>>,
+  TError,
+  { data: BodyType<UpsertSolutionBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateSolutionMutationOptions(options));
+};
+
+export const getCmsUpdateSolutionUrl = (id: string) => {
+  return `/api/cms/solutions/${id}`;
+};
+
+export const cmsUpdateSolution = async (
+  id: string,
+  upsertSolutionBody: UpsertSolutionBody,
+  options?: RequestInit,
+): Promise<Solution> => {
+  return customFetch<Solution>(getCmsUpdateSolutionUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertSolutionBody),
+  });
+};
+
+export const getCmsUpdateSolutionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateSolution>>,
+    TError,
+    { id: string; data: BodyType<UpsertSolutionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateSolution>>,
+  TError,
+  { id: string; data: BodyType<UpsertSolutionBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateSolution"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateSolution>>,
+    { id: string; data: BodyType<UpsertSolutionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsUpdateSolution(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateSolutionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateSolution>>
+>;
+export type CmsUpdateSolutionMutationBody = BodyType<UpsertSolutionBody>;
+export type CmsUpdateSolutionMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateSolution = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateSolution>>,
+    TError,
+    { id: string; data: BodyType<UpsertSolutionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateSolution>>,
+  TError,
+  { id: string; data: BodyType<UpsertSolutionBody> },
+  TContext
+> => {
+  return useMutation(getCmsUpdateSolutionMutationOptions(options));
+};
+
+export const getCmsDeleteSolutionUrl = (id: string) => {
+  return `/api/cms/solutions/${id}`;
+};
+
+export const cmsDeleteSolution = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteSolutionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteSolutionMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteSolution>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteSolution>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteSolution"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteSolution>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cmsDeleteSolution(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteSolutionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteSolution>>
+>;
+
+export type CmsDeleteSolutionMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteSolution = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteSolution>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteSolution>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteSolutionMutationOptions(options));
+};
+
+export const getCmsListServiceMethodologiesUrl = (serviceId: string) => {
+  return `/api/cms/services/${serviceId}/methodologies`;
+};
+
+export const cmsListServiceMethodologies = async (
+  serviceId: string,
+  options?: RequestInit,
+): Promise<MethodologyItemsResponse> => {
+  return customFetch<MethodologyItemsResponse>(
+    getCmsListServiceMethodologiesUrl(serviceId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListServiceMethodologiesQueryKey = (serviceId: string) => {
+  return [`/api/cms/services/${serviceId}/methodologies`] as const;
+};
+
+export const getCmsListServiceMethodologiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListServiceMethodologies>>,
+  TError = ErrorType<unknown>,
+>(
+  serviceId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListServiceMethodologies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListServiceMethodologiesQueryKey(serviceId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListServiceMethodologies>>
+  > = ({ signal }) =>
+    cmsListServiceMethodologies(serviceId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!serviceId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListServiceMethodologies>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListServiceMethodologiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListServiceMethodologies>>
+>;
+export type CmsListServiceMethodologiesQueryError = ErrorType<unknown>;
+
+export function useCmsListServiceMethodologies<
+  TData = Awaited<ReturnType<typeof cmsListServiceMethodologies>>,
+  TError = ErrorType<unknown>,
+>(
+  serviceId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListServiceMethodologies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListServiceMethodologiesQueryOptions(
+    serviceId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateMethodologyUrl = () => {
+  return `/api/cms/methodologies`;
+};
+
+export const cmsCreateMethodology = async (
+  upsertMethodologyBody: UpsertMethodologyBody,
+  options?: RequestInit,
+): Promise<Methodology> => {
+  return customFetch<Methodology>(getCmsCreateMethodologyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertMethodologyBody),
+  });
+};
+
+export const getCmsCreateMethodologyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateMethodology>>,
+    TError,
+    { data: BodyType<UpsertMethodologyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateMethodology>>,
+  TError,
+  { data: BodyType<UpsertMethodologyBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateMethodology"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateMethodology>>,
+    { data: BodyType<UpsertMethodologyBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsCreateMethodology(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateMethodologyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateMethodology>>
+>;
+export type CmsCreateMethodologyMutationBody = BodyType<UpsertMethodologyBody>;
+export type CmsCreateMethodologyMutationError = ErrorType<unknown>;
+
+export const useCmsCreateMethodology = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateMethodology>>,
+    TError,
+    { data: BodyType<UpsertMethodologyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateMethodology>>,
+  TError,
+  { data: BodyType<UpsertMethodologyBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateMethodologyMutationOptions(options));
+};
+
+export const getCmsUpdateMethodologyUrl = (id: string) => {
+  return `/api/cms/methodologies/${id}`;
+};
+
+export const cmsUpdateMethodology = async (
+  id: string,
+  upsertMethodologyBody: UpsertMethodologyBody,
+  options?: RequestInit,
+): Promise<Methodology> => {
+  return customFetch<Methodology>(getCmsUpdateMethodologyUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertMethodologyBody),
+  });
+};
+
+export const getCmsUpdateMethodologyMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateMethodology>>,
+    TError,
+    { id: string; data: BodyType<UpsertMethodologyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateMethodology>>,
+  TError,
+  { id: string; data: BodyType<UpsertMethodologyBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateMethodology"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateMethodology>>,
+    { id: string; data: BodyType<UpsertMethodologyBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsUpdateMethodology(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateMethodologyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateMethodology>>
+>;
+export type CmsUpdateMethodologyMutationBody = BodyType<UpsertMethodologyBody>;
+export type CmsUpdateMethodologyMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateMethodology = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateMethodology>>,
+    TError,
+    { id: string; data: BodyType<UpsertMethodologyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateMethodology>>,
+  TError,
+  { id: string; data: BodyType<UpsertMethodologyBody> },
+  TContext
+> => {
+  return useMutation(getCmsUpdateMethodologyMutationOptions(options));
+};
+
+export const getCmsDeleteMethodologyUrl = (id: string) => {
+  return `/api/cms/methodologies/${id}`;
+};
+
+export const cmsDeleteMethodology = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteMethodologyUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteMethodologyMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteMethodology>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteMethodology>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteMethodology"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteMethodology>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cmsDeleteMethodology(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteMethodologyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteMethodology>>
+>;
+
+export type CmsDeleteMethodologyMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteMethodology = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteMethodology>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteMethodology>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteMethodologyMutationOptions(options));
+};
+
+export const getCmsListSolutionCapabilitiesUrl = (solutionId: string) => {
+  return `/api/cms/solutions/${solutionId}/capabilities`;
+};
+
+export const cmsListSolutionCapabilities = async (
+  solutionId: string,
+  options?: RequestInit,
+): Promise<CapabilityItemsResponse> => {
+  return customFetch<CapabilityItemsResponse>(
+    getCmsListSolutionCapabilitiesUrl(solutionId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListSolutionCapabilitiesQueryKey = (solutionId: string) => {
+  return [`/api/cms/solutions/${solutionId}/capabilities`] as const;
+};
+
+export const getCmsListSolutionCapabilitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListSolutionCapabilities>>,
+  TError = ErrorType<unknown>,
+>(
+  solutionId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListSolutionCapabilities>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getCmsListSolutionCapabilitiesQueryKey(solutionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListSolutionCapabilities>>
+  > = ({ signal }) =>
+    cmsListSolutionCapabilities(solutionId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!solutionId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListSolutionCapabilities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListSolutionCapabilitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListSolutionCapabilities>>
+>;
+export type CmsListSolutionCapabilitiesQueryError = ErrorType<unknown>;
+
+export function useCmsListSolutionCapabilities<
+  TData = Awaited<ReturnType<typeof cmsListSolutionCapabilities>>,
+  TError = ErrorType<unknown>,
+>(
+  solutionId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListSolutionCapabilities>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListSolutionCapabilitiesQueryOptions(
+    solutionId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateCapabilityUrl = () => {
+  return `/api/cms/capabilities`;
+};
+
+export const cmsCreateCapability = async (
+  upsertCapabilityBody: UpsertCapabilityBody,
+  options?: RequestInit,
+): Promise<Capability> => {
+  return customFetch<Capability>(getCmsCreateCapabilityUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCapabilityBody),
+  });
+};
+
+export const getCmsCreateCapabilityMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCapability>>,
+    TError,
+    { data: BodyType<UpsertCapabilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateCapability>>,
+  TError,
+  { data: BodyType<UpsertCapabilityBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateCapability"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateCapability>>,
+    { data: BodyType<UpsertCapabilityBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsCreateCapability(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateCapabilityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateCapability>>
+>;
+export type CmsCreateCapabilityMutationBody = BodyType<UpsertCapabilityBody>;
+export type CmsCreateCapabilityMutationError = ErrorType<unknown>;
+
+export const useCmsCreateCapability = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCapability>>,
+    TError,
+    { data: BodyType<UpsertCapabilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateCapability>>,
+  TError,
+  { data: BodyType<UpsertCapabilityBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateCapabilityMutationOptions(options));
+};
+
+export const getCmsUpdateCapabilityUrl = (id: string) => {
+  return `/api/cms/capabilities/${id}`;
+};
+
+export const cmsUpdateCapability = async (
+  id: string,
+  upsertCapabilityBody: UpsertCapabilityBody,
+  options?: RequestInit,
+): Promise<Capability> => {
+  return customFetch<Capability>(getCmsUpdateCapabilityUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCapabilityBody),
+  });
+};
+
+export const getCmsUpdateCapabilityMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCapability>>,
+    TError,
+    { id: string; data: BodyType<UpsertCapabilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateCapability>>,
+  TError,
+  { id: string; data: BodyType<UpsertCapabilityBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateCapability"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateCapability>>,
+    { id: string; data: BodyType<UpsertCapabilityBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsUpdateCapability(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateCapabilityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateCapability>>
+>;
+export type CmsUpdateCapabilityMutationBody = BodyType<UpsertCapabilityBody>;
+export type CmsUpdateCapabilityMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateCapability = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCapability>>,
+    TError,
+    { id: string; data: BodyType<UpsertCapabilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateCapability>>,
+  TError,
+  { id: string; data: BodyType<UpsertCapabilityBody> },
+  TContext
+> => {
+  return useMutation(getCmsUpdateCapabilityMutationOptions(options));
+};
+
+export const getCmsDeleteCapabilityUrl = (id: string) => {
+  return `/api/cms/capabilities/${id}`;
+};
+
+export const cmsDeleteCapability = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteCapabilityUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteCapabilityMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCapability>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteCapability>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteCapability"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteCapability>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cmsDeleteCapability(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteCapabilityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteCapability>>
+>;
+
+export type CmsDeleteCapabilityMutationError = ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteCapability = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCapability>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteCapability>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteCapabilityMutationOptions(options));
 };
 
 /**

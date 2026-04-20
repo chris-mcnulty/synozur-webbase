@@ -780,6 +780,538 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   updatedAt: zod.coerce.date(),
 });
 
+export const ListServicesResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        slug: zod.string(),
+        title: zod.string(),
+        displayOrder: zod.number().nullish(),
+        parentServiceId: zod.string().nullish(),
+        iconId: zod.string().nullish(),
+        iconUrl: zod.string().nullish(),
+        servicePath: zod.string().nullish(),
+        overviewPath: zod.string().nullish(),
+        buttonText: zod.string().nullish(),
+        heroTextHtml: zod.string().nullish(),
+        secondaryTitle: zod.string().nullish(),
+        secondaryTextHtml: zod.string().nullish(),
+        tertiaryTitle: zod.string().nullish(),
+        tertiaryTextHtml: zod.string().nullish(),
+        blurbHtml: zod.string().nullish(),
+        blogCategory: zod.string().nullish(),
+        sourceId: zod.string().nullish(),
+        active: zod.boolean(),
+        createdAt: zod.string(),
+        updatedAt: zod.string(),
+      })
+      .and(
+        zod.object({
+          solutions: zod.array(
+            zod.object({
+              id: zod.string(),
+              slug: zod.string(),
+              title: zod.string(),
+              displayOrder: zod.number().nullish(),
+              parentServiceId: zod.string().nullish(),
+              iconId: zod.string().nullish(),
+              iconUrl: zod.string().nullish(),
+              routePath: zod.string().nullish(),
+              buttonText: zod.string().nullish(),
+              heroTextHtml: zod.string().nullish(),
+              secondaryTitle: zod.string().nullish(),
+              secondaryTextHtml: zod.string().nullish(),
+              ourApproachTitle: zod.string().nullish(),
+              ourApproachTextHtml: zod.string().nullish(),
+              blurbHtml: zod.string().nullish(),
+              blurbCopy: zod.string().nullish(),
+              heroTextColor: zod.string().nullish(),
+              tagsText: zod.string().nullish(),
+              blogCategory: zod.string().nullish(),
+              blogTag: zod.string().nullish(),
+              primaryBlogCategoryFilter: zod.string().nullish(),
+              buttonUrl: zod.string().nullish(),
+              sourceId: zod.string().nullish(),
+              active: zod.boolean(),
+              createdAt: zod.string(),
+              updatedAt: zod.string(),
+            }),
+          ),
+        }),
+      ),
+  ),
+});
+
+export const GetServiceParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetServiceResponse = zod
+  .object({
+    id: zod.string(),
+    slug: zod.string(),
+    title: zod.string(),
+    displayOrder: zod.number().nullish(),
+    parentServiceId: zod.string().nullish(),
+    iconId: zod.string().nullish(),
+    iconUrl: zod.string().nullish(),
+    servicePath: zod.string().nullish(),
+    overviewPath: zod.string().nullish(),
+    buttonText: zod.string().nullish(),
+    heroTextHtml: zod.string().nullish(),
+    secondaryTitle: zod.string().nullish(),
+    secondaryTextHtml: zod.string().nullish(),
+    tertiaryTitle: zod.string().nullish(),
+    tertiaryTextHtml: zod.string().nullish(),
+    blurbHtml: zod.string().nullish(),
+    blogCategory: zod.string().nullish(),
+    sourceId: zod.string().nullish(),
+    active: zod.boolean(),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .and(
+    zod.object({
+      methodologies: zod.array(
+        zod.object({
+          id: zod.string(),
+          serviceId: zod.string(),
+          title: zod.string(),
+          displayOrder: zod.number(),
+          iconId: zod.string().nullish(),
+          iconUrl: zod.string().nullish(),
+          bodyHtml: zod.string().nullish(),
+          hidden: zod.boolean(),
+          sourceId: zod.string().nullish(),
+          createdAt: zod.string(),
+          updatedAt: zod.string(),
+        }),
+      ),
+    }),
+  );
+
+export const GetSolutionParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetSolutionResponse = zod
+  .object({
+    id: zod.string(),
+    slug: zod.string(),
+    title: zod.string(),
+    displayOrder: zod.number().nullish(),
+    parentServiceId: zod.string().nullish(),
+    iconId: zod.string().nullish(),
+    iconUrl: zod.string().nullish(),
+    routePath: zod.string().nullish(),
+    buttonText: zod.string().nullish(),
+    heroTextHtml: zod.string().nullish(),
+    secondaryTitle: zod.string().nullish(),
+    secondaryTextHtml: zod.string().nullish(),
+    ourApproachTitle: zod.string().nullish(),
+    ourApproachTextHtml: zod.string().nullish(),
+    blurbHtml: zod.string().nullish(),
+    blurbCopy: zod.string().nullish(),
+    heroTextColor: zod.string().nullish(),
+    tagsText: zod.string().nullish(),
+    blogCategory: zod.string().nullish(),
+    blogTag: zod.string().nullish(),
+    primaryBlogCategoryFilter: zod.string().nullish(),
+    buttonUrl: zod.string().nullish(),
+    sourceId: zod.string().nullish(),
+    active: zod.boolean(),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .and(
+    zod.object({
+      parentService: zod
+        .union([
+          zod.object({
+            id: zod.string(),
+            slug: zod.string(),
+            title: zod.string(),
+            displayOrder: zod.number().nullish(),
+            parentServiceId: zod.string().nullish(),
+            iconId: zod.string().nullish(),
+            iconUrl: zod.string().nullish(),
+            servicePath: zod.string().nullish(),
+            overviewPath: zod.string().nullish(),
+            buttonText: zod.string().nullish(),
+            heroTextHtml: zod.string().nullish(),
+            secondaryTitle: zod.string().nullish(),
+            secondaryTextHtml: zod.string().nullish(),
+            tertiaryTitle: zod.string().nullish(),
+            tertiaryTextHtml: zod.string().nullish(),
+            blurbHtml: zod.string().nullish(),
+            blogCategory: zod.string().nullish(),
+            sourceId: zod.string().nullish(),
+            active: zod.boolean(),
+            createdAt: zod.string(),
+            updatedAt: zod.string(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      capabilities: zod.array(
+        zod.object({
+          id: zod.string(),
+          solutionId: zod.string(),
+          title: zod.string(),
+          displayOrder: zod.number(),
+          iconId: zod.string().nullish(),
+          iconUrl: zod.string().nullish(),
+          bodyHtml: zod.string().nullish(),
+          hidden: zod.boolean(),
+          sourceId: zod.string().nullish(),
+          createdAt: zod.string(),
+          updatedAt: zod.string(),
+        }),
+      ),
+    }),
+  );
+
+export const CmsListServicesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      title: zod.string(),
+      displayOrder: zod.number().nullish(),
+      parentServiceId: zod.string().nullish(),
+      iconId: zod.string().nullish(),
+      iconUrl: zod.string().nullish(),
+      servicePath: zod.string().nullish(),
+      overviewPath: zod.string().nullish(),
+      buttonText: zod.string().nullish(),
+      heroTextHtml: zod.string().nullish(),
+      secondaryTitle: zod.string().nullish(),
+      secondaryTextHtml: zod.string().nullish(),
+      tertiaryTitle: zod.string().nullish(),
+      tertiaryTextHtml: zod.string().nullish(),
+      blurbHtml: zod.string().nullish(),
+      blogCategory: zod.string().nullish(),
+      sourceId: zod.string().nullish(),
+      active: zod.boolean(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const CmsCreateServiceBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  iconId: zod.string().nullish(),
+  parentServiceId: zod.string().nullish(),
+  servicePath: zod.string().nullish(),
+  overviewPath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  tertiaryTitle: zod.string().nullish(),
+  tertiaryTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsUpdateServiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsUpdateServiceBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  iconId: zod.string().nullish(),
+  parentServiceId: zod.string().nullish(),
+  servicePath: zod.string().nullish(),
+  overviewPath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  tertiaryTitle: zod.string().nullish(),
+  tertiaryTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsUpdateServiceResponse = zod.object({
+  id: zod.string(),
+  slug: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  parentServiceId: zod.string().nullish(),
+  iconId: zod.string().nullish(),
+  iconUrl: zod.string().nullish(),
+  servicePath: zod.string().nullish(),
+  overviewPath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  tertiaryTitle: zod.string().nullish(),
+  tertiaryTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  sourceId: zod.string().nullish(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsDeleteServiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListSolutionsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      title: zod.string(),
+      displayOrder: zod.number().nullish(),
+      parentServiceId: zod.string().nullish(),
+      iconId: zod.string().nullish(),
+      iconUrl: zod.string().nullish(),
+      routePath: zod.string().nullish(),
+      buttonText: zod.string().nullish(),
+      heroTextHtml: zod.string().nullish(),
+      secondaryTitle: zod.string().nullish(),
+      secondaryTextHtml: zod.string().nullish(),
+      ourApproachTitle: zod.string().nullish(),
+      ourApproachTextHtml: zod.string().nullish(),
+      blurbHtml: zod.string().nullish(),
+      blurbCopy: zod.string().nullish(),
+      heroTextColor: zod.string().nullish(),
+      tagsText: zod.string().nullish(),
+      blogCategory: zod.string().nullish(),
+      blogTag: zod.string().nullish(),
+      primaryBlogCategoryFilter: zod.string().nullish(),
+      buttonUrl: zod.string().nullish(),
+      sourceId: zod.string().nullish(),
+      active: zod.boolean(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const CmsCreateSolutionBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  parentServiceId: zod.string().nullish(),
+  iconId: zod.string().nullish(),
+  routePath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  ourApproachTitle: zod.string().nullish(),
+  ourApproachTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blurbCopy: zod.string().nullish(),
+  heroTextColor: zod.string().nullish(),
+  tagsText: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  blogTag: zod.string().nullish(),
+  primaryBlogCategoryFilter: zod.string().nullish(),
+  buttonUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsUpdateSolutionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsUpdateSolutionBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  parentServiceId: zod.string().nullish(),
+  iconId: zod.string().nullish(),
+  routePath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  ourApproachTitle: zod.string().nullish(),
+  ourApproachTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blurbCopy: zod.string().nullish(),
+  heroTextColor: zod.string().nullish(),
+  tagsText: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  blogTag: zod.string().nullish(),
+  primaryBlogCategoryFilter: zod.string().nullish(),
+  buttonUrl: zod.string().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const CmsUpdateSolutionResponse = zod.object({
+  id: zod.string(),
+  slug: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().nullish(),
+  parentServiceId: zod.string().nullish(),
+  iconId: zod.string().nullish(),
+  iconUrl: zod.string().nullish(),
+  routePath: zod.string().nullish(),
+  buttonText: zod.string().nullish(),
+  heroTextHtml: zod.string().nullish(),
+  secondaryTitle: zod.string().nullish(),
+  secondaryTextHtml: zod.string().nullish(),
+  ourApproachTitle: zod.string().nullish(),
+  ourApproachTextHtml: zod.string().nullish(),
+  blurbHtml: zod.string().nullish(),
+  blurbCopy: zod.string().nullish(),
+  heroTextColor: zod.string().nullish(),
+  tagsText: zod.string().nullish(),
+  blogCategory: zod.string().nullish(),
+  blogTag: zod.string().nullish(),
+  primaryBlogCategoryFilter: zod.string().nullish(),
+  buttonUrl: zod.string().nullish(),
+  sourceId: zod.string().nullish(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsDeleteSolutionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListServiceMethodologiesParams = zod.object({
+  serviceId: zod.coerce.string(),
+});
+
+export const CmsListServiceMethodologiesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      serviceId: zod.string(),
+      title: zod.string(),
+      displayOrder: zod.number(),
+      iconId: zod.string().nullish(),
+      iconUrl: zod.string().nullish(),
+      bodyHtml: zod.string().nullish(),
+      hidden: zod.boolean(),
+      sourceId: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const CmsCreateMethodologyBody = zod.object({
+  serviceId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().optional(),
+  iconId: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
+});
+
+export const CmsUpdateMethodologyParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsUpdateMethodologyBody = zod.object({
+  serviceId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().optional(),
+  iconId: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
+});
+
+export const CmsUpdateMethodologyResponse = zod.object({
+  id: zod.string(),
+  serviceId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number(),
+  iconId: zod.string().nullish(),
+  iconUrl: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean(),
+  sourceId: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsDeleteMethodologyParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListSolutionCapabilitiesParams = zod.object({
+  solutionId: zod.coerce.string(),
+});
+
+export const CmsListSolutionCapabilitiesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      solutionId: zod.string(),
+      title: zod.string(),
+      displayOrder: zod.number(),
+      iconId: zod.string().nullish(),
+      iconUrl: zod.string().nullish(),
+      bodyHtml: zod.string().nullish(),
+      hidden: zod.boolean(),
+      sourceId: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const CmsCreateCapabilityBody = zod.object({
+  solutionId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().optional(),
+  iconId: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
+});
+
+export const CmsUpdateCapabilityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsUpdateCapabilityBody = zod.object({
+  solutionId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number().optional(),
+  iconId: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean().optional(),
+});
+
+export const CmsUpdateCapabilityResponse = zod.object({
+  id: zod.string(),
+  solutionId: zod.string(),
+  title: zod.string(),
+  displayOrder: zod.number(),
+  iconId: zod.string().nullish(),
+  iconUrl: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+  hidden: zod.boolean(),
+  sourceId: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const CmsDeleteCapabilityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
 /**
  * @summary Request a presigned URL for file upload
  */

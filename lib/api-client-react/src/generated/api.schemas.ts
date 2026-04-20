@@ -524,6 +524,261 @@ export interface EventInput {
   imageAssetId?: number | null;
 }
 
+export interface Service {
+  id: string;
+  slug: string;
+  title: string;
+  /** @nullable */
+  displayOrder?: number | null;
+  /** @nullable */
+  parentServiceId?: string | null;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  iconUrl?: string | null;
+  /** @nullable */
+  servicePath?: string | null;
+  /** @nullable */
+  overviewPath?: string | null;
+  /** @nullable */
+  buttonText?: string | null;
+  /** @nullable */
+  heroTextHtml?: string | null;
+  /** @nullable */
+  secondaryTitle?: string | null;
+  /** @nullable */
+  secondaryTextHtml?: string | null;
+  /** @nullable */
+  tertiaryTitle?: string | null;
+  /** @nullable */
+  tertiaryTextHtml?: string | null;
+  /** @nullable */
+  blurbHtml?: string | null;
+  /** @nullable */
+  blogCategory?: string | null;
+  /** @nullable */
+  sourceId?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Solution {
+  id: string;
+  slug: string;
+  title: string;
+  /** @nullable */
+  displayOrder?: number | null;
+  /** @nullable */
+  parentServiceId?: string | null;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  iconUrl?: string | null;
+  /** @nullable */
+  routePath?: string | null;
+  /** @nullable */
+  buttonText?: string | null;
+  /** @nullable */
+  heroTextHtml?: string | null;
+  /** @nullable */
+  secondaryTitle?: string | null;
+  /** @nullable */
+  secondaryTextHtml?: string | null;
+  /** @nullable */
+  ourApproachTitle?: string | null;
+  /** @nullable */
+  ourApproachTextHtml?: string | null;
+  /** @nullable */
+  blurbHtml?: string | null;
+  /** @nullable */
+  blurbCopy?: string | null;
+  /** @nullable */
+  heroTextColor?: string | null;
+  /** @nullable */
+  tagsText?: string | null;
+  /** @nullable */
+  blogCategory?: string | null;
+  /** @nullable */
+  blogTag?: string | null;
+  /** @nullable */
+  primaryBlogCategoryFilter?: string | null;
+  /** @nullable */
+  buttonUrl?: string | null;
+  /** @nullable */
+  sourceId?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Methodology {
+  id: string;
+  serviceId: string;
+  title: string;
+  displayOrder: number;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  iconUrl?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+  hidden: boolean;
+  /** @nullable */
+  sourceId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Capability {
+  id: string;
+  solutionId: string;
+  title: string;
+  displayOrder: number;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  iconUrl?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+  hidden: boolean;
+  /** @nullable */
+  sourceId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ServiceWithSolutions = Service & {
+  solutions: Solution[];
+};
+
+export interface ServiceListResponse {
+  items: ServiceWithSolutions[];
+}
+
+export type ServiceDetail = Service & {
+  methodologies: Methodology[];
+};
+
+export type SolutionDetail = Solution & {
+  parentService?: Service | null;
+  capabilities: Capability[];
+};
+
+export interface ServiceItemsResponse {
+  items: Service[];
+}
+
+export interface SolutionItemsResponse {
+  items: Solution[];
+}
+
+export interface MethodologyItemsResponse {
+  items: Methodology[];
+}
+
+export interface CapabilityItemsResponse {
+  items: Capability[];
+}
+
+export interface UpsertServiceBody {
+  /** @nullable */
+  slug?: string | null;
+  title: string;
+  /** @nullable */
+  displayOrder?: number | null;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  parentServiceId?: string | null;
+  /** @nullable */
+  servicePath?: string | null;
+  /** @nullable */
+  overviewPath?: string | null;
+  /** @nullable */
+  buttonText?: string | null;
+  /** @nullable */
+  heroTextHtml?: string | null;
+  /** @nullable */
+  secondaryTitle?: string | null;
+  /** @nullable */
+  secondaryTextHtml?: string | null;
+  /** @nullable */
+  tertiaryTitle?: string | null;
+  /** @nullable */
+  tertiaryTextHtml?: string | null;
+  /** @nullable */
+  blurbHtml?: string | null;
+  /** @nullable */
+  blogCategory?: string | null;
+  active?: boolean;
+}
+
+export interface UpsertSolutionBody {
+  /** @nullable */
+  slug?: string | null;
+  title: string;
+  /** @nullable */
+  displayOrder?: number | null;
+  /** @nullable */
+  parentServiceId?: string | null;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  routePath?: string | null;
+  /** @nullable */
+  buttonText?: string | null;
+  /** @nullable */
+  heroTextHtml?: string | null;
+  /** @nullable */
+  secondaryTitle?: string | null;
+  /** @nullable */
+  secondaryTextHtml?: string | null;
+  /** @nullable */
+  ourApproachTitle?: string | null;
+  /** @nullable */
+  ourApproachTextHtml?: string | null;
+  /** @nullable */
+  blurbHtml?: string | null;
+  /** @nullable */
+  blurbCopy?: string | null;
+  /** @nullable */
+  heroTextColor?: string | null;
+  /** @nullable */
+  tagsText?: string | null;
+  /** @nullable */
+  blogCategory?: string | null;
+  /** @nullable */
+  blogTag?: string | null;
+  /** @nullable */
+  primaryBlogCategoryFilter?: string | null;
+  /** @nullable */
+  buttonUrl?: string | null;
+  active?: boolean;
+}
+
+export interface UpsertMethodologyBody {
+  serviceId: string;
+  title: string;
+  displayOrder?: number;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+  hidden?: boolean;
+}
+
+export interface UpsertCapabilityBody {
+  solutionId: string;
+  title: string;
+  displayOrder?: number;
+  /** @nullable */
+  iconId?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+  hidden?: boolean;
+}
+
 /**
  * Unauthorized
  */

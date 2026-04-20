@@ -803,6 +803,358 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /services:
+    get:
+      operationId: listServices
+      tags:
+        - Services
+      responses:
+        '200':
+          description: All active services with their child solutions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceListResponse'
+  /services/{slug}:
+    get:
+      operationId: getService
+      tags:
+        - Services
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service detail with visible methodologies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /solutions/{slug}:
+    get:
+      operationId: getSolution
+      tags:
+        - Services
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Solution detail with visible capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/services:
+    get:
+      operationId: cmsListServices
+      tags:
+        - CmsServices
+      responses:
+        '200':
+          description: All non-deleted services
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceItemsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: cmsCreateService
+      tags:
+        - CmsServices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertServiceBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /cms/services/{id}:
+    patch:
+      operationId: cmsUpdateService
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertServiceBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteService
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/solutions:
+    get:
+      operationId: cmsListSolutions
+      tags:
+        - CmsServices
+      responses:
+        '200':
+          description: All non-deleted solutions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionItemsResponse'
+    post:
+      operationId: cmsCreateSolution
+      tags:
+        - CmsServices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSolutionBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solution'
+  /cms/solutions/{id}:
+    patch:
+      operationId: cmsUpdateSolution
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSolutionBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solution'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteSolution
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/services/{serviceId}/methodologies:
+    get:
+      operationId: cmsListServiceMethodologies
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: serviceId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Methodologies for the service (incl. hidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MethodologyItemsResponse'
+  /cms/methodologies:
+    post:
+      operationId: cmsCreateMethodology
+      tags:
+        - CmsServices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMethodologyBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Methodology'
+  /cms/methodologies/{id}:
+    patch:
+      operationId: cmsUpdateMethodology
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMethodologyBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Methodology'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteMethodology
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/solutions/{solutionId}/capabilities:
+    get:
+      operationId: cmsListSolutionCapabilities
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: solutionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Capabilities for the solution (incl. hidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityItemsResponse'
+  /cms/capabilities:
+    post:
+      operationId: cmsCreateCapability
+      tags:
+        - CmsServices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCapabilityBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capability'
+  /cms/capabilities/{id}:
+    patch:
+      operationId: cmsUpdateCapability
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCapabilityBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capability'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteCapability
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
   /storage/uploads/request-url:
     post:
       tags:
@@ -2350,3 +2702,546 @@ components:
           type:
             - integer
             - 'null'
+
+    Service:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type:
+            - integer
+            - 'null'
+        parentServiceId:
+          type:
+            - string
+            - 'null'
+        iconId:
+          type:
+            - string
+            - 'null'
+        iconUrl:
+          type:
+            - string
+            - 'null'
+        servicePath:
+          type:
+            - string
+            - 'null'
+        overviewPath:
+          type:
+            - string
+            - 'null'
+        buttonText:
+          type:
+            - string
+            - 'null'
+        heroTextHtml:
+          type:
+            - string
+            - 'null'
+        secondaryTitle:
+          type:
+            - string
+            - 'null'
+        secondaryTextHtml:
+          type:
+            - string
+            - 'null'
+        tertiaryTitle:
+          type:
+            - string
+            - 'null'
+        tertiaryTextHtml:
+          type:
+            - string
+            - 'null'
+        blurbHtml:
+          type:
+            - string
+            - 'null'
+        blogCategory:
+          type:
+            - string
+            - 'null'
+        sourceId:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    Solution:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type:
+            - integer
+            - 'null'
+        parentServiceId:
+          type:
+            - string
+            - 'null'
+        iconId:
+          type:
+            - string
+            - 'null'
+        iconUrl:
+          type:
+            - string
+            - 'null'
+        routePath:
+          type:
+            - string
+            - 'null'
+        buttonText:
+          type:
+            - string
+            - 'null'
+        heroTextHtml:
+          type:
+            - string
+            - 'null'
+        secondaryTitle:
+          type:
+            - string
+            - 'null'
+        secondaryTextHtml:
+          type:
+            - string
+            - 'null'
+        ourApproachTitle:
+          type:
+            - string
+            - 'null'
+        ourApproachTextHtml:
+          type:
+            - string
+            - 'null'
+        blurbHtml:
+          type:
+            - string
+            - 'null'
+        blurbCopy:
+          type:
+            - string
+            - 'null'
+        heroTextColor:
+          type:
+            - string
+            - 'null'
+        tagsText:
+          type:
+            - string
+            - 'null'
+        blogCategory:
+          type:
+            - string
+            - 'null'
+        blogTag:
+          type:
+            - string
+            - 'null'
+        primaryBlogCategoryFilter:
+          type:
+            - string
+            - 'null'
+        buttonUrl:
+          type:
+            - string
+            - 'null'
+        sourceId:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    Methodology:
+      type: object
+      required:
+        - id
+        - serviceId
+        - title
+        - displayOrder
+        - hidden
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        serviceId:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type: integer
+        iconId:
+          type:
+            - string
+            - 'null'
+        iconUrl:
+          type:
+            - string
+            - 'null'
+        bodyHtml:
+          type:
+            - string
+            - 'null'
+        hidden:
+          type: boolean
+        sourceId:
+          type:
+            - string
+            - 'null'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    Capability:
+      type: object
+      required:
+        - id
+        - solutionId
+        - title
+        - displayOrder
+        - hidden
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        solutionId:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type: integer
+        iconId:
+          type:
+            - string
+            - 'null'
+        iconUrl:
+          type:
+            - string
+            - 'null'
+        bodyHtml:
+          type:
+            - string
+            - 'null'
+        hidden:
+          type: boolean
+        sourceId:
+          type:
+            - string
+            - 'null'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    ServiceWithSolutions:
+      allOf:
+        - $ref: '#/components/schemas/Service'
+        - type: object
+          required:
+            - solutions
+          properties:
+            solutions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Solution'
+    ServiceListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceWithSolutions'
+    ServiceDetail:
+      allOf:
+        - $ref: '#/components/schemas/Service'
+        - type: object
+          required:
+            - methodologies
+          properties:
+            methodologies:
+              type: array
+              items:
+                $ref: '#/components/schemas/Methodology'
+    SolutionDetail:
+      allOf:
+        - $ref: '#/components/schemas/Solution'
+        - type: object
+          required:
+            - capabilities
+          properties:
+            parentService:
+              oneOf:
+                - $ref: '#/components/schemas/Service'
+                - type: 'null'
+            capabilities:
+              type: array
+              items:
+                $ref: '#/components/schemas/Capability'
+    ServiceItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+    SolutionItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Solution'
+    MethodologyItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Methodology'
+    CapabilityItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+    UpsertServiceBody:
+      type: object
+      required:
+        - title
+      properties:
+        slug:
+          type:
+            - string
+            - 'null'
+        title:
+          type: string
+        displayOrder:
+          type:
+            - integer
+            - 'null'
+        iconId:
+          type:
+            - string
+            - 'null'
+        parentServiceId:
+          type:
+            - string
+            - 'null'
+        servicePath:
+          type:
+            - string
+            - 'null'
+        overviewPath:
+          type:
+            - string
+            - 'null'
+        buttonText:
+          type:
+            - string
+            - 'null'
+        heroTextHtml:
+          type:
+            - string
+            - 'null'
+        secondaryTitle:
+          type:
+            - string
+            - 'null'
+        secondaryTextHtml:
+          type:
+            - string
+            - 'null'
+        tertiaryTitle:
+          type:
+            - string
+            - 'null'
+        tertiaryTextHtml:
+          type:
+            - string
+            - 'null'
+        blurbHtml:
+          type:
+            - string
+            - 'null'
+        blogCategory:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+    UpsertSolutionBody:
+      type: object
+      required:
+        - title
+      properties:
+        slug:
+          type:
+            - string
+            - 'null'
+        title:
+          type: string
+        displayOrder:
+          type:
+            - integer
+            - 'null'
+        parentServiceId:
+          type:
+            - string
+            - 'null'
+        iconId:
+          type:
+            - string
+            - 'null'
+        routePath:
+          type:
+            - string
+            - 'null'
+        buttonText:
+          type:
+            - string
+            - 'null'
+        heroTextHtml:
+          type:
+            - string
+            - 'null'
+        secondaryTitle:
+          type:
+            - string
+            - 'null'
+        secondaryTextHtml:
+          type:
+            - string
+            - 'null'
+        ourApproachTitle:
+          type:
+            - string
+            - 'null'
+        ourApproachTextHtml:
+          type:
+            - string
+            - 'null'
+        blurbHtml:
+          type:
+            - string
+            - 'null'
+        blurbCopy:
+          type:
+            - string
+            - 'null'
+        heroTextColor:
+          type:
+            - string
+            - 'null'
+        tagsText:
+          type:
+            - string
+            - 'null'
+        blogCategory:
+          type:
+            - string
+            - 'null'
+        blogTag:
+          type:
+            - string
+            - 'null'
+        primaryBlogCategoryFilter:
+          type:
+            - string
+            - 'null'
+        buttonUrl:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+    UpsertMethodologyBody:
+      type: object
+      required:
+        - serviceId
+        - title
+      properties:
+        serviceId:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type: integer
+        iconId:
+          type:
+            - string
+            - 'null'
+        bodyHtml:
+          type:
+            - string
+            - 'null'
+        hidden:
+          type: boolean
+    UpsertCapabilityBody:
+      type: object
+      required:
+        - solutionId
+        - title
+      properties:
+        solutionId:
+          type: string
+        title:
+          type: string
+        displayOrder:
+          type: integer
+        iconId:
+          type:
+            - string
+            - 'null'
+        bodyHtml:
+          type:
+            - string
+            - 'null'
+        hidden:
+          type: boolean
