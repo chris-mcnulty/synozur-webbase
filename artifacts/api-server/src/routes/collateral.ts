@@ -324,7 +324,13 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
 });
 
 const ReorderBody = z.object({
-  ids: z.array(z.string().min(1)).min(1).max(500),
+  ids: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(500)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "ids must contain unique values",
+    }),
 });
 
 router.post("/cms/collateral/reorder", ...adminGuard, async (req, res) => {
