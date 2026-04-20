@@ -11,8 +11,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import type { Asset } from "@workspace/api-zod/types";
+import {
+  ASSET_CATEGORIES,
+  ASSET_CATEGORY_LABELS,
+  type AssetCategory,
+} from "@workspace/api-zod";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -26,18 +38,27 @@ interface Props {
   onSelect: (asset: Asset) => void;
   selectedId?: number | null;
   /**
-   * Optional category filter (e.g. "people", "north-star").
-   * When set, the library only shows assets in that category and new uploads
-   * are automatically tagged with it.
+   * Optional category filter preset. When set, the library is locked to that
+   * category and new uploads are automatically tagged with it. When omitted,
+   * editors can filter and tag uploads using the in-modal category dropdown.
    */
-  category?: string;
+  category?: AssetCategory;
 }
+
+const ANY_CATEGORY = "__any__";
 
 export function AssetLibraryModal({ open, onClose, onSelect, selectedId, category }: Props) {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [picked, setPicked] = useState<number | null>(selectedId ?? null);
+  const [filterCategory, setFilterCategory] = useState<AssetCategory | null>(null);
+  const [uploadCategory, setUploadCategory] = useState<AssetCategory | null>(null);
   const qc = useQueryClient();
+
+  const locked = !!category;
+  const activeCategory: AssetCategory | undefined = category ?? filterCategory ?? undefined;
+  const uploadAs: AssetCategory | undefined =
+    category ?? uploadCategory ?? filterCategory ?? undefined;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
@@ -49,8 +70,8 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
   }, [open, selectedId]);
 
   const { data: assets = [], isLoading } = useQuery({
-    queryKey: ["assets", debounced, category ?? null],
-    queryFn: () => api.listAssets(debounced || undefined, category),
+    queryKey: ["assets", debounced, activeCategory ?? null],
+    queryFn: () => api.listAssets(debounced || undefined, activeCategory),
     enabled: open,
   });
 
@@ -84,6 +105,12 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
           <DialogTitle>Asset Library</DialogTitle>
         </DialogHeader>
 
+        {locked && category && (
+          <div className="text-xs text-muted-foreground">
+            Filtered to <span className="font-medium">{ASSET_CATEGORY_LABELS[category]}</span>.
+            Uploads will be tagged with this category.
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -95,6 +122,46 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
               data-testid="input-asset-search"
             />
           </div>
+          {!locked && (
+            <Select
+              value={filterCategory ?? ANY_CATEGORY}
+              onValueChange={(v) =>
+                setFilterCategory(v === ANY_CATEGORY ? null : (v as AssetCategory))
+              }
+            >
+              <SelectTrigger className="w-44" data-testid="select-asset-category-filter">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
+                {ASSET_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {ASSET_CATEGORY_LABELS[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {!locked && (
+            <Select
+              value={uploadCategory ?? ANY_CATEGORY}
+              onValueChange={(v) =>
+                setUploadCategory(v === ANY_CATEGORY ? null : (v as AssetCategory))
+              }
+            >
+              <SelectTrigger className="w-44" data-testid="select-asset-upload-category">
+                <SelectValue placeholder="Tag upload as…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY_CATEGORY}>Untagged</SelectItem>
+                {ASSET_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {ASSET_CATEGORY_LABELS[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ObjectUploader
             maxNumberOfFiles={5}
             maxFileSize={10 * 1024 * 1024}
@@ -133,7 +200,7 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
                   mimeType: String(f.type ?? "application/octet-stream"),
                   size: Number(f.size ?? 0),
                   storageKey,
-                  ...(category ? { category } : {}),
+                  ...(uploadAs ? { category: uploadAs } : {}),
                 });
               }
             }}

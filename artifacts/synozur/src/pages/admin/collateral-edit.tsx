@@ -22,6 +22,8 @@ import {
   mediaUrl,
 } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
+import { CollateralCard } from "@/components/collateral-card";
+import type { Collateral } from "@/data/collateral";
 import {
   useCmsListCollateral,
   useCmsCreateCollateral,
@@ -118,6 +120,31 @@ function fromItem(item: CollateralItem): FormState {
     downloadUrl: item.downloadUrl ?? "",
     tagsText: (item.tags ?? []).join(", "),
     active: item.active,
+  };
+}
+
+function toPreviewItem(f: FormState): Collateral {
+  const tags = f.tagsText
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return {
+    id: "preview",
+    slug: f.slug || "preview",
+    type: f.type,
+    title: f.title || "Untitled",
+    subtitle: f.subtitle || undefined,
+    description: f.description ?? "",
+    heroImage: f.heroImage || "",
+    pillar: (f.pillar || undefined) as Collateral["pillar"],
+    tags,
+    url: f.url || "#",
+    external: f.external,
+    publishedAt: f.publishedAt || "",
+    featured: f.featured,
+    featuredRank: f.featuredRank === "" ? undefined : Number(f.featuredRank),
+    videoUrl: f.videoUrl || undefined,
+    downloadUrl: f.downloadUrl || undefined,
   };
 }
 
@@ -424,6 +451,21 @@ export default function CollateralEdit({ id }: Props) {
         </div>
 
         <aside className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Preview card</Label>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Live
+              </span>
+            </div>
+            <div data-testid="preview-collateral-card" className="pointer-events-none">
+              <CollateralCard item={toPreviewItem(form)} variant="grid" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              How this item will appear in the library grid. Unsaved changes shown.
+            </p>
+          </Card>
+
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Active</Label>
