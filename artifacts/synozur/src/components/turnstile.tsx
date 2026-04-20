@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
+import { ApiError } from "../lib/api";
 
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const SCRIPT_ID = "cf-turnstile-script";
@@ -50,12 +51,11 @@ function loadTurnstileScript(): Promise<void> {
 
 export const TURNSTILE_SITE_KEY: string | undefined = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
-const BOT_CHECK_ERROR_MARKER = "Bot check failed";
+export const BOT_CHECK_ERROR_CODE = "bot_check_failed";
 
 export function isBotCheckError(err: unknown): boolean {
   if (!err) return false;
-  const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes(BOT_CHECK_ERROR_MARKER);
+  return err instanceof ApiError && err.code === BOT_CHECK_ERROR_CODE;
 }
 
 export interface TurnstileHandle {

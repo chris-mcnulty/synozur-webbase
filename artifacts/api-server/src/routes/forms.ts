@@ -285,7 +285,7 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
   }
   const ip = clientIp(req);
   if (!(await verifyTurnstile(data.turnstileToken, ip))) {
-    res.status(400).json({ error: "Bot check failed. Please reload and try again." });
+    res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
   const { turnstileToken: _t, website: _w, ...payload } = data;
@@ -322,7 +322,7 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
   }
   const ip = clientIp(req);
   if (!(await verifyTurnstile(data.turnstileToken, ip))) {
-    res.status(400).json({ error: "Bot check failed. Please reload and try again." });
+    res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
   const { turnstileToken: _t, website: _w, ...payload } = data;
@@ -359,7 +359,7 @@ router.post("/forms/start", async (req, res): Promise<void> => {
   }
   const ip = clientIp(req);
   if (!(await verifyTurnstile(data.turnstileToken, ip))) {
-    res.status(400).json({ error: "Bot check failed. Please reload and try again." });
+    res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
   const { turnstileToken: _t, website: _w, ...payload } = data;

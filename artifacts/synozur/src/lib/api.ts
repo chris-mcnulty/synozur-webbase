@@ -34,6 +34,17 @@ function url(path: string): string {
   return `${BASE_PATH}/api${path}`;
 }
 
+export class ApiError extends Error {
+  status: number;
+  code: string | null;
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function jsonFetch<T>(input: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(input, {
     credentials: "include",
@@ -47,10 +58,10 @@ async function jsonFetch<T>(input: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let body: unknown = null;
     try { body = await res.json(); } catch { /* ignore */ }
-    const detail = (body && typeof body === "object" && "error" in (body as Record<string, unknown>))
-      ? String((body as Record<string, unknown>).error)
-      : res.statusText;
-    throw new Error(`${res.status} ${detail}`);
+    const obj = (body && typeof body === "object") ? (body as Record<string, unknown>) : null;
+    const detail = obj && "error" in obj ? String(obj["error"]) : res.statusText;
+    const code = obj && typeof obj["code"] === "string" ? (obj["code"] as string) : null;
+    throw new ApiError(`${res.status} ${detail}`, res.status, code);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
