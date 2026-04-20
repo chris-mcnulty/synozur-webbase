@@ -754,6 +754,33 @@ export const SubmitInsightCommentBody = zod.object({
 });
 
 /**
+ * @summary Public site settings
+ */
+export const GetPublicSiteSettingsResponse = zod.object({
+  requireCookieConsent: zod.boolean(),
+});
+
+/**
+ * @summary Get site settings (admin)
+ */
+export const GetAdminSiteSettingsResponse = zod.object({
+  requireCookieConsent: zod.boolean(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update site settings (admin)
+ */
+export const UpdateAdminSiteSettingsBody = zod.object({
+  requireCookieConsent: zod.boolean(),
+});
+
+export const UpdateAdminSiteSettingsResponse = zod.object({
+  requireCookieConsent: zod.boolean(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

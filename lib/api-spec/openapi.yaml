@@ -33,6 +33,8 @@ tags:
     description: Image asset library.
   - name: Admin
     description: Admin authentication helpers.
+  - name: SiteSettings
+    description: Public site settings.
 paths:
   /healthz:
     get:
@@ -730,6 +732,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /site-settings:
+    get:
+      tags: [SiteSettings]
+      operationId: getPublicSiteSettings
+      summary: Public site settings
+      responses:
+        "200":
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSiteSettings"
+  /admin/site-settings:
+    get:
+      tags: [SiteSettings]
+      operationId: getAdminSiteSettings
+      summary: Get site settings (admin)
+      responses:
+        "200":
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      tags: [SiteSettings]
+      operationId: updateAdminSiteSettings
+      summary: Update site settings (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteSettingsInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+        "400":
+          description: Invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /storage/uploads/request-url:
     post:
       tags:
@@ -1902,6 +1975,27 @@ components:
           type: string
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+    PublicSiteSettings:
+      type: object
+      required: [requireCookieConsent]
+      properties:
+        requireCookieConsent:
+          type: boolean
+    SiteSettings:
+      type: object
+      required: [requireCookieConsent, updatedAt]
+      properties:
+        requireCookieConsent:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    SiteSettingsInput:
+      type: object
+      required: [requireCookieConsent]
+      properties:
+        requireCookieConsent:
+          type: boolean
     AdminUser:
       type: object
       required:

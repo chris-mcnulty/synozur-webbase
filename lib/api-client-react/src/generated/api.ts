@@ -52,11 +52,14 @@ import type {
   PublicEvent,
   PublicPost,
   PublicPostListResponse,
+  PublicSiteSettings,
   RegisterMediaBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   ScheduleCmsPostBody,
   SetCmsUserRolesBody,
+  SiteSettings,
+  SiteSettingsInput,
   StartFormInput,
   SubmitCommentBody,
   SubmitCommentResponse,
@@ -2449,6 +2452,242 @@ export const useSubmitInsightComment = <
   TContext
 > => {
   return useMutation(getSubmitInsightCommentMutationOptions(options));
+};
+
+/**
+ * @summary Public site settings
+ */
+export const getGetPublicSiteSettingsUrl = () => {
+  return `/api/site-settings`;
+};
+
+export const getPublicSiteSettings = async (
+  options?: RequestInit,
+): Promise<PublicSiteSettings> => {
+  return customFetch<PublicSiteSettings>(getGetPublicSiteSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicSiteSettingsQueryKey = () => {
+  return [`/api/site-settings`] as const;
+};
+
+export const getGetPublicSiteSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicSiteSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>
+  > = ({ signal }) => getPublicSiteSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicSiteSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicSiteSettings>>
+>;
+export type GetPublicSiteSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Public site settings
+ */
+
+export function useGetPublicSiteSettings<
+  TData = Awaited<ReturnType<typeof getPublicSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicSiteSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get site settings (admin)
+ */
+export const getGetAdminSiteSettingsUrl = () => {
+  return `/api/admin/site-settings`;
+};
+
+export const getAdminSiteSettings = async (
+  options?: RequestInit,
+): Promise<SiteSettings> => {
+  return customFetch<SiteSettings>(getGetAdminSiteSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminSiteSettingsQueryKey = () => {
+  return [`/api/admin/site-settings`] as const;
+};
+
+export const getGetAdminSiteSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminSiteSettings>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminSiteSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminSiteSettings>>
+  > = ({ signal }) => getAdminSiteSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminSiteSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminSiteSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminSiteSettings>>
+>;
+export type GetAdminSiteSettingsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get site settings (admin)
+ */
+
+export function useGetAdminSiteSettings<
+  TData = Awaited<ReturnType<typeof getAdminSiteSettings>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminSiteSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update site settings (admin)
+ */
+export const getUpdateAdminSiteSettingsUrl = () => {
+  return `/api/admin/site-settings`;
+};
+
+export const updateAdminSiteSettings = async (
+  siteSettingsInput: SiteSettingsInput,
+  options?: RequestInit,
+): Promise<SiteSettings> => {
+  return customFetch<SiteSettings>(getUpdateAdminSiteSettingsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(siteSettingsInput),
+  });
+};
+
+export const getUpdateAdminSiteSettingsMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminSiteSettings>>,
+    TError,
+    { data: BodyType<SiteSettingsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminSiteSettings>>,
+  TError,
+  { data: BodyType<SiteSettingsInput> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminSiteSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminSiteSettings>>,
+    { data: BodyType<SiteSettingsInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateAdminSiteSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminSiteSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminSiteSettings>>
+>;
+export type UpdateAdminSiteSettingsMutationBody = BodyType<SiteSettingsInput>;
+export type UpdateAdminSiteSettingsMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update site settings (admin)
+ */
+export const useUpdateAdminSiteSettings = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminSiteSettings>>,
+    TError,
+    { data: BodyType<SiteSettingsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminSiteSettings>>,
+  TError,
+  { data: BodyType<SiteSettingsInput> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminSiteSettingsMutationOptions(options));
 };
 
 /**

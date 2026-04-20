@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const CONSENT_KEY = "synozur.cookieConsent.v1";
 
@@ -73,12 +75,28 @@ function loadMarketingTags() {
 }
 
 export function Analytics() {
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const requireConsent = settings?.requireCookieConsent === true;
+
   const [consent, setConsent] = useState<Consent>(() => readConsent());
 
   useEffect(() => {
+    if (isLoading || !settings) return;
+    if (!requireConsent) {
+      loadMarketingTags();
+      return;
+    }
     if (consent === "granted") loadMarketingTags();
-  }, [consent]);
+  }, [isLoading, settings, requireConsent, consent]);
 
+  if (isLoading || !settings) return null;
+  if (!requireConsent) return null;
   if (consent !== null) return null;
 
   return (

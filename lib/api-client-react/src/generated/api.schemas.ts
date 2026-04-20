@@ -297,6 +297,19 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface PublicSiteSettings {
+  requireCookieConsent: boolean;
+}
+
+export interface SiteSettings {
+  requireCookieConsent: boolean;
+  updatedAt: string;
+}
+
+export interface SiteSettingsInput {
+  requireCookieConsent: boolean;
+}
+
 export interface AdminUser {
   userId: string;
   email: string;

@@ -7,3 +7,4 @@ export * from "./posts";
 export * from "./taxonomy";
 export * from "./comments";
 export * from "./auditLog";
+export * from "./siteSettings";

@@ -12,6 +12,7 @@ import cmsTaxonomyRouter from "./cms/taxonomy";
 import cmsMediaRouter from "./cms/media";
 import cmsCommentsRouter from "./cms/comments";
 import cmsUsersRouter from "./cms/users";
+import siteSettingsRouter from "./siteSettings";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(cmsTaxonomyRouter);
 router.use(cmsMediaRouter);
 router.use(cmsCommentsRouter);
 router.use(cmsUsersRouter);
+router.use(siteSettingsRouter);
 
 export default router;

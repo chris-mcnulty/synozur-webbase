@@ -62,6 +62,15 @@ export interface AdminMe {
   authorized: boolean;
 }
 
+export interface PublicSiteSettings {
+  requireCookieConsent: boolean;
+}
+
+export interface AdminSiteSettings {
+  requireCookieConsent: boolean;
+  updatedAt: string;
+}
+
 export const api = {
   publicEvents: () => jsonFetch<PublicEvent[]>(url("/events")),
   me: () => jsonFetch<AdminMe>(url("/admin/me")),
@@ -94,4 +103,11 @@ export const api = {
     jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
   submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
     url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
+  getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
+  getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),
+  updateAdminSiteSettings: (body: { requireCookieConsent: boolean }) =>
+    jsonFetch<AdminSiteSettings>(url("/admin/site-settings"), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 };

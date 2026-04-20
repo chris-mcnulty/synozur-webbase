@@ -30,6 +30,7 @@ import SignUpPage from "@/pages/sign-up";
 import AdminEventsList from "@/pages/admin";
 import EventForm from "@/pages/admin/event-form";
 import AdminSubmissionsList from "@/pages/admin/submissions";
+import AdminSiteSettings from "@/pages/admin/site-settings";
 import { AdminGate } from "@/components/admin/AdminGate";
 import NotFound from "@/pages/not-found";
 
@@ -71,6 +72,11 @@ function Router() {
         <Route path="/admin/submissions">
           <AdminGate>
             <AdminSubmissionsList />
+          </AdminGate>
+        </Route>
+        <Route path="/admin/site-settings">
+          <AdminGate>
+            <AdminSiteSettings />
           </AdminGate>
         </Route>
         <Route path="/admin/events/new">
