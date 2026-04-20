@@ -137,6 +137,25 @@ export default function Polaris() {
         </div>
       </section>
 
+      {/* Libsyn player */}
+      <section className="bg-background py-16 border-b border-border/60">
+        <div className="container mx-auto px-4">
+          <p className="text-sm uppercase tracking-widest text-primary mb-6">
+            Listen
+          </p>
+          <iframe
+            title="Polaris Pathways — Libsyn Player"
+            src="https://play.libsyn.com/embed/destination/id/4755042/height/612/theme/modern/size/large/thumbnail/yes/custom-color/7c0cfa/hide-show/yes/playlist-height/400/direction/backward/hide-subscribe/yes/hide-share/yes/font-color/ffffff"
+            height="612"
+            width="100%"
+            scrolling="no"
+            allowFullScreen
+            style={{ border: "none" }}
+            className="rounded-xl overflow-hidden"
+          />
+        </div>
+      </section>
+
       {/* Featured episodes */}
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
