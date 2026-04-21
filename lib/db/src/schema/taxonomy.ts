@@ -88,10 +88,10 @@ export const entityTagsTable = pgTable(
   ],
 );
 
-// Post-specific join tables retained as views onto the polymorphic table
-// so existing `post_categories` / `post_tags` consumers keep working
-// while callers are migrated off. Scheduled for removal once all readers
-// use entityCategoriesTable / entityTagsTable directly.
+// Legacy post-specific join tables retained for compatibility so existing
+// `post_categories` / `post_tags` consumers keep working while callers are
+// migrated off. Scheduled for removal once all readers use
+// entityCategoriesTable / entityTagsTable directly.
 export const postCategories = pgTable(
   "post_categories",
   {
