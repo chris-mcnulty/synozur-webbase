@@ -22,6 +22,7 @@ import whitePapersRouter from "./whitePapers";
 import seoRouter from "./seo";
 import wixRedirectsRouter from "./wixRedirects";
 import workshopsRouter from "./workshops";
+import polarisRouter from "./polaris";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(whitePapersRouter);
 router.use(seoRouter);
 router.use(wixRedirectsRouter);
 router.use(workshopsRouter);
+router.use(polarisRouter);
 
 export default router;

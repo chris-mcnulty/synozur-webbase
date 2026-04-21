@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import {
   MediaPickerModal,
   mediaUrl,
@@ -621,6 +622,16 @@ export default function WhitePaperEdit({ id }: Props) {
               )}
             </div>
           </Card>
+
+          {!isNew && (
+            <Card className="p-4">
+              <TaxonomyPicker
+                entityType="white_paper"
+                entityId={id ?? null}
+                canWrite={canWrite}
+              />
+            </Card>
+          )}
 
           {!isNew && itemQ.data && (
             <Card className="p-4 space-y-2">

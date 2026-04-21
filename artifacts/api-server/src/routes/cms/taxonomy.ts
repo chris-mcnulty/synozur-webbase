@@ -1,11 +1,23 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db, categoriesTable, tagsTable } from "@workspace/db";
+import {
+  db,
+  categoriesTable,
+  tagsTable,
+  TAXONOMY_ENTITY_TYPES,
+} from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { toSlug } from "../../lib/slug";
 import { audit } from "../../lib/audit";
-import { listEntitiesForTagSlug } from "../../lib/taxonomy";
+import {
+  assertEntityType,
+  getCategoriesFor,
+  getTagsFor,
+  listEntitiesForTagSlug,
+  setCategoriesFor,
+  setTagsFor,
+} from "../../lib/taxonomy";
 
 const router: IRouter = Router();
 
@@ -154,6 +166,104 @@ router.delete(
   async (req, res) => {
     await db.delete(tagsTable).where(eq(tagsTable.id, String(req.params.id)));
     res.status(204).end();
+  },
+);
+
+// Polymorphic taxonomy read/write for any artifact type (#99). The
+// entityType path segment must match one of TAXONOMY_ENTITY_TYPES — the
+// endpoints 400 otherwise. Used by the shared TaxonomyPicker admin widget.
+const entityTypeSchema = z.enum(
+  TAXONOMY_ENTITY_TYPES as unknown as [string, ...string[]],
+);
+const SetIdsBody = z.object({ ids: z.array(z.string().uuid()) });
+
+router.get(
+  "/cms/taxonomy/:entityType/:entityId/categories",
+  requireAuth,
+  async (req, res) => {
+    const type = entityTypeSchema.safeParse(req.params.entityType);
+    if (!type.success) {
+      res.status(400).json({ error: "Unknown entity type" });
+      return;
+    }
+    const rows = await getCategoriesFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+    );
+    res.json({ items: rows });
+  },
+);
+
+router.put(
+  "/cms/taxonomy/:entityType/:entityId/categories",
+  requireAuth,
+  requireRole("admin", "editor", "author"),
+  async (req, res) => {
+    const type = entityTypeSchema.safeParse(req.params.entityType);
+    if (!type.success) {
+      res.status(400).json({ error: "Unknown entity type" });
+      return;
+    }
+    const parsed = SetIdsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body" });
+      return;
+    }
+    await setCategoriesFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+      parsed.data.ids,
+    );
+    const rows = await getCategoriesFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+    );
+    res.json({ items: rows });
+  },
+);
+
+router.get(
+  "/cms/taxonomy/:entityType/:entityId/tags",
+  requireAuth,
+  async (req, res) => {
+    const type = entityTypeSchema.safeParse(req.params.entityType);
+    if (!type.success) {
+      res.status(400).json({ error: "Unknown entity type" });
+      return;
+    }
+    const rows = await getTagsFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+    );
+    res.json({ items: rows });
+  },
+);
+
+router.put(
+  "/cms/taxonomy/:entityType/:entityId/tags",
+  requireAuth,
+  requireRole("admin", "editor", "author"),
+  async (req, res) => {
+    const type = entityTypeSchema.safeParse(req.params.entityType);
+    if (!type.success) {
+      res.status(400).json({ error: "Unknown entity type" });
+      return;
+    }
+    const parsed = SetIdsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body" });
+      return;
+    }
+    await setTagsFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+      parsed.data.ids,
+    );
+    const rows = await getTagsFor(
+      assertEntityType(type.data),
+      String(req.params.entityId),
+    );
+    res.json({ items: rows });
   },
 );
 

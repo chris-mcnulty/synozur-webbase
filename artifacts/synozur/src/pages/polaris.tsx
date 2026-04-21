@@ -1,59 +1,48 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Headphones, Play, Mail, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-type Episode = {
-  number: string;
+interface PolarisEpisodeDto {
+  id: string;
+  slug: string;
   title: string;
-  releaseDate: string;
-  durationMin: number;
-  image: string;
-  appleUrl: string;
+  episodeNumber: number;
+  summary: string;
+  guestName: string | null;
   audioUrl: string;
-  description: string;
-};
+  appleUrl: string | null;
+  spotifyUrl: string | null;
+  durationSeconds: number | null;
+  artworkUrl: string;
+  publishedAt: string | null;
+}
 
-const episodes: Episode[] = [
-  {
-    number: "53",
-    title: "Inside Microsoft 365 E7, Or, How Four Equals Seven",
-    releaseDate: "March 24, 2026",
-    durationMin: 16,
-    image: "/images/polaris/ep-m365-e7.jpg",
-    appleUrl:
-      "https://podcasts.apple.com/us/podcast/inside-microsoft-365-e7-or-how-four-equals-seven/id1773172041?i=1000757146174",
-    audioUrl:
-      "https://traffic.libsyn.com/secure/4b50c5db-fc98-4391-b363-96ab432ae6e1/riverside_ep.053_-m365-e7_chris_mcnultys_stu.mp3?dest-id=4755027",
-    description:
-      "We explore Microsoft's game-changing March 2026 announcements — including the Microsoft 365 E7 \"Frontier Suite,\" Agent 365 for AI governance, and the new Copilot Cowork capability — and unpack what these innovations mean for business and technology leaders navigating the AI-powered future.",
-  },
-  {
-    number: "51",
-    title: "AI in 2026: A Trillion Dollars Is Coming. Who's Going to Win It?",
-    releaseDate: "March 17, 2026",
-    durationMin: 15,
-    image: "/images/polaris/ep-ai-2026.png",
-    appleUrl:
-      "https://podcasts.apple.com/us/podcast/ai-in-2026-a-trillion-dollars-is-coming-whos-going-to-win-it/id1773172041?i=1000755875857",
-    audioUrl:
-      "https://traffic.libsyn.com/secure/4b50c5db-fc98-4391-b363-96ab432ae6e1/riverside_ep.051_-_chris_final_final_final_chris_mcnultys_stu.mp3?dest-id=4755027",
-    description:
-      "The global AI market is on track to reach nearly a trillion dollars by 2030. And yet, most organizations sit at a score of 260 out of 500 on AI maturity — past the experiment phase, but nowhere near scaled. That's the core finding of the Synozur 2026 AI Report, and it's also the subject of the latest episode of Polaris Pulse.",
-  },
-  {
-    number: "33",
-    title: "Never Sit in the Lobby: Glenn Poulos on Sales, Startups, and Survival",
-    releaseDate: "March 10, 2026",
-    durationMin: 40,
-    image: "/images/polaris/ep-glenn-poulos.jpg",
-    appleUrl:
-      "https://podcasts.apple.com/us/podcast/never-sit-in-the-lobby-glenn-poulos-on-sales-startups/id1773172041?i=1000754582564",
-    audioUrl:
-      "https://traffic.libsyn.com/secure/4b50c5db-fc98-4391-b363-96ab432ae6e1/riverside_polaris_033_-_glenn_poulos_final_final_chris_mcnultys_stu.mp3?dest-id=4755027",
-    description:
-      "Polaris is a production of Synozur — the transformation company. Glenn Poulos, co-founder of Gap Wireless and author of Never Sit in the Lobby, shares how he built and sold multiple businesses across three decades, reveals why face-to-face relationships still matter in the AI age, and explains how mid-market companies can leverage technology without losing their human touch.",
-  },
-];
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+async function fetchPolarisEpisodes(): Promise<PolarisEpisodeDto[]> {
+  const res = await fetch(`${BASE_PATH}/api/polaris/episodes?pageSize=50`);
+  if (!res.ok) throw new Error(`Failed to fetch Polaris episodes: ${res.status}`);
+  const data = (await res.json()) as { items: PolarisEpisodeDto[] };
+  return data.items;
+}
+
+function formatReleaseDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatDurationMin(seconds: number | null): string {
+  if (!seconds) return "";
+  const min = Math.max(1, Math.round(seconds / 60));
+  return `${min} min`;
+}
 
 const subscriptions = [
   {
@@ -74,11 +63,17 @@ const subscriptions = [
   },
   {
     name: "RSS",
-    url: "https://rss.libsyn.com/shows/550947/destinations/4755027.xml",
+    url: `${BASE_PATH}/polaris/rss.xml`,
   },
 ];
 
 export default function Polaris() {
+  const episodesQ = useQuery({
+    queryKey: ["polaris-episodes"],
+    queryFn: fetchPolarisEpisodes,
+  });
+  const episodes = episodesQ.data ?? [];
+
   return (
     <div className="w-full">
       <Meta
@@ -167,53 +162,85 @@ export default function Polaris() {
               Latest conversations
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {episodes.map((e, i) => (
-              <motion.article
-                key={e.number}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
-              >
-                <div className="relative aspect-square overflow-hidden bg-card">
-                  <img
-                    src={e.image}
-                    alt={e.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                  <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
-                    Episode {e.number}
-                  </div>
-                  <div className="absolute bottom-5 right-5">
-                    <a
-                      href={e.appleUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"
-                      aria-label={`Listen to: ${e.title}`}
-                    >
-                      <Play className="h-5 w-5 ml-0.5 fill-current" />
-                    </a>
+          {episodesQ.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-pulse"
+                >
+                  <div className="aspect-square bg-muted" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-5 bg-muted rounded w-3/4" />
+                    <div className="h-4 bg-muted rounded w-full" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
                   </div>
                 </div>
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
-                    {e.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
-                    {e.description}
-                  </p>
-                  <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
-                    <span>{e.releaseDate}</span>
-                    <span>{e.durationMin} min</span>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : episodesQ.isError ? (
+            <p className="text-muted-foreground">
+              We couldn't load Polaris episodes right now. Please try again in a
+              moment.
+            </p>
+          ) : episodes.length === 0 ? (
+            <p className="text-muted-foreground">
+              New episodes are on the way — check back soon.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {episodes.map((e, i) => {
+                const detailHref = e.appleUrl ?? e.audioUrl;
+                return (
+                  <motion.article
+                    key={e.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
+                  >
+                    <div className="relative aspect-square overflow-hidden bg-card">
+                      <img
+                        src={e.artworkUrl}
+                        alt={e.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                      <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
+                        Episode {e.episodeNumber}
+                      </div>
+                      {detailHref ? (
+                        <div className="absolute bottom-5 right-5">
+                          <a
+                            href={detailHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"
+                            aria-label={`Listen to: ${e.title}`}
+                          >
+                            <Play className="h-5 w-5 ml-0.5 fill-current" />
+                          </a>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="p-6 flex flex-col flex-1">
+                      <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
+                        {e.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
+                        {e.summary}
+                      </p>
+                      <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
+                        <span>{formatReleaseDate(e.publishedAt)}</span>
+                        <span>{formatDurationMin(e.durationSeconds)}</span>
+                      </div>
+                    </div>
+                  </motion.article>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

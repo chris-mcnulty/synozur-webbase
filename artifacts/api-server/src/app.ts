@@ -10,6 +10,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
 import { handleRobots, handleSitemap } from "./routes/seo";
+import { handlePolarisRss } from "./routes/polaris";
 
 const app: Express = express();
 
@@ -50,6 +51,11 @@ app.use(wixRedirectMiddleware());
 // Site-root SEO artifacts. Also available under /api/* via the router below.
 app.get("/sitemap.xml", handleSitemap);
 app.get("/robots.txt", handleRobots);
+
+// Podcast feed at the canonical site-root URL so directories (Apple, Spotify,
+// Amazon Music) can consume it without an `/api/` prefix. The same handler is
+// also available under /api/polaris/rss.xml via the router below (#101).
+app.get("/polaris/rss.xml", handlePolarisRss);
 
 app.use("/api", router);
 
