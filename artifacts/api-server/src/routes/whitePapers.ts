@@ -84,6 +84,8 @@ router.get("/white-papers", async (req, res) => {
     eq(whitePapersTable.active, true),
     eq(whitePapersTable.status, "published"),
     sql`${whitePapersTable.deletedAt} is null`,
+    sql`${whitePapersTable.publishedAt} <= now()`,
+    sql`(${whitePapersTable.unpublishedAt} is null or ${whitePapersTable.unpublishedAt} > now())`,
   ];
   if (docType && (WHITE_PAPER_DOC_TYPES as readonly string[]).includes(docType)) {
     whereClauses.push(
