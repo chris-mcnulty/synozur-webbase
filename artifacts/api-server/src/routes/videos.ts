@@ -79,11 +79,14 @@ router.get("/videos", async (req, res) => {
     Math.max(1, Number(req.query.pageSize) || 12),
   );
   const page = Math.max(1, Number(req.query.page) || 1);
+  const now = new Date();
 
   const whereClauses = [
     eq(videosTable.active, true),
     eq(videosTable.status, "published"),
     sql`${videosTable.deletedAt} is null`,
+    sql`${videosTable.publishedAt} <= ${now}`,
+    sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
   ];
   if (category && (VIDEO_CATEGORIES as readonly string[]).includes(category)) {
     whereClauses.push(eq(videosTable.category, category as (typeof VIDEO_CATEGORIES)[number]));
@@ -128,14 +131,18 @@ router.get("/videos", async (req, res) => {
 
 router.get("/videos/:slug", async (req, res) => {
   const slug = String(req.params.slug);
+  const now = new Date();
   const row = await db.query.videosTable.findFirst({
     where: and(
       eq(videosTable.slug, slug),
       eq(videosTable.active, true),
       eq(videosTable.status, "published"),
+      sql`${videosTable.deletedAt} is null`,
+      sql`${videosTable.publishedAt} <= ${now}`,
+      sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
     ),
   });
-  if (!row || row.deletedAt) {
+  if (!row) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -181,9 +188,9 @@ router.get("/cms/videos", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(videosTable)
+    .where(sql`${videosTable.deletedAt} is null`)
     .orderBy(desc(videosTable.publishedAt), desc(videosTable.createdAt));
-  const visible = rows.filter((r) => !r.deletedAt);
-  res.json({ items: visible.map(serialize) });
+  res.json({ items: rows.map(serialize) });
 });
 
 router.get("/cms/videos/:id", ...readGuard, async (req, res) => {

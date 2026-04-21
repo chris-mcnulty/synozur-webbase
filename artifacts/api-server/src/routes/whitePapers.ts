@@ -131,14 +131,18 @@ router.get("/white-papers", async (req, res) => {
 
 router.get("/white-papers/:slug", async (req, res) => {
   const slug = String(req.params.slug);
+  const now = new Date();
   const row = await db.query.whitePapersTable.findFirst({
     where: and(
       eq(whitePapersTable.slug, slug),
       eq(whitePapersTable.active, true),
       eq(whitePapersTable.status, "published"),
+      sql`${whitePapersTable.deletedAt} is null`,
+      sql`${whitePapersTable.publishedAt} <= ${now}`,
+      sql`(${whitePapersTable.unpublishedAt} is null OR ${whitePapersTable.unpublishedAt} > ${now})`,
     ),
   });
-  if (!row || row.deletedAt) {
+  if (!row) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -184,9 +188,9 @@ router.get("/cms/white-papers", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(whitePapersTable)
+    .where(sql`${whitePapersTable.deletedAt} IS NULL`)
     .orderBy(desc(whitePapersTable.publishedAt), desc(whitePapersTable.createdAt));
-  const visible = rows.filter((r) => !r.deletedAt);
-  res.json({ items: visible.map(serialize) });
+  res.json({ items: rows.map(serialize) });
 });
 
 router.get("/cms/white-papers/:id", ...readGuard, async (req, res) => {

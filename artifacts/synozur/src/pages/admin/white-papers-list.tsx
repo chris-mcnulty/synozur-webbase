@@ -139,6 +139,7 @@ export default function AdminWhitePapersList() {
                       onClick={() => onToggleFeatured(w, !w.featured)}
                       disabled={!canWrite}
                       className="inline-flex items-center justify-center"
+                      aria-label={w.featured ? "Remove from featured" : "Mark as featured"}
                       data-testid={`button-toggle-featured-${w.id}`}
                     >
                       <Star

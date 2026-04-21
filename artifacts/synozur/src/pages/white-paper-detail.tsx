@@ -3,6 +3,7 @@ import { Link, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
+import { RichText } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 
 const DOC_TYPE_LABELS: Record<WhitePaperDocType, string> = {
@@ -78,7 +79,10 @@ export default function WhitePaperDetail() {
           {item.publishedAt && (
             <p className="text-sm text-zinc-400">
               Published{" "}
-              {new Date(item.publishedAt).toLocaleDateString(undefined, { dateStyle: "long" })}
+              {new Date(item.publishedAt).toLocaleDateString(undefined, {
+                dateStyle: "long",
+                timeZone: "UTC",
+              })}
             </p>
           )}
         </div>
@@ -101,9 +105,10 @@ export default function WhitePaperDetail() {
       <section className="bg-background py-16">
         <div className="container mx-auto px-4 max-w-3xl">
           {item.bodyHtml ? (
-            <div
-              className="prose prose-invert max-w-none prose-p:text-foreground prose-headings:text-foreground prose-a:text-primary"
-              dangerouslySetInnerHTML={{ __html: item.bodyHtml }}
+            <RichText
+              html={item.bodyHtml}
+              invert
+              className="prose-p:text-foreground prose-headings:text-foreground prose-a:text-primary"
             />
           ) : (
             item.shortDescription && (

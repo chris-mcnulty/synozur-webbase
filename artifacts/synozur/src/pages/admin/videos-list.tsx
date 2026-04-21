@@ -142,6 +142,7 @@ export default function AdminVideosList() {
                       onClick={() => onToggleFeatured(v, !v.featured)}
                       disabled={!canWrite}
                       className="inline-flex items-center justify-center"
+                      aria-label={v.featured ? "Remove from featured" : "Mark as featured"}
                       data-testid={`button-toggle-featured-${v.id}`}
                     >
                       <Star

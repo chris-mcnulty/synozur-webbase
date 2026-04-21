@@ -1,23 +1,12 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, asc, desc, eq, isNull, ne, inArray, sql } from "drizzle-orm";
-import { db, collateralTable } from "@workspace/db";
+import { db, collateralTable, COLLATERAL_TYPES } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 
 const router: IRouter = Router();
-
-const COLLATERAL_TYPES = [
-  "webinar",
-  "white_paper",
-  "case_study",
-  "podcast",
-  "model",
-  "training",
-  "event",
-  "insight",
-] as const;
 
 const COLLATERAL_PILLARS = ["strategic", "technology", "experiences", "gtm"] as const;
 
