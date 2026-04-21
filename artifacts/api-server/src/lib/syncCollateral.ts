@@ -3,6 +3,10 @@ import {
   db,
   collateralTable,
   servicesTable,
+  postCategories,
+  postTags,
+  categoriesTable,
+  tagsTable,
   type Event,
   type Post,
   type Video,
@@ -244,6 +248,35 @@ export async function upsertCollateralFromPost(
     return;
   }
 
+  // Fetch the post's categories and tags so we can populate the collateral
+  // row's `serviceId` and `tags` fields. These are stored in separate join
+  // tables and aren't part of the base `Post` row.
+  const [categoryRows, tagRows] = await Promise.all([
+    db
+      .select({ slug: categoriesTable.slug })
+      .from(postCategories)
+      .innerJoin(categoriesTable, eq(postCategories.categoryId, categoriesTable.id))
+      .where(eq(postCategories.postId, post.id)),
+    db
+      .select({ slug: tagsTable.slug })
+      .from(postTags)
+      .innerJoin(tagsTable, eq(postTags.tagId, tagsTable.id))
+      .where(eq(postTags.postId, post.id)),
+  ]);
+
+  // Derive a primary service from the post's categories using the same
+  // pillar→service mapping already used by video/white-paper sync.
+  let serviceId: string | null = null;
+  for (const { slug } of categoryRows) {
+    const sid = await pillarToServiceId(slug);
+    if (sid) {
+      serviceId = sid;
+      break;
+    }
+  }
+
+  const tags = tagRows.map((r) => r.slug);
+
   const now = new Date();
   const syncedFields = {
     type: "insight" as const,
@@ -256,6 +289,8 @@ export async function upsertCollateralFromPost(
     publishedAt: post.publishedAt,
     featured: post.featured,
     featuredRank: post.featuredRank,
+    serviceId,
+    tags,
     active: true,
     updatedAt: now,
   };
@@ -272,7 +307,6 @@ export async function upsertCollateralFromPost(
   await db.insert(collateralTable).values({
     ...syncedFields,
     slug,
-    tags: [],
     sourceId,
   });
 }

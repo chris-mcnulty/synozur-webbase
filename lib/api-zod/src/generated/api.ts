@@ -198,7 +198,7 @@ export const UpdateCmsPostBody = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
-  featured: zod.boolean().nullish(),
+  featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).nullish(),
   tagIds: zod.array(zod.string().uuid()).nullish(),

@@ -12,11 +12,20 @@ interface CollateralCardProps {
 
 // For events the `publishedAt` field carries the event start date (set by
 // sync-to-collateral). For every other type it's the publication date.
+//
+// The API serialises `publishedAt` as a date-only string (YYYY-MM-DD).
+// Passing that directly to `new Date()` treats it as UTC midnight, which
+// rolls back a day for users in negative UTC-offset timezones. Parse into
+// local-date parts instead so the displayed date always matches the
+// calendar date the editor entered.
 function formatCardDate(item: Collateral): string | null {
   if (!item.publishedAt) return null;
-  const d = new Date(item.publishedAt);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, {
+  const parts = item.publishedAt.split("-");
+  if (parts.length !== 3) return null;
+  const [y, m, d] = parts.map(Number);
+  const date = new Date(y, m - 1, d);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
