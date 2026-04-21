@@ -53,6 +53,17 @@ export function Header() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Single source of truth for the Resources dropdown's application
+  // links (#103). Falls back to the static applications list when the
+  // API is empty or unreachable, preserving behaviour during the
+  // migration from hardcoded nav entries.
+  const applicationsQuery = useQuery({
+    queryKey: ["applications", "nav"],
+    queryFn: () => api.listApplications(true),
+    staleTime: 5 * 60 * 1000,
+  });
+  const navApplications = applicationsQuery.data?.items ?? [];
+
   const pillars = (servicesQuery.data?.items ?? []).filter(
     (s) => s.slug !== "our-services",
   );
@@ -98,12 +109,10 @@ export function Header() {
         { label: "Workshops", href: "/workshops" },
         { label: "Browse Library", href: "/library" },
         { label: "All Applications", href: "/applications" },
-        { label: "Vega", href: "/applications/vega" },
-        { label: "Nebula", href: "/applications/nebula" },
-        { label: "Constellation", href: "/applications/constellation" },
-        { label: "Orion (Models)", href: "/applications/orion" },
-        { label: "Orbit", href: "/applications/orbit" },
-        { label: "Zenith", href: "/applications/zenith" },
+        ...navApplications.map((a) => ({
+          label: a.name,
+          href: `/applications/${a.slug}`,
+        })),
       ]
     }
   ];

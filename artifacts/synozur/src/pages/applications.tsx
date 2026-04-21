@@ -1,11 +1,56 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, ExternalLink } from "lucide-react";
+import { api, type ApplicationDto } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
 
+function staticAsDto(
+  s: ReturnType<typeof getActiveApplications>[number],
+): ApplicationDto {
+  return {
+    id: s.slug,
+    slug: s.slug,
+    title: s.name,
+    name: s.name,
+    tagline: s.tagline,
+    shortSummary: s.shortSummary,
+    description: s.description,
+    version: s.version ?? null,
+    releaseDate: s.releaseDate,
+    websiteUrl: s.websiteUrl,
+    logo: s.logo,
+    screenshot: s.screenshot,
+    userGuideUrl: null,
+    showInNav: true,
+    status: "published",
+    publishedAt: null,
+    unpublishedAt: null,
+    featured: false,
+    featuredRank: null,
+    seoTitle: null,
+    seoDescription: null,
+    ogImage: null,
+    active: s.isActive,
+    sourceId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export default function Applications() {
-  const apps = getActiveApplications();
+  const listQ = useQuery({
+    queryKey: ["applications"],
+    queryFn: () => api.listApplications(),
+  });
+
+  const apps: ApplicationDto[] = useMemo(() => {
+    const items = listQ.data?.items ?? [];
+    if (items.length > 0) return items;
+    return getActiveApplications().map(staticAsDto);
+  }, [listQ.data]);
 
   return (
     <div className="w-full">
@@ -90,16 +135,18 @@ export default function Applications() {
                       Learn more
                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Link>
-                    <a
-                      href={app.websiteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-muted-foreground hover:text-primary inline-flex items-center"
-                      data-testid={`app-open-${app.slug}`}
-                    >
-                      Open
-                      <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-                    </a>
+                    {app.websiteUrl && (
+                      <a
+                        href={app.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:text-primary inline-flex items-center"
+                        data-testid={`app-open-${app.slug}`}
+                      >
+                        Open
+                        <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                      </a>
+                    )}
                   </div>
                 </div>
               </motion.article>

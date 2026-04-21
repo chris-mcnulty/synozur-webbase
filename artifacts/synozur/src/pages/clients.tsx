@@ -1,12 +1,20 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Quote } from "lucide-react";
-import { caseStudies } from "@/data/case-studies";
+import { api, type CaseStudyDto } from "@/lib/api";
+import { caseStudies as staticCaseStudies } from "@/data/case-studies";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 
-const quotes = [
+type DisplayQuote = { quote: string; name: string; org: string };
+
+// Hardcoded defaults used when the DB-backed `client_testimonials`
+// table is empty. The /clients page continues to render even if the
+// testimonials endpoint is unreachable.
+const DEFAULT_QUOTES: DisplayQuote[] = [
   {
     quote:
       "Our journey with the Company Operating System has truly transformed the way we operate and lead. The clear focus on priorities and performance metrics have empowered us to make strategic decisions more effectively.",
@@ -29,6 +37,39 @@ const quotes = [
 
 
 export default function Clients() {
+  const testimonialsQ = useQuery({
+    queryKey: ["testimonials"],
+    queryFn: () => api.listTestimonials(),
+  });
+  const caseStudiesQ = useQuery({
+    queryKey: ["case-studies"],
+    queryFn: () => api.listCaseStudies(),
+  });
+
+  const quotes: DisplayQuote[] = useMemo(() => {
+    const items = testimonialsQ.data?.items ?? [];
+    if (items.length === 0) return DEFAULT_QUOTES;
+    return items.map((t) => ({
+      quote: t.quote,
+      name: t.authorName,
+      org: t.organization,
+    }));
+  }, [testimonialsQ.data]);
+
+  const caseStudies: Pick<
+    CaseStudyDto,
+    "slug" | "title" | "heroImage" | "industry" | "summary"
+  >[] = useMemo(() => {
+    const items = caseStudiesQ.data?.items ?? [];
+    if (items.length > 0) return items;
+    return staticCaseStudies.map((s) => ({
+      slug: s.slug,
+      title: s.title,
+      heroImage: s.heroImage,
+      industry: s.industry,
+      summary: s.summary,
+    }));
+  }, [caseStudiesQ.data]);
   return (
     <div className="w-full">
       <Meta

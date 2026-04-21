@@ -1,37 +1,104 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { api, type ApplicationDto } from "@/lib/api";
 import {
-  getApplicationBySlug,
+  getApplicationBySlug as getStaticApplicationBySlug,
   getActiveApplications,
 } from "@/data/applications";
 import NotFound from "@/pages/not-found";
 
+function staticAsDto(
+  s: ReturnType<typeof getActiveApplications>[number],
+): ApplicationDto {
+  return {
+    id: s.slug,
+    slug: s.slug,
+    title: s.name,
+    name: s.name,
+    tagline: s.tagline,
+    shortSummary: s.shortSummary,
+    description: s.description,
+    version: s.version ?? null,
+    releaseDate: s.releaseDate,
+    websiteUrl: s.websiteUrl,
+    logo: s.logo,
+    screenshot: s.screenshot,
+    userGuideUrl: null,
+    showInNav: true,
+    status: "published",
+    publishedAt: null,
+    unpublishedAt: null,
+    featured: false,
+    featuredRank: null,
+    seoTitle: null,
+    seoDescription: null,
+    ogImage: null,
+    active: s.isActive,
+    sourceId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export default function ApplicationDetail() {
   const [, params] = useRoute("/applications/:slug");
-  const slug = params?.slug;
-  const app = slug ? getApplicationBySlug(slug) : undefined;
+  const slug = params?.slug ?? "";
+
+  const detailQ = useQuery({
+    queryKey: ["applications", slug, "detail"],
+    queryFn: () => api.getApplication(slug),
+    enabled: slug.length > 0,
+    retry: (count, err) => {
+      if (err instanceof Error && /404/.test(err.message)) return false;
+      return count < 2;
+    },
+  });
+
+  const listQ = useQuery({
+    queryKey: ["applications"],
+    queryFn: () => api.listApplications(),
+  });
+
+  const staticFallback = slug ? getStaticApplicationBySlug(slug) : undefined;
+  const app: ApplicationDto | undefined = useMemo(() => {
+    if (detailQ.data) return detailQ.data;
+    if (detailQ.isError && staticFallback) return staticAsDto(staticFallback);
+    return undefined;
+  }, [detailQ.data, detailQ.isError, staticFallback]);
+
+  if (detailQ.isLoading && !staticFallback) {
+    return (
+      <div className="w-full py-32 text-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
 
   if (!app) {
     return <NotFound />;
   }
 
-  const others = getActiveApplications()
-    .filter((a) => a.slug !== app.slug)
-    .slice(0, 3);
+  const apiItems = listQ.data?.items ?? [];
+  const pool =
+    apiItems.length > 0 ? apiItems : getActiveApplications().map(staticAsDto);
+  const others = pool.filter((a) => a.slug !== app.slug).slice(0, 3);
 
-  const releaseLabel = new Date(app.releaseDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const releaseLabel = app.releaseDate
+    ? new Date(app.releaseDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "";
 
   return (
     <div className="w-full">
       <Meta title={app.name} description={app.tagline} />
 
-      {/* Hero */}
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-20">
         <div className="absolute inset-0 nebula-gradient opacity-15" />
         <div className="container relative z-10 mx-auto px-4 max-w-5xl">
@@ -56,9 +123,11 @@ export default function ApplicationDetail() {
                     v{app.version}
                   </span>
                 )}
-                <span className="text-xs uppercase tracking-widest text-zinc-400">
-                  Released {releaseLabel}
-                </span>
+                {releaseLabel && (
+                  <span className="text-xs uppercase tracking-widest text-zinc-400">
+                    Released {releaseLabel}
+                  </span>
+                )}
               </div>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white">
                 {app.name}
@@ -68,20 +137,21 @@ export default function ApplicationDetail() {
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl mb-8">
             {app.tagline}
           </p>
-          <a
-            href={app.websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-            data-testid="app-primary-cta"
-          >
-            Visit {app.name}
-            <ExternalLink className="ml-2 h-4 w-4" />
-          </a>
+          {app.websiteUrl && (
+            <a
+              href={app.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              data-testid="app-primary-cta"
+            >
+              Visit {app.name}
+              <ExternalLink className="ml-2 h-4 w-4" />
+            </a>
+          )}
         </div>
       </section>
 
-      {/* Screenshot */}
       <section className="bg-background">
         <div className="container mx-auto px-4 max-w-5xl -mt-12 relative z-20">
           <motion.div
@@ -99,7 +169,6 @@ export default function ApplicationDetail() {
         </div>
       </section>
 
-      {/* Description */}
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
@@ -113,21 +182,22 @@ export default function ApplicationDetail() {
               <p key={i}>{p}</p>
             ))}
           </div>
-          <div className="mt-12 pt-8 border-t border-border/60">
-            <a
-              href={app.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-            >
-              Open {app.name}
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
-          </div>
+          {app.websiteUrl && (
+            <div className="mt-12 pt-8 border-t border-border/60">
+              <a
+                href={app.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              >
+                Open {app.name}
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Other applications */}
       {others.length > 0 && (
         <section className="py-20 bg-card border-t border-border">
           <div className="container mx-auto px-4 max-w-5xl">

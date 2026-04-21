@@ -508,6 +508,89 @@ export const api = {
     jsonFetch<void>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  // Workshops — scoped filters (#105 removed the static category-to-service
+  // lookup map; the "related workshops" rail on /services/:slug and
+  // /solutions/:slug now queries by real foreign key).
+  listWorkshopsByService: (serviceId: string) =>
+    jsonFetch<{ items: WorkshopListItemDto[] }>(
+      url(`/workshops?serviceId=${encodeURIComponent(serviceId)}`),
+    ),
+  listWorkshopsBySolution: (solutionId: string) =>
+    jsonFetch<{ items: WorkshopListItemDto[] }>(
+      url(`/workshops?solutionId=${encodeURIComponent(solutionId)}`),
+    ),
+  // Case studies (#102).
+  listCaseStudies: (q: CaseStudyListQuery = {}) => {
+    const params = new URLSearchParams();
+    if (q.industry) params.set("industry", q.industry);
+    if (q.tag) params.set("tag", q.tag);
+    if (q.serviceId) params.set("serviceId", q.serviceId);
+    if (q.solutionId) params.set("solutionId", q.solutionId);
+    const s = params.toString();
+    return jsonFetch<{ items: CaseStudyDto[] }>(
+      url(`/case-studies${s ? `?${s}` : ""}`),
+    );
+  },
+  getCaseStudy: (slug: string) =>
+    jsonFetch<CaseStudyDto>(url(`/case-studies/${encodeURIComponent(slug)}`)),
+  adminListCaseStudies: () =>
+    jsonFetch<{ items: CaseStudyDto[] }>(url("/cms/case-studies")),
+  adminGetCaseStudy: (id: string) =>
+    jsonFetch<CaseStudyDto>(url(`/cms/case-studies/${encodeURIComponent(id)}`)),
+  createCaseStudy: (body: CaseStudyInput) =>
+    jsonFetch<CaseStudyDto>(url("/cms/case-studies"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateCaseStudy: (id: string, body: CaseStudyInput) =>
+    jsonFetch<CaseStudyDto>(url(`/cms/case-studies/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteCaseStudy: (id: string) =>
+    jsonFetch<void>(url(`/cms/case-studies/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  // Applications (#103).
+  listApplications: (navOnly?: boolean) =>
+    jsonFetch<{ items: ApplicationDto[] }>(
+      url(navOnly ? "/applications?nav=true" : "/applications"),
+    ),
+  getApplication: (slug: string) =>
+    jsonFetch<ApplicationDto>(url(`/applications/${encodeURIComponent(slug)}`)),
+  adminListApplications: () =>
+    jsonFetch<{ items: ApplicationDto[] }>(url("/cms/applications")),
+  adminGetApplication: (id: string) =>
+    jsonFetch<ApplicationDto>(url(`/cms/applications/${encodeURIComponent(id)}`)),
+  createApplication: (body: ApplicationInput) =>
+    jsonFetch<ApplicationDto>(url("/cms/applications"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateApplication: (id: string, body: ApplicationInput) =>
+    jsonFetch<ApplicationDto>(url(`/cms/applications/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteApplication: (id: string) =>
+    jsonFetch<void>(url(`/cms/applications/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  // About / testimonials / partners (#104).
+  listAboutValues: () =>
+    jsonFetch<{ items: AboutValueDto[] }>(url("/about/values")),
+  listTestimonials: () =>
+    jsonFetch<{ items: ClientTestimonialDto[] }>(url("/testimonials")),
+  listPartners: (category?: string) =>
+    jsonFetch<{ items: PartnerDescriptionDto[] }>(
+      url(category ? `/partners?category=${encodeURIComponent(category)}` : "/partners"),
+    ),
+  adminListAboutValues: () =>
+    jsonFetch<{ items: AboutValueDto[] }>(url("/cms/about/values")),
+  adminListTestimonials: () =>
+    jsonFetch<{ items: ClientTestimonialDto[] }>(url("/cms/testimonials")),
+  adminListPartners: () =>
+    jsonFetch<{ items: PartnerDescriptionDto[] }>(url("/cms/partners")),
 };
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
@@ -535,6 +618,198 @@ export interface PolarisEpisodeDto {
   ogImage: string | null;
   active: boolean;
   sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkshopListItemDto {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  shortDescription: string;
+  heroImage: string;
+  duration: string;
+  deliveryFormat: string;
+  serviceId: string | null;
+  solutionId: string | null;
+  active: boolean;
+}
+
+export interface CaseStudyMetricDto {
+  label: string;
+  value: string;
+}
+
+export interface CaseStudySectionDto {
+  heading: string;
+  body: string[];
+  bullets?: string[];
+}
+
+export interface CaseStudyDto {
+  id: string;
+  slug: string;
+  title: string;
+  client: string;
+  clientLabel: string;
+  industry: string;
+  established: string | null;
+  tag: string;
+  headline: string;
+  summary: string;
+  heroImage: string;
+  clientLogo: string | null;
+  challenge: CaseStudySectionDto;
+  approach: CaseStudySectionDto[];
+  outcome: CaseStudySectionDto;
+  metrics: CaseStudyMetricDto[];
+  quote: { text: string; attribution: string };
+  serviceId: string | null;
+  solutionId: string | null;
+  status: ArtifactStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CaseStudyInput {
+  slug?: string | null;
+  title: string;
+  client?: string;
+  clientLabel?: string;
+  industry?: string;
+  established?: string | null;
+  tag?: string;
+  headline?: string;
+  summary?: string;
+  heroImage?: string;
+  clientLogo?: string | null;
+  challenge?: CaseStudySectionDto;
+  approach?: CaseStudySectionDto[];
+  outcome?: CaseStudySectionDto;
+  metrics?: CaseStudyMetricDto[];
+  quote?: { text: string; attribution: string };
+  serviceId?: string | null;
+  solutionId?: string | null;
+  status?: ArtifactStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}
+
+export interface CaseStudyListQuery {
+  industry?: string;
+  tag?: string;
+  serviceId?: string;
+  solutionId?: string;
+}
+
+export interface ApplicationDto {
+  id: string;
+  slug: string;
+  title: string;
+  name: string;
+  tagline: string;
+  shortSummary: string;
+  description: string[];
+  version: string | null;
+  releaseDate: string | null;
+  websiteUrl: string;
+  logo: string;
+  screenshot: string;
+  userGuideUrl: string | null;
+  showInNav: boolean;
+  status: ArtifactStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApplicationInput {
+  slug?: string | null;
+  title: string;
+  name?: string;
+  tagline?: string;
+  shortSummary?: string;
+  description?: string[];
+  version?: string | null;
+  releaseDate?: string | null;
+  websiteUrl?: string;
+  logo?: string;
+  screenshot?: string;
+  userGuideUrl?: string | null;
+  showInNav?: boolean;
+  status?: ArtifactStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}
+
+export interface AboutValueDto {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  icon: string | null;
+  displayOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientTestimonialDto {
+  id: string;
+  slug: string;
+  quote: string;
+  authorName: string;
+  authorRole: string | null;
+  organization: string;
+  caseStudySlug: string | null;
+  displayOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PartnerDescriptionDto {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  logo: string | null;
+  websiteUrl: string | null;
+  category: string;
+  displayOrder: number;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }

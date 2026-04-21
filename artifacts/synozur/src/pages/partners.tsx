@@ -1,7 +1,10 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 
 const MicrosoftSquares = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -19,7 +22,18 @@ const fade = (i: number) => ({
   transition: { duration: 0.5, delay: i * 0.08 },
 });
 
-const alliances = [
+type AllianceDisplay = {
+  name: string;
+  src: string;
+  href: string;
+  filter: boolean;
+  description?: string;
+};
+
+// Default alliance logos used when the DB-backed
+// `partner_descriptions` table is empty. Editors can override these via
+// the admin without a deploy.
+const DEFAULT_ALLIANCES: AllianceDisplay[] = [
   {
     name: "Protiviti",
     src: "/images/logos/protiviti.svg",
@@ -40,7 +54,31 @@ const alliances = [
   },
 ];
 
+// Logos that look correct on a light background ship as-is; those that
+// were white-on-dark get inverted via a CSS filter. We infer this by
+// filename suffix since the CMS column cannot store arbitrary CSS.
+function inferLogoFilter(logo: string | null | undefined): boolean {
+  if (!logo) return false;
+  return /ps-hummingbird/i.test(logo);
+}
+
 export default function Partners() {
+  const partnersQ = useQuery({
+    queryKey: ["partners"],
+    queryFn: () => api.listPartners("alliance"),
+  });
+
+  const alliances: AllianceDisplay[] = useMemo(() => {
+    const items = partnersQ.data?.items ?? [];
+    if (items.length === 0) return DEFAULT_ALLIANCES;
+    return items.map((p) => ({
+      name: p.name,
+      src: p.logo ?? "",
+      href: p.websiteUrl ?? "#",
+      filter: inferLogoFilter(p.logo),
+      description: p.description,
+    }));
+  }, [partnersQ.data]);
   return (
     <div className="w-full">
       <Meta

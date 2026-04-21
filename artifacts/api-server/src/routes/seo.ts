@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -8,6 +8,8 @@ import {
   solutionsTable,
   teamMembersTable,
   eventsTable,
+  applicationsTable,
+  caseStudiesTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -35,10 +37,10 @@ interface Entry {
 }
 
 /**
- * Static marketing routes that don't live in the database. Slugs for
- * applications, workshops, and case studies live in static data files in the
- * React app — they're duplicated here so the sitemap can be generated entirely
- * server-side without importing from the client bundle.
+ * Static marketing routes that don't live in the database. Applications
+ * (#103) and case studies (#102) now live in their own DB tables, so the
+ * sitemap pulls them via Drizzle below — no more duplicated slug lists.
+ * Workshop slugs still come from the static data file (#95).
  */
 const STATIC_ROUTES: Entry[] = [
   { loc: "/", changefreq: "weekly", priority: 1.0 },
@@ -62,37 +64,12 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/terms", changefreq: "yearly", priority: 0.3 },
 ];
 
-// Slugs sourced from artifacts/synozur/src/data/applications.ts
-const APPLICATION_SLUGS = [
-  "vega",
-  "nebula",
-  "constellation",
-  "orion",
-  "orbit",
-  "zenith",
-  "holidays-and-birthdays-web-part",
-];
-
 // Slugs sourced from artifacts/synozur/src/data/workshops.ts
 const WORKSHOP_SLUGS = [
   "ai-academy-immersive-ai-leadership-day",
   "m365-academy-microsoft-365-transformation-day",
   "company-operating-system-bootcamp-two-day",
   "go-to-market-proxy-pitch-assessment",
-];
-
-// Slugs sourced from artifacts/synozur/src/data/case-studies.ts
-const CASE_STUDY_SLUGS = [
-  "transforming-management-frameworks-at-microsoft",
-  "management-makeover-at-a-luxury-brand",
-  "energy-company-reinvents-employee-expereince-and-effectiveness",
-  "ai-and-knowledge-transformation-at-a-strategic-communications-firm",
-  "ai-transformation-at-a-private-equity-portfolio-company",
-  "accelerating-go-to-market-for-a-leading-ai-isv",
-  "ai-&-governance-acceleration-for-private-equity",
-  "executive-ai-readiness-at-a-leading-education-technology-company",
-  "story-cellars",
-  "go‑to‑market-transformation-for-a-microsoft‑aligned-software-company",
 ];
 
 function toEntry(path: string, lastmod: Date | string | null | undefined): Entry {
@@ -109,11 +86,9 @@ async function collectEntries(): Promise<Entry[]> {
   const entries: Entry[] = [];
 
   for (const r of STATIC_ROUTES) entries.push(r);
-  for (const slug of APPLICATION_SLUGS) entries.push({ loc: `/applications/${slug}` });
   for (const slug of WORKSHOP_SLUGS) entries.push({ loc: `/workshops/${slug}` });
-  for (const slug of CASE_STUDY_SLUGS) entries.push({ loc: `/case-studies/${slug}` });
 
-  const [posts, collateral, services, solutions, team, events] = await Promise.all([
+  const [posts, collateral, services, solutions, team, events, applications, caseStudies] = await Promise.all([
     db
       .select({ slug: postsTable.slug, updatedAt: postsTable.updatedAt, publishedAt: postsTable.publishedAt })
       .from(postsTable)
@@ -150,6 +125,36 @@ async function collectEntries(): Promise<Entry[]> {
     db
       .select({ slug: eventsTable.slug, updatedAt: eventsTable.updatedAt })
       .from(eventsTable),
+    db
+      .select({
+        slug: applicationsTable.slug,
+        updatedAt: applicationsTable.updatedAt,
+      })
+      .from(applicationsTable)
+      .where(
+        and(
+          isNull(applicationsTable.deletedAt),
+          eq(applicationsTable.active, true),
+          eq(applicationsTable.status, "published"),
+          sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
+          sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
+        ),
+      ),
+    db
+      .select({
+        slug: caseStudiesTable.slug,
+        updatedAt: caseStudiesTable.updatedAt,
+      })
+      .from(caseStudiesTable)
+      .where(
+        and(
+          isNull(caseStudiesTable.deletedAt),
+          eq(caseStudiesTable.active, true),
+          eq(caseStudiesTable.status, "published"),
+          sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
+          sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
+        ),
+      ),
   ]);
 
   for (const p of posts) {
@@ -182,6 +187,10 @@ async function collectEntries(): Promise<Entry[]> {
   for (const _e of events) {
     // Events are listed on /events; no detail route is published yet.
   }
+  for (const a of applications)
+    entries.push(toEntry(`/applications/${a.slug}`, a.updatedAt));
+  for (const c of caseStudies)
+    entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
 
   // De-duplicate and absolutize.
   const seen = new Set<string>();
