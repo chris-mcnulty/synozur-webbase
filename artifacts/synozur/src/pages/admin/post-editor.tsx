@@ -12,6 +12,7 @@ import {
   X,
   Plus,
   History,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +89,8 @@ interface FormState {
   seoTitle: string;
   seoDescription: string;
   seoCanonicalUrl: string;
+  featured: boolean;
+  featuredRank: string;
   categoryIds: string[];
   tagIds: string[];
   authorId: string;
@@ -109,6 +112,8 @@ const EMPTY: FormState = {
   seoTitle: "",
   seoDescription: "",
   seoCanonicalUrl: "",
+  featured: false,
+  featuredRank: "",
   categoryIds: [],
   tagIds: [],
   authorId: "",
@@ -131,6 +136,8 @@ function fromPost(p: Post): FormState {
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
+    featured: p.featured ?? false,
+    featuredRank: p.featuredRank != null ? String(p.featuredRank) : "",
     categoryIds: (p.categories ?? []).map((c) => c.id),
     tagIds: (p.tags ?? []).map((t) => t.id),
     authorId: p.author?.id ?? "",
@@ -153,6 +160,11 @@ function toBody(state: FormState): CreatePostBody & { authorId?: string } {
     seoTitle: state.seoTitle || null,
     seoDescription: state.seoDescription || null,
     seoCanonicalUrl: state.seoCanonicalUrl || null,
+    featured: state.featured,
+    featuredRank:
+      state.featured && state.featuredRank.trim()
+        ? Number(state.featuredRank)
+        : null,
     categoryIds: state.categoryIds,
     tagIds: state.tagIds,
     authorId: state.authorId || undefined,
@@ -598,6 +610,48 @@ export default function PostEditor({ id }: Props) {
                 </Button>
               )}
             </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="featured" className="text-sm font-medium flex items-center gap-2">
+                <Star className="h-4 w-4" /> Featured
+              </Label>
+              <input
+                id="featured"
+                type="checkbox"
+                checked={form.featured}
+                onChange={(e) => update({ featured: e.target.checked })}
+                data-testid="input-post-featured"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Featured posts flow into the library (/library) as insights and
+              are eligible for the home carousel. Most posts stay on /insights
+              only; leave off unless promoting.
+            </p>
+            {form.featured && (
+              <div>
+                <Label htmlFor="featuredRank" className="text-xs">
+                  Rank (optional)
+                </Label>
+                <Input
+                  id="featuredRank"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.featuredRank}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value === "" || /^[1-9]\d*$/.test(value)) {
+                      update({ featuredRank: value });
+                    }
+                  }}
+                  placeholder="Lower = shown first"
+                  data-testid="input-post-featured-rank"
+                />
+              </div>
+            )}
           </Card>
 
           <Card className="p-4 space-y-3">

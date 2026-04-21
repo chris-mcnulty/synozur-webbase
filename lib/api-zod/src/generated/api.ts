@@ -74,6 +74,8 @@ export const ListCmsPostsResponse = zod.object({
       seoDescription: zod.string().nullish(),
       seoCanonicalUrl: zod.string().nullish(),
       readingTimeMin: zod.number().nullish(),
+      featured: zod.boolean().optional(),
+      featuredRank: zod.number().nullish(),
       categories: zod
         .array(
           zod.object({
@@ -119,6 +121,8 @@ export const CreateCmsPostBody = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).optional(),
   tagIds: zod.array(zod.string().uuid()).optional(),
 });
@@ -152,6 +156,8 @@ export const GetCmsPostResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -192,6 +198,8 @@ export const UpdateCmsPostBody = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).nullish(),
   tagIds: zod.array(zod.string().uuid()).nullish(),
 });
@@ -221,6 +229,8 @@ export const UpdateCmsPostResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -277,6 +287,8 @@ export const PublishCmsPostResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -333,6 +345,8 @@ export const ScheduleCmsPostResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -385,6 +399,8 @@ export const ArchiveCmsPostResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -466,6 +482,8 @@ export const RestoreCmsPostRevisionResponse = zod.object({
   seoDescription: zod.string().nullish(),
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   categories: zod
     .array(
       zod.object({

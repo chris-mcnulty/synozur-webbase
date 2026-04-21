@@ -7,6 +7,7 @@ import {
   postTags,
   revisionsTable,
   usersTable,
+  mediaTable,
 } from "@workspace/db";
 import { z } from "zod";
 import { requireAuth, hasRole } from "../../middlewares/auth";
@@ -14,6 +15,10 @@ import { toSlug } from "../../lib/slug";
 import { audit } from "../../lib/audit";
 import { serializePost, serializePosts } from "../../lib/postSerializer";
 import { setCategoriesFor, setTagsFor } from "../../lib/taxonomy";
+import {
+  upsertCollateralFromPost,
+  softDeleteCollateralForPost,
+} from "../../lib/syncCollateral";
 
 const router: IRouter = Router();
 
@@ -38,12 +43,39 @@ const CreateBody = z.object({
   seoDescription: z.string().nullish(),
   seoCanonicalUrl: z.string().nullish(),
   readingTimeMin: z.number().int().nullish(),
+  featured: z.boolean().optional(),
+  featuredRank: z.number().int().nullish(),
   categoryIds: z.array(z.string().uuid()).optional(),
   tagIds: z.array(z.string().uuid()).optional(),
   authorId: z.string().uuid().optional(),
 });
 
 const UpdateBody = CreateBody.partial();
+
+// Sync-to-collateral is a best-effort side effect. A failure here must not
+// block the main post mutation — the sync job can be re-triggered by the
+// next save, and the underlying post is the source of truth.
+async function syncPostCollateral(post: typeof postsTable.$inferSelect): Promise<void> {
+  try {
+    const isEligibleForCollateral = post.status === "published" && post.featured === true;
+    if (!isEligibleForCollateral) {
+      await softDeleteCollateralForPost(post.id);
+      return;
+    }
+    let heroUrl: string | null = null;
+    if (post.heroImageId) {
+      const row = await db
+        .select({ publicUrl: mediaTable.publicUrl })
+        .from(mediaTable)
+        .where(eq(mediaTable.id, post.heroImageId))
+        .limit(1);
+      heroUrl = row[0]?.publicUrl ?? null;
+    }
+    await upsertCollateralFromPost(post, heroUrl);
+  } catch (err) {
+    console.error("upsertCollateralFromPost failed", { postId: post.id, err });
+  }
+}
 
 async function ensureUniqueSlug(base: string, excludePostId?: string): Promise<string> {
   let slug = base;
@@ -162,11 +194,14 @@ router.post("/cms/posts", requireAuth, async (req, res) => {
       seoDescription: data.seoDescription ?? null,
       seoCanonicalUrl: data.seoCanonicalUrl ?? null,
       readingTimeMin: data.readingTimeMin ?? null,
+      featured: data.featured ?? false,
+      featuredRank: data.featuredRank ?? null,
       authorId: hasRole(user, "admin", "editor") && data.authorId ? data.authorId : user.id,
       status: "draft",
     })
     .returning();
   await syncTaxonomy(post.id, data.categoryIds, data.tagIds);
+  await syncPostCollateral(post);
   await audit({ actorId: user.id, action: "post.create", entity: "post", entityId: post.id });
   res.status(201).json(await serializePost(post));
 });
@@ -230,6 +265,8 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
   if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
   if (d.seoCanonicalUrl !== undefined) updates.seoCanonicalUrl = d.seoCanonicalUrl ?? null;
   if (d.readingTimeMin !== undefined) updates.readingTimeMin = d.readingTimeMin ?? null;
+  if (d.featured !== undefined) updates.featured = d.featured;
+  if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank ?? null;
   if (d.authorId && hasRole(user, "admin", "editor")) updates.authorId = d.authorId;
 
   const [updated] = await db
@@ -239,6 +276,7 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
     .returning();
 
   await syncTaxonomy(post.id, d.categoryIds, d.tagIds);
+  await syncPostCollateral(updated);
   await audit({ actorId: user.id, action: "post.update", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });
@@ -260,6 +298,11 @@ router.delete("/cms/posts/:id", requireAuth, async (req, res) => {
     .update(postsTable)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(postsTable.id, post.id));
+  try {
+    await softDeleteCollateralForPost(post.id);
+  } catch (err) {
+    console.error("softDeleteCollateralForPost failed", { postId: post.id, err });
+  }
   await audit({ actorId: user.id, action: "post.delete", entity: "post", entityId: post.id });
   res.status(204).end();
 });
@@ -287,6 +330,7 @@ router.post("/cms/posts/:id/publish", requireAuth, async (req, res) => {
     })
     .where(eq(postsTable.id, post.id))
     .returning();
+  await syncPostCollateral(updated);
   await audit({ actorId: user.id, action: "post.publish", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });
@@ -326,6 +370,7 @@ router.post("/cms/posts/:id/schedule", requireAuth, async (req, res) => {
     })
     .where(eq(postsTable.id, post.id))
     .returning();
+  await syncPostCollateral(updated);
   await audit({
     actorId: user.id,
     action: "post.schedule",
@@ -491,6 +536,7 @@ router.post("/cms/posts/:id/archive", requireAuth, async (req, res) => {
     .set({ status: "archived", updatedAt: new Date() })
     .where(eq(postsTable.id, post.id))
     .returning();
+  await syncPostCollateral(updated);
   await audit({ actorId: user.id, action: "post.archive", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });

@@ -20,6 +20,8 @@ export interface CreatePostBody {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean;
+  featuredRank?: number | null;
   categoryIds?: string[];
   tagIds?: string[];
 }

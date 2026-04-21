@@ -153,6 +153,8 @@ export interface Post {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean;
+  featuredRank?: number | null;
   categories?: Category[];
   tags?: Tag[];
   createdAt: string;
@@ -180,6 +182,8 @@ export interface CreatePostBody {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean;
+  featuredRank?: number | null;
   categoryIds?: string[];
   tagIds?: string[];
 }
@@ -197,6 +201,8 @@ export interface UpdatePostBody {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean;
+  featuredRank?: number | null;
   categoryIds?: string[] | null;
   tagIds?: string[] | null;
 }

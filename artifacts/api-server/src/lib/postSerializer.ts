@@ -42,6 +42,8 @@ function shape(args: {
     seoDescription: post.seoDescription,
     seoCanonicalUrl: post.seoCanonicalUrl,
     readingTimeMin: post.readingTimeMin,
+    featured: post.featured,
+    featuredRank: post.featuredRank,
     categories,
     tags,
     createdAt: post.createdAt.toISOString(),
