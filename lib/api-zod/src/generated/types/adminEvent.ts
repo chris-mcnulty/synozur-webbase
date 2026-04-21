@@ -14,6 +14,8 @@ export interface AdminEvent {
   /** @nullable */
   location?: string | null;
   /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
   description?: string | null;
   /** @nullable */
   registrationUrl?: string | null;

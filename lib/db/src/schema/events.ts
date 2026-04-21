@@ -27,6 +27,7 @@ export const eventsTable = pgTable("events", {
   slug: text("slug").notNull().unique(),
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
   location: text("location"),
+  teaser: text("teaser"),
   description: text("description"),
   registrationUrl: text("registration_url"),
   registrationStatus: text("registration_status").notNull().default("UNKNOWN_REGISTRATION_STATUS"),

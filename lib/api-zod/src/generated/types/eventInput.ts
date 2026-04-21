@@ -15,6 +15,8 @@ export interface EventInput {
   /** @nullable */
   location?: string | null;
   /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
   description?: string | null;
   /** @nullable */
   registrationUrl?: string | null;

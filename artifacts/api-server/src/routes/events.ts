@@ -20,6 +20,7 @@ import {
   upsertCollateralFromEvent,
   softDeleteCollateralForEvent,
 } from "../lib/syncCollateral";
+import { seedEventsFromCsv } from "../scripts/seedEvents";
 
 const router: IRouter = Router();
 
@@ -71,6 +72,7 @@ function publicShape(event: Event, imageUrl: string | null) {
     slug: event.slug,
     startDate: event.startDate,
     location: event.location,
+    teaser: event.teaser,
     description: event.description,
     registrationUrl: event.registrationUrl,
     registrationStatus: event.registrationStatus,
@@ -87,6 +89,7 @@ function adminShape(event: Event, imageUrl: string | null) {
     slug: event.slug,
     startDate: event.startDate,
     location: event.location,
+    teaser: event.teaser,
     description: event.description,
     registrationUrl: event.registrationUrl,
     registrationStatus: event.registrationStatus,
@@ -159,6 +162,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       slug,
       startDate: parsed.data.startDate,
       location: parsed.data.location ?? null,
+      teaser: parsed.data.teaser ?? null,
       description: parsed.data.description ?? null,
       registrationUrl: parsed.data.registrationUrl ?? null,
       registrationStatus: parsed.data.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS",
@@ -199,6 +203,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       slug,
       startDate: parsed.data.startDate,
       location: parsed.data.location ?? null,
+      teaser: parsed.data.teaser ?? null,
       description: parsed.data.description ?? null,
       registrationUrl: parsed.data.registrationUrl ?? null,
       registrationStatus: parsed.data.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS",
@@ -272,82 +277,18 @@ router.post(
   },
 );
 
-function parseSeedCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let cur: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else { inQuotes = false; }
-      } else { field += c; }
-    } else {
-      if (c === '"') { inQuotes = true; }
-      else if (c === ",") { cur.push(field); field = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (c === "\r" && text[i + 1] === "\n") i++;
-        cur.push(field); rows.push(cur); cur = []; field = "";
-      } else { field += c; }
-    }
-  }
-  if (field.length > 0 || cur.length > 0) { cur.push(field); rows.push(cur); }
-  return rows.filter((r) => r.some((cell) => cell.trim().length > 0));
-}
-
-function slugifyLocal(text: string): string {
-  return text.toLowerCase()
-    .replace(/['"'\u2018\u2019\u201C\u201D]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
-
 router.post("/admin/seed-events", requireAdmin, async (_req, res): Promise<void> => {
   try {
-    const csvPath = resolve(process.cwd(), "../../attached_assets/events_1776704614264.csv");
-    const raw = readFileSync(csvPath, "utf8").replace(/^\uFEFF/, "");
-    const rows = parseSeedCsv(raw);
-    const [header, ...data] = rows;
-    const idx = (name: string) => header.indexOf(name);
-    const titleIdx = idx("title");
-    const startIdx = idx("start date");
-    const locIdx = idx("location");
-    const regIdx = idx("registration");
-    const typeIdx = idx("type");
-    const statusIdx = idx("status");
-
-    let inserted = 0;
-    let skipped = 0;
-    const usedSlugs = new Set<string>();
-    for (const row of data) {
-      const title = row[titleIdx]?.trim();
-      const start = row[startIdx]?.trim();
-      if (!title || !start) continue;
-      let slug = slugifyLocal(title);
-      let candidate = slug;
-      let n = 2;
-      while (usedSlugs.has(candidate)) candidate = `${slug}-${n++}`;
-      slug = candidate;
-      usedSlugs.add(slug);
-      const existing = await db.select({ id: eventsTable.id }).from(eventsTable).where(eq(eventsTable.slug, slug));
-      if (existing.length > 0) { skipped++; continue; }
-      await db.insert(eventsTable).values({
-        title,
-        slug,
-        startDate: new Date(start),
-        location: row[locIdx]?.trim() || null,
-        registrationStatus: row[regIdx]?.trim() || "UNKNOWN_REGISTRATION_STATUS",
-        eventType: row[typeIdx]?.trim() || "RSVP",
-        status: row[statusIdx]?.trim() || "UPCOMING",
-      });
-      inserted++;
-    }
-    res.json({ ok: true, inserted, skipped });
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message ?? err) });
+    const csvPath = resolve(
+      process.cwd(),
+      "../../attached_assets/events_1776704614264.csv",
+    );
+    const raw = readFileSync(csvPath, "utf8");
+    const result = await seedEventsFromCsv(raw);
+    res.json({ ok: true, ...result });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
   }
 });
 

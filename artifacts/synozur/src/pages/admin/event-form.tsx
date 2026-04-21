@@ -41,6 +41,7 @@ export default function EventForm({ id }: Props) {
     slug: "",
     startDate: new Date(),
     location: null,
+    teaser: null,
     description: null,
     registrationUrl: null,
     registrationStatus: "UNKNOWN_REGISTRATION_STATUS",
@@ -66,6 +67,7 @@ export default function EventForm({ id }: Props) {
         slug: existing.slug,
         startDate: existing.startDate,
         location: existing.location,
+        teaser: existing.teaser,
         description: existing.description,
         registrationUrl: existing.registrationUrl,
         registrationStatus: existing.registrationStatus,
@@ -178,10 +180,24 @@ export default function EventForm({ id }: Props) {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="teaser">Teaser</Label>
+          <Textarea
+            id="teaser"
+            rows={2}
+            placeholder="One or two sentences shown under the event title."
+            value={form.teaser ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, teaser: e.target.value || null })
+            }
+            data-testid="input-teaser"
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
-            rows={4}
+            rows={6}
             value={form.description ?? ""}
             onChange={(e) =>
               setForm({ ...form, description: e.target.value || null })

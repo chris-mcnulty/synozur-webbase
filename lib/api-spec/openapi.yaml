@@ -3080,6 +3080,10 @@ components:
           type:
             - string
             - 'null'
+        teaser:
+          type:
+            - string
+            - 'null'
         description:
           type:
             - string
@@ -3119,6 +3123,10 @@ components:
           type: string
           format: date-time
         location:
+          type:
+            - string
+            - 'null'
+        teaser:
           type:
             - string
             - 'null'
@@ -3338,6 +3346,10 @@ components:
           type: string
           format: date-time
         location:
+          type:
+            - string
+            - 'null'
+        teaser:
           type:
             - string
             - 'null'

@@ -385,6 +385,8 @@ export interface PublicEvent {
   /** @nullable */
   location?: string | null;
   /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
   description?: string | null;
   /** @nullable */
   registrationUrl?: string | null;
@@ -402,6 +404,8 @@ export interface AdminEvent {
   startDate: string;
   /** @nullable */
   location?: string | null;
+  /** @nullable */
+  teaser?: string | null;
   /** @nullable */
   description?: string | null;
   /** @nullable */
@@ -557,6 +561,8 @@ export interface EventInput {
   startDate: string;
   /** @nullable */
   location?: string | null;
+  /** @nullable */
+  teaser?: string | null;
   /** @nullable */
   description?: string | null;
   /** @nullable */
