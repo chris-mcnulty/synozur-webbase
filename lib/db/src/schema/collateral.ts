@@ -9,8 +9,10 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { servicesTable, solutionsTable } from "./services";
 
 export const COLLATERAL_TYPES = [
   "webinar",
@@ -57,6 +59,16 @@ export const collateralTable = pgTable(
     featuredRank: integer("featured_rank"),
     videoUrl: text("video_url"),
     downloadUrl: text("download_url"),
+    // Primary service / solution relationship (#100). Nullable because not
+    // every collateral item is tied to a specific offering (e.g. general
+    // insights posts). For items that belong to multiple services, use
+    // the collateralServices join table.
+    serviceId: uuid("service_id").references(() => servicesTable.id, {
+      onDelete: "set null",
+    }),
+    solutionId: uuid("solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
     active: boolean("active").notNull().default(true),
     sourceId: text("source_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -69,10 +81,54 @@ export const collateralTable = pgTable(
     index("collateral_pillar_idx").on(t.pillar),
     index("collateral_featured_rank_idx").on(t.featured, t.featuredRank),
     index("collateral_published_at_idx").on(t.publishedAt),
+    index("collateral_service_idx").on(t.serviceId),
+    index("collateral_solution_idx").on(t.solutionId),
   ],
 );
 
-export const collateralRelations = relations(collateralTable, () => ({}));
+// Secondary many-to-many: a single collateral item can relate to multiple
+// services (e.g. a cross-functional case study). The primary service
+// should still be set on `collateralTable.serviceId` so rails keep a
+// single canonical service.
+export const collateralServicesTable = pgTable(
+  "collateral_services",
+  {
+    collateralId: uuid("collateral_id")
+      .notNull()
+      .references(() => collateralTable.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => servicesTable.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.collateralId, t.serviceId] }),
+    index("collateral_services_service_idx").on(t.serviceId),
+  ],
+);
+
+export const collateralRelations = relations(collateralTable, ({ one, many }) => ({
+  service: one(servicesTable, {
+    fields: [collateralTable.serviceId],
+    references: [servicesTable.id],
+  }),
+  solution: one(solutionsTable, {
+    fields: [collateralTable.solutionId],
+    references: [solutionsTable.id],
+  }),
+  additionalServices: many(collateralServicesTable),
+}));
+
+export const collateralServicesRelations = relations(collateralServicesTable, ({ one }) => ({
+  collateral: one(collateralTable, {
+    fields: [collateralServicesTable.collateralId],
+    references: [collateralTable.id],
+  }),
+  service: one(servicesTable, {
+    fields: [collateralServicesTable.serviceId],
+    references: [servicesTable.id],
+  }),
+}));
 
 export type Collateral = typeof collateralTable.$inferSelect;
 export type InsertCollateral = typeof collateralTable.$inferInsert;
+export type CollateralServiceLink = typeof collateralServicesTable.$inferSelect;

@@ -5,8 +5,18 @@ import { db, categoriesTable, tagsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { toSlug } from "../../lib/slug";
 import { audit } from "../../lib/audit";
+import { listEntitiesForTagSlug } from "../../lib/taxonomy";
 
 const router: IRouter = Router();
+
+// Public: list entities carrying the given tag slug. Powers tag-landing
+// pages. Grouped by entity type (post, video, white_paper, ...). See #99.
+router.get("/taxonomy/tags/:slug/entities", async (req, res) => {
+  const slug = toSlug(String(req.params.slug));
+  const grouped = await listEntitiesForTagSlug(slug);
+  const total = Object.values(grouped).reduce((n, ids) => n + ids.length, 0);
+  res.json({ slug, total, entities: grouped });
+});
 
 const Upsert = z.object({
   slug: z.string().min(1),
