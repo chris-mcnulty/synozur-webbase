@@ -63,13 +63,12 @@ export function Header() {
     queryFn: () => api.listApplications(true),
     staleTime: 5 * 60 * 1000,
   });
-  const navApplications =
-    (applicationsQuery.data?.items ?? []).length > 0
-      ? (applicationsQuery.data?.items ?? [])
-      : getActiveApplications().map((a) => ({
-          slug: a.slug,
-          name: a.name,
-        }));
+  const navApplications = (() => {
+    const apiItems = applicationsQuery.data?.items ?? [];
+    return apiItems.length > 0
+      ? apiItems
+      : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }));
+  })();
 
   const pillars = (servicesQuery.data?.items ?? []).filter(
     (s) => s.slug !== "our-services",
