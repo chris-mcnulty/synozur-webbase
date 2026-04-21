@@ -57,6 +57,11 @@ const UpdateBody = CreateBody.partial();
 // next save, and the underlying post is the source of truth.
 async function syncPostCollateral(post: typeof postsTable.$inferSelect): Promise<void> {
   try {
+    const isEligibleForCollateral = post.status === "published" && post.featured === true;
+    if (!isEligibleForCollateral) {
+      await softDeleteCollateralForPost(post.id);
+      return;
+    }
     let heroUrl: string | null = null;
     if (post.heroImageId) {
       const row = await db
