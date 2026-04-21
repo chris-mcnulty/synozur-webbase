@@ -62,7 +62,7 @@ export interface SeedEventsResult {
 }
 
 export async function seedEventsFromCsv(raw: string): Promise<SeedEventsResult> {
-  const rows = parseCsv(raw.replace(/^﻿/, ""));
+  const rows = parseCsv(raw.replace(/^\uFEFF/, ""));
   const [header, ...data] = rows;
   const idx = (name: string) => header.indexOf(name);
   const titleIdx = idx("title");
