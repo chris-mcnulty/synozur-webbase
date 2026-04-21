@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/react";
-import { Pencil, Trash2, Plus, LogOut, Inbox, Settings } from "lucide-react";
+import { Pencil, Trash2, Plus, LogOut, Inbox, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api } from "@/lib/api";
+import { useState } from "react";
 
 function formatDate(iso: string | Date): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -37,6 +38,20 @@ export default function AdminEventsList() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-events"] }),
   });
 
+  const [seedResult, setSeedResult] = useState<string | null>(null);
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${baseUrl}/api/admin/seed-events`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json() as Promise<{ inserted: number; skipped: number }>;
+    },
+    onSuccess: (data) => {
+      setSeedResult(`Done — ${data.inserted} inserted, ${data.skipped} skipped.`);
+      qc.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+    onError: (err: any) => setSeedResult(`Error: ${err.message}`),
+  });
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">
       <div className="flex items-center justify-between mb-8">
@@ -57,6 +72,19 @@ export default function AdminEventsList() {
               <Settings className="h-4 w-4 mr-2" /> Site settings
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (confirm("Seed events from the CSV export? Existing slugs will be skipped.")) {
+                seedMutation.mutate();
+              }
+            }}
+            disabled={seedMutation.isPending}
+            data-testid="button-seed-events"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {seedMutation.isPending ? "Seeding…" : "Seed from CSV"}
+          </Button>
           <Link href="/events/new">
             <Button data-testid="button-new-event">
               <Plus className="h-4 w-4 mr-2" /> New Event
@@ -72,6 +100,12 @@ export default function AdminEventsList() {
         </div>
       </div>
 
+      {seedResult && (
+        <div className="mb-4 px-4 py-2 rounded bg-muted text-sm text-muted-foreground flex items-center justify-between">
+          <span>{seedResult}</span>
+          <button onClick={() => setSeedResult(null)} className="ml-4 text-xs underline">Dismiss</button>
+        </div>
+      )}
       {isLoading ? (
         <div className="text-muted-foreground">Loading…</div>
       ) : (
