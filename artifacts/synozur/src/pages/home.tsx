@@ -211,7 +211,7 @@ export default function Home() {
       <Meta
         title="Transform Your Business with The Synozur Alliance | Strategic Advisory Services"
         rawTitle
-        description="The Synozur Alliance guides organizations to their North Star by charting the course through transformation rooted in people, powered by technology, and driven by purpose."
+        description="We help organizations move from intent to measurable progress—guiding leaders to their North Star with human‑centered, AI‑augmented transformation that's built for real‑world adoption."
         path="/"
         image="/images/hero-bg.png"
       />
@@ -243,7 +243,8 @@ export default function Home() {
                 The <span className="nebula-text">Transformation</span> Company
               </h1>
               <p className="text-xl md:text-2xl text-zinc-300 mb-10 max-w-2xl leading-relaxed">
-                We guide organizations to their North Star by charting the course through transformation rooted in people, powered by technology, and driven by purpose.
+                {/* Fallback: We guide organizations to their North Star by charting the course through transformation rooted in people, powered by technology, and driven by purpose. */}
+                We help organizations move from intent to measurable progress—guiding leaders to their North Star with human&#x2011;centered, AI&#x2011;augmented transformation that&rsquo;s built for real&#x2011;world adoption.
               </p>
               <Link
                 href="/start"
