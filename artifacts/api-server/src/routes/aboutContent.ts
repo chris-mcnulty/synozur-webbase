@@ -17,7 +17,7 @@ import { toSlug } from "../lib/slug";
 const router: IRouter = Router();
 
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
-const readGuard = [requireAuth];
+const readGuard = [requireAuth, requireRole("admin", "editor")];
 
 // ---------------------------------------------------------------------------
 // Helpers

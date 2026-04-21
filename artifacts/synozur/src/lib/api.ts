@@ -542,7 +542,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  updateCaseStudy: (id: string, body: CaseStudyInput) =>
+  updateCaseStudy: (id: string, body: CaseStudyPatchInput) =>
     jsonFetch<CaseStudyDto>(url(`/cms/case-studies/${encodeURIComponent(id)}`), {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -567,7 +567,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  updateApplication: (id: string, body: ApplicationInput) =>
+  updateApplication: (id: string, body: ApplicationPatchInput) =>
     jsonFetch<ApplicationDto>(url(`/cms/applications/${encodeURIComponent(id)}`), {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -712,6 +712,8 @@ export interface CaseStudyInput {
   sourceId?: string | null;
 }
 
+export type CaseStudyPatchInput = Partial<CaseStudyInput>;
+
 export interface CaseStudyListQuery {
   industry?: string;
   tag?: string;
@@ -773,6 +775,8 @@ export interface ApplicationInput {
   active?: boolean;
   sourceId?: string | null;
 }
+
+export type ApplicationPatchInput = Partial<ApplicationInput>;
 
 export interface AboutValueDto {
   id: string;

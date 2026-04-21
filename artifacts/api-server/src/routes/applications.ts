@@ -14,7 +14,7 @@ import { toSlug } from "../lib/slug";
 const router: IRouter = Router();
 
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
-const readGuard = [requireAuth];
+const readGuard = [requireAuth, requireRole("admin", "editor")];
 
 async function ensureUniqueApplicationSlug(
   base: string,
@@ -52,7 +52,7 @@ function serialize(a: Application) {
     logo: a.logo,
     screenshot: a.screenshot,
     userGuideUrl: a.userGuideUrl,
-    showInNav: a.showInNav === "true",
+    showInNav: a.showInNav,
     status: a.status,
     publishedAt: a.publishedAt,
     unpublishedAt: a.unpublishedAt,
@@ -84,7 +84,7 @@ router.get("/applications", async (req, res) => {
     sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
   ];
   if (navOnly) {
-    whereClauses.push(eq(applicationsTable.showInNav, "true"));
+    whereClauses.push(eq(applicationsTable.showInNav, true));
   }
   const rows = await db
     .select()
@@ -127,7 +127,10 @@ const ApplicationBody = z.object({
   shortSummary: z.string().optional(),
   description: z.array(z.string()).optional(),
   version: z.string().nullish(),
-  releaseDate: z.string().nullish(),
+  releaseDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "releaseDate must be in YYYY-MM-DD format")
+    .nullish(),
   websiteUrl: z.string().optional(),
   logo: z.string().optional(),
   screenshot: z.string().optional(),
@@ -202,7 +205,7 @@ router.post("/cms/applications", ...adminGuard, async (req, res) => {
       logo: d.logo ?? "",
       screenshot: d.screenshot ?? "",
       userGuideUrl: d.userGuideUrl ?? null,
-      showInNav: d.showInNav === false ? "false" : "true",
+      showInNav: d.showInNav !== false,
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
@@ -269,7 +272,7 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
   }
   if (d.description !== undefined) updates.descriptionParagraphs = d.description;
   if (d.showInNav !== undefined) {
-    updates.showInNav = d.showInNav ? "true" : "false";
+    updates.showInNav = d.showInNav;
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined)

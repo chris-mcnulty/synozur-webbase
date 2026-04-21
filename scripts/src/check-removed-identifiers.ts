@@ -60,7 +60,12 @@ function walk(dir: string, out: string[]): void {
   for (const name of entries) {
     if (SKIP_DIRS.has(name)) continue;
     const full = join(dir, name);
-    const stats = statSync(full);
+    let stats;
+    try {
+      stats = statSync(full);
+    } catch {
+      continue;
+    }
     if (stats.isDirectory()) walk(full, out);
     else if (stats.isFile() && INCLUDE_EXT.test(name)) out.push(full);
   }

@@ -1,6 +1,7 @@
 import {
   pgTable,
   text,
+  boolean,
   jsonb,
   uniqueIndex,
   index,
@@ -40,7 +41,7 @@ export const applicationsTable = pgTable(
     // footer / sitemap rails. Not every published app needs to be in
     // the global nav (e.g. a soft-launched beta that still has a
     // public page).
-    showInNav: text("show_in_nav").notNull().default("true"),
+    showInNav: boolean("show_in_nav").notNull().default(true),
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,

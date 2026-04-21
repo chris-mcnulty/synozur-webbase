@@ -5,6 +5,7 @@ import { ArrowRight, Linkedin, Twitter, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { getActiveApplications } from "@/data/applications";
 import {
   Turnstile,
   TURNSTILE_SITE_KEY,
@@ -104,14 +105,19 @@ function FooterSubscribeForm() {
 export function Footer() {
   // #103: applications column reads from the same API endpoint that
   // drives the header nav and the applications list page. Falls back to
-  // an empty list (leaving just "All Applications") when unreachable —
-  // the deploy target keeps working even if the API is offline.
+  // the static applications list when the API is empty or unreachable,
+  // preserving behaviour during migration from hardcoded nav entries.
   const applicationsQuery = useQuery({
     queryKey: ["applications", "nav"],
     queryFn: () => api.listApplications(true),
     staleTime: 5 * 60 * 1000,
   });
-  const footerApps = (applicationsQuery.data?.items ?? []).slice(0, 4);
+  const apiApps = applicationsQuery.data?.items ?? [];
+  const footerApps = (
+    apiApps.length > 0
+      ? apiApps
+      : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }))
+  ).slice(0, 4);
 
   return (
     <footer className="bg-card border-t border-border pt-16 pb-8">

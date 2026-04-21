@@ -87,13 +87,16 @@ export default function ApplicationDetail() {
     apiItems.length > 0 ? apiItems : getActiveApplications().map(staticAsDto);
   const others = pool.filter((a) => a.slug !== app.slug).slice(0, 3);
 
-  const releaseLabel = app.releaseDate
-    ? new Date(app.releaseDate).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : "";
+  const releaseLabel = (() => {
+    if (!app.releaseDate) return "";
+    const releaseDate = new Date(app.releaseDate);
+    if (isNaN(releaseDate.getTime())) return "";
+    return releaseDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  })();
 
   return (
     <div className="w-full">

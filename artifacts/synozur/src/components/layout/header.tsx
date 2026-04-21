@@ -3,6 +3,7 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type NavLink = { label: string; href: string };
@@ -62,7 +63,13 @@ export function Header() {
     queryFn: () => api.listApplications(true),
     staleTime: 5 * 60 * 1000,
   });
-  const navApplications = applicationsQuery.data?.items ?? [];
+  const navApplications =
+    (applicationsQuery.data?.items ?? []).length > 0
+      ? (applicationsQuery.data?.items ?? [])
+      : getActiveApplications().map((a) => ({
+          slug: a.slug,
+          name: a.name,
+        }));
 
   const pillars = (servicesQuery.data?.items ?? []).filter(
     (s) => s.slug !== "our-services",

@@ -133,7 +133,7 @@ async function main(): Promise<void> {
       logo: a.logo,
       screenshot: a.screenshot,
       userGuideUrl: null,
-      showInNav: "true" as const,
+      showInNav: true,
       status: "published" as const,
       publishedAt: new Date(),
       featuredRank: (i + 1) * 10,
