@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Quote } from "lucide-react";
 import { caseStudies } from "@/data/case-studies";
-import { clientLogos, type LogoEntry } from "@/data/logos";
+import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 
 const quotes = [
@@ -27,27 +27,6 @@ const quotes = [
   },
 ];
 
-function LogoCell({ entry }: { entry: LogoEntry }) {
-  const inner = (
-    <div className="aspect-[5/3] flex items-center justify-center px-6 py-5 transition-opacity group-hover:opacity-80">
-      <img
-        src={entry.src}
-        alt={`${entry.name} logo`}
-        loading="lazy"
-        className="max-h-12 md:max-h-14 max-w-[80%] w-auto h-auto object-contain"
-      />
-    </div>
-  );
-  return entry.href ? (
-    <a href={entry.href} className="group block" aria-label={entry.name}>
-      {inner}
-    </a>
-  ) : (
-    <div className="group" aria-label={entry.name}>
-      {inner}
-    </div>
-  );
-}
 
 export default function Clients() {
   return (
@@ -81,38 +60,6 @@ export default function Clients() {
             Trusted by
           </p>
           <LogoRotator logos={clientLogos} />
-        </div>
-      </section>
-
-      {/* Clients */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mb-10">
-            <p className="text-sm uppercase tracking-widest text-primary mb-3">
-              Clients
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold">
-              Selected client engagements
-            </h2>
-            <p className="text-muted-foreground mt-4">
-              Most of our clients prefer not to be named publicly. The named work below
-              has been published with their permission — see our case studies for the
-              full story.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-4">
-            {clientLogos.map((logo, i) => (
-              <motion.div
-                key={logo.name}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.03 }}
-              >
-                <LogoCell entry={logo} />
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
