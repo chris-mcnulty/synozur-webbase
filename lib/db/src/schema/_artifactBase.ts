@@ -57,7 +57,8 @@ export const artifactTimestamps = {
 
 // Runtime descriptor for an artifact type. Consumed by the route factory
 // and the sync-to-collateral helper. `entityType` must match the value in
-// `entity_type` polymorphic taxonomy joins — see ARTIFACT_ENTITY_TYPES.
+// `entity_type` polymorphic taxonomy joins — see `TAXONOMY_ENTITY_TYPES`
+// in `schema/taxonomy.ts` for the canonical list.
 export type ArtifactBaseRow = {
   id: string;
   slug: string;
