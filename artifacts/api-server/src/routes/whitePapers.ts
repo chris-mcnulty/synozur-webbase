@@ -113,7 +113,7 @@ router.get("/white-papers", async (req, res) => {
     .where(whereExpr)
     .orderBy(
       desc(whitePapersTable.featured),
-      asc(whitePapersTable.featuredRank),
+      sql`${whitePapersTable.featuredRank} asc nulls last`,
       desc(whitePapersTable.publishedAt),
     )
     .limit(pageSize)
