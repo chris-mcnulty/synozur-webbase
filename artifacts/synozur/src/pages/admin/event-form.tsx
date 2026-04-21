@@ -341,7 +341,7 @@ export default function EventForm({ id }: Props) {
         open={libraryMode !== null}
         onClose={() => setLibraryMode(null)}
         onSelect={handleSelectAsset}
-        selectedId={form.imageAssetId}
+        selectedId={libraryMode === "location" ? null : form.imageAssetId}
         category={libraryMode === "location" ? "location" : undefined}
       />
       </div>
