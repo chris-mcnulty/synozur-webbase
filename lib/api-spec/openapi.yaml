@@ -2526,6 +2526,11 @@ components:
         readingTimeMin:
           type: integer
           nullable: true
+        featured:
+          type: boolean
+        featuredRank:
+          type: integer
+          nullable: true
         categories:
           type: array
           items:
@@ -2601,6 +2606,11 @@ components:
         readingTimeMin:
           type: integer
           nullable: true
+        featured:
+          type: boolean
+        featuredRank:
+          type: integer
+          nullable: true
         categoryIds:
           type: array
           items:
@@ -2650,6 +2660,12 @@ components:
           type: string
           nullable: true
         readingTimeMin:
+          type: integer
+          nullable: true
+        featured:
+          type: boolean
+          nullable: true
+        featuredRank:
           type: integer
           nullable: true
         categoryIds:

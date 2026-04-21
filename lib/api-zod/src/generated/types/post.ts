@@ -29,6 +29,8 @@ export interface Post {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean;
+  featuredRank?: number | null;
   categories?: Category[];
   tags?: Tag[];
   createdAt: Date;

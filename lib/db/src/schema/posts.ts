@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   integer,
+  boolean,
   uniqueIndex,
   index,
   jsonb,
@@ -44,6 +45,8 @@ export const postsTable = pgTable(
       onDelete: "set null",
     }),
     readingTimeMin: integer("reading_time_min"),
+    featured: boolean("featured").notNull().default(false),
+    featuredRank: integer("featured_rank"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -52,6 +55,7 @@ export const postsTable = pgTable(
     uniqueIndex("posts_slug_key").on(t.slug),
     index("posts_status_published_at_idx").on(t.status, t.publishedAt),
     index("posts_status_scheduled_for_idx").on(t.status, t.scheduledFor),
+    index("posts_featured_rank_idx").on(t.featured, t.featuredRank),
   ],
 );
 

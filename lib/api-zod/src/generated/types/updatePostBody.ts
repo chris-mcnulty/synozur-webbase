@@ -19,6 +19,8 @@ export interface UpdatePostBody {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
+  featured?: boolean | null;
+  featuredRank?: number | null;
   categoryIds?: string[] | null;
   tagIds?: string[] | null;
 }

@@ -4,6 +4,7 @@ import {
   collateralTable,
   servicesTable,
   type Event,
+  type Post,
   type Video,
   type WhitePaper,
   type CaseStudy,
@@ -33,6 +34,7 @@ async function pillarToServiceId(pillar: string | null): Promise<string | null> 
 }
 
 const EVENT_SOURCE_PREFIX = "event:";
+const POST_SOURCE_PREFIX = "post:";
 const VIDEO_SOURCE_PREFIX = "video:";
 const WHITE_PAPER_SOURCE_PREFIX = "white_paper:";
 const CASE_STUDY_SOURCE_PREFIX = "case_study:";
@@ -40,6 +42,10 @@ const APPLICATION_SOURCE_PREFIX = "application:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
+}
+
+export function postSourceId(postId: string): string {
+  return `${POST_SOURCE_PREFIX}${postId}`;
 }
 
 export function videoSourceId(videoId: string): string {
@@ -97,8 +103,11 @@ export async function upsertCollateralFromEvent(
     subtitle: event.location ?? null,
     description,
     heroImage: imageUrl ?? "",
-    url: event.registrationUrl ?? "",
-    external: Boolean(event.registrationUrl),
+    // When an event is syndicated into the library / carousel, link to our
+    // own event page — not the external registration URL. The registration
+    // CTA still lives on the event detail page for visitors who want it.
+    url: `/events/${event.slug}`,
+    external: false,
     publishedAt: event.startDate,
     featured: event.featured,
     featuredRank: event.featuredRank,
@@ -201,6 +210,75 @@ export async function upsertCollateralFromVideo(video: Video): Promise<void> {
 
 export async function softDeleteCollateralForVideo(videoId: string): Promise<void> {
   const sourceId = videoSourceId(videoId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
+}
+
+// Blog posts only flow into the library when an editor explicitly marks
+// them as featured. Most posts stay on /insights only — the library row is
+// there to make a handful of high-signal posts discoverable from
+// resource-rail queries (e.g. "Resources for AI") and, more rarely, from
+// the home-page carousel.
+export async function upsertCollateralFromPost(
+  post: Post,
+  heroImageUrl: string | null,
+): Promise<void> {
+  const sourceId = postSourceId(post.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const isEligible =
+    post.featured && post.status === "published" && !post.deletedAt;
+
+  // A previously-featured post that is now unfeatured / unpublished /
+  // deleted should drop out of the library without losing its row, so an
+  // editor re-flipping the flag restores it cleanly.
+  if (!isEligible) {
+    if (existing) {
+      await softDeleteCollateralForPost(post.id);
+    }
+    return;
+  }
+
+  const now = new Date();
+  const syncedFields = {
+    type: "insight" as const,
+    title: post.title,
+    subtitle: post.subtitle ?? null,
+    description: post.excerpt ?? "",
+    heroImage: heroImageUrl ?? "",
+    url: `/insights/${post.slug}`,
+    external: false,
+    publishedAt: post.publishedAt,
+    featured: post.featured,
+    featuredRank: post.featuredRank,
+    active: true,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({ ...syncedFields, deletedAt: null })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(post.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    tags: [],
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForPost(postId: string): Promise<void> {
+  const sourceId = postSourceId(postId);
   const now = new Date();
   await db
     .update(collateralTable)
