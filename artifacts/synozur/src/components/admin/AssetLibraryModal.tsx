@@ -27,9 +27,15 @@ import {
 } from "@workspace/api-zod";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+// Thumb size chosen to look sharp at 200–220px display width on 2x screens.
+const THUMB_WIDTH = 400;
 
 function assetUrl(asset: Asset): string {
   return `${BASE_PATH}/api/storage${asset.storageKey}`;
+}
+
+function assetThumbUrl(asset: Asset): string {
+  return `${assetUrl(asset)}?w=${THUMB_WIDTH}`;
 }
 
 interface Props {
@@ -163,8 +169,8 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
             </Select>
           )}
           <ObjectUploader
-            maxNumberOfFiles={5}
-            maxFileSize={10 * 1024 * 1024}
+            maxNumberOfFiles={50}
+            maxFileSize={25 * 1024 * 1024}
             buttonClassName="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
             onGetUploadParameters={async (file) => {
               const { uploadURL } = await api.requestUploadUrl({
@@ -233,9 +239,13 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
                   >
                     {a.mimeType.startsWith("image/") ? (
                       <img
-                        src={assetUrl(a)}
+                        src={assetThumbUrl(a)}
                         alt={a.originalName}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        width={THUMB_WIDTH}
+                        height={THUMB_WIDTH}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground p-2 break-all">

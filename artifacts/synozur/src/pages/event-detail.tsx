@@ -1,9 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { Calendar, MapPin, ExternalLink, ArrowLeft, Clock } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  ExternalLink,
+  ArrowLeft,
+  Clock,
+  Facebook,
+  Linkedin,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { Meta } from "@/lib/meta";
 import { Button } from "@/components/ui/button";
+import { startOfCurrentWeek } from "@/lib/eventTime";
 
 function formatDate(iso: string | Date): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -20,6 +29,20 @@ function formatTime(iso: string | Date): string {
     minute: "2-digit",
     timeZoneName: "short",
   });
+}
+
+function XIcon({ className }: { className?: string }) {
+  // Lucide doesn't ship an X/Twitter glyph; inline SVG keeps us off extra deps.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M18.244 2H21.5l-7.52 8.593L22.9 22h-6.93l-5.43-6.84L4.2 22H.94l8.04-9.194L1.1 2h7.09l4.9 6.28L18.244 2Zm-1.22 18h1.913L7.07 4H5.05l11.974 16Z" />
+    </svg>
+  );
 }
 
 export default function EventDetail() {
@@ -56,20 +79,35 @@ export default function EventDetail() {
     );
   }
 
-  const now = Date.now();
+  const weekStart = startOfCurrentWeek();
   const isPast =
-    new Date(event.startDate).getTime() < now || event.status === "ENDED";
+    new Date(event.startDate).getTime() < weekStart || event.status === "ENDED";
   const canRegister =
     !isPast &&
     (event.registrationStatus === "OPEN" ||
       event.registrationStatus === "OPEN_EXTERNAL") &&
     event.registrationUrl;
 
+  const shareUrl =
+    typeof window !== "undefined" ? window.location.href : "";
+  const shareTitle = event.title;
+  const facebookShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  const xShare = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
+  const linkedinShare = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+
+  const mapSrc = event.location
+    ? `https://www.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`
+    : null;
+
   return (
     <div className="w-full">
       <Meta
         title={event.title}
-        description={event.description ?? `${event.title} — Synozur Alliance event.`}
+        description={
+          event.teaser ??
+          event.description ??
+          `${event.title} — Synozur Alliance event.`
+        }
       />
 
       {/* Hero */}
@@ -105,12 +143,22 @@ export default function EventDetail() {
                 {event.eventType}
               </p>
             )}
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
               {event.title}
             </h1>
 
+            {event.teaser && (
+              <p
+                className="text-lg text-muted-foreground leading-relaxed mb-8"
+                data-testid="text-event-teaser"
+              >
+                {event.teaser}
+              </p>
+            )}
+
             {event.description && (
               <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed">
+                <h2 className="text-xl font-semibold mb-4">About the event</h2>
                 {event.description.split("\n").map((para, i) =>
                   para.trim() ? (
                     <p key={i} className="mb-4">
@@ -120,6 +168,56 @@ export default function EventDetail() {
                 )}
               </div>
             )}
+
+            {mapSrc && (
+              <div className="mt-10" data-testid="event-map">
+                <iframe
+                  title={`Map of ${event.location}`}
+                  src={mapSrc}
+                  width="100%"
+                  height="320"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="rounded-lg border border-border"
+                />
+              </div>
+            )}
+
+            <div className="mt-10 pt-6 border-t border-border">
+              <p className="text-sm font-medium mb-3">Share this event</p>
+              <div className="flex items-center gap-3">
+                <a
+                  href={facebookShare}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label="Share on Facebook"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                  data-testid="share-facebook"
+                >
+                  <Facebook className="h-4 w-4" />
+                </a>
+                <a
+                  href={xShare}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label="Share on X"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                  data-testid="share-x"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </a>
+                <a
+                  href={linkedinShare}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label="Share on LinkedIn"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
+                  data-testid="share-linkedin"
+                >
+                  <Linkedin className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}

@@ -4,6 +4,7 @@ import { Calendar, MapPin, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
+import { startOfCurrentWeek } from "@/lib/eventTime";
 
 function formatDate(iso: string | Date): string {
   const d = new Date(iso);
@@ -112,13 +113,13 @@ export default function EventsPage() {
     queryFn: () => api.publicEvents(),
   });
 
-  const now = Date.now();
+  const weekStart = startOfCurrentWeek();
   const events = data ?? [];
   const upcoming = events
-    .filter((e) => new Date(e.startDate).getTime() >= now && e.status !== "ENDED")
+    .filter((e) => new Date(e.startDate).getTime() >= weekStart && e.status !== "ENDED")
     .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   const past = events
-    .filter((e) => new Date(e.startDate).getTime() < now || e.status === "ENDED")
+    .filter((e) => new Date(e.startDate).getTime() < weekStart || e.status === "ENDED")
     .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
   return (

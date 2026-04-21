@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/['"\u2018\u2019\u201C\u201D]/g, "")
+    .replace(/['"‘’“”]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
@@ -55,67 +55,129 @@ function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim().length > 0));
 }
 
-async function main() {
-  const csvPath = resolve(
-    process.cwd(),
-    "../../attached_assets/events_1776704614264.csv",
-  );
-  const raw = readFileSync(csvPath, "utf8").replace(/^\uFEFF/, "");
-  const rows = parseCsv(raw);
+export interface SeedEventsResult {
+  inserted: number;
+  updated: number;
+  skipped: number;
+}
+
+const REQUIRED_HEADERS = ["title", "start date", "location", "registration", "type", "status"];
+
+export async function seedEventsFromCsv(raw: string): Promise<SeedEventsResult> {
+  const rows = parseCsv(raw.replace(/^\uFEFF/, ""));
   const [header, ...data] = rows;
   const idx = (name: string) => header.indexOf(name);
+
+  // Validate that all required headers are present before processing any rows.
+  const missingHeaders = REQUIRED_HEADERS.filter((h) => idx(h) === -1);
+  if (missingHeaders.length > 0) {
+    throw new Error(`CSV is missing required headers: ${missingHeaders.join(", ")}`);
+  }
+
   const titleIdx = idx("title");
   const startIdx = idx("start date");
   const locIdx = idx("location");
   const regIdx = idx("registration");
   const typeIdx = idx("type");
   const statusIdx = idx("status");
+  const slugColIdx = idx("slug");
+  const teaserIdx = idx("teaser");
+  const descriptionIdx = idx("description");
 
   let inserted = 0;
+  let updated = 0;
   let skipped = 0;
   const usedSlugs = new Set<string>();
+
   for (const row of data) {
     const title = row[titleIdx]?.trim();
     const start = row[startIdx]?.trim();
-    if (!title || !start) continue;
-
-    let slug = slugify(title);
-    let candidate = slug;
-    let n = 2;
-    while (usedSlugs.has(candidate)) {
-      candidate = `${slug}-${n++}`;
+    if (!title || !start) {
+      skipped++;
+      continue;
     }
-    slug = candidate;
+
+    // Use an explicit slug column when present (stable across title renames).
+    // Fall back to generating a slug from the title and de-duplicating it.
+    const csvSlug = slugColIdx !== -1 ? row[slugColIdx]?.trim() : null;
+    let slug: string;
+    if (csvSlug) {
+      slug = csvSlug;
+    } else {
+      const base = slugify(title);
+      let candidate = base;
+      let n = 2;
+      while (usedSlugs.has(candidate)) candidate = `${base}-${n++}`;
+      slug = candidate;
+    }
     usedSlugs.add(slug);
+
+    // Fields that are always sourced from CSV (present in every export).
+    const baseValues = {
+      startDate: new Date(start),
+      location: row[locIdx]?.trim() || null,
+      registrationStatus: row[regIdx]?.trim() || "UNKNOWN_REGISTRATION_STATUS",
+      eventType: row[typeIdx]?.trim() || "RSVP",
+      status: row[statusIdx]?.trim() || "UPCOMING",
+    };
+
+    // Optional columns — only applied when the CSV actually contains them.
+    // This lets the default Wix export preserve user-edited teaser/description
+    // values in the DB, while a reload CSV with those columns overrides them.
+    const optional: { teaser?: string | null; description?: string | null } = {};
+    if (teaserIdx !== -1) optional.teaser = row[teaserIdx]?.trim() || null;
+    if (descriptionIdx !== -1)
+      optional.description = row[descriptionIdx]?.trim() || null;
 
     const existing = await db
       .select({ id: eventsTable.id })
       .from(eventsTable)
       .where(eq(eventsTable.slug, slug));
-    if (existing.length > 0) {
-      skipped++;
-      continue;
-    }
 
-    await db.insert(eventsTable).values({
-      title,
-      slug,
-      startDate: new Date(start),
-      location: row[locIdx]?.trim() || null,
-      registrationStatus:
-        row[regIdx]?.trim() || "UNKNOWN_REGISTRATION_STATUS",
-      eventType: row[typeIdx]?.trim() || "RSVP",
-      status: row[statusIdx]?.trim() || "UPCOMING",
-    });
-    inserted++;
+    if (existing.length > 0) {
+      await db
+        .update(eventsTable)
+        .set({ title, ...baseValues, ...optional })
+        .where(eq(eventsTable.id, existing[0].id));
+      updated++;
+    } else {
+      await db.insert(eventsTable).values({
+        title,
+        slug,
+        ...baseValues,
+        ...optional,
+      });
+      inserted++;
+    }
   }
-  console.log(`Seed complete. Inserted ${inserted}, skipped ${skipped}.`);
+  return { inserted, updated, skipped };
 }
 
-main().then(
-  () => process.exit(0),
-  (err) => {
-    console.error(err);
-    process.exit(1);
-  },
-);
+async function main() {
+  const csvPath = resolve(
+    process.cwd(),
+    "../../attached_assets/events_1776704614264.csv",
+  );
+  const raw = readFileSync(csvPath, "utf8");
+  const result = await seedEventsFromCsv(raw);
+  console.log(
+    `Seed complete. Inserted ${result.inserted}, updated ${result.updated}, skipped ${result.skipped}.`,
+  );
+}
+
+// Only execute as a script when invoked directly (not when imported by routes).
+const invokedDirectly =
+  typeof process !== "undefined" &&
+  Array.isArray(process.argv) &&
+  process.argv[1] &&
+  /seedEvents\.(ts|mts|cjs|mjs|js)$/.test(process.argv[1]);
+
+if (invokedDirectly) {
+  main().then(
+    () => process.exit(0),
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    },
+  );
+}

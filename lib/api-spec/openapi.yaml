@@ -3080,6 +3080,10 @@ components:
           type:
             - string
             - 'null'
+        teaser:
+          type:
+            - string
+            - 'null'
         description:
           type:
             - string
@@ -3122,6 +3126,10 @@ components:
           type:
             - string
             - 'null'
+        teaser:
+          type:
+            - string
+            - 'null'
         description:
           type:
             - string
@@ -3136,6 +3144,12 @@ components:
           type: string
         status:
           type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
         imageAssetId:
           type:
             - integer
@@ -3341,6 +3355,10 @@ components:
           type:
             - string
             - 'null'
+        teaser:
+          type:
+            - string
+            - 'null'
         description:
           type:
             - string
@@ -3355,6 +3373,12 @@ components:
           type: string
         status:
           type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
         imageAssetId:
           type:
             - integer

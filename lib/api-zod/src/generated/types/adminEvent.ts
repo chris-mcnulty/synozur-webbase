@@ -14,12 +14,17 @@ export interface AdminEvent {
   /** @nullable */
   location?: string | null;
   /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
   description?: string | null;
   /** @nullable */
   registrationUrl?: string | null;
   registrationStatus: string;
   eventType: string;
   status: string;
+  featured?: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
   /** @nullable */

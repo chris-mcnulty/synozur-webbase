@@ -41,11 +41,14 @@ export default function EventForm({ id }: Props) {
     slug: "",
     startDate: new Date(),
     location: null,
+    teaser: null,
     description: null,
     registrationUrl: null,
     registrationStatus: "UNKNOWN_REGISTRATION_STATUS",
     eventType: "RSVP",
     status: "UPCOMING",
+    featured: false,
+    featuredRank: null,
     imageAssetId: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -66,11 +69,14 @@ export default function EventForm({ id }: Props) {
         slug: existing.slug,
         startDate: existing.startDate,
         location: existing.location,
+        teaser: existing.teaser,
         description: existing.description,
         registrationUrl: existing.registrationUrl,
         registrationStatus: existing.registrationStatus,
         eventType: existing.eventType,
         status: existing.status,
+        featured: existing.featured ?? false,
+        featuredRank: existing.featuredRank ?? null,
         imageAssetId: existing.imageAssetId,
       });
       setImagePreview(existing.imageUrl ?? null);
@@ -178,10 +184,24 @@ export default function EventForm({ id }: Props) {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="teaser">Teaser</Label>
+          <Textarea
+            id="teaser"
+            rows={2}
+            placeholder="One or two sentences shown under the event title."
+            value={form.teaser ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, teaser: e.target.value || null })
+            }
+            data-testid="input-teaser"
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
-            rows={4}
+            rows={6}
             value={form.description ?? ""}
             onChange={(e) =>
               setForm({ ...form, description: e.target.value || null })
@@ -252,6 +272,56 @@ export default function EventForm({ id }: Props) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="rounded-md border border-border p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <input
+              id="featured"
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+              checked={Boolean(form.featured)}
+              onChange={(e) =>
+                setForm({ ...form, featured: e.target.checked })
+              }
+              data-testid="checkbox-featured"
+            />
+            <div className="flex-1">
+              <Label htmlFor="featured" className="cursor-pointer">
+                Feature on home page
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                When on, this event appears as a candidate in the "From The Feed"
+                home-page carousel. Syncs to the collateral library on save.
+              </p>
+            </div>
+          </div>
+          {form.featured && (
+            <div className="space-y-2 pl-7">
+              <Label htmlFor="featuredRank">Featured rank (lower first)</Label>
+              <Input
+                id="featuredRank"
+                type="number"
+                min={0}
+                step={1}
+                placeholder="Leave blank to sort by publish date"
+                value={form.featuredRank ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setForm({ ...form, featuredRank: null });
+                    return;
+                  }
+                  const n = Number.parseInt(raw, 10);
+                  setForm({
+                    ...form,
+                    featuredRank: Number.isFinite(n) ? n : null,
+                  });
+                }}
+                data-testid="input-featuredRank"
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
