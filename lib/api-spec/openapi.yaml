@@ -2664,7 +2664,6 @@ components:
           nullable: true
         featured:
           type: boolean
-          nullable: true
         featuredRank:
           type: integer
           nullable: true
