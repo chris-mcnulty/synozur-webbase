@@ -95,6 +95,8 @@ function adminShape(event: Event, imageUrl: string | null) {
     registrationStatus: event.registrationStatus,
     eventType: event.eventType,
     status: event.status,
+    featured: event.featured,
+    featuredRank: event.featuredRank,
     imageAssetId: event.imageAssetId,
     imageUrl,
     createdAt: event.createdAt,
@@ -168,6 +170,8 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       registrationStatus: parsed.data.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS",
       eventType: parsed.data.eventType ?? "RSVP",
       status: parsed.data.status ?? "UPCOMING",
+      featured: parsed.data.featured ?? false,
+      featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
     })
     .returning();
@@ -209,6 +213,8 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       registrationStatus: parsed.data.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS",
       eventType: parsed.data.eventType ?? "RSVP",
       status: parsed.data.status ?? "UPCOMING",
+      featured: parsed.data.featured ?? false,
+      featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
     })
     .where(eq(eventsTable.id, params.data.id))

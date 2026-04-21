@@ -85,15 +85,23 @@ export async function upsertCollateralFromEvent(
   const active = event.status !== "CANCELLED";
   const now = new Date();
 
+  // Prefer description; fall back to teaser so feature-card copy isn't blank
+  // for CSV-imported events (Wix export has no description column).
+  const description = event.description?.trim()
+    ? event.description
+    : (event.teaser ?? "");
+
   const syncedFields = {
     type: "event" as const,
     title: event.title,
     subtitle: event.location ?? null,
-    description: event.description ?? "",
+    description,
     heroImage: imageUrl ?? "",
     url: event.registrationUrl ?? "",
     external: Boolean(event.registrationUrl),
     publishedAt: event.startDate,
+    featured: event.featured,
+    featuredRank: event.featuredRank,
     active,
     updatedAt: now,
   };
@@ -114,8 +122,6 @@ export async function upsertCollateralFromEvent(
     ...syncedFields,
     slug,
     tags: [],
-    featured: false,
-    featuredRank: null,
     sourceId,
   });
 }

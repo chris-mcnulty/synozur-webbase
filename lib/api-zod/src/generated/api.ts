@@ -1898,6 +1898,8 @@ export const ListAdminEventsResponseItem = zod.object({
   registrationStatus: zod.string(),
   eventType: zod.string(),
   status: zod.string(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
@@ -1920,6 +1922,8 @@ export const CreateEventBody = zod.object({
   registrationStatus: zod.string().optional(),
   eventType: zod.string().optional(),
   status: zod.string().optional(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
 });
 
@@ -1939,6 +1943,8 @@ export const GetAdminEventResponse = zod.object({
   registrationStatus: zod.string(),
   eventType: zod.string(),
   status: zod.string(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
@@ -1960,6 +1966,8 @@ export const UpdateEventBody = zod.object({
   registrationStatus: zod.string().optional(),
   eventType: zod.string().optional(),
   status: zod.string().optional(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
 });
 
@@ -1975,6 +1983,8 @@ export const UpdateEventResponse = zod.object({
   registrationStatus: zod.string(),
   eventType: zod.string(),
   status: zod.string(),
+  featured: zod.boolean().optional(),
+  featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),

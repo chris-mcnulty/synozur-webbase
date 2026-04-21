@@ -23,6 +23,9 @@ export interface EventInput {
   registrationStatus?: string;
   eventType?: string;
   status?: string;
+  featured?: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
 }

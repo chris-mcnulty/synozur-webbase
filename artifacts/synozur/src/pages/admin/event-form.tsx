@@ -47,6 +47,8 @@ export default function EventForm({ id }: Props) {
     registrationStatus: "UNKNOWN_REGISTRATION_STATUS",
     eventType: "RSVP",
     status: "UPCOMING",
+    featured: false,
+    featuredRank: null,
     imageAssetId: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -73,6 +75,8 @@ export default function EventForm({ id }: Props) {
         registrationStatus: existing.registrationStatus,
         eventType: existing.eventType,
         status: existing.status,
+        featured: existing.featured ?? false,
+        featuredRank: existing.featuredRank ?? null,
         imageAssetId: existing.imageAssetId,
       });
       setImagePreview(existing.imageUrl ?? null);
@@ -268,6 +272,56 @@ export default function EventForm({ id }: Props) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="rounded-md border border-border p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <input
+              id="featured"
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+              checked={Boolean(form.featured)}
+              onChange={(e) =>
+                setForm({ ...form, featured: e.target.checked })
+              }
+              data-testid="checkbox-featured"
+            />
+            <div className="flex-1">
+              <Label htmlFor="featured" className="cursor-pointer">
+                Feature on home page
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                When on, this event appears as a candidate in the "From The Feed"
+                home-page carousel. Syncs to the collateral library on save.
+              </p>
+            </div>
+          </div>
+          {form.featured && (
+            <div className="space-y-2 pl-7">
+              <Label htmlFor="featuredRank">Featured rank (lower first)</Label>
+              <Input
+                id="featuredRank"
+                type="number"
+                min={0}
+                step={1}
+                placeholder="Leave blank to sort by publish date"
+                value={form.featuredRank ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setForm({ ...form, featuredRank: null });
+                    return;
+                  }
+                  const n = Number.parseInt(raw, 10);
+                  setForm({
+                    ...form,
+                    featuredRank: Number.isFinite(n) ? n : null,
+                  });
+                }}
+                data-testid="input-featuredRank"
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

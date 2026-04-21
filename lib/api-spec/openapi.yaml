@@ -3144,6 +3144,12 @@ components:
           type: string
         status:
           type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
         imageAssetId:
           type:
             - integer
@@ -3367,6 +3373,12 @@ components:
           type: string
         status:
           type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
         imageAssetId:
           type:
             - integer
