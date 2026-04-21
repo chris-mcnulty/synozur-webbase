@@ -1,18 +1,12 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUser, useClerk } from "@clerk/react";
-import { Pencil, Trash2, Plus, LogOut, Inbox, Settings, Upload } from "lucide-react";
+import { Pencil, Trash2, Plus, Upload, Calendar, Star } from "lucide-react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { api } from "@/lib/api";
-import { useState } from "react";
+
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 function formatDate(iso: string | Date): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -22,15 +16,29 @@ function formatDate(iso: string | Date): string {
   });
 }
 
+function statusBadge(status: string) {
+  const map: Record<string, string> = {
+    UPCOMING: "bg-emerald-500/15 text-emerald-400",
+    ENDED: "bg-muted text-muted-foreground",
+    CANCELLED: "bg-destructive/15 text-destructive",
+  };
+  return (
+    <span className={`text-xs font-medium uppercase tracking-wide px-2 py-0.5 rounded ${map[status] ?? "bg-muted text-muted-foreground"}`}>
+      {status}
+    </span>
+  );
+}
+
 export default function AdminEventsList() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
   const qc = useQueryClient();
-  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["admin-events"],
     queryFn: () => api.adminEvents(),
+    select: (data) =>
+      [...data].sort(
+        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
+      ),
   });
 
   const deleteMutation = useMutation({
@@ -41,7 +49,10 @@ export default function AdminEventsList() {
   const [seedResult, setSeedResult] = useState<string | null>(null);
   const seedMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${baseUrl}/api/admin/seed-events`, { method: "POST", credentials: "include" });
+      const res = await fetch(`${BASE_PATH}/api/admin/seed-events`, {
+        method: "POST",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error(await res.text());
       return res.json() as Promise<{ inserted: number; skipped: number }>;
     },
@@ -49,124 +60,137 @@ export default function AdminEventsList() {
       setSeedResult(`Done — ${data.inserted} inserted, ${data.skipped} skipped.`);
       qc.invalidateQueries({ queryKey: ["admin-events"] });
     },
-    onError: (err: any) => setSeedResult(`Error: ${err.message}`),
+    onError: (err: unknown) =>
+      setSeedResult(`Error: ${err instanceof Error ? err.message : String(err)}`),
   });
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <AdminLayout>
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Events Admin</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Signed in as {user?.primaryEmailAddress?.emailAddress}
+          <h1 className="text-2xl font-bold">Events</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {events.length} event{events.length !== 1 ? "s" : ""} total
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/submissions">
-            <Button variant="outline" data-testid="button-view-submissions">
-              <Inbox className="h-4 w-4 mr-2" /> Submissions
-            </Button>
-          </Link>
-          <Link href="/site-settings">
-            <Button variant="outline" data-testid="button-site-settings">
-              <Settings className="h-4 w-4 mr-2" /> Site settings
-            </Button>
-          </Link>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
-              if (confirm("Seed events from the CSV export? Existing slugs will be skipped.")) {
+              if (
+                confirm(
+                  "Seed events from the CSV export? Existing slugs will be updated.",
+                )
+              ) {
                 seedMutation.mutate();
               }
             }}
             disabled={seedMutation.isPending}
             data-testid="button-seed-events"
           >
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload className="h-4 w-4 mr-1.5" />
             {seedMutation.isPending ? "Seeding…" : "Seed from CSV"}
           </Button>
           <Link href="/events/new">
-            <Button data-testid="button-new-event">
-              <Plus className="h-4 w-4 mr-2" /> New Event
+            <Button size="sm" data-testid="button-new-event">
+              <Plus className="h-4 w-4 mr-1.5" /> New Event
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            onClick={() => signOut({ redirectUrl: `${baseUrl || ""}/` })}
-            data-testid="button-sign-out"
-          >
-            <LogOut className="h-4 w-4 mr-2" /> Sign out
-          </Button>
         </div>
       </div>
 
       {seedResult && (
-        <div className="mb-4 px-4 py-2 rounded bg-muted text-sm text-muted-foreground flex items-center justify-between">
+        <div className="mb-4 px-4 py-2 rounded-md bg-muted text-sm text-muted-foreground flex items-center justify-between">
           <span>{seedResult}</span>
-          <button onClick={() => setSeedResult(null)} className="ml-4 text-xs underline">Dismiss</button>
+          <button
+            onClick={() => setSeedResult(null)}
+            className="ml-4 text-xs underline hover:text-foreground transition-colors"
+          >
+            Dismiss
+          </button>
         </div>
       )}
+
       {isLoading ? (
-        <div className="text-muted-foreground">Loading…</div>
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <div className="text-center py-20 text-muted-foreground">
+          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          <p>No events yet.</p>
+        </div>
       ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No events yet.
-                  </TableCell>
-                </TableRow>
-              )}
-              {events.map((e) => (
-                <TableRow key={e.id} data-testid={`row-event-${e.id}`}>
-                  <TableCell className="font-medium">{e.title}</TableCell>
-                  <TableCell>{formatDate(e.startDate)}</TableCell>
-                  <TableCell>
-                    <span className="text-xs uppercase tracking-wide px-2 py-1 rounded bg-muted">
-                      {e.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-[300px] truncate">
-                    {e.location ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex gap-2">
-                      <Link href={`/events/${e.id}`}>
-                        <Button variant="ghost" size="icon" data-testid={`button-edit-${e.id}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (confirm(`Delete event "${e.title}"?`)) {
-                            deleteMutation.mutate(e.id);
-                          }
-                        }}
-                        data-testid={`button-delete-${e.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="rounded-xl border border-border overflow-hidden">
+          {events.map((e, idx) => (
+            <div
+              key={e.id}
+              data-testid={`row-event-${e.id}`}
+              className={`flex items-center gap-4 px-4 py-3 hover:bg-muted/40 transition-colors ${idx !== events.length - 1 ? "border-b border-border" : ""}`}
+            >
+              {/* Thumbnail */}
+              <div className="w-16 h-12 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                {e.imageUrl ? (
+                  <img
+                    src={e.imageUrl}
+                    alt={e.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Calendar className="h-5 w-5 text-muted-foreground/40" />
+                )}
+              </div>
+
+              {/* Title + meta */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium text-sm truncate">{e.title}</p>
+                  {e.featured && (
+                    <Star className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-label="Featured" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formatDate(e.startDate)}
+                  {e.location ? ` · ${e.location}` : ""}
+                </p>
+              </div>
+
+              {/* Status */}
+              <div className="hidden sm:block shrink-0">{statusBadge(e.status)}</div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Link href={`/events/${e.id}`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    data-testid={`button-edit-${e.id}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm(`Delete event "${e.title}"?`)) {
+                      deleteMutation.mutate(e.id);
+                    }
+                  }}
+                  data-testid={`button-delete-${e.id}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
