@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
+import { useTheme } from "@/context/theme";
 import {
   LayoutDashboard,
   FileText,
@@ -167,6 +168,7 @@ export function AdminLayout({
   const [location, navigate] = useLocation();
   const { signOut } = useClerk();
   const { access } = useAdminAccess();
+  const { theme } = useTheme();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const items = NAV.filter((n) => n.show(access));
@@ -177,7 +179,7 @@ export function AdminLayout({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <div className={cn("min-h-screen bg-background text-foreground", theme)}>
       <div className="flex">
         <aside className="w-60 shrink-0 border-r border-border min-h-screen sticky top-0 hidden md:flex flex-col">
           <div className="p-5 border-b border-border">
