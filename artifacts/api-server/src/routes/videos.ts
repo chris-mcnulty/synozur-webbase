@@ -111,7 +111,7 @@ router.get("/videos", async (req, res) => {
     .where(whereExpr)
     .orderBy(
       desc(videosTable.featured),
-      asc(videosTable.featuredRank),
+      sql`${videosTable.featuredRank} asc nulls last`,
       desc(videosTable.publishedAt),
       desc(videosTable.recordedAt),
     )
