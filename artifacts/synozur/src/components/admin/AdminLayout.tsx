@@ -17,6 +17,7 @@ import {
   Layers,
   Library as LibraryIcon,
   CornerDownRight,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -79,6 +80,13 @@ const NAV: NavItem[] = [
     icon: LibraryIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-collateral",
+  },
+  {
+    href: "/workshops",
+    label: "Workshops",
+    icon: GraduationCap,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-workshops",
   },
   {
     href: "/comments",

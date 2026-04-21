@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Clock, Monitor } from "lucide-react";
-import { workshops } from "@/data/workshops";
+import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { cn } from "@/lib/utils";
 
 const ALL = "All";
@@ -11,15 +12,20 @@ const ALL = "All";
 export default function Workshops() {
   const [category, setCategory] = useState<string>(ALL);
 
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["public-workshops"],
+    queryFn: () => workshopsApi.listPublic(),
+  });
+  const workshops: WorkshopDto[] = data?.items ?? [];
+
   const categories = useMemo(
-    () => [ALL, ...Array.from(new Set(workshops.map((w) => w.category)))],
-    [],
+    () => [ALL, ...Array.from(new Set(workshops.map((w) => w.category).filter(Boolean)))],
+    [workshops],
   );
 
   const filtered = useMemo(
-    () =>
-      workshops.filter((w) => category === ALL || w.category === category),
-    [category],
+    () => workshops.filter((w) => category === ALL || w.category === category),
+    [category, workshops],
   );
 
   const isFiltered = category !== ALL;
@@ -91,7 +97,21 @@ export default function Workshops() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div
+              className="rounded-2xl border border-dashed border-border bg-card/50 py-20 text-center px-6"
+              data-testid="workshop-loading"
+            >
+              <p className="text-muted-foreground">Loading workshops…</p>
+            </div>
+          ) : isError ? (
+            <div
+              className="rounded-2xl border border-dashed border-destructive/40 bg-card/50 py-20 text-center px-6"
+              data-testid="workshop-error"
+            >
+              <p className="text-destructive">Failed to load workshops. Please try again.</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div
               className="rounded-2xl border border-dashed border-border bg-card/50 py-20 text-center px-6"
               data-testid="workshop-empty"

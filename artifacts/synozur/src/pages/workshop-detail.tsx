@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -12,7 +13,7 @@ import {
   UserCheck,
   ListChecks,
 } from "lucide-react";
-import { workshops, getWorkshopBySlug, type CTA } from "@/data/workshops";
+import { workshopsApi, WorkshopsApiError, type WorkshopCTA as CTA } from "@/lib/api-workshops";
 import NotFound from "@/pages/not-found";
 
 function isExternal(href: string) {
@@ -80,13 +81,45 @@ function BulletList({ items }: { items: string[] }) {
 export default function WorkshopDetail() {
   const [, params] = useRoute("/workshops/:slug");
   const slug = params?.slug;
-  const w = slug ? getWorkshopBySlug(slug) : undefined;
 
+  const detailQ = useQuery({
+    queryKey: ["public-workshop", slug],
+    queryFn: () => workshopsApi.getPublic(slug!),
+    enabled: !!slug,
+    retry: false,
+  });
+  const listQ = useQuery({
+    queryKey: ["public-workshops"],
+    queryFn: () => workshopsApi.listPublic(),
+  });
+
+  if (detailQ.isLoading) {
+    return (
+      <div className="w-full py-24 text-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  if (detailQ.isError) {
+    const is404 =
+      detailQ.error instanceof WorkshopsApiError && detailQ.error.status === 404;
+    if (is404) return <NotFound />;
+    return (
+      <div className="w-full py-24 text-center text-destructive">
+        Failed to load workshop. Please try again.
+      </div>
+    );
+  }
+
+  const w = detailQ.data;
   if (!w) {
     return <NotFound />;
   }
 
-  const more = workshops.filter((x) => x.slug !== w.slug).slice(0, 3);
+  const more = (listQ.data?.items ?? [])
+    .filter((x) => x.slug !== w.slug)
+    .slice(0, 3);
 
   return (
     <div className="w-full">
