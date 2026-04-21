@@ -7,7 +7,8 @@ import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type NavLink = { label: string; href: string };
-type NavGroup = { title: string; links: NavLink[]; nested?: { label: string; href: string; children: NavLink[] }[] };
+type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
+type NavGroup = { title: string; links: NavLink[]; nested?: NestedSection[] };
 
 const LOGO_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
 
@@ -101,7 +102,7 @@ export function Header() {
     {
       title: "The Feed",
       links: [
-        { label: "Insights", href: "/insights" },
+        { label: "Insights Blog", href: "/insights" },
         { label: "Polaris Podcast", href: "/polaris" },
         { label: "Case Studies", href: "/case-studies" },
         { label: "Events", href: "/events" },
@@ -114,12 +115,18 @@ export function Header() {
         { label: "White Papers", href: "/items" },
         { label: "Workshops", href: "/workshops" },
         { label: "Browse Library", href: "/library" },
-        { label: "All Applications", href: "/applications" },
-        ...navApplications.map((a) => ({
-          label: a.name,
-          href: `/applications/${a.slug}`,
-        })),
-      ]
+      ],
+      nested: [
+        {
+          sectionTitle: "Applications",
+          label: "All Applications",
+          href: "/applications",
+          children: navApplications.map((a) => ({
+            label: a.name,
+            href: `/applications/${a.slug}`,
+          })),
+        },
+      ],
     }
   ];
 
@@ -155,17 +162,22 @@ export function Header() {
                   ))}
                   {group.nested && group.nested.length > 0 ? (
                     <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
-                      {group.nested.map((pillar) => (
-                        <div key={pillar.label}>
+                      {group.nested.map((section) => (
+                        <div key={section.label}>
+                          {section.sectionTitle ? (
+                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">
+                              {section.sectionTitle}
+                            </p>
+                          ) : null}
                           <Link
-                            href={pillar.href}
+                            href={section.href}
                             className="block text-sm font-semibold text-popover-foreground hover:text-primary px-3 py-1 rounded-md"
                           >
-                            {pillar.label}
+                            {section.label}
                           </Link>
-                          {pillar.children.length > 0 ? (
+                          {section.children.length > 0 ? (
                             <ul className="pl-3 mt-1 space-y-0.5">
-                              {pillar.children.map((c) => (
+                              {section.children.map((c) => (
                                 <li key={c.href}>
                                   <Link
                                     href={c.href}
@@ -225,18 +237,23 @@ export function Header() {
                       onClick={() => setMobileMenuOpen(false)}
                     />
                   ))}
-                  {group.nested?.map((pillar) => (
-                    <div key={pillar.label} className="mt-2">
+                  {group.nested?.map((section) => (
+                    <div key={section.label} className="mt-2">
+                      {section.sectionTitle ? (
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pb-1">
+                          {section.sectionTitle}
+                        </p>
+                      ) : null}
                       <Link
-                        href={pillar.href}
+                        href={section.href}
                         className="block font-medium text-foreground/90 hover:text-primary py-1"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        {pillar.label}
+                        {section.label}
                       </Link>
-                      {pillar.children.length > 0 ? (
+                      {section.children.length > 0 ? (
                         <ul className="pl-4 border-l border-border/40 ml-1 mt-1 space-y-1">
-                          {pillar.children.map((c) => (
+                          {section.children.map((c) => (
                             <li key={c.href}>
                               <Link
                                 href={c.href}
