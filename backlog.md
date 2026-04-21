@@ -1,9 +1,91 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 20, 2026  
-> 24 tasks pending · 50 merged · 25 cancelled
+> Last updated: April 21, 2026  
+> 30 tasks pending · 58 merged · 25 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
+
+---
+
+## Gap Analysis
+
+This section records the architectural findings that drove the April 2026 backlog revision.
+
+### Stack divergence from original spec
+
+The original specification called for **Next.js 14 + Payload CMS** with ~15 named CMS collections (posts, caseStudies, events, podcastEpisodes, webinars, whitepapers, workshops, models, applications, teamMembers, clients, partners, services, solutions, pages, navigation, siteSettings). The stack was later changed to **React + Vite + Express + Drizzle + PostgreSQL**. That swap is fine, but several collections were never migrated to DB-backed tables and instead landed as static TypeScript data files or hardcoded JSX:
+
+| Content type | Where it lives today | Should be |
+|---|---|---|
+| Polaris podcast episodes | Inline array in `polaris.tsx` (~12 episodes) | `podcastEpisodesTable` + admin CRUD |
+| Case studies | `src/data/case-studies.ts` (633 lines) | `caseStudiesTable` + admin CRUD |
+| Applications | `src/data/applications.ts` (143 lines, duplicated in header nav + sitemap) | `applicationsTable` + admin CRUD |
+| About / company values | Hardcoded JSX in `about.tsx` | CMS-editable page copy block |
+| Client testimonials | Hardcoded array in `clients.tsx` | `clientTestimonialsTable` or reuse `siteSettings` |
+| Partner logos & descriptions | Hardcoded in `partners.tsx` | `partnersTable` or `siteSettings` |
+| List-page hero & intro copy | Hardcoded per component | `content_parent_pages` table (task #97) |
+
+### Taxonomy is scoped to blog posts only
+
+The `categoriesTable` and `tagsTable` in `lib/db/src/schema/taxonomy.ts` are joined exclusively to `postsTable` through `post_categories` and `post_tags`. No other content type — collateral, services, solutions, workshops, case studies, applications — can carry a category or tag. This means it is impossible today to answer queries such as "all white papers tagged AI Strategy" or "all content related to the Technology Transformation service" without hand-wiring slug-matching logic in React (which is exactly what `PILLAR_BY_SLUG` and `WORKSHOP_CATEGORIES_BY_SLUG` in `service-detail.tsx` do today).
+
+### Service/solution cross-tagging on collateral is absent
+
+The `collateralTable` has a `pillar` enum field (strategic / technology / experiences / gtm) and a freeform `tags` JSONB array. There are no foreign-key references to `servicesTable` or `solutionsTable`. The business need — "show me all blog posts / white papers relevant to the AI Strategy & Design solution" — cannot be fulfilled by a database query; it is approximated by `blogCategory` / `blogTag` text fields on the solution row that are matched string-by-string in the front end. This is fragile, not discoverable in the admin, and breaks any time a tag string changes.
+
+### No scaffolding pattern for new content types
+
+There is no registry, generator, or shared abstraction that encodes the repeating pattern of a CMS content type. Adding a hypothetical "Offices" object today would require hand-writing approximately six files: a Drizzle schema module, an Express router, an admin list page, an admin edit form, a public list page, and a public detail page — with no guarantee they follow the same conventions as prior types. Tasks #98–#105 below introduce a baseline pattern that future types can follow.
+
+### Completed items removed from this revision
+
+The following tasks shipped before this revision and have been moved to the merged count: **#55** (SEO meta for services pages), **#56** (CRUD for services & solutions in admin), **#63** (asset categories), **#75** (drag-and-drop featured item reorder), **#76** (live card preview in library edit form), **#84** (301 redirects from old Wix URLs), **#86** (sitemap.xml & OG tags), **#95** (workshops DB migration).
+
+---
+
+## ★ Content Platform (new — highest priority)
+
+These items address the architectural gaps identified above. They should be sequenced before the remaining legacy items because they change the data model that later features depend on.
+
+### #98 · Establish a repeatable CMS content-type pattern
+**Depends on:** nothing (standalone)
+
+Define a documented, code-level convention that every CMS content type must follow going forward. The convention covers: (a) a Drizzle schema module in `lib/db/src/schema/` with consistent use of uuid primary keys, `createdAt` / `updatedAt` / `deletedAt`, a `sourceId` for idempotent imports, and a `publishedAt` toggle; (b) a typed Express router in `artifacts/api-server/src/routes/` with list, detail, create, update, and soft-delete endpoints; (c) an admin list page and edit form in `artifacts/synozur/src/pages/admin/`; (d) public list and detail pages under `artifacts/synozur/src/pages/`; (e) a `syncCollateral` call so the item appears in the library. Document the pattern in `docs/content-type-guide.md` so that any developer (or coding agent) adding a new type — say, "Offices" — can follow the same checklist without inventing conventions. This is a meta-task; the output is documentation plus a worked example refactoring one existing type to the canonical pattern.
+
+### #99 · Extend taxonomy (categories & tags) to all content types
+**Depends on:** #98 (content-type pattern)
+
+`categoriesTable` and `tagsTable` currently join only to `postsTable`. Extend the join tables so that any content type can carry categories and tags: add `collateral_categories`, `collateral_tags`, `workshop_categories`, `workshop_tags`, `case_study_categories`, `case_study_tags`, `application_categories`, `application_tags`, and `service_tags` / `solution_tags` junction tables (or a single polymorphic `content_tags` table keyed by `content_type` + `content_id` if you prefer). Update all relevant admin edit forms to show a tag/category picker. Update the public library filter UI to filter by taxonomy across all types. This is the foundational change that enables the cross-content filtered views the business needs.
+
+### #100 · Cross-tag collateral to services and solutions
+**Depends on:** #99 (unified taxonomy)
+
+Add `collateral_services` and `collateral_solutions` junction tables so that any collateral item (white paper, video, insight, case study, webinar, etc.) can be explicitly linked to one or more services or solutions. In the admin collateral edit form, add a "Related services" and "Related solutions" multi-select. On the public service detail page (`/services/:slug`) and solution detail page (`/solutions/:slug`), replace the current hardcoded `PILLAR_BY_SLUG` / `WORKSHOP_CATEGORIES_BY_SLUG` React maps with a database query that fetches items cross-tagged to that service or solution. This eliminates the brittle slug-matching logic and makes the filtered content rail correct by data, not by code.
+
+### #101 · Migrate Polaris podcast episodes from hardcoded TSX to DB-backed CMS
+**Depends on:** #98 (content-type pattern)
+
+Polaris podcast episodes are currently a plain TypeScript array inside `artifacts/synozur/src/pages/polaris.tsx`. Editors cannot publish a new episode without a code commit. This task adds a `podcastEpisodesTable` (episode number, title, slug, description, release date, duration, audio URL, Apple Podcasts URL, cover image, show notes rich HTML, SEO fields, publish/unpublish dates), full admin CRUD, and an RSS feed at `/polaris/rss.xml`. The existing `/polaris` and `/polaris/:slug` public pages switch to reading from the new API. Includes a one-time seed script from the existing inline data. Also syncs episodes to collateral as type `podcast` so they are discoverable in the library.
+
+### #102 · Migrate case studies from static TS file to DB-backed CMS
+**Depends on:** #98 (content-type pattern)
+
+Case studies live in `artifacts/synozur/src/data/case-studies.ts` (633 lines). Editors cannot add, edit, or archive a case study without a developer commit. This task creates a `caseStudiesTable` (title, slug, client name, industry, engagement type, hero image, challenge HTML, approach HTML, outcomes HTML, pull quotes, related services/solutions, featured flag, SEO fields, publish dates), full admin CRUD, and sync-to-collateral. The existing `/case-studies` and `/case-studies/:slug` pages switch to reading from the API. One-time migration script to seed from the static file is required so no content is lost.
+
+### #103 · Migrate applications from static TS file to DB-backed CMS
+**Depends on:** #98 (content-type pattern)
+
+Supersedes the scope of #96. Applications currently live as `artifacts/synozur/src/data/applications.ts` (143 lines) and are duplicated in the header navigation component and the sitemap. This task adds an `applicationsTable` matching the Applications CSV schema (name, logo, version, release date, description rich HTML, screenshot, user guide URL, tagline, SEO meta, publish/unpublish dates, status), full admin CRUD, sync-to-collateral, and an API endpoint that the header nav and sitemap consume instead of the static file. The existing `/applications` and `/applications/:slug` public pages switch to reading from the new API. Replaces #96.
+
+### #104 · Make About, Clients, and Partners page copy CMS-editable
+**Depends on:** nothing (standalone)
+
+Three pages contain business-critical content that is fully hardcoded in React: `about.tsx` (company values, story sections), `clients.tsx` (client testimonials and quote carousel), and `partners.tsx` (partner logos and descriptions). Marketing cannot update any of this without a code deploy. This task adds: (a) an `about_content` block inside the existing `siteSettings` table, or a dedicated `pageContentBlocks` table keyed by page slug, covering values, story, and hero copy; (b) a `clientTestimonialsTable` for the quotes; (c) a `partnersTable` for logos and descriptions. Admin edit forms for all three. The public pages read from the API and fall back to hardcoded defaults if the DB row is absent, so the pages are never broken during migration.
+
+### #105 · Remove hardcoded slug maps from service-detail.tsx
+**Depends on:** #100 (service/solution cross-tagging on collateral)
+
+`service-detail.tsx` contains two literal `Record<string, …>` maps — `PILLAR_BY_SLUG` and `WORKSHOP_CATEGORIES_BY_SLUG` — that control which collateral and workshops appear in each service's content rail. Any new service pillar or workshop category requires a code change. Once #100 is complete (collateral cross-tagged to services in the DB), replace these maps with an API call: the service detail endpoint should return the service's linked collateral and linked workshops directly, eliminating both maps and the fragile string-matching logic.
 
 ---
 
@@ -32,36 +114,14 @@ Bot-submitted comments currently pass through to the moderation queue, clutterin
 
 ## SEO & Discoverability
 
-### #55 · Make the new services pages discoverable on Google
-**Depends on:** #40 (services pages refactor)
-
-The redesigned services and solution detail pages were built without per-page meta tags or structured data. This task adds `<title>`, `<meta name="description">`, Open Graph, and Twitter card tags to every service overview, service detail, and solution detail page — pulling copy from the CMS record's `seo_title` and `seo_description` fields (adding those fields to the schema if missing). Also adds `application/ld+json` Service schema markup.
-
-### #84 · 301 redirects from old Wix URLs
-**Depends on:** nothing (standalone)
-
-The site previously lived on Wix with URL patterns that differ from the new structure (e.g. `/post/slug` → `/insights/slug`, `/services/service-name` → `/services-overview/slug`). Without redirects, anyone who bookmarked the old site or followed a search result link hits a 404. This task creates a redirect map in the Express API server so that old Wix paths return HTTP 301 to the correct new path. The redirect table should be editable from the admin.
-
-### #86 · Sitemap & OG tags for all public pages
-**Depends on:** nothing (standalone)
-
-Two related gaps:
-1. **Sitemap** — generate `/sitemap.xml` dynamically from the Express server, listing all public routes (home, about, services, solutions, case studies, insights posts, library items, team, events, workshops). Ping Google Search Console on regeneration.
-2. **OG / Twitter tags** — audit every public page route and ensure the `<Meta>` component is providing a page-specific title, description, and image. Pages currently missing them: `/clients`, `/partners`, `/workshops/:slug`, `/webinars/:slug`, `/team`, `/events`, `/applications/:slug`.
-
 ### #65 · Add a global search box in the site header
 **Depends on:** #51 (live library content)
 
-Visitors cannot search the site. This task adds a search input to the header (desktop: expands on click; mobile: full-screen overlay). The backend gains a `GET /api/search?q=` endpoint that queries insights posts, collateral items, services, and solutions full-text using PostgreSQL `tsvector`. Results are grouped by content type and displayed with a short excerpt and a link to the full page.
+Visitors cannot search the site. This task adds a search input to the header (desktop: expands on click; mobile: full-screen overlay). The backend gains a `GET /api/search?q=` endpoint that queries insights posts, collateral items, services, and solutions full-text using PostgreSQL `tsvector`. Results are grouped by content type and displayed with a short excerpt and a link to the full page. Once #99 is complete, results should also be filterable by taxonomy.
 
 ---
 
 ## Services & Solutions Admin
-
-### #56 · Let editors manage services and solutions in the admin
-**Depends on:** #40 (services pages refactor)
-
-The admin panel has read-only views for services and solutions (imported via CSV). Editors need to be able to add, edit, and archive entries without developer intervention. This task wires up full CRUD for both entities in the existing admin UI: rich-text description, pillar/tag assignment, thumbnail upload, publish/draft toggle, and display-order control.
 
 ### #57 · Verify the new services pages with automated browser tests
 **Depends on:** #40 (services pages refactor)
@@ -86,21 +146,6 @@ Currently the services and solutions data can only be updated row-by-row through
 ---
 
 ## Content Library
-
-### #63 · Add asset categories beyond people and north-star
-**Depends on:** #46 (home page image picker)
-
-The asset library currently only supports two categories (`people` and `north-star`), which drive the two home-page image pickers. This task extends the category enum (and the image picker UI) to support additional buckets — for example `abstract`, `event`, `product-screenshot` — so that assets uploaded for other purposes (e.g. collateral hero images, workshop thumbnails) can be browsed by category rather than scrolled through as one flat list.
-
-### #75 · Bulk reorder featured library items via drag-and-drop
-**Depends on:** #69 (library live content)
-
-The "From The Feed" home-page carousel and the library featured row are ordered by a numeric `featured_rank` column. Currently editors must edit each item individually to change the rank. This task adds a drag-and-drop reorder UI to the collateral admin list (filtered to featured items) that writes the new rank order in a single batch API call.
-
-### #76 · Show a live preview of how a library item will appear on the public site
-**Depends on:** #69 (library live content)
-
-When editing a collateral item in the admin, editors cannot see how it will look in the public library card or the featured carousel. This task adds a "Preview card" panel beside the edit form that renders the `CollateralCard` component with the current (unsaved) field values, giving instant visual feedback before saving.
 
 ### #83 · Gated download CTA for white papers
 **Depends on:** nothing (standalone)
@@ -139,21 +184,6 @@ The `/webinars` page lists past and upcoming webinars from the collateral librar
 
 ## Heterogeneous CMS Artifacts
 
-Follow-on work to the videos and white-papers CRUD shipped on the
-`claude/add-crud-white-papers-videos-xug38` branch. Same pattern: dedicated
-rich DB table per artifact type, full admin CRUD, public list + detail pages,
-sync-to-collateral so items stay discoverable in the library.
-
-### #95 · Migrate workshops from a static TS file to a DB-backed CMS table
-**Depends on:** nothing (standalone)
-
-Workshops currently live as a static TypeScript data file (`artifacts/synozur/src/data/workshops.ts`). Editors cannot add, edit, or unpublish a workshop without a developer commit. This task moves them to the same pattern videos and white papers now use: a `workshopsTable` with the full WorkshopOffers CSV schema (~50 columns covering hero, pain, scope, process, deliverables, diagnostic, competitive intel, outcomes, sample deliverables, FAQ, SEO, publish/unpublish dates), full admin CRUD, and sync-to-collateral. The existing `/workshops` and `/workshops/:slug` public pages keep their layout but read from the API instead of the static file. Includes a one-time migration script to seed the table from the current static data so no content is lost. Largest of the four artifact types — most fields and a data migration step.
-
-### #96 · CRUD for applications (Project Comet, Vega, Nebula, etc.)
-**Depends on:** nothing (standalone)
-
-Applications have a CSV export but no DB table, no API, and no admin UI. This task adds an `applicationsTable` matching the Applications CSV schema (Name, Logo, Version, ReleaseDate, Description rich HTML, Screenshot, UserGuide URL, Tagline, WebMeta, Publish/Unpublish dates, Status), with admin CRUD and sync-to-collateral. The existing `/applications` and `/applications/:slug` public pages switch to reading from the new API. Smaller scope than #95 — flat schema, no nested sections.
-
 ### #97 · Editable parent-page hero & intro copy for resource list pages
 **Depends on:** nothing (standalone)
 
@@ -166,7 +196,7 @@ Each resource list page (`/videos`, `/white-papers`, `/workshops`, `/application
 ### #94 · Add a visual separator between Resources and Applications links in the dropdown
 **Depends on:** #87 (Applications moved into Resources nav)
 
-Following the merge of task #87, the Resources dropdown now contains two logical groups: the original resources links (Webinars, White Papers, Workshops, Browse Library) and the application links (Vega, Nebula, Constellation, Orion, Orbit, Zenith). There is no visual division between them. This task inserts a subtle `<hr>` or labelled divider between the two groups so visitors can scan the menu more easily.
+Following the merge of task #87, the Resources dropdown now contains two logical groups: the original resources links (Webinars, White Papers, Workshops, Browse Library) and the application links (Vega, Nebula, Constellation, Orion, Orbit, Zenith). There is no visual division between them. This task inserts a subtle `<hr>` or labelled divider between the two groups so visitors can scan the menu more easily. Note: once #103 ships the application links will be sourced dynamically from the DB; the divider logic should survive that change.
 
 ---
 
@@ -174,27 +204,26 @@ Following the merge of task #87, the Resources dropdown now contains two logical
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
+| **#98** | **Repeatable CMS content-type pattern** | **Content Platform** | — |
+| **#99** | **Unified taxonomy across all content types** | **Content Platform** | #98 |
+| **#100** | **Cross-tag collateral to services & solutions** | **Content Platform** | #99 |
+| **#101** | **Polaris podcast: hardcoded TSX → DB-backed CMS** | **Content Platform** | #98 |
+| **#102** | **Case studies: static TS → DB-backed CMS** | **Content Platform** | #98 |
+| **#103** | **Applications: static TS → DB-backed CMS** | **Content Platform** | #98 |
+| **#104** | **About / Clients / Partners: hardcoded → CMS** | **Content Platform** | — |
+| **#105** | **Remove PILLAR_BY_SLUG & WORKSHOP_CATEGORIES_BY_SLUG** | **Content Platform** | #100 |
 | #34 | Unsubscribe link in emails | Email | #25 |
 | #53 | Comment approval/reply notifications | Comments | #19 |
 | #54 | CAPTCHA fallback for comment spam | Comments | #19 |
-| #55 | SEO meta for services pages | SEO | #40 |
-| #56 | CRUD for services & solutions in admin | Services admin | #40 |
 | #57 | Playwright tests for services pages | QA | #40 |
 | #60 | Preview unpublished services/solutions | Services admin | #39 |
 | #61 | Edit history for services & solutions | Services admin | #39 |
 | #62 | Bulk CSV import for services & solutions | Services admin | #39 |
-| #63 | Asset categories beyond people/north-star | Library | #46 |
 | #65 | Global site search | Discovery | #51 |
 | #66 | Preview a past post revision | CMS | #48 |
 | #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
-| #75 | Drag-and-drop featured item reorder | Library | #69 |
-| #76 | Live card preview in library edit form | Library | #69 |
 | #83 | Gated PDF download for white papers | Library / Leads | — |
-| #84 | 301 redirects from old Wix URLs | SEO | — |
 | #85 | Webinar registration rail | Webinars | — |
-| #86 | Sitemap.xml & OG tags audit | SEO | — |
 | #94 | Separator in Resources dropdown | Navigation | #87 |
-| #95 | Workshops: static TS → DB-backed CMS | Heterogeneous CMS | — |
-| #96 | CRUD for applications | Heterogeneous CMS | — |
 | #97 | Editable parent-page copy for list pages | Heterogeneous CMS | — |
