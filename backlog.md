@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 20, 2026  
-> 21 tasks pending · 50 merged · 25 cancelled
+> 24 tasks pending · 50 merged · 25 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -137,6 +137,30 @@ The `/webinars` page lists past and upcoming webinars from the collateral librar
 
 ---
 
+## Heterogeneous CMS Artifacts
+
+Follow-on work to the videos and white-papers CRUD shipped on the
+`claude/add-crud-white-papers-videos-xug38` branch. Same pattern: dedicated
+rich DB table per artifact type, full admin CRUD, public list + detail pages,
+sync-to-collateral so items stay discoverable in the library.
+
+### #95 · Migrate workshops from a static TS file to a DB-backed CMS table
+**Depends on:** nothing (standalone)
+
+Workshops currently live as a static TypeScript data file (`artifacts/synozur/src/data/workshops.ts`). Editors cannot add, edit, or unpublish a workshop without a developer commit. This task moves them to the same pattern videos and white papers now use: a `workshopsTable` with the full WorkshopOffers CSV schema (~50 columns covering hero, pain, scope, process, deliverables, diagnostic, competitive intel, outcomes, sample deliverables, FAQ, SEO, publish/unpublish dates), full admin CRUD, and sync-to-collateral. The existing `/workshops` and `/workshops/:slug` public pages keep their layout but read from the API instead of the static file. Includes a one-time migration script to seed the table from the current static data so no content is lost. Largest of the four artifact types — most fields and a data migration step.
+
+### #96 · CRUD for applications (Project Comet, Vega, Nebula, etc.)
+**Depends on:** nothing (standalone)
+
+Applications have a CSV export but no DB table, no API, and no admin UI. This task adds an `applicationsTable` matching the Applications CSV schema (Name, Logo, Version, ReleaseDate, Description rich HTML, Screenshot, UserGuide URL, Tagline, WebMeta, Publish/Unpublish dates, Status), with admin CRUD and sync-to-collateral. The existing `/applications` and `/applications/:slug` public pages switch to reading from the new API. Smaller scope than #95 — flat schema, no nested sections.
+
+### #97 · Editable parent-page hero & intro copy for resource list pages
+**Depends on:** nothing (standalone)
+
+Each resource list page (`/videos`, `/white-papers`, `/workshops`, `/applications`, `/insights`, `/case-studies`, `/library`, `/items`, `/webinars`) currently has its hero headline, intro paragraph, and SEO copy hardcoded in the React component. Editors cannot change them without a developer commit. This task adds a `content_parent_pages` table keyed by route slug, with hero headline, hero subhead, intro HTML, SEO title, SEO description, and OG image. Each list page reads its row at render time and falls back to the hardcoded defaults if missing. Admin gets a single "List page copy" screen showing all parent pages in a table with inline edit. Cross-cuts every artifact type and is a prerequisite for letting marketing iterate on parent-page messaging without a deploy.
+
+---
+
 ## Navigation & UI Polish
 
 ### #94 · Add a visual separator between Resources and Applications links in the dropdown
@@ -171,3 +195,6 @@ Following the merge of task #87, the Resources dropdown now contains two logical
 | #85 | Webinar registration rail | Webinars | — |
 | #86 | Sitemap.xml & OG tags audit | SEO | — |
 | #94 | Separator in Resources dropdown | Navigation | #87 |
+| #95 | Workshops: static TS → DB-backed CMS | Heterogeneous CMS | — |
+| #96 | CRUD for applications | Heterogeneous CMS | — |
+| #97 | Editable parent-page copy for list pages | Heterogeneous CMS | — |

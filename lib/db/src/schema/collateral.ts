@@ -21,6 +21,8 @@ export const COLLATERAL_TYPES = [
   "training",
   "event",
   "insight",
+  "video",
+  "ebook",
 ] as const;
 export type CollateralType = (typeof COLLATERAL_TYPES)[number];
 

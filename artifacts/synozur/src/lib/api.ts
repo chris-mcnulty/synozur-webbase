@@ -162,6 +162,165 @@ export interface CapabilityDto {
   hidden: boolean;
 }
 
+export const VIDEO_CATEGORIES = [
+  "interview",
+  "webinar",
+  "demo",
+  "talk",
+  "clip",
+  "other",
+] as const;
+export type VideoCategory = (typeof VIDEO_CATEGORIES)[number];
+
+export const VIDEO_STATUSES = ["draft", "published", "archived"] as const;
+export type VideoStatus = (typeof VIDEO_STATUSES)[number];
+
+export interface VideoDto {
+  id: string;
+  slug: string;
+  title: string;
+  category: VideoCategory;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  heroImage: string;
+  heroImageAlt: string | null;
+  shortDescription: string;
+  bodyHtml: string;
+  tags: string[];
+  pillar: string | null;
+  recordedAt: string | null;
+  durationSeconds: number | null;
+  status: VideoStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VideoInput {
+  slug?: string | null;
+  title: string;
+  category?: VideoCategory;
+  videoUrl?: string;
+  thumbnailUrl?: string | null;
+  heroImage?: string;
+  heroImageAlt?: string | null;
+  shortDescription?: string;
+  bodyHtml?: string;
+  tags?: string[];
+  pillar?: string | null;
+  recordedAt?: string | null;
+  durationSeconds?: number | null;
+  status?: VideoStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}
+
+export interface VideoListQuery {
+  category?: VideoCategory;
+  tag?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface VideoListResult {
+  total: number;
+  page: number;
+  pageSize: number;
+  items: VideoDto[];
+}
+
+export const WHITE_PAPER_DOC_TYPES = ["whitepaper", "ebook", "report", "guide"] as const;
+export type WhitePaperDocType = (typeof WHITE_PAPER_DOC_TYPES)[number];
+
+export const WHITE_PAPER_STATUSES = ["draft", "published", "archived"] as const;
+export type WhitePaperStatus = (typeof WHITE_PAPER_STATUSES)[number];
+
+export interface WhitePaperDto {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  docType: WhitePaperDocType;
+  heroImage: string;
+  heroImageAlt: string | null;
+  shortDescription: string;
+  bodyHtml: string;
+  tags: string[];
+  pillar: string | null;
+  documentUrl: string | null;
+  externalUrl: string | null;
+  pageCount: number | null;
+  status: WhitePaperStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WhitePaperInput {
+  slug?: string | null;
+  title: string;
+  subtitle?: string | null;
+  docType?: WhitePaperDocType;
+  heroImage?: string;
+  heroImageAlt?: string | null;
+  shortDescription?: string;
+  bodyHtml?: string;
+  tags?: string[];
+  pillar?: string | null;
+  documentUrl?: string | null;
+  externalUrl?: string | null;
+  pageCount?: number | null;
+  status?: WhitePaperStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}
+
+export interface WhitePaperListQuery {
+  docType?: WhitePaperDocType;
+  tag?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface WhitePaperListResult {
+  total: number;
+  page: number;
+  pageSize: number;
+  items: WhitePaperDto[];
+}
+
 export type ServiceWithSolutions = ServiceDto & { solutions: SolutionDto[] };
 export type ServiceWithMethodologies = ServiceDto & { methodologies: MethodologyDto[] };
 export type SolutionWithCapabilities = SolutionDto & {
@@ -261,4 +420,73 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ids }),
     }),
+  listVideos: (q: VideoListQuery = {}) => {
+    const params = new URLSearchParams();
+    if (q.category) params.set("category", q.category);
+    if (q.tag) params.set("tag", q.tag);
+    if (q.q) params.set("q", q.q);
+    if (q.page) params.set("page", String(q.page));
+    if (q.pageSize) params.set("pageSize", String(q.pageSize));
+    const s = params.toString();
+    return jsonFetch<VideoListResult>(url(`/videos${s ? `?${s}` : ""}`));
+  },
+  getVideo: (slug: string) =>
+    jsonFetch<VideoDto>(url(`/videos/${encodeURIComponent(slug)}`)),
+  adminListVideos: () => jsonFetch<{ items: VideoDto[] }>(url("/cms/videos")),
+  adminGetVideo: (id: string) =>
+    jsonFetch<VideoDto>(url(`/cms/videos/${encodeURIComponent(id)}`)),
+  createVideo: (body: VideoInput) =>
+    jsonFetch<VideoDto>(url("/cms/videos"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateVideo: (id: string, body: VideoInput) =>
+    jsonFetch<VideoDto>(url(`/cms/videos/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteVideo: (id: string) =>
+    jsonFetch<void>(url(`/cms/videos/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  syncVideoToCollateral: (id: string) =>
+    jsonFetch<{ ok: boolean }>(
+      url(`/cms/videos/${encodeURIComponent(id)}/sync-to-collateral`),
+      { method: "POST" },
+    ),
+  listWhitePapers: (q: WhitePaperListQuery = {}) => {
+    const params = new URLSearchParams();
+    if (q.docType) params.set("docType", q.docType);
+    if (q.tag) params.set("tag", q.tag);
+    if (q.q) params.set("q", q.q);
+    if (q.page) params.set("page", String(q.page));
+    if (q.pageSize) params.set("pageSize", String(q.pageSize));
+    const s = params.toString();
+    return jsonFetch<WhitePaperListResult>(url(`/white-papers${s ? `?${s}` : ""}`));
+  },
+  getWhitePaper: (slug: string) =>
+    jsonFetch<WhitePaperDto>(url(`/white-papers/${encodeURIComponent(slug)}`)),
+  adminListWhitePapers: () =>
+    jsonFetch<{ items: WhitePaperDto[] }>(url("/cms/white-papers")),
+  adminGetWhitePaper: (id: string) =>
+    jsonFetch<WhitePaperDto>(url(`/cms/white-papers/${encodeURIComponent(id)}`)),
+  createWhitePaper: (body: WhitePaperInput) =>
+    jsonFetch<WhitePaperDto>(url("/cms/white-papers"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateWhitePaper: (id: string, body: WhitePaperInput) =>
+    jsonFetch<WhitePaperDto>(url(`/cms/white-papers/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteWhitePaper: (id: string) =>
+    jsonFetch<void>(url(`/cms/white-papers/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  syncWhitePaperToCollateral: (id: string) =>
+    jsonFetch<{ ok: boolean }>(
+      url(`/cms/white-papers/${encodeURIComponent(id)}/sync-to-collateral`),
+      { method: "POST" },
+    ),
 };

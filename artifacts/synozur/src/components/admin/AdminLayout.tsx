@@ -16,6 +16,8 @@ import {
   Compass,
   Layers,
   Library as LibraryIcon,
+  Video as VideoIcon,
+  BookOpen as BookOpenIcon,
   CornerDownRight,
   GraduationCap,
 } from "lucide-react";
@@ -80,6 +82,20 @@ const NAV: NavItem[] = [
     icon: LibraryIcon,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-collateral",
+  },
+  {
+    href: "/videos",
+    label: "Videos",
+    icon: VideoIcon,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-videos",
+  },
+  {
+    href: "/white-papers",
+    label: "White Papers",
+    icon: BookOpenIcon,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-white-papers",
   },
   {
     href: "/workshops",

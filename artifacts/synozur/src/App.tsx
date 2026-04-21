@@ -51,6 +51,10 @@ import AdminTeamList from "@/pages/admin/team-list";
 import TeamForm from "@/pages/admin/team-form";
 import AdminCollateralList from "@/pages/admin/collateral-list";
 import CollateralEdit from "@/pages/admin/collateral-edit";
+import AdminVideosList from "@/pages/admin/videos-list";
+import VideoEdit from "@/pages/admin/video-edit";
+import AdminWhitePapersList from "@/pages/admin/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/white-paper-edit";
 import AdminWixRedirects from "@/pages/admin/wix-redirects";
 import AdminWorkshopsList from "@/pages/admin/workshops-list";
 import WorkshopEdit from "@/pages/admin/workshop-edit";
@@ -59,6 +63,10 @@ import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
 import WebinarDetail from "@/pages/webinar-detail";
+import Videos from "@/pages/videos";
+import VideoDetail from "@/pages/video-detail";
+import WhitePapers from "@/pages/white-papers";
+import WhitePaperDetail from "@/pages/white-paper-detail";
 import Items from "@/pages/items";
 import ItemDetail from "@/pages/item-detail";
 import NotFound from "@/pages/not-found";
@@ -113,6 +121,20 @@ function AdminRoutes() {
         </Route>
         <Route path="/collateral/:id/edit">
           {(params) => <CollateralEdit id={params.id} />}
+        </Route>
+        <Route path="/videos" component={AdminVideosList} />
+        <Route path="/videos/new">
+          <VideoEdit />
+        </Route>
+        <Route path="/videos/:id/edit">
+          {(params) => <VideoEdit id={params.id} />}
+        </Route>
+        <Route path="/white-papers" component={AdminWhitePapersList} />
+        <Route path="/white-papers/new">
+          <WhitePaperEdit />
+        </Route>
+        <Route path="/white-papers/:id/edit">
+          {(params) => <WhitePaperEdit id={params.id} />}
         </Route>
         <Route path="/workshops" component={AdminWorkshopsList} />
         <Route path="/workshops/new">
@@ -171,6 +193,10 @@ function Router() {
             <Route path="/library/:slug" component={LibraryDetail} />
             <Route path="/webinars" component={Webinars} />
             <Route path="/webinars/:slug" component={WebinarDetail} />
+            <Route path="/videos" component={Videos} />
+            <Route path="/videos/:slug" component={VideoDetail} />
+            <Route path="/white-papers" component={WhitePapers} />
+            <Route path="/white-papers/:slug" component={WhitePaperDetail} />
             <Route path="/items" component={Items} />
             <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/team" component={Team} />
