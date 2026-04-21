@@ -1,3 +1,4 @@
+export * from "./_artifactBase";
 export * from "./events";
 export * from "./formSubmissions";
 export * from "./users";

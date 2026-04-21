@@ -1,9 +1,13 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 20, 2026  
-> 24 tasks pending · 50 merged · 25 cancelled
+> Last updated: April 21, 2026  
+> 33 tasks pending · 50 merged · 25 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
+
+## ★ Content Platform epic (#98–#105, highest priority)
+
+A gap-analysis rewrite of the content layer. The goal is a single repeatable pattern for every artifact type (Insights, Collateral, Videos, White Papers, Workshops, Applications, Case Studies, Polaris episodes, plus future types like Offices) so editors can manage all content without a developer touching React components, and the public site can resolve related content via real foreign keys instead of string matching.
 
 ---
 
@@ -170,6 +174,55 @@ Following the merge of task #87, the Resources dropdown now contains two logical
 
 ---
 
+## Content Platform (gap analysis)
+
+### #98 · Repeatable artifact-type pattern (Content Platform foundation)
+**Depends on:** nothing (standalone)
+
+There is no convention for adding a new content type. Shipping a small new surface — e.g. "Offices" for the About page — today requires hand-writing ~6 files (Drizzle table, API route module, sync-to-collateral helper, admin CRUD screen, public list page, public detail page) with each artifact type (`videos`, `white_papers`, `workshops`) diverging in naming, column sets, status enums, and timestamp handling. This task defines a shared "artifact base" module: a reusable column set (id/slug/title/status/publishedAt/featured/featuredRank/sourceId/active/createdAt/updatedAt/deletedAt + SEO fields), a route factory that mounts the standard list/detail/admin-CRUD endpoints given a table and a serializer, and a sync-to-collateral helper that works for any artifact table exposing the base columns. New artifact types should be addable by declaring the domain-specific columns, passing the table into the factory, and registering the sync callback — not by copying 400 lines of boilerplate.
+
+### #99 · Polymorphic taxonomy (categories & tags on any content type)
+**Depends on:** nothing (standalone)
+
+`categoriesTable` and `tagsTable` exist but their join tables (`post_categories`, `post_tags`) reference `posts` only. Videos, white papers, workshops, case studies, applications, and Polaris episodes cannot carry taxonomy through the shared vocabulary — each currently keeps its own `tags` jsonb column or a string `pillar`, which means an editor tagging a video as "Azure" and a post as "Azure" produces no relationship. This task introduces polymorphic join tables `entity_categories(entity_type, entity_id, category_id)` and `entity_tags(entity_type, entity_id, tag_id)` where `entity_type` is an enum over the artifact tables. Existing `post_categories` / `post_tags` rows are migrated into the new tables and the old tables are dropped. The admin gains a shared "Taxonomy" picker reused across every artifact edit screen. A `GET /api/taxonomy/tags/:slug/entities` endpoint lists everything tagged with a given tag, grouped by entity type — the foundation for tag-landing pages.
+
+### #100 · FK from collateral to services & solutions
+**Depends on:** nothing (standalone)
+
+The collateral table has no foreign key to `services` or `solutions`. Filtered content rails on `/services/:slug` and `/solutions/:slug` are currently approximated by string-matching on `pillar` values (see `PILLAR_BY_SLUG` in `service-detail.tsx`) and `tags` jsonb lookups — fragile, case-sensitive, and silently wrong when an editor renames a service. This task adds nullable `service_id` and `solution_id` columns to `collateralTable` (with indexes) plus a many-to-many `collateral_services` join table for items that belong to multiple services. Sync-to-collateral from videos / white papers / workshops resolves pillar → service row and writes the FK. Public rails (`GET /api/collateral?serviceId=…` and `?solutionId=…`) replace the pillar heuristic.
+
+### #100.5 · Ship the #98/#99/#100 schema to dev + backfill + admin UI
+**Depends on:** #98, #99, #100
+
+Follow-up to the Content Platform foundation commit. The schema changes for #98-#100 landed in code but were not applied to the database, no data was migrated into the new polymorphic tables, and the admin UI has no way to use the new fields yet. This task closes the loop: (1) generate and apply the Drizzle migration (`pnpm --filter @workspace/db run push`) for the new columns (`collateral.service_id`, `collateral.solution_id`), the new tables (`entity_categories`, `entity_tags`, `collateral_services`), and the new enums (`artifact_status`, `taxonomy_entity_type`); (2) write a one-shot backfill script that copies `post_categories` → `entity_categories` and `post_tags` → `entity_tags` so existing post taxonomy is visible to the polymorphic readers, then a follow-on that deletes the legacy join tables once all callers are migrated; (3) add a shared `TaxonomyPicker` admin React component that reads/writes via the polymorphic endpoints and wire it into the post / video / white paper / workshop edit forms; (4) add a `ServiceSelect` + `SolutionSelect` pair to the collateral admin edit form that writes the new FKs; (5) switch the `/services/:slug` and `/solutions/:slug` rail queries from pillar/tag heuristics to `?serviceId=` / `?solutionId=` (prerequisite check for #105).
+
+### #101 · Polaris episodes: from inline array to DB + RSS feed
+**Depends on:** #98 (artifact-type pattern)
+
+Polaris podcast episodes are currently an inline array inside `artifacts/synozur/src/pages/polaris.tsx` — no admin, no way to add a new episode without a developer commit, no syndication. This task moves them to a `polaris_episodes` table built on the #98 artifact-type pattern (episode number, title, summary, guest name, audio URL, duration, transcript HTML, published date, artwork), adds admin CRUD, serves `/api/polaris/episodes`, and exposes a valid iTunes-spec RSS 2.0 feed at `/polaris/rss.xml` so the podcast can be submitted to Apple / Spotify / Amazon Music.
+
+### #102 · Case studies: from 633-line static TS file to DB
+**Depends on:** #98 (artifact-type pattern), #99 (polymorphic taxonomy), #100 (FK to services/solutions)
+
+Case studies live as a 633-line static TypeScript data file (`artifacts/synozur/src/data/case-studies.ts`). Editors cannot publish a new case study without a developer commit, and the file is large enough that merge conflicts are common. This task moves them to a `case_studies` table using the #98 pattern, with client name, industry, pillar, challenge/approach/outcome HTML sections, quote + attribution, hero image, logo, and FK to the related service/solution (#100). Taxonomy (#99) lets a case study be discoverable from the tag landing page. Sync-to-collateral so case studies appear in the unified library. One-time migration script seeds the table from the existing static file.
+
+### #103 · Applications: from static TS file to DB (supersedes #96)
+**Depends on:** #98 (artifact-type pattern)
+
+Applications (Vega, Nebula, Constellation, Orion, Orbit, Zenith, Holidays & Birthdays Web Part) live as a 143-line static TypeScript data file duplicated between the header Resources nav and the sitemap. Adding, renaming, or removing an application currently requires edits in at least three places. This task (superseding #96 which only covered CRUD without the duplication fix) moves applications to an `applications` table on the #98 pattern, plus a single source of truth that the header nav, footer, sitemap, and `/applications` page all consume from one API endpoint. Admin CRUD with status fields, release date, tagline, rich description, screenshot, and user-guide URL.
+
+### #104 · Editable About values, testimonials, and partner descriptions
+**Depends on:** #97 (editable parent-page copy)
+
+The About page values block, the client testimonials on `/clients`, and the partner descriptions on `/partners` are hardcoded JSX inside React components. Marketing cannot tweak copy, swap a testimonial, or add a new partner without a developer commit. This task introduces three small DB-backed tables — `about_values`, `client_testimonials`, `partner_descriptions` — each with display-order, active toggle, and admin CRUD. The three pages read at render time and fall back to the current hardcoded defaults if the table is empty, so we can migrate incrementally.
+
+### #105 · Delete `PILLAR_BY_SLUG` / `WORKSHOP_CATEGORIES_BY_SLUG` lookup maps
+**Depends on:** #100 (FK from collateral to services/solutions)
+
+Once #100 provides real foreign keys and tag-based filtering (#99) is live, the hand-maintained `PILLAR_BY_SLUG` map in `artifacts/synozur/src/pages/service-detail.tsx` and the `WORKSHOP_CATEGORIES_BY_SLUG` map in the workshops area become obsolete and wrong — they are a source of silent regressions when services are renamed or added. This task deletes both maps and the string-matching code that uses them, switches filtered rails to query by `serviceId` / `solutionId` / `tagSlug`, and adds an ESLint rule that fails the build if either constant name reappears.
+
+---
+
 ## Summary Table
 
 | # | Title | Area | Depends On |
@@ -198,3 +251,12 @@ Following the merge of task #87, the Resources dropdown now contains two logical
 | #95 | Workshops: static TS → DB-backed CMS | Heterogeneous CMS | — |
 | #96 | CRUD for applications | Heterogeneous CMS | — |
 | #97 | Editable parent-page copy for list pages | Heterogeneous CMS | — |
+| #98 | ★ Repeatable artifact-type pattern | Content Platform | — |
+| #99 | ★ Polymorphic taxonomy across content types | Content Platform | — |
+| #100 | ★ FK from collateral to services/solutions | Content Platform | — |
+| #100.5 | Ship #98/#99/#100 schema to dev + backfill + admin UI | Content Platform | #98, #99, #100 |
+| #101 | Polaris episodes → DB + RSS | Content Platform | #98 |
+| #102 | Case studies static TS → DB | Content Platform | #98, #99, #100 |
+| #103 | Applications static TS → DB (supersedes #96) | Content Platform | #98 |
+| #104 | Editable About values / testimonials / partners | Content Platform | #97 |
+| #105 | Delete `PILLAR_BY_SLUG` / `WORKSHOP_CATEGORIES_BY_SLUG` | Content Platform | #100 |

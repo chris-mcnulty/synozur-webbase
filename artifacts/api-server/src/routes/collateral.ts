@@ -15,6 +15,8 @@ const ListQuery = z.object({
   pillar: z.string().optional(),
   topic: z.string().optional(),
   q: z.string().optional(),
+  serviceId: z.string().uuid().optional(),
+  solutionId: z.string().uuid().optional(),
   featured: z
     .string()
     .optional()
@@ -41,6 +43,8 @@ function serializeItem(row: typeof collateralTable.$inferSelect) {
     featuredRank: row.featuredRank ?? undefined,
     videoUrl: row.videoUrl ?? undefined,
     downloadUrl: row.downloadUrl ?? undefined,
+    serviceId: row.serviceId ?? undefined,
+    solutionId: row.solutionId ?? undefined,
   };
 }
 
@@ -78,7 +82,7 @@ router.get("/collateral", async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { type, pillar, topic, q, featured, page, pageSize } = parsed.data;
+  const { type, pillar, topic, q, serviceId, solutionId, featured, page, pageSize } = parsed.data;
 
   const types = type
     ? (type
@@ -98,6 +102,8 @@ router.get("/collateral", async (req, res) => {
   if (types.length) filters.push(inArray(collateralTable.type, types));
   if (pillars.length) filters.push(inArray(collateralTable.pillar, pillars));
   if (featured) filters.push(eq(collateralTable.featured, true));
+  if (serviceId) filters.push(eq(collateralTable.serviceId, serviceId));
+  if (solutionId) filters.push(eq(collateralTable.solutionId, solutionId));
   if (topic && topic.trim()) {
     const needle = `%${topic.trim().toLowerCase()}%`;
     filters.push(
@@ -188,6 +194,8 @@ const CollateralBody = z.object({
   featuredRank: z.number().int().nullish(),
   videoUrl: z.string().nullish(),
   downloadUrl: z.string().nullish(),
+  serviceId: z.string().uuid().nullish(),
+  solutionId: z.string().uuid().nullish(),
   active: z.boolean().optional(),
 });
 
@@ -251,6 +259,8 @@ router.post("/cms/collateral", ...adminGuard, async (req, res) => {
       featuredRank: d.featuredRank ?? null,
       videoUrl: d.videoUrl ?? null,
       downloadUrl: d.downloadUrl ?? null,
+      serviceId: d.serviceId ?? null,
+      solutionId: d.solutionId ?? null,
       active: d.active ?? true,
     })
     .returning();
@@ -296,6 +306,8 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
   if (d.videoUrl !== undefined) updates.videoUrl = d.videoUrl;
   if (d.downloadUrl !== undefined) updates.downloadUrl = d.downloadUrl;
+  if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
+  if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
   if (d.active !== undefined) updates.active = d.active;
 
   const [updated] = await db
