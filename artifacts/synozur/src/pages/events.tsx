@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Calendar, MapPin, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, ExternalLink, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
@@ -108,6 +109,8 @@ function EventCard({ event, isPast }: { event: EventLike; isPast: boolean }) {
 }
 
 export default function EventsPage() {
+  const [pastOpen, setPastOpen] = useState(false);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-events"],
     queryFn: () => api.publicEvents(),
@@ -160,20 +163,31 @@ export default function EventsPage() {
             )}
           </section>
 
-          <section data-testid="events-past-section">
-            <h2 className="text-2xl font-semibold text-foreground mb-6 pb-2 border-b border-border">
-              Past Events ({past.length})
-            </h2>
-            {past.length === 0 ? (
-              <p className="text-muted-foreground">No past events to show.</p>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {past.map((e) => (
-                  <EventCard key={e.id} event={e} isPast={true} />
-                ))}
-              </div>
-            )}
-          </section>
+          {past.length > 0 && (
+            <section data-testid="events-past-section">
+              <button
+                type="button"
+                onClick={() => setPastOpen((o) => !o)}
+                className="flex w-full items-center justify-between gap-4 pb-2 border-b border-border group"
+                aria-expanded={pastOpen}
+              >
+                <h2 className="text-2xl font-semibold text-foreground">
+                  Past Events ({past.length})
+                </h2>
+                <ChevronDown
+                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 group-hover:text-foreground ${pastOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {pastOpen && (
+                <div className="mt-6 flex flex-col gap-4">
+                  {past.map((e) => (
+                    <EventCard key={e.id} event={e} isPast={true} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
 
