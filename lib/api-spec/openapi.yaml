@@ -3376,6 +3376,8 @@ components:
           type: string
         title:
           type: string
+        active:
+          type: boolean
         displayOrder:
           type:
             - integer
@@ -3432,6 +3434,14 @@ components:
           type:
             - string
             - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
         sourceId:
           type:
             - string
@@ -3457,6 +3467,8 @@ components:
           type: string
         title:
           type: string
+        active:
+          type: boolean
         displayOrder:
           type:
             - integer
@@ -3530,6 +3542,14 @@ components:
             - string
             - 'null'
         buttonUrl:
+          type:
+            - string
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
           type:
             - string
             - 'null'
@@ -3779,6 +3799,14 @@ components:
           type:
             - string
             - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
         active:
           type: boolean
 
@@ -3862,6 +3890,14 @@ components:
             - string
             - 'null'
         buttonUrl:
+          type:
+            - string
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
           type:
             - string
             - 'null'

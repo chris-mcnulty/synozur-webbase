@@ -17,6 +17,8 @@ import siteSettingsRouter from "./siteSettings";
 import servicesRouter from "./services";
 import collateralRouter from "./collateral";
 import teamMembersRouter from "./teamMembers";
+import seoRouter from "./seo";
+import wixRedirectsRouter from "./wixRedirects";
 import workshopsRouter from "./workshops";
 
 const router: IRouter = Router();
@@ -39,6 +41,8 @@ router.use(siteSettingsRouter);
 router.use(servicesRouter);
 router.use(collateralRouter);
 router.use(teamMembersRouter);
+router.use(seoRouter);
+router.use(wixRedirectsRouter);
 router.use(workshopsRouter);
 
 export default router;

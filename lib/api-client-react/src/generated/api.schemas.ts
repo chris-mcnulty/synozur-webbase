@@ -572,6 +572,7 @@ export interface Service {
   id: string;
   slug: string;
   title: string;
+  active: boolean;
   /** @nullable */
   displayOrder?: number | null;
   /** @nullable */
@@ -601,6 +602,10 @@ export interface Service {
   /** @nullable */
   blogCategory?: string | null;
   /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /** @nullable */
   sourceId?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -610,6 +615,7 @@ export interface Solution {
   id: string;
   slug: string;
   title: string;
+  active: boolean;
   /** @nullable */
   displayOrder?: number | null;
   /** @nullable */
@@ -648,6 +654,10 @@ export interface Solution {
   primaryBlogCategoryFilter?: string | null;
   /** @nullable */
   buttonUrl?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
   createdAt: string;
@@ -753,6 +763,10 @@ export interface UpsertServiceBody {
   blurbHtml?: string | null;
   /** @nullable */
   blogCategory?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   active?: boolean;
 }
 
@@ -796,6 +810,10 @@ export interface UpsertSolutionBody {
   primaryBlogCategoryFilter?: string | null;
   /** @nullable */
   buttonUrl?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   active?: boolean;
 }
 
@@ -1014,6 +1032,16 @@ export interface AnalyticsOverview {
   activity: AnalyticsActivityItem[];
 }
 
+/**
+ * Map of post ID to view count
+ */
+export type BatchViewsResultViews = { [key: string]: number };
+
+export interface BatchViewsResult {
+  /** Map of post ID to view count */
+  views: BatchViewsResultViews;
+}
+
 export interface AnalyticsReferrer {
   host: string;
   views: number;
@@ -1123,12 +1151,7 @@ export type SetCmsUserRolesBody = {
   roles: RoleName[];
 };
 
-export interface BatchViewsResult {
-  views: { [key: string]: number };
-}
-
-export type GetCmsBatchViewsParams = {
-  postIds: string;
+export type GetCmsAnalyticsOverviewParams = {
   /**
    * @minimum 1
    * @maximum 365
@@ -1136,7 +1159,11 @@ export type GetCmsBatchViewsParams = {
   days?: number;
 };
 
-export type GetCmsAnalyticsOverviewParams = {
+export type GetCmsBatchViewsParams = {
+  /**
+   * Comma-separated list of post UUIDs (max 100)
+   */
+  postIds: string;
   /**
    * @minimum 1
    * @maximum 365

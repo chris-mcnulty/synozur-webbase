@@ -10,6 +10,7 @@ export interface Service {
   id: string;
   slug: string;
   title: string;
+  active: boolean;
   /** @nullable */
   displayOrder?: number | null;
   /** @nullable */
@@ -38,6 +39,10 @@ export interface Service {
   blurbHtml?: string | null;
   /** @nullable */
   blogCategory?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
   createdAt: string;

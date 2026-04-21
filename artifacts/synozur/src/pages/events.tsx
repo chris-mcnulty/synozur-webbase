@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Calendar, MapPin, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Meta } from "@/lib/meta";
 
 function formatDate(iso: string | Date): string {
   const d = new Date(iso);
@@ -116,6 +117,10 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+      <Meta
+        title="Events"
+        description="Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events."
+      />
       <div className="mb-12">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
           Events

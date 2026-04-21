@@ -36,5 +36,9 @@ export interface UpsertServiceBody {
   blurbHtml?: string | null;
   /** @nullable */
   blogCategory?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   active?: boolean;
 }
