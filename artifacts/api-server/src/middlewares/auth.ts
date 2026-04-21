@@ -64,6 +64,25 @@ async function loadOrCreateUser(clerkUserId: string): Promise<AuthedUser> {
     }
   }
 
+  // Auto-restore admin role for any email listed in ADMIN_EMAILS.
+  // This survives DB resets: the next sign-in re-grants the role automatically.
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.length > 0);
+  const userEmail = userRow.email?.toLowerCase() ?? "";
+  if (adminEmails.length > 0 && userEmail && adminEmails.includes(userEmail)) {
+    const adminRole = await db.query.rolesTable.findFirst({
+      where: eq(rolesTable.name, "admin"),
+    });
+    if (adminRole) {
+      await db
+        .insert(userRoles)
+        .values({ userId: userRow.id, roleId: adminRole.id })
+        .onConflictDoNothing();
+    }
+  }
+
   const roleRows = await db
     .select({ name: rolesTable.name })
     .from(userRoles)
