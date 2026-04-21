@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Save, X, Image as ImageIcon } from "lucide-react";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,7 @@ import {
   MediaPickerModal,
   mediaUrl,
 } from "@/components/admin/MediaPickerModal";
+import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
@@ -81,6 +83,10 @@ interface FormState {
   downloadUrl: string;
   tagsText: string;
   active: boolean;
+  // #100 — real foreign keys to the services/solutions tables replace the
+  // fragile `pillar` string heuristic for filtered rails. Empty string = unset.
+  serviceId: string;
+  solutionId: string;
 }
 
 const EMPTY: FormState = {
@@ -100,9 +106,19 @@ const EMPTY: FormState = {
   downloadUrl: "",
   tagsText: "",
   active: true,
+  serviceId: "",
+  solutionId: "",
 };
 
 function fromItem(item: CollateralItem): FormState {
+  // serviceId / solutionId are not yet in the generated CollateralItem type
+  // (the OpenAPI spec is regenerated separately). Read them via a loose cast
+  // so the UI can round-trip the FK fields once the server response carries
+  // them (#100 / #100.5).
+  const extra = item as unknown as {
+    serviceId?: string | null;
+    solutionId?: string | null;
+  };
   return {
     title: item.title,
     slug: item.slug,
@@ -120,6 +136,8 @@ function fromItem(item: CollateralItem): FormState {
     downloadUrl: item.downloadUrl ?? "",
     tagsText: (item.tags ?? []).join(", "),
     active: item.active,
+    serviceId: extra.serviceId ?? "",
+    solutionId: extra.solutionId ?? "",
   };
 }
 
@@ -153,7 +171,10 @@ function toBody(f: FormState): UpsertCollateralBody {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
-  return {
+  const body: UpsertCollateralBody & {
+    serviceId?: string | null;
+    solutionId?: string | null;
+  } = {
     title: f.title,
     slug: f.slug || null,
     type: f.type,
@@ -170,7 +191,10 @@ function toBody(f: FormState): UpsertCollateralBody {
     downloadUrl: f.downloadUrl || null,
     tags,
     active: f.active,
+    serviceId: f.serviceId || null,
+    solutionId: f.solutionId || null,
   };
+  return body;
 }
 
 export default function CollateralEdit({ id }: Props) {
@@ -180,6 +204,21 @@ export default function CollateralEdit({ id }: Props) {
   const { access } = useAdminAccess();
   const isNew = !id;
   const canWrite = !!access?.isEditorOrAbove;
+
+  // Services + solutions power the new FK pickers (#100).
+  const servicesQ = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api.listServices(),
+  });
+  const services = servicesQ.data?.items ?? [];
+  const solutionsForService = useMemo(() => {
+    return services.map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      title: s.title,
+      solutions: s.solutions,
+    }));
+  }, [services]);
 
   const listQ = useCmsListCollateral();
   const all: CollateralItem[] = (listQ.data?.items ?? []) as CollateralItem[];
@@ -357,6 +396,67 @@ export default function CollateralEdit({ id }: Props) {
                         {p.label}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="serviceId">Service</Label>
+                <Select
+                  value={form.serviceId || "__none__"}
+                  onValueChange={(v) =>
+                    update({
+                      serviceId: v === "__none__" ? "" : v,
+                      // Clear solution when the service changes if the chosen
+                      // solution no longer belongs to the new parent.
+                      solutionId:
+                        v === "__none__"
+                          ? ""
+                          : solutionsForService
+                                .find((s) => s.id === v)
+                                ?.solutions.some((sol) => sol.id === form.solutionId)
+                            ? form.solutionId
+                            : "",
+                    })
+                  }
+                  disabled={!canWrite || servicesQ.isLoading}
+                >
+                  <SelectTrigger id="serviceId" data-testid="select-collateral-service">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {services.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Powers service filtered rails. Replaces the pillar heuristic.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="solutionId">Solution</Label>
+                <Select
+                  value={form.solutionId || "__none__"}
+                  onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
+                  disabled={!canWrite || servicesQ.isLoading}
+                >
+                  <SelectTrigger id="solutionId" data-testid="select-collateral-solution">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {services.flatMap((s) =>
+                      s.solutions.map((sol) => (
+                        <SelectItem key={sol.id} value={sol.id}>
+                          {s.title} — {sol.title}
+                        </SelectItem>
+                      )),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -541,6 +641,16 @@ export default function CollateralEdit({ id }: Props) {
               )}
             </div>
           </Card>
+
+          {!isNew && (
+            <Card className="p-4">
+              <TaxonomyPicker
+                entityType="collateral"
+                entityId={id ?? null}
+                canWrite={canWrite}
+              />
+            </Card>
+          )}
 
           {!isNew && existing && (
             <Card className="p-4 space-y-2 text-xs text-muted-foreground">

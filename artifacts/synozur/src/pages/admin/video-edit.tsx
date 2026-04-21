@@ -21,6 +21,7 @@ import {
   MediaPickerModal,
   mediaUrl,
 } from "@/components/admin/MediaPickerModal";
+import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@workspace/api-client-react";
 import {
@@ -620,6 +621,16 @@ export default function VideoEdit({ id }: Props) {
               )}
             </div>
           </Card>
+
+          {!isNew && (
+            <Card className="p-4">
+              <TaxonomyPicker
+                entityType="video"
+                entityId={id ?? null}
+                canWrite={canWrite}
+              />
+            </Card>
+          )}
 
           {!isNew && itemQ.data && (
             <Card className="p-4 space-y-2">

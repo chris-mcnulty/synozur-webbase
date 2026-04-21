@@ -6,20 +6,18 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
-import { fetchLibrary, type Pillar } from "@/data/collateral";
+import { fetchLibrary } from "@/data/collateral";
 import NotFound from "./not-found";
 import { workshops } from "@/data/workshops";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 
-const PILLAR_BY_SLUG: Record<string, Pillar> = {
-  "strategic-transformation": "strategic",
-  "technology-transformation": "technology",
-  experiences: "experiences",
-  "go-to-market-transformation": "gtm",
-};
-
-const WORKSHOP_CATEGORIES_BY_SLUG: Record<string, string[]> = {
+// Categories for the "related workshops" rail. Replaced by #99 polymorphic
+// taxonomy once workshops start carrying shared tags — until then a small
+// mapping from service slug → workshop category is kept here (local to this
+// file, not exported) as a narrow bridge. The `PILLAR_BY_SLUG` lookup and
+// the library-filter heuristic it powered are gone (#100 / #105).
+const WORKSHOP_CATEGORIES_BY_SERVICE: Record<string, string[]> = {
   "strategic-transformation": ["AI Strategy & Design", "Leadership & Organizational Transformation"],
   "technology-transformation": ["AI Strategy & Design", "Microsoft 365 Transformation"],
   experiences: [],
@@ -36,15 +34,14 @@ function Icon({ url }: { url: string | null }) {
   return <Layers className="h-7 w-7" />;
 }
 
-function CollateralRail({ slug, title }: { slug: string; title: string }) {
-  const pillar = PILLAR_BY_SLUG[slug];
+function CollateralRail({ serviceId, title }: { serviceId: string | null; title: string }) {
   const q = useQuery({
-    queryKey: ["collateral", "by-pillar", pillar],
+    queryKey: ["collateral", "by-service", serviceId],
     queryFn: () =>
-      pillar ? fetchLibrary({ pillar: [pillar], pageSize: 6 }) : Promise.resolve(null),
-    enabled: Boolean(pillar),
+      serviceId ? fetchLibrary({ serviceId, pageSize: 6 }) : Promise.resolve(null),
+    enabled: Boolean(serviceId),
   });
-  if (!pillar) return null;
+  if (!serviceId) return null;
   return (
     <section className="py-24 bg-background border-t border-border">
       <div className="container mx-auto px-4">
@@ -74,7 +71,7 @@ function CollateralRail({ slug, title }: { slug: string; title: string }) {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            We're publishing new collateral for this pillar — check back soon.
+            We're publishing new collateral for this service — check back soon.
           </p>
         )}
       </div>
@@ -143,7 +140,7 @@ export default function ServiceDetail() {
     list.data?.items.find((s) => s.slug === slug)?.solutions ?? [];
 
   const relatedWorkshops = workshops.filter((w) =>
-    (WORKSHOP_CATEGORIES_BY_SLUG[slug] ?? []).includes(w.category),
+    (WORKSHOP_CATEGORIES_BY_SERVICE[slug] ?? []).includes(w.category),
   );
 
   const seoDescription =
@@ -346,7 +343,7 @@ export default function ServiceDetail() {
         </div>
       </section>
 
-      {service ? <CollateralRail slug={slug} title={service.title} /> : null}
+      {service ? <CollateralRail serviceId={service.id} title={service.title} /> : null}
 
       {relatedWorkshops.length > 0 && (
         <section className="py-24 bg-card border-y border-border">
