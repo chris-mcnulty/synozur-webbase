@@ -11,7 +11,7 @@ const objectStorageService = new ObjectStorageService();
 
 const ListQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  pageSize: z.coerce.number().int().min(1).max(500).default(50),
 });
 
 router.get("/cms/media", requireAuth, async (req, res) => {
