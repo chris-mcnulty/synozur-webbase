@@ -21,6 +21,12 @@ function siteOrigin(): string {
   return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, "");
 }
 
+function absoluteUrl(url: string | null | undefined, origin: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 function xmlEscape(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -173,10 +179,10 @@ export async function handlePolarisRss(
           : "",
         duration ? `      <itunes:duration>${duration}</itunes:duration>` : "",
         ep.artworkUrl
-          ? `      <itunes:image href="${xmlEscape(ep.artworkUrl)}"/>`
+          ? `      <itunes:image href="${xmlEscape(absoluteUrl(ep.artworkUrl, origin))}"/>`
           : "",
         ep.audioUrl
-          ? `      <enclosure url="${xmlEscape(ep.audioUrl)}" length="${enclosureLength}" type="audio/mpeg"/>`
+          ? `      <enclosure url="${xmlEscape(absoluteUrl(ep.audioUrl, origin))}" length="${enclosureLength}" type="audio/mpeg"/>`
           : "",
         "    </item>",
       ]
