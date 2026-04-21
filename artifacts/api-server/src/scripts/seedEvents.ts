@@ -61,16 +61,26 @@ export interface SeedEventsResult {
   skipped: number;
 }
 
+const REQUIRED_HEADERS = ["title", "start date", "location", "registration", "type", "status"];
+
 export async function seedEventsFromCsv(raw: string): Promise<SeedEventsResult> {
   const rows = parseCsv(raw.replace(/^\uFEFF/, ""));
   const [header, ...data] = rows;
   const idx = (name: string) => header.indexOf(name);
+
+  // Validate that all required headers are present before processing any rows.
+  const missingHeaders = REQUIRED_HEADERS.filter((h) => idx(h) === -1);
+  if (missingHeaders.length > 0) {
+    throw new Error(`CSV is missing required headers: ${missingHeaders.join(", ")}`);
+  }
+
   const titleIdx = idx("title");
   const startIdx = idx("start date");
   const locIdx = idx("location");
   const regIdx = idx("registration");
   const typeIdx = idx("type");
   const statusIdx = idx("status");
+  const slugColIdx = idx("slug");
   const teaserIdx = idx("teaser");
   const descriptionIdx = idx("description");
 
@@ -87,11 +97,19 @@ export async function seedEventsFromCsv(raw: string): Promise<SeedEventsResult> 
       continue;
     }
 
-    let slug = slugify(title);
-    let candidate = slug;
-    let n = 2;
-    while (usedSlugs.has(candidate)) candidate = `${slug}-${n++}`;
-    slug = candidate;
+    // Use an explicit slug column when present (stable across title renames).
+    // Fall back to generating a slug from the title and de-duplicating it.
+    const csvSlug = slugColIdx !== -1 ? row[slugColIdx]?.trim() : null;
+    let slug: string;
+    if (csvSlug) {
+      slug = csvSlug;
+    } else {
+      const base = slugify(title);
+      let candidate = base;
+      let n = 2;
+      while (usedSlugs.has(candidate)) candidate = `${base}-${n++}`;
+      slug = candidate;
+    }
     usedSlugs.add(slug);
 
     // Fields that are always sourced from CSV (present in every export).

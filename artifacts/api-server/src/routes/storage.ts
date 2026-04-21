@@ -77,11 +77,18 @@ function streamObjectToResponse(
   res.on("close", handleResponseClose);
 
   if (canThumb) {
-    // Content is addressed by a content-stable UUID path, so the transformed
-    // variant is safe to cache aggressively by width.
+    // Derive cacheability from the upstream object's headers so that private
+    // objects are not accidentally cached by shared proxies/CDNs.
+    const upstreamCacheControl = source.headers.get("cache-control") ?? "";
+    const isPublic =
+      upstreamCacheControl.includes("public") &&
+      !upstreamCacheControl.includes("private");
+    const thumbnailCacheControl = isPublic
+      ? "public, max-age=31536000, immutable"
+      : "private, max-age=3600";
     res.status(source.status);
     res.setHeader("Content-Type", "image/webp");
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("Cache-Control", thumbnailCacheControl);
     transform = sharp()
       .rotate()
       .resize({ width: width!, withoutEnlargement: true })
