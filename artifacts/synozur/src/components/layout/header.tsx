@@ -10,6 +10,39 @@ type NavGroup = { title: string; links: NavLink[]; nested?: { label: string; hre
 
 const LOGO_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
 
+function isExternal(href: string) {
+  return /^https?:\/\//.test(href);
+}
+
+function NavLinkItem({
+  link,
+  className,
+  onClick,
+}: {
+  link: NavLink;
+  className: string;
+  onClick?: () => void;
+}) {
+  if (isExternal(link.href)) {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={onClick}
+      >
+        {link.label}
+      </a>
+    );
+  }
+  return (
+    <Link href={link.href} className={className} onClick={onClick}>
+      {link.label}
+    </Link>
+  );
+}
+
 export function Header() {
   useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -43,7 +76,7 @@ export function Header() {
       links: [
         { label: "About", href: "/about" },
         { label: "Team", href: "/team" },
-        { label: "Careers", href: "/" },
+        { label: "Careers", href: "https://careers.synozur.com" },
         { label: "Contact", href: "/contact" },
       ]
     },
@@ -99,13 +132,11 @@ export function Header() {
                   }`}
                 >
                   {group.links.map((link) => (
-                    <Link
+                    <NavLinkItem
                       key={link.label}
-                      href={link.href}
+                      link={link}
                       className="text-sm text-popover-foreground/80 hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    />
                   ))}
                   {group.nested && group.nested.length > 0 ? (
                     <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
@@ -172,14 +203,12 @@ export function Header() {
                 <h3 className="font-semibold text-foreground">{group.title}</h3>
                 <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
                   {group.links.map((link) => (
-                    <Link
+                    <NavLinkItem
                       key={link.label}
-                      href={link.href}
+                      link={link}
                       className="text-muted-foreground hover:text-primary py-1"
                       onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {link.label}
-                    </Link>
+                    />
                   ))}
                   {group.nested?.map((pillar) => (
                     <div key={pillar.label} className="mt-2">
