@@ -119,7 +119,7 @@ router.get("/cms/posts", requireAuth, async (req, res) => {
       .select()
       .from(postsTable)
       .where(where)
-      .orderBy(desc(postsTable.updatedAt))
+      .orderBy(sql`${postsTable.publishedAt} DESC NULLS LAST`, desc(postsTable.updatedAt))
       .limit(pageSize)
       .offset(offset),
     db.select({ c: sql<number>`count(*)::int` }).from(postsTable).where(where),

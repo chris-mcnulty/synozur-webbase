@@ -3,13 +3,7 @@ import { Link } from "wouter";
 import { Plus, Search, Trash2, Pencil, Archive, BarChart2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -30,6 +24,15 @@ import {
   type PostStatus,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+
+type TabValue = "published" | "draft" | "scheduled" | "archived";
+
+const TAB_LABELS: { value: TabValue; label: string }[] = [
+  { value: "published", label: "Published" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "draft", label: "Draft" },
+  { value: "archived", label: "Archived" },
+];
 
 function statusBadge(s: PostStatus) {
   const map: Record<PostStatus, string> = {
@@ -56,7 +59,7 @@ export default function AdminPostsList() {
   const { toast } = useToast();
   const { access } = useAdminAccess();
 
-  const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
+  const [tab, setTab] = useState<TabValue>("published");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -65,7 +68,7 @@ export default function AdminPostsList() {
 
   const { data: postsData, isLoading, refetch } = useListCmsPosts(
     {
-      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+      status: tab as PostStatus,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       page,
       pageSize: 20,
@@ -149,6 +152,13 @@ export default function AdminPostsList() {
     setSelected(new Set());
   };
 
+  const handleTabChange = (value: string) => {
+    setTab(value as TabValue);
+    setPage(1);
+    setSelected(new Set());
+    setViewsSort(null);
+  };
+
   return (
     <AdminLayout
       title="Posts"
@@ -161,202 +171,192 @@ export default function AdminPostsList() {
         </Link>
       }
     >
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search title or slug…"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-              // simple debounce inline
-              window.clearTimeout((window as unknown as { __searchT?: number }).__searchT);
-              (window as unknown as { __searchT?: number }).__searchT = window.setTimeout(
-                () => setDebouncedSearch(e.target.value),
-                300,
-              );
-            }}
-            className="pl-9"
-            data-testid="input-post-search"
-          />
-        </div>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => {
-            setStatusFilter(v as PostStatus | "all");
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[160px]" data-testid="select-status-filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-            {access?.isEditorOrAbove && (
-              <Button variant="outline" size="sm" onClick={bulkArchive} data-testid="button-bulk-archive">
-                <Archive className="h-4 w-4 mr-1" /> Archive
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={bulkDelete} data-testid="button-bulk-delete">
-              <Trash2 className="h-4 w-4 mr-1 text-destructive" /> Delete
-            </Button>
-          </div>
-        )}
-      </div>
+      <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <TabsList data-testid="tabs-status">
+            {TAB_LABELS.map(({ value, label }) => (
+              <TabsTrigger key={value} value={value} data-testid={`tab-${value}`}>
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      <div className="rounded-md border border-border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={items.length > 0 && selected.size === items.length}
-                  onCheckedChange={toggleAll}
-                  aria-label="Select all"
-                />
-              </TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Author</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Categories</TableHead>
-              <TableHead>Published</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead
-                className="cursor-pointer select-none whitespace-nowrap"
-                onClick={() =>
-                  setViewsSort((prev) =>
-                    prev === "desc" ? "asc" : "desc",
-                  )
-                }
-                data-testid="th-views"
-              >
-                <span className="inline-flex items-center gap-1">
-                  Views (30d)
-                  {viewsSort === "desc" ? (
-                    <ArrowDown className="h-3 w-3" />
-                  ) : viewsSort === "asc" ? (
-                    <ArrowUp className="h-3 w-3" />
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                  )}
-                </span>
-              </TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search title or slug…"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+                window.clearTimeout((window as unknown as { __searchT?: number }).__searchT);
+                (window as unknown as { __searchT?: number }).__searchT = window.setTimeout(
+                  () => setDebouncedSearch(e.target.value),
+                  300,
+                );
+              }}
+              className="pl-9"
+              data-testid="input-post-search"
+            />
+          </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+              {access?.isEditorOrAbove && (
+                <Button variant="outline" size="sm" onClick={bulkArchive} data-testid="button-bulk-archive">
+                  <Archive className="h-4 w-4 mr-1" /> Archive
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={bulkDelete} data-testid="button-bulk-delete">
+                <Trash2 className="h-4 w-4 mr-1 text-destructive" /> Delete
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border border-border overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                  Loading…
-                </TableCell>
-              </TableRow>
-            ) : items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                  No posts match these filters.
-                </TableCell>
-              </TableRow>
-            ) : (
-              items.map((p) => (
-                <TableRow key={p.id} data-testid={`row-post-${p.id}`}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selected.has(p.id)}
-                      onCheckedChange={() => toggleOne(p.id)}
-                      aria-label={`Select ${p.title}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <Link href={`/posts/${p.id}/edit`}>
-                      <a className="hover:underline">{p.title}</a>
-                    </Link>
-                    <div className="text-xs text-muted-foreground">/{p.slug}</div>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {p.author?.displayName ?? "—"}
-                  </TableCell>
-                  <TableCell>{statusBadge(p.status)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {(p.categories ?? []).map((c) => c.name).join(", ") || "—"}
-                  </TableCell>
-                  <TableCell className="text-sm">{formatDate(p.publishedAt)}</TableCell>
-                  <TableCell className="text-sm">{formatDate(p.updatedAt)}</TableCell>
-                  <TableCell className="text-sm tabular-nums" data-testid={`views-${p.id}`}>
-                    {p.status === "published"
-                      ? (viewsMap[p.id] ?? 0).toLocaleString()
-                      : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex gap-1">
-                      {p.status === "published" && (
-                        <Link href={`/posts/${p.id}/analytics`}>
-                          <Button variant="ghost" size="icon" title="Analytics" data-testid={`button-analytics-${p.id}`}>
-                            <BarChart2 className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={items.length > 0 && selected.size === items.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Author</TableHead>
+                <TableHead>Categories</TableHead>
+                <TableHead>Published</TableHead>
+                <TableHead>Updated</TableHead>
+                {tab === "published" && (
+                  <TableHead
+                    className="cursor-pointer select-none whitespace-nowrap"
+                    onClick={() => setViewsSort((prev) => (prev === "desc" ? "asc" : "desc"))}
+                    data-testid="th-views"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Views (30d)
+                      {viewsSort === "desc" ? (
+                        <ArrowDown className="h-3 w-3" />
+                      ) : viewsSort === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                       )}
-                      <Link href={`/posts/${p.id}/edit`}>
-                        <Button variant="ghost" size="icon" data-testid={`button-edit-${p.id}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (confirm(`Delete "${p.title}"?`)) {
-                            deletePost.mutate({ id: p.id });
-                          }
-                        }}
-                        data-testid={`button-delete-${p.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+                    </span>
+                  </TableHead>
+                )}
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={tab === "published" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                    Loading…
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={tab === "published" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                    No {tab} posts.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map((p) => (
+                  <TableRow key={p.id} data-testid={`row-post-${p.id}`}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(p.id)}
+                        onCheckedChange={() => toggleOne(p.id)}
+                        aria-label={`Select ${p.title}`}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/posts/${p.id}/edit`}>
+                        <a className="hover:underline">{p.title}</a>
+                      </Link>
+                      <div className="text-xs text-muted-foreground">/{p.slug}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {p.author?.displayName ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {(p.categories ?? []).map((c) => c.name).join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{formatDate(p.publishedAt)}</TableCell>
+                    <TableCell className="text-sm">{formatDate(p.updatedAt)}</TableCell>
+                    {tab === "published" && (
+                      <TableCell className="text-sm tabular-nums" data-testid={`views-${p.id}`}>
+                        {(viewsMap[p.id] ?? 0).toLocaleString()}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="inline-flex gap-1">
+                        {p.status === "published" && (
+                          <Link href={`/posts/${p.id}/analytics`}>
+                            <Button variant="ghost" size="icon" title="Analytics" data-testid={`button-analytics-${p.id}`}>
+                              <BarChart2 className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        <Link href={`/posts/${p.id}/edit`}>
+                          <Button variant="ghost" size="icon" data-testid={`button-edit-${p.id}`}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm(`Delete "${p.title}"?`)) {
+                              deletePost.mutate({ id: p.id });
+                            }
+                          }}
+                          data-testid={`button-delete-${p.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      <div className="mt-4 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Showing page {page} of {totalPages} · {total} total
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {total > 0
+              ? `Showing page ${page} of ${totalPages} · ${total} total`
+              : `No ${tab} posts`}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              data-testid="button-prev-page"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              data-testid="button-next-page"
+            >
+              Next
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            data-testid="button-prev-page"
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            data-testid="button-next-page"
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      </Tabs>
     </AdminLayout>
   );
 }
