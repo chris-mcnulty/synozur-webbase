@@ -75,7 +75,7 @@ export type ArtifactBaseRow = {
   deletedAt: Date | null;
 };
 
-export function isArtifactPublicallyVisible(row: ArtifactBaseRow, now: Date = new Date()): boolean {
+export function isArtifactPubliclyVisible(row: ArtifactBaseRow, now: Date = new Date()): boolean {
   if (row.deletedAt) return false;
   if (!row.active) return false;
   if (row.status !== "published") return false;

@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import {
   db,
   collateralTable,
@@ -19,7 +19,8 @@ async function pillarToServiceId(pillar: string | null): Promise<string | null> 
   if (!servicePillarCache) {
     const rows = await db
       .select({ id: servicesTable.id, blogCategory: servicesTable.blogCategory, slug: servicesTable.slug })
-      .from(servicesTable);
+      .from(servicesTable)
+      .where(and(eq(servicesTable.active, true), isNull(servicesTable.deletedAt)));
     servicePillarCache = new Map();
     for (const r of rows) {
       if (r.blogCategory) servicePillarCache.set(r.blogCategory.toLowerCase(), r.id);

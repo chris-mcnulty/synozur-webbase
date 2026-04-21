@@ -57,8 +57,8 @@ export async function ensureUniqueSlugFor(
   const t = table as any;
   while (true) {
     const where = excludeId
-      ? and(eq(t.slug, slug), ne(t.id, excludeId))
-      : eq(t.slug, slug);
+      ? and(eq(t.slug, slug), ne(t.id, excludeId), isNull(t.deletedAt))
+      : and(eq(t.slug, slug), isNull(t.deletedAt));
     const rows = await db.select({ id: t.id }).from(t).where(where).limit(1);
     if (rows.length === 0) return slug;
     i++;
