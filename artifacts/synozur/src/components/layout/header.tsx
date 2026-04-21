@@ -121,6 +121,8 @@ export function Header() {
       links: [
         { label: "About", href: "/about" },
         { label: "Team", href: "/team" },
+        { label: "Clients", href: "/clients" },
+        { label: "Partners", href: "/partners" },
         { label: "Careers", href: "https://careers.synozur.com" },
         { label: "Contact", href: "/contact" },
       ]
