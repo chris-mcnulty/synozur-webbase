@@ -135,13 +135,11 @@ export async function listEntitiesForTagSlug(
   ) as Record<TaxonomyEntityType, string[]>;
   if (!tag) return out;
 
-  const rows = await db
-    .select({
-      entityType: entityTagsTable.entityType,
-      entityId: entityTagsTable.entityId,
-    })
-    .from(entityTagsTable)
-    .where(eq(entityTagsTable.tagId, tag.id));
-  for (const r of rows) out[r.entityType as TaxonomyEntityType].push(r.entityId);
+  // Do not return raw IDs from entity_tags on a public path. The association
+  // table alone does not prove the referenced entity is publicly visible
+  // (published/active and not soft-deleted). This helper must be updated to
+  // join each entityType against its canonical entity table with the same
+  // public-visibility predicates used by that type's public list/detail
+  // routes before returning results.
   return out;
 }
