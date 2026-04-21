@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, X, RefreshCw } from "lucide-react";
+import { Image as ImageIcon, X, RefreshCw, MapPin } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ export default function EventForm({ id }: Props) {
     imageAssetId: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
@@ -268,10 +268,19 @@ export default function EventForm({ id }: Props) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowLibrary(true)}
+                onClick={() => setLibraryMode("any")}
                 data-testid="button-pick-image"
               >
                 {imagePreview ? "Change Image" : "Pick from Library"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLibraryMode("location")}
+                data-testid="button-pick-location-image"
+              >
+                <MapPin className="h-4 w-4 mr-1" />
+                Pick Location Image
               </Button>
               {imagePreview && (
                 <Button
@@ -329,10 +338,11 @@ export default function EventForm({ id }: Props) {
       </form>
 
       <AssetLibraryModal
-        open={showLibrary}
-        onClose={() => setShowLibrary(false)}
+        open={libraryMode !== null}
+        onClose={() => setLibraryMode(null)}
         onSelect={handleSelectAsset}
         selectedId={form.imageAssetId}
+        category={libraryMode === "location" ? "location" : undefined}
       />
       </div>
     </AdminLayout>
