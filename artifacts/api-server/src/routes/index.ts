@@ -19,6 +19,9 @@ import collateralRouter from "./collateral";
 import teamMembersRouter from "./teamMembers";
 import videosRouter from "./videos";
 import whitePapersRouter from "./whitePapers";
+import seoRouter from "./seo";
+import wixRedirectsRouter from "./wixRedirects";
+import workshopsRouter from "./workshops";
 
 const router: IRouter = Router();
 
@@ -42,5 +45,8 @@ router.use(collateralRouter);
 router.use(teamMembersRouter);
 router.use(videosRouter);
 router.use(whitePapersRouter);
+router.use(seoRouter);
+router.use(wixRedirectsRouter);
+router.use(workshopsRouter);
 
 export default router;

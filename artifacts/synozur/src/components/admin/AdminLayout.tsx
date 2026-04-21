@@ -18,6 +18,8 @@ import {
   Library as LibraryIcon,
   Video as VideoIcon,
   BookOpen as BookOpenIcon,
+  CornerDownRight,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -96,6 +98,13 @@ const NAV: NavItem[] = [
     testId: "nav-admin-white-papers",
   },
   {
+    href: "/workshops",
+    label: "Workshops",
+    icon: GraduationCap,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-workshops",
+  },
+  {
     href: "/comments",
     label: "Comments",
     icon: MessageSquare,
@@ -129,6 +138,13 @@ const NAV: NavItem[] = [
     icon: Inbox,
     show: (a) => !!a?.isAllowListed,
     testId: "nav-admin-submissions",
+  },
+  {
+    href: "/wix-redirects",
+    label: "Wix redirects",
+    icon: CornerDownRight,
+    show: (a) => !!a?.isEditorOrAbove,
+    testId: "nav-admin-wix-redirects",
   },
 ];
 

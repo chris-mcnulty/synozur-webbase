@@ -14,3 +14,5 @@ export * from "./teamMembers";
 export * from "./analytics";
 export * from "./videos";
 export * from "./whitePapers";
+export * from "./wixRedirects";
+export * from "./workshops";

@@ -101,6 +101,8 @@ const ServiceBody = z.object({
   tertiaryTextHtml: z.string().nullish(),
   blurbHtml: z.string().nullish(),
   blogCategory: z.string().nullish(),
+  seoTitle: z.string().nullish(),
+  seoDescription: z.string().nullish(),
   active: z.boolean().optional(),
 });
 const ServicePatch = ServiceBody.partial();
@@ -126,6 +128,8 @@ const SolutionBody = z.object({
   blogTag: z.string().nullish(),
   primaryBlogCategoryFilter: z.string().nullish(),
   buttonUrl: z.string().nullish(),
+  seoTitle: z.string().nullish(),
+  seoDescription: z.string().nullish(),
   active: z.boolean().optional(),
 });
 const SolutionPatch = SolutionBody.partial();
@@ -186,6 +190,8 @@ router.post("/cms/services", ...adminGuard, async (req, res) => {
       tertiaryTextHtml: d.tertiaryTextHtml ?? null,
       blurbHtml: d.blurbHtml ?? null,
       blogCategory: d.blogCategory ?? null,
+      seoTitle: d.seoTitle ?? null,
+      seoDescription: d.seoDescription ?? null,
       active: d.active ?? true,
     })
     .returning();
@@ -219,7 +225,7 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
     "title", "displayOrder", "iconId", "parentServiceId", "servicePath",
     "overviewPath", "buttonText", "heroTextHtml", "secondaryTitle",
     "secondaryTextHtml", "tertiaryTitle", "tertiaryTextHtml", "blurbHtml",
-    "blogCategory", "active",
+    "blogCategory", "seoTitle", "seoDescription", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
@@ -298,6 +304,8 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       blogTag: d.blogTag ?? null,
       primaryBlogCategoryFilter: d.primaryBlogCategoryFilter ?? null,
       buttonUrl: d.buttonUrl ?? null,
+      seoTitle: d.seoTitle ?? null,
+      seoDescription: d.seoDescription ?? null,
       active: d.active ?? true,
     })
     .returning();
@@ -332,7 +340,8 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "buttonText", "heroTextHtml", "secondaryTitle", "secondaryTextHtml",
     "ourApproachTitle", "ourApproachTextHtml", "blurbHtml", "blurbCopy",
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
-    "primaryBlogCategoryFilter", "buttonUrl", "active",
+    "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
+    "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }

@@ -2,5 +2,4 @@
 // TypeScript types are available via z.infer<typeof Schema> or by importing
 // from @workspace/api-client-react/api.schemas for client-side usage.
 export * from "./generated/api";
-export * from "./generated/types";
 export * from "./constants";

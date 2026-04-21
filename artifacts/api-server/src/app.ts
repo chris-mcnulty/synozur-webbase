@@ -8,6 +8,8 @@ import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
+import { wixRedirectMiddleware } from "./lib/wixRedirects";
+import { handleRobots, handleSitemap } from "./routes/seo";
 
 const app: Express = express();
 
@@ -40,6 +42,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Clerk session middleware — populates getAuth(req) for downstream handlers.
 app.use(clerkMiddleware());
+
+// Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
+// 301 to their new home without ever reaching the SPA shell. Skips /api/*.
+app.use(wixRedirectMiddleware());
+
+// Site-root SEO artifacts. Also available under /api/* via the router below.
+app.get("/sitemap.xml", handleSitemap);
+app.get("/robots.txt", handleRobots);
 
 app.use("/api", router);
 

@@ -111,6 +111,8 @@ export interface ServiceDto {
   tertiaryTextHtml: string | null;
   blurbHtml: string | null;
   blogCategory: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
   active: boolean;
 }
 
@@ -133,6 +135,8 @@ export interface SolutionDto {
   blurbCopy: string | null;
   heroTextColor: string | null;
   tagsText: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
   active: boolean;
 }
 
