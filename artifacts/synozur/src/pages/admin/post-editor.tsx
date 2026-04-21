@@ -639,8 +639,14 @@ export default function PostEditor({ id }: Props) {
                   id="featuredRank"
                   type="number"
                   min={1}
+                  step={1}
                   value={form.featuredRank}
-                  onChange={(e) => update({ featuredRank: e.target.value })}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value === "" || /^[1-9]\d*$/.test(value)) {
+                      update({ featuredRank: value });
+                    }
+                  }}
                   placeholder="Lower = shown first"
                   data-testid="input-post-featured-rank"
                 />
