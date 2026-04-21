@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, ArrowRight, Search } from "lucide-react";
+import { useState, useRef, useEffect, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
@@ -46,8 +46,35 @@ function NavLinkItem({
 }
 
 export function Header() {
-  useLocation();
+  const [, navigate] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  function handleSearchSubmit(e: FormEvent) {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearchOpen(false);
+    setSearchQuery("");
+    navigate(`/library?q=${encodeURIComponent(q)}`);
+  }
+
+  function handleMobileSearchSubmit(e: FormEvent) {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setMobileMenuOpen(false);
+    setSearchQuery("");
+    navigate(`/library?q=${encodeURIComponent(q)}`);
+  }
 
   const servicesQuery = useQuery({
     queryKey: ["services"],
@@ -200,6 +227,52 @@ export function Header() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
+          {/* Desktop expandable search */}
+          <div className="flex items-center">
+            {searchOpen ? (
+              <form onSubmit={handleSearchSubmit} className="flex items-center gap-1">
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search library…"
+                  aria-label="Search library"
+                  className="h-9 w-48 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                    }
+                  }}
+                />
+                <button
+                  type="submit"
+                  aria-label="Submit search"
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Close search"
+                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                aria-label="Open search"
+                onClick={() => setSearchOpen(true)}
+                className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <ThemeToggle />
           <Link href="/start" className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
             Get Started
@@ -225,6 +298,24 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 w-full h-[calc(100vh-5rem)] bg-background border-t border-border overflow-y-auto z-40">
           <div className="p-6 flex flex-col gap-6">
+            {/* Mobile search */}
+            <form onSubmit={handleMobileSearchSubmit} className="flex items-center gap-2">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search library…"
+                aria-label="Search library"
+                className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="submit"
+                aria-label="Submit search"
+                className="h-10 w-10 inline-flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
             {navGroups.map((group) => (
               <div key={group.title} className="flex flex-col gap-3">
                 <h3 className="font-semibold text-foreground">{group.title}</h3>
