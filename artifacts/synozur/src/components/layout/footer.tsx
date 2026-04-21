@@ -1,9 +1,11 @@
 import { Link } from "wouter";
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Linkedin, Twitter, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { getActiveApplications } from "@/data/applications";
 import {
   Turnstile,
   TURNSTILE_SITE_KEY,
@@ -101,6 +103,22 @@ function FooterSubscribeForm() {
 }
 
 export function Footer() {
+  // #103: applications column reads from the same API endpoint that
+  // drives the header nav and the applications list page. Falls back to
+  // the static applications list when the API is empty or unreachable,
+  // preserving behaviour during migration from hardcoded nav entries.
+  const applicationsQuery = useQuery({
+    queryKey: ["applications", "nav"],
+    queryFn: () => api.listApplications(true),
+    staleTime: 5 * 60 * 1000,
+  });
+  const apiApps = applicationsQuery.data?.items ?? [];
+  const footerApps = (
+    apiApps.length > 0
+      ? apiApps
+      : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }))
+  ).slice(0, 4);
+
   return (
     <footer className="bg-card border-t border-border pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -134,10 +152,16 @@ export function Footer() {
             <h3 className="font-semibold mb-4 text-foreground">Applications</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
               <li><Link href="/applications" className="hover:text-primary transition-colors">All Applications</Link></li>
-              <li><Link href="/applications/vega" className="hover:text-primary transition-colors">Vega</Link></li>
-              <li><Link href="/applications/nebula" className="hover:text-primary transition-colors">Nebula</Link></li>
-              <li><Link href="/applications/orion" className="hover:text-primary transition-colors">Orion (Models)</Link></li>
-              <li><Link href="/applications/zenith" className="hover:text-primary transition-colors">Zenith</Link></li>
+              {footerApps.map((a) => (
+                <li key={a.slug}>
+                  <Link
+                    href={`/applications/${a.slug}`}
+                    className="hover:text-primary transition-colors"
+                  >
+                    {a.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

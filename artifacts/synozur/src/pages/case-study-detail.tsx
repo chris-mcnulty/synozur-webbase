@@ -1,26 +1,99 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
-import { getCaseStudyBySlug, caseStudies } from "@/data/case-studies";
+import { api, type CaseStudyDto } from "@/lib/api";
+import {
+  caseStudies as staticCaseStudies,
+  getCaseStudyBySlug as getStaticCaseStudyBySlug,
+} from "@/data/case-studies";
 import NotFound from "@/pages/not-found";
+
+function staticAsDto(s: (typeof staticCaseStudies)[number]): CaseStudyDto {
+  return {
+    id: s.slug,
+    slug: s.slug,
+    title: s.title,
+    client: s.client,
+    clientLabel: s.clientLabel,
+    industry: s.industry,
+    established: s.established ?? null,
+    tag: s.tag,
+    headline: s.headline,
+    summary: s.summary,
+    heroImage: s.heroImage,
+    clientLogo: null,
+    challenge: s.challenge,
+    approach: s.approach,
+    outcome: s.outcome,
+    metrics: s.metrics,
+    quote: s.quote,
+    serviceId: null,
+    solutionId: null,
+    status: "published",
+    publishedAt: null,
+    unpublishedAt: null,
+    featured: false,
+    featuredRank: null,
+    seoTitle: null,
+    seoDescription: null,
+    ogImage: null,
+    active: true,
+    sourceId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export default function CaseStudyDetail() {
   const [, params] = useRoute("/case-studies/:slug");
-  const slug = params?.slug;
-  const study = slug ? getCaseStudyBySlug(slug) : undefined;
+  const slug = params?.slug ?? "";
+
+  const detailQ = useQuery({
+    queryKey: ["case-studies", slug, "detail"],
+    queryFn: () => api.getCaseStudy(slug),
+    enabled: slug.length > 0,
+    retry: (count, err) => {
+      if (err instanceof Error && /404/.test(err.message)) return false;
+      return count < 2;
+    },
+  });
+
+  const relatedQ = useQuery({
+    queryKey: ["case-studies"],
+    queryFn: () => api.listCaseStudies(),
+  });
+
+  const staticFallback = slug ? getStaticCaseStudyBySlug(slug) : undefined;
+  const study: CaseStudyDto | undefined = useMemo(() => {
+    if (detailQ.data) return detailQ.data;
+    if (detailQ.isError && staticFallback) return staticAsDto(staticFallback);
+    return undefined;
+  }, [detailQ.data, detailQ.isError, staticFallback]);
+
+  if (detailQ.isLoading && !staticFallback) {
+    return (
+      <div className="w-full py-32 text-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
 
   if (!study) {
     return <NotFound />;
   }
 
-  const related = caseStudies.filter((c) => c.slug !== study.slug).slice(0, 2);
+  const apiItems = relatedQ.data?.items ?? [];
+  const pool =
+    apiItems.length > 0 ? apiItems : staticCaseStudies.map(staticAsDto);
+  const related = pool.filter((c) => c.slug !== study.slug).slice(0, 2);
 
   return (
     <div className="w-full">
       <Meta title={study.title} description={study.summary} />
 
-      {/* Hero */}
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-20">
         <div className="absolute inset-0 nebula-gradient opacity-15" />
         <div className="container relative z-10 mx-auto px-4 max-w-5xl">
@@ -67,28 +140,28 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      {/* Metrics strip */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
-            {study.metrics.map((m) => (
-              <div
-                key={m.label}
-                className="bg-card p-8 flex flex-col items-start"
-              >
-                <p className="text-2xl md:text-3xl font-bold text-primary mb-2 leading-tight">
-                  {m.value}
-                </p>
-                <p className="text-sm text-muted-foreground leading-snug">
-                  {m.label}
-                </p>
-              </div>
-            ))}
+      {study.metrics.length > 0 && (
+        <section className="py-16 bg-background">
+          <div className="container mx-auto px-4 max-w-5xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
+              {study.metrics.map((m) => (
+                <div
+                  key={m.label}
+                  className="bg-card p-8 flex flex-col items-start"
+                >
+                  <p className="text-2xl md:text-3xl font-bold text-primary mb-2 leading-tight">
+                    {m.value}
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-snug">
+                    {m.label}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Challenge */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
@@ -112,7 +185,6 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      {/* Approach */}
       <section className="py-16 bg-card border-y border-border">
         <div className="container mx-auto px-4 max-w-3xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
@@ -145,22 +217,22 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      {/* Quote */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <figure className="rounded-2xl border border-border/60 bg-card p-10 md:p-12">
-            <Quote className="h-8 w-8 text-primary mb-6" />
-            <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-foreground/90 mb-6">
-              "{study.quote.text}"
-            </blockquote>
-            <figcaption className="text-sm text-muted-foreground">
-              — {study.quote.attribution}
-            </figcaption>
-          </figure>
-        </div>
-      </section>
+      {study.quote.text && (
+        <section className="py-20 bg-background">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <figure className="rounded-2xl border border-border/60 bg-card p-10 md:p-12">
+              <Quote className="h-8 w-8 text-primary mb-6" />
+              <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-foreground/90 mb-6">
+                "{study.quote.text}"
+              </blockquote>
+              <figcaption className="text-sm text-muted-foreground">
+                — {study.quote.attribution}
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+      )}
 
-      {/* Outcome */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
@@ -184,7 +256,6 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      {/* Related */}
       {related.length > 0 && (
         <section className="py-20 bg-card border-t border-border">
           <div className="container mx-auto px-4 max-w-5xl">
@@ -226,7 +297,6 @@ export default function CaseStudyDetail() {
         </section>
       )}
 
-      {/* CTA */}
       <section className="relative overflow-hidden bg-card border-t border-border py-20">
         <div className="absolute inset-0 nebula-gradient opacity-10" />
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">

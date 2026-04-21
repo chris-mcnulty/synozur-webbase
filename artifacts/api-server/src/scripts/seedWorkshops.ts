@@ -8,8 +8,8 @@
  */
 import { resolve, dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
-import { db, workshopsTable } from "@workspace/db";
+import { and, eq, isNull } from "drizzle-orm";
+import { db, workshopsTable, servicesTable } from "@workspace/db";
 
 type CTA = { label: string; href: string };
 type FAQItem = { q: string; a: string };
@@ -129,14 +129,40 @@ function asValues(w: StaticWorkshop, displayOrder: number) {
   };
 }
 
+// Maps the per-workshop `category` label to a service slug. Replaces
+// the former hand-maintained category-to-service lookup map in
+// service-detail.tsx — the mapping now runs once at seed time and
+// writes a real `workshops.service_id` FK (#100 / #105). Editors can
+// reassign a workshop's service via admin CRUD afterwards.
+const CATEGORY_TO_SERVICE_SLUG: Record<string, string> = {
+  "AI Strategy & Design": "strategic-transformation",
+  "Leadership & Organizational Transformation": "strategic-transformation",
+  "Microsoft 365 Transformation": "technology-transformation",
+  "Go-to-Market Transformation": "go-to-market-transformation",
+};
+
+async function loadServiceSlugToId(): Promise<Map<string, string>> {
+  const rows = await db
+    .select({ id: servicesTable.id, slug: servicesTable.slug })
+    .from(servicesTable)
+    .where(and(eq(servicesTable.active, true), isNull(servicesTable.deletedAt)));
+  const out = new Map<string, string>();
+  for (const r of rows) out.set(r.slug, r.id);
+  return out;
+}
+
 async function main(): Promise<void> {
   const workshops = await loadWorkshops();
+  const serviceSlugToId = await loadServiceSlugToId();
   let created = 0;
   let updated = 0;
 
   for (let i = 0; i < workshops.length; i++) {
     const w = workshops[i];
     const values = asValues(w, (i + 1) * 10);
+    const serviceSlug = CATEGORY_TO_SERVICE_SLUG[w.category];
+    const serviceId = serviceSlug ? serviceSlugToId.get(serviceSlug) ?? null : null;
+    (values as Record<string, unknown>).serviceId = serviceId;
     const existing = await db.query.workshopsTable.findFirst({
       where: eq(workshopsTable.slug, w.slug),
     });

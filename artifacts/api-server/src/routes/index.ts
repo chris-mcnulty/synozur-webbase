@@ -23,6 +23,9 @@ import seoRouter from "./seo";
 import wixRedirectsRouter from "./wixRedirects";
 import workshopsRouter from "./workshops";
 import polarisRouter from "./polaris";
+import caseStudiesRouter from "./caseStudies";
+import applicationsRouter from "./applications";
+import aboutContentRouter from "./aboutContent";
 
 const router: IRouter = Router();
 
@@ -50,5 +53,8 @@ router.use(seoRouter);
 router.use(wixRedirectsRouter);
 router.use(workshopsRouter);
 router.use(polarisRouter);
+router.use(caseStudiesRouter);
+router.use(applicationsRouter);
+router.use(aboutContentRouter);
 
 export default router;

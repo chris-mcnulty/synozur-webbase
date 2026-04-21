@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -15,7 +17,29 @@ import {
   Lightbulb,
   Rocket,
   Award,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
+import { api } from "@/lib/api";
+
+// Map the text icon name stored on `about_values.icon` back to a lucide
+// component. New icons can be added here without changing the schema —
+// the list is intentionally short and covers every default value.
+const VALUE_ICONS: Record<string, LucideIcon> = {
+  Shield,
+  Users,
+  HeartHandshake,
+  Fingerprint,
+  Lightbulb,
+  Rocket,
+  Award,
+  Star,
+  Zap,
+  Eye,
+  LayoutGrid,
+  TrendingUp,
+  RefreshCw,
+};
 
 const approach = [
   {
@@ -40,7 +64,12 @@ const approach = [
   },
 ];
 
-const values = [
+type AboutValue = { icon: LucideIcon; title: string; body: string };
+
+// Default values rendered when the DB-backed `about_values` table is
+// empty. Editors can overwrite these via the admin; once at least one
+// active row exists the page switches to the DB copy.
+const DEFAULT_VALUES: AboutValue[] = [
   {
     icon: Shield,
     title: "Ethical",
@@ -74,6 +103,21 @@ const values = [
 ];
 
 export default function About() {
+  const valuesQ = useQuery({
+    queryKey: ["about-values"],
+    queryFn: () => api.listAboutValues(),
+  });
+
+  const values: AboutValue[] = useMemo(() => {
+    const items = valuesQ.data?.items ?? [];
+    if (items.length === 0) return DEFAULT_VALUES;
+    return items.map((v) => ({
+      title: v.title,
+      body: v.body,
+      icon: (v.icon && VALUE_ICONS[v.icon]) || Star,
+    }));
+  }, [valuesQ.data]);
+
   return (
     <div className="w-full">
       <Meta

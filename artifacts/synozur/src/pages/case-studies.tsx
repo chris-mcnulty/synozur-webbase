@@ -1,34 +1,89 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
-import { caseStudies } from "@/data/case-studies";
+import { api, type CaseStudyDto } from "@/lib/api";
+import { caseStudies as staticCaseStudies } from "@/data/case-studies";
 import { cn } from "@/lib/utils";
 
 const ALL = "All";
+
+// Adapt the legacy static-TS case study shape to the DTO surface so the
+// page code reads from a single type regardless of source.
+function staticAsDto(s: (typeof staticCaseStudies)[number]): CaseStudyDto {
+  return {
+    id: s.slug,
+    slug: s.slug,
+    title: s.title,
+    client: s.client,
+    clientLabel: s.clientLabel,
+    industry: s.industry,
+    established: s.established ?? null,
+    tag: s.tag,
+    headline: s.headline,
+    summary: s.summary,
+    heroImage: s.heroImage,
+    clientLogo: null,
+    challenge: s.challenge,
+    approach: s.approach,
+    outcome: s.outcome,
+    metrics: s.metrics,
+    quote: s.quote,
+    serviceId: null,
+    solutionId: null,
+    status: "published",
+    publishedAt: null,
+    unpublishedAt: null,
+    featured: false,
+    featuredRank: null,
+    seoTitle: null,
+    seoDescription: null,
+    ogImage: null,
+    active: true,
+    sourceId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export default function CaseStudies() {
   const [industry, setIndustry] = useState<string>(ALL);
   const [tag, setTag] = useState<string>(ALL);
 
+  const listQ = useQuery({
+    queryKey: ["case-studies"],
+    queryFn: () => api.listCaseStudies(),
+  });
+
+  // When the table is empty or unreachable, fall back to the legacy
+  // static data so the page keeps rendering. Lets the migration to
+  // DB-backed case studies happen in the background without breaking
+  // the public site.
+  const studies: CaseStudyDto[] = useMemo(() => {
+    const apiItems = listQ.data?.items ?? [];
+    if (apiItems.length > 0) return apiItems;
+    return staticCaseStudies.map(staticAsDto);
+  }, [listQ.data]);
+
   const industries = useMemo(
-    () => [ALL, ...Array.from(new Set(caseStudies.map((s) => s.industry)))],
-    [],
+    () => [ALL, ...Array.from(new Set(studies.map((s) => s.industry).filter(Boolean)))],
+    [studies],
   );
   const tags = useMemo(
-    () => [ALL, ...Array.from(new Set(caseStudies.map((s) => s.tag)))],
-    [],
+    () => [ALL, ...Array.from(new Set(studies.map((s) => s.tag).filter(Boolean)))],
+    [studies],
   );
 
   const filtered = useMemo(
     () =>
-      caseStudies.filter(
+      studies.filter(
         (s) =>
           (industry === ALL || s.industry === industry) &&
           (tag === ALL || s.tag === tag),
       ),
-    [industry, tag],
+    [studies, industry, tag],
   );
 
   const isFiltered = industry !== ALL || tag !== ALL;
@@ -79,8 +134,8 @@ export default function CaseStudies() {
                 className="text-sm text-muted-foreground"
                 data-testid="case-study-count"
               >
-                Showing {filtered.length} of {caseStudies.length}{" "}
-                {caseStudies.length === 1 ? "case study" : "case studies"}
+                Showing {filtered.length} of {studies.length}{" "}
+                {studies.length === 1 ? "case study" : "case studies"}
               </p>
               {isFiltered && (
                 <button

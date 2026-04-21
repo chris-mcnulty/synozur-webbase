@@ -6,6 +6,8 @@ import {
   type Event,
   type Video,
   type WhitePaper,
+  type CaseStudy,
+  type Application,
   type CollateralPillar,
 } from "@workspace/db";
 import { toSlug } from "./slug";
@@ -33,6 +35,8 @@ async function pillarToServiceId(pillar: string | null): Promise<string | null> 
 const EVENT_SOURCE_PREFIX = "event:";
 const VIDEO_SOURCE_PREFIX = "video:";
 const WHITE_PAPER_SOURCE_PREFIX = "white_paper:";
+const CASE_STUDY_SOURCE_PREFIX = "case_study:";
+const APPLICATION_SOURCE_PREFIX = "application:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
@@ -44,6 +48,14 @@ export function videoSourceId(videoId: string): string {
 
 export function whitePaperSourceId(whitePaperId: string): string {
   return `${WHITE_PAPER_SOURCE_PREFIX}${whitePaperId}`;
+}
+
+export function caseStudySourceId(caseStudyId: string): string {
+  return `${CASE_STUDY_SOURCE_PREFIX}${caseStudyId}`;
+}
+
+export function applicationSourceId(applicationId: string): string {
+  return `${APPLICATION_SOURCE_PREFIX}${applicationId}`;
 }
 
 async function ensureUniqueCollateralSlug(base: string, excludeId?: string): Promise<string> {
@@ -253,4 +265,85 @@ export async function softDeleteCollateralForWhitePaper(
     .update(collateralTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(collateralTable.sourceId, sourceId));
+}
+
+export async function upsertCollateralFromCaseStudy(
+  caseStudy: CaseStudy,
+): Promise<void> {
+  const sourceId = caseStudySourceId(caseStudy.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const isPublished =
+    caseStudy.status === "published" &&
+    caseStudy.active &&
+    !caseStudy.deletedAt;
+  const now = new Date();
+
+  const syncedFields = {
+    type: "case_study" as const,
+    title: caseStudy.title,
+    subtitle: caseStudy.clientLabel || caseStudy.client || null,
+    description: caseStudy.summary,
+    heroImage: caseStudy.heroImage,
+    tags: [] as string[],
+    url: `/case-studies/${caseStudy.slug}`,
+    external: false,
+    publishedAt: caseStudy.publishedAt,
+    featured: caseStudy.featured,
+    featuredRank: caseStudy.featuredRank,
+    serviceId: caseStudy.serviceId,
+    solutionId: caseStudy.solutionId,
+    active: isPublished,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({
+        ...syncedFields,
+        deletedAt: isPublished ? null : existing.deletedAt,
+      })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(caseStudy.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForCaseStudy(
+  caseStudyId: string,
+): Promise<void> {
+  const sourceId = caseStudySourceId(caseStudyId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
+}
+
+// Applications are products, not library artifacts, so they intentionally
+// do not sync to `collateralTable`. The helpers below mirror the video /
+// white-paper shape so an admin button can trigger a no-op
+// reconciliation (useful if a future change does want them in the
+// library), but by default they are excluded from /library queries.
+export async function upsertCollateralFromApplication(
+  _application: Application,
+): Promise<void> {
+  // Intentional no-op: see comment above.
+  return;
+}
+
+export async function softDeleteCollateralForApplication(
+  _applicationId: string,
+): Promise<void> {
+  // Intentional no-op.
+  return;
 }

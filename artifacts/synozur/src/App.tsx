@@ -61,6 +61,8 @@ import AdminWorkshopsList from "@/pages/admin/workshops-list";
 import WorkshopEdit from "@/pages/admin/workshop-edit";
 import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
 import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
+import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
+import AdminApplicationsList from "@/pages/admin/applications-list";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -153,6 +155,9 @@ function AdminRoutes() {
         <Route path="/polaris-episodes/:id/edit">
           {(params) => <PolarisEpisodeEdit id={params.id} />}
         </Route>
+        <Route path="/case-studies" component={AdminCaseStudiesList} />
+        <Route path="/applications" component={AdminApplicationsList} />
+
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/wix-redirects" component={AdminWixRedirects} />
         <Route path="/events" component={AdminEventsList} />

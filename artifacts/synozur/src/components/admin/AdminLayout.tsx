@@ -23,6 +23,8 @@ import {
   GraduationCap,
   ExternalLink,
   Headphones,
+  Briefcase,
+  AppWindow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -113,6 +115,20 @@ const NAV: NavItem[] = [
     icon: Headphones,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-polaris",
+  },
+  {
+    href: "/case-studies",
+    label: "Case Studies",
+    icon: Briefcase,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-case-studies",
+  },
+  {
+    href: "/applications",
+    label: "Applications",
+    icon: AppWindow,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-applications",
   },
   {
     href: "/comments",

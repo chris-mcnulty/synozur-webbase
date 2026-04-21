@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { servicesTable, solutionsTable } from "./services";
 
 export type WorkshopCTA = { label: string; href: string };
 export type WorkshopPain = { header: string; lead: string; tiles: string[] };
@@ -111,6 +112,17 @@ export const workshopsTable = pgTable(
     seo: jsonb("seo").$type<WorkshopSEO>().notNull().default({ title: "", description: "" }),
     displayOrder: integer("display_order"),
     sourceId: text("source_id"),
+    // #100 / #105: nullable FKs so the "related workshops" rail on the
+    // services/solutions pages can be a real DB query instead of a
+    // hand-maintained string-match map. A workshop can still have a
+    // null service — it just won't show up on a service detail page
+    // until assigned.
+    serviceId: uuid("service_id").references(() => servicesTable.id, {
+      onDelete: "set null",
+    }),
+    solutionId: uuid("solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -120,6 +132,8 @@ export const workshopsTable = pgTable(
     uniqueIndex("workshops_slug_key").on(t.slug),
     uniqueIndex("workshops_source_id_key").on(t.sourceId),
     index("workshops_display_order_idx").on(t.displayOrder),
+    index("workshops_service_idx").on(t.serviceId),
+    index("workshops_solution_idx").on(t.solutionId),
   ],
 );
 

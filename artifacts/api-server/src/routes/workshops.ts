@@ -129,6 +129,8 @@ const WorkshopBody = z.object({
   seo: SeoSchema.default({ title: "", description: "" }),
   displayOrder: z.number().int().nullish(),
   active: z.boolean().optional(),
+  serviceId: z.string().uuid().nullish(),
+  solutionId: z.string().uuid().nullish(),
 });
 type WorkshopBodyT = z.infer<typeof WorkshopBody>;
 const WorkshopPatch = WorkshopBody.partial().extend({
@@ -183,6 +185,8 @@ function shape(w: Workshop) {
     seo: w.seo,
     displayOrder: w.displayOrder,
     sourceId: w.sourceId,
+    serviceId: w.serviceId,
+    solutionId: w.solutionId,
     active: w.active,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
@@ -239,17 +243,31 @@ function valuesFromBody(d: WorkshopBodyT, slug: string) {
     faq: d.faq,
     seo: d.seo,
     displayOrder: d.displayOrder ?? null,
+    serviceId: d.serviceId ?? null,
+    solutionId: d.solutionId ?? null,
     active: d.active ?? true,
   };
 }
 
 // ---- Public ------------------------------------------------------------
 
-router.get("/workshops", async (_req, res) => {
+router.get("/workshops", async (req, res) => {
+  const serviceId =
+    typeof req.query.serviceId === "string" ? req.query.serviceId : null;
+  const solutionId =
+    typeof req.query.solutionId === "string" ? req.query.solutionId : null;
+
+  const filters = [
+    eq(workshopsTable.active, true),
+    isNull(workshopsTable.deletedAt),
+  ];
+  if (serviceId) filters.push(eq(workshopsTable.serviceId, serviceId));
+  if (solutionId) filters.push(eq(workshopsTable.solutionId, solutionId));
+
   const rows = await db
     .select()
     .from(workshopsTable)
-    .where(and(eq(workshopsTable.active, true), isNull(workshopsTable.deletedAt)))
+    .where(and(...filters))
     .orderBy(asc(workshopsTable.displayOrder), asc(workshopsTable.title));
   res.json({ items: rows.map(shape) });
 });
@@ -347,7 +365,14 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     if (d[k] !== undefined) updates[k] = d[k];
   }
   // Nullable fields — treat undefined as no-op, explicit null as clear.
-  for (const k of ["secondaryCTA", "diagnostic", "competitiveIntel", "toolingNote"] as const) {
+  for (const k of [
+    "secondaryCTA",
+    "diagnostic",
+    "competitiveIntel",
+    "toolingNote",
+    "serviceId",
+    "solutionId",
+  ] as const) {
     if (k in d) updates[k] = d[k] ?? null;
   }
   const [updated] = await db
