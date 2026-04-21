@@ -29,7 +29,7 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 function RelatedRail({ post }: { post: PublicPost }) {
-  const categorySlug = post.categories[0]?.slug;
+  const categorySlug = post.categories?.[0]?.slug;
   const { data } = useInsightsList(
     categorySlug ? { categorySlug, page: 1, pageSize: 6 } : { page: 1, pageSize: 6 },
   );
@@ -62,7 +62,7 @@ function RelatedRail({ post }: { post: PublicPost }) {
                 </div>
                 <div className="p-5">
                   <p className="text-xs uppercase tracking-widest text-primary mb-2">
-                    {p.categories[0]?.name ?? "Insight"}
+                    {p.categories?.[0]?.name ?? "Insight"}
                   </p>
                   <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors">
                     {p.title}
@@ -175,7 +175,7 @@ export default function InsightDetail() {
               <ArrowLeft className="h-4 w-4" /> Back to The Feed
             </Link>
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-zinc-300 mb-6">
-              {post.categories[0] && (
+              {post.categories?.[0] && (
                 <>
                   <span className="text-primary">{post.categories[0].name}</span>
                   <span className="h-1 w-1 rounded-full bg-zinc-500" />

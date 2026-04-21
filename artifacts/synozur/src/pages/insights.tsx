@@ -113,7 +113,7 @@ function formatDate(iso: string | null | undefined): string {
 
 function PostCard({ post, index }: { post: PublicPost; index: number }) {
   const hero = resolveMediaUrl(post.heroImageUrl);
-  const cat = post.categories[0]?.name;
+  const cat = post.categories?.[0]?.name;
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
@@ -161,7 +161,7 @@ function PostCard({ post, index }: { post: PublicPost; index: number }) {
 
 function FeaturedCard({ post }: { post: PublicPost }) {
   const hero = resolveMediaUrl(post.heroImageUrl);
-  const cat = post.categories[0]?.name;
+  const cat = post.categories?.[0]?.name;
   return (
     <Link
       href={`/insights/${post.slug}`}
