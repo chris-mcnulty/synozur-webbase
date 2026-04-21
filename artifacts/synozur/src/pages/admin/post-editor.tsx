@@ -81,8 +81,10 @@ interface FormState {
   bodyMarkdown: string;
   heroImageId: string | null;
   heroImageUrl: string | null;
+  heroImageChanged: boolean;
   ogImageId: string | null;
   ogImageUrl: string | null;
+  ogImageChanged: boolean;
   seoTitle: string;
   seoDescription: string;
   seoCanonicalUrl: string;
@@ -99,8 +101,10 @@ const EMPTY: FormState = {
   bodyMarkdown: "",
   heroImageId: null,
   heroImageUrl: null,
+  heroImageChanged: false,
   ogImageId: null,
   ogImageUrl: null,
+  ogImageChanged: false,
   seoTitle: "",
   seoDescription: "",
   seoCanonicalUrl: "",
@@ -118,8 +122,10 @@ function fromPost(p: Post): FormState {
     bodyMarkdown: p.bodyMarkdown ?? "",
     heroImageId: null,
     heroImageUrl: p.heroImageUrl ?? null,
+    heroImageChanged: false,
     ogImageId: null,
     ogImageUrl: p.ogImageUrl ?? null,
+    ogImageChanged: false,
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
@@ -136,8 +142,11 @@ function toBody(state: FormState): CreatePostBody {
     excerpt: state.excerpt || null,
     bodyHtml: state.bodyHtml || null,
     bodyMarkdown: state.bodyMarkdown || null,
-    heroImageId: state.heroImageId,
-    ogImageId: state.ogImageId,
+    // Only send image IDs when the user explicitly picked or cleared an image
+    // in this editing session. Omitting them (undefined) leaves the server-side
+    // value untouched, preventing fromPost()'s null reset from wiping the DB.
+    heroImageId: state.heroImageChanged ? state.heroImageId : undefined,
+    ogImageId: state.ogImageChanged ? state.ogImageId : undefined,
     seoTitle: state.seoTitle || null,
     seoDescription: state.seoDescription || null,
     seoCanonicalUrl: state.seoCanonicalUrl || null,
@@ -311,10 +320,10 @@ export default function PostEditor({ id }: Props) {
   };
 
   const handleHero = (m: MediaItem) => {
-    update({ heroImageId: m.id, heroImageUrl: mediaUrl(m) });
+    update({ heroImageId: m.id, heroImageUrl: mediaUrl(m), heroImageChanged: true });
   };
   const handleOg = (m: MediaItem) => {
-    update({ ogImageId: m.id, ogImageUrl: mediaUrl(m) });
+    update({ ogImageId: m.id, ogImageUrl: mediaUrl(m), ogImageChanged: true });
   };
 
   const addTagFromInput = async () => {
@@ -494,7 +503,7 @@ export default function PostEditor({ id }: Props) {
                       Pick image
                     </Button>
                     {form.ogImageUrl && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => update({ ogImageId: null, ogImageUrl: null })}>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => update({ ogImageId: null, ogImageUrl: null, ogImageChanged: true })}>
                         <X className="h-4 w-4 mr-1" /> Remove
                       </Button>
                     )}
@@ -591,7 +600,7 @@ export default function PostEditor({ id }: Props) {
                 {form.heroImageUrl ? "Change" : "Pick image"}
               </Button>
               {form.heroImageUrl && (
-                <Button variant="ghost" size="sm" onClick={() => update({ heroImageId: null, heroImageUrl: null })}>
+                <Button variant="ghost" size="sm" onClick={() => update({ heroImageId: null, heroImageUrl: null, heroImageChanged: true })}>
                   <X className="h-4 w-4 mr-1" /> Remove
                 </Button>
               )}
