@@ -107,6 +107,20 @@ router.get("/events", async (_req, res): Promise<void> => {
   );
 });
 
+router.get("/events/:slug", async (req, res): Promise<void> => {
+  const slug = String(req.params.slug);
+  const [event] = await db
+    .select()
+    .from(eventsTable)
+    .where(eq(eventsTable.slug, slug));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  const { imageUrl } = await loadEventWithImage(event);
+  res.json(publicShape(event, imageUrl));
+});
+
 router.get("/admin/events", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(eventsTable).orderBy(asc(eventsTable.startDate));
   const enriched = await Promise.all(rows.map((e) => loadEventWithImage(e)));

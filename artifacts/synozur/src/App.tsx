@@ -25,6 +25,7 @@ import Polaris from "@/pages/polaris";
 import Contact from "@/pages/contact";
 import Start from "@/pages/start";
 import Events from "@/pages/events";
+import EventDetail from "@/pages/event-detail";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
@@ -222,6 +223,7 @@ function Router() {
             <Route path="/contact" component={Contact} />
             <Route path="/start" component={Start} />
             <Route path="/events" component={Events} />
+            <Route path="/events/:slug" component={EventDetail} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
             <Route path="/sign-in/*?" component={SignInPage} />

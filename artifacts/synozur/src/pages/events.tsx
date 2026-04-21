@@ -24,6 +24,7 @@ function formatTime(iso: string | Date): string {
 
 interface EventLike {
   id: number;
+  slug: string;
   title: string;
   startDate: string | Date;
   location?: string | null;
@@ -61,8 +62,13 @@ function EventCard({ event, isPast }: { event: EventLike; isPast: boolean }) {
         </div>
       </div>
       <div className="flex-1 flex flex-col">
-        <h3 className="text-xl font-semibold text-foreground mb-2" data-testid={`event-title-${event.id}`}>
-          {event.title}
+        <h3 className="text-xl font-semibold mb-2" data-testid={`event-title-${event.id}`}>
+          <Link
+            href={`/events/${event.slug}`}
+            className="text-foreground hover:text-primary transition-colors"
+          >
+            {event.title}
+          </Link>
         </h3>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground mb-3">
           <div className="flex items-center gap-2">

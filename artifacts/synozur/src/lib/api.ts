@@ -342,6 +342,7 @@ export const api = {
   getSolution: (slug: string) =>
     jsonFetch<SolutionWithCapabilities>(url(`/solutions/${encodeURIComponent(slug)}`)),
   publicEvents: () => jsonFetch<PublicEvent[]>(url("/events")),
+  publicEvent: (slug: string) => jsonFetch<PublicEvent>(url(`/events/${slug}`)),
   me: () => jsonFetch<AdminMe>(url("/admin/me")),
   adminEvents: () => jsonFetch<AdminEvent[]>(url("/admin/events")),
   getEvent: (id: number) => jsonFetch<AdminEvent>(url(`/admin/events/${id}`)),
