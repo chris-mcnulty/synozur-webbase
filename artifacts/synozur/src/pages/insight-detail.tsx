@@ -217,7 +217,7 @@ export default function InsightDetail() {
         <div className="container mx-auto px-4 py-16 md:py-24 max-w-3xl">
           {bodyHtml ? (
             <div
-              className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl prose-img:border prose-img:border-border/60"
+              className="prose dark:prose-invert prose-lg max-w-none prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl prose-img:border prose-img:border-border/60"
               // Body HTML was sanitized at ingest time by the crawler (sanitize-html).
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
