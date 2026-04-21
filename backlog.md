@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 21, 2026  
-> 32 tasks pending · 50 merged · 25 cancelled
+> 33 tasks pending · 50 merged · 25 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -191,6 +191,11 @@ There is no convention for adding a new content type. Shipping a small new surfa
 
 The collateral table has no foreign key to `services` or `solutions`. Filtered content rails on `/services/:slug` and `/solutions/:slug` are currently approximated by string-matching on `pillar` values (see `PILLAR_BY_SLUG` in `service-detail.tsx`) and `tags` jsonb lookups — fragile, case-sensitive, and silently wrong when an editor renames a service. This task adds nullable `service_id` and `solution_id` columns to `collateralTable` (with indexes) plus a many-to-many `collateral_services` join table for items that belong to multiple services. Sync-to-collateral from videos / white papers / workshops resolves pillar → service row and writes the FK. Public rails (`GET /api/collateral?serviceId=…` and `?solutionId=…`) replace the pillar heuristic.
 
+### #100.5 · Ship the #98/#99/#100 schema to dev + backfill + admin UI
+**Depends on:** #98, #99, #100
+
+Follow-up to the Content Platform foundation commit. The schema changes for #98-#100 landed in code but were not applied to the database, no data was migrated into the new polymorphic tables, and the admin UI has no way to use the new fields yet. This task closes the loop: (1) generate and apply the Drizzle migration (`pnpm --filter @workspace/db run push`) for the new columns (`collateral.service_id`, `collateral.solution_id`), the new tables (`entity_categories`, `entity_tags`, `collateral_services`), and the new enums (`artifact_status`, `taxonomy_entity_type`); (2) write a one-shot backfill script that copies `post_categories` → `entity_categories` and `post_tags` → `entity_tags` so existing post taxonomy is visible to the polymorphic readers, then a follow-on that deletes the legacy join tables once all callers are migrated; (3) add a shared `TaxonomyPicker` admin React component that reads/writes via the polymorphic endpoints and wire it into the post / video / white paper / workshop edit forms; (4) add a `ServiceSelect` + `SolutionSelect` pair to the collateral admin edit form that writes the new FKs; (5) switch the `/services/:slug` and `/solutions/:slug` rail queries from pillar/tag heuristics to `?serviceId=` / `?solutionId=` (prerequisite check for #105).
+
 ### #101 · Polaris episodes: from inline array to DB + RSS feed
 **Depends on:** #98 (artifact-type pattern)
 
@@ -249,6 +254,7 @@ Once #100 provides real foreign keys and tag-based filtering (#99) is live, the 
 | #98 | ★ Repeatable artifact-type pattern | Content Platform | — |
 | #99 | ★ Polymorphic taxonomy across content types | Content Platform | — |
 | #100 | ★ FK from collateral to services/solutions | Content Platform | — |
+| #100.5 | Ship #98/#99/#100 schema to dev + backfill + admin UI | Content Platform | #98, #99, #100 |
 | #101 | Polaris episodes → DB + RSS | Content Platform | #98 |
 | #102 | Case studies static TS → DB | Content Platform | #98, #99, #100 |
 | #103 | Applications static TS → DB (supersedes #96) | Content Platform | #98 |
