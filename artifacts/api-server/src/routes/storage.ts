@@ -46,6 +46,35 @@ function streamObjectToResponse(
   }
 
   const nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
+  let transform: ReturnType<typeof sharp> | null = null;
+  let finished = false;
+
+  const handleStreamError = (err: unknown) => {
+    if (finished) return;
+    finished = true;
+    console.error("Failed to stream object response", err);
+    nodeStream.destroy(err instanceof Error ? err : undefined);
+    transform?.destroy(err instanceof Error ? err : undefined);
+
+    if (!res.headersSent && !res.writableEnded) {
+      res.status(502).end();
+      return;
+    }
+
+    if (!res.writableEnded) {
+      res.destroy(err instanceof Error ? err : undefined);
+    }
+  };
+
+  const handleResponseClose = () => {
+    if (finished) return;
+    finished = true;
+    nodeStream.destroy();
+    transform?.destroy();
+  };
+
+  nodeStream.on("error", handleStreamError);
+  res.on("close", handleResponseClose);
 
   if (canThumb) {
     // Content is addressed by a content-stable UUID path, so the transformed
@@ -53,10 +82,11 @@ function streamObjectToResponse(
     res.status(source.status);
     res.setHeader("Content-Type", "image/webp");
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    const transform = sharp()
+    transform = sharp()
       .rotate()
       .resize({ width: width!, withoutEnlargement: true })
       .webp({ quality: 80 });
+    transform.on("error", handleStreamError);
     nodeStream.pipe(transform).pipe(res);
     return;
   }
