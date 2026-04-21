@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useUser, useClerk } from "@clerk/react";
-import { ArrowLeft, Copy, Download, Loader2, LogOut, RefreshCw, Search } from "lucide-react";
+import { Copy, Download, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   Select,
   SelectContent,
@@ -62,11 +61,8 @@ function isFailedStatus(status: string | null | undefined): boolean {
 }
 
 export default function AdminSubmissionsList() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const [formType, setFormType] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -175,22 +171,11 @@ export default function AdminSubmissionsList() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <Link href="/">
-              <a className="inline-flex items-center hover:text-foreground" data-testid="link-back-to-events">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Events
-              </a>
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold">Form Submissions</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Signed in as {user?.primaryEmailAddress?.emailAddress}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+    <AdminLayout
+      title="Form Submissions"
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Submissions" }]}
+      actions={
+        <>
           <Button
             variant="outline"
             onClick={() => retryAll.mutate()}
@@ -205,15 +190,9 @@ export default function AdminSubmissionsList() {
               <Download className="h-4 w-4 mr-2" /> Export CSV
             </Button>
           </a>
-          <Button
-            variant="outline"
-            onClick={() => signOut({ redirectUrl: `${baseUrl || ""}/` })}
-            data-testid="button-sign-out"
-          >
-            <LogOut className="h-4 w-4 mr-2" /> Sign out
-          </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
 
       <form
         className="flex flex-wrap items-end gap-3 mb-4"
@@ -556,6 +535,6 @@ export default function AdminSubmissionsList() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </AdminLayout>
   );
 }

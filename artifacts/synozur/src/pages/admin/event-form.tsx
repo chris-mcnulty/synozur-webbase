@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, ArrowLeft, X, RefreshCw } from "lucide-react";
+import { Image as ImageIcon, X, RefreshCw } from "lucide-react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,7 +86,7 @@ export default function EventForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-events"] });
       qc.invalidateQueries({ queryKey: ["admin-event", eventId] });
       qc.invalidateQueries({ queryKey: ["public-events"] });
-      navigate("/");
+      navigate("/events");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -100,8 +101,19 @@ export default function EventForm({ id }: Props) {
     onError: (e: Error) => setSyncStatus(`Sync failed: ${e.message}`),
   });
 
+  const title = isNew ? "Create Event" : "Edit Event";
+  const crumbs = [
+    { label: "Admin", href: "/" },
+    { label: "Events", href: "/events" },
+    { label: title },
+  ];
+
   if (!isNew && isLoading) {
-    return <div className="container mx-auto px-4 py-12">Loading…</div>;
+    return (
+      <AdminLayout title={title} crumbs={crumbs}>
+        <div className="text-muted-foreground">Loading…</div>
+      </AdminLayout>
+    );
   }
 
   const handleSelectAsset = (asset: Asset) => {
@@ -110,18 +122,8 @@ export default function EventForm({ id }: Props) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <button
-        onClick={() => navigate("/")}
-        className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-        data-testid="button-back"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to events
-      </button>
-      <h1 className="text-3xl font-bold mb-8">
-        {isNew ? "Create Event" : "Edit Event"}
-      </h1>
-
+    <AdminLayout title={title} crumbs={crumbs}>
+      <div className="max-w-3xl">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -296,7 +298,7 @@ export default function EventForm({ id }: Props) {
           <Button type="submit" disabled={saveMutation.isPending} data-testid="button-save">
             {saveMutation.isPending ? "Saving…" : isNew ? "Create Event" : "Save Changes"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate("/")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/events")}>
             Cancel
           </Button>
           {!isNew && (
@@ -332,6 +334,7 @@ export default function EventForm({ id }: Props) {
         onSelect={handleSelectAsset}
         selectedId={form.imageAssetId}
       />
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

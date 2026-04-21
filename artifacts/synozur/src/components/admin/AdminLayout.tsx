@@ -21,6 +21,7 @@ import {
   BookOpen as BookOpenIcon,
   CornerDownRight,
   GraduationCap,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -214,14 +215,22 @@ export function AdminLayout({
               );
             })}
           </nav>
-          <div className="p-4 border-t border-border text-xs text-muted-foreground">
-            <div className="truncate" title={access?.signedInEmail ?? ""}>
+          <div className="p-4 border-t border-border text-xs text-muted-foreground space-y-1">
+            <a
+              href={`${baseUrl || ""}/`}
+              className="flex items-center gap-2 px-1 py-1.5 rounded hover:text-foreground transition-colors w-full"
+              data-testid="link-view-website"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span>View website</span>
+            </a>
+            <div className="truncate pt-1 border-t border-border/50 mt-1" title={access?.signedInEmail ?? ""}>
               {access?.signedInEmail ?? ""}
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className="mt-2 w-full justify-start"
+              className="mt-1 w-full justify-start px-1"
               onClick={() => signOut({ redirectUrl: `${baseUrl || ""}/` })}
               data-testid="button-sign-out"
             >
