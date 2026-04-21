@@ -63,7 +63,7 @@ const subscriptions = [
   },
   {
     name: "RSS",
-    url: "/polaris/rss.xml",
+    url: `${BASE_PATH}/polaris/rss.xml`,
   },
 ];
 

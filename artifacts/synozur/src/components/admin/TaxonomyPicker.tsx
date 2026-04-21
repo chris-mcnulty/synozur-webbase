@@ -269,6 +269,26 @@ export function TaxonomyPicker({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
+
+                    if (!allowCreateTags) {
+                      const needle = newTagInput.trim().toLowerCase();
+                      if (!needle) return;
+
+                      const existingTag = (allTagsQ.data ?? []).find(
+                        (tag) =>
+                          !selectedTagIds.has(tag.id) &&
+                          (tag.name.toLowerCase() === needle ||
+                            tag.slug.toLowerCase() === needle),
+                      );
+
+                      if (existingTag) {
+                        toggleTag(existingTag.id);
+                        setNewTagInput("");
+                      }
+
+                      return;
+                    }
+
                     handleCreateTag();
                   }
                 }}

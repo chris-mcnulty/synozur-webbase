@@ -158,7 +158,7 @@ export async function handlePolarisRss(
       const duration = ep.durationSeconds
         ? formatDuration(ep.durationSeconds)
         : null;
-      const enclosureLength = ""; // Unknown until the file is HEAD-checked.
+      const enclosureLength = 0; // Unknown until the file is HEAD-checked.
       return [
         "    <item>",
         `      <title>${xmlEscape(ep.title)}</title>`,

@@ -1,7 +1,8 @@
 /**
  * One-shot migration seed: hydrates the `polaris_episodes` table from the
  * inline array that used to live in `artifacts/synozur/src/pages/polaris.tsx`
- * (#101). Idempotent — keyed by `episode_number` using ON CONFLICT DO NOTHING.
+ * (#101). Idempotent — inserts use ON CONFLICT DO NOTHING, so rows are skipped
+ * when they hit an existing unique constraint.
  *
  * Runs after `pnpm --filter @workspace/db run push` has applied the schema.
  */
