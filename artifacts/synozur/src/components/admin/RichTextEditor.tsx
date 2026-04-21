@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import { Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
@@ -25,11 +26,85 @@ import {
   Table as TableIcon,
   Undo,
   Redo,
+  Braces,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
+
+// ---------------------------------------------------------------------------
+// Custom TipTap Iframe Node
+// ---------------------------------------------------------------------------
+
+const IFRAME_ATTRS = ["src", "width", "height", "frameborder", "allow",
+  "allowfullscreen", "scrolling", "style", "title", "loading"] as const;
+
+const IframeExtension = Node.create({
+  name: "iframe",
+  group: "block",
+  atom: true,
+
+  addAttributes() {
+    return Object.fromEntries(
+      IFRAME_ATTRS.map((a) => [a, { default: null }])
+    );
+  },
+
+  parseHTML() {
+    return [{ tag: "iframe" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["iframe", mergeAttributes(HTMLAttributes)];
+  },
+
+  addNodeView() {
+    return ({ node }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className =
+        "relative my-3 rounded overflow-hidden border border-border bg-muted/30";
+
+      const label = document.createElement("div");
+      label.className =
+        "absolute top-0 left-0 text-[10px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-br pointer-events-none z-10";
+      label.textContent = "Embed";
+
+      const iframe = document.createElement("iframe");
+      iframe.className = "w-full block";
+      iframe.style.border = "0";
+      for (const [k, v] of Object.entries(node.attrs)) {
+        if (v != null && k !== "style") iframe.setAttribute(k, String(v));
+      }
+      if (!iframe.getAttribute("height")) iframe.setAttribute("height", "200");
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(iframe);
+      return { dom: wrapper };
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Embed code parser
+// ---------------------------------------------------------------------------
+
+function parseEmbedCode(raw: string): Record<string, string | null> | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const doc = new DOMParser().parseFromString(trimmed, "text/html");
+  const iframe = doc.querySelector("iframe");
+  if (!iframe) return null;
+  const attrs: Record<string, string | null> = {};
+  for (const attr of Array.from(iframe.attributes)) {
+    attrs[attr.name] = attr.value;
+  }
+  return attrs;
+}
+
+// ---------------------------------------------------------------------------
+// RichTextEditor public API
+// ---------------------------------------------------------------------------
 
 export interface RichTextEditorChange {
   html: string;
@@ -92,6 +167,7 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
       TableHeader.configure({ HTMLAttributes: { class: "border border-border bg-muted px-2 py-1 text-left" } }),
       TableCell.configure({ HTMLAttributes: { class: "border border-border px-2 py-1" } }),
       Typography,
+      IframeExtension,
     ],
     content: value || "",
     editorProps: {
@@ -109,7 +185,6 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
     },
   });
 
-  // Sync external value changes only when editor content differs.
   useEffect(() => {
     if (!editor) return;
     if (value !== lastValueRef.current) {
@@ -134,6 +209,10 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
   );
 }
 
+// ---------------------------------------------------------------------------
+// Toolbar
+// ---------------------------------------------------------------------------
+
 function Toolbar({
   editor,
   onUploadImage,
@@ -143,11 +222,34 @@ function Toolbar({
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [embedOpen, setEmbedOpen] = useState(false);
+  const [embedCode, setEmbedCode] = useState("");
+  const [embedError, setEmbedError] = useState("");
 
   const insertLink = () => {
     const prev = editor.getAttributes("link").href ?? "";
     setLinkUrl(prev);
     setLinkOpen(true);
+    setEmbedOpen(false);
+  };
+
+  const openEmbed = () => {
+    setEmbedCode("");
+    setEmbedError("");
+    setEmbedOpen(true);
+    setLinkOpen(false);
+  };
+
+  const applyEmbed = () => {
+    const attrs = parseEmbedCode(embedCode);
+    if (!attrs || !attrs.src) {
+      setEmbedError("Paste a valid <iframe> embed snippet with a src attribute.");
+      return;
+    }
+    editor.chain().focus().insertContent({ type: "iframe", attrs }).run();
+    setEmbedOpen(false);
+    setEmbedCode("");
+    setEmbedError("");
   };
 
   return (
@@ -238,6 +340,14 @@ function Toolbar({
         <ImageIcon className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
+        onClick={openEmbed}
+        active={embedOpen}
+        label="Insert embed (podcast player, video, etc.)"
+        testId="rt-embed"
+      >
+        <Braces className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
         onClick={() => editor.chain().focus().toggleCode().run()}
         active={editor.isActive("code")}
         label="Inline code"
@@ -285,6 +395,7 @@ function Toolbar({
         </ToolbarButton>
       </div>
 
+      {/* Link panel */}
       {linkOpen && (
         <div className="basis-full mt-2 flex items-center gap-2">
           <input
@@ -300,12 +411,7 @@ function Toolbar({
             size="sm"
             onClick={() => {
               if (linkUrl) {
-                editor
-                  .chain()
-                  .focus()
-                  .extendMarkRange("link")
-                  .setLink({ href: linkUrl })
-                  .run();
+                editor.chain().focus().extendMarkRange("link").setLink({ href: linkUrl }).run();
               } else {
                 editor.chain().focus().unsetLink().run();
               }
@@ -329,6 +435,40 @@ function Toolbar({
           <Button type="button" size="sm" variant="outline" onClick={() => setLinkOpen(false)}>
             Cancel
           </Button>
+        </div>
+      )}
+
+      {/* Embed panel */}
+      {embedOpen && (
+        <div className="basis-full mt-2 flex flex-col gap-2" data-testid="embed-panel">
+          <p className="text-xs text-muted-foreground">
+            Paste the full <code className="bg-muted px-1 rounded">&lt;iframe&gt;</code> embed code from
+            Buzzsprout, Spotify, Apple Podcasts, YouTube, Vimeo, SoundCloud, etc.
+          </p>
+          <textarea
+            value={embedCode}
+            onChange={(e) => { setEmbedCode(e.target.value); setEmbedError(""); }}
+            placeholder={'<iframe src="https://www.buzzsprout.com/..." ...></iframe>'}
+            rows={3}
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm font-mono resize-none"
+            data-testid="input-embed-code"
+          />
+          {embedError && (
+            <p className="text-xs text-destructive">{embedError}</p>
+          )}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={applyEmbed} data-testid="button-embed-apply">
+              Insert embed
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => { setEmbedOpen(false); setEmbedCode(""); setEmbedError(""); }}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
     </div>
