@@ -133,13 +133,13 @@ export function Header() {
       links: [
         { label: "Insights Blog", href: "/insights" },
         { label: "Polaris Podcast", href: "/polaris" },
-        { label: "Case Studies", href: "/case-studies" },
         { label: "Events", href: "/events" },
       ]
     },
     {
       title: "Resources",
       links: [
+        { label: "Case Studies", href: "/case-studies" },
         { label: "Webinars", href: "/webinars" },
         { label: "White Papers", href: "/items" },
         { label: "Workshops", href: "/workshops" },
