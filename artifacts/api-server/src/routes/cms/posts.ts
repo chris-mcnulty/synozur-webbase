@@ -39,6 +39,7 @@ const CreateBody = z.object({
   readingTimeMin: z.number().int().nullish(),
   categoryIds: z.array(z.string().uuid()).optional(),
   tagIds: z.array(z.string().uuid()).optional(),
+  authorId: z.string().uuid().optional(),
 });
 
 const UpdateBody = CreateBody.partial();
@@ -155,7 +156,7 @@ router.post("/cms/posts", requireAuth, async (req, res) => {
       seoDescription: data.seoDescription ?? null,
       seoCanonicalUrl: data.seoCanonicalUrl ?? null,
       readingTimeMin: data.readingTimeMin ?? null,
-      authorId: user.id,
+      authorId: hasRole(user, "admin", "editor") && data.authorId ? data.authorId : user.id,
       status: "draft",
     })
     .returning();
@@ -223,6 +224,7 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
   if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
   if (d.seoCanonicalUrl !== undefined) updates.seoCanonicalUrl = d.seoCanonicalUrl ?? null;
   if (d.readingTimeMin !== undefined) updates.readingTimeMin = d.readingTimeMin ?? null;
+  if (d.authorId && hasRole(user, "admin", "editor")) updates.authorId = d.authorId;
 
   const [updated] = await db
     .update(postsTable)

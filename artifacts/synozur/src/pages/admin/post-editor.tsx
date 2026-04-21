@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Save,
@@ -90,6 +90,7 @@ interface FormState {
   seoCanonicalUrl: string;
   categoryIds: string[];
   tagIds: string[];
+  authorId: string;
 }
 
 const EMPTY: FormState = {
@@ -110,6 +111,7 @@ const EMPTY: FormState = {
   seoCanonicalUrl: "",
   categoryIds: [],
   tagIds: [],
+  authorId: "",
 };
 
 function fromPost(p: Post): FormState {
@@ -131,10 +133,11 @@ function fromPost(p: Post): FormState {
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
     categoryIds: (p.categories ?? []).map((c) => c.id),
     tagIds: (p.tags ?? []).map((t) => t.id),
+    authorId: p.author?.id ?? "",
   };
 }
 
-function toBody(state: FormState): CreatePostBody {
+function toBody(state: FormState): CreatePostBody & { authorId?: string } {
   return {
     title: state.title,
     slug: state.slug || null,
@@ -152,6 +155,7 @@ function toBody(state: FormState): CreatePostBody {
     seoCanonicalUrl: state.seoCanonicalUrl || null,
     categoryIds: state.categoryIds,
     tagIds: state.tagIds,
+    authorId: state.authorId || undefined,
   };
 }
 
@@ -179,6 +183,16 @@ export default function PostEditor({ id }: Props) {
 
   const cats = useListCmsCategories();
   const tags = useListCmsTags();
+  const canManageAuthor = !!access?.isEditorOrAbove;
+  const { data: users } = useQuery({
+    queryKey: ["/api/cms/users"],
+    queryFn: async () => {
+      const r = await fetch(`${BASE_PATH}/api/cms/users`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json() as Promise<Array<{ id: string; displayName: string; email: string; avatarUrl: string | null }>>;
+    },
+    enabled: canManageAuthor,
+  });
 
   useEffect(() => {
     if (existing) {
@@ -606,6 +620,30 @@ export default function PostEditor({ id }: Props) {
               )}
             </div>
           </Card>
+
+          {canManageAuthor && (
+            <Card className="p-4 space-y-2">
+              <Label className="text-sm font-medium">Author</Label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={form.authorId}
+                onChange={(e) => update({ authorId: e.target.value })}
+                data-testid="select-author"
+              >
+                <option value="">— keep current author —</option>
+                {(users ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.displayName || u.email}
+                  </option>
+                ))}
+              </select>
+              {form.authorId && (
+                <p className="text-xs text-muted-foreground">
+                  {users?.find((u) => u.id === form.authorId)?.email ?? ""}
+                </p>
+              )}
+            </Card>
+          )}
 
           <Card className="p-4 space-y-2">
             <Label className="text-sm font-medium">Categories</Label>

@@ -17,7 +17,7 @@ const router: IRouter = Router();
 router.get(
   "/cms/users",
   requireAuth,
-  requireRole("admin"),
+  requireRole("admin", "editor"),
   async (_req, res) => {
     const users = await db.select().from(usersTable);
     const roleRows = await db
