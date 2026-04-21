@@ -13,6 +13,7 @@ import { requireAuth, hasRole } from "../../middlewares/auth";
 import { toSlug } from "../../lib/slug";
 import { audit } from "../../lib/audit";
 import { serializePost, serializePosts } from "../../lib/postSerializer";
+import { setCategoriesFor, setTagsFor } from "../../lib/taxonomy";
 
 const router: IRouter = Router();
 
@@ -68,6 +69,10 @@ async function syncTaxonomy(postId: string, categoryIds?: string[], tagIds?: str
         .values(categoryIds.map((categoryId) => ({ postId, categoryId })))
         .onConflictDoNothing();
     }
+    // Also write through to the polymorphic taxonomy tables so rails and
+    // tag-landing pages that read from entity_* see the same truth as the
+    // legacy post_* tables (#99 / #100.5).
+    await setCategoriesFor("post", postId, categoryIds);
   }
   if (tagIds !== undefined) {
     await db.delete(postTags).where(eq(postTags.postId, postId));
@@ -77,6 +82,7 @@ async function syncTaxonomy(postId: string, categoryIds?: string[], tagIds?: str
         .values(tagIds.map((tagId) => ({ postId, tagId })))
         .onConflictDoNothing();
     }
+    await setTagsFor("post", postId, tagIds);
   }
 }
 

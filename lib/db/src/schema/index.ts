@@ -17,3 +17,4 @@ export * from "./videos";
 export * from "./whitePapers";
 export * from "./wixRedirects";
 export * from "./workshops";
+export * from "./polarisEpisodes";

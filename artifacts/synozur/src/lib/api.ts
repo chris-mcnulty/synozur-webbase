@@ -489,4 +489,76 @@ export const api = {
       url(`/cms/white-papers/${encodeURIComponent(id)}/sync-to-collateral`),
       { method: "POST" },
     ),
+  // Polaris podcast episodes (#101).
+  adminListPolarisEpisodes: () =>
+    jsonFetch<{ items: PolarisEpisodeDto[] }>(url("/cms/polaris/episodes")),
+  adminGetPolarisEpisode: (id: string) =>
+    jsonFetch<PolarisEpisodeDto>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`)),
+  createPolarisEpisode: (body: PolarisEpisodeInput) =>
+    jsonFetch<PolarisEpisodeDto>(url("/cms/polaris/episodes"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updatePolarisEpisode: (id: string, body: PolarisEpisodeInput) =>
+    jsonFetch<PolarisEpisodeDto>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deletePolarisEpisode: (id: string) =>
+    jsonFetch<void>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
 };
+
+export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
+
+export interface PolarisEpisodeDto {
+  id: string;
+  slug: string;
+  title: string;
+  episodeNumber: number;
+  summary: string;
+  guestName: string | null;
+  audioUrl: string;
+  appleUrl: string | null;
+  spotifyUrl: string | null;
+  durationSeconds: number | null;
+  transcriptHtml: string | null;
+  artworkUrl: string;
+  status: ArtifactStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolarisEpisodeInput {
+  slug?: string | null;
+  title: string;
+  episodeNumber: number;
+  summary?: string;
+  guestName?: string | null;
+  audioUrl?: string;
+  appleUrl?: string | null;
+  spotifyUrl?: string | null;
+  durationSeconds?: number | null;
+  transcriptHtml?: string | null;
+  artworkUrl?: string;
+  status?: ArtifactStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}

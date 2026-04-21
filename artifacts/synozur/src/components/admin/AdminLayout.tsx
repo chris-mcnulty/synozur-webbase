@@ -21,6 +21,7 @@ import {
   BookOpen as BookOpenIcon,
   CornerDownRight,
   GraduationCap,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -104,6 +105,13 @@ const NAV: NavItem[] = [
     icon: GraduationCap,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-workshops",
+  },
+  {
+    href: "/polaris-episodes",
+    label: "Polaris",
+    icon: Headphones,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-polaris",
   },
   {
     href: "/comments",

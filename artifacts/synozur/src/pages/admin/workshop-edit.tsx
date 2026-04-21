@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
+import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useToast } from "@/hooks/use-toast";
 import {
   emptyWorkshopInput,
@@ -131,6 +133,7 @@ export default function WorkshopEdit({ id }: Props) {
 
   const [form, setForm] = useState<WorkshopInput>(() => emptyWorkshopInput());
   const [error, setError] = useState<string | null>(null);
+  const { access } = useAdminAccess();
 
   const existingQ = useQuery<WorkshopDto>({
     queryKey: ["admin-workshop", id],
@@ -874,6 +877,16 @@ export default function WorkshopEdit({ id }: Props) {
             />
           </Field>
         </Section>
+
+        {!isNew && (
+          <Section title="Taxonomy">
+            <TaxonomyPicker
+              entityType="workshop"
+              entityId={id ?? null}
+              canWrite={!!access?.isEditorOrAbove}
+            />
+          </Section>
+        )}
 
         {error && (
           <div className="text-destructive text-sm" data-testid="text-form-error">

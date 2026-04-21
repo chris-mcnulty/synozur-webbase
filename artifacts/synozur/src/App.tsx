@@ -59,6 +59,8 @@ import WhitePaperEdit from "@/pages/admin/white-paper-edit";
 import AdminWixRedirects from "@/pages/admin/wix-redirects";
 import AdminWorkshopsList from "@/pages/admin/workshops-list";
 import WorkshopEdit from "@/pages/admin/workshop-edit";
+import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
+import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -143,6 +145,13 @@ function AdminRoutes() {
         </Route>
         <Route path="/workshops/:id/edit">
           {(params) => <WorkshopEdit id={params.id} />}
+        </Route>
+        <Route path="/polaris-episodes" component={AdminPolarisEpisodesList} />
+        <Route path="/polaris-episodes/new">
+          <PolarisEpisodeEdit />
+        </Route>
+        <Route path="/polaris-episodes/:id/edit">
+          {(params) => <PolarisEpisodeEdit id={params.id} />}
         </Route>
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/wix-redirects" component={AdminWixRedirects} />
