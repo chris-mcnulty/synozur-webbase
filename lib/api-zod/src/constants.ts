@@ -3,6 +3,7 @@ export const ASSET_CATEGORIES = [
   "north-star",
   "abstract",
   "event",
+  "location",
   "product-screenshot",
 ] as const;
 
@@ -13,6 +14,7 @@ export const ASSET_CATEGORY_LABELS: Record<AssetCategory, string> = {
   "north-star": "North Star",
   abstract: "Abstract",
   event: "Event",
+  location: "Location",
   "product-screenshot": "Product Screenshot",
 };
 
