@@ -408,9 +408,20 @@ const ImportBody = z.object({
   feedUrl: z.string().url().optional(),
 });
 
+const PreviewQuery = z.object({
+  feedUrl: z.string().url().optional(),
+});
+
 router.get("/cms/polaris/libsyn/preview", ...adminGuard, async (req, res) => {
-  const override = typeof req.query.feedUrl === "string" ? req.query.feedUrl : null;
-  const feedUrl = await resolveFeedUrl(override);
+  const parsedQuery = PreviewQuery.safeParse(req.query);
+  if (!parsedQuery.success) {
+    res.status(400).json({
+      error: "Invalid query",
+      details: parsedQuery.error.flatten(),
+    });
+    return;
+  }
+  const feedUrl = await resolveFeedUrl(parsedQuery.data.feedUrl ?? null);
   if (!feedUrl) {
     res.status(400).json({
       error:

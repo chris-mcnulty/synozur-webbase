@@ -216,7 +216,22 @@ export function PolarisLibsynImportDialog({ open, onClose }: Props) {
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={allowResync}
-                    onCheckedChange={(v) => setAllowResync(!!v)}
+                    onCheckedChange={(v) => {
+                      const next = !!v;
+                      setAllowResync(next);
+                      // Turning re-sync off locks existing-in-DB rows; drop
+                      // them from the selection so the selected count stays
+                      // in sync with what's actually importable.
+                      if (!next) {
+                        setSelected((prev) => {
+                          const out: Record<string, boolean> = { ...prev };
+                          for (const it of previewData) {
+                            if (it.existsInDb) out[it.guid] = false;
+                          }
+                          return out;
+                        });
+                      }
+                    }}
                     data-testid="checkbox-allow-resync"
                   />
                   Re-sync already-imported episodes (overwrites title, audio URL, pub date, duration,

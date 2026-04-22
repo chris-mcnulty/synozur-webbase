@@ -280,6 +280,48 @@ async function nextAutoEpisodeNumber(): Promise<number> {
   return (row?.max ?? 0) + 1;
 }
 
+// Postgres unique-violation code. Drizzle bubbles the underlying `pg` error,
+// which exposes `.code`. A race between max()+1 and INSERT (or with a manual
+// episode creation) can produce duplicate episode_number values, triggering
+// the `polaris_episodes_number_key` constraint — we retry with a freshly
+// recomputed max.
+const PG_UNIQUE_VIOLATION = "23505";
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === PG_UNIQUE_VIOLATION
+  );
+}
+
+async function insertWithAutoEpisodeNumber(
+  base: Omit<typeof polarisEpisodesTable.$inferInsert, "episodeNumber" | "slug" | "title">,
+  titleFallback: (n: number) => string,
+): Promise<void> {
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const episodeNumber = await nextAutoEpisodeNumber();
+    const slug = await ensureUniqueSlug(titleFallback(episodeNumber), null);
+    try {
+      await db.insert(polarisEpisodesTable).values({
+        ...base,
+        episodeNumber,
+        slug,
+        title: titleFallback(episodeNumber),
+      });
+      return;
+    } catch (err) {
+      if (isUniqueViolation(err) && attempt < maxAttempts) continue;
+      throw err;
+    }
+  }
+  throw new Error(
+    `Failed to allocate a unique episode_number after ${maxAttempts} attempts`,
+  );
+}
+
 export interface ImportOptions {
   // If true, re-import items that already exist in the DB (updates mutable
   // fields pulled from the feed). Items not in `guids` are always skipped.
@@ -332,24 +374,29 @@ export async function importFromFeed(
           .where(eq(polarisEpisodesTable.id, existing.id));
         summary.updated += 1;
       } else {
-        const episodeNumber =
-          typeof item.episodeNumber === "number"
-            ? item.episodeNumber
-            : await nextAutoEpisodeNumber();
-        const slug = await ensureUniqueSlug(item.title || `episode-${episodeNumber}`, null);
-        await db.insert(polarisEpisodesTable).values({
-          slug,
-          title: item.title || `Episode ${episodeNumber}`,
-          episodeNumber,
+        const baseValues = {
           summary: item.summary,
           audioUrl: item.audioUrl,
           artworkUrl: item.artworkUrl ?? "",
           durationSeconds: item.durationSeconds,
           publishedAt: item.publishedAt,
-          status: "draft",
+          status: "draft" as const,
           active: true,
           sourceId: sourceIdForGuid(item.guid),
-        });
+        };
+        if (typeof item.episodeNumber === "number") {
+          const episodeNumber = item.episodeNumber;
+          const title = item.title || `Episode ${episodeNumber}`;
+          const slug = await ensureUniqueSlug(title, null);
+          await db
+            .insert(polarisEpisodesTable)
+            .values({ ...baseValues, episodeNumber, title, slug });
+        } else {
+          await insertWithAutoEpisodeNumber(
+            baseValues,
+            (n) => item.title || `Episode ${n}`,
+          );
+        }
         summary.created += 1;
       }
     } catch (err) {
