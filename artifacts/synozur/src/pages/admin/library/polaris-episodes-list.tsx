@@ -73,7 +73,7 @@ export default function AdminPolarisEpisodesList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Polaris" }]}
       actions={
         canWrite && (
-          <Link href="/polaris-episodes/new">
+          <Link href="/library/polaris-episodes/new">
             <Button data-testid="button-create-polaris-episode">
               <Plus className="h-4 w-4 mr-2" /> New episode
             </Button>
@@ -111,7 +111,7 @@ export default function AdminPolarisEpisodesList() {
                 <TableRow key={e.id} data-testid={`row-polaris-${e.id}`}>
                   <TableCell className="font-mono">{e.episodeNumber}</TableCell>
                   <TableCell className="font-medium">
-                    <Link href={`/polaris-episodes/${e.id}/edit`}>
+                    <Link href={`/library/polaris-episodes/${e.id}/edit`}>
                       <a className="hover:underline" data-testid={`link-edit-polaris-${e.id}`}>
                         {e.title}
                       </a>
@@ -149,7 +149,7 @@ export default function AdminPolarisEpisodesList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/polaris-episodes/${e.id}/edit`}>
+                      <Link href={`/library/polaris-episodes/${e.id}/edit`}>
                         <Button variant="ghost" size="icon">
                           <Pencil className="h-4 w-4" />
                         </Button>

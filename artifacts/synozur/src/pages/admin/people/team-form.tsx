@@ -81,7 +81,7 @@ export default function TeamForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-team-members"] });
       qc.invalidateQueries({ queryKey: ["admin-team-member", memberId] });
       qc.invalidateQueries({ queryKey: ["public-team-members"] });
-      navigate("/team-members");
+      navigate("/people/team-members");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -99,12 +99,12 @@ export default function TeamForm({ id }: Props) {
       title={isNew ? "New Team Member" : `Edit ${form.name}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Team", href: "/team-members" },
+        { label: "Team", href: "/people/team-members" },
         { label: isNew ? "New" : "Edit" },
       ]}
     >
       <button
-        onClick={() => navigate("/team-members")}
+        onClick={() => navigate("/people/team-members")}
         className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
         data-testid="button-back"
       >
@@ -297,7 +297,7 @@ export default function TeamForm({ id }: Props) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/team-members")}
+            onClick={() => navigate("/people/team-members")}
           >
             Cancel
           </Button>

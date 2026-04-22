@@ -84,12 +84,12 @@ const SECTIONS: NavSection[] = [
     label: "Products",
     icon: Package,
     items: [
-      { href: "/services", label: "Services", icon: Compass, capability: "content.author", testId: "nav-admin-services" },
-      { href: "/solutions", label: "Solutions", icon: Layers, capability: "content.author", testId: "nav-admin-solutions" },
-      { href: "/case-studies", label: "Case Studies", icon: Briefcase, capability: "content.author", testId: "nav-admin-case-studies" },
-      { href: "/applications", label: "Applications", icon: AppWindow, capability: "content.author", testId: "nav-admin-applications" },
-      { href: "/models", label: "Models", icon: Network, capability: "content.author", testId: "nav-admin-models" },
-      { href: "/faq", label: "FAQ", icon: HelpCircle, capability: "content.author", testId: "nav-admin-faq" },
+      { href: "/products/services", label: "Services", icon: Compass, capability: "content.author", testId: "nav-admin-services" },
+      { href: "/products/solutions", label: "Solutions", icon: Layers, capability: "content.author", testId: "nav-admin-solutions" },
+      { href: "/products/case-studies", label: "Case Studies", icon: Briefcase, capability: "content.author", testId: "nav-admin-case-studies" },
+      { href: "/products/applications", label: "Applications", icon: AppWindow, capability: "content.author", testId: "nav-admin-applications" },
+      { href: "/products/models", label: "Models", icon: Network, capability: "content.author", testId: "nav-admin-models" },
+      { href: "/products/faq", label: "FAQ", icon: HelpCircle, capability: "content.author", testId: "nav-admin-faq" },
     ],
   },
   {
@@ -97,11 +97,11 @@ const SECTIONS: NavSection[] = [
     label: "Library",
     icon: LibraryIcon,
     items: [
-      { href: "/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.author", testId: "nav-admin-collateral" },
-      { href: "/videos", label: "Videos", icon: VideoIcon, capability: "content.author", testId: "nav-admin-videos" },
-      { href: "/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.author", testId: "nav-admin-white-papers" },
-      { href: "/workshops", label: "Workshops", icon: GraduationCap, capability: "content.author", testId: "nav-admin-workshops" },
-      { href: "/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.author", testId: "nav-admin-polaris" },
+      { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.author", testId: "nav-admin-collateral" },
+      { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.author", testId: "nav-admin-videos" },
+      { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.author", testId: "nav-admin-white-papers" },
+      { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.author", testId: "nav-admin-workshops" },
+      { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.author", testId: "nav-admin-polaris" },
     ],
   },
   {
@@ -109,8 +109,8 @@ const SECTIONS: NavSection[] = [
     label: "People",
     icon: UsersRound,
     items: [
-      { href: "/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
-      { href: "/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
+      { href: "/people/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
+      { href: "/people/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
     ],
   },
   {
@@ -118,7 +118,7 @@ const SECTIONS: NavSection[] = [
     label: "Audience",
     icon: Radio,
     items: [
-      { href: "/submissions", label: "Submissions", icon: Inbox, capability: "site.manage", testId: "nav-admin-submissions" },
+      { href: "/audience/submissions", label: "Submissions", icon: Inbox, capability: "site.manage", testId: "nav-admin-submissions" },
     ],
   },
   {
@@ -126,9 +126,9 @@ const SECTIONS: NavSection[] = [
     label: "Site config",
     icon: Settings,
     items: [
-      { href: "/site-settings", label: "Site settings", icon: Settings, capability: "users.manage", testId: "nav-admin-site-settings" },
-      { href: "/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.author", testId: "nav-admin-list-page-copy" },
-      { href: "/wix-redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-wix-redirects" },
+      { href: "/site-config/site-settings", label: "Site settings", icon: Settings, capability: "users.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.author", testId: "nav-admin-list-page-copy" },
+      { href: "/site-config/redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-redirects" },
     ],
   },
   {
@@ -136,7 +136,7 @@ const SECTIONS: NavSection[] = [
     label: "Access",
     icon: ShieldCheck,
     items: [
-      { href: "/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+      { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
     ],
   },
 ];

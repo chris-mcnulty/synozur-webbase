@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,16 +25,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   useCmsListServices,
-  useCmsListSolutions,
-  useCmsCreateSolution,
-  useCmsUpdateSolution,
+  useCmsCreateService,
+  useCmsUpdateService,
   useListCmsTags,
   type Service,
-  type Solution,
-  type UpsertSolutionBody,
+  type UpsertServiceBody,
   type MediaItem,
   type ArtifactStatus,
-  type CollateralPillar,
 } from "@workspace/api-client-react";
 
 const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
@@ -43,13 +39,6 @@ const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
   { value: "scheduled", label: "Scheduled" },
   { value: "published", label: "Published" },
   { value: "archived", label: "Archived" },
-];
-
-const PILLAR_OPTIONS: { value: CollateralPillar; label: string }[] = [
-  { value: "strategic", label: "Strategic" },
-  { value: "technology", label: "Technology" },
-  { value: "experiences", label: "Experiences" },
-  { value: "gtm", label: "GTM" },
 ];
 
 function toDatetimeLocal(iso: string | null | undefined): string {
@@ -88,27 +77,21 @@ interface FormState {
   parentServiceId: string;
   iconId: string | null;
   iconUrl: string | null;
-  routePath: string;
+  servicePath: string;
+  overviewPath: string;
   buttonText: string;
-  buttonUrl: string;
   heroTextHtml: string;
-  heroTextColor: string;
   secondaryTitle: string;
   secondaryTextHtml: string;
-  ourApproachTitle: string;
-  ourApproachTextHtml: string;
+  tertiaryTitle: string;
+  tertiaryTextHtml: string;
   blurbHtml: string;
-  blurbCopy: string;
-  tagsText: string;
   blogCategory: string;
-  blogTag: string;
-  primaryBlogCategoryFilter: string;
   seoTitle: string;
   seoDescription: string;
   status: ArtifactStatus;
   publishedAt: string;
   unpublishedAt: string;
-  pillar: CollateralPillar | null;
   tagIds: string[];
   active: boolean;
 }
@@ -120,32 +103,26 @@ const EMPTY: FormState = {
   parentServiceId: "",
   iconId: null,
   iconUrl: null,
-  routePath: "",
+  servicePath: "",
+  overviewPath: "",
   buttonText: "",
-  buttonUrl: "",
   heroTextHtml: "",
-  heroTextColor: "",
   secondaryTitle: "",
   secondaryTextHtml: "",
-  ourApproachTitle: "",
-  ourApproachTextHtml: "",
+  tertiaryTitle: "",
+  tertiaryTextHtml: "",
   blurbHtml: "",
-  blurbCopy: "",
-  tagsText: "",
   blogCategory: "",
-  blogTag: "",
-  primaryBlogCategoryFilter: "",
   seoTitle: "",
   seoDescription: "",
   status: "published",
   publishedAt: "",
   unpublishedAt: "",
-  pillar: null,
   tagIds: [],
   active: true,
 };
 
-function fromSolution(s: Solution): FormState {
+function fromService(s: Service): FormState {
   return {
     title: s.title,
     slug: s.slug,
@@ -153,66 +130,54 @@ function fromSolution(s: Solution): FormState {
     parentServiceId: s.parentServiceId ?? "",
     iconId: s.iconId ?? null,
     iconUrl: s.iconUrl ?? null,
-    routePath: s.routePath ?? "",
+    servicePath: s.servicePath ?? "",
+    overviewPath: s.overviewPath ?? "",
     buttonText: s.buttonText ?? "",
-    buttonUrl: s.buttonUrl ?? "",
     heroTextHtml: s.heroTextHtml ?? "",
-    heroTextColor: s.heroTextColor ?? "",
     secondaryTitle: s.secondaryTitle ?? "",
     secondaryTextHtml: s.secondaryTextHtml ?? "",
-    ourApproachTitle: s.ourApproachTitle ?? "",
-    ourApproachTextHtml: s.ourApproachTextHtml ?? "",
+    tertiaryTitle: s.tertiaryTitle ?? "",
+    tertiaryTextHtml: s.tertiaryTextHtml ?? "",
     blurbHtml: s.blurbHtml ?? "",
-    blurbCopy: s.blurbCopy ?? "",
-    tagsText: s.tagsText ?? "",
     blogCategory: s.blogCategory ?? "",
-    blogTag: s.blogTag ?? "",
-    primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
     status: s.status,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
-    pillar: s.pillar ?? null,
     tagIds: (s.tags ?? []).map((t) => t.id),
     active: s.active,
   };
 }
 
-function toBody(f: FormState): UpsertSolutionBody {
+function toBody(f: FormState): UpsertServiceBody {
   return {
     title: f.title,
     slug: f.slug || null,
     displayOrder: f.displayOrder === "" ? null : Number(f.displayOrder),
     parentServiceId: f.parentServiceId || null,
     iconId: f.iconId,
-    routePath: f.routePath || null,
+    servicePath: f.servicePath || null,
+    overviewPath: f.overviewPath || null,
     buttonText: f.buttonText || null,
-    buttonUrl: f.buttonUrl || null,
     heroTextHtml: f.heroTextHtml || null,
-    heroTextColor: f.heroTextColor || null,
     secondaryTitle: f.secondaryTitle || null,
     secondaryTextHtml: f.secondaryTextHtml || null,
-    ourApproachTitle: f.ourApproachTitle || null,
-    ourApproachTextHtml: f.ourApproachTextHtml || null,
+    tertiaryTitle: f.tertiaryTitle || null,
+    tertiaryTextHtml: f.tertiaryTextHtml || null,
     blurbHtml: f.blurbHtml || null,
-    blurbCopy: f.blurbCopy || null,
-    tagsText: f.tagsText || null,
     blogCategory: f.blogCategory || null,
-    blogTag: f.blogTag || null,
-    primaryBlogCategoryFilter: f.primaryBlogCategoryFilter || null,
     seoTitle: f.seoTitle || null,
     seoDescription: f.seoDescription || null,
     status: f.status,
     publishedAt: fromDatetimeLocal(f.publishedAt),
     unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
-    pillar: f.pillar,
     tagIds: f.tagIds,
     active: f.active,
   };
 }
 
-export default function SolutionEdit({ id }: Props) {
+export default function ServiceEdit({ id }: Props) {
   const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -221,10 +186,8 @@ export default function SolutionEdit({ id }: Props) {
   const canWrite = !!access?.isEditorOrAbove;
 
   const servicesQ = useCmsListServices();
-  const solutionsQ = useCmsListSolutions();
-  const services: Service[] = (servicesQ.data?.items ?? []) as Service[];
-  const solutions: Solution[] = (solutionsQ.data?.items ?? []) as Solution[];
-  const existing = id ? solutions.find((s) => s.id === id) ?? null : null;
+  const allServices: Service[] = (servicesQ.data?.items ?? []) as Service[];
+  const existing = id ? allServices.find((s) => s.id === id) ?? null : null;
   const tagsQ = useListCmsTags();
   const allTags = (tagsQ.data ?? []) as { id: string; slug: string; name: string }[];
 
@@ -235,7 +198,7 @@ export default function SolutionEdit({ id }: Props) {
 
   useEffect(() => {
     if (existing && !loaded) {
-      setForm(fromSolution(existing));
+      setForm(fromService(existing));
       setSlugTouched(true);
       setLoaded(true);
     }
@@ -249,22 +212,22 @@ export default function SolutionEdit({ id }: Props) {
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
-  const createMut = useCmsCreateSolution({
+  const createMut = useCmsCreateService({
     mutation: {
       onSuccess: (s) => {
-        toast({ title: "Solution created" });
-        qc.invalidateQueries({ queryKey: ["/api/cms/solutions"] });
-        navigate(`/solutions/${s.id}/edit`);
+        toast({ title: "Service created" });
+        qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
+        navigate(`/products/services/${s.id}/edit`);
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
     },
   });
-  const updateMut = useCmsUpdateSolution({
+  const updateMut = useCmsUpdateService({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Solution saved" });
-        qc.invalidateQueries({ queryKey: ["/api/cms/solutions"] });
+        toast({ title: "Service saved" });
+        qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -288,9 +251,11 @@ export default function SolutionEdit({ id }: Props) {
     setShowIconPicker(false);
   };
 
-  if (!isNew && solutionsQ.isLoading && !existing) {
+  const parentChoices = allServices.filter((s) => !id || s.id !== id);
+
+  if (!isNew && servicesQ.isLoading && !existing) {
     return (
-      <AdminLayout title="Edit Solution">
+      <AdminLayout title="Edit Service">
         <div className="text-muted-foreground">Loading…</div>
       </AdminLayout>
     );
@@ -298,22 +263,22 @@ export default function SolutionEdit({ id }: Props) {
 
   return (
     <AdminLayout
-      title={isNew ? "New Solution" : `Edit: ${existing?.title ?? ""}`}
+      title={isNew ? "New Service" : `Edit: ${existing?.title ?? ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Solutions", href: "/solutions" },
+        { label: "Services", href: "/products/services" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/solutions")}>
+          <Button variant="ghost" onClick={() => navigate("/products/services")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (
             <Button
               onClick={onSave}
               disabled={createMut.isPending || updateMut.isPending}
-              data-testid="button-save-solution"
+              data-testid="button-save-service"
             >
               <Save className="h-4 w-4 mr-1" />
               {createMut.isPending || updateMut.isPending ? "Saving…" : "Save"}
@@ -324,7 +289,7 @@ export default function SolutionEdit({ id }: Props) {
     >
       {!canWrite && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-          You have read-only access. Only editors and admins can change solutions.
+          You have read-only access. Only editors and admins can change services.
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -337,13 +302,14 @@ export default function SolutionEdit({ id }: Props) {
                 value={form.title}
                 onChange={(e) => update({ title: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-solution-title"
+                data-testid="input-service-title"
                 className="text-xl font-semibold h-11"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="slug">Slug</Label>
+            <div>
+              <Label htmlFor="slug">Slug</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">/services/</span>
                 <Input
                   id="slug"
                   value={form.slug}
@@ -352,33 +318,11 @@ export default function SolutionEdit({ id }: Props) {
                     update({ slug: slugify(e.target.value) });
                   }}
                   disabled={!canWrite}
-                  data-testid="input-solution-slug"
+                  data-testid="input-service-slug"
                 />
               </div>
-              <div>
-                <Label htmlFor="parent">Parent service</Label>
-                <Select
-                  value={form.parentServiceId || "__none__"}
-                  onValueChange={(v) =>
-                    update({ parentServiceId: v === "__none__" ? "" : v })
-                  }
-                  disabled={!canWrite}
-                >
-                  <SelectTrigger id="parent" data-testid="select-solution-parent">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {services.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="displayOrder">Display order</Label>
                 <Input
@@ -387,15 +331,49 @@ export default function SolutionEdit({ id }: Props) {
                   value={form.displayOrder}
                   onChange={(e) => update({ displayOrder: e.target.value })}
                   disabled={!canWrite}
+                  data-testid="input-service-display-order"
                 />
               </div>
-              <div className="col-span-2">
-                <Label htmlFor="routePath">Route path</Label>
-                <Input
-                  id="routePath"
-                  value={form.routePath}
-                  onChange={(e) => update({ routePath: e.target.value })}
+              <div>
+                <Label htmlFor="parent">Parent service</Label>
+                <Select
+                  value={form.parentServiceId || "__none__"}
+                  onValueChange={(v) => update({ parentServiceId: v === "__none__" ? "" : v })}
                   disabled={!canWrite}
+                >
+                  <SelectTrigger id="parent" data-testid="select-service-parent">
+                    <SelectValue placeholder="None (top-level)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None (top-level)</SelectItem>
+                    {parentChoices.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="servicePath">Service path</Label>
+                <Input
+                  id="servicePath"
+                  value={form.servicePath}
+                  onChange={(e) => update({ servicePath: e.target.value })}
+                  disabled={!canWrite}
+                  placeholder="/services/strategic-transformation"
+                />
+              </div>
+              <div>
+                <Label htmlFor="overviewPath">Overview path</Label>
+                <Input
+                  id="overviewPath"
+                  value={form.overviewPath}
+                  onChange={(e) => update({ overviewPath: e.target.value })}
+                  disabled={!canWrite}
+                  placeholder="/services-overview/default"
                 />
               </div>
             </div>
@@ -410,38 +388,24 @@ export default function SolutionEdit({ id }: Props) {
                 />
               </div>
               <div>
-                <Label htmlFor="buttonUrl">Button URL</Label>
+                <Label htmlFor="blogCategory">Blog category</Label>
                 <Input
-                  id="buttonUrl"
-                  value={form.buttonUrl}
-                  onChange={(e) => update({ buttonUrl: e.target.value })}
+                  id="blogCategory"
+                  value={form.blogCategory}
+                  onChange={(e) => update({ blogCategory: e.target.value })}
                   disabled={!canWrite}
                 />
               </div>
             </div>
           </Card>
 
-          <Card className="p-4 space-y-3">
-            <div className="grid grid-cols-[1fr_180px] gap-4">
-              <div>
-                <Label>Hero text</Label>
-                <RichTextEditor
-                  value={form.heroTextHtml}
-                  onChange={({ html }) => update({ heroTextHtml: html })}
-                  onUploadImage={uploadAndRegisterImage}
-                />
-              </div>
-              <div>
-                <Label htmlFor="heroTextColor">Hero text color</Label>
-                <Input
-                  id="heroTextColor"
-                  value={form.heroTextColor}
-                  onChange={(e) => update({ heroTextColor: e.target.value })}
-                  placeholder="#ffffff"
-                  disabled={!canWrite}
-                />
-              </div>
-            </div>
+          <Card className="p-4 space-y-2">
+            <Label>Hero text</Label>
+            <RichTextEditor
+              value={form.heroTextHtml}
+              onChange={({ html }) => update({ heroTextHtml: html })}
+              onUploadImage={uploadAndRegisterImage}
+            />
           </Card>
 
           <Card className="p-4 space-y-3">
@@ -466,98 +430,39 @@ export default function SolutionEdit({ id }: Props) {
 
           <Card className="p-4 space-y-3">
             <div>
-              <Label htmlFor="ourApproachTitle">Our approach title</Label>
+              <Label htmlFor="tertiaryTitle">Tertiary title</Label>
               <Input
-                id="ourApproachTitle"
-                value={form.ourApproachTitle}
-                onChange={(e) => update({ ourApproachTitle: e.target.value })}
+                id="tertiaryTitle"
+                value={form.tertiaryTitle}
+                onChange={(e) => update({ tertiaryTitle: e.target.value })}
                 disabled={!canWrite}
               />
             </div>
             <div>
-              <Label>Our approach text</Label>
+              <Label>Tertiary text</Label>
               <RichTextEditor
-                value={form.ourApproachTextHtml}
-                onChange={({ html }) => update({ ourApproachTextHtml: html })}
+                value={form.tertiaryTextHtml}
+                onChange={({ html }) => update({ tertiaryTextHtml: html })}
                 onUploadImage={uploadAndRegisterImage}
               />
             </div>
           </Card>
 
-          <Card className="p-4 space-y-3">
-            <div>
-              <Label>Blurb</Label>
-              <RichTextEditor
-                value={form.blurbHtml}
-                onChange={({ html }) => update({ blurbHtml: html })}
-                onUploadImage={uploadAndRegisterImage}
-              />
-            </div>
-            <div>
-              <Label htmlFor="blurbCopy">Blurb copy</Label>
-              <Textarea
-                id="blurbCopy"
-                rows={2}
-                value={form.blurbCopy}
-                onChange={(e) => update({ blurbCopy: e.target.value })}
-                disabled={!canWrite}
-              />
-            </div>
-            <div>
-              <Label htmlFor="tagsText">Tags text</Label>
-              <Textarea
-                id="tagsText"
-                rows={2}
-                value={form.tagsText}
-                onChange={(e) => update({ tagsText: e.target.value })}
-                disabled={!canWrite}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-4 space-y-3">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="blogCategory">Blog category</Label>
-                <Input
-                  id="blogCategory"
-                  value={form.blogCategory}
-                  onChange={(e) => update({ blogCategory: e.target.value })}
-                  disabled={!canWrite}
-                />
-              </div>
-              <div>
-                <Label htmlFor="blogTag">Blog tag</Label>
-                <Input
-                  id="blogTag"
-                  value={form.blogTag}
-                  onChange={(e) => update({ blogTag: e.target.value })}
-                  disabled={!canWrite}
-                />
-              </div>
-              <div>
-                <Label htmlFor="primaryBlogCategoryFilter">
-                  Primary blog category filter
-                </Label>
-                <Input
-                  id="primaryBlogCategoryFilter"
-                  value={form.primaryBlogCategoryFilter}
-                  onChange={(e) =>
-                    update({ primaryBlogCategoryFilter: e.target.value })
-                  }
-                  disabled={!canWrite}
-                />
-              </div>
-            </div>
+          <Card className="p-4 space-y-2">
+            <Label>Blurb</Label>
+            <RichTextEditor
+              value={form.blurbHtml}
+              onChange={({ html }) => update({ blurbHtml: html })}
+              onUploadImage={uploadAndRegisterImage}
+            />
           </Card>
 
           <Card className="p-4 space-y-3">
             <div>
               <Label className="text-sm font-medium">SEO</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Overrides the page title and meta description on this
-                solution's public detail page. Leave blank to use the title and
-                blurb.
+                Overrides the page title and meta description on this service's
+                public detail page. Leave blank to use the title and blurb.
               </p>
             </div>
             <div>
@@ -566,10 +471,10 @@ export default function SolutionEdit({ id }: Props) {
                 id="seoTitle"
                 value={form.seoTitle}
                 maxLength={70}
-                placeholder="e.g. AI Strategy & Roadmap | Synozur"
+                placeholder="e.g. Strategic Transformation Services | Synozur"
                 onChange={(e) => update({ seoTitle: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-solution-seo-title"
+                data-testid="input-service-seo-title"
               />
               <div className="mt-1 text-xs text-muted-foreground">
                 {form.seoTitle.length}/70 characters — Google typically
@@ -578,14 +483,15 @@ export default function SolutionEdit({ id }: Props) {
             </div>
             <div>
               <Label htmlFor="seoDescription">SEO description</Label>
-              <Textarea
+              <textarea
                 id="seoDescription"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 rows={3}
                 maxLength={300}
                 value={form.seoDescription}
                 onChange={(e) => update({ seoDescription: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-solution-seo-description"
+                data-testid="input-service-seo-description"
               />
               <div className="mt-1 text-xs text-muted-foreground">
                 {form.seoDescription.length}/300 characters — aim for 150–160.
@@ -602,7 +508,7 @@ export default function SolutionEdit({ id }: Props) {
               onValueChange={(v) => update({ status: v as ArtifactStatus })}
               disabled={!canWrite}
             >
-              <SelectTrigger data-testid="select-solution-status">
+              <SelectTrigger data-testid="select-service-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -643,37 +549,9 @@ export default function SolutionEdit({ id }: Props) {
                 checked={form.active}
                 onCheckedChange={(v) => update({ active: v })}
                 disabled={!canWrite}
-                data-testid="switch-solution-active"
+                data-testid="switch-service-active"
               />
             </div>
-          </Card>
-
-          <Card className="p-4 space-y-3">
-            <Label className="text-sm font-medium">Pillar</Label>
-            <Select
-              value={form.pillar ?? "__none__"}
-              onValueChange={(v) =>
-                update({
-                  pillar: v === "__none__" ? null : (v as CollateralPillar),
-                })
-              }
-              disabled={!canWrite}
-            >
-              <SelectTrigger data-testid="select-solution-pillar">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
-                {PILLAR_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Used to group solutions into the library's pillar rails.
-            </p>
           </Card>
 
           <Card className="p-4 space-y-2">
@@ -729,7 +607,7 @@ export default function SolutionEdit({ id }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowIconPicker(true)}
-                  data-testid="button-pick-solution-icon"
+                  data-testid="button-pick-service-icon"
                 >
                   {form.iconUrl ? "Change" : "Pick image"}
                 </Button>
@@ -766,7 +644,7 @@ export default function SolutionEdit({ id }: Props) {
         onClose={() => setShowIconPicker(false)}
         onSelect={handleIcon}
         selectedId={form.iconId}
-        title="Choose solution icon"
+        title="Choose service icon"
       />
     </AdminLayout>
   );

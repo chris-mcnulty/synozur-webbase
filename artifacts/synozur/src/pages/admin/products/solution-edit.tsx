@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,13 +26,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   useCmsListServices,
-  useCmsCreateService,
-  useCmsUpdateService,
+  useCmsListSolutions,
+  useCmsCreateSolution,
+  useCmsUpdateSolution,
   useListCmsTags,
   type Service,
-  type UpsertServiceBody,
+  type Solution,
+  type UpsertSolutionBody,
   type MediaItem,
   type ArtifactStatus,
+  type CollateralPillar,
 } from "@workspace/api-client-react";
 
 const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
@@ -39,6 +43,13 @@ const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
   { value: "scheduled", label: "Scheduled" },
   { value: "published", label: "Published" },
   { value: "archived", label: "Archived" },
+];
+
+const PILLAR_OPTIONS: { value: CollateralPillar; label: string }[] = [
+  { value: "strategic", label: "Strategic" },
+  { value: "technology", label: "Technology" },
+  { value: "experiences", label: "Experiences" },
+  { value: "gtm", label: "GTM" },
 ];
 
 function toDatetimeLocal(iso: string | null | undefined): string {
@@ -77,21 +88,27 @@ interface FormState {
   parentServiceId: string;
   iconId: string | null;
   iconUrl: string | null;
-  servicePath: string;
-  overviewPath: string;
+  routePath: string;
   buttonText: string;
+  buttonUrl: string;
   heroTextHtml: string;
+  heroTextColor: string;
   secondaryTitle: string;
   secondaryTextHtml: string;
-  tertiaryTitle: string;
-  tertiaryTextHtml: string;
+  ourApproachTitle: string;
+  ourApproachTextHtml: string;
   blurbHtml: string;
+  blurbCopy: string;
+  tagsText: string;
   blogCategory: string;
+  blogTag: string;
+  primaryBlogCategoryFilter: string;
   seoTitle: string;
   seoDescription: string;
   status: ArtifactStatus;
   publishedAt: string;
   unpublishedAt: string;
+  pillar: CollateralPillar | null;
   tagIds: string[];
   active: boolean;
 }
@@ -103,26 +120,32 @@ const EMPTY: FormState = {
   parentServiceId: "",
   iconId: null,
   iconUrl: null,
-  servicePath: "",
-  overviewPath: "",
+  routePath: "",
   buttonText: "",
+  buttonUrl: "",
   heroTextHtml: "",
+  heroTextColor: "",
   secondaryTitle: "",
   secondaryTextHtml: "",
-  tertiaryTitle: "",
-  tertiaryTextHtml: "",
+  ourApproachTitle: "",
+  ourApproachTextHtml: "",
   blurbHtml: "",
+  blurbCopy: "",
+  tagsText: "",
   blogCategory: "",
+  blogTag: "",
+  primaryBlogCategoryFilter: "",
   seoTitle: "",
   seoDescription: "",
   status: "published",
   publishedAt: "",
   unpublishedAt: "",
+  pillar: null,
   tagIds: [],
   active: true,
 };
 
-function fromService(s: Service): FormState {
+function fromSolution(s: Solution): FormState {
   return {
     title: s.title,
     slug: s.slug,
@@ -130,54 +153,66 @@ function fromService(s: Service): FormState {
     parentServiceId: s.parentServiceId ?? "",
     iconId: s.iconId ?? null,
     iconUrl: s.iconUrl ?? null,
-    servicePath: s.servicePath ?? "",
-    overviewPath: s.overviewPath ?? "",
+    routePath: s.routePath ?? "",
     buttonText: s.buttonText ?? "",
+    buttonUrl: s.buttonUrl ?? "",
     heroTextHtml: s.heroTextHtml ?? "",
+    heroTextColor: s.heroTextColor ?? "",
     secondaryTitle: s.secondaryTitle ?? "",
     secondaryTextHtml: s.secondaryTextHtml ?? "",
-    tertiaryTitle: s.tertiaryTitle ?? "",
-    tertiaryTextHtml: s.tertiaryTextHtml ?? "",
+    ourApproachTitle: s.ourApproachTitle ?? "",
+    ourApproachTextHtml: s.ourApproachTextHtml ?? "",
     blurbHtml: s.blurbHtml ?? "",
+    blurbCopy: s.blurbCopy ?? "",
+    tagsText: s.tagsText ?? "",
     blogCategory: s.blogCategory ?? "",
+    blogTag: s.blogTag ?? "",
+    primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
     status: s.status,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
+    pillar: s.pillar ?? null,
     tagIds: (s.tags ?? []).map((t) => t.id),
     active: s.active,
   };
 }
 
-function toBody(f: FormState): UpsertServiceBody {
+function toBody(f: FormState): UpsertSolutionBody {
   return {
     title: f.title,
     slug: f.slug || null,
     displayOrder: f.displayOrder === "" ? null : Number(f.displayOrder),
     parentServiceId: f.parentServiceId || null,
     iconId: f.iconId,
-    servicePath: f.servicePath || null,
-    overviewPath: f.overviewPath || null,
+    routePath: f.routePath || null,
     buttonText: f.buttonText || null,
+    buttonUrl: f.buttonUrl || null,
     heroTextHtml: f.heroTextHtml || null,
+    heroTextColor: f.heroTextColor || null,
     secondaryTitle: f.secondaryTitle || null,
     secondaryTextHtml: f.secondaryTextHtml || null,
-    tertiaryTitle: f.tertiaryTitle || null,
-    tertiaryTextHtml: f.tertiaryTextHtml || null,
+    ourApproachTitle: f.ourApproachTitle || null,
+    ourApproachTextHtml: f.ourApproachTextHtml || null,
     blurbHtml: f.blurbHtml || null,
+    blurbCopy: f.blurbCopy || null,
+    tagsText: f.tagsText || null,
     blogCategory: f.blogCategory || null,
+    blogTag: f.blogTag || null,
+    primaryBlogCategoryFilter: f.primaryBlogCategoryFilter || null,
     seoTitle: f.seoTitle || null,
     seoDescription: f.seoDescription || null,
     status: f.status,
     publishedAt: fromDatetimeLocal(f.publishedAt),
     unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
+    pillar: f.pillar,
     tagIds: f.tagIds,
     active: f.active,
   };
 }
 
-export default function ServiceEdit({ id }: Props) {
+export default function SolutionEdit({ id }: Props) {
   const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -186,8 +221,10 @@ export default function ServiceEdit({ id }: Props) {
   const canWrite = !!access?.isEditorOrAbove;
 
   const servicesQ = useCmsListServices();
-  const allServices: Service[] = (servicesQ.data?.items ?? []) as Service[];
-  const existing = id ? allServices.find((s) => s.id === id) ?? null : null;
+  const solutionsQ = useCmsListSolutions();
+  const services: Service[] = (servicesQ.data?.items ?? []) as Service[];
+  const solutions: Solution[] = (solutionsQ.data?.items ?? []) as Solution[];
+  const existing = id ? solutions.find((s) => s.id === id) ?? null : null;
   const tagsQ = useListCmsTags();
   const allTags = (tagsQ.data ?? []) as { id: string; slug: string; name: string }[];
 
@@ -198,7 +235,7 @@ export default function ServiceEdit({ id }: Props) {
 
   useEffect(() => {
     if (existing && !loaded) {
-      setForm(fromService(existing));
+      setForm(fromSolution(existing));
       setSlugTouched(true);
       setLoaded(true);
     }
@@ -212,22 +249,22 @@ export default function ServiceEdit({ id }: Props) {
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
-  const createMut = useCmsCreateService({
+  const createMut = useCmsCreateSolution({
     mutation: {
       onSuccess: (s) => {
-        toast({ title: "Service created" });
-        qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
-        navigate(`/services/${s.id}/edit`);
+        toast({ title: "Solution created" });
+        qc.invalidateQueries({ queryKey: ["/api/cms/solutions"] });
+        navigate(`/products/solutions/${s.id}/edit`);
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
     },
   });
-  const updateMut = useCmsUpdateService({
+  const updateMut = useCmsUpdateSolution({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Service saved" });
-        qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
+        toast({ title: "Solution saved" });
+        qc.invalidateQueries({ queryKey: ["/api/cms/solutions"] });
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -251,11 +288,9 @@ export default function ServiceEdit({ id }: Props) {
     setShowIconPicker(false);
   };
 
-  const parentChoices = allServices.filter((s) => !id || s.id !== id);
-
-  if (!isNew && servicesQ.isLoading && !existing) {
+  if (!isNew && solutionsQ.isLoading && !existing) {
     return (
-      <AdminLayout title="Edit Service">
+      <AdminLayout title="Edit Solution">
         <div className="text-muted-foreground">Loading…</div>
       </AdminLayout>
     );
@@ -263,22 +298,22 @@ export default function ServiceEdit({ id }: Props) {
 
   return (
     <AdminLayout
-      title={isNew ? "New Service" : `Edit: ${existing?.title ?? ""}`}
+      title={isNew ? "New Solution" : `Edit: ${existing?.title ?? ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Services", href: "/services" },
+        { label: "Solutions", href: "/products/solutions" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/services")}>
+          <Button variant="ghost" onClick={() => navigate("/products/solutions")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (
             <Button
               onClick={onSave}
               disabled={createMut.isPending || updateMut.isPending}
-              data-testid="button-save-service"
+              data-testid="button-save-solution"
             >
               <Save className="h-4 w-4 mr-1" />
               {createMut.isPending || updateMut.isPending ? "Saving…" : "Save"}
@@ -289,7 +324,7 @@ export default function ServiceEdit({ id }: Props) {
     >
       {!canWrite && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-          You have read-only access. Only editors and admins can change services.
+          You have read-only access. Only editors and admins can change solutions.
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -302,14 +337,13 @@ export default function ServiceEdit({ id }: Props) {
                 value={form.title}
                 onChange={(e) => update({ title: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-service-title"
+                data-testid="input-solution-title"
                 className="text-xl font-semibold h-11"
               />
             </div>
-            <div>
-              <Label htmlFor="slug">Slug</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">/services/</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="slug">Slug</Label>
                 <Input
                   id="slug"
                   value={form.slug}
@@ -318,35 +352,24 @@ export default function ServiceEdit({ id }: Props) {
                     update({ slug: slugify(e.target.value) });
                   }}
                   disabled={!canWrite}
-                  data-testid="input-service-slug"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="displayOrder">Display order</Label>
-                <Input
-                  id="displayOrder"
-                  type="number"
-                  value={form.displayOrder}
-                  onChange={(e) => update({ displayOrder: e.target.value })}
-                  disabled={!canWrite}
-                  data-testid="input-service-display-order"
+                  data-testid="input-solution-slug"
                 />
               </div>
               <div>
                 <Label htmlFor="parent">Parent service</Label>
                 <Select
                   value={form.parentServiceId || "__none__"}
-                  onValueChange={(v) => update({ parentServiceId: v === "__none__" ? "" : v })}
+                  onValueChange={(v) =>
+                    update({ parentServiceId: v === "__none__" ? "" : v })
+                  }
                   disabled={!canWrite}
                 >
-                  <SelectTrigger id="parent" data-testid="select-service-parent">
-                    <SelectValue placeholder="None (top-level)" />
+                  <SelectTrigger id="parent" data-testid="select-solution-parent">
+                    <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">None (top-level)</SelectItem>
-                    {parentChoices.map((s) => (
+                    <SelectItem value="__none__">None</SelectItem>
+                    {services.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.title}
                       </SelectItem>
@@ -355,25 +378,24 @@ export default function ServiceEdit({ id }: Props) {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="servicePath">Service path</Label>
+                <Label htmlFor="displayOrder">Display order</Label>
                 <Input
-                  id="servicePath"
-                  value={form.servicePath}
-                  onChange={(e) => update({ servicePath: e.target.value })}
+                  id="displayOrder"
+                  type="number"
+                  value={form.displayOrder}
+                  onChange={(e) => update({ displayOrder: e.target.value })}
                   disabled={!canWrite}
-                  placeholder="/services/strategic-transformation"
                 />
               </div>
-              <div>
-                <Label htmlFor="overviewPath">Overview path</Label>
+              <div className="col-span-2">
+                <Label htmlFor="routePath">Route path</Label>
                 <Input
-                  id="overviewPath"
-                  value={form.overviewPath}
-                  onChange={(e) => update({ overviewPath: e.target.value })}
+                  id="routePath"
+                  value={form.routePath}
+                  onChange={(e) => update({ routePath: e.target.value })}
                   disabled={!canWrite}
-                  placeholder="/services-overview/default"
                 />
               </div>
             </div>
@@ -388,24 +410,38 @@ export default function ServiceEdit({ id }: Props) {
                 />
               </div>
               <div>
-                <Label htmlFor="blogCategory">Blog category</Label>
+                <Label htmlFor="buttonUrl">Button URL</Label>
                 <Input
-                  id="blogCategory"
-                  value={form.blogCategory}
-                  onChange={(e) => update({ blogCategory: e.target.value })}
+                  id="buttonUrl"
+                  value={form.buttonUrl}
+                  onChange={(e) => update({ buttonUrl: e.target.value })}
                   disabled={!canWrite}
                 />
               </div>
             </div>
           </Card>
 
-          <Card className="p-4 space-y-2">
-            <Label>Hero text</Label>
-            <RichTextEditor
-              value={form.heroTextHtml}
-              onChange={({ html }) => update({ heroTextHtml: html })}
-              onUploadImage={uploadAndRegisterImage}
-            />
+          <Card className="p-4 space-y-3">
+            <div className="grid grid-cols-[1fr_180px] gap-4">
+              <div>
+                <Label>Hero text</Label>
+                <RichTextEditor
+                  value={form.heroTextHtml}
+                  onChange={({ html }) => update({ heroTextHtml: html })}
+                  onUploadImage={uploadAndRegisterImage}
+                />
+              </div>
+              <div>
+                <Label htmlFor="heroTextColor">Hero text color</Label>
+                <Input
+                  id="heroTextColor"
+                  value={form.heroTextColor}
+                  onChange={(e) => update({ heroTextColor: e.target.value })}
+                  placeholder="#ffffff"
+                  disabled={!canWrite}
+                />
+              </div>
+            </div>
           </Card>
 
           <Card className="p-4 space-y-3">
@@ -430,39 +466,98 @@ export default function ServiceEdit({ id }: Props) {
 
           <Card className="p-4 space-y-3">
             <div>
-              <Label htmlFor="tertiaryTitle">Tertiary title</Label>
+              <Label htmlFor="ourApproachTitle">Our approach title</Label>
               <Input
-                id="tertiaryTitle"
-                value={form.tertiaryTitle}
-                onChange={(e) => update({ tertiaryTitle: e.target.value })}
+                id="ourApproachTitle"
+                value={form.ourApproachTitle}
+                onChange={(e) => update({ ourApproachTitle: e.target.value })}
                 disabled={!canWrite}
               />
             </div>
             <div>
-              <Label>Tertiary text</Label>
+              <Label>Our approach text</Label>
               <RichTextEditor
-                value={form.tertiaryTextHtml}
-                onChange={({ html }) => update({ tertiaryTextHtml: html })}
+                value={form.ourApproachTextHtml}
+                onChange={({ html }) => update({ ourApproachTextHtml: html })}
                 onUploadImage={uploadAndRegisterImage}
               />
             </div>
           </Card>
 
-          <Card className="p-4 space-y-2">
-            <Label>Blurb</Label>
-            <RichTextEditor
-              value={form.blurbHtml}
-              onChange={({ html }) => update({ blurbHtml: html })}
-              onUploadImage={uploadAndRegisterImage}
-            />
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label>Blurb</Label>
+              <RichTextEditor
+                value={form.blurbHtml}
+                onChange={({ html }) => update({ blurbHtml: html })}
+                onUploadImage={uploadAndRegisterImage}
+              />
+            </div>
+            <div>
+              <Label htmlFor="blurbCopy">Blurb copy</Label>
+              <Textarea
+                id="blurbCopy"
+                rows={2}
+                value={form.blurbCopy}
+                onChange={(e) => update({ blurbCopy: e.target.value })}
+                disabled={!canWrite}
+              />
+            </div>
+            <div>
+              <Label htmlFor="tagsText">Tags text</Label>
+              <Textarea
+                id="tagsText"
+                rows={2}
+                value={form.tagsText}
+                onChange={(e) => update({ tagsText: e.target.value })}
+                disabled={!canWrite}
+              />
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="blogCategory">Blog category</Label>
+                <Input
+                  id="blogCategory"
+                  value={form.blogCategory}
+                  onChange={(e) => update({ blogCategory: e.target.value })}
+                  disabled={!canWrite}
+                />
+              </div>
+              <div>
+                <Label htmlFor="blogTag">Blog tag</Label>
+                <Input
+                  id="blogTag"
+                  value={form.blogTag}
+                  onChange={(e) => update({ blogTag: e.target.value })}
+                  disabled={!canWrite}
+                />
+              </div>
+              <div>
+                <Label htmlFor="primaryBlogCategoryFilter">
+                  Primary blog category filter
+                </Label>
+                <Input
+                  id="primaryBlogCategoryFilter"
+                  value={form.primaryBlogCategoryFilter}
+                  onChange={(e) =>
+                    update({ primaryBlogCategoryFilter: e.target.value })
+                  }
+                  disabled={!canWrite}
+                />
+              </div>
+            </div>
           </Card>
 
           <Card className="p-4 space-y-3">
             <div>
               <Label className="text-sm font-medium">SEO</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Overrides the page title and meta description on this service's
-                public detail page. Leave blank to use the title and blurb.
+                Overrides the page title and meta description on this
+                solution's public detail page. Leave blank to use the title and
+                blurb.
               </p>
             </div>
             <div>
@@ -471,10 +566,10 @@ export default function ServiceEdit({ id }: Props) {
                 id="seoTitle"
                 value={form.seoTitle}
                 maxLength={70}
-                placeholder="e.g. Strategic Transformation Services | Synozur"
+                placeholder="e.g. AI Strategy & Roadmap | Synozur"
                 onChange={(e) => update({ seoTitle: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-service-seo-title"
+                data-testid="input-solution-seo-title"
               />
               <div className="mt-1 text-xs text-muted-foreground">
                 {form.seoTitle.length}/70 characters — Google typically
@@ -483,15 +578,14 @@ export default function ServiceEdit({ id }: Props) {
             </div>
             <div>
               <Label htmlFor="seoDescription">SEO description</Label>
-              <textarea
+              <Textarea
                 id="seoDescription"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 rows={3}
                 maxLength={300}
                 value={form.seoDescription}
                 onChange={(e) => update({ seoDescription: e.target.value })}
                 disabled={!canWrite}
-                data-testid="input-service-seo-description"
+                data-testid="input-solution-seo-description"
               />
               <div className="mt-1 text-xs text-muted-foreground">
                 {form.seoDescription.length}/300 characters — aim for 150–160.
@@ -508,7 +602,7 @@ export default function ServiceEdit({ id }: Props) {
               onValueChange={(v) => update({ status: v as ArtifactStatus })}
               disabled={!canWrite}
             >
-              <SelectTrigger data-testid="select-service-status">
+              <SelectTrigger data-testid="select-solution-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -549,9 +643,37 @@ export default function ServiceEdit({ id }: Props) {
                 checked={form.active}
                 onCheckedChange={(v) => update({ active: v })}
                 disabled={!canWrite}
-                data-testid="switch-service-active"
+                data-testid="switch-solution-active"
               />
             </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <Label className="text-sm font-medium">Pillar</Label>
+            <Select
+              value={form.pillar ?? "__none__"}
+              onValueChange={(v) =>
+                update({
+                  pillar: v === "__none__" ? null : (v as CollateralPillar),
+                })
+              }
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-solution-pillar">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {PILLAR_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Used to group solutions into the library's pillar rails.
+            </p>
           </Card>
 
           <Card className="p-4 space-y-2">
@@ -607,7 +729,7 @@ export default function ServiceEdit({ id }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowIconPicker(true)}
-                  data-testid="button-pick-service-icon"
+                  data-testid="button-pick-solution-icon"
                 >
                   {form.iconUrl ? "Change" : "Pick image"}
                 </Button>
@@ -644,7 +766,7 @@ export default function ServiceEdit({ id }: Props) {
         onClose={() => setShowIconPicker(false)}
         onSelect={handleIcon}
         selectedId={form.iconId}
-        title="Choose service icon"
+        title="Choose solution icon"
       />
     </AdminLayout>
   );

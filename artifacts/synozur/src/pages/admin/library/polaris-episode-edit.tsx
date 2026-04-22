@@ -195,7 +195,7 @@ export default function PolarisEpisodeEdit({ id }: Props) {
     onSuccess: (created) => {
       toast({ title: "Episode created" });
       invalidate();
-      navigate(`/polaris-episodes/${created.id}/edit`);
+      navigate(`/library/polaris-episodes/${created.id}/edit`);
     },
     onError: (e: Error) =>
       toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -238,12 +238,12 @@ export default function PolarisEpisodeEdit({ id }: Props) {
       title={isNew ? "New Polaris Episode" : `Edit: ${itemQ.data?.title ?? ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Polaris", href: "/polaris-episodes" },
+        { label: "Polaris", href: "/library/polaris-episodes" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/polaris-episodes")}>
+          <Button variant="ghost" onClick={() => navigate("/library/polaris-episodes")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (

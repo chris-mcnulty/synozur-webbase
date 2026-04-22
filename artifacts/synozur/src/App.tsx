@@ -32,10 +32,6 @@ import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
-import AdminEventsList from "@/pages/admin";
-import EventForm from "@/pages/admin/event-form";
-import AdminSubmissionsList from "@/pages/admin/submissions";
-import AdminSiteSettings from "@/pages/admin/site-settings";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminPostsList from "@/pages/admin/insights/posts-list";
 import PostEditor from "@/pages/admin/insights/post-editor";
@@ -44,31 +40,35 @@ import PostAnalytics from "@/pages/admin/insights/post-analytics";
 import MediaLibrary from "@/pages/admin/insights/media";
 import TaxonomyPage from "@/pages/admin/insights/taxonomy";
 import CommentsModeration from "@/pages/admin/insights/comments";
-import UsersAndRoles from "@/pages/admin/users";
-import AdminServicesList from "@/pages/admin/services-list";
-import ServiceEdit from "@/pages/admin/service-edit";
-import ServiceMethodologiesPage from "@/pages/admin/service-methodologies";
-import AdminSolutionsList from "@/pages/admin/solutions-list";
-import SolutionEdit from "@/pages/admin/solution-edit";
-import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
-import AdminTeamList from "@/pages/admin/team-list";
-import TeamForm from "@/pages/admin/team-form";
-import AdminCollateralList from "@/pages/admin/collateral-list";
-import CollateralEdit from "@/pages/admin/collateral-edit";
-import AdminVideosList from "@/pages/admin/videos-list";
-import VideoEdit from "@/pages/admin/video-edit";
-import AdminWhitePapersList from "@/pages/admin/white-papers-list";
-import WhitePaperEdit from "@/pages/admin/white-paper-edit";
-import AdminWixRedirects from "@/pages/admin/wix-redirects";
-import AdminWorkshopsList from "@/pages/admin/workshops-list";
-import WorkshopEdit from "@/pages/admin/workshop-edit";
-import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
-import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
-import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
-import AdminApplicationsList from "@/pages/admin/applications-list";
-import AdminModelsList from "@/pages/admin/models-list";
-import AdminFaq from "@/pages/admin/faq";
-import AdminListPageCopy from "@/pages/admin/list-page-copy";
+import AdminServicesList from "@/pages/admin/products/services-list";
+import ServiceEdit from "@/pages/admin/products/service-edit";
+import ServiceMethodologiesPage from "@/pages/admin/products/service-methodologies";
+import AdminSolutionsList from "@/pages/admin/products/solutions-list";
+import SolutionEdit from "@/pages/admin/products/solution-edit";
+import SolutionCapabilitiesPage from "@/pages/admin/products/solution-capabilities";
+import AdminCaseStudiesList from "@/pages/admin/products/case-studies-list";
+import AdminApplicationsList from "@/pages/admin/products/applications-list";
+import AdminModelsList from "@/pages/admin/products/models-list";
+import AdminFaq from "@/pages/admin/products/faq";
+import AdminCollateralList from "@/pages/admin/library/collateral-list";
+import CollateralEdit from "@/pages/admin/library/collateral-edit";
+import AdminVideosList from "@/pages/admin/library/videos-list";
+import VideoEdit from "@/pages/admin/library/video-edit";
+import AdminWhitePapersList from "@/pages/admin/library/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/library/white-paper-edit";
+import AdminWorkshopsList from "@/pages/admin/library/workshops-list";
+import WorkshopEdit from "@/pages/admin/library/workshop-edit";
+import AdminPolarisEpisodesList from "@/pages/admin/library/polaris-episodes-list";
+import PolarisEpisodeEdit from "@/pages/admin/library/polaris-episode-edit";
+import AdminTeamList from "@/pages/admin/people/team-list";
+import TeamForm from "@/pages/admin/people/team-form";
+import AdminEventsList from "@/pages/admin/people/events-list";
+import EventForm from "@/pages/admin/people/event-form";
+import AdminSubmissionsList from "@/pages/admin/audience/submissions";
+import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
+import AdminRedirects from "@/pages/admin/site-config/redirects";
+import UsersAndRoles from "@/pages/admin/access/users";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -124,85 +124,163 @@ function AdminRoutes() {
         <Route path="/media"><Redirect to="/insights/media" /></Route>
         <Route path="/taxonomy"><Redirect to="/insights/taxonomy" /></Route>
         <Route path="/comments"><Redirect to="/insights/comments" /></Route>
-        <Route path="/users" component={UsersAndRoles} />
-        <Route path="/services" component={AdminServicesList} />
-        <Route path="/services/new">
+
+        {/* Products section */}
+        <Route path="/products/services" component={AdminServicesList} />
+        <Route path="/products/services/new">
           <ServiceEdit />
         </Route>
-        <Route path="/services/:id/edit">
+        <Route path="/products/services/:id/edit">
           {(params) => <ServiceEdit id={params.id} />}
         </Route>
-        <Route path="/services/:id/methodologies">
+        <Route path="/products/services/:id/methodologies">
           {(params) => <ServiceMethodologiesPage id={params.id} />}
         </Route>
-        <Route path="/solutions" component={AdminSolutionsList} />
-        <Route path="/solutions/new">
+        <Route path="/products/solutions" component={AdminSolutionsList} />
+        <Route path="/products/solutions/new">
           <SolutionEdit />
         </Route>
-        <Route path="/solutions/:id/edit">
+        <Route path="/products/solutions/:id/edit">
           {(params) => <SolutionEdit id={params.id} />}
         </Route>
-        <Route path="/solutions/:id/capabilities">
+        <Route path="/products/solutions/:id/capabilities">
           {(params) => <SolutionCapabilitiesPage id={params.id} />}
         </Route>
-        <Route path="/collateral" component={AdminCollateralList} />
-        <Route path="/collateral/new">
+        <Route path="/products/case-studies" component={AdminCaseStudiesList} />
+        <Route path="/products/applications" component={AdminApplicationsList} />
+        <Route path="/products/models" component={AdminModelsList} />
+        <Route path="/products/faq" component={AdminFaq} />
+
+        {/* Products redirects */}
+        <Route path="/services"><Redirect to="/products/services" /></Route>
+        <Route path="/services/new"><Redirect to="/products/services/new" /></Route>
+        <Route path="/services/:id/edit">
+          {(params) => <Redirect to={`/products/services/${params.id}/edit`} />}
+        </Route>
+        <Route path="/services/:id/methodologies">
+          {(params) => <Redirect to={`/products/services/${params.id}/methodologies`} />}
+        </Route>
+        <Route path="/solutions"><Redirect to="/products/solutions" /></Route>
+        <Route path="/solutions/new"><Redirect to="/products/solutions/new" /></Route>
+        <Route path="/solutions/:id/edit">
+          {(params) => <Redirect to={`/products/solutions/${params.id}/edit`} />}
+        </Route>
+        <Route path="/solutions/:id/capabilities">
+          {(params) => <Redirect to={`/products/solutions/${params.id}/capabilities`} />}
+        </Route>
+        <Route path="/case-studies"><Redirect to="/products/case-studies" /></Route>
+        <Route path="/applications"><Redirect to="/products/applications" /></Route>
+        <Route path="/models"><Redirect to="/products/models" /></Route>
+        <Route path="/faq"><Redirect to="/products/faq" /></Route>
+
+        {/* Library section */}
+        <Route path="/library/collateral" component={AdminCollateralList} />
+        <Route path="/library/collateral/new">
           <CollateralEdit />
         </Route>
-        <Route path="/collateral/:id/edit">
+        <Route path="/library/collateral/:id/edit">
           {(params) => <CollateralEdit id={params.id} />}
         </Route>
-        <Route path="/videos" component={AdminVideosList} />
-        <Route path="/videos/new">
+        <Route path="/library/videos" component={AdminVideosList} />
+        <Route path="/library/videos/new">
           <VideoEdit />
         </Route>
-        <Route path="/videos/:id/edit">
+        <Route path="/library/videos/:id/edit">
           {(params) => <VideoEdit id={params.id} />}
         </Route>
-        <Route path="/white-papers" component={AdminWhitePapersList} />
-        <Route path="/white-papers/new">
+        <Route path="/library/white-papers" component={AdminWhitePapersList} />
+        <Route path="/library/white-papers/new">
           <WhitePaperEdit />
         </Route>
-        <Route path="/white-papers/:id/edit">
+        <Route path="/library/white-papers/:id/edit">
           {(params) => <WhitePaperEdit id={params.id} />}
         </Route>
-        <Route path="/workshops" component={AdminWorkshopsList} />
-        <Route path="/workshops/new">
+        <Route path="/library/workshops" component={AdminWorkshopsList} />
+        <Route path="/library/workshops/new">
           <WorkshopEdit />
         </Route>
-        <Route path="/workshops/:id/edit">
+        <Route path="/library/workshops/:id/edit">
           {(params) => <WorkshopEdit id={params.id} />}
         </Route>
-        <Route path="/polaris-episodes" component={AdminPolarisEpisodesList} />
-        <Route path="/polaris-episodes/new">
+        <Route path="/library/polaris-episodes" component={AdminPolarisEpisodesList} />
+        <Route path="/library/polaris-episodes/new">
           <PolarisEpisodeEdit />
         </Route>
-        <Route path="/polaris-episodes/:id/edit">
+        <Route path="/library/polaris-episodes/:id/edit">
           {(params) => <PolarisEpisodeEdit id={params.id} />}
         </Route>
-        <Route path="/case-studies" component={AdminCaseStudiesList} />
-        <Route path="/applications" component={AdminApplicationsList} />
-        <Route path="/models" component={AdminModelsList} />
-        <Route path="/faq" component={AdminFaq} />
-        <Route path="/list-page-copy" component={AdminListPageCopy} />
 
-        <Route path="/site-settings" component={AdminSiteSettings} />
-        <Route path="/wix-redirects" component={AdminWixRedirects} />
-        <Route path="/events" component={AdminEventsList} />
-        <Route path="/submissions" component={AdminSubmissionsList} />
-        <Route path="/events/new">
-          <EventForm />
+        {/* Library redirects */}
+        <Route path="/collateral"><Redirect to="/library/collateral" /></Route>
+        <Route path="/collateral/new"><Redirect to="/library/collateral/new" /></Route>
+        <Route path="/collateral/:id/edit">
+          {(params) => <Redirect to={`/library/collateral/${params.id}/edit`} />}
         </Route>
-        <Route path="/events/:id">
-          {(params) => <EventForm id={params.id} />}
+        <Route path="/videos"><Redirect to="/library/videos" /></Route>
+        <Route path="/videos/new"><Redirect to="/library/videos/new" /></Route>
+        <Route path="/videos/:id/edit">
+          {(params) => <Redirect to={`/library/videos/${params.id}/edit`} />}
         </Route>
-        <Route path="/team-members" component={AdminTeamList} />
-        <Route path="/team-members/new">
+        <Route path="/white-papers"><Redirect to="/library/white-papers" /></Route>
+        <Route path="/white-papers/new"><Redirect to="/library/white-papers/new" /></Route>
+        <Route path="/white-papers/:id/edit">
+          {(params) => <Redirect to={`/library/white-papers/${params.id}/edit`} />}
+        </Route>
+        <Route path="/workshops"><Redirect to="/library/workshops" /></Route>
+        <Route path="/workshops/new"><Redirect to="/library/workshops/new" /></Route>
+        <Route path="/workshops/:id/edit">
+          {(params) => <Redirect to={`/library/workshops/${params.id}/edit`} />}
+        </Route>
+        <Route path="/polaris-episodes"><Redirect to="/library/polaris-episodes" /></Route>
+        <Route path="/polaris-episodes/new"><Redirect to="/library/polaris-episodes/new" /></Route>
+        <Route path="/polaris-episodes/:id/edit">
+          {(params) => <Redirect to={`/library/polaris-episodes/${params.id}/edit`} />}
+        </Route>
+
+        {/* People section */}
+        <Route path="/people/team-members" component={AdminTeamList} />
+        <Route path="/people/team-members/new">
           <TeamForm />
         </Route>
-        <Route path="/team-members/:id">
+        <Route path="/people/team-members/:id">
           {(params) => <TeamForm id={params.id} />}
         </Route>
+        <Route path="/people/events" component={AdminEventsList} />
+        <Route path="/people/events/new">
+          <EventForm />
+        </Route>
+        <Route path="/people/events/:id">
+          {(params) => <EventForm id={params.id} />}
+        </Route>
+
+        {/* People redirects */}
+        <Route path="/team-members"><Redirect to="/people/team-members" /></Route>
+        <Route path="/team-members/new"><Redirect to="/people/team-members/new" /></Route>
+        <Route path="/team-members/:id">
+          {(params) => <Redirect to={`/people/team-members/${params.id}`} />}
+        </Route>
+        <Route path="/events"><Redirect to="/people/events" /></Route>
+        <Route path="/events/new"><Redirect to="/people/events/new" /></Route>
+        <Route path="/events/:id">
+          {(params) => <Redirect to={`/people/events/${params.id}`} />}
+        </Route>
+
+        {/* Audience section */}
+        <Route path="/audience/submissions" component={AdminSubmissionsList} />
+        <Route path="/submissions"><Redirect to="/audience/submissions" /></Route>
+
+        {/* Site config section */}
+        <Route path="/site-config/site-settings" component={AdminSiteSettings} />
+        <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
+        <Route path="/site-config/redirects" component={AdminRedirects} />
+        <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
+        <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
+        <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>
+
+        {/* Access section */}
+        <Route path="/access/users" component={UsersAndRoles} />
+        <Route path="/users"><Redirect to="/access/users" /></Route>
+
         <Route component={NotFound} />
       </Switch>
     </AdminGate>
