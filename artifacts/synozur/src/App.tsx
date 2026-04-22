@@ -69,6 +69,8 @@ import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminRedirects from "@/pages/admin/site-config/redirects";
 import UsersAndRoles from "@/pages/admin/access/users";
+import MarketingTraffic from "@/pages/admin/marketing/traffic";
+import MarketingSeo from "@/pages/admin/marketing/seo";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -276,6 +278,10 @@ function AdminRoutes() {
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>
+
+        {/* Marketing section */}
+        <Route path="/marketing/traffic" component={MarketingTraffic} />
+        <Route path="/marketing/seo" component={MarketingSeo} />
 
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />

@@ -35,6 +35,9 @@ import {
   Radio,
   Settings,
   ShieldCheck,
+  LineChart,
+  Search,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -119,6 +122,15 @@ const SECTIONS: NavSection[] = [
     icon: Radio,
     items: [
       { href: "/audience/submissions", label: "Submissions", icon: Inbox, capability: "site.manage", testId: "nav-admin-submissions" },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    icon: Megaphone,
+    items: [
+      { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
+      { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
     ],
   },
   {
