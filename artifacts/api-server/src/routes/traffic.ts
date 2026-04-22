@@ -74,13 +74,22 @@ router.post("/traffic/collect", collectLimiter, async (req, res) => {
 
     // Update path for an existing pageview (unload beacon).
     if (parsed.data.pageviewId && (parsed.data.timeOnPageMs != null || parsed.data.scrollDepthPct != null)) {
+      const requestIpHash = ipHash(clientIpFromRequest(req) || "0.0.0.0");
       await db
         .update(trafficPageviewsTable)
         .set({
           timeOnPageMs: parsed.data.timeOnPageMs ?? undefined,
           scrollDepthPct: parsed.data.scrollDepthPct ?? undefined,
         })
-        .where(sql`${trafficPageviewsTable.id} = ${parsed.data.pageviewId}`);
+        .where(sql`
+          ${trafficPageviewsTable.id} = ${parsed.data.pageviewId}
+          and exists (
+            select 1
+            from ${trafficSessionsTable}
+            where ${trafficSessionsTable.id} = ${trafficPageviewsTable.sessionId}
+              and ${trafficSessionsTable.ipHash} = ${requestIpHash}
+          )
+        `);
       res.status(202).json({ ok: true });
       return;
     }
