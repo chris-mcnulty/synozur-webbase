@@ -44,16 +44,20 @@ function formatDurationMin(seconds: number | null): string {
   return `${min} min`;
 }
 
-// The first sentence of every podcast summary is boilerplate intro copy,
-// and the rest of the field is long-form show notes. Render only the second
-// sentence as the card description.
+// Every Polaris episode summary opens with a standing boilerplate line that
+// repeats across the feed. Strip it when present, then render only the first
+// real sentence of the show notes as the card description.
+const EPISODE_BOILERPLATE_PREFIX =
+  "Synozur reimagines business for our clients, navigating the complexities of transformation and strategy with ease.";
+
 function getEpisodeDescription(summary: string | null | undefined): string {
   if (!summary) return "";
-  const firstMatch = summary.match(/^[^.!?]*[.!?]+\s*/);
-  if (!firstMatch) return "";
-  const rest = summary.slice(firstMatch[0].length);
-  const secondMatch = rest.match(/^[^.!?]*[.!?]+/);
-  return (secondMatch ? secondMatch[0] : rest).trim();
+  let text = summary.trim();
+  if (text.startsWith(EPISODE_BOILERPLATE_PREFIX)) {
+    text = text.slice(EPISODE_BOILERPLATE_PREFIX.length).trim();
+  }
+  const match = text.match(/^[^.!?]+[.!?]+/);
+  return (match ? match[0] : text).trim();
 }
 
 const subscriptions = [
