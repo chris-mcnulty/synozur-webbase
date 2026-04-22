@@ -138,7 +138,7 @@ const SECTIONS: NavSection[] = [
     label: "Site config",
     icon: Settings,
     items: [
-      { href: "/site-config/site-settings", label: "Site settings", icon: Settings, capability: "users.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/site-settings", label: "Site settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
       { href: "/site-config/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.author", testId: "nav-admin-list-page-copy" },
       { href: "/site-config/redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-redirects" },
     ],
