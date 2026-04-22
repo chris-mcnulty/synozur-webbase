@@ -329,6 +329,31 @@ const CATEGORIES: Array<{
         answer: p("Orbit is Synozur&rsquo;s forthcoming AI-driven marketing intelligence platform, extending the Vega ecosystem with a focus on competitive analysis and messaging insights. As a multitenant SaaS product, Orbit will deliver competitive intelligence, website analysis, messaging recommendations, and strategic marketing insights."),
       },
       {
+        slug: "what-is-zenith",
+        question: "What is Zenith?",
+        answer: p("Zenith is Synozur&rsquo;s Microsoft 365 Governance Command Center. It provides a unified view of your entire M365 tenant, evaluates governance health, and helps organizations safely prepare for and operate Microsoft 365 Copilot."),
+      },
+      {
+        slug: "why-does-zenith-exist",
+        question: "Why does Zenith exist?",
+        answer: p("Microsoft 365 environments grow quickly and unevenly, creating governance gaps that become AI risks when Copilot is enabled. Zenith gives organizations visibility, control, and confidence to govern content properly and enable Copilot safely."),
+      },
+      {
+        slug: "how-does-zenith-help-m365-organizations",
+        question: "How does Zenith help organizations using Microsoft 365?",
+        answer: p("Zenith inventories your M365 environment, evaluates it against governance policies, and scores each workspace for Copilot readiness&mdash;helping teams prioritize remediation and enable Copilot only where it is safe."),
+      },
+      {
+        slug: "is-zenith-secure",
+        question: "Is Zenith secure and trustworthy with our data?",
+        answer: p("Yes. Zenith uses a customer-approved Microsoft Entra app with read-only permissions, evaluates metadata rather than document content, and operates with tenant isolation, role-based access, and full audit logging."),
+      },
+      {
+        slug: "how-does-zenith-leverage-synozur-expertise",
+        question: "How does Zenith leverage Synozur's governance and AI expertise?",
+        answer: p("Zenith embeds Synozur&rsquo;s real-world Microsoft 365 governance expertise into AI-driven insights, ensuring recommendations and Copilot analytics are grounded in proven best practices&mdash;not generic AI output."),
+      },
+      {
         slug: "how-do-synozur-platforms-work-together",
         question: "How do Synozur's platforms work together?",
         answer: p("Synozur&rsquo;s platforms are integrated through Galaxy, a centralized services layer that provides unified authentication, tenant management, telemetry, feedback/support, and notifications. This allows Orbit, Orion, Vega, and Nebula to remain autonomously developed while sharing common capabilities."),
