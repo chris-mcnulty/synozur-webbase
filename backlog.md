@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 22, 2026  
-> 16 tasks pending · 71 merged · 28 cancelled
+> 13 tasks pending · 73 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -62,11 +62,6 @@ The asset library currently only supports two categories (`people` and `north-st
 
 When editing a collateral item in the admin, editors cannot see how it will look in the public library card or the featured carousel. This task adds a "Preview card" panel beside the edit form that renders the `CollateralCard` component with the current (unsaved) field values, giving instant visual feedback before saving.
 
-### #83 · Gated download CTA for white papers
-**Depends on:** nothing (standalone)
-
-White papers and eBooks in the library currently link out to external Wix-hosted PDFs. This task replaces that with a gated download flow: clicking "Download" on a white paper opens a modal asking for name and email; on submit the visitor receives a download link by email (via Resend) and the submission is logged in the admin. The actual PDF is stored in App Storage. Integrates with the existing submissions admin.
-
 ---
 
 ## CMS / Post Editor
@@ -90,20 +85,10 @@ Every save creates a new revision. Without a retention policy, the `post_revisio
 
 ## Heterogeneous CMS Artifacts
 
-### #97 · Editable parent-page hero & intro copy for resource list pages
-**Depends on:** nothing (standalone)
-
-Each resource list page (`/videos`, `/white-papers`, `/workshops`, `/applications`, `/insights`, `/case-studies`, `/library`, `/items`, `/webinars`) currently has its hero headline, intro paragraph, and SEO copy hardcoded in the React component. Editors cannot change them without a developer commit. This task adds a `content_parent_pages` table keyed by route slug, with hero headline, hero subhead, intro HTML, SEO title, SEO description, and OG image. Each list page reads its row at render time and falls back to the hardcoded defaults if missing. Admin gets a single "List page copy" screen showing all parent pages in a table with inline edit. Cross-cuts every artifact type and is a prerequisite for letting marketing iterate on parent-page messaging without a deploy.
-
 ### #106 · Models: new DB-backed artifact type with library sync
 **Depends on:** #98 (artifact-type pattern)
 
 Maturity models (AI Maturity, KMMM, GTM Maturity, Content Management Maturity, Management / Company OS, and others added over time) currently live as Wix CMS rows — with one model already hand-entered into `collateralTable` today — and launch against separate sub-apps (`orion.synozur.com/…`, `aimaturity.synozur.com`). Editors cannot add, edit, or unpublish a model without a developer commit, and the richer Wix fields (`Long Description`, `Levels and Dimensions`, `Related Information`) don't fit the flat collateral shape. This task introduces a `modelsTable` on the #98 artifact pattern with: `title`, `slug`, `shortDescription`, `heroImage`, `longDescriptionHtml`, `dimensionsHtml`, `launchUrl` (external assessment app), `relatedInformation` jsonb, `status`, `publishedAt`, `unpublishedAt`, `featured` + `featuredRank`, SEO fields. Full admin CRUD, public `/models` gallery + `/models/:slug` detail page (with a prominent "Launch assessment →" CTA opening `launchUrl` in a new tab), and sync-to-collateral (`type="model"`, `url=/models/:slug`, internal) so models flow into the library and the featured carousel. One-shot seed script `seedModels.ts` reads the existing Wix CSV export and backfills historical records while reconciling the manually-entered library row by `sourceId`.
-
-### #107 · FAQ → DB + JSON-LD FAQPage for SEO/AIO
-**Depends on:** nothing (standalone)
-
-The `/faq` page currently lives on the Wix site and carries ~50 Q&As grouped into categories. It is a key SEO / AIO (AI Optimization) surface — Google, Perplexity, and ChatGPT should be able to quote answers verbatim and deep-link to the exact question. Today there is no equivalent page on the new site. This task introduces two small tables: `faq_categories` (slug, name, description, display_order, status) and `faq_items` (category_id FK, question, answer_html, slug, display_order, status, published_at, SEO fields). Public endpoint `GET /api/faq` returns categories with nested items in a single round trip. The public `/faq` page renders category sections with accordion cards, each question getting a stable anchor (`#<category-slug>/<question-slug>`) so SERP snippets and AI citations can deep-link. The page emits server-rendered `application/ld+json` FAQPage structured data listing every question/answer — this is the primary AIO lever and only works if answers remain plain enough to be lifted. Sitemap updated; `/faq` registered with the SEO page-type registry. Admin CRUD for both tables with display-order drag-and-drop. Seed path: extend `tools/insights-crawler` with a one-off `--faq` mode to pull `https://www.synozur.com/faq` once, parse category/Q/A structure into JSON, then a `seedFaq.ts` ingest.
 
 ---
 
@@ -123,7 +108,4 @@ The `/faq` page currently lives on the Wix site and carries ~50 Q&As grouped int
 | #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #76 | Live card preview in library edit form | Library | #69 |
-| #83 | Gated PDF download for white papers | Library / Leads | — |
-| #97 | Editable parent-page copy for list pages | Heterogeneous CMS | — |
 | #106 | Models: DB-backed artifact type + library sync | Heterogeneous CMS | #98 |
-| #107 | FAQ → DB + JSON-LD FAQPage (SEO/AIO) | Heterogeneous CMS | — |
