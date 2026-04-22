@@ -86,13 +86,13 @@ export default function PostAnalytics({ id }: { id: string }) {
       title={isLoading ? "Loading…" : `Analytics — ${postTitle}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Posts", href: "/posts" },
-        { label: postTitle, href: `/admin/posts/${id}/edit` },
+        { label: "Posts", href: "/insights/posts" },
+        { label: postTitle, href: `/admin/insights/posts/${id}/edit` },
         { label: "Analytics" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Link href={`/posts/${id}/edit`}>
+          <Link href={`/insights/posts/${id}/edit`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back to editor
             </Button>

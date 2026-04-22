@@ -92,7 +92,7 @@ export default function EventForm({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-events"] });
       qc.invalidateQueries({ queryKey: ["admin-event", eventId] });
       qc.invalidateQueries({ queryKey: ["public-events"] });
-      navigate("/events");
+      navigate("/people/events");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -110,7 +110,7 @@ export default function EventForm({ id }: Props) {
   const title = isNew ? "Create Event" : "Edit Event";
   const crumbs = [
     { label: "Admin", href: "/" },
-    { label: "Events", href: "/events" },
+    { label: "Events", href: "/people/events" },
     { label: title },
   ];
 
@@ -377,7 +377,7 @@ export default function EventForm({ id }: Props) {
           <Button type="submit" disabled={saveMutation.isPending} data-testid="button-save">
             {saveMutation.isPending ? "Saving…" : isNew ? "Create Event" : "Save Changes"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate("/events")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/people/events")}>
             Cancel
           </Button>
           {!isNew && (

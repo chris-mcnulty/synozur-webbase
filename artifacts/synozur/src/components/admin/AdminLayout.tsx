@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useTheme } from "@/context/theme";
@@ -14,6 +14,7 @@ import {
   Inbox,
   LogOut,
   ChevronRight,
+  ChevronDown,
   Compass,
   Layers,
   Library as LibraryIcon,
@@ -28,175 +29,138 @@ import {
   HelpCircle,
   PanelTop,
   Network,
+  Newspaper,
+  Package,
+  UsersRound,
+  Radio,
+  Settings,
+  ShieldCheck,
+  LineChart,
+  Search,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import type { Capability } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
+
+type AccessLike = ReturnType<typeof useAdminAccess>["access"];
 
 interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  show: (a: ReturnType<typeof useAdminAccess>["access"]) => boolean;
+  capability?: Capability;
   testId: string;
 }
 
-const NAV: NavItem[] = [
+interface NavSection {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  items: NavItem[];
+}
+
+const TOP_LEVEL: NavItem[] = [
   {
     href: "/",
     label: "Dashboard",
     icon: LayoutDashboard,
-    show: () => true,
     testId: "nav-admin-dashboard",
   },
+];
+
+const SECTIONS: NavSection[] = [
   {
-    href: "/posts",
-    label: "Posts",
-    icon: FileText,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-posts",
+    id: "insights",
+    label: "Insights",
+    icon: Newspaper,
+    items: [
+      { href: "/insights/posts", label: "Posts", icon: FileText, capability: "content.author", testId: "nav-admin-posts" },
+      { href: "/insights/media", label: "Media", icon: ImageIcon, capability: "content.author", testId: "nav-admin-media" },
+      { href: "/insights/taxonomy", label: "Taxonomy", icon: Tags, capability: "content.author", testId: "nav-admin-taxonomy" },
+      { href: "/insights/comments", label: "Comments", icon: MessageSquare, capability: "content.moderate", testId: "nav-admin-comments" },
+    ],
   },
   {
-    href: "/media",
-    label: "Media",
-    icon: ImageIcon,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-media",
+    id: "products",
+    label: "Products",
+    icon: Package,
+    items: [
+      { href: "/products/services", label: "Services", icon: Compass, capability: "content.publish", testId: "nav-admin-services" },
+      { href: "/products/solutions", label: "Solutions", icon: Layers, capability: "content.publish", testId: "nav-admin-solutions" },
+      { href: "/products/case-studies", label: "Case Studies", icon: Briefcase, capability: "content.publish", testId: "nav-admin-case-studies" },
+      { href: "/products/applications", label: "Applications", icon: AppWindow, capability: "content.publish", testId: "nav-admin-applications" },
+      { href: "/products/models", label: "Models", icon: Network, capability: "content.publish", testId: "nav-admin-models" },
+      { href: "/products/faq", label: "FAQ", icon: HelpCircle, capability: "content.publish", testId: "nav-admin-faq" },
+    ],
   },
   {
-    href: "/taxonomy",
-    label: "Taxonomy",
-    icon: Tags,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-taxonomy",
-  },
-  {
-    href: "/services",
-    label: "Services",
-    icon: Compass,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-services",
-  },
-  {
-    href: "/solutions",
-    label: "Solutions",
-    icon: Layers,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-solutions",
-  },
-  {
-    href: "/collateral",
+    id: "library",
     label: "Library",
     icon: LibraryIcon,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-collateral",
+    items: [
+      { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.publish", testId: "nav-admin-collateral" },
+      { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.publish", testId: "nav-admin-videos" },
+      { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.publish", testId: "nav-admin-white-papers" },
+      { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.publish", testId: "nav-admin-workshops" },
+      { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.publish", testId: "nav-admin-polaris" },
+    ],
   },
   {
-    href: "/videos",
-    label: "Videos",
-    icon: VideoIcon,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-videos",
+    id: "people",
+    label: "People",
+    icon: UsersRound,
+    items: [
+      { href: "/people/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
+      { href: "/people/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
+    ],
   },
   {
-    href: "/white-papers",
-    label: "White Papers",
-    icon: BookOpenIcon,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-white-papers",
+    id: "audience",
+    label: "Audience",
+    icon: Radio,
+    items: [
+      { href: "/audience/submissions", label: "Submissions", icon: Inbox, capability: "site.manage", testId: "nav-admin-submissions" },
+    ],
   },
   {
-    href: "/workshops",
-    label: "Workshops",
-    icon: GraduationCap,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-workshops",
+    id: "marketing",
+    label: "Marketing",
+    icon: Megaphone,
+    items: [
+      { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
+      { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
+    ],
   },
   {
-    href: "/polaris-episodes",
-    label: "Polaris",
-    icon: Headphones,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-polaris",
+    id: "site-config",
+    label: "Site config",
+    icon: Settings,
+    items: [
+      { href: "/site-config/site-settings", label: "Site settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.moderate", testId: "nav-admin-list-page-copy" },
+      { href: "/site-config/redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-redirects" },
+    ],
   },
   {
-    href: "/case-studies",
-    label: "Case Studies",
-    icon: Briefcase,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-case-studies",
-  },
-  {
-    href: "/applications",
-    label: "Applications",
-    icon: AppWindow,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-applications",
-  },
-  {
-    href: "/models",
-    label: "Models",
-    icon: Network,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-models",
-  },
-  {
-    href: "/faq",
-    label: "FAQ",
-    icon: HelpCircle,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-faq",
-  },
-  {
-    href: "/list-page-copy",
-    label: "List page copy",
-    icon: PanelTop,
-    show: (a) => !!a?.hasCmsRole,
-    testId: "nav-admin-list-page-copy",
-  },
-  {
-    href: "/comments",
-    label: "Comments",
-    icon: MessageSquare,
-    show: (a) => !!a?.isEditorOrAbove,
-    testId: "nav-admin-comments",
-  },
-  {
-    href: "/users",
-    label: "Users & Roles",
-    icon: Users,
-    show: (a) => !!a?.isAdmin,
-    testId: "nav-admin-users",
-  },
-  {
-    href: "/events",
-    label: "Events",
-    icon: CalendarDays,
-    show: (a) => !!a?.isAllowListed,
-    testId: "nav-admin-events",
-  },
-  {
-    href: "/team-members",
-    label: "Team",
-    icon: UserSquare2,
-    show: (a) => !!a?.isAllowListed,
-    testId: "nav-admin-team",
-  },
-  {
-    href: "/submissions",
-    label: "Submissions",
-    icon: Inbox,
-    show: (a) => !!a?.isAllowListed,
-    testId: "nav-admin-submissions",
-  },
-  {
-    href: "/wix-redirects",
-    label: "Wix redirects",
-    icon: CornerDownRight,
-    show: (a) => !!a?.isEditorOrAbove,
-    testId: "nav-admin-wix-redirects",
+    id: "access",
+    label: "Access",
+    icon: ShieldCheck,
+    items: [
+      { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+    ],
   },
 ];
+
+function itemVisible(item: NavItem, access: AccessLike): boolean {
+  if (!item.capability) return true;
+  return !!access?.hasCapability(item.capability);
+}
+
+function visibleItems(section: NavSection, access: AccessLike): NavItem[] {
+  return section.items.filter((i) => itemVisible(i, access));
+}
 
 export interface Crumb {
   label: string;
@@ -220,12 +184,38 @@ export function AdminLayout({
   const { theme } = useTheme();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-  const items = NAV.filter((n) => n.show(access));
-
   const isActive = (href: string) => {
     if (href === "/") return location === "/" || location === "";
     return location === href || location.startsWith(`${href}/`);
   };
+
+  const visibleSections = useMemo(
+    () =>
+      SECTIONS
+        .map((s) => ({ section: s, items: visibleItems(s, access) }))
+        .filter(({ items }) => items.length > 0),
+    [access],
+  );
+
+  const activeSectionId = useMemo(() => {
+    for (const { section, items } of visibleSections) {
+      if (items.some((i) => isActive(i.href))) return section.id;
+    }
+    return null;
+  }, [visibleSections, location]);
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (activeSectionId) {
+      setOpenSections((prev) =>
+        prev[activeSectionId] ? prev : { ...prev, [activeSectionId]: true },
+      );
+    }
+  }, [activeSectionId]);
+
+  const toggleSection = (id: string) =>
+    setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className={cn("min-h-screen bg-background text-foreground", theme)}>
@@ -241,8 +231,8 @@ export function AdminLayout({
               </a>
             </Link>
           </div>
-          <nav className="flex-1 py-3" data-testid="admin-sidebar">
-            {items.map((item) => {
+          <nav className="flex-1 py-3 overflow-y-auto" data-testid="admin-sidebar">
+            {TOP_LEVEL.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
@@ -260,6 +250,54 @@ export function AdminLayout({
                     {item.label}
                   </a>
                 </Link>
+              );
+            })}
+            {visibleSections.map(({ section, items }) => {
+              const SectionIcon = section.icon;
+              const isOpen = openSections[section.id] ?? section.id === activeSectionId;
+              const sectionHasActive = section.id === activeSectionId;
+              return (
+                <div key={section.id} className="mt-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-5 py-2 text-xs uppercase tracking-wider hover-elevate border-l-2 border-transparent",
+                      sectionHasActive ? "text-foreground" : "text-muted-foreground",
+                    )}
+                    data-testid={`nav-admin-section-${section.id}`}
+                    aria-expanded={isOpen}
+                  >
+                    <SectionIcon className="h-3.5 w-3.5" />
+                    <span className="flex-1 text-left">{section.label}</span>
+                    {isOpen ? (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  {isOpen &&
+                    items.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.href);
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <a
+                            className={cn(
+                              "flex items-center gap-3 pl-10 pr-5 py-2 text-sm hover-elevate",
+                              active
+                                ? "text-primary font-medium border-l-2 border-primary bg-primary/5"
+                                : "text-muted-foreground border-l-2 border-transparent",
+                            )}
+                            data-testid={item.testId}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </a>
+                        </Link>
+                      );
+                    })}
+                </div>
               );
             })}
           </nav>

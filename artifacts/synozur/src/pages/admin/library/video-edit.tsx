@@ -233,7 +233,7 @@ export default function VideoEdit({ id }: Props) {
     onSuccess: (created) => {
       toast({ title: "Video created" });
       invalidate();
-      navigate(`/videos/${created.id}/edit`);
+      navigate(`/library/videos/${created.id}/edit`);
     },
     onError: (e: Error) =>
       toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -286,12 +286,12 @@ export default function VideoEdit({ id }: Props) {
       title={isNew ? "New Video" : `Edit: ${itemQ.data?.title ?? ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Videos", href: "/videos" },
+        { label: "Videos", href: "/library/videos" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/videos")}>
+          <Button variant="ghost" onClick={() => navigate("/library/videos")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (

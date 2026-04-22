@@ -92,7 +92,7 @@ export default function AdminEventsList() {
             <Upload className="h-4 w-4 mr-1.5" />
             {seedMutation.isPending ? "Seeding…" : "Seed from CSV"}
           </Button>
-          <Link href="/events/new">
+          <Link href="/people/events/new">
             <Button size="sm" data-testid="button-new-event">
               <Plus className="h-4 w-4 mr-1.5" /> New Event
             </Button>
@@ -163,7 +163,7 @@ export default function AdminEventsList() {
 
               {/* Actions */}
               <div className="flex items-center gap-1 shrink-0">
-                <Link href={`/events/${e.id}`}>
+                <Link href={`/people/events/${e.id}`}>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -191,7 +191,7 @@ export default function WorkshopEdit({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-workshops"] });
       qc.invalidateQueries({ queryKey: ["admin-workshop", w.id] });
       qc.invalidateQueries({ queryKey: ["public-workshops"] });
-      navigate("/workshops");
+      navigate("/library/workshops");
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -212,12 +212,12 @@ export default function WorkshopEdit({ id }: Props) {
       title={isNew ? "New workshop" : `Edit: ${form.title}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Workshops", href: "/workshops" },
+        { label: "Workshops", href: "/library/workshops" },
         { label: isNew ? "New" : "Edit" },
       ]}
     >
       <button
-        onClick={() => navigate("/workshops")}
+        onClick={() => navigate("/library/workshops")}
         className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
       >
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to workshops
@@ -901,7 +901,7 @@ export default function WorkshopEdit({ id }: Props) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/workshops")}
+            onClick={() => navigate("/library/workshops")}
           >
             Cancel
           </Button>

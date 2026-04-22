@@ -231,7 +231,7 @@ export default function WhitePaperEdit({ id }: Props) {
     onSuccess: (created) => {
       toast({ title: "White paper created" });
       invalidate();
-      navigate(`/white-papers/${created.id}/edit`);
+      navigate(`/library/white-papers/${created.id}/edit`);
     },
     onError: (e: Error) =>
       toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -284,12 +284,12 @@ export default function WhitePaperEdit({ id }: Props) {
       title={isNew ? "New White Paper" : `Edit: ${itemQ.data?.title ?? ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "White Papers", href: "/white-papers" },
+        { label: "White Papers", href: "/library/white-papers" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/white-papers")}>
+          <Button variant="ghost" onClick={() => navigate("/library/white-papers")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {canWrite && (
