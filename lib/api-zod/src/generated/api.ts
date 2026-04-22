@@ -1031,6 +1031,7 @@ export const GetAdminSiteSettingsResponse = zod.object({
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  polarisFeedUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1041,6 +1042,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
+  polarisFeedUrl: zod.string().nullish(),
 });
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
@@ -1049,6 +1051,7 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  polarisFeedUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 

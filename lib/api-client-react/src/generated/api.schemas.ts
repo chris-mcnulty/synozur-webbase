@@ -339,6 +339,8 @@ export interface SiteSettings {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /** @nullable */
+  polarisFeedUrl?: string | null;
   updatedAt: string;
 }
 
@@ -348,6 +350,8 @@ export interface SiteSettingsInput {
   homeHeroImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  polarisFeedUrl?: string | null;
 }
 
 export interface AdminUser {

@@ -90,6 +90,7 @@ export interface AdminSiteSettings {
   homeHeroImageUrl?: string | null;
   homeEditorialImageAssetId?: number | null;
   homeEditorialImageUrl?: string | null;
+  polarisFeedUrl?: string | null;
   updatedAt: string;
 }
 
@@ -332,6 +333,7 @@ export interface UpdateSiteSettingsBody {
   requireCookieConsent: boolean;
   homeHeroImageAssetId?: number | null;
   homeEditorialImageAssetId?: number | null;
+  polarisFeedUrl?: string | null;
 }
 
 export interface BulkCollateralBody {
@@ -540,6 +542,17 @@ export const api = {
     jsonFetch<void>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  previewPolarisLibsyn: (feedUrl?: string) => {
+    const qs = feedUrl ? `?feedUrl=${encodeURIComponent(feedUrl)}` : "";
+    return jsonFetch<{ feedUrl: string; items: PolarisLibsynPreviewItem[] }>(
+      url(`/cms/polaris/libsyn/preview${qs}`),
+    );
+  },
+  importPolarisLibsyn: (body: PolarisLibsynImportInput) =>
+    jsonFetch<PolarisLibsynImportSummary>(url("/cms/polaris/libsyn/import"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   // Workshops — scoped filters (#105 removed the static category-to-service
   // lookup map; the "related workshops" rail on /services/:slug and
   // /solutions/:slug now queries by real foreign key).
@@ -714,6 +727,34 @@ export const api = {
 };
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
+
+export interface PolarisLibsynPreviewItem {
+  guid: string;
+  title: string;
+  episodeNumber: number | null;
+  publishedAt: string | null;
+  durationSeconds: number | null;
+  audioUrl: string;
+  artworkUrl: string | null;
+  summary: string;
+  link: string | null;
+  existsInDb: boolean;
+  existingId: string | null;
+  existingEpisodeNumber: number | null;
+}
+
+export interface PolarisLibsynImportInput {
+  guids: string[];
+  allowResync?: boolean;
+  feedUrl?: string;
+}
+
+export interface PolarisLibsynImportSummary {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: Array<{ guid: string; message: string }>;
+}
 
 export interface PolarisEpisodeDto {
   id: string;
