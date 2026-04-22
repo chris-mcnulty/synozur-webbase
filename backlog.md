@@ -1,18 +1,9 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 21, 2026  
-> 18 tasks pending · 71 merged · 26 cancelled
+> Last updated: April 22, 2026  
+> 16 tasks pending · 71 merged · 28 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
-
----
-
-## Email & Subscriptions
-
-### #34 · Let subscribers unsubscribe with one click
-**Depends on:** #25 (confirmation emails)
-
-When someone subscribes via the footer form, they receive a confirmation email. There is currently no way to opt out. This task adds a signed, one-click unsubscribe link to every email the system sends. Clicking the link marks the subscriber as opted-out in the database and shows a confirmation page. The admin submissions view should also surface their status. Required for CAN-SPAM / GDPR compliance before go-live.
 
 ---
 
@@ -97,15 +88,6 @@ Every save creates a new revision. Without a retention policy, the `post_revisio
 
 ---
 
-## Webinars
-
-### #85 · Upcoming webinar registration rail
-**Depends on:** nothing (standalone)
-
-The `/webinars` page lists past and upcoming webinars from the collateral library, but there is no way for a visitor to register for an upcoming event. This task adds a registration rail to the webinar detail page (`/webinars/:slug`) for items with a future `published_at` date: a short form (name, email, company) that submits to the existing submissions endpoint with `type=webinar_registration` and sends a calendar invite via Resend. The admin submissions view should filter by this type.
-
----
-
 ## Heterogeneous CMS Artifacts
 
 ### #97 · Editable parent-page hero & intro copy for resource list pages
@@ -129,7 +111,6 @@ The `/faq` page currently lives on the Wix site and carries ~50 Q&As grouped int
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #34 | Unsubscribe link in emails | Email | #25 |
 | #53 | Comment approval/reply notifications | Comments | #19 |
 | #54 | CAPTCHA fallback for comment spam | Comments | #19 |
 | #56 | CRUD for services & solutions in admin | Services admin | #40 |
@@ -143,7 +124,6 @@ The `/faq` page currently lives on the Wix site and carries ~50 Q&As grouped int
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #76 | Live card preview in library edit form | Library | #69 |
 | #83 | Gated PDF download for white papers | Library / Leads | — |
-| #85 | Webinar registration rail | Webinars | — |
 | #97 | Editable parent-page copy for list pages | Heterogeneous CMS | — |
 | #106 | Models: DB-backed artifact type + library sync | Heterogeneous CMS | #98 |
 | #107 | FAQ → DB + JSON-LD FAQPage (SEO/AIO) | Heterogeneous CMS | — |
