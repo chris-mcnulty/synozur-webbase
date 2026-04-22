@@ -33,44 +33,39 @@ import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import AdminDashboard from "@/pages/admin/dashboard";
-import AdminPostsList from "@/pages/admin/insights/posts-list";
-import PostEditor from "@/pages/admin/insights/post-editor";
-import PostPreview from "@/pages/admin/insights/post-preview";
-import PostAnalytics from "@/pages/admin/insights/post-analytics";
-import MediaLibrary from "@/pages/admin/insights/media";
-import TaxonomyPage from "@/pages/admin/insights/taxonomy";
-import CommentsModeration from "@/pages/admin/insights/comments";
-import AdminServicesList from "@/pages/admin/products/services-list";
-import ServiceEdit from "@/pages/admin/products/service-edit";
-import ServiceMethodologiesPage from "@/pages/admin/products/service-methodologies";
-import AdminSolutionsList from "@/pages/admin/products/solutions-list";
-import SolutionEdit from "@/pages/admin/products/solution-edit";
-import SolutionCapabilitiesPage from "@/pages/admin/products/solution-capabilities";
-import AdminCaseStudiesList from "@/pages/admin/products/case-studies-list";
-import AdminApplicationsList from "@/pages/admin/products/applications-list";
-import AdminModelsList from "@/pages/admin/products/models-list";
-import AdminFaq from "@/pages/admin/products/faq";
-import AdminCollateralList from "@/pages/admin/library/collateral-list";
-import CollateralEdit from "@/pages/admin/library/collateral-edit";
-import AdminVideosList from "@/pages/admin/library/videos-list";
-import VideoEdit from "@/pages/admin/library/video-edit";
-import AdminWhitePapersList from "@/pages/admin/library/white-papers-list";
-import WhitePaperEdit from "@/pages/admin/library/white-paper-edit";
-import AdminWorkshopsList from "@/pages/admin/library/workshops-list";
-import WorkshopEdit from "@/pages/admin/library/workshop-edit";
-import AdminPolarisEpisodesList from "@/pages/admin/library/polaris-episodes-list";
-import PolarisEpisodeEdit from "@/pages/admin/library/polaris-episode-edit";
-import AdminTeamList from "@/pages/admin/people/team-list";
-import TeamForm from "@/pages/admin/people/team-form";
-import AdminEventsList from "@/pages/admin/people/events-list";
-import EventForm from "@/pages/admin/people/event-form";
-import AdminSubmissionsList from "@/pages/admin/audience/submissions";
-import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
-import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
-import AdminRedirects from "@/pages/admin/site-config/redirects";
-import UsersAndRoles from "@/pages/admin/access/users";
-import MarketingTraffic from "@/pages/admin/marketing/traffic";
-import MarketingSeo from "@/pages/admin/marketing/seo";
+import AdminPostsList from "@/pages/admin/posts-list";
+import PostEditor from "@/pages/admin/post-editor";
+import PostPreview from "@/pages/admin/post-preview";
+import PostAnalytics from "@/pages/admin/post-analytics";
+import MediaLibrary from "@/pages/admin/media";
+import TaxonomyPage from "@/pages/admin/taxonomy";
+import CommentsModeration from "@/pages/admin/comments";
+import UsersAndRoles from "@/pages/admin/users";
+import AdminServicesList from "@/pages/admin/services-list";
+import ServiceEdit from "@/pages/admin/service-edit";
+import ServiceMethodologiesPage from "@/pages/admin/service-methodologies";
+import AdminSolutionsList from "@/pages/admin/solutions-list";
+import SolutionEdit from "@/pages/admin/solution-edit";
+import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
+import AdminTeamList from "@/pages/admin/team-list";
+import TeamForm from "@/pages/admin/team-form";
+import AdminCollateralList from "@/pages/admin/collateral-list";
+import CollateralEdit from "@/pages/admin/collateral-edit";
+import AdminVideosList from "@/pages/admin/videos-list";
+import VideoEdit from "@/pages/admin/video-edit";
+import AdminWhitePapersList from "@/pages/admin/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/white-paper-edit";
+import AdminWixRedirects from "@/pages/admin/wix-redirects";
+import AdminWorkshopsList from "@/pages/admin/workshops-list";
+import WorkshopEdit from "@/pages/admin/workshop-edit";
+import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
+import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
+import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
+import AdminApplicationsList from "@/pages/admin/applications-list";
+import AdminModelsList from "@/pages/admin/models-list";
+import AdminFaq from "@/pages/admin/faq";
+import AdminListPageCopy from "@/pages/admin/list-page-copy";
+import AdminTraffic from "@/pages/admin/traffic";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -211,6 +206,12 @@ function AdminRoutes() {
         <Route path="/library/polaris-episodes/:id/edit">
           {(params) => <PolarisEpisodeEdit id={params.id} />}
         </Route>
+        <Route path="/case-studies" component={AdminCaseStudiesList} />
+        <Route path="/applications" component={AdminApplicationsList} />
+        <Route path="/models" component={AdminModelsList} />
+        <Route path="/faq" component={AdminFaq} />
+        <Route path="/list-page-copy" component={AdminListPageCopy} />
+        <Route path="/traffic" component={AdminTraffic} />
 
         {/* Library redirects */}
         <Route path="/collateral"><Redirect to="/library/collateral" /></Route>

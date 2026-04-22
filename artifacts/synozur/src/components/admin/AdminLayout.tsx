@@ -29,15 +29,7 @@ import {
   HelpCircle,
   PanelTop,
   Network,
-  Newspaper,
-  Package,
-  UsersRound,
-  Radio,
-  Settings,
-  ShieldCheck,
-  LineChart,
-  Search,
-  Megaphone,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -134,14 +126,18 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    id: "site-config",
-    label: "Site config",
-    icon: Settings,
-    items: [
-      { href: "/site-config/site-settings", label: "Site settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
-      { href: "/site-config/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.moderate", testId: "nav-admin-list-page-copy" },
-      { href: "/site-config/redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-redirects" },
-    ],
+    href: "/traffic",
+    label: "Traffic",
+    icon: Activity,
+    show: (a) => !!a?.isEditorOrAbove,
+    testId: "nav-admin-traffic",
+  },
+  {
+    href: "/users",
+    label: "Users & Roles",
+    icon: Users,
+    show: (a) => !!a?.isAdmin,
+    testId: "nav-admin-users",
   },
   {
     id: "access",
