@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Pencil,
@@ -346,6 +346,8 @@ export default function AdminCollateralList() {
     setBulkOpen(true);
   };
 
+  const qc = useQueryClient();
+
   const submitBulk = async () => {
     if (selected.size === 0) return;
 
@@ -407,6 +409,8 @@ export default function AdminCollateralList() {
       toast({ title: `Updated ${updated} item${updated === 1 ? "" : "s"}` });
       setBulkOpen(false);
       clearSelection();
+      await qc.invalidateQueries({ queryKey: ["/api/cms/collateral"] });
+      await qc.invalidateQueries({ queryKey: ["collateral"] });
       await listQ.refetch();
     } catch (e) {
       toast({
