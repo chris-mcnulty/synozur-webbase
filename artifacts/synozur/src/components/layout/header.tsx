@@ -124,7 +124,6 @@ export function Header() {
         { label: "Clients", href: "/clients" },
         { label: "Partners", href: "/partners" },
         { label: "Careers", href: "https://careers.synozur.com" },
-        { label: "Contact", href: "/contact" },
       ]
     },
     servicesGroup,
@@ -143,6 +142,8 @@ export function Header() {
         { label: "Webinars", href: "/webinars" },
         { label: "White Papers", href: "/items" },
         { label: "Workshops", href: "/workshops" },
+        { label: "Models", href: "/models" },
+        { label: "FAQ", href: "/faq" },
         { label: "Browse Library", href: "/library" },
       ],
       nested: [
