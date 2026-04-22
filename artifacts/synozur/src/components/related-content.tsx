@@ -103,45 +103,56 @@ export function RelatedContent({
           </div>
         </div>
 
-        {availableTypes.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-10">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveType(null);
-                setExpanded(false);
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                activeType === null
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:bg-muted"
-              }`}
-            >
-              All ({items.length})
-            </button>
-            {availableTypes.map((t) => {
-              const count = items.filter((i) => i.type === t).length;
-              const active = activeType === t;
-              return (
+        {availableTypes.length > 1 &&
+          (() => {
+            const typeCounts = items.reduce(
+              (counts, item) => {
+                counts[item.type] = (counts[item.type] ?? 0) + 1;
+                return counts;
+              },
+              {} as Partial<Record<CollateralType, number>>,
+            );
+
+            return (
+              <div className="flex flex-wrap gap-2 mb-10">
                 <button
-                  key={t}
                   type="button"
                   onClick={() => {
-                    setActiveType(t);
+                    setActiveType(null);
                     setExpanded(false);
                   }}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                    active
+                    activeType === null
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card text-foreground border-border hover:bg-muted"
                   }`}
                 >
-                  {TYPE_LABELS[t]} ({count})
+                  All ({items.length})
                 </button>
-              );
-            })}
-          </div>
-        )}
+                {availableTypes.map((t) => {
+                  const count = typeCounts[t] ?? 0;
+                  const active = activeType === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setActiveType(t);
+                        setExpanded(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {TYPE_LABELS[t]} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
         {q.isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
