@@ -339,6 +339,8 @@ export default function AdminCollateralList() {
   };
 
   // Bulk edit ---------------------------------------------------------------
+  const MAX_BULK_IDS_PER_REQUEST = 200;
+
   const openBulk = () => {
     setBulkDraft(EMPTY_BULK);
     setBulkOpen(true);
@@ -346,7 +348,9 @@ export default function AdminCollateralList() {
 
   const submitBulk = async () => {
     if (selected.size === 0) return;
-    const body: BulkCollateralBody = { ids: Array.from(selected) };
+
+    const selectedIds = Array.from(selected);
+    const baseBody: Omit<BulkCollateralBody, "ids"> = {};
     const set: NonNullable<BulkCollateralBody["set"]> = {};
 
     if (bulkDraft.serviceMode === "set" && bulkDraft.serviceId) {
@@ -369,7 +373,7 @@ export default function AdminCollateralList() {
     if (bulkDraft.featuredMode === "feature") set.featured = true;
     else if (bulkDraft.featuredMode === "unfeature") set.featured = false;
 
-    if (Object.keys(set).length > 0) body.set = set;
+    if (Object.keys(set).length > 0) baseBody.set = set;
 
     if (bulkDraft.tagsMode !== "none") {
       const tags = bulkDraft.tagsText
@@ -377,11 +381,11 @@ export default function AdminCollateralList() {
         .map((t) => t.trim())
         .filter(Boolean);
       if (tags.length > 0 || bulkDraft.tagsMode === "replace") {
-        body.tagsAction = { mode: bulkDraft.tagsMode, tags };
+        baseBody.tagsAction = { mode: bulkDraft.tagsMode, tags };
       }
     }
 
-    if (!body.set && !body.tagsAction) {
+    if (!baseBody.set && !baseBody.tagsAction) {
       toast({
         title: "Nothing to apply",
         description: "Choose at least one change in the dialog.",
@@ -392,8 +396,15 @@ export default function AdminCollateralList() {
 
     setBulkSubmitting(true);
     try {
-      const result = await api.bulkUpdateCollateral(body);
-      toast({ title: `Updated ${result.updated} item${result.updated === 1 ? "" : "s"}` });
+      let updated = 0;
+
+      for (let i = 0; i < selectedIds.length; i += MAX_BULK_IDS_PER_REQUEST) {
+        const ids = selectedIds.slice(i, i + MAX_BULK_IDS_PER_REQUEST);
+        const result = await api.bulkUpdateCollateral({ ...baseBody, ids });
+        updated += result.updated;
+      }
+
+      toast({ title: `Updated ${updated} item${updated === 1 ? "" : "s"}` });
       setBulkOpen(false);
       clearSelection();
       await listQ.refetch();
