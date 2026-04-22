@@ -87,12 +87,12 @@ const SECTIONS: NavSection[] = [
     label: "Products",
     icon: Package,
     items: [
-      { href: "/products/services", label: "Services", icon: Compass, capability: "content.author", testId: "nav-admin-services" },
-      { href: "/products/solutions", label: "Solutions", icon: Layers, capability: "content.author", testId: "nav-admin-solutions" },
-      { href: "/products/case-studies", label: "Case Studies", icon: Briefcase, capability: "content.author", testId: "nav-admin-case-studies" },
-      { href: "/products/applications", label: "Applications", icon: AppWindow, capability: "content.author", testId: "nav-admin-applications" },
-      { href: "/products/models", label: "Models", icon: Network, capability: "content.author", testId: "nav-admin-models" },
-      { href: "/products/faq", label: "FAQ", icon: HelpCircle, capability: "content.author", testId: "nav-admin-faq" },
+      { href: "/products/services", label: "Services", icon: Compass, capability: "content.publish", testId: "nav-admin-services" },
+      { href: "/products/solutions", label: "Solutions", icon: Layers, capability: "content.publish", testId: "nav-admin-solutions" },
+      { href: "/products/case-studies", label: "Case Studies", icon: Briefcase, capability: "content.publish", testId: "nav-admin-case-studies" },
+      { href: "/products/applications", label: "Applications", icon: AppWindow, capability: "content.publish", testId: "nav-admin-applications" },
+      { href: "/products/models", label: "Models", icon: Network, capability: "content.publish", testId: "nav-admin-models" },
+      { href: "/products/faq", label: "FAQ", icon: HelpCircle, capability: "content.publish", testId: "nav-admin-faq" },
     ],
   },
   {
