@@ -30,6 +30,14 @@ import {
   PanelTop,
   Network,
   Activity,
+  Newspaper,
+  Package,
+  UsersRound,
+  Radio,
+  Megaphone,
+  LineChart,
+  Search,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -124,20 +132,6 @@ const SECTIONS: NavSection[] = [
       { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
       { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
     ],
-  },
-  {
-    href: "/traffic",
-    label: "Traffic",
-    icon: Activity,
-    show: (a) => !!a?.isEditorOrAbove,
-    testId: "nav-admin-traffic",
-  },
-  {
-    href: "/users",
-    label: "Users & Roles",
-    icon: Users,
-    show: (a) => !!a?.isAdmin,
-    testId: "nav-admin-users",
   },
   {
     id: "access",
