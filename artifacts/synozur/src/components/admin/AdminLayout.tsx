@@ -27,6 +27,7 @@ import {
   AppWindow,
   HelpCircle,
   PanelTop,
+  Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -131,6 +132,13 @@ const NAV: NavItem[] = [
     icon: AppWindow,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-applications",
+  },
+  {
+    href: "/models",
+    label: "Models",
+    icon: Network,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-models",
   },
   {
     href: "/faq",
