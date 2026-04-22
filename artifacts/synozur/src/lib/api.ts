@@ -334,6 +334,32 @@ export interface UpdateSiteSettingsBody {
   homeEditorialImageAssetId?: number | null;
 }
 
+export interface BulkCollateralBody {
+  ids: string[];
+  set?: {
+    serviceId?: string | null;
+    solutionId?: string | null;
+    pillar?: "strategic" | "technology" | "experiences" | "gtm" | null;
+    type?:
+      | "webinar"
+      | "white_paper"
+      | "case_study"
+      | "podcast"
+      | "model"
+      | "training"
+      | "event"
+      | "insight"
+      | "video"
+      | "ebook";
+    active?: boolean;
+    featured?: boolean;
+  };
+  tagsAction?: {
+    mode: "add" | "remove" | "replace";
+    tags: string[];
+  };
+}
+
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
@@ -420,6 +446,11 @@ export const api = {
     jsonFetch<{ updated: number }>(url("/cms/collateral/reorder"), {
       method: "POST",
       body: JSON.stringify({ ids }),
+    }),
+  bulkUpdateCollateral: (body: BulkCollateralBody) =>
+    jsonFetch<{ updated: number }>(url("/cms/collateral/bulk"), {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
   listVideos: (q: VideoListQuery = {}) => {
     const params = new URLSearchParams();
