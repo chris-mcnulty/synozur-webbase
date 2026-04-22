@@ -4,7 +4,7 @@
  * consumed by `artifacts/api-server/src/scripts/seedFaq.ts`.
  *
  * Usage: `pnpm --filter @workspace/insights-crawler exec tsx src/faq.ts`
- * (or via the `crawl:faq` npm script).
+ * (or via the `faq` npm script).
  *
  * This file is intentionally separate from crawl.ts so a one-off FAQ
  * pull doesn't have to negotiate the post-crawl pipeline or its image
