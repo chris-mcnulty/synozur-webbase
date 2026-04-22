@@ -44,17 +44,20 @@ function formatDurationMin(seconds: number | null): string {
   return `${min} min`;
 }
 
-// Every Polaris episode summary opens with a standing boilerplate line that
-// repeats across the feed. Strip it when present, then render only the first
-// real sentence of the show notes as the card description.
-const EPISODE_BOILERPLATE_PREFIX =
-  "Synozur reimagines business for our clients, navigating the complexities of transformation and strategy with ease.";
+// Every Polaris episode summary opens with a two-sentence standing boilerplate
+// that repeats across the feed. Strip it when present (either sentence order),
+// then render only the first real sentence of the show notes as the card description.
+const BOILERPLATE_SENTENCES = [
+  "Polaris is a production of Synozur \u2013 the transformation company.",
+  "Synozur reimagines business for our clients, navigating the complexities of transformation and strategy with ease.",
+];
 
 function getEpisodeDescription(summary: string | null | undefined): string {
   if (!summary) return "";
   let text = summary.trim();
-  if (text.startsWith(EPISODE_BOILERPLATE_PREFIX)) {
-    text = text.slice(EPISODE_BOILERPLATE_PREFIX.length).trim();
+  // Strip each boilerplate sentence wherever it appears (handles any ordering)
+  for (const sentence of BOILERPLATE_SENTENCES) {
+    text = text.replace(sentence, "").trim();
   }
   const match = text.match(/^[^.!?]+[.!?]+/);
   return (match ? match[0] : text).trim();
