@@ -100,11 +100,11 @@ const SECTIONS: NavSection[] = [
     label: "Library",
     icon: LibraryIcon,
     items: [
-      { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.author", testId: "nav-admin-collateral" },
-      { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.author", testId: "nav-admin-videos" },
-      { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.author", testId: "nav-admin-white-papers" },
-      { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.author", testId: "nav-admin-workshops" },
-      { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.author", testId: "nav-admin-polaris" },
+      { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.publish", testId: "nav-admin-collateral" },
+      { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.publish", testId: "nav-admin-videos" },
+      { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.publish", testId: "nav-admin-white-papers" },
+      { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.publish", testId: "nav-admin-workshops" },
+      { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.publish", testId: "nav-admin-polaris" },
     ],
   },
   {
