@@ -33,6 +33,7 @@ import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import AdminDashboard from "@/pages/admin/dashboard";
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
 import AdminPostsList from "@/pages/admin/insights/posts-list";
 import PostEditor from "@/pages/admin/insights/post-editor";
 import PostPreview from "@/pages/admin/insights/post-preview";
@@ -71,6 +72,40 @@ import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingTraffic from "@/pages/admin/marketing/traffic";
 import MarketingSeo from "@/pages/admin/marketing/seo";
+=======
+import AdminPostsList from "@/pages/admin/posts-list";
+import PostEditor from "@/pages/admin/post-editor";
+import PostPreview from "@/pages/admin/post-preview";
+import PostAnalytics from "@/pages/admin/post-analytics";
+import MediaLibrary from "@/pages/admin/media";
+import TaxonomyPage from "@/pages/admin/taxonomy";
+import CommentsModeration from "@/pages/admin/comments";
+import UsersAndRoles from "@/pages/admin/users";
+import AdminServicesList from "@/pages/admin/services-list";
+import ServiceEdit from "@/pages/admin/service-edit";
+import ServiceMethodologiesPage from "@/pages/admin/service-methodologies";
+import AdminSolutionsList from "@/pages/admin/solutions-list";
+import SolutionEdit from "@/pages/admin/solution-edit";
+import SolutionCapabilitiesPage from "@/pages/admin/solution-capabilities";
+import AdminTeamList from "@/pages/admin/team-list";
+import TeamForm from "@/pages/admin/team-form";
+import AdminCollateralList from "@/pages/admin/collateral-list";
+import CollateralEdit from "@/pages/admin/collateral-edit";
+import AdminVideosList from "@/pages/admin/videos-list";
+import VideoEdit from "@/pages/admin/video-edit";
+import AdminWhitePapersList from "@/pages/admin/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/white-paper-edit";
+import AdminWixRedirects from "@/pages/admin/wix-redirects";
+import AdminWorkshopsList from "@/pages/admin/workshops-list";
+import WorkshopEdit from "@/pages/admin/workshop-edit";
+import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
+import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
+import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
+import AdminApplicationsList from "@/pages/admin/applications-list";
+import AdminModelsList from "@/pages/admin/models-list";
+import AdminFaq from "@/pages/admin/faq";
+import AdminListPageCopy from "@/pages/admin/list-page-copy";
+>>>>>>> main
 import AdminTraffic from "@/pages/admin/traffic";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
@@ -281,7 +316,11 @@ function AdminRoutes() {
         {/* Site config section */}
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
+=======
+        <Route path="/site-config/redirects" component={AdminRedirects} />
+>>>>>>> main
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>

@@ -30,6 +30,7 @@ import {
   PanelTop,
   Network,
   Activity,
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
   Newspaper,
   Package,
   UsersRound,
@@ -38,6 +39,8 @@ import {
   LineChart,
   Search,
   ShieldCheck,
+=======
+>>>>>>> main
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -134,6 +137,23 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
+=======
+    href: "/traffic",
+    label: "Traffic",
+    icon: Activity,
+    show: (a) => !!a?.isEditorOrAbove,
+    testId: "nav-admin-traffic",
+  },
+  {
+    href: "/users",
+    label: "Users & Roles",
+    icon: Users,
+    show: (a) => !!a?.isAdmin,
+    testId: "nav-admin-users",
+  },
+  {
+>>>>>>> main
     id: "access",
     label: "Access",
     icon: ShieldCheck,
