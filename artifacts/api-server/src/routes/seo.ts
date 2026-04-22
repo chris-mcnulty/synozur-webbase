@@ -60,6 +60,7 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/polaris", changefreq: "monthly", priority: 0.5 },
   { loc: "/contact", changefreq: "monthly", priority: 0.6 },
   { loc: "/start", changefreq: "monthly", priority: 0.6 },
+  { loc: "/faq", changefreq: "weekly", priority: 0.7 },
   { loc: "/privacy", changefreq: "yearly", priority: 0.3 },
   { loc: "/terms", changefreq: "yearly", priority: 0.3 },
 ];

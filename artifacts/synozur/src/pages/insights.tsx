@@ -1,4 +1,5 @@
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Search, Rss } from "lucide-react";
@@ -244,11 +245,23 @@ export default function Insights() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const copy = useParentPage("insights", {
+    heroEyebrow: "The Feed",
+    heroHeadline: "Insights",
+    heroSubhead:
+      "Original writing from our partners on transformation, technology, leadership, and the operating disciplines that let strategy ship.",
+    seoTitle: "Insights",
+    seoDescription:
+      "The Feed. Original writing on transformation, technology, leadership, and the operating disciplines that let strategy actually ship.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Insights"
-        description="The Feed. Original writing on transformation, technology, leadership, and the operating disciplines that let strategy actually ship."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
+        path="/insights"
+        image={copy.ogImage}
         feedHref={`${BASE_PATH}/api/insights/rss.xml`}
       />
 
@@ -256,7 +269,7 @@ export default function Insights() {
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <div className="flex items-center justify-between gap-4 mb-4">
-            <p className="text-sm uppercase tracking-widest text-primary">The Feed</p>
+            <p className="text-sm uppercase tracking-widest text-primary">{copy.heroEyebrow}</p>
             <a
               href={`${BASE_PATH}/api/insights/rss.xml`}
               className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-zinc-300 hover:text-primary transition-colors"
@@ -265,10 +278,16 @@ export default function Insights() {
               <Rss className="h-4 w-4" /> RSS
             </a>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">Insights</h1>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">{copy.heroHeadline}</h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            Original writing from our partners on transformation, technology, leadership, and the operating disciplines that let strategy ship.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

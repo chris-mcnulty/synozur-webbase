@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, ExternalLink } from "lucide-react";
@@ -52,26 +53,43 @@ export default function Applications() {
     return getActiveApplications().map(staticAsDto);
   }, [listQ.data]);
 
+  const copy = useParentPage("applications", {
+    heroEyebrow: "Our Applications",
+    heroHeadline: "A constellation of products",
+    heroSubhead:
+      "Purpose-built platforms that turn Synozur's frameworks, research, and advisory experience into software your teams can use every day.",
+    seoTitle: "Applications",
+    seoDescription:
+      "Synozur's portfolio of AI-powered applications — Vega, Nebula, Constellation, Orion, Orbit, Zenith, and more.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Applications"
-        description="Synozur's portfolio of AI-powered applications — Vega, Nebula, Constellation, Orion, Orbit, Zenith, and more."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
+        path="/applications"
+        image={copy.ogImage}
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Our Applications
+            {copy.heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            A constellation of products
+            {copy.heroHeadline}
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            Purpose-built platforms that turn Synozur's frameworks, research,
-            and advisory experience into software your teams can use every day.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { FileText, BookOpen } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import {
   api,
   WHITE_PAPER_DOC_TYPES,
@@ -145,26 +146,42 @@ export default function WhitePapers() {
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
+  const copy = useParentPage("white-papers", {
+    heroEyebrow: "White Papers & eBooks",
+    heroHeadline: "Deep dives & playbooks",
+    heroSubhead:
+      "Research, frameworks, and practical guides from the Synozur team — downloadable for reference or team sharing.",
+    seoTitle: "White Papers & eBooks",
+    seoDescription:
+      "In-depth white papers, reports, and eBooks from the Synozur team on transformation, AI, and the digital workplace.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="White Papers & eBooks"
-        description="In-depth white papers, reports, and eBooks from the Synozur team on transformation, AI, and the digital workplace."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/white-papers"
+        image={copy.ogImage}
       />
 
       <section className="bg-[#0B0B1A] pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
           <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
-            White Papers &amp; eBooks
+            {copy.heroEyebrow}
           </p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
-            Deep dives &amp; playbooks
+            {copy.heroHeadline}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
-            Research, frameworks, and practical guides from the Synozur team — downloadable
-            for reference or team sharing.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

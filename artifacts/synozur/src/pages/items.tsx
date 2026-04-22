@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { fetchLibrary, type ListResult } from "@/data/collateral";
 
@@ -41,23 +42,40 @@ export default function Items() {
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
+  const copy = useParentPage("items", {
+    heroEyebrow: "White Papers",
+    heroHeadline: "White Papers",
+    heroSubhead:
+      "Deep dives, frameworks, and practical playbooks from the Synozur team.",
+    seoTitle: "White Papers",
+    seoDescription:
+      "Read Synozur white papers on transformation strategy, technology, AI, experiences, and go-to-market.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="White Papers"
-        description="Read Synozur white papers on transformation strategy, technology, AI, experiences, and go-to-market."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/items"
+        image={copy.ogImage}
       />
 
       <section className="bg-[#0B0B1A] pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">White Papers</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
-            White Papers
+            {copy.heroHeadline}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
-            Deep dives, frameworks, and practical playbooks from the Synozur team.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 
