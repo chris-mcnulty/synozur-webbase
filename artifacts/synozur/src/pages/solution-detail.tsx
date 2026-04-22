@@ -5,6 +5,7 @@ import { ArrowRight, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
+import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
@@ -242,6 +243,16 @@ export default function SolutionDetail() {
             </div>
           </div>
         </section>
+      ) : null}
+
+      {sol ? (
+        <RelatedContent
+          solutionId={sol.id}
+          title={sol.title}
+          fallback={
+            sol.parentService ? { serviceId: sol.parentService.id } : undefined
+          }
+        />
       ) : null}
 
       <section className="relative overflow-hidden bg-background border-t border-border py-24">
