@@ -59,8 +59,17 @@ function getEpisodeDescription(summary: string | null | undefined): string {
   for (const sentence of BOILERPLATE_SENTENCES) {
     text = text.replace(sentence, "").trim();
   }
-  const match = text.match(/^[^.!?]+[.!?]+/);
-  return (match ? match[0] : text).trim();
+  // To find the first real sentence we temporarily neutralise known
+  // abbreviations (Dr., Mr., Prof., etc.) so their dots don't look like
+  // sentence ends, then split on ". Capital" boundaries.
+  const PLACEHOLDER = "\x00";
+  const safe = text.replace(
+    /\b(Dr|Mr|Mrs|Ms|Prof|Sr|Jr|vs|etc|St|No)\./g,
+    `$1${PLACEHOLDER}`,
+  );
+  const match = safe.match(/^.+?[.!?]+(?=\s+[A-Z]|\s*$)/s);
+  const raw = match ? match[0] : safe;
+  return raw.replace(new RegExp(PLACEHOLDER, "g"), ".").trim();
 }
 
 const subscriptions = [
