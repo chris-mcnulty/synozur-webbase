@@ -212,7 +212,13 @@ export default function PostEditor({ id }: Props) {
       setSavedAt(new Date(existing.updatedAt));
       setDirty(false);
       setSlugTouched(true);
-      setScheduleDate(existing.scheduledFor ? toLocalDateTime(existing.scheduledFor) : "");
+      setScheduleDate(
+        existing.scheduledFor
+          ? toLocalDateTime(existing.scheduledFor)
+          : existing.publishedAt
+            ? toLocalDateTime(existing.publishedAt)
+            : "",
+      );
     }
   }, [existing]);
 
@@ -268,7 +274,7 @@ export default function PostEditor({ id }: Props) {
       onSuccess: () => {
         toast({ title: "Post archived" });
         qc.invalidateQueries();
-        navigate("/posts");
+        navigate("/insights/posts");
       },
       onError: (e: Error) => toast({ title: "Archive failed", description: e.message, variant: "destructive" }),
     },
@@ -376,7 +382,7 @@ export default function PostEditor({ id }: Props) {
     return m;
   }, [tags.data]);
 
-  const previewUrl = postId ? `${BASE_PATH}/admin/posts/${postId}/preview` : null;
+  const previewUrl = postId ? `${BASE_PATH}/admin/insights/posts/${postId}/preview` : null;
 
   if (!isNew && loadingExisting) {
     return (
@@ -394,12 +400,12 @@ export default function PostEditor({ id }: Props) {
       title={isNew ? "New Post" : "Edit Post"}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Posts", href: "/posts" },
+        { label: "Posts", href: "/insights/posts" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate("/posts")}>
+          <Button variant="ghost" onClick={() => navigate("/insights/posts")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           {previewUrl && (

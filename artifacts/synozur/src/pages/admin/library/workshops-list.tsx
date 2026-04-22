@@ -67,7 +67,7 @@ export default function AdminWorkshopsList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Workshops" }]}
       actions={
         canWrite && (
-          <Link href="/workshops/new">
+          <Link href="/library/workshops/new">
             <Button data-testid="button-create-workshop">
               <Plus className="h-4 w-4 mr-2" /> New workshop
             </Button>
@@ -104,7 +104,7 @@ export default function AdminWorkshopsList() {
               items.map((w) => (
                 <TableRow key={w.id} data-testid={`row-workshop-${w.id}`}>
                   <TableCell className="font-medium">
-                    <Link href={`/workshops/${w.id}/edit`}>
+                    <Link href={`/library/workshops/${w.id}/edit`}>
                       <a
                         className="hover:underline"
                         data-testid={`link-edit-workshop-${w.id}`}
@@ -130,7 +130,7 @@ export default function AdminWorkshopsList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      <Link href={`/workshops/${w.id}/edit`}>
+                      <Link href={`/library/workshops/${w.id}/edit`}>
                         <Button variant="ghost" size="icon">
                           <Pencil className="h-4 w-4" />
                         </Button>

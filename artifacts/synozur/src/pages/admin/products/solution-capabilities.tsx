@@ -9,49 +9,49 @@ import {
 } from "@/components/admin/OrderedBlocksEditor";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useCmsListServices,
-  useCmsListServiceMethodologies,
-  useCmsCreateMethodology,
-  useCmsUpdateMethodology,
-  useCmsDeleteMethodology,
-  type Service,
+  useCmsListSolutions,
+  useCmsListSolutionCapabilities,
+  useCmsCreateCapability,
+  useCmsUpdateCapability,
+  useCmsDeleteCapability,
+  type Solution,
 } from "@workspace/api-client-react";
 
-export default function ServiceMethodologiesPage({ id }: { id: string }) {
+export default function SolutionCapabilitiesPage({ id }: { id: string }) {
   const [, navigate] = useLocation();
   const { access } = useAdminAccess();
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
 
-  const servicesQ = useCmsListServices();
-  const service = (servicesQ.data?.items ?? []).find((s: Service) => s.id === id);
+  const solutionsQ = useCmsListSolutions();
+  const solution = (solutionsQ.data?.items ?? []).find((s: Solution) => s.id === id);
 
-  const listQ = useCmsListServiceMethodologies(id);
-  const items: OrderedBlock[] = (listQ.data?.items ?? []).map((m) => ({
-    id: m.id,
-    title: m.title,
-    displayOrder: m.displayOrder,
-    iconId: m.iconId,
-    iconUrl: m.iconUrl,
-    bodyHtml: m.bodyHtml,
-    hidden: m.hidden,
+  const listQ = useCmsListSolutionCapabilities(id);
+  const items: OrderedBlock[] = (listQ.data?.items ?? []).map((c) => ({
+    id: c.id,
+    title: c.title,
+    displayOrder: c.displayOrder,
+    iconId: c.iconId,
+    iconUrl: c.iconUrl,
+    bodyHtml: c.bodyHtml,
+    hidden: c.hidden,
   }));
 
-  const createMut = useCmsCreateMethodology({
+  const createMut = useCmsCreateCapability({
     mutation: {
       onSuccess: () => listQ.refetch(),
       onError: (e: Error) =>
         toast({ title: "Add failed", description: e.message, variant: "destructive" }),
     },
   });
-  const updateMut = useCmsUpdateMethodology({
+  const updateMut = useCmsUpdateCapability({
     mutation: {
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
       onSuccess: () => listQ.refetch(),
     },
   });
-  const deleteMut = useCmsDeleteMethodology({
+  const deleteMut = useCmsDeleteCapability({
     mutation: {
       onSuccess: () => {
         toast({ title: "Block deleted" });
@@ -64,16 +64,16 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
 
   return (
     <AdminLayout
-      title={`Methodologies${service ? `: ${service.title}` : ""}`}
+      title={`Capabilities${solution ? `: ${solution.title}` : ""}`}
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Services", href: "/services" },
-        { label: service?.title ?? "Service" },
-        { label: "Methodologies" },
+        { label: "Solutions", href: "/products/solutions" },
+        { label: solution?.title ?? "Solution" },
+        { label: "Capabilities" },
       ]}
       actions={
-        <Button variant="ghost" onClick={() => navigate("/services")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to services
+        <Button variant="ghost" onClick={() => navigate("/products/solutions")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to solutions
         </Button>
       }
     >
@@ -85,19 +85,26 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
         blocks={items}
         canWrite={canWrite}
         isLoading={listQ.isLoading}
-        emptyMessage="No methodology blocks yet."
-        testIdPrefix="methodology"
+        emptyMessage="No capability blocks yet."
+        testIdPrefix="capability"
         onCreate={async ({ title }) => {
           const next = (items.at(-1)?.displayOrder ?? 0) + 1;
           await createMut.mutateAsync({
-            data: { serviceId: id, title, displayOrder: next, hidden: false },
+            data: { solutionId: id, title, displayOrder: next, hidden: false },
           });
         }}
-        onUpdate={async (mid, data) => {
-          await updateMut.mutateAsync({ id: mid, data: { ...data, serviceId: id, title: data.title ?? items.find((i) => i.id === mid)?.title ?? "" } });
+        onUpdate={async (cid, data) => {
+          await updateMut.mutateAsync({
+            id: cid,
+            data: {
+              ...data,
+              solutionId: id,
+              title: data.title ?? items.find((i) => i.id === cid)?.title ?? "",
+            },
+          });
         }}
-        onDelete={async (mid) => {
-          await deleteMut.mutateAsync({ id: mid });
+        onDelete={async (cid) => {
+          await deleteMut.mutateAsync({ id: cid });
         }}
         onReorder={async (entries) => {
           await Promise.all(
@@ -105,7 +112,7 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
               updateMut.mutateAsync({
                 id: e.id,
                 data: {
-                  serviceId: id,
+                  solutionId: id,
                   title: items.find((i) => i.id === e.id)?.title ?? "",
                   displayOrder: e.displayOrder,
                 },
