@@ -32,7 +32,7 @@ export default function ModelDetail() {
         title={m.seoTitle || `${m.title} | Maturity Models`}
         description={m.seoDescription || m.shortDescription}
         path={`/models/${m.slug}`}
-        image={m.ogImage || m.heroImage || null}
+        image={m.ogImage || m.heroImage || undefined}
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-24">
