@@ -24,7 +24,7 @@ export const trafficSessionsTable = pgTable(
     osName: text("os_name"),
     deviceType: text("device_type"), // desktop | mobile | tablet | bot
 
-    ipHash: text("ip_hash"),
+    ipHash: text("ip_hash").notNull(),
     country: text("country"),
     region: text("region"),
     city: text("city"),
