@@ -552,6 +552,31 @@ export const api = {
     jsonFetch<void>(url(`/cms/case-studies/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  // Models (#106).
+  listModels: (pillar?: CollateralPillar) => {
+    const s = pillar ? `?pillar=${encodeURIComponent(pillar)}` : "";
+    return jsonFetch<{ items: ModelDto[] }>(url(`/models${s}`));
+  },
+  getModel: (slug: string) =>
+    jsonFetch<ModelDto>(url(`/models/${encodeURIComponent(slug)}`)),
+  adminListModels: () =>
+    jsonFetch<{ items: ModelDto[] }>(url("/cms/models")),
+  adminGetModel: (id: string) =>
+    jsonFetch<ModelDto>(url(`/cms/models/${encodeURIComponent(id)}`)),
+  createModel: (body: ModelInput) =>
+    jsonFetch<ModelDto>(url("/cms/models"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateModel: (id: string, body: ModelPatchInput) =>
+    jsonFetch<ModelDto>(url(`/cms/models/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteModel: (id: string) =>
+    jsonFetch<void>(url(`/cms/models/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
   // Applications (#103).
   listApplications: (navOnly?: boolean) =>
     jsonFetch<{ items: ApplicationDto[] }>(
@@ -841,6 +866,68 @@ export interface ApplicationInput {
 }
 
 export type ApplicationPatchInput = Partial<ApplicationInput>;
+
+// Models (#106).
+export type CollateralPillar = "strategic" | "technology" | "experiences" | "gtm";
+
+export interface ModelRelatedItemDto {
+  label: string;
+  url: string;
+  kind?: "link" | "white-paper" | "video" | "case-study";
+}
+
+export interface ModelDto {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  heroImage: string;
+  longDescriptionHtml: string;
+  dimensionsHtml: string;
+  launchUrl: string;
+  relatedInformation: ModelRelatedItemDto[];
+  pillar: CollateralPillar | null;
+  serviceId: string | null;
+  solutionId: string | null;
+  status: ArtifactStatus;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModelInput {
+  slug?: string | null;
+  title: string;
+  shortDescription?: string;
+  heroImage?: string;
+  longDescriptionHtml?: string;
+  dimensionsHtml?: string;
+  launchUrl?: string;
+  relatedInformation?: ModelRelatedItemDto[];
+  pillar?: CollateralPillar | null;
+  serviceId?: string | null;
+  solutionId?: string | null;
+  status?: ArtifactStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  ogImage?: string | null;
+  active?: boolean;
+  sourceId?: string | null;
+}
+
+export type ModelPatchInput = Partial<ModelInput>;
 
 export interface AboutValueDto {
   id: string;

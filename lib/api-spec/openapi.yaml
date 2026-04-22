@@ -3485,6 +3485,21 @@ components:
           type:
             - string
             - 'null'
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
         createdAt:
           type: string
         updatedAt:
@@ -3596,6 +3611,26 @@ components:
           type:
             - string
             - 'null'
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+        pillar:
+          type:
+            - string
+            - 'null'
+          enum: [strategic, technology, experiences, gtm, null]
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
         createdAt:
           type: string
         updatedAt:
@@ -3846,6 +3881,22 @@ components:
           type:
             - string
             - 'null'
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+        tagIds:
+          type: array
+          items:
+            type: string
+            format: uuid
         active:
           type: boolean
 
@@ -3940,6 +3991,27 @@ components:
           type:
             - string
             - 'null'
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+        pillar:
+          type:
+            - string
+            - 'null'
+          enum: [strategic, technology, experiences, gtm, null]
+        tagIds:
+          type: array
+          items:
+            type: string
+            format: uuid
         active:
           type: boolean
 

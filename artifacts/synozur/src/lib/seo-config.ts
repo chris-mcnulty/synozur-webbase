@@ -23,6 +23,7 @@ export type PageType =
   | "workshop"
   | "case-study"
   | "application"
+  | "model"
   | "insight"
   | "webinar"
   | "library"
@@ -89,6 +90,13 @@ export const PAGE_TYPES: Record<PageType, PageTypeConfig> = {
     section: "Applications",
     defaultDescription:
       "Applications and accelerators built by The Synozur Alliance to extend Microsoft 365, Copilot, and the modern workplace.",
+    ogType: "website",
+    useSectionInTitle: true,
+  },
+  model: {
+    section: "Models",
+    defaultDescription:
+      "AI, KMMM, GTM, Content, and Company OS maturity models from The Synozur Alliance.",
     ogType: "website",
     useSectionInTitle: true,
   },
@@ -187,6 +195,8 @@ export function derivePageType(pathname: string): PageType {
       return "case-study";
     case "applications":
       return "application";
+    case "models":
+      return "model";
     case "insights":
       return "insight";
     case "webinars":
@@ -228,6 +238,7 @@ export const DETAIL_PREFIXES = new Set<string>([
   "solutions",
   "case-studies",
   "applications",
+  "models",
   "workshops",
   "library",
   "webinars",

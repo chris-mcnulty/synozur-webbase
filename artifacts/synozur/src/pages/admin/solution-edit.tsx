@@ -29,11 +29,44 @@ import {
   useCmsListSolutions,
   useCmsCreateSolution,
   useCmsUpdateSolution,
+  useListCmsTags,
   type Service,
   type Solution,
   type UpsertSolutionBody,
   type MediaItem,
+  type ArtifactStatus,
+  type CollateralPillar,
 } from "@workspace/api-client-react";
+
+const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "published", label: "Published" },
+  { value: "archived", label: "Archived" },
+];
+
+const PILLAR_OPTIONS: { value: CollateralPillar; label: string }[] = [
+  { value: "strategic", label: "Strategic" },
+  { value: "technology", label: "Technology" },
+  { value: "experiences", label: "Experiences" },
+  { value: "gtm", label: "GTM" },
+];
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocal(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 interface Props {
   id?: string;
@@ -72,6 +105,11 @@ interface FormState {
   primaryBlogCategoryFilter: string;
   seoTitle: string;
   seoDescription: string;
+  status: ArtifactStatus;
+  publishedAt: string;
+  unpublishedAt: string;
+  pillar: CollateralPillar | null;
+  tagIds: string[];
   active: boolean;
 }
 
@@ -99,6 +137,11 @@ const EMPTY: FormState = {
   primaryBlogCategoryFilter: "",
   seoTitle: "",
   seoDescription: "",
+  status: "published",
+  publishedAt: "",
+  unpublishedAt: "",
+  pillar: null,
+  tagIds: [],
   active: true,
 };
 
@@ -127,6 +170,11 @@ function fromSolution(s: Solution): FormState {
     primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
+    status: s.status,
+    publishedAt: toDatetimeLocal(s.publishedAt),
+    unpublishedAt: toDatetimeLocal(s.unpublishedAt),
+    pillar: s.pillar ?? null,
+    tagIds: (s.tags ?? []).map((t) => t.id),
     active: s.active,
   };
 }
@@ -155,6 +203,11 @@ function toBody(f: FormState): UpsertSolutionBody {
     primaryBlogCategoryFilter: f.primaryBlogCategoryFilter || null,
     seoTitle: f.seoTitle || null,
     seoDescription: f.seoDescription || null,
+    status: f.status,
+    publishedAt: fromDatetimeLocal(f.publishedAt),
+    unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
+    pillar: f.pillar,
+    tagIds: f.tagIds,
     active: f.active,
   };
 }
@@ -172,6 +225,8 @@ export default function SolutionEdit({ id }: Props) {
   const services: Service[] = (servicesQ.data?.items ?? []) as Service[];
   const solutions: Solution[] = (solutionsQ.data?.items ?? []) as Solution[];
   const existing = id ? solutions.find((s) => s.id === id) ?? null : null;
+  const tagsQ = useListCmsTags();
+  const allTags = (tagsQ.data ?? []) as { id: string; slug: string; name: string }[];
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -541,7 +596,48 @@ export default function SolutionEdit({ id }: Props) {
 
         <aside className="space-y-4">
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Publish status</Label>
+            <Select
+              value={form.status}
+              onValueChange={(v) => update({ status: v as ArtifactStatus })}
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-solution-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div>
+              <Label htmlFor="publishedAt" className="text-xs">
+                Publish at
+              </Label>
+              <Input
+                id="publishedAt"
+                type="datetime-local"
+                value={form.publishedAt}
+                onChange={(e) => update({ publishedAt: e.target.value })}
+                disabled={!canWrite}
+              />
+            </div>
+            <div>
+              <Label htmlFor="unpublishedAt" className="text-xs">
+                Retire at
+              </Label>
+              <Input
+                id="unpublishedAt"
+                type="datetime-local"
+                value={form.unpublishedAt}
+                onChange={(e) => update({ unpublishedAt: e.target.value })}
+                disabled={!canWrite}
+              />
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
               <Label className="text-sm font-medium">Active</Label>
               <Switch
                 checked={form.active}
@@ -550,6 +646,72 @@ export default function SolutionEdit({ id }: Props) {
                 data-testid="switch-solution-active"
               />
             </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <Label className="text-sm font-medium">Pillar</Label>
+            <Select
+              value={form.pillar ?? "__none__"}
+              onValueChange={(v) =>
+                update({
+                  pillar: v === "__none__" ? null : (v as CollateralPillar),
+                })
+              }
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-solution-pillar">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {PILLAR_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Used to group solutions into the library's pillar rails.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <Label className="text-sm font-medium">Tags</Label>
+            {allTags.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No tags defined yet. Create tags under Admin → Taxonomy.
+              </p>
+            ) : (
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {allTags.map((t) => {
+                  const checked = form.tagIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={!canWrite}
+                        onChange={(e) =>
+                          update({
+                            tagIds: e.target.checked
+                              ? [...form.tagIds, t.id]
+                              : form.tagIds.filter((x) => x !== t.id),
+                          })
+                        }
+                      />
+                      <span>{t.name}</span>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {t.slug}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           <Card className="p-4 space-y-3">

@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { mediaTable } from "./media";
+import { artifactStatusEnum, collateralPillarEnum } from "./_artifactBase";
 
 export const servicesTable = pgTable(
   "services",
@@ -39,6 +40,11 @@ export const servicesTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
+    // #56: publish/draft lifecycle. Existing rows default to published so
+    // the admin "publish" toggle doesn't silently hide the site on migration.
+    status: artifactStatusEnum("status").notNull().default("published"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    unpublishedAt: timestamp("unpublished_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -48,6 +54,7 @@ export const servicesTable = pgTable(
     uniqueIndex("services_slug_key").on(t.slug),
     uniqueIndex("services_source_id_key").on(t.sourceId),
     index("services_display_order_idx").on(t.displayOrder),
+    index("services_status_idx").on(t.status),
   ],
 );
 
@@ -82,6 +89,13 @@ export const solutionsTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
+    // #56: publish/draft lifecycle + pillar assignment. Pillar reuses the
+    // library's `collateral_pillar` enum so solution→collateral carousel
+    // filters line up without a separate taxonomy.
+    status: artifactStatusEnum("status").notNull().default("published"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    unpublishedAt: timestamp("unpublished_at", { withTimezone: true }),
+    pillar: collateralPillarEnum("pillar"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -92,6 +106,8 @@ export const solutionsTable = pgTable(
     uniqueIndex("solutions_source_id_key").on(t.sourceId),
     index("solutions_parent_service_idx").on(t.parentServiceId),
     index("solutions_display_order_idx").on(t.displayOrder),
+    index("solutions_status_idx").on(t.status),
+    index("solutions_pillar_idx").on(t.pillar),
   ],
 );
 

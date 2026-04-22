@@ -10,6 +10,7 @@ import {
   eventsTable,
   applicationsTable,
   caseStudiesTable,
+  modelsTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -51,6 +52,7 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/team", changefreq: "monthly", priority: 0.6 },
   { loc: "/case-studies", changefreq: "weekly", priority: 0.7 },
   { loc: "/applications", changefreq: "weekly", priority: 0.8 },
+  { loc: "/models", changefreq: "weekly", priority: 0.8 },
   { loc: "/workshops", changefreq: "weekly", priority: 0.7 },
   { loc: "/library", changefreq: "weekly", priority: 0.7 },
   { loc: "/webinars", changefreq: "weekly", priority: 0.7 },
@@ -89,7 +91,17 @@ async function collectEntries(): Promise<Entry[]> {
   for (const r of STATIC_ROUTES) entries.push(r);
   for (const slug of WORKSHOP_SLUGS) entries.push({ loc: `/workshops/${slug}` });
 
-  const [posts, collateral, services, solutions, team, events, applications, caseStudies] = await Promise.all([
+  const [
+    posts,
+    collateral,
+    services,
+    solutions,
+    team,
+    events,
+    applications,
+    caseStudies,
+    models,
+  ] = await Promise.all([
     db
       .select({ slug: postsTable.slug, updatedAt: postsTable.updatedAt, publishedAt: postsTable.publishedAt })
       .from(postsTable)
@@ -112,12 +124,24 @@ async function collectEntries(): Promise<Entry[]> {
     db
       .select({ slug: servicesTable.slug, updatedAt: servicesTable.updatedAt })
       .from(servicesTable)
-      .where(and(isNull(servicesTable.deletedAt), eq(servicesTable.active, true)))
+      .where(
+        and(
+          isNull(servicesTable.deletedAt),
+          eq(servicesTable.active, true),
+          eq(servicesTable.status, "published"),
+        ),
+      )
       .orderBy(asc(servicesTable.displayOrder)),
     db
       .select({ slug: solutionsTable.slug, updatedAt: solutionsTable.updatedAt })
       .from(solutionsTable)
-      .where(and(isNull(solutionsTable.deletedAt), eq(solutionsTable.active, true)))
+      .where(
+        and(
+          isNull(solutionsTable.deletedAt),
+          eq(solutionsTable.active, true),
+          eq(solutionsTable.status, "published"),
+        ),
+      )
       .orderBy(asc(solutionsTable.displayOrder)),
     db
       .select({ slug: teamMembersTable.slug, updatedAt: teamMembersTable.updatedAt })
@@ -156,6 +180,21 @@ async function collectEntries(): Promise<Entry[]> {
           sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
         ),
       ),
+    db
+      .select({
+        slug: modelsTable.slug,
+        updatedAt: modelsTable.updatedAt,
+      })
+      .from(modelsTable)
+      .where(
+        and(
+          isNull(modelsTable.deletedAt),
+          eq(modelsTable.active, true),
+          eq(modelsTable.status, "published"),
+          sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
+          sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
+        ),
+      ),
   ]);
 
   for (const p of posts) {
@@ -192,6 +231,7 @@ async function collectEntries(): Promise<Entry[]> {
     entries.push(toEntry(`/applications/${a.slug}`, a.updatedAt));
   for (const c of caseStudies)
     entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
+  for (const m of models) entries.push(toEntry(`/models/${m.slug}`, m.updatedAt));
 
   // De-duplicate and absolutize.
   const seen = new Set<string>();

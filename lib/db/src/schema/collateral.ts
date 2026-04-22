@@ -13,6 +13,11 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { servicesTable, solutionsTable } from "./services";
+import {
+  COLLATERAL_PILLARS,
+  collateralPillarEnum,
+  type CollateralPillar,
+} from "./_artifactBase";
 
 export const COLLATERAL_TYPES = [
   "webinar",
@@ -30,15 +35,10 @@ export type CollateralType = (typeof COLLATERAL_TYPES)[number];
 
 export const collateralTypeEnum = pgEnum("collateral_type", COLLATERAL_TYPES);
 
-export const COLLATERAL_PILLARS = [
-  "strategic",
-  "technology",
-  "experiences",
-  "gtm",
-] as const;
-export type CollateralPillar = (typeof COLLATERAL_PILLARS)[number];
-
-export const collateralPillarEnum = pgEnum("collateral_pillar", COLLATERAL_PILLARS);
+// Re-export pillar enum for back-compat with modules importing it from
+// collateral.ts. Canonical home is now _artifactBase.ts.
+export { COLLATERAL_PILLARS, collateralPillarEnum };
+export type { CollateralPillar };
 
 export const collateralTable = pgTable(
   "collateral",

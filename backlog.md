@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 22, 2026  
-> 13 tasks pending · 73 merged · 29 cancelled
+> 12 tasks pending · 75 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -22,11 +22,6 @@ Bot-submitted comments currently pass through to the moderation queue, clutterin
 ---
 
 ## Services & Solutions Admin
-
-### #56 · Let editors manage services and solutions in the admin
-**Depends on:** #40 (services pages refactor)
-
-The admin panel has read-only views for services and solutions (imported via CSV). Editors need to be able to add, edit, and archive entries without developer intervention. This task wires up full CRUD for both entities in the existing admin UI: rich-text description, pillar/tag assignment, thumbnail upload, publish/draft toggle, and display-order control.
 
 ### #57 · Verify the new services pages with automated browser tests
 **Depends on:** #40 (services pages refactor)
@@ -85,10 +80,10 @@ Every save creates a new revision. Without a retention policy, the `post_revisio
 
 ## Heterogeneous CMS Artifacts
 
-### #106 · Models: new DB-backed artifact type with library sync
-**Depends on:** #98 (artifact-type pattern)
+### #108 · Bring the FAQ schema onto the shared artifact pattern
+**Depends on:** #107 (FAQ → DB + JSON-LD FAQPage) — merged
 
-Maturity models (AI Maturity, KMMM, GTM Maturity, Content Management Maturity, Management / Company OS, and others added over time) currently live as Wix CMS rows — with one model already hand-entered into `collateralTable` today — and launch against separate sub-apps (`orion.synozur.com/…`, `aimaturity.synozur.com`). Editors cannot add, edit, or unpublish a model without a developer commit, and the richer Wix fields (`Long Description`, `Levels and Dimensions`, `Related Information`) don't fit the flat collateral shape. This task introduces a `modelsTable` on the #98 artifact pattern with: `title`, `slug`, `shortDescription`, `heroImage`, `longDescriptionHtml`, `dimensionsHtml`, `launchUrl` (external assessment app), `relatedInformation` jsonb, `status`, `publishedAt`, `unpublishedAt`, `featured` + `featuredRank`, SEO fields. Full admin CRUD, public `/models` gallery + `/models/:slug` detail page (with a prominent "Launch assessment →" CTA opening `launchUrl` in a new tab), and sync-to-collateral (`type="model"`, `url=/models/:slug`, internal) so models flow into the library and the featured carousel. One-shot seed script `seedModels.ts` reads the existing Wix CSV export and backfills historical records while reconciling the manually-entered library row by `sourceId`.
+#107 shipped with a bespoke `status: text` column instead of the shared `artifact_status` enum, and omits `deletedAt`, `unpublishedAt`, `active`, and `featured` / `featuredRank`. The deviation was deliberate (see `faq.ts` inline comment) and is low-stakes today, but it blocks cheap future asks like "hide this FAQ without deleting it", scheduled retirement, and type-safe status against typos. This task migrates `faq_categories` and `faq_items` onto `artifactIdentity` / `artifactLifecycle` / `artifactTimestamps` from `_artifactBase.ts`, updates `/api/faq` and the admin CRUD to use the shared visibility filter, and backfills existing rows so nothing flips to draft on migration. No public-surface change.
 
 ---
 
@@ -98,7 +93,6 @@ Maturity models (AI Maturity, KMMM, GTM Maturity, Content Management Maturity, M
 |---|-------|------|-----------|
 | #53 | Comment approval/reply notifications | Comments | #19 |
 | #54 | CAPTCHA fallback for comment spam | Comments | #19 |
-| #56 | CRUD for services & solutions in admin | Services admin | #40 |
 | #57 | Playwright tests for services pages | QA | #40 |
 | #60 | Preview unpublished services/solutions | Services admin | #39 |
 | #61 | Edit history for services & solutions | Services admin | #39 |
@@ -108,4 +102,4 @@ Maturity models (AI Maturity, KMMM, GTM Maturity, Content Management Maturity, M
 | #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #76 | Live card preview in library edit form | Library | #69 |
-| #106 | Models: DB-backed artifact type + library sync | Heterogeneous CMS | #98 |
+| #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |

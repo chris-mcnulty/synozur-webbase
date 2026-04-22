@@ -1,4 +1,4 @@
-import { eq, inArray, asc } from "drizzle-orm";
+import { and, eq, inArray, asc } from "drizzle-orm";
 import {
   db,
   servicesTable,
@@ -6,13 +6,69 @@ import {
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
   mediaTable,
+  tagsTable,
+  entityTagsTable,
   type Service,
   type Solution,
   type ServiceMethodology,
   type SolutionCapability,
+  type TaxonomyEntityType,
 } from "@workspace/db";
 
 type IconRef = { id: string; publicUrl: string } | null;
+type TagRef = { id: string; slug: string; name: string };
+
+async function loadTags(
+  entityType: TaxonomyEntityType,
+  entityIds: string[],
+): Promise<Map<string, TagRef[]>> {
+  const result = new Map<string, TagRef[]>();
+  if (entityIds.length === 0) return result;
+  const rows = await db
+    .select({
+      entityId: entityTagsTable.entityId,
+      id: tagsTable.id,
+      slug: tagsTable.slug,
+      name: tagsTable.name,
+    })
+    .from(entityTagsTable)
+    .innerJoin(tagsTable, eq(entityTagsTable.tagId, tagsTable.id))
+    .where(
+      and(
+        eq(entityTagsTable.entityType, entityType),
+        inArray(entityTagsTable.entityId, entityIds),
+      ),
+    );
+  for (const r of rows) {
+    const arr = result.get(r.entityId) ?? [];
+    arr.push({ id: r.id, slug: r.slug, name: r.name });
+    result.set(r.entityId, arr);
+  }
+  return result;
+}
+
+export async function setEntityTags(
+  entityType: TaxonomyEntityType,
+  entityId: string,
+  tagIds: string[],
+): Promise<void> {
+  await db
+    .delete(entityTagsTable)
+    .where(
+      and(
+        eq(entityTagsTable.entityType, entityType),
+        eq(entityTagsTable.entityId, entityId),
+      ),
+    );
+  if (tagIds.length === 0) return;
+  await db.insert(entityTagsTable).values(
+    tagIds.map((tagId) => ({
+      entityType,
+      entityId,
+      tagId,
+    })),
+  );
+}
 
 async function loadIcons(ids: (string | null)[]): Promise<Map<string, { id: string; publicUrl: string }>> {
   const real = Array.from(new Set(ids.filter((x): x is string => Boolean(x))));
@@ -24,7 +80,7 @@ async function loadIcons(ids: (string | null)[]): Promise<Map<string, { id: stri
   return new Map(rows.map((r) => [r.id, r]));
 }
 
-function shapeService(s: Service, icon: IconRef) {
+function shapeService(s: Service, icon: IconRef, tags: TagRef[]) {
   return {
     id: s.id,
     slug: s.slug,
@@ -46,13 +102,17 @@ function shapeService(s: Service, icon: IconRef) {
     seoTitle: s.seoTitle,
     seoDescription: s.seoDescription,
     sourceId: s.sourceId,
+    status: s.status,
+    publishedAt: s.publishedAt ? s.publishedAt.toISOString() : null,
+    unpublishedAt: s.unpublishedAt ? s.unpublishedAt.toISOString() : null,
     active: s.active,
+    tags,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   };
 }
 
-function shapeSolution(s: Solution, icon: IconRef) {
+function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[]) {
   return {
     id: s.id,
     slug: s.slug,
@@ -79,7 +139,12 @@ function shapeSolution(s: Solution, icon: IconRef) {
     seoTitle: s.seoTitle,
     seoDescription: s.seoDescription,
     sourceId: s.sourceId,
+    status: s.status,
+    publishedAt: s.publishedAt ? s.publishedAt.toISOString() : null,
+    unpublishedAt: s.unpublishedAt ? s.unpublishedAt.toISOString() : null,
+    pillar: s.pillar,
     active: s.active,
+    tags,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   };
@@ -130,13 +195,27 @@ export type SolutionWithCapabilities = SolutionDto & {
 };
 
 export async function serializeService(s: Service): Promise<ServiceDto> {
-  const icons = await loadIcons([s.iconId]);
-  return shapeService(s, s.iconId ? icons.get(s.iconId) ?? null : null);
+  const [icons, tags] = await Promise.all([
+    loadIcons([s.iconId]),
+    loadTags("service", [s.id]),
+  ]);
+  return shapeService(
+    s,
+    s.iconId ? icons.get(s.iconId) ?? null : null,
+    tags.get(s.id) ?? [],
+  );
 }
 
 export async function serializeSolution(s: Solution): Promise<SolutionDto> {
-  const icons = await loadIcons([s.iconId]);
-  return shapeSolution(s, s.iconId ? icons.get(s.iconId) ?? null : null);
+  const [icons, tags] = await Promise.all([
+    loadIcons([s.iconId]),
+    loadTags("solution", [s.id]),
+  ]);
+  return shapeSolution(
+    s,
+    s.iconId ? icons.get(s.iconId) ?? null : null,
+    tags.get(s.id) ?? [],
+  );
 }
 
 export async function serializeMethodology(m: ServiceMethodology): Promise<MethodologyDto> {
@@ -149,19 +228,29 @@ export async function serializeCapability(c: SolutionCapability): Promise<Capabi
   return shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null);
 }
 
-/** List of all (active) services with their child solutions, ordered for header/overview rendering. */
+/** List of all (active, published) services with their child solutions, ordered for header/overview rendering. */
 export async function listServicesWithSolutions(): Promise<ServiceWithSolutions[]> {
   const services = await db
     .select()
     .from(servicesTable)
-    .where(eq(servicesTable.active, true))
+    .where(
+      and(
+        eq(servicesTable.active, true),
+        eq(servicesTable.status, "published"),
+      ),
+    )
     .orderBy(asc(servicesTable.displayOrder), asc(servicesTable.title));
   const activeServices = services.filter((s) => !s.deletedAt);
 
   const solutions = await db
     .select()
     .from(solutionsTable)
-    .where(eq(solutionsTable.active, true))
+    .where(
+      and(
+        eq(solutionsTable.active, true),
+        eq(solutionsTable.status, "published"),
+      ),
+    )
     .orderBy(asc(solutionsTable.displayOrder), asc(solutionsTable.title));
   const activeSolutions = solutions.filter((s) => !s.deletedAt);
 
@@ -169,19 +258,37 @@ export async function listServicesWithSolutions(): Promise<ServiceWithSolutions[
     ...activeServices.map((s) => s.iconId),
     ...activeSolutions.map((s) => s.iconId),
   ];
-  const icons = await loadIcons(iconIds);
+  const [icons, serviceTags, solutionTags] = await Promise.all([
+    loadIcons(iconIds),
+    loadTags(
+      "service",
+      activeServices.map((s) => s.id),
+    ),
+    loadTags(
+      "solution",
+      activeSolutions.map((s) => s.id),
+    ),
+  ]);
 
   const solutionsByParent = new Map<string, SolutionDto[]>();
   for (const sol of activeSolutions) {
     if (!sol.parentServiceId) continue;
-    const dto = shapeSolution(sol, sol.iconId ? icons.get(sol.iconId) ?? null : null);
+    const dto = shapeSolution(
+      sol,
+      sol.iconId ? icons.get(sol.iconId) ?? null : null,
+      solutionTags.get(sol.id) ?? [],
+    );
     const arr = solutionsByParent.get(sol.parentServiceId) ?? [];
     arr.push(dto);
     solutionsByParent.set(sol.parentServiceId, arr);
   }
 
   return activeServices.map((s) => ({
-    ...shapeService(s, s.iconId ? icons.get(s.iconId) ?? null : null),
+    ...shapeService(
+      s,
+      s.iconId ? icons.get(s.iconId) ?? null : null,
+      serviceTags.get(s.id) ?? [],
+    ),
     solutions: solutionsByParent.get(s.id) ?? [],
   }));
 }
@@ -192,16 +299,29 @@ export async function getServiceWithMethodologies(
   const service = await db.query.servicesTable.findFirst({
     where: eq(servicesTable.slug, slug),
   });
-  if (!service || service.deletedAt || !service.active) return null;
+  if (
+    !service ||
+    service.deletedAt ||
+    !service.active ||
+    service.status !== "published"
+  )
+    return null;
   const methodologies = await db
     .select()
     .from(serviceMethodologiesTable)
     .where(eq(serviceMethodologiesTable.serviceId, service.id))
     .orderBy(asc(serviceMethodologiesTable.displayOrder), asc(serviceMethodologiesTable.title));
   const visible = methodologies.filter((m) => !m.hidden);
-  const icons = await loadIcons([service.iconId, ...visible.map((m) => m.iconId)]);
+  const [icons, tags] = await Promise.all([
+    loadIcons([service.iconId, ...visible.map((m) => m.iconId)]),
+    loadTags("service", [service.id]),
+  ]);
   return {
-    ...shapeService(service, service.iconId ? icons.get(service.iconId) ?? null : null),
+    ...shapeService(
+      service,
+      service.iconId ? icons.get(service.iconId) ?? null : null,
+      tags.get(service.id) ?? [],
+    ),
     methodologies: visible.map((m) =>
       shapeMethodology(m, m.iconId ? icons.get(m.iconId) ?? null : null),
     ),
@@ -214,7 +334,13 @@ export async function getSolutionWithCapabilities(
   const solution = await db.query.solutionsTable.findFirst({
     where: eq(solutionsTable.slug, slug),
   });
-  if (!solution || solution.deletedAt || !solution.active) return null;
+  if (
+    !solution ||
+    solution.deletedAt ||
+    !solution.active ||
+    solution.status !== "published"
+  )
+    return null;
   const capabilities = await db
     .select()
     .from(solutionCapabilitiesTable)
@@ -226,18 +352,27 @@ export async function getSolutionWithCapabilities(
         where: eq(servicesTable.id, solution.parentServiceId),
       })
     : null;
-  const icons = await loadIcons([
-    solution.iconId,
-    parentService?.iconId ?? null,
-    ...visible.map((c) => c.iconId),
+  const [icons, solutionTags, parentTags] = await Promise.all([
+    loadIcons([
+      solution.iconId,
+      parentService?.iconId ?? null,
+      ...visible.map((c) => c.iconId),
+    ]),
+    loadTags("solution", [solution.id]),
+    parentService ? loadTags("service", [parentService.id]) : Promise.resolve(new Map()),
   ]);
   return {
-    ...shapeSolution(solution, solution.iconId ? icons.get(solution.iconId) ?? null : null),
+    ...shapeSolution(
+      solution,
+      solution.iconId ? icons.get(solution.iconId) ?? null : null,
+      solutionTags.get(solution.id) ?? [],
+    ),
     parentService:
       parentService && !parentService.deletedAt && parentService.active
         ? shapeService(
             parentService,
             parentService.iconId ? icons.get(parentService.iconId) ?? null : null,
+            parentTags.get(parentService.id) ?? [],
           )
         : null,
     capabilities: visible.map((c) =>
