@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Star, ExternalLink } from "lucide-react";
+import { Trash2, Star, ExternalLink, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -84,6 +84,15 @@ export default function AdminModelsList() {
     <AdminLayout
       title="Models"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Models" }]}
+      actions={
+        canWrite ? (
+          <Link href="/products/models/new">
+            <Button data-testid="button-new-model">
+              <Plus className="h-4 w-4 mr-1" /> New model
+            </Button>
+          </Link>
+        ) : undefined
+      }
     >
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
@@ -160,6 +169,13 @@ export default function AdminModelsList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
+                      {canWrite && (
+                        <Link href={`/products/models/${m.id}/edit`}>
+                          <Button variant="ghost" size="icon" title="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
                       <Link href={`/models/${m.slug}`}>
                         <Button
                           variant="ghost"

@@ -65,6 +65,7 @@ import PolarisEpisodeEdit from "@/pages/admin/library/polaris-episode-edit";
 import AdminCaseStudiesList from "@/pages/admin/products/case-studies-list";
 import AdminApplicationsList from "@/pages/admin/products/applications-list";
 import AdminModelsList from "@/pages/admin/products/models-list";
+import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
@@ -151,6 +152,12 @@ function AdminRoutes() {
         <Route path="/products/case-studies" component={AdminCaseStudiesList} />
         <Route path="/products/applications" component={AdminApplicationsList} />
         <Route path="/products/models" component={AdminModelsList} />
+        <Route path="/products/models/new">
+          <AdminModelEdit />
+        </Route>
+        <Route path="/products/models/:id/edit">
+          {(params) => <AdminModelEdit id={params.id} />}
+        </Route>
         <Route path="/products/faq" component={AdminFaq} />
 
         {/* Products redirects */}
