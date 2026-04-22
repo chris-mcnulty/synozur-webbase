@@ -37,9 +37,13 @@ function dateLabel(item: Collateral): string {
 }
 
 export function CollateralCard({ item, variant = "grid" }: CollateralCardProps) {
+  // On md+ screens the carousel sits beside the hero headline inside a
+  // min-h-[90vh] section. A pure 3/4 portrait aspect makes the card taller
+  // than the viewport, pushing the title/badge overlay below the fold. Cap
+  // the height so the bottom text overlay always stays visible.
   const aspect =
     variant === "carousel"
-      ? "aspect-[4/5] md:aspect-[3/4]"
+      ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
       : "aspect-[4/5]";
   const formattedDate = formatCardDate(item);
 
@@ -97,7 +101,7 @@ export function CollateralCard({ item, variant = "grid" }: CollateralCardProps) 
 export function CollateralCardSkeleton({ variant = "grid" }: { variant?: "carousel" | "grid" }) {
   const aspect =
     variant === "carousel"
-      ? "aspect-[4/5] md:aspect-[3/4]"
+      ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
       : "aspect-[4/5]";
   return (
     <div
