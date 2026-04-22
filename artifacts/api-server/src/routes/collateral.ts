@@ -382,6 +382,123 @@ router.post("/cms/collateral/reorder", ...adminGuard, async (req, res) => {
   res.json({ updated: ids.length });
 });
 
+// Bulk edit — apply one or more field changes to a set of collateral rows.
+// Fields on `set` are three-state: missing = leave alone, null = clear,
+// value = assign. Tags use a separate `tagsAction` so callers can add or
+// remove without clobbering existing tags.
+const BulkBody = z
+  .object({
+    ids: z
+      .array(z.string().uuid())
+      .min(1)
+      .max(200)
+      .refine((ids) => new Set(ids).size === ids.length, {
+        message: "ids must contain unique values",
+      }),
+    set: z
+      .object({
+        serviceId: z.string().uuid().nullable().optional(),
+        solutionId: z.string().uuid().nullable().optional(),
+        pillar: z.enum(COLLATERAL_PILLARS).nullable().optional(),
+        type: z.enum(COLLATERAL_TYPES).optional(),
+        active: z.boolean().optional(),
+        featured: z.boolean().optional(),
+      })
+      .optional(),
+    tagsAction: z
+      .object({
+        mode: z.enum(["add", "remove", "replace"]),
+        tags: z.array(z.string().min(1)).max(50),
+      })
+      .optional(),
+  })
+  .refine((b) => !!b.set || !!b.tagsAction, {
+    message: "Provide at least one of `set` or `tagsAction`",
+  });
+
+router.post("/cms/collateral/bulk", ...adminGuard, async (req, res) => {
+  const parsed = BulkBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const { ids, set, tagsAction } = parsed.data;
+
+  const existing = await db
+    .select({ id: collateralTable.id, tags: collateralTable.tags })
+    .from(collateralTable)
+    .where(and(inArray(collateralTable.id, ids), isNull(collateralTable.deletedAt)));
+  const knownIds = new Set(existing.map((r) => r.id));
+  const missing = ids.filter((id) => !knownIds.has(id));
+  if (missing.length) {
+    res.status(400).json({ error: "Unknown collateral ids", missing });
+    return;
+  }
+
+  const now = new Date();
+  const commonUpdates: Record<string, unknown> = { updatedAt: now };
+  if (set) {
+    if (set.serviceId !== undefined) commonUpdates.serviceId = set.serviceId;
+    if (set.solutionId !== undefined) commonUpdates.solutionId = set.solutionId;
+    if (set.pillar !== undefined) commonUpdates.pillar = set.pillar;
+    if (set.type !== undefined) commonUpdates.type = set.type;
+    if (set.active !== undefined) commonUpdates.active = set.active;
+    if (set.featured !== undefined) commonUpdates.featured = set.featured;
+  }
+
+  const hasCommonUpdates = Object.keys(commonUpdates).length > 1;
+  let updatedCount = hasCommonUpdates || tagsAction?.mode === "replace" ? ids.length : 0;
+
+  await db.transaction(async (tx) => {
+    if (hasCommonUpdates) {
+      await tx
+        .update(collateralTable)
+        .set(commonUpdates)
+        .where(inArray(collateralTable.id, ids));
+    }
+    if (tagsAction) {
+      if (tagsAction.mode === "replace") {
+        await tx
+          .update(collateralTable)
+          .set({ tags: tagsAction.tags, updatedAt: now })
+          .where(inArray(collateralTable.id, ids));
+      } else {
+        // Add/remove need per-row merge since jsonb arrays can differ per row.
+        for (const row of existing) {
+          const current = (row.tags as string[] | null) ?? [];
+          const next =
+            tagsAction.mode === "add"
+              ? Array.from(new Set([...current, ...tagsAction.tags]))
+              : current.filter((t) => !tagsAction.tags.includes(t));
+          // Skip write if unchanged to avoid pointless updatedAt churn.
+          if (
+            next.length === current.length &&
+            next.every((t, i) => t === current[i])
+          ) {
+            continue;
+          }
+          await tx
+            .update(collateralTable)
+            .set({ tags: next, updatedAt: now })
+            .where(eq(collateralTable.id, row.id));
+          if (!hasCommonUpdates) {
+            updatedCount += 1;
+          }
+        }
+      }
+    }
+  });
+
+  await audit({
+    actorId: req.authedUser!.id,
+    action: "collateral.bulk_update",
+    entity: "collateral",
+    entityId: ids.join(","),
+  });
+
+  res.json({ updated: updatedCount });
+});
+
 router.delete("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   const id = String(req.params.id);
   const existing = await db.query.collateralTable.findFirst({

@@ -102,7 +102,11 @@ export default function MarketingTraffic() {
 
   const analytics = useGetCmsAnalyticsOverview(
     { days: rangeDays },
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
+    { query: { enabled: !!access?.hasCapability("content.moderate") } as never },
+=======
     { query: { enabled: !!access?.hasCapability("content.moderate") } },
+>>>>>>> main
   );
 
   const seriesData = (analytics.data?.series ?? []).map((d) => ({

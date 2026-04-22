@@ -33,6 +33,46 @@ import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import AdminDashboard from "@/pages/admin/dashboard";
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
+import AdminPostsList from "@/pages/admin/insights/posts-list";
+import PostEditor from "@/pages/admin/insights/post-editor";
+import PostPreview from "@/pages/admin/insights/post-preview";
+import PostAnalytics from "@/pages/admin/insights/post-analytics";
+import MediaLibrary from "@/pages/admin/insights/media";
+import TaxonomyPage from "@/pages/admin/insights/taxonomy";
+import CommentsModeration from "@/pages/admin/insights/comments";
+import UsersAndRoles from "@/pages/admin/access/users";
+import AdminServicesList from "@/pages/admin/products/services-list";
+import ServiceEdit from "@/pages/admin/products/service-edit";
+import ServiceMethodologiesPage from "@/pages/admin/products/service-methodologies";
+import AdminSolutionsList from "@/pages/admin/products/solutions-list";
+import SolutionEdit from "@/pages/admin/products/solution-edit";
+import SolutionCapabilitiesPage from "@/pages/admin/products/solution-capabilities";
+import AdminTeamList from "@/pages/admin/people/team-list";
+import TeamForm from "@/pages/admin/people/team-form";
+import AdminEventsList from "@/pages/admin/people/events-list";
+import EventForm from "@/pages/admin/people/event-form";
+import AdminCollateralList from "@/pages/admin/library/collateral-list";
+import CollateralEdit from "@/pages/admin/library/collateral-edit";
+import AdminVideosList from "@/pages/admin/library/videos-list";
+import VideoEdit from "@/pages/admin/library/video-edit";
+import AdminWhitePapersList from "@/pages/admin/library/white-papers-list";
+import WhitePaperEdit from "@/pages/admin/library/white-paper-edit";
+import AdminWixRedirects from "@/pages/admin/site-config/redirects";
+import AdminWorkshopsList from "@/pages/admin/library/workshops-list";
+import WorkshopEdit from "@/pages/admin/library/workshop-edit";
+import AdminPolarisEpisodesList from "@/pages/admin/library/polaris-episodes-list";
+import PolarisEpisodeEdit from "@/pages/admin/library/polaris-episode-edit";
+import AdminCaseStudiesList from "@/pages/admin/products/case-studies-list";
+import AdminApplicationsList from "@/pages/admin/products/applications-list";
+import AdminModelsList from "@/pages/admin/products/models-list";
+import AdminFaq from "@/pages/admin/products/faq";
+import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
+import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminSubmissionsList from "@/pages/admin/audience/submissions";
+import MarketingTraffic from "@/pages/admin/marketing/traffic";
+import MarketingSeo from "@/pages/admin/marketing/seo";
+=======
 import AdminPostsList from "@/pages/admin/posts-list";
 import PostEditor from "@/pages/admin/post-editor";
 import PostPreview from "@/pages/admin/post-preview";
@@ -65,6 +105,7 @@ import AdminApplicationsList from "@/pages/admin/applications-list";
 import AdminModelsList from "@/pages/admin/models-list";
 import AdminFaq from "@/pages/admin/faq";
 import AdminListPageCopy from "@/pages/admin/list-page-copy";
+>>>>>>> main
 import AdminTraffic from "@/pages/admin/traffic";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
@@ -275,7 +316,11 @@ function AdminRoutes() {
         {/* Site config section */}
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
+<<<<<<< claude/library-filtering-bulk-tags-NXg3T
+        <Route path="/site-config/redirects" component={AdminWixRedirects} />
+=======
         <Route path="/site-config/redirects" component={AdminRedirects} />
+>>>>>>> main
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>
