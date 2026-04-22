@@ -150,15 +150,28 @@ export function parseLibsynRss(xml: string): LibsynItem[] {
 // -- Feed fetch -----------------------------------------------------------
 
 export async function fetchLibsynFeed(feedUrl: string): Promise<LibsynItem[]> {
-  const res = await fetch(feedUrl, {
-    headers: { "user-agent": "synozur-polaris-ingest/1.0" },
-    redirect: "follow",
-  });
-  if (!res.ok) {
-    throw new Error(`Feed fetch failed: ${res.status} ${res.statusText}`);
+  const timeoutMs = 10_000;
+
+  try {
+    const res = await fetch(feedUrl, {
+      headers: { "user-agent": "synozur-polaris-ingest/1.0" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) {
+      throw new Error(`Feed fetch failed: ${res.status} ${res.statusText}`);
+    }
+    const xml = await res.text();
+    return parseLibsynRss(xml);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new Error(`Feed fetch timed out after ${timeoutMs}ms: ${feedUrl}`);
+    }
+    throw error;
   }
-  const xml = await res.text();
-  return parseLibsynRss(xml);
 }
 
 // -- Idempotency ---------------------------------------------------------
