@@ -126,76 +126,86 @@ export default function EventsPage() {
     .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+    <>
       <Meta
         title="Events"
         description="Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events."
       />
-      <div className="mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
-          Events
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl">
-          Join The Synozur Alliance at upcoming conferences, webinars, and
-          community gatherings — or browse highlights from our past events.
-        </p>
-      </div>
 
-      {isLoading && <div className="text-muted-foreground">Loading events…</div>}
-      {error && (
-        <div className="text-destructive">Failed to load events. Please try again.</div>
-      )}
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-28 md:py-32">
+        <div className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4 inline-flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Gatherings
+          </p>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
+            Events
+          </h1>
+          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
+            Join The Synozur Alliance at upcoming conferences, webinars, and
+            community gatherings — or browse highlights from our past events.
+          </p>
+        </div>
+      </section>
 
-      {!isLoading && !error && (
-        <>
-          <section className="mb-16" data-testid="events-upcoming-section">
-            <h2 className="text-2xl font-semibold text-foreground mb-6 pb-2 border-b border-border">
-              Upcoming Events ({upcoming.length})
-            </h2>
-            {upcoming.length === 0 ? (
-              <p className="text-muted-foreground">No upcoming events scheduled.</p>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {upcoming.map((e) => (
-                  <EventCard key={e.id} event={e} isPast={false} />
-                ))}
-              </div>
-            )}
-          </section>
+      <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+        {isLoading && <div className="text-muted-foreground">Loading events…</div>}
+        {error && (
+          <div className="text-destructive">Failed to load events. Please try again.</div>
+        )}
 
-          {past.length > 0 && (
-            <section data-testid="events-past-section">
-              <button
-                type="button"
-                onClick={() => setPastOpen((o) => !o)}
-                className="flex w-full items-center justify-between gap-4 pb-2 border-b border-border group"
-                aria-expanded={pastOpen}
-              >
-                <h2 className="text-2xl font-semibold text-foreground">
-                  Past Events ({past.length})
-                </h2>
-                <ChevronDown
-                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 group-hover:text-foreground ${pastOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {pastOpen && (
-                <div className="mt-6 flex flex-col gap-4">
-                  {past.map((e) => (
-                    <EventCard key={e.id} event={e} isPast={true} />
+        {!isLoading && !error && (
+          <>
+            <section className="mb-16" data-testid="events-upcoming-section">
+              <h2 className="text-2xl font-semibold text-foreground mb-6 pb-2 border-b border-border">
+                Upcoming Events ({upcoming.length})
+              </h2>
+              {upcoming.length === 0 ? (
+                <p className="text-muted-foreground">No upcoming events scheduled.</p>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {upcoming.map((e) => (
+                    <EventCard key={e.id} event={e} isPast={false} />
                   ))}
                 </div>
               )}
             </section>
-          )}
-        </>
-      )}
 
-      <div className="mt-16 text-center">
-        <Link href="/contact">
-          <Button variant="outline">Contact us about an event</Button>
-        </Link>
+            {past.length > 0 && (
+              <section data-testid="events-past-section">
+                <button
+                  type="button"
+                  onClick={() => setPastOpen((o) => !o)}
+                  className="flex w-full items-center justify-between gap-4 pb-2 border-b border-border group"
+                  aria-expanded={pastOpen}
+                >
+                  <h2 className="text-2xl font-semibold text-foreground">
+                    Past Events ({past.length})
+                  </h2>
+                  <ChevronDown
+                    className={`h-5 w-5 text-muted-foreground transition-transform duration-200 group-hover:text-foreground ${pastOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {pastOpen && (
+                  <div className="mt-6 flex flex-col gap-4">
+                    {past.map((e) => (
+                      <EventCard key={e.id} event={e} isPast={true} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </>
+        )}
+
+        <div className="mt-16 text-center">
+          <Link href="/contact">
+            <Button variant="outline">Contact us about an event</Button>
+          </Link>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
