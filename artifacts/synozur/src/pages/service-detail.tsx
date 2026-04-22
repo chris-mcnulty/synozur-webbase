@@ -5,8 +5,7 @@ import { ArrowRight, Clock, Layers, Monitor } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
-import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
-import { fetchLibrary } from "@/data/collateral";
+import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
@@ -124,51 +123,6 @@ function RelatedWorkshopsRail({
             </motion.div>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
-
-function CollateralRail({ serviceId, title }: { serviceId: string | null; title: string }) {
-  const q = useQuery({
-    queryKey: ["collateral", "by-service", serviceId],
-    queryFn: () =>
-      serviceId ? fetchLibrary({ serviceId, pageSize: 6 }) : Promise.resolve(null),
-    enabled: Boolean(serviceId),
-  });
-  if (!serviceId) return null;
-  return (
-    <section className="py-24 bg-background border-t border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
-          <div>
-            <p className="text-sm uppercase tracking-widest text-primary mb-2">From the library</p>
-            <h2 className="text-3xl md:text-4xl font-bold">Recent for {title}</h2>
-          </div>
-          <Link
-            href="/library"
-            className="text-sm font-semibold text-primary inline-flex items-center"
-          >
-            Browse the library <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
-        {q.isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[0, 1, 2].map((i) => (
-              <CollateralCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : q.data && q.data.items.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {q.data.items.slice(0, 6).map((item) => (
-              <CollateralCard key={item.id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">
-            We're publishing new collateral for this service — check back soon.
-          </p>
-        )}
       </div>
     </section>
   );
@@ -434,7 +388,9 @@ export default function ServiceDetail() {
         </div>
       </section>
 
-      {service ? <CollateralRail serviceId={service.id} title={service.title} /> : null}
+      {service ? (
+        <RelatedContent serviceId={service.id} title={service.title} />
+      ) : null}
 
       <RelatedWorkshopsRail
         serviceId={service?.id ?? null}
