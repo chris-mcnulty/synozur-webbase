@@ -14,7 +14,7 @@ export default function PostPreview({ id }: Props) {
       title="Post Preview"
       crumbs={[
         { label: "Admin", href: "/" },
-        { label: "Posts", href: "/posts" },
+        { label: "Posts", href: "/insights/posts" },
         { label: post?.title ?? "Preview" },
       ]}
     >

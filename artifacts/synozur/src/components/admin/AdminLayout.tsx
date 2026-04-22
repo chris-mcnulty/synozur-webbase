@@ -73,10 +73,10 @@ const SECTIONS: NavSection[] = [
     label: "Insights",
     icon: Newspaper,
     items: [
-      { href: "/posts", label: "Posts", icon: FileText, capability: "content.author", testId: "nav-admin-posts" },
-      { href: "/media", label: "Media", icon: ImageIcon, capability: "content.author", testId: "nav-admin-media" },
-      { href: "/taxonomy", label: "Taxonomy", icon: Tags, capability: "content.author", testId: "nav-admin-taxonomy" },
-      { href: "/comments", label: "Comments", icon: MessageSquare, capability: "content.moderate", testId: "nav-admin-comments" },
+      { href: "/insights/posts", label: "Posts", icon: FileText, capability: "content.author", testId: "nav-admin-posts" },
+      { href: "/insights/media", label: "Media", icon: ImageIcon, capability: "content.author", testId: "nav-admin-media" },
+      { href: "/insights/taxonomy", label: "Taxonomy", icon: Tags, capability: "content.author", testId: "nav-admin-taxonomy" },
+      { href: "/insights/comments", label: "Comments", icon: MessageSquare, capability: "content.moderate", testId: "nav-admin-comments" },
     ],
   },
   {
@@ -126,6 +126,7 @@ const SECTIONS: NavSection[] = [
     label: "Site config",
     icon: Settings,
     items: [
+      { href: "/site-settings", label: "Site settings", icon: Settings, capability: "users.manage", testId: "nav-admin-site-settings" },
       { href: "/list-page-copy", label: "List page copy", icon: PanelTop, capability: "content.author", testId: "nav-admin-list-page-copy" },
       { href: "/wix-redirects", label: "Redirects", icon: CornerDownRight, capability: "content.moderate", testId: "nav-admin-wix-redirects" },
     ],

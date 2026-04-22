@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,13 +37,13 @@ import EventForm from "@/pages/admin/event-form";
 import AdminSubmissionsList from "@/pages/admin/submissions";
 import AdminSiteSettings from "@/pages/admin/site-settings";
 import AdminDashboard from "@/pages/admin/dashboard";
-import AdminPostsList from "@/pages/admin/posts-list";
-import PostEditor from "@/pages/admin/post-editor";
-import PostPreview from "@/pages/admin/post-preview";
-import PostAnalytics from "@/pages/admin/post-analytics";
-import MediaLibrary from "@/pages/admin/media";
-import TaxonomyPage from "@/pages/admin/taxonomy";
-import CommentsModeration from "@/pages/admin/comments";
+import AdminPostsList from "@/pages/admin/insights/posts-list";
+import PostEditor from "@/pages/admin/insights/post-editor";
+import PostPreview from "@/pages/admin/insights/post-preview";
+import PostAnalytics from "@/pages/admin/insights/post-analytics";
+import MediaLibrary from "@/pages/admin/insights/media";
+import TaxonomyPage from "@/pages/admin/insights/taxonomy";
+import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/users";
 import AdminServicesList from "@/pages/admin/services-list";
 import ServiceEdit from "@/pages/admin/service-edit";
@@ -90,22 +90,40 @@ function AdminRoutes() {
     <AdminGate>
       <Switch>
         <Route path="/" component={AdminDashboard} />
-        <Route path="/posts" component={AdminPostsList} />
-        <Route path="/posts/new">
+
+        {/* Insights section */}
+        <Route path="/insights/posts" component={AdminPostsList} />
+        <Route path="/insights/posts/new">
           <PostEditor />
         </Route>
-        <Route path="/posts/:id/edit">
+        <Route path="/insights/posts/:id/edit">
           {(params) => <PostEditor id={params.id} />}
         </Route>
-        <Route path="/posts/:id/preview">
+        <Route path="/insights/posts/:id/preview">
           {(params) => <PostPreview id={params.id} />}
         </Route>
-        <Route path="/posts/:id/analytics">
+        <Route path="/insights/posts/:id/analytics">
           {(params) => <PostAnalytics id={params.id} />}
         </Route>
-        <Route path="/media" component={MediaLibrary} />
-        <Route path="/taxonomy" component={TaxonomyPage} />
-        <Route path="/comments" component={CommentsModeration} />
+        <Route path="/insights/media" component={MediaLibrary} />
+        <Route path="/insights/taxonomy" component={TaxonomyPage} />
+        <Route path="/insights/comments" component={CommentsModeration} />
+
+        {/* Redirects from pre-reorg flat paths */}
+        <Route path="/posts"><Redirect to="/insights/posts" /></Route>
+        <Route path="/posts/new"><Redirect to="/insights/posts/new" /></Route>
+        <Route path="/posts/:id/edit">
+          {(params) => <Redirect to={`/insights/posts/${params.id}/edit`} />}
+        </Route>
+        <Route path="/posts/:id/preview">
+          {(params) => <Redirect to={`/insights/posts/${params.id}/preview`} />}
+        </Route>
+        <Route path="/posts/:id/analytics">
+          {(params) => <Redirect to={`/insights/posts/${params.id}/analytics`} />}
+        </Route>
+        <Route path="/media"><Redirect to="/insights/media" /></Route>
+        <Route path="/taxonomy"><Redirect to="/insights/taxonomy" /></Route>
+        <Route path="/comments"><Redirect to="/insights/comments" /></Route>
         <Route path="/users" component={UsersAndRoles} />
         <Route path="/services" component={AdminServicesList} />
         <Route path="/services/new">
