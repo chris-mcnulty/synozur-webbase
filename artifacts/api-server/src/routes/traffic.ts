@@ -57,6 +57,15 @@ function selfHostOf(req: import("express").Request): string | null {
   return h.split(":")[0] ?? null;
 }
 
+function shouldSkipTrafficPath(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/sign-in" ||
+    pathname === "/sign-up"
+  );
+}
+
 router.post("/traffic/collect", collectLimiter, async (req, res) => {
   const parsed = CollectBody.safeParse(req.body ?? {});
   if (!parsed.success) {
@@ -68,6 +77,10 @@ router.post("/traffic/collect", collectLimiter, async (req, res) => {
   try {
     const pathname = normalizePath(parsed.data.path);
     if (!pathname) {
+      res.status(202).json({ ok: true });
+      return;
+    }
+    if (shouldSkipTrafficPath(pathname)) {
       res.status(202).json({ ok: true });
       return;
     }
