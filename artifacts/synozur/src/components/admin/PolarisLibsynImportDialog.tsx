@@ -84,11 +84,16 @@ export function PolarisLibsynImportDialog({ open, onClose }: Props) {
   }, [open]);
 
   const saveFeedMut = useMutation({
-    mutationFn: (feedUrl: string) =>
-      api.updateAdminSiteSettings({
-        requireCookieConsent: settingsQ.data?.requireCookieConsent ?? false,
+    mutationFn: (feedUrl: string) => {
+      if (!settingsQ.data) {
+        throw new Error("Site settings are still loading. Please try again.");
+      }
+
+      return api.updateAdminSiteSettings({
+        requireCookieConsent: settingsQ.data.requireCookieConsent,
         polarisFeedUrl: feedUrl.trim() ? feedUrl.trim() : null,
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-site-settings"] });
       toast({ title: "Feed URL saved" });
