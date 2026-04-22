@@ -44,6 +44,18 @@ function formatDurationMin(seconds: number | null): string {
   return `${min} min`;
 }
 
+// The first sentence of every podcast summary is boilerplate intro copy,
+// and the rest of the field is long-form show notes. Render only the second
+// sentence as the card description.
+function getEpisodeDescription(summary: string | null | undefined): string {
+  if (!summary) return "";
+  const firstMatch = summary.match(/^[^.!?]*[.!?]+\s*/);
+  if (!firstMatch) return "";
+  const rest = summary.slice(firstMatch[0].length);
+  const secondMatch = rest.match(/^[^.!?]*[.!?]+/);
+  return (secondMatch ? secondMatch[0] : rest).trim();
+}
+
 const subscriptions = [
   {
     name: "Apple Podcasts",
@@ -229,7 +241,7 @@ export default function Polaris() {
                         {e.title}
                       </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
-                        {e.summary}
+                        {getEpisodeDescription(e.summary)}
                       </p>
                       <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
                         <span>{formatReleaseDate(e.publishedAt)}</span>
