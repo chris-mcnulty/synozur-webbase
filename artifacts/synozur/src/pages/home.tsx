@@ -313,7 +313,7 @@ export default function Home() {
       </section>
 
       {/* Trusted by — client/partner logo rotator */}
-      <section className="py-16 bg-card border-y border-border">
+      <section className="py-16 bg-[hsl(240_35%_10%)] border-y border-border">
         <div className="container mx-auto px-4">
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
             Trusted by
