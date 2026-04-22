@@ -446,8 +446,11 @@ router.post("/cms/collateral/bulk", ...adminGuard, async (req, res) => {
     if (set.featured !== undefined) commonUpdates.featured = set.featured;
   }
 
+  const hasCommonUpdates = Object.keys(commonUpdates).length > 1;
+  let updatedCount = hasCommonUpdates || tagsAction?.mode === "set" ? ids.length : 0;
+
   await db.transaction(async (tx) => {
-    if (Object.keys(commonUpdates).length > 1) {
+    if (hasCommonUpdates) {
       await tx
         .update(collateralTable)
         .set(commonUpdates)
@@ -478,6 +481,9 @@ router.post("/cms/collateral/bulk", ...adminGuard, async (req, res) => {
             .update(collateralTable)
             .set({ tags: next, updatedAt: now })
             .where(eq(collateralTable.id, row.id));
+          if (!hasCommonUpdates) {
+            updatedCount += 1;
+          }
         }
       }
     }
@@ -490,7 +496,7 @@ router.post("/cms/collateral/bulk", ...adminGuard, async (req, res) => {
     entityId: ids.join(","),
   });
 
-  res.json({ updated: ids.length });
+  res.json({ updated: updatedCount });
 });
 
 router.delete("/cms/collateral/:id", ...adminGuard, async (req, res) => {
