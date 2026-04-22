@@ -29,7 +29,7 @@ const DEFAULT_IGNORE_KEYS = ["updatedAt", "createdAt"] as const;
 export function buildAuditDiff<T extends Record<string, unknown>>(
   before: T,
   after: T,
-  { ignoreKeys = DEFAULT_IGNORE_KEYS as readonly string[] }: { ignoreKeys?: readonly string[] } = {},
+  { ignoreKeys = DEFAULT_IGNORE_KEYS }: { ignoreKeys?: readonly string[] } = {},
 ): { before: Partial<T>; after: Partial<T> } | null {
   const beforeChanged: Partial<T> = {};
   const afterChanged: Partial<T> = {};
