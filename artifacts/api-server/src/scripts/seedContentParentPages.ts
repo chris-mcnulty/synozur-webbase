@@ -8,9 +8,12 @@
  * hero headline or intro.
  *
  * Usage:
+ *   # idempotent upsert (default):
  *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedContentParentPages.ts
  *
- * Idempotent: upserts by slug.
+ *   # force-reset one or more existing rows back to seed state
+ *   # (override columns -> null, active -> true):
+ *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedContentParentPages.ts --force case-studies
  */
 import { eq } from "drizzle-orm";
 import { db, contentParentPagesTable } from "@workspace/db";
@@ -29,21 +32,56 @@ const SLUGS = [
 ];
 
 async function main() {
+  const args = process.argv.slice(2);
+  const forceIdx = args.indexOf("--force");
+  const force = forceIdx !== -1;
+  const forceSlugs = force ? args.slice(forceIdx + 1) : [];
+
+  if (force && forceSlugs.length === 0) {
+    console.error("--force requires at least one slug, e.g. --force case-studies");
+    process.exit(1);
+  }
+  for (const slug of forceSlugs) {
+    if (!SLUGS.includes(slug)) {
+      console.error(`Unknown slug: ${slug}. Valid slugs: ${SLUGS.join(", ")}`);
+      process.exit(1);
+    }
+  }
+
   let created = 0;
   let kept = 0;
+  let reset = 0;
   for (const slug of SLUGS) {
     const existing = await db.query.contentParentPagesTable.findFirst({
       where: eq(contentParentPagesTable.slug, slug),
     });
     if (existing) {
-      kept++;
+      if (forceSlugs.includes(slug)) {
+        await db
+          .update(contentParentPagesTable)
+          .set({
+            heroEyebrow: null,
+            heroHeadline: null,
+            heroSubhead: null,
+            introHtml: null,
+            seoTitle: null,
+            seoDescription: null,
+            ogImage: null,
+            active: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(contentParentPagesTable.slug, slug));
+        reset++;
+      } else {
+        kept++;
+      }
       continue;
     }
     await db.insert(contentParentPagesTable).values({ slug, active: true });
     created++;
   }
   console.log(
-    `Content parent pages: ${created} created, ${kept} already existed.`,
+    `Content parent pages: ${created} created, ${kept} already existed, ${reset} reset.`,
   );
 }
 
