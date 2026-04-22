@@ -1,0 +1,139 @@
+# Infopedia
+
+Site Type: Communication
+Description: Synozur Sales & Marketing internal hub for final, approved sales and marketing collateral — easy to browse, search, and scale using metadata and automatic classification.
+
+---
+
+## Pages
+
+### [x] Home
+Purpose: Central landing page for Infopedia that gives users immediate access to search, featured collateral, and quick navigation to each Service Area.
+isHomePage: true
+
+### [x] Organization & Strategy
+Purpose: Landing page for the Organization & Strategy service area.
+
+### [x] Experiences
+Purpose: Landing page for the Experiences service area.
+
+### [x] Technology
+Purpose: Landing page for the Technology service area.
+
+### [x] Go-To-Market
+Purpose: Landing page for the Go-To-Market service area.
+
+### [x] Browse
+Purpose: Metadata-driven browsing page for collateral discovery.
+
+### [x] Upload & Submit
+Purpose: Guidance page for contributors on uploading assets.
+
+### [x] Brand & Templates
+Purpose: Brand guidelines and approved templates page.
+
+### [x] FAQ / Governance
+Purpose: FAQ and governance policies page.
+
+---
+
+## Document Libraries
+
+### [x] Marketing & Sales Collateral (Final)
+Description: Primary document library for all final, approved sales and marketing collateral.
+Columns:
+- [x] Asset Type (InternalName: AssetType, Type: Choice, Choices: Pitch Deck, One-Sheet, Case Study, Whitepaper, Presentation, Video, Infographic, Email Template, Battle Card, Proposal Template, Brochure)
+- [x] Service Area (InternalName: ServiceArea, Type: Choice, Choices: Organization & Strategy, Experiences, Technology, Go-To-Market)
+- [x] Solution Area (InternalName: SolutionArea, Type: Choice, Choices: AI Strategy & Design, Company OS, M365 Roadmapping & Adoption, Microsoft Partner GTM, Digital Employee Experience, Modern Work, Data & Analytics, Cloud Infrastructure)
+- [x] Software Application (InternalName: SoftwareApplication, Type: Choice, Choices: Vega, Constellation, Orbit, None)
+- [x] Workshop (InternalName: Workshop, Type: Choice, Choices: Company OS Bootcamp, AI Readiness Workshop, M365 Adoption Sprint, Digital Workplace Assessment, None)
+- [x] ICP Audience (InternalName: ICPAudience, Type: MultiChoice, Choices: Private Equity, Tribal CIOs, Mid-Market IT Leaders, Enterprise CTO, HR & People Ops, Marketing Leaders, Operations Directors)
+- [x] Approval Status (InternalName: ApprovalStatus, Type: Choice, Choices: Final, Approved)
+- [x] Content Owner (InternalName: ContentOwner, Type: User)
+- [x] Publish Date (InternalName: PublishDate, Type: DateTime)
+- [x] Content Tags (InternalName: ContentTags, Type: Note)
+
+Views:
+- [x] All Final Assets (default)
+- [x] Pitch Decks
+- [x] One-Sheets
+- [x] By Service Area
+- [x] By Solution
+- [x] New & Updated
+- [x] My Assets
+- [x] By Software Application
+
+Sample Documents (3 files):
+- [x] Sample AI Strategy Pitch Deck.docx
+- [x] Sample Company OS One-Sheet.docx
+- [x] Sample M365 Adoption Case Study.docx
+
+---
+
+## Lists
+
+### [x] Brand & Template Assets
+Description: Track approved brand assets and templates with version info, type, and ownership.
+Columns:
+- [x] Asset Name (InternalName: AssetName, Type: Text)
+- [x] Asset Category (InternalName: AssetCategory, Type: Choice, Choices: Logo, Color Palette, Font File, Presentation Template, Document Template, Email Template, Social Media Template, Brand Guideline)
+- [x] Current Version (InternalName: CurrentVersion, Type: Text)
+- [x] Last Updated (InternalName: LastUpdated, Type: DateTime)
+- [x] Asset Owner (InternalName: AssetOwner, Type: User)
+- [x] Download Link (InternalName: DownloadLink, Type: URL)
+- [x] Usage Notes (InternalName: UsageNotes, Type: Note)
+
+Views:
+- [x] Active Assets (default)
+- [x] My Assets
+- [x] All Assets
+- [x] By Category
+- [x] Recently Updated
+- [x] Templates Only
+
+Sample Data (5 items):
+- [x] Sample Synozur Master Deck Template
+- [x] Sample Synozur Logo Pack
+- [x] Sample Brand Color Palette
+- [x] Sample One-Sheet Template
+- [x] Sample Email Campaign Template
+
+### [x] FAQ & Governance
+Description: Track FAQs and governance policies for Infopedia content management.
+Columns:
+- [x] Question (InternalName: Question, Type: Note)
+- [x] Answer (InternalName: Answer, Type: Note)
+- [x] Topic (InternalName: Topic, Type: Choice, Choices: General, Uploading, Metadata, Governance, Content Lifecycle, Permissions, Brand Standards)
+- [x] Last Reviewed (InternalName: LastReviewed, Type: DateTime)
+- [x] Reviewed By (InternalName: ReviewedBy, Type: User)
+- [x] Is Published (InternalName: IsPublished, Type: Boolean)
+
+Views:
+- [x] Published FAQs (default)
+- [x] All FAQs
+- [x] My Reviews
+- [x] By Topic
+- [x] Needs Review
+- [x] Recently Updated
+
+Sample Data (5 items):
+- [x] Sample What does "final" mean?
+- [x] Sample How do I upload an asset?
+- [x] Sample What metadata is required?
+- [x] Sample How is content retired?
+- [x] Sample Who can edit assets?
+
+---
+
+## Navigation Order
+- [x] Home
+- [x] Organization & Strategy
+- [x] Experiences
+- [x] Technology
+- [x] Go-To-Market
+- [x] Browse
+- [x] Upload & Submit
+- [x] Brand & Templates
+- [x] FAQ / Governance
+- [x] Marketing & Sales Collateral (Final)
+- [x] Brand & Template Assets
