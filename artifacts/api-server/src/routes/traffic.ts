@@ -61,8 +61,8 @@ function shouldSkipTrafficPath(pathname: string): boolean {
   return (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
-    pathname === "/sign-in" ||
-    pathname === "/sign-up"
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up")
   );
 }
 
