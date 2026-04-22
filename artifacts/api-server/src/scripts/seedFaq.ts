@@ -329,38 +329,9 @@ const CATEGORIES: Array<{
         answer: p("Orbit is Synozur&rsquo;s forthcoming AI-driven marketing intelligence platform, extending the Vega ecosystem with a focus on competitive analysis and messaging insights. As a multitenant SaaS product, Orbit will deliver competitive intelligence, website analysis, messaging recommendations, and strategic marketing insights."),
       },
       {
-        slug: "what-is-infopedia",
-        question: "What is Infopedia?",
-        answer:
-          p("Infopedia is Synozur&rsquo;s internal Sales &amp; Marketing hub &mdash; a centralized repository for all final, approved sales and marketing collateral. It gives the Synozur team a single place to browse, search, and surface the right asset at the right moment in any sales or marketing motion.") +
-          p("Infopedia is organized around Synozur&rsquo;s four Service Areas &mdash; Organization &amp; Strategy, Experiences, Technology, and Go-To-Market &mdash; and is searchable by asset type, solution area, target audience, and associated platform or workshop."),
-      },
-      {
-        slug: "what-content-is-in-infopedia",
-        question: "What types of content are available in Infopedia?",
-        answer:
-          p("Infopedia houses all categories of approved commercial collateral, including:") +
-          ul([
-            "Pitch decks and presentations",
-            "One-sheets and brochures",
-            "Case studies and whitepapers",
-            "Email templates and battle cards",
-            "Proposal templates and infographics",
-            "Video assets",
-          ]) +
-          p("Every asset is tagged with metadata including Asset Type, Service Area, Solution Area, ICP Audience (such as Private Equity, Tribal CIOs, or Mid-Market IT Leaders), and linked platform or workshop, making discovery fast and precise."),
-      },
-      {
-        slug: "how-is-infopedia-organized",
-        question: "How is Infopedia content organized and governed?",
-        answer:
-          p("Content in Infopedia is organized along two dimensions: Service Area (Organization &amp; Strategy, Experiences, Technology, Go-To-Market) and Solution Area (such as AI Strategy &amp; Design, Company OS, M365 Roadmapping &amp; Adoption, and Microsoft Partner GTM).") +
-          p("Governance is built in. Every asset must carry an Approval Status of &ldquo;Final&rdquo; or &ldquo;Approved&rdquo; and is assigned a Content Owner with a Publish Date. Infopedia also maintains a Brand &amp; Templates library with approved logos, color palettes, font files, and presentation templates so all external-facing materials stay on-brand."),
-      },
-      {
         slug: "how-do-synozur-platforms-work-together",
         question: "How do Synozur's platforms work together?",
-        answer: p("Synozur&rsquo;s platforms are integrated through Galaxy, a centralized services layer that provides unified authentication, tenant management, telemetry, feedback/support, and notifications. This allows Orbit, Orion, Vega, Nebula, and Infopedia to remain autonomously developed while sharing common capabilities."),
+        answer: p("Synozur&rsquo;s platforms are integrated through Galaxy, a centralized services layer that provides unified authentication, tenant management, telemetry, feedback/support, and notifications. This allows Orbit, Orion, Vega, and Nebula to remain autonomously developed while sharing common capabilities."),
       },
     ],
   },
