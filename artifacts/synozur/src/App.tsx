@@ -69,6 +69,7 @@ import AdminApplicationsList from "@/pages/admin/applications-list";
 import AdminModelsList from "@/pages/admin/models-list";
 import AdminFaq from "@/pages/admin/faq";
 import AdminListPageCopy from "@/pages/admin/list-page-copy";
+import AdminTraffic from "@/pages/admin/traffic";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -167,6 +168,7 @@ function AdminRoutes() {
         <Route path="/models" component={AdminModelsList} />
         <Route path="/faq" component={AdminFaq} />
         <Route path="/list-page-copy" component={AdminListPageCopy} />
+        <Route path="/traffic" component={AdminTraffic} />
 
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/wix-redirects" component={AdminWixRedirects} />

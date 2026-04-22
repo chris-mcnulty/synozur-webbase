@@ -28,6 +28,7 @@ import {
   HelpCircle,
   PanelTop,
   Network,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -160,6 +161,13 @@ const NAV: NavItem[] = [
     icon: MessageSquare,
     show: (a) => !!a?.isEditorOrAbove,
     testId: "nav-admin-comments",
+  },
+  {
+    href: "/traffic",
+    label: "Traffic",
+    icon: Activity,
+    show: (a) => !!a?.isEditorOrAbove,
+    testId: "nav-admin-traffic",
   },
   {
     href: "/users",
