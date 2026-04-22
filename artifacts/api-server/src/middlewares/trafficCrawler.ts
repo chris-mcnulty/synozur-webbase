@@ -17,10 +17,16 @@ export function trafficCrawlerMiddleware(): RequestHandler {
     if (req.method !== "GET") return next();
 
     const url = req.url || "/";
-    // Skip API, proxy, feeds, and static asset extensions.
+    // Skip API, proxy, feeds, static asset extensions, admin and auth routes.
     if (
       url.startsWith("/api/") ||
       url.startsWith("/__clerk") ||
+      url.startsWith("/admin/") ||
+      url === "/admin" ||
+      url === "/sign-in" ||
+      url.startsWith("/sign-in/") ||
+      url === "/sign-up" ||
+      url.startsWith("/sign-up/") ||
       url === "/sitemap.xml" ||
       url === "/robots.txt" ||
       url.startsWith("/polaris/rss.xml") ||
