@@ -408,13 +408,24 @@ export default function AdminCollateralList() {
     }
   };
 
+  const bulkTagValues = useMemo(
+    () =>
+      bulkDraft.tagsText
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    [bulkDraft.tagsText],
+  );
+
   const bulkHasChanges =
     bulkDraft.serviceMode !== "unchanged" ||
     bulkDraft.solutionMode !== "unchanged" ||
     bulkDraft.pillarMode !== "unchanged" ||
     bulkDraft.activeMode !== "unchanged" ||
     bulkDraft.featuredMode !== "unchanged" ||
-    bulkDraft.tagsMode !== "none";
+    bulkDraft.tagsMode === "replace" ||
+    ((bulkDraft.tagsMode === "add" || bulkDraft.tagsMode === "remove") &&
+      bulkTagValues.length > 0);
 
   // --------------------------------------------------------------------------
 
