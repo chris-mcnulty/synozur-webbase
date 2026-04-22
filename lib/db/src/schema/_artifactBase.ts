@@ -15,6 +15,21 @@ export type ArtifactStatus = (typeof ARTIFACT_STATUSES)[number];
 
 export const artifactStatusEnum = pgEnum("artifact_status", ARTIFACT_STATUSES);
 
+// Shared pillar taxonomy. Declared here (rather than in collateral.ts) so
+// artifact tables that want a pillar column can import it without taking a
+// dep on collateral and creating an import cycle. The Postgres enum name
+// `collateral_pillar` is preserved so existing columns and migrations
+// keep working.
+export const COLLATERAL_PILLARS = [
+  "strategic",
+  "technology",
+  "experiences",
+  "gtm",
+] as const;
+export type CollateralPillar = (typeof COLLATERAL_PILLARS)[number];
+
+export const collateralPillarEnum = pgEnum("collateral_pillar", COLLATERAL_PILLARS);
+
 // Column builders grouped as object literals. Drizzle's pgTable accepts
 // spread object literals, so an artifact-type table declaration looks like:
 //

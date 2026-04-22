@@ -13,6 +13,7 @@ import {
   type WhitePaper,
   type CaseStudy,
   type Application,
+  type Model,
   type CollateralPillar,
 } from "@workspace/db";
 import { toSlug } from "./slug";
@@ -43,6 +44,7 @@ const VIDEO_SOURCE_PREFIX = "video:";
 const WHITE_PAPER_SOURCE_PREFIX = "white_paper:";
 const CASE_STUDY_SOURCE_PREFIX = "case_study:";
 const APPLICATION_SOURCE_PREFIX = "application:";
+const MODEL_SOURCE_PREFIX = "model:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
@@ -66,6 +68,10 @@ export function caseStudySourceId(caseStudyId: string): string {
 
 export function applicationSourceId(applicationId: string): string {
   return `${APPLICATION_SOURCE_PREFIX}${applicationId}`;
+}
+
+export function modelSourceId(modelId: string): string {
+  return `${MODEL_SOURCE_PREFIX}${modelId}`;
 }
 
 async function ensureUniqueCollateralSlug(base: string, excludeId?: string): Promise<string> {
@@ -464,4 +470,73 @@ export async function softDeleteCollateralForApplication(
 ): Promise<void> {
   // Intentional no-op.
   return;
+}
+
+// Models (#106). Flow into the library as collateral `type="model"` so a
+// featured model can surface on the home carousel and in pillar rails.
+// The library link goes to the internal detail page (/models/:slug); the
+// external assessment app lives behind the "Launch" CTA on that page.
+export async function upsertCollateralFromModel(model: Model): Promise<void> {
+  const sourceId = modelSourceId(model.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const now = new Date();
+  const withinWindow =
+    (!model.publishedAt || model.publishedAt <= now) &&
+    (!model.unpublishedAt || model.unpublishedAt > now);
+  const isPublished =
+    model.status === "published" &&
+    model.active &&
+    !model.deletedAt &&
+    withinWindow;
+  const normalizedPillar = normalizePillar(model.pillar);
+  const serviceId = model.serviceId ?? (await pillarToServiceId(normalizedPillar));
+
+  const syncedFields = {
+    type: "model" as const,
+    title: model.title,
+    subtitle: null,
+    description: model.shortDescription,
+    heroImage: model.heroImage,
+    pillar: normalizedPillar,
+    tags: [] as string[],
+    url: `/models/${model.slug}`,
+    external: false,
+    publishedAt: model.publishedAt,
+    featured: model.featured,
+    featuredRank: model.featuredRank,
+    serviceId,
+    solutionId: model.solutionId,
+    active: isPublished,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({
+        ...syncedFields,
+        deletedAt: isPublished ? null : existing.deletedAt,
+      })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(model.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForModel(modelId: string): Promise<void> {
+  const sourceId = modelSourceId(modelId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
 }

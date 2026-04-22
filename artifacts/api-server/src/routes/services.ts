@@ -7,6 +7,8 @@ import {
   solutionsTable,
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
+  ARTIFACT_STATUSES,
+  COLLATERAL_PILLARS,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -19,7 +21,14 @@ import {
   serializeSolution,
   serializeMethodology,
   serializeCapability,
+  setEntityTags,
 } from "../lib/servicesSerializer";
+
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 const router: IRouter = Router();
 
@@ -103,6 +112,10 @@ const ServiceBody = z.object({
   blogCategory: z.string().nullish(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
+  status: z.enum(ARTIFACT_STATUSES).optional(),
+  publishedAt: z.string().nullish(),
+  unpublishedAt: z.string().nullish(),
+  tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
 });
 const ServicePatch = ServiceBody.partial();
@@ -130,6 +143,11 @@ const SolutionBody = z.object({
   buttonUrl: z.string().nullish(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
+  status: z.enum(ARTIFACT_STATUSES).optional(),
+  publishedAt: z.string().nullish(),
+  unpublishedAt: z.string().nullish(),
+  pillar: z.enum(COLLATERAL_PILLARS).nullish(),
+  tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
 });
 const SolutionPatch = SolutionBody.partial();
@@ -192,9 +210,15 @@ router.post("/cms/services", ...adminGuard, async (req, res) => {
       blogCategory: d.blogCategory ?? null,
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
+      status: d.status ?? "draft",
+      publishedAt: parseDate(d.publishedAt),
+      unpublishedAt: parseDate(d.unpublishedAt),
       active: d.active ?? true,
     })
     .returning();
+  if (d.tagIds) {
+    await setEntityTags("service", row.id, d.tagIds);
+  }
   await audit({
     actorId: req.authedUser!.id,
     action: "service.create",
@@ -225,15 +249,20 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
     "title", "displayOrder", "iconId", "parentServiceId", "servicePath",
     "overviewPath", "buttonText", "heroTextHtml", "secondaryTitle",
     "secondaryTextHtml", "tertiaryTitle", "tertiaryTextHtml", "blurbHtml",
-    "blogCategory", "seoTitle", "seoDescription", "active",
+    "blogCategory", "seoTitle", "seoDescription", "status", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
+  if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
+  if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
   const [updated] = await db
     .update(servicesTable)
     .set(updates)
     .where(eq(servicesTable.id, id))
     .returning();
+  if (d.tagIds !== undefined) {
+    await setEntityTags("service", id, d.tagIds);
+  }
   await audit({
     actorId: req.authedUser!.id,
     action: "service.update",
@@ -306,9 +335,16 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       buttonUrl: d.buttonUrl ?? null,
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
+      status: d.status ?? "draft",
+      publishedAt: parseDate(d.publishedAt),
+      unpublishedAt: parseDate(d.unpublishedAt),
+      pillar: d.pillar ?? null,
       active: d.active ?? true,
     })
     .returning();
+  if (d.tagIds) {
+    await setEntityTags("solution", row.id, d.tagIds);
+  }
   await audit({
     actorId: req.authedUser!.id,
     action: "solution.create",
@@ -341,15 +377,20 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "ourApproachTitle", "ourApproachTextHtml", "blurbHtml", "blurbCopy",
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
     "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
-    "active",
+    "status", "pillar", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
+  if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
+  if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
   const [updated] = await db
     .update(solutionsTable)
     .set(updates)
     .where(eq(solutionsTable.id, id))
     .returning();
+  if (d.tagIds !== undefined) {
+    await setEntityTags("solution", id, d.tagIds);
+  }
   await audit({
     actorId: req.authedUser!.id,
     action: "solution.update",

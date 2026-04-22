@@ -586,6 +586,8 @@ export interface EventInput {
   imageAssetId?: number | null;
 }
 
+export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
+
 export interface Service {
   id: string;
   slug: string;
@@ -625,6 +627,12 @@ export interface Service {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
+  status: ArtifactStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  tags: Tag[];
   createdAt: string;
   updatedAt: string;
 }
@@ -678,6 +686,14 @@ export interface Solution {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
+  status: ArtifactStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  /** @nullable */
+  pillar?: CollateralPillar | null;
+  tags: Tag[];
   createdAt: string;
   updatedAt: string;
 }
@@ -785,6 +801,12 @@ export interface UpsertServiceBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  status?: ArtifactStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  tagIds?: string[];
   active?: boolean;
 }
 
@@ -832,6 +854,14 @@ export interface UpsertSolutionBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  status?: ArtifactStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  /** @nullable */
+  pillar?: CollateralPillar | null;
+  tagIds?: string[];
   active?: boolean;
 }
 

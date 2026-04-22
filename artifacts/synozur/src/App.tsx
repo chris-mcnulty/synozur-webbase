@@ -15,6 +15,8 @@ import CaseStudies from "@/pages/case-studies";
 import CaseStudyDetail from "@/pages/case-study-detail";
 import Applications from "@/pages/applications";
 import ApplicationDetail from "@/pages/application-detail";
+import Models from "@/pages/models";
+import ModelDetail from "@/pages/model-detail";
 import Workshops from "@/pages/workshops";
 import WorkshopDetail from "@/pages/workshop-detail";
 import Team from "@/pages/team";
@@ -64,6 +66,7 @@ import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
 import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
 import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
 import AdminApplicationsList from "@/pages/admin/applications-list";
+import AdminModelsList from "@/pages/admin/models-list";
 import AdminFaq from "@/pages/admin/faq";
 import AdminListPageCopy from "@/pages/admin/list-page-copy";
 import { AdminGate } from "@/components/admin/AdminGate";
@@ -161,6 +164,7 @@ function AdminRoutes() {
         </Route>
         <Route path="/case-studies" component={AdminCaseStudiesList} />
         <Route path="/applications" component={AdminApplicationsList} />
+        <Route path="/models" component={AdminModelsList} />
         <Route path="/faq" component={AdminFaq} />
         <Route path="/list-page-copy" component={AdminListPageCopy} />
 
@@ -208,6 +212,8 @@ function Router() {
             <Route path="/case-studies/:slug" component={CaseStudyDetail} />
             <Route path="/applications" component={Applications} />
             <Route path="/applications/:slug" component={ApplicationDetail} />
+            <Route path="/models" component={Models} />
+            <Route path="/models/:slug" component={ModelDetail} />
             <Route path="/workshops" component={Workshops} />
             <Route path="/workshops/:slug" component={WorkshopDetail} />
             <Route path="/library" component={Library} />

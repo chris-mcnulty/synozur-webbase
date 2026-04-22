@@ -20,6 +20,7 @@ export * from "./workshops";
 export * from "./polarisEpisodes";
 export * from "./caseStudies";
 export * from "./applications";
+export * from "./models";
 export * from "./aboutContent";
 export * from "./faq";
 export * from "./contentParentPages";
