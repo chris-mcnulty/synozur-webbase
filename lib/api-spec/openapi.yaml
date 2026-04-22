@@ -2985,6 +2985,10 @@ components:
           type:
             - string
             - 'null'
+        polarisFeedUrl:
+          type:
+            - string
+            - 'null'
         updatedAt:
           type: string
           format: date-time
@@ -3001,6 +3005,10 @@ components:
         homeEditorialImageAssetId:
           type:
             - integer
+            - 'null'
+        polarisFeedUrl:
+          type:
+            - string
             - 'null'
     AdminUser:
       type: object

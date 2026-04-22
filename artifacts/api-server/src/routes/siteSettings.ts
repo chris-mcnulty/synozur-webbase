@@ -87,6 +87,7 @@ router.get("/admin/site-settings", requireAdmin, async (_req, res): Promise<void
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeEditorialImageAssetId: settings.homeEditorialImageAssetId,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
+      polarisFeedUrl: settings.polarisFeedUrl,
       updatedAt: settings.updatedAt,
     }),
   );
@@ -108,6 +109,11 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   if ("homeEditorialImageAssetId" in parsed.data) {
     updates.homeEditorialImageAssetId = parsed.data.homeEditorialImageAssetId ?? null;
   }
+  if ("polarisFeedUrl" in parsed.data) {
+    const raw = parsed.data.polarisFeedUrl;
+    const trimmed = typeof raw === "string" ? raw.trim() : raw;
+    updates.polarisFeedUrl = trimmed ? trimmed : null;
+  }
   const [updated] = await db
     .update(siteSettingsTable)
     .set(updates)
@@ -121,6 +127,7 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeEditorialImageAssetId: updated!.homeEditorialImageAssetId,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
+      polarisFeedUrl: updated!.polarisFeedUrl,
       updatedAt: updated!.updatedAt,
     }),
   );
