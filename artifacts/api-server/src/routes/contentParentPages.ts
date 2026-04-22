@@ -7,7 +7,7 @@ import {
   type ContentParentPage,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { audit } from "../lib/audit";
+import { audit, buildAuditDiff } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -114,6 +114,7 @@ router.patch("/cms/content-parent-pages/:id", ...adminGuard, async (req, res) =>
     action: "content_parent_page.update",
     entity: "content_parent_page",
     entityId: id,
+    diff: buildAuditDiff(serialize(existing), serialize(updated)),
   });
   res.json(serialize(updated));
 });

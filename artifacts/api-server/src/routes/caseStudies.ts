@@ -8,7 +8,7 @@ import {
   type CaseStudy,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { audit } from "../lib/audit";
+import { audit, buildAuditDiff } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import {
   upsertCollateralFromCaseStudy,
@@ -253,6 +253,7 @@ router.post("/cms/case-studies", ...adminGuard, async (req, res) => {
     action: "case_study.create",
     entity: "case_study",
     entityId: row.id,
+    diff: { before: null, after: serialize(row) },
   });
   try {
     await upsertCollateralFromCaseStudy(row);
@@ -332,6 +333,7 @@ router.patch("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
     action: "case_study.update",
     entity: "case_study",
     entityId: id,
+    diff: buildAuditDiff(serialize(existing), serialize(updated)),
   });
   try {
     await upsertCollateralFromCaseStudy(updated);
@@ -363,6 +365,7 @@ router.delete("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
     action: "case_study.delete",
     entity: "case_study",
     entityId: id,
+    diff: { before: serialize(existing), after: null },
   });
   try {
     await softDeleteCollateralForCaseStudy(id);
