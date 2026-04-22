@@ -22,6 +22,7 @@ export default function AdminSiteSettings() {
   });
 
   const [requireConsent, setRequireConsent] = useState<boolean | null>(null);
+  const [polarisFeedDraft, setPolarisFeedDraft] = useState<string | null>(null);
 
   useEffect(() => {
     if (data && requireConsent === null) {
@@ -29,12 +30,19 @@ export default function AdminSiteSettings() {
     }
   }, [data, requireConsent]);
 
+  useEffect(() => {
+    if (data && polarisFeedDraft === null) {
+      setPolarisFeedDraft(data.polarisFeedUrl ?? "");
+    }
+  }, [data, polarisFeedDraft]);
+
   const updateMutation = useMutation({
     mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
     onSuccess: (result) => {
       qc.setQueryData(["admin-site-settings"], result);
       qc.invalidateQueries({ queryKey: ["public-site-settings"] });
       setRequireConsent(result.requireCookieConsent);
+      setPolarisFeedDraft(result.polarisFeedUrl ?? "");
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     },
@@ -46,6 +54,7 @@ export default function AdminSiteSettings() {
     requireCookieConsent: current,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
+    polarisFeedUrl: data?.polarisFeedUrl ?? null,
     ...overrides,
   });
 
@@ -126,6 +135,61 @@ export default function AdminSiteSettings() {
             onResetEditorial={() => handleReset("editorial")}
             disabled={updateMutation.isPending}
           />
+
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Polaris podcast</h2>
+              <p className="text-sm text-muted-foreground">
+                Libsyn RSS feed URL used by the{" "}
+                <Link href="/library/polaris-episodes">
+                  <a className="underline">Polaris episodes</a>
+                </Link>{" "}
+                admin's “Import from Libsyn” flow.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="url"
+                placeholder="https://feeds.libsyn.com/550947/rss"
+                value={polarisFeedDraft ?? ""}
+                onChange={(e) => setPolarisFeedDraft(e.target.value)}
+                disabled={updateMutation.isPending}
+                data-testid="input-polaris-feed-url"
+              />
+              <Button
+                variant="outline"
+                onClick={() =>
+                  updateMutation.mutate(
+                    buildPayload({
+                      polarisFeedUrl: polarisFeedDraft?.trim()
+                        ? polarisFeedDraft.trim()
+                        : null,
+                    }),
+                  )
+                }
+                disabled={
+                  updateMutation.isPending ||
+                  (polarisFeedDraft ?? "").trim() === (data?.polarisFeedUrl ?? "").trim()
+                }
+                data-testid="button-save-polaris-feed-url"
+              >
+                Save
+              </Button>
+              {data?.polarisFeedUrl && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setPolarisFeedDraft("");
+                    updateMutation.mutate(buildPayload({ polarisFeedUrl: null }));
+                  }}
+                  disabled={updateMutation.isPending}
+                  data-testid="button-clear-polaris-feed-url"
+                >
+                  <X className="h-4 w-4 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
+          </div>
 
           <div className="h-5 text-sm text-muted-foreground flex items-center gap-2">
             {showSaved && (

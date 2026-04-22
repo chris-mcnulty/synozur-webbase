@@ -16,5 +16,7 @@ export interface SiteSettings {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /** @nullable */
+  polarisFeedUrl?: string | null;
   updatedAt: Date;
 }

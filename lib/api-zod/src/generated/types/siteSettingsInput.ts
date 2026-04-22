@@ -12,4 +12,6 @@ export interface SiteSettingsInput {
   homeHeroImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  polarisFeedUrl?: string | null;
 }

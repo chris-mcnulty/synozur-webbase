@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { PolarisLibsynImportDialog } from "@/components/admin/PolarisLibsynImportDialog";
 import { useToast } from "@/hooks/use-toast";
 import { api, type PolarisEpisodeDto } from "@/lib/api";
 
@@ -28,6 +30,7 @@ export default function AdminPolarisEpisodesList() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
+  const [importOpen, setImportOpen] = useState(false);
 
   const listQ = useQuery({
     queryKey: ["admin-polaris-episodes"],
@@ -73,11 +76,20 @@ export default function AdminPolarisEpisodesList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Polaris" }]}
       actions={
         canWrite && (
-          <Link href="/library/polaris-episodes/new">
-            <Button data-testid="button-create-polaris-episode">
-              <Plus className="h-4 w-4 mr-2" /> New episode
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              data-testid="button-open-libsyn-import"
+            >
+              <Download className="h-4 w-4 mr-2" /> Import from Libsyn
             </Button>
-          </Link>
+            <Link href="/library/polaris-episodes/new">
+              <Button data-testid="button-create-polaris-episode">
+                <Plus className="h-4 w-4 mr-2" /> New episode
+              </Button>
+            </Link>
+          </div>
         )
       }
     >
@@ -172,6 +184,7 @@ export default function AdminPolarisEpisodesList() {
           </TableBody>
         </Table>
       </div>
+      <PolarisLibsynImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </AdminLayout>
   );
 }

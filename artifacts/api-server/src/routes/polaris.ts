@@ -4,12 +4,14 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import {
   db,
   polarisEpisodesTable,
+  siteSettingsTable,
   ARTIFACT_STATUSES,
   type PolarisEpisode,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
 
 const router: IRouter = Router();
 
@@ -386,6 +388,96 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     entityId: id,
   });
   res.json(serialize(updated));
+});
+
+// ----- Libsyn ingestion (#113) ------------------------------------------
+
+async function resolveFeedUrl(override?: string | null): Promise<string | null> {
+  if (override && override.trim().length > 0) return override.trim();
+  const [row] = await db
+    .select({ polarisFeedUrl: siteSettingsTable.polarisFeedUrl })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1));
+  const url = row?.polarisFeedUrl ?? null;
+  return url && url.trim().length > 0 ? url.trim() : null;
+}
+
+const ImportBody = z.object({
+  guids: z.array(z.string().min(1)).min(1),
+  allowResync: z.boolean().optional(),
+  feedUrl: z.string().url().optional(),
+});
+
+const PreviewQuery = z.object({
+  feedUrl: z.string().url().optional(),
+});
+
+router.get("/cms/polaris/libsyn/preview", ...adminGuard, async (req, res) => {
+  const parsedQuery = PreviewQuery.safeParse(req.query);
+  if (!parsedQuery.success) {
+    res.status(400).json({
+      error: "Invalid query",
+      details: parsedQuery.error.flatten(),
+    });
+    return;
+  }
+  const feedUrl = await resolveFeedUrl(parsedQuery.data.feedUrl ?? null);
+  if (!feedUrl) {
+    res.status(400).json({
+      error:
+        "Polaris feed URL is not configured. Set it in site settings or pass feedUrl query param.",
+    });
+    return;
+  }
+  try {
+    const items = await previewFromFeed(feedUrl);
+    res.json({ feedUrl, items });
+  } catch (err) {
+    res.status(502).json({
+      error: "Failed to fetch or parse feed",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+router.post("/cms/polaris/libsyn/import", ...adminGuard, async (req, res) => {
+  const parsed = ImportBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const feedUrl = await resolveFeedUrl(parsed.data.feedUrl);
+  if (!feedUrl) {
+    res.status(400).json({
+      error: "Polaris feed URL is not configured. Set it in site settings first.",
+    });
+    return;
+  }
+  try {
+    const summary = await importFromFeed(feedUrl, parsed.data.guids, {
+      allowResync: parsed.data.allowResync ?? false,
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "polaris_episode.libsyn_import",
+      entity: "polaris_episode",
+      entityId: null,
+      diff: {
+        feedUrl,
+        requested: parsed.data.guids.length,
+        created: summary.created,
+        updated: summary.updated,
+        skipped: summary.skipped,
+        errors: summary.errors.length,
+      },
+    });
+    res.json(summary);
+  } catch (err) {
+    res.status(502).json({
+      error: "Import failed",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
 });
 
 router.delete("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
