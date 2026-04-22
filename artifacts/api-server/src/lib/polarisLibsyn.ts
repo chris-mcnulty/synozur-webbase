@@ -116,8 +116,14 @@ export function parseLibsynRss(xml: string): LibsynItem[] {
   for (const block of blocks) {
     const title = pickTag(block, "title") ?? "";
     const rawGuid = pickTag(block, "guid");
-    const audioUrl = pickAttr(block, "enclosure", "url") ?? "";
+    const audioUrl = (pickAttr(block, "enclosure", "url") ?? "").trim();
     const guid = (rawGuid && rawGuid.length > 0 ? rawGuid : audioUrl).trim();
+    if (!audioUrl) {
+      console.warn(
+        `[polarisLibsyn] Skipping RSS item with missing or empty enclosure url${guid ? ` (guid: ${guid})` : ""}${title ? ` (title: ${title})` : ""}.`,
+      );
+      continue;
+    }
     if (!guid) continue;
     const episodeNumber = parseEpisodeNumber(
       pickTag(block, "itunes:episode"),
