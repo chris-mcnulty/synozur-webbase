@@ -26,6 +26,8 @@ import polarisRouter from "./polaris";
 import caseStudiesRouter from "./caseStudies";
 import applicationsRouter from "./applications";
 import aboutContentRouter from "./aboutContent";
+import faqRouter from "./faq";
+import contentParentPagesRouter from "./contentParentPages";
 
 const router: IRouter = Router();
 
@@ -56,5 +58,7 @@ router.use(polarisRouter);
 router.use(caseStudiesRouter);
 router.use(applicationsRouter);
 router.use(aboutContentRouter);
+router.use(faqRouter);
+router.use(contentParentPagesRouter);
 
 export default router;

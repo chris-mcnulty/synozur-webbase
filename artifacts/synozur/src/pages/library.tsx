@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import {
   fetchLibrary,
@@ -106,23 +107,40 @@ export default function Library() {
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
+  const copy = useParentPage("library", {
+    heroEyebrow: "Library",
+    heroHeadline: "The Synozur Library",
+    heroSubhead:
+      "Every white paper, webinar, case study, podcast, model, and workshop in one place — filter by type or by transformation pillar.",
+    seoTitle: "Library",
+    seoDescription:
+      "Browse the full Synozur collateral library — white papers, webinars, case studies, podcasts, models, workshops, and more.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Library"
-        description="Browse the full Synozur collateral library — white papers, webinars, case studies, podcasts, models, workshops, and more."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/library"
+        image={copy.ogImage}
       />
 
       <section className="bg-[#0B0B1A] pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Library</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
-            The Synozur Library
+            {copy.heroHeadline}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
-            Every white paper, webinar, case study, podcast, model, and workshop in one place — filter by type or by transformation pillar.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

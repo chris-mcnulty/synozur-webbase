@@ -64,6 +64,8 @@ import AdminPolarisEpisodesList from "@/pages/admin/polaris-episodes-list";
 import PolarisEpisodeEdit from "@/pages/admin/polaris-episode-edit";
 import AdminCaseStudiesList from "@/pages/admin/case-studies-list";
 import AdminApplicationsList from "@/pages/admin/applications-list";
+import AdminFaq from "@/pages/admin/faq";
+import AdminListPageCopy from "@/pages/admin/list-page-copy";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -75,6 +77,7 @@ import WhitePapers from "@/pages/white-papers";
 import WhitePaperDetail from "@/pages/white-paper-detail";
 import Items from "@/pages/items";
 import ItemDetail from "@/pages/item-detail";
+import Faq from "@/pages/faq";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -158,6 +161,8 @@ function AdminRoutes() {
         </Route>
         <Route path="/case-studies" component={AdminCaseStudiesList} />
         <Route path="/applications" component={AdminApplicationsList} />
+        <Route path="/faq" component={AdminFaq} />
+        <Route path="/list-page-copy" component={AdminListPageCopy} />
 
         <Route path="/site-settings" component={AdminSiteSettings} />
         <Route path="/wix-redirects" component={AdminWixRedirects} />
@@ -215,6 +220,7 @@ function Router() {
             <Route path="/white-papers/:slug" component={WhitePaperDetail} />
             <Route path="/items" component={Items} />
             <Route path="/items/:slug" component={ItemDetail} />
+            <Route path="/faq" component={Faq} />
             <Route path="/team" component={Team} />
             <Route path="/partners" component={Partners} />
             <Route path="/insights" component={Insights} />

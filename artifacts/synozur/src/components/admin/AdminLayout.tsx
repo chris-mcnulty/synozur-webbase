@@ -25,6 +25,8 @@ import {
   Headphones,
   Briefcase,
   AppWindow,
+  HelpCircle,
+  PanelTop,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -129,6 +131,20 @@ const NAV: NavItem[] = [
     icon: AppWindow,
     show: (a) => !!a?.hasCmsRole,
     testId: "nav-admin-applications",
+  },
+  {
+    href: "/faq",
+    label: "FAQ",
+    icon: HelpCircle,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-faq",
+  },
+  {
+    href: "/list-page-copy",
+    label: "List page copy",
+    icon: PanelTop,
+    show: (a) => !!a?.hasCmsRole,
+    testId: "nav-admin-list-page-copy",
   },
   {
     href: "/comments",

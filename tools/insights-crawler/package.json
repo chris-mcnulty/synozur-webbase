@@ -8,6 +8,7 @@
     "crawl": "tsx ./src/crawl.ts",
     "all": "tsx ./src/discover.ts && tsx ./src/crawl.ts",
     "ingest": "tsx ./src/ingest.ts",
+    "faq": "tsx ./src/faq.ts",
     "backfill-authors": "tsx ./src/backfill-authors.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

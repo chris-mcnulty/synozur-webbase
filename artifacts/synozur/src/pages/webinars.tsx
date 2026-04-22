@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { fetchLibrary, type ListResult } from "@/data/collateral";
 
@@ -41,23 +42,40 @@ export default function Webinars() {
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
+  const copy = useParentPage("webinars", {
+    heroEyebrow: "Webinars",
+    heroHeadline: "Webinars",
+    heroSubhead:
+      "Practical conversations with Synozur leaders and partners — recorded for you to watch on your schedule.",
+    seoTitle: "Webinars",
+    seoDescription:
+      "Watch and revisit Synozur webinars on transformation, AI, the digital workplace, and more.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Webinars"
-        description="Watch and revisit Synozur webinars on transformation, AI, the digital workplace, and more."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/webinars"
+        image={copy.ogImage}
       />
 
       <section className="bg-[#0B0B1A] pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Webinars</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
-            Webinars
+            {copy.heroHeadline}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
-            Practical conversations with Synozur leaders and partners — recorded for you to watch on your schedule.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

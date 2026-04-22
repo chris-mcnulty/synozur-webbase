@@ -21,3 +21,5 @@ export * from "./polarisEpisodes";
 export * from "./caseStudies";
 export * from "./applications";
 export * from "./aboutContent";
+export * from "./faq";
+export * from "./contentParentPages";

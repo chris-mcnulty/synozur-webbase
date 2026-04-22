@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
@@ -88,27 +89,43 @@ export default function CaseStudies() {
 
   const isFiltered = industry !== ALL || tag !== ALL;
 
+  const copy = useParentPage("case-studies", {
+    heroEyebrow: "Our Projects",
+    heroHeadline: "Selected case studies",
+    heroSubhead:
+      "At Synozur, we drive impactful change through strategy and craft. These are a few of the engagements we are able to share publicly — many more are available under NDA.",
+    seoTitle: "Case Studies",
+    seoDescription:
+      "Selected stories of transformation. The strategies, the work, and the outcomes.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Case Studies"
-        description="Selected stories of transformation. The strategies, the work, and the outcomes."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
+        path="/case-studies"
+        image={copy.ogImage}
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Our Projects
+            {copy.heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            Selected case studies
+            {copy.heroHeadline}
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            At Synozur, we drive impactful change through strategy and craft.
-            These are a few of the engagements we are able to share publicly —
-            many more are available under NDA.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

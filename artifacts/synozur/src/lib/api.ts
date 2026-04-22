@@ -592,6 +592,69 @@ export const api = {
     jsonFetch<{ items: ClientTestimonialDto[] }>(url("/cms/testimonials")),
   adminListPartners: () =>
     jsonFetch<{ items: PartnerDescriptionDto[] }>(url("/cms/partners")),
+  // FAQ (#107).
+  listFaq: () =>
+    jsonFetch<{ categories: FaqCategoryWithItemsDto[] }>(url("/faq")),
+  adminListFaqCategories: () =>
+    jsonFetch<{ items: FaqCategoryDto[] }>(url("/cms/faq/categories")),
+  adminCreateFaqCategory: (body: FaqCategoryInput) =>
+    jsonFetch<FaqCategoryDto>(url("/cms/faq/categories"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  adminUpdateFaqCategory: (id: string, body: FaqCategoryPatchInput) =>
+    jsonFetch<FaqCategoryDto>(url(`/cms/faq/categories/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  adminDeleteFaqCategory: (id: string) =>
+    jsonFetch<void>(url(`/cms/faq/categories/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  adminReorderFaqCategories: (ids: string[]) =>
+    jsonFetch<void>(url("/cms/faq/categories/reorder"), {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
+  adminListFaqItems: (categoryId?: string) =>
+    jsonFetch<{ items: FaqItemDto[] }>(
+      url(
+        categoryId
+          ? `/cms/faq/items?categoryId=${encodeURIComponent(categoryId)}`
+          : "/cms/faq/items",
+      ),
+    ),
+  adminCreateFaqItem: (body: FaqItemInput) =>
+    jsonFetch<FaqItemDto>(url("/cms/faq/items"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  adminUpdateFaqItem: (id: string, body: FaqItemPatchInput) =>
+    jsonFetch<FaqItemDto>(url(`/cms/faq/items/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  adminDeleteFaqItem: (id: string) =>
+    jsonFetch<void>(url(`/cms/faq/items/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  adminReorderFaqItems: (categoryId: string, ids: string[]) =>
+    jsonFetch<void>(url("/cms/faq/items/reorder"), {
+      method: "POST",
+      body: JSON.stringify({ categoryId, ids }),
+    }),
+  // Parent-page copy (#97).
+  getParentPage: (slug: string) =>
+    jsonFetch<ContentParentPageDto>(
+      url(`/content-parent-pages/${encodeURIComponent(slug)}`),
+    ),
+  adminListParentPages: () =>
+    jsonFetch<{ items: ContentParentPageDto[] }>(url("/cms/content-parent-pages")),
+  adminUpdateParentPage: (id: string, body: ContentParentPagePatchInput) =>
+    jsonFetch<ContentParentPageDto>(
+      url(`/cms/content-parent-pages/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
 };
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
@@ -818,6 +881,81 @@ export interface PartnerDescriptionDto {
   createdAt: string;
   updatedAt: string;
 }
+
+// FAQ (#107).
+export type FaqStatus = "draft" | "published";
+
+export interface FaqCategoryDto {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  displayOrder: number;
+  status: FaqStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FaqItemDto {
+  id: string;
+  categoryId: string;
+  slug: string;
+  question: string;
+  answerHtml: string;
+  displayOrder: number;
+  status: FaqStatus;
+  publishedAt: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FaqCategoryWithItemsDto extends FaqCategoryDto {
+  items: FaqItemDto[];
+}
+
+export interface FaqCategoryInput {
+  slug?: string | null;
+  name: string;
+  description?: string | null;
+  displayOrder?: number;
+  status?: FaqStatus;
+}
+export type FaqCategoryPatchInput = Partial<FaqCategoryInput>;
+
+export interface FaqItemInput {
+  categoryId: string;
+  slug?: string | null;
+  question: string;
+  answerHtml?: string;
+  displayOrder?: number;
+  status?: FaqStatus;
+  publishedAt?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+}
+export type FaqItemPatchInput = Partial<FaqItemInput>;
+
+// Parent-page copy (#97).
+export interface ContentParentPageDto {
+  id: string;
+  slug: string;
+  heroEyebrow: string | null;
+  heroHeadline: string | null;
+  heroSubhead: string | null;
+  introHtml: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ContentParentPagePatchInput = Partial<
+  Omit<ContentParentPageDto, "id" | "slug" | "createdAt" | "updatedAt">
+>;
 
 export interface PolarisEpisodeInput {
   slug?: string | null;

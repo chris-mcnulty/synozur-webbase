@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { PlayCircle } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import {
   api,
   VIDEO_CATEGORIES,
@@ -139,24 +140,40 @@ export default function Videos() {
 
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
+  const copy = useParentPage("videos", {
+    heroEyebrow: "Videos",
+    heroHeadline: "Videos",
+    heroSubhead:
+      "Conversations, interviews, and recorded webinars from Synozur — watch on your schedule.",
+    seoTitle: "Videos",
+    seoDescription:
+      "Watch interviews, webinars, and conversations from Synozur leaders and partners.",
+  });
+
   return (
     <div className="w-full">
       <Meta
-        title="Videos"
-        description="Watch interviews, webinars, and conversations from Synozur leaders and partners."
+        title={copy.seoTitle}
+        description={copy.seoDescription}
         path="/videos"
+        image={copy.ogImage}
       />
 
       <section className="bg-[#0B0B1A] pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Videos</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
-            Videos
+            {copy.heroHeadline}
           </h1>
           <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
-            Conversations, interviews, and recorded webinars from Synozur — watch on your
-            schedule.
+            {copy.heroSubhead}
           </p>
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 

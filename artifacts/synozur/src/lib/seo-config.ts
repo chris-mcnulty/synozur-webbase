@@ -28,6 +28,7 @@ export type PageType =
   | "library"
   | "item"
   | "event"
+  | "faq"
   | "company"
   | "legal"
   | "utility"
@@ -126,6 +127,13 @@ export const PAGE_TYPES: Record<PageType, PageTypeConfig> = {
     ogType: "website",
     useSectionInTitle: true,
   },
+  faq: {
+    section: "",
+    defaultDescription:
+      "Answers to the questions we hear most often about working with The Synozur Alliance.",
+    ogType: "website",
+    useSectionInTitle: false,
+  },
   company: {
     section: "",
     defaultDescription:
@@ -189,6 +197,8 @@ export function derivePageType(pathname: string): PageType {
       return "item";
     case "events":
       return "event";
+    case "faq":
+      return "faq";
     case "about":
     case "team":
     case "partners":

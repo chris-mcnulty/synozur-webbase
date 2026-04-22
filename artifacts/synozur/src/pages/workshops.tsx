@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Clock, Monitor } from "lucide-react";
@@ -30,16 +31,44 @@ export default function Workshops() {
 
   const isFiltered = category !== ALL;
 
+  const copy = useParentPage("workshops", {
+    heroEyebrow: "",
+    heroHeadline: "Workshops",
+    heroSubhead: "",
+    seoTitle: "Workshops",
+  });
+
   return (
     <div className="w-full">
-      <Meta title="Workshops" />
+      <Meta
+        title={copy.seoTitle}
+        description={copy.seoDescription || undefined}
+        path="/workshops"
+        image={copy.ogImage}
+      />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-24">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          {copy.heroEyebrow && (
+            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
+              {copy.heroEyebrow}
+            </p>
+          )}
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white">
-            Workshops
+            {copy.heroHeadline}
           </h1>
+          {copy.heroSubhead && (
+            <p className="mt-4 text-lg md:text-xl text-zinc-300 max-w-3xl">
+              {copy.heroSubhead}
+            </p>
+          )}
+          {copy.introHtml && (
+            <div
+              className="prose prose-invert max-w-3xl mt-6 text-zinc-300"
+              dangerouslySetInnerHTML={{ __html: copy.introHtml }}
+            />
+          )}
         </div>
       </section>
 
