@@ -38,6 +38,7 @@ import {
   LineChart,
   Search,
   ShieldCheck,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -139,6 +140,16 @@ const SECTIONS: NavSection[] = [
     icon: ShieldCheck,
     items: [
       { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+    ],
+  },
+  {
+    id: "site-config",
+    label: "Site Config",
+    icon: PanelTop,
+    items: [
+      { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
+      { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
     ],
   },
 ];
