@@ -212,7 +212,13 @@ export default function PostEditor({ id }: Props) {
       setSavedAt(new Date(existing.updatedAt));
       setDirty(false);
       setSlugTouched(true);
-      setScheduleDate(existing.scheduledFor ? toLocalDateTime(existing.scheduledFor) : "");
+      setScheduleDate(
+        existing.scheduledFor
+          ? toLocalDateTime(existing.scheduledFor)
+          : existing.publishedAt
+            ? toLocalDateTime(existing.publishedAt)
+            : "",
+      );
     }
   }, [existing]);
 
