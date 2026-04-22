@@ -95,7 +95,7 @@ export default function Clients() {
       </section>
 
       {/* Logo rotator */}
-      <section className="py-12 md:py-16 bg-card border-b border-border">
+      <section className="py-12 md:py-16 bg-[hsl(240_35%_10%)] border-b border-border">
         <div className="container mx-auto px-4">
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
             Trusted by
