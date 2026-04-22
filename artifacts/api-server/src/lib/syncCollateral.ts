@@ -482,9 +482,15 @@ export async function upsertCollateralFromModel(model: Model): Promise<void> {
     where: eq(collateralTable.sourceId, sourceId),
   });
 
-  const isPublished =
-    model.status === "published" && model.active && !model.deletedAt;
   const now = new Date();
+  const withinWindow =
+    (!model.publishedAt || model.publishedAt <= now) &&
+    (!model.unpublishedAt || model.unpublishedAt > now);
+  const isPublished =
+    model.status === "published" &&
+    model.active &&
+    !model.deletedAt &&
+    withinWindow;
   const normalizedPillar = normalizePillar(model.pillar);
   const serviceId = model.serviceId ?? (await pillarToServiceId(normalizedPillar));
 

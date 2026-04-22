@@ -123,9 +123,28 @@ router.get("/models/:slug", async (req, res) => {
 
 // ----- Admin -------------------------------------------------------------
 
+// User-supplied URLs end up in public `<a href>` and external redirects, so
+// reject anything that isn't a concrete http(s) URL to block `javascript:`,
+// `data:`, and similar schemes.
+const httpUrlSchema = z
+  .string()
+  .trim()
+  .refine(
+    (v) => {
+      if (v === "") return true;
+      try {
+        const parsed = new URL(v);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "Must be an http(s) URL" },
+  );
+
 const RelatedItemSchema = z.object({
   label: z.string(),
-  url: z.string(),
+  url: httpUrlSchema,
   kind: z.enum(["link", "white-paper", "video", "case-study"]).optional(),
 });
 
@@ -136,7 +155,7 @@ const ModelBody = z.object({
   heroImage: z.string().optional(),
   longDescriptionHtml: z.string().optional(),
   dimensionsHtml: z.string().optional(),
-  launchUrl: z.string().optional(),
+  launchUrl: httpUrlSchema.optional(),
   relatedInformation: z.array(RelatedItemSchema).optional(),
   pillar: z.enum(COLLATERAL_PILLARS).nullish(),
   serviceId: z.string().uuid().nullish(),

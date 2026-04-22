@@ -40,9 +40,11 @@ export const servicesTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
-    // #56: publish/draft lifecycle. Existing rows default to published so
-    // the admin "publish" toggle doesn't silently hide the site on migration.
-    status: artifactStatusEnum("status").notNull().default("published"),
+    // #56: publish/draft lifecycle. Default matches the shared artifact
+    // pattern (`draft`). Migration must backfill existing rows to
+    // `published` so the live services pages don't silently disappear —
+    // see the #56 migration note in the accompanying drizzle-kit migration.
+    status: artifactStatusEnum("status").notNull().default("draft"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     unpublishedAt: timestamp("unpublished_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
@@ -89,10 +91,11 @@ export const solutionsTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
-    // #56: publish/draft lifecycle + pillar assignment. Pillar reuses the
-    // library's `collateral_pillar` enum so solution→collateral carousel
-    // filters line up without a separate taxonomy.
-    status: artifactStatusEnum("status").notNull().default("published"),
+    // #56: publish/draft lifecycle + pillar assignment. Default matches
+    // the shared artifact pattern (`draft`); existing rows are backfilled
+    // to `published` by migration. Pillar reuses `collateral_pillar` so
+    // solution→library rails line up without a separate taxonomy.
+    status: artifactStatusEnum("status").notNull().default("draft"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     unpublishedAt: timestamp("unpublished_at", { withTimezone: true }),
     pillar: collateralPillarEnum("pillar"),

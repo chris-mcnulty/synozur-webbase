@@ -129,6 +129,8 @@ async function collectEntries(): Promise<Entry[]> {
           isNull(servicesTable.deletedAt),
           eq(servicesTable.active, true),
           eq(servicesTable.status, "published"),
+          sql`(${servicesTable.publishedAt} is null or ${servicesTable.publishedAt} <= now())`,
+          sql`(${servicesTable.unpublishedAt} is null or ${servicesTable.unpublishedAt} > now())`,
         ),
       )
       .orderBy(asc(servicesTable.displayOrder)),
@@ -140,6 +142,8 @@ async function collectEntries(): Promise<Entry[]> {
           isNull(solutionsTable.deletedAt),
           eq(solutionsTable.active, true),
           eq(solutionsTable.status, "published"),
+          sql`(${solutionsTable.publishedAt} is null or ${solutionsTable.publishedAt} <= now())`,
+          sql`(${solutionsTable.unpublishedAt} is null or ${solutionsTable.unpublishedAt} > now())`,
         ),
       )
       .orderBy(asc(solutionsTable.displayOrder)),

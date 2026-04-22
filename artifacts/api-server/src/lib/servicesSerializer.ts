@@ -1,4 +1,4 @@
-import { and, eq, inArray, asc } from "drizzle-orm";
+import { and, eq, inArray, isNull, asc, sql } from "drizzle-orm";
 import {
   db,
   servicesTable,
@@ -228,31 +228,35 @@ export async function serializeCapability(c: SolutionCapability): Promise<Capabi
   return shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null);
 }
 
-/** List of all (active, published) services with their child solutions, ordered for header/overview rendering. */
+/** List of all publicly-visible services with their child solutions, ordered for header/overview rendering. */
 export async function listServicesWithSolutions(): Promise<ServiceWithSolutions[]> {
-  const services = await db
+  const activeServices = await db
     .select()
     .from(servicesTable)
     .where(
       and(
+        isNull(servicesTable.deletedAt),
         eq(servicesTable.active, true),
         eq(servicesTable.status, "published"),
+        sql`(${servicesTable.publishedAt} is null or ${servicesTable.publishedAt} <= now())`,
+        sql`(${servicesTable.unpublishedAt} is null or ${servicesTable.unpublishedAt} > now())`,
       ),
     )
     .orderBy(asc(servicesTable.displayOrder), asc(servicesTable.title));
-  const activeServices = services.filter((s) => !s.deletedAt);
 
-  const solutions = await db
+  const activeSolutions = await db
     .select()
     .from(solutionsTable)
     .where(
       and(
+        isNull(solutionsTable.deletedAt),
         eq(solutionsTable.active, true),
         eq(solutionsTable.status, "published"),
+        sql`(${solutionsTable.publishedAt} is null or ${solutionsTable.publishedAt} <= now())`,
+        sql`(${solutionsTable.unpublishedAt} is null or ${solutionsTable.unpublishedAt} > now())`,
       ),
     )
     .orderBy(asc(solutionsTable.displayOrder), asc(solutionsTable.title));
-  const activeSolutions = solutions.filter((s) => !s.deletedAt);
 
   const iconIds = [
     ...activeServices.map((s) => s.iconId),
@@ -293,6 +297,15 @@ export async function listServicesWithSolutions(): Promise<ServiceWithSolutions[
   }));
 }
 
+function withinPublishWindow(
+  row: { publishedAt: Date | null; unpublishedAt: Date | null },
+  now: Date = new Date(),
+): boolean {
+  if (row.publishedAt && row.publishedAt > now) return false;
+  if (row.unpublishedAt && row.unpublishedAt <= now) return false;
+  return true;
+}
+
 export async function getServiceWithMethodologies(
   slug: string,
 ): Promise<ServiceWithMethodologies | null> {
@@ -303,7 +316,8 @@ export async function getServiceWithMethodologies(
     !service ||
     service.deletedAt ||
     !service.active ||
-    service.status !== "published"
+    service.status !== "published" ||
+    !withinPublishWindow(service)
   )
     return null;
   const methodologies = await db
@@ -338,7 +352,8 @@ export async function getSolutionWithCapabilities(
     !solution ||
     solution.deletedAt ||
     !solution.active ||
-    solution.status !== "published"
+    solution.status !== "published" ||
+    !withinPublishWindow(solution)
   )
     return null;
   const capabilities = await db
@@ -368,7 +383,11 @@ export async function getSolutionWithCapabilities(
       solutionTags.get(solution.id) ?? [],
     ),
     parentService:
-      parentService && !parentService.deletedAt && parentService.active
+      parentService &&
+      !parentService.deletedAt &&
+      parentService.active &&
+      parentService.status === "published" &&
+      withinPublishWindow(parentService)
         ? shapeService(
             parentService,
             parentService.iconId ? icons.get(parentService.iconId) ?? null : null,

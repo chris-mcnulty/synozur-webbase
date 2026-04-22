@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { api, type ModelDto } from "@/lib/api";
+import { sanitizeHtml } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 
 export default function ModelDetail() {
@@ -88,7 +89,9 @@ export default function ModelDetail() {
           <div className="container mx-auto px-4 max-w-3xl">
             <div
               className="prose prose-lg dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: m.longDescriptionHtml }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(m.longDescriptionHtml),
+              }}
             />
           </div>
         </section>
@@ -100,7 +103,9 @@ export default function ModelDetail() {
             <h2 className="text-3xl font-bold mb-6">Levels and dimensions</h2>
             <div
               className="prose prose-lg dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: m.dimensionsHtml }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(m.dimensionsHtml),
+              }}
             />
           </div>
         </section>

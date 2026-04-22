@@ -20,6 +20,7 @@ const SLUGS = [
   "white-papers",
   "workshops",
   "applications",
+  "models",
   "insights",
   "case-studies",
   "library",
