@@ -134,7 +134,7 @@ export default function AdminDashboard() {
       title="Dashboard"
       actions={
         access?.hasCmsRole ? (
-          <Link href="/posts/new">
+          <Link href="/insights/posts/new">
             <Button data-testid="button-new-post">
               <Plus className="h-4 w-4 mr-2" /> New post
             </Button>
@@ -278,7 +278,7 @@ export default function AdminDashboard() {
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <Link href={`/posts/${p.id}/analytics`}>
+                        <Link href={`/insights/posts/${p.id}/analytics`}>
                           <a className="text-sm font-medium truncate hover:underline block">
                             {p.title}
                           </a>
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Your recent posts</h2>
-                <Link href="/posts">
+                <Link href="/insights/posts">
                   <a className="text-xs text-primary hover:underline">View all</a>
                 </Link>
               </div>
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
                 <ul className="divide-y divide-border">
                   {recent.data?.items.map((p) => (
                     <li key={p.id} className="py-2.5 flex items-center justify-between gap-3">
-                      <Link href={`/posts/${p.id}/edit`}>
+                      <Link href={`/insights/posts/${p.id}/edit`}>
                         <a className="flex-1 min-w-0 hover:underline">
                           <div className="text-sm font-medium truncate">{p.title}</div>
                           <div className="text-xs text-muted-foreground">
@@ -366,7 +366,7 @@ export default function AdminDashboard() {
                 <h2 className="font-semibold flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" /> Comments awaiting moderation
                 </h2>
-                <Link href="/comments">
+                <Link href="/insights/comments">
                   <a className="text-xs text-primary hover:underline">View all</a>
                 </Link>
               </div>

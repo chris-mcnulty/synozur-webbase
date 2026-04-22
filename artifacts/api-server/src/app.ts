@@ -9,6 +9,7 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
+import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
 
@@ -47,6 +48,12 @@ app.use(clerkMiddleware());
 // Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
 // 301 to their new home without ever reaching the SPA shell. Skips /api/*.
 app.use(wixRedirectMiddleware());
+
+// Traffic crawler logging — records pageviews for identified bot UAs hitting
+// HTML routes (humans are tracked separately via the client beacon). Runs
+// after wixRedirects so redirected requests aren't double-counted. Skips
+// /api/*, /__clerk, static assets, and non-GET requests.
+app.use(trafficCrawlerMiddleware());
 
 // Site-root SEO artifacts. Also available under /api/* via the router below.
 app.get("/sitemap.xml", handleSitemap);

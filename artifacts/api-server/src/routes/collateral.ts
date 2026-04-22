@@ -447,7 +447,7 @@ router.post("/cms/collateral/bulk", ...adminGuard, async (req, res) => {
   }
 
   const hasCommonUpdates = Object.keys(commonUpdates).length > 1;
-  let updatedCount = hasCommonUpdates || tagsAction?.mode === "set" ? ids.length : 0;
+  let updatedCount = hasCommonUpdates || tagsAction?.mode === "replace" ? ids.length : 0;
 
   await db.transaction(async (tx) => {
     if (hasCommonUpdates) {

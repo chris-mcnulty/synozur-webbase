@@ -5,6 +5,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import type { CurrentUser } from "@workspace/api-client-react";
+import { computeCapabilities, type Capability } from "@/lib/capabilities";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -15,6 +16,8 @@ export type AdminAccess = {
   isAdmin: boolean;
   isEditorOrAbove: boolean;
   isAllowListed: boolean;
+  capabilities: Set<Capability>;
+  hasCapability: (cap: Capability) => boolean;
 };
 
 export function useAdminAccess(): {
@@ -55,13 +58,17 @@ export function useAdminAccess(): {
   const roles = cmsUser?.roles ?? [];
   const isAdmin = roles.includes("admin");
   const isEditorOrAbove = isAdmin || roles.includes("editor");
+  const isAllowListed = !!adminMe?.authorized;
+  const capabilities = computeCapabilities(roles, isAllowListed);
   const access: AdminAccess = {
     signedInEmail: adminMe?.email ?? cmsUser?.email ?? null,
     cmsUser: cmsUser ?? null,
     hasCmsRole: roles.length > 0,
     isAdmin,
     isEditorOrAbove,
-    isAllowListed: !!adminMe?.authorized,
+    isAllowListed,
+    capabilities,
+    hasCapability: (cap) => capabilities.has(cap),
   };
   return { access, isLoading: false, signedIn: true };
 }
