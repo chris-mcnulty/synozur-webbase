@@ -277,11 +277,8 @@ const ItemPatch = ItemBody.partial();
 router.get("/cms/faq/items", ...readGuard, async (req, res) => {
   const categoryId =
     typeof req.query.categoryId === "string" ? req.query.categoryId : null;
-  const whereClause = categoryId ? eq(faqItemsTable.categoryId, categoryId) : undefined;
-  const rows = await db
-    .select()
-    .from(faqItemsTable)
-    .where(whereClause as never)
+  const base = db.select().from(faqItemsTable);
+  const rows = await (categoryId ? base.where(eq(faqItemsTable.categoryId, categoryId)) : base)
     .orderBy(asc(faqItemsTable.displayOrder), asc(faqItemsTable.createdAt));
   res.json({ items: rows.map(serializeItem) });
 });
@@ -388,12 +385,30 @@ router.post("/cms/faq/items/reorder", ...adminGuard, async (req, res) => {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
     return;
   }
-  const { ids } = parsed.data;
+  const { categoryId, ids } = parsed.data;
+
+  // Validate that all provided IDs belong to the given category and are unique
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length !== ids.length) {
+    res.status(400).json({ error: "Duplicate IDs in reorder list" });
+    return;
+  }
+  const existing = await db
+    .select({ id: faqItemsTable.id })
+    .from(faqItemsTable)
+    .where(eq(faqItemsTable.categoryId, categoryId));
+  const existingIds = new Set(existing.map((r) => r.id));
+  const unknownIds = ids.filter((id) => !existingIds.has(id));
+  if (unknownIds.length > 0) {
+    res.status(400).json({ error: "Unknown or out-of-category item IDs", ids: unknownIds });
+    return;
+  }
+
   for (let i = 0; i < ids.length; i++) {
     await db
       .update(faqItemsTable)
       .set({ displayOrder: (i + 1) * 10, updatedAt: new Date() })
-      .where(eq(faqItemsTable.id, ids[i]!));
+      .where(and(eq(faqItemsTable.id, ids[i]!), eq(faqItemsTable.categoryId, categoryId)));
   }
   await audit({
     actorId: req.authedUser!.id,

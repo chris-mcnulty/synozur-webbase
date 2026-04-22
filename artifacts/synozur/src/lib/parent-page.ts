@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type ContentParentPageDto } from "@/lib/api";
+import { sanitizeHtml } from "@/components/rich-text";
 
 /**
  * #97: resolved hero + intro copy for a resource list page.
@@ -42,7 +43,7 @@ export function resolveParentPageCopy(
     heroEyebrow: pick(row?.heroEyebrow ?? null, defaults.heroEyebrow),
     heroHeadline: pick(row?.heroHeadline ?? null, defaults.heroHeadline),
     heroSubhead: pick(row?.heroSubhead ?? null, defaults.heroSubhead),
-    introHtml: pick(row?.introHtml ?? null, defaults.introHtml),
+    introHtml: sanitizeHtml(pick(row?.introHtml ?? null, defaults.introHtml)),
     seoTitle: pick(row?.seoTitle ?? null, defaults.seoTitle),
     seoDescription: pick(row?.seoDescription ?? null, defaults.seoDescription),
     ogImage:

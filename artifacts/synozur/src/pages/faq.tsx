@@ -9,6 +9,7 @@ import {
 import { Meta } from "@/lib/meta";
 import { JsonLd } from "@/components/jsonld";
 import { api, type FaqCategoryWithItemsDto } from "@/lib/api";
+import { RichText } from "@/components/rich-text";
 
 // Stable anchor format: "#{category-slug}/{question-slug}". This must match
 // the anchor IDs we emit below so SERP snippets and AI citations can
@@ -138,9 +139,9 @@ export default function Faq() {
                             {it.question}
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div
-                              className="prose prose-sm dark:prose-invert max-w-none"
-                              dangerouslySetInnerHTML={{ __html: it.answerHtml }}
+                            <RichText
+                              html={it.answerHtml}
+                              className="prose-sm"
                             />
                             <div className="mt-3 text-xs text-muted-foreground">
                               <a

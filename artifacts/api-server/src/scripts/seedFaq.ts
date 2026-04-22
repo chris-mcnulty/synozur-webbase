@@ -9,7 +9,8 @@
  * Re-running updates existing rows in place.
  */
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 import slugify from "slugify";
 import { db, faqCategoriesTable, faqItemsTable } from "@workspace/db";
@@ -30,8 +31,8 @@ interface ScrapedPayload {
 }
 
 const INPUT_PATH = resolve(
-  process.cwd(),
-  "tools/insights-crawler/output/faq.json",
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../tools/insights-crawler/output/faq.json",
 );
 
 function toSlug(input: string): string {
