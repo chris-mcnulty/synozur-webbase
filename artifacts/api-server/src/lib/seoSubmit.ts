@@ -68,14 +68,14 @@ async function submitIndexNow(
   if (!key) {
     return { target: "indexnow", ok: false, submitted: 0, error: "INDEXNOW_KEY not set" };
   }
-  const host = new URL(origin).host;
-  const body = {
-    host,
-    key,
-    keyLocation: `${origin}/${key}.txt`,
-    urlList: urls,
-  };
   try {
+    const host = new URL(origin).host;
+    const body = {
+      host,
+      key,
+      keyLocation: `${origin}/${key}.txt`,
+      urlList: urls,
+    };
     const res = await fetch("https://api.indexnow.org/IndexNow", {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
