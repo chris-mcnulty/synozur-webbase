@@ -116,7 +116,7 @@ async function submitGoogleIndexing(urls: string[]): Promise<SubmitResult> {
   }
   try {
     const auth = new GoogleAuth({
-      credentials: credentials as Parameters<typeof GoogleAuth>[0]["credentials"],
+      credentials: credentials as ConstructorParameters<typeof GoogleAuth>[0]["credentials"],
       scopes: ["https://www.googleapis.com/auth/indexing"],
     });
     const client = await auth.getClient();
