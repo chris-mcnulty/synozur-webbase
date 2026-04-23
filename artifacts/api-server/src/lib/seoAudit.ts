@@ -501,16 +501,22 @@ export async function applyAutofill(
     switch (f.kind) {
       case "insight": {
         if (patch.seoDescription) {
-          await db
+          const updatedInsights = await db
             .update(postsTable)
             .set({
               seoDescription: patch.seoDescription,
               updatedAt: new Date(),
             })
             .where(
-              and(eq(postsTable.id, f.id), isNull(postsTable.seoDescription)),
-            );
-          touched.insight += 1;
+              and(
+                eq(postsTable.id, f.id),
+                sql`(${postsTable.seoDescription} is null or trim(${postsTable.seoDescription}) = '')`,
+              ),
+            )
+            .returning({ id: postsTable.id });
+          if (updatedInsights.length > 0) {
+            touched.insight += 1;
+          }
         }
         break;
       }
