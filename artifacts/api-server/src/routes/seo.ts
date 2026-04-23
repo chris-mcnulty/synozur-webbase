@@ -12,6 +12,9 @@ import {
   caseStudiesTable,
   modelsTable,
 } from "@workspace/db";
+import { requireAuth, requireRole } from "../middlewares/auth";
+import { runAudit, applyAutofill } from "../lib/seoAudit";
+import { submitUrls } from "../lib/seoSubmit";
 
 const router: IRouter = Router();
 
@@ -292,6 +295,69 @@ function handleRobots(_req: import("express").Request, res: import("express").Re
 
 router.get("/sitemap.xml", handleSitemap);
 router.get("/robots.txt", handleRobots);
+
+// ─── SEO audit & submission — admin/editor only ───────────────────────────
+
+const adminGuard = [requireAuth, requireRole("admin", "editor")];
+
+/**
+ * GET /api/seo/audit
+ * Scans every published artifact for missing / out-of-bounds SEO metadata and
+ * returns a structured report with per-type totals and individual findings.
+ */
+router.get("/seo/audit", adminGuard, async (_req, res): Promise<void> => {
+  try {
+    const report = await runAudit();
+    res.json(report);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /api/seo/audit/autofill
+ * Body: { findings: AuditFinding[] }
+ * Applies suggested values only to empty SEO fields — never overwrites
+ * editor values. Returns the number of rows touched per artifact kind.
+ */
+router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> => {
+  try {
+    const { findings } = req.body as { findings?: unknown };
+    if (!Array.isArray(findings)) {
+      res.status(400).json({ error: "findings must be an array" });
+      return;
+    }
+    const touched = await applyAutofill(findings as Parameters<typeof applyAutofill>[0]);
+    res.json({ touched });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /api/seo/submit
+ * Body: { urls: string[] }
+ * Submits the provided absolute URLs to every configured search-engine
+ * channel (IndexNow, Google Indexing API, Bing Webmaster Tools).
+ * Channels without credentials report ok:false but never throw.
+ */
+router.post("/seo/submit", adminGuard, async (req, res): Promise<void> => {
+  try {
+    const { urls } = req.body as { urls?: unknown };
+    if (!Array.isArray(urls) || urls.some((u) => typeof u !== "string")) {
+      res.status(400).json({ error: "urls must be an array of strings" });
+      return;
+    }
+    const origin = siteOrigin();
+    const bundle = await submitUrls(origin, urls as string[]);
+    res.json(bundle);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
 
 export default router;
 export { handleSitemap, handleRobots };
