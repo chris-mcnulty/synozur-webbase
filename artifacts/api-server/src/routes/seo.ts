@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
+import { z } from "zod";
 import {
   db,
   postsTable,
@@ -300,6 +301,31 @@ router.get("/robots.txt", handleRobots);
 
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
 
+/** Zod schema for the autofill endpoint — accepts an optional ID list. */
+const AutofillBodySchema = z.object({
+  /** Restrict autofill to specific artifacts by {kind, id}. Omit to apply to all findings. */
+  ids: z
+    .array(
+      z.object({
+        kind: z.enum([
+          "insight",
+          "service",
+          "solution",
+          "application",
+          "case-study",
+          "model",
+        ]),
+        id: z.string().uuid(),
+      }),
+    )
+    .optional(),
+});
+
+/** Zod schema for the submit endpoint. */
+const SubmitBodySchema = z.object({
+  urls: z.array(z.string().url()).max(200),
+});
+
 /**
  * GET /api/seo/audit
  * Scans every published artifact for missing / out-of-bounds SEO metadata and
@@ -317,18 +343,26 @@ router.get("/seo/audit", adminGuard, async (_req, res): Promise<void> => {
 
 /**
  * POST /api/seo/audit/autofill
- * Body: { findings: AuditFinding[] }
- * Applies suggested values only to empty SEO fields — never overwrites
- * editor values. Returns the number of rows touched per artifact kind.
+ * Body: { ids?: Array<{kind, id}> }
+ * Runs a fresh server-side audit and applies suggestions only to empty SEO
+ * fields. Pass `ids` to restrict the operation to specific artifacts. Never
+ * overwrites editor values.  Returns the number of rows touched per kind.
  */
 router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> => {
+  const parsed = AutofillBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
   try {
-    const { findings } = req.body as { findings?: unknown };
-    if (!Array.isArray(findings)) {
-      res.status(400).json({ error: "findings must be an array" });
-      return;
+    // Always recompute findings server-side to avoid trusting client data.
+    const report = await runAudit();
+    let findings = report.findings;
+    if (parsed.data.ids && parsed.data.ids.length > 0) {
+      const idSet = new Set(parsed.data.ids.map((i) => `${i.kind}:${i.id}`));
+      findings = findings.filter((f) => idSet.has(`${f.kind}:${f.id}`));
     }
-    const touched = await applyAutofill(findings as Parameters<typeof applyAutofill>[0]);
+    const touched = await applyAutofill(findings);
     res.json({ touched });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -338,20 +372,20 @@ router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> =
 
 /**
  * POST /api/seo/submit
- * Body: { urls: string[] }
+ * Body: { urls: string[] }  (max 200 absolute URLs)
  * Submits the provided absolute URLs to every configured search-engine
  * channel (IndexNow, Google Indexing API, Bing Webmaster Tools).
  * Channels without credentials report ok:false but never throw.
  */
 router.post("/seo/submit", adminGuard, async (req, res): Promise<void> => {
+  const parsed = SubmitBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
   try {
-    const { urls } = req.body as { urls?: unknown };
-    if (!Array.isArray(urls) || urls.some((u) => typeof u !== "string")) {
-      res.status(400).json({ error: "urls must be an array of strings" });
-      return;
-    }
     const origin = siteOrigin();
-    const bundle = await submitUrls(origin, urls as string[]);
+    const bundle = await submitUrls(origin, parsed.data.urls);
     res.json(bundle);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -93,6 +93,40 @@ async function submitIndexNow(
   }
 }
 
+/** Maximum number of concurrent requests to the Google Indexing API. */
+const GOOGLE_INDEXING_CONCURRENCY = 5;
+
+/**
+ * Submit `urls` to the Google Indexing API with bounded concurrency.
+ * Returns the number of successfully submitted URLs.
+ */
+async function submitGoogleIndexingWithConcurrency(
+  client: Awaited<ReturnType<GoogleAuth["getClient"]>>,
+  urls: string[],
+): Promise<number> {
+  let ok = 0;
+  const queue = [...urls];
+  async function worker() {
+    for (;;) {
+      const u = queue.shift();
+      if (!u) return;
+      try {
+        await client.request({
+          url: "https://indexing.googleapis.com/v3/urlNotifications:publish",
+          method: "POST",
+          data: { url: u, type: "URL_UPDATED" },
+        });
+        ok += 1;
+      } catch {
+        // Individual URL failed; continue with the remaining queue.
+      }
+    }
+  }
+  const workerCount = Math.min(GOOGLE_INDEXING_CONCURRENCY, urls.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return ok;
+}
+
 async function submitGoogleIndexing(urls: string[]): Promise<SubmitResult> {
   const sa = process.env.GOOGLE_INDEXING_SA_JSON?.trim();
   if (!sa) {
@@ -120,18 +154,7 @@ async function submitGoogleIndexing(urls: string[]): Promise<SubmitResult> {
       scopes: ["https://www.googleapis.com/auth/indexing"],
     });
     const client = await auth.getClient();
-    let ok = 0;
-    // Indexing API is one URL per call; issue in parallel but cap concurrency.
-    const results = await Promise.allSettled(
-      urls.map((u) =>
-        client.request({
-          url: "https://indexing.googleapis.com/v3/urlNotifications:publish",
-          method: "POST",
-          data: { url: u, type: "URL_UPDATED" },
-        }),
-      ),
-    );
-    for (const r of results) if (r.status === "fulfilled") ok += 1;
+    const ok = await submitGoogleIndexingWithConcurrency(client, urls);
     return {
       target: "google-indexing",
       ok: ok === urls.length,

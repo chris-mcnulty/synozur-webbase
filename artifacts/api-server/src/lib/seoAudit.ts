@@ -200,8 +200,11 @@ async function auditPosts(): Promise<{
       descriptionSources: [r.excerpt, r.subtitle, r.bodyMarkdown, r.bodyHtml],
     });
     if (f) {
-      // Drop seoTitle check for posts — Meta component fills it from `title`.
-      f.missing = f.missing.filter((m) => !m.startsWith("seoTitle"));
+      // Drop seoTitle check — Meta component fills it from `title`.
+      // Drop ogImage check — heroImage serves as the implicit OG image for posts.
+      f.missing = f.missing.filter(
+        (m) => !m.startsWith("seoTitle") && !m.startsWith("ogImage"),
+      );
       if (f.missing.length) findings.push(f);
     }
   }
@@ -248,7 +251,11 @@ async function auditServices(): Promise<{
       fallbackImage: null,
       descriptionSources: [r.blurbHtml, r.heroTextHtml, r.secondaryTextHtml],
     });
-    if (f) findings.push(f);
+    if (f) {
+      // Services don't have an ogImage column; drop that check.
+      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -273,6 +280,8 @@ async function auditSolutions(): Promise<{
         isNull(solutionsTable.deletedAt),
         eq(solutionsTable.active, true),
         eq(solutionsTable.status, "published"),
+        sql`(${solutionsTable.publishedAt} is null or ${solutionsTable.publishedAt} <= now())`,
+        sql`(${solutionsTable.unpublishedAt} is null or ${solutionsTable.unpublishedAt} > now())`,
       ),
     );
 
@@ -290,7 +299,11 @@ async function auditSolutions(): Promise<{
       fallbackImage: null,
       descriptionSources: [r.blurbHtml, r.heroTextHtml],
     });
-    if (f) findings.push(f);
+    if (f) {
+      // Solutions don't have an ogImage column; drop that check.
+      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -320,6 +333,8 @@ async function auditApplications(): Promise<{
         isNull(applicationsTable.deletedAt),
         eq(applicationsTable.active, true),
         eq(applicationsTable.status, "published"),
+        sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
+        sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
       ),
     );
 
@@ -367,6 +382,8 @@ async function auditCaseStudies(): Promise<{
         isNull(caseStudiesTable.deletedAt),
         eq(caseStudiesTable.active, true),
         eq(caseStudiesTable.status, "published"),
+        sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
+        sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
       ),
     );
 
@@ -411,6 +428,8 @@ async function auditModels(): Promise<{
         isNull(modelsTable.deletedAt),
         eq(modelsTable.active, true),
         eq(modelsTable.status, "published"),
+        sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
+        sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
       ),
     );
 
@@ -524,61 +543,149 @@ export async function applyAutofill(
       }
       case "service": {
         const set: Record<string, unknown> = { updatedAt: new Date() };
-        if (patch.seoTitle) set.seoTitle = patch.seoTitle;
-        if (patch.seoDescription) set.seoDescription = patch.seoDescription;
+        const guards = [eq(servicesTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${servicesTable.seoTitle} is null or trim(${servicesTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${servicesTable.seoDescription} is null or trim(${servicesTable.seoDescription}) = '')`,
+          );
+        }
         if (Object.keys(set).length > 1) {
-          await db.update(servicesTable).set(set).where(eq(servicesTable.id, f.id));
-          touched.service += 1;
+          const rows = await db
+            .update(servicesTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: servicesTable.id });
+          if (rows.length > 0) touched.service += 1;
         }
         break;
       }
       case "solution": {
         const set: Record<string, unknown> = { updatedAt: new Date() };
-        if (patch.seoTitle) set.seoTitle = patch.seoTitle;
-        if (patch.seoDescription) set.seoDescription = patch.seoDescription;
+        const guards = [eq(solutionsTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${solutionsTable.seoTitle} is null or trim(${solutionsTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${solutionsTable.seoDescription} is null or trim(${solutionsTable.seoDescription}) = '')`,
+          );
+        }
         if (Object.keys(set).length > 1) {
-          await db.update(solutionsTable).set(set).where(eq(solutionsTable.id, f.id));
-          touched.solution += 1;
+          const rows = await db
+            .update(solutionsTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: solutionsTable.id });
+          if (rows.length > 0) touched.solution += 1;
         }
         break;
       }
       case "application": {
         const set: Record<string, unknown> = { updatedAt: new Date() };
-        if (patch.seoTitle) set.seoTitle = patch.seoTitle;
-        if (patch.seoDescription) set.seoDescription = patch.seoDescription;
-        if (patch.ogImage) set.ogImage = patch.ogImage;
+        const guards = [eq(applicationsTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${applicationsTable.seoTitle} is null or trim(${applicationsTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${applicationsTable.seoDescription} is null or trim(${applicationsTable.seoDescription}) = '')`,
+          );
+        }
+        if (patch.ogImage) {
+          set.ogImage = patch.ogImage;
+          guards.push(
+            sql`(${applicationsTable.ogImage} is null or trim(${applicationsTable.ogImage}) = '')`,
+          );
+        }
         if (Object.keys(set).length > 1) {
-          await db.update(applicationsTable).set(set).where(eq(applicationsTable.id, f.id));
-          touched.application += 1;
+          const rows = await db
+            .update(applicationsTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: applicationsTable.id });
+          if (rows.length > 0) touched.application += 1;
         }
         break;
       }
       case "case-study": {
         const set: Record<string, unknown> = { updatedAt: new Date() };
-        if (patch.seoTitle) set.seoTitle = patch.seoTitle;
-        if (patch.seoDescription) set.seoDescription = patch.seoDescription;
-        if (patch.ogImage) set.ogImage = patch.ogImage;
+        const guards = [eq(caseStudiesTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${caseStudiesTable.seoTitle} is null or trim(${caseStudiesTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${caseStudiesTable.seoDescription} is null or trim(${caseStudiesTable.seoDescription}) = '')`,
+          );
+        }
+        if (patch.ogImage) {
+          set.ogImage = patch.ogImage;
+          guards.push(
+            sql`(${caseStudiesTable.ogImage} is null or trim(${caseStudiesTable.ogImage}) = '')`,
+          );
+        }
         if (Object.keys(set).length > 1) {
-          await db.update(caseStudiesTable).set(set).where(eq(caseStudiesTable.id, f.id));
-          touched["case-study"] += 1;
+          const rows = await db
+            .update(caseStudiesTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: caseStudiesTable.id });
+          if (rows.length > 0) touched["case-study"] += 1;
         }
         break;
       }
       case "model": {
         const set: Record<string, unknown> = { updatedAt: new Date() };
-        if (patch.seoTitle) set.seoTitle = patch.seoTitle;
-        if (patch.seoDescription) set.seoDescription = patch.seoDescription;
-        if (patch.ogImage) set.ogImage = patch.ogImage;
+        const guards = [eq(modelsTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${modelsTable.seoTitle} is null or trim(${modelsTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${modelsTable.seoDescription} is null or trim(${modelsTable.seoDescription}) = '')`,
+          );
+        }
+        if (patch.ogImage) {
+          set.ogImage = patch.ogImage;
+          guards.push(
+            sql`(${modelsTable.ogImage} is null or trim(${modelsTable.ogImage}) = '')`,
+          );
+        }
         if (Object.keys(set).length > 1) {
-          await db.update(modelsTable).set(set).where(eq(modelsTable.id, f.id));
-          touched.model += 1;
+          const rows = await db
+            .update(modelsTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: modelsTable.id });
+          if (rows.length > 0) touched.model += 1;
         }
         break;
       }
     }
   }
 
-  // Use sql only if needed; drizzle imports kept minimal.
-  void sql;
   return touched;
 }
