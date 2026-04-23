@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 22, 2026  
-> 15 tasks pending · 75 merged · 29 cancelled
+> Last updated: April 23, 2026  
+> 21 tasks pending · 75 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -106,6 +106,42 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 
 ---
 
+## SEO & Analytics
+
+The site already has per-page meta tags (`artifacts/synozur/src/lib/meta.tsx`), a page-type registry (`artifacts/synozur/src/lib/seo-config.ts`), a dynamic `/sitemap.xml` + `/robots.txt` (`artifacts/api-server/src/routes/seo.ts`), first-party traffic analytics, GA4/LinkedIn/Meta Pixel loaders gated by cookie consent, and a SEO audit/autofill + search-engine submission backend. The planning stub at `artifacts/synozur/src/pages/admin/marketing/seo.tsx` lists seven controls that still need to ship; the tasks below turn that list into concrete work and add the structured-data and analytics gaps surfaced by research. Phases 1–3 are the critical path (they unblock marketing); #115–#117 are independent and can parallelize.
+
+### #112 · Database-backed SEO & analytics settings (schema + API)
+**Depends on:** — (foundation)
+
+Move every SEO/analytics dial marketing currently needs a redeploy to change into the `site_settings` row, keeping env vars as fallback. Extend `lib/db/src/schema/siteSettings.ts` with nullable columns for: default title template, default meta description, default OG image (asset FK), Twitter handle + card type, LinkedIn company URL, Google + Bing site-verification tokens, Organization fields (name, legal name, logo asset FK, address parts, `sameAs` as jsonb), marketing tag IDs (GA4, LinkedIn Insight Partner, Meta Pixel), and sitemap controls (`excluded_paths` jsonb, `section_flags` jsonb). Generate a drizzle migration. Extend `GetPublicSiteSettingsResponse` with only what the public site needs (tag IDs, OG image URL, title template, default description, Twitter handle + card type, verification tokens); extend `GetAdminSiteSettingsResponse` + `UpdateAdminSiteSettingsBody` with every new column (validate title ≤ 120, description ≤ 160, `sameAs` entries are absolute URLs). Update `artifacts/api-server/src/routes/siteSettings.ts` to resolve both new asset FKs and read/write every new column with the same nullable trim-to-null behavior used for `polarisFeedUrl`. Purely additive — no behavior change on day one.
+
+### #113 · Admin UI for Marketing → SEO settings
+**Depends on:** #112
+
+Replace the stub at `artifacts/synozur/src/pages/admin/marketing/seo.tsx` with a real form mirroring `artifacts/synozur/src/pages/admin/site-config/site-settings.tsx`: single `useForm` + `react-hook-form` using the generated `UpdateAdminSiteSettingsBody` schema. Seven section cards — Defaults (title template, default description, default OG image asset picker), Social (Twitter handle, card type select, LinkedIn company URL), Marketing tags (GA4, LinkedIn, Meta Pixel with env-var fallback shown greyed out), Search engine verification (GSC + Bing tokens with links to their consoles), Sitemap (section toggles + excluded-paths textarea), Organization (legal name, display name, logo asset picker, address, dynamic `sameAs` URL list), and Status (showing `updatedAt` + links to `/sitemap.xml` and `/robots.txt`). Invalidate the `["public-site-settings"]` query on save so live `Analytics` and `Meta` components pick up changes without a reload.
+
+### #114 · Wire the public site to the new DB settings
+**Depends on:** #112
+
+Every place that reads a hard-coded string or env var consults the `public-site-settings` payload first, with the current constants as fallback so a partial config still renders valid output. In `artifacts/synozur/src/lib/meta.tsx`: apply the DB title template when a page doesn't pass a title; fall back to DB default description + OG image; emit `twitter:site`/`twitter:creator` from the DB handle; honor DB card type. In `artifacts/synozur/src/components/layout/index.tsx`: render `google-site-verification` and `msvalidate.01` meta tags once site-wide when tokens are set. In `artifacts/synozur/src/components/analytics.tsx` — in `loadMarketingTags`, prefer `settings.tagGa4Id` / `tagLinkedInPartnerId` / `tagMetaPixelId` over `import.meta.env.*`; keep the consent gate untouched. In `artifacts/synozur/src/components/organization-jsonld.tsx`: replace the hard-coded object with DB values, falling back to current constants per-field; render `sameAs` from the DB array. In `artifacts/api-server/src/routes/seo.ts`: skip content whose section flag is `false` and filter URLs matching `sitemap_excluded_paths`. Document the 5-minute sitemap cache propagation delay.
+
+### #115 · Structured-data enhancements (Breadcrumb, Article, Event, Person)
+**Depends on:** — (independent of #112–#114)
+
+Close the schema.org gaps surfaced by research. Add `artifacts/synozur/src/components/breadcrumb-jsonld.tsx` and emit `BreadcrumbList` on every page whose `pageType` is in `DETAIL_PREFIXES` — drive the hierarchy from `seo-config.ts`. On the Insights detail page, emit an `Article` schema with `headline`, `image`, `datePublished`, `dateModified`, `author.@type=Person`, and `publisher` pointing at the Organization, using fields from the existing post API payload. On the events detail page, emit `Event` schema with `startDate`, `endDate`, `location`, `eventAttendanceMode`, `organizer`. If team-member detail pages exist, emit `Person` schema with `name`, `jobTitle`, `image`, `sameAs`. Acceptance: Google's Rich Results Test passes for one URL of each new schema type.
+
+### #116 · Analytics enhancements (UTM capture, custom events, CSV export)
+**Depends on:** — (independent; extends existing traffic system)
+
+Three additive improvements to the first-party tracker without adding cookies. (a) UTM parameter capture — parse `utm_source/medium/campaign/term/content` from `window.location.search` in `artifacts/synozur/src/lib/traffic-tracker.ts` and include in the collect payload; add five nullable `text` columns to `lib/db/src/schema/traffic.ts`; prefer `utm_source` over referrer in `classifySource()`; surface UTM breakdowns in `artifacts/synozur/src/pages/admin/marketing/traffic.tsx`. (b) Custom event tracking — add `trackEvent(name, props?)` helper posting to `POST /api/traffic/event`; new `traffic_events` table (id, session_key, path, event_name, properties jsonb, created_at); admin view showing top events grouped by name; instrument contact-form submit, workshop detail CTA clicks, and resource downloads first. (c) CSV export — `GET /api/cms/analytics/overview.csv` and `/sessions.csv` honoring the same filters; download button on the traffic page scoped to current filter state.
+
+### #117 · Admin UI for existing SEO audit + search-engine submit endpoints
+**Depends on:** — (wraps shipped APIs)
+
+The `/api/seo/audit`, `/api/seo/audit/autofill`, and `/api/seo/submit` endpoints exist with no frontend. New page `artifacts/synozur/src/pages/admin/marketing/seo-audit.tsx` with a "Run audit" button that calls `GET /api/seo/audit` and renders findings grouped by artifact type (counts + list), a per-row "Apply autofill" calling `POST /api/seo/audit/autofill` with that id, a bulk "Autofill all empty" control, and links from each row back to the matching CMS editor for manual fixes. Add a submission card on the SEO admin page with a URL textarea (prefilled with the last 7 days of newly-published items from the sitemap endpoint) and a submit button calling `POST /api/seo/submit`, showing per-endpoint results (IndexNow / Google / Bing). Surface a "credentials missing" state when the server reports it; document the required env vars (`INDEXNOW_KEY`, `GOOGLE_INDEXING_*`, `BING_API_KEY`) in `docs/seo-env.md`.
+
+---
+
 ## Summary Table
 
 | # | Title | Area | Depends On |
@@ -125,3 +161,9 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Expand user/role model to seven audience classes | Admin Access & People | #109 |
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
+| #112 | Database-backed SEO & analytics settings (schema + API) | SEO & Analytics | — |
+| #113 | Admin UI for Marketing → SEO settings | SEO & Analytics | #112 |
+| #114 | Wire the public site to the new DB settings | SEO & Analytics | #112 |
+| #115 | Structured-data enhancements (Breadcrumb, Article, Event, Person) | SEO & Analytics | — |
+| #116 | Analytics enhancements (UTM capture, custom events, CSV export) | SEO & Analytics | — |
+| #117 | Admin UI for existing SEO audit + search-engine submit endpoints | SEO & Analytics | — |
