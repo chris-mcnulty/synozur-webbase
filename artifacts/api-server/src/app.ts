@@ -61,11 +61,13 @@ app.get("/sitemap.xml", handleSitemap);
 app.get("/robots.txt", handleRobots);
 
 // IndexNow key-validation file. Served at /<key>.txt so search engines can
-// verify ownership before accepting bulk submissions. Pattern is restricted to
-// valid IndexNow key filenames (8–128 hex chars + .txt) to avoid shadowing
-// other site-root routes.
-app.get("/:keyfile([a-f0-9]{8,128}\\.txt)", (req, res, next) => {
-  const key = matchIndexNowKeyPath(`/${req.params.keyfile}`);
+// verify ownership before accepting bulk submissions. We check the path via
+// matchIndexNowKeyPath (which enforces the 8-128 hex-char format) rather than
+// using an inline regex in the route pattern, because Express v5 / path-to-regexp
+// v8 no longer supports inline capture-group regexes in route parameters.
+app.use((req, res, next) => {
+  if (req.method !== "GET") return next();
+  const key = matchIndexNowKeyPath(req.path);
   if (!key) return next();
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.send(key);

@@ -232,7 +232,7 @@ async function auditServices(): Promise<{
         isNull(servicesTable.deletedAt),
         eq(servicesTable.active, true),
         eq(servicesTable.status, "published"),
-        sql`${servicesTable.publishedAt} <= now()`,
+        sql`(${servicesTable.publishedAt} is null or ${servicesTable.publishedAt} <= now())`,
         sql`(${servicesTable.unpublishedAt} is null or ${servicesTable.unpublishedAt} > now())`,
       ),
     );
