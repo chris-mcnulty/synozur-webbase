@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { UpsertServiceBodyStatus } from "./upsertServiceBodyStatus";
 
 export interface UpsertServiceBody {
   /** @nullable */
@@ -40,5 +41,11 @@ export interface UpsertServiceBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  status?: UpsertServiceBodyStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  tagIds?: string[];
   active?: boolean;
 }

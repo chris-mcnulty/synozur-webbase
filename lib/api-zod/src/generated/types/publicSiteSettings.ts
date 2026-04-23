@@ -12,4 +12,24 @@ export interface PublicSiteSettings {
   homeHeroImageUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /** @nullable */
+  seoDefaultTitleTemplate?: string | null;
+  /** @nullable */
+  seoDefaultDescription?: string | null;
+  /** @nullable */
+  seoDefaultOgImageUrl?: string | null;
+  /** @nullable */
+  seoTwitterHandle?: string | null;
+  /** @nullable */
+  seoTwitterCardType?: string | null;
+  /** @nullable */
+  seoGoogleSiteVerification?: string | null;
+  /** @nullable */
+  seoBingSiteVerification?: string | null;
+  /** @nullable */
+  tagGa4Id?: string | null;
+  /** @nullable */
+  tagLinkedinPartnerId?: string | null;
+  /** @nullable */
+  tagMetaPixelId?: string | null;
 }

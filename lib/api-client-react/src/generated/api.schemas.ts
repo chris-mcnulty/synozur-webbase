@@ -327,7 +327,32 @@ export interface PublicSiteSettings {
   homeHeroImageUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /** @nullable */
+  seoDefaultTitleTemplate?: string | null;
+  /** @nullable */
+  seoDefaultDescription?: string | null;
+  /** @nullable */
+  seoDefaultOgImageUrl?: string | null;
+  /** @nullable */
+  seoTwitterHandle?: string | null;
+  /** @nullable */
+  seoTwitterCardType?: string | null;
+  /** @nullable */
+  seoGoogleSiteVerification?: string | null;
+  /** @nullable */
+  seoBingSiteVerification?: string | null;
+  /** @nullable */
+  tagGa4Id?: string | null;
+  /** @nullable */
+  tagLinkedinPartnerId?: string | null;
+  /** @nullable */
+  tagMetaPixelId?: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
@@ -341,8 +366,69 @@ export interface SiteSettings {
   homeEditorialImageUrl?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
+  /**
+   * @maxLength 120
+   * @nullable
+   */
+  seoDefaultTitleTemplate?: string | null;
+  /**
+   * @maxLength 160
+   * @nullable
+   */
+  seoDefaultDescription?: string | null;
+  /** @nullable */
+  seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoDefaultOgImageUrl?: string | null;
+  /** @nullable */
+  seoTwitterHandle?: string | null;
+  /** @nullable */
+  seoTwitterCardType?: string | null;
+  /** @nullable */
+  seoLinkedinCompanyUrl?: string | null;
+  /** @nullable */
+  seoGoogleSiteVerification?: string | null;
+  /** @nullable */
+  seoBingSiteVerification?: string | null;
+  /** @nullable */
+  orgName?: string | null;
+  /** @nullable */
+  orgLegalName?: string | null;
+  /** @nullable */
+  orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgLogoUrl?: string | null;
+  /** @nullable */
+  orgStreetAddress?: string | null;
+  /** @nullable */
+  orgAddressLocality?: string | null;
+  /** @nullable */
+  orgAddressRegion?: string | null;
+  /** @nullable */
+  orgPostalCode?: string | null;
+  /** @nullable */
+  orgAddressCountry?: string | null;
+  /** @nullable */
+  orgSameAs?: string[] | null;
+  /** @nullable */
+  tagGa4Id?: string | null;
+  /** @nullable */
+  tagLinkedinPartnerId?: string | null;
+  /** @nullable */
+  tagMetaPixelId?: string | null;
+  /** @nullable */
+  sitemapExcludedPaths?: string[] | null;
+  /** @nullable */
+  sitemapSectionFlags?: SiteSettingsSitemapSectionFlags;
   updatedAt: string;
 }
+
+/**
+ * @nullable
+ */
+export type SiteSettingsInputSitemapSectionFlags = {
+  [key: string]: boolean;
+} | null;
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
@@ -352,6 +438,56 @@ export interface SiteSettingsInput {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
+  /**
+   * @maxLength 120
+   * @nullable
+   */
+  seoDefaultTitleTemplate?: string | null;
+  /**
+   * @maxLength 160
+   * @nullable
+   */
+  seoDefaultDescription?: string | null;
+  /** @nullable */
+  seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoTwitterHandle?: string | null;
+  /** @nullable */
+  seoTwitterCardType?: string | null;
+  /** @nullable */
+  seoLinkedinCompanyUrl?: string | null;
+  /** @nullable */
+  seoGoogleSiteVerification?: string | null;
+  /** @nullable */
+  seoBingSiteVerification?: string | null;
+  /** @nullable */
+  orgName?: string | null;
+  /** @nullable */
+  orgLegalName?: string | null;
+  /** @nullable */
+  orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgStreetAddress?: string | null;
+  /** @nullable */
+  orgAddressLocality?: string | null;
+  /** @nullable */
+  orgAddressRegion?: string | null;
+  /** @nullable */
+  orgPostalCode?: string | null;
+  /** @nullable */
+  orgAddressCountry?: string | null;
+  /** @nullable */
+  orgSameAs?: string[] | null;
+  /** @nullable */
+  tagGa4Id?: string | null;
+  /** @nullable */
+  tagLinkedinPartnerId?: string | null;
+  /** @nullable */
+  tagMetaPixelId?: string | null;
+  /** @nullable */
+  sitemapExcludedPaths?: string[] | null;
+  /** @nullable */
+  sitemapSectionFlags?: SiteSettingsInputSitemapSectionFlags;
 }
 
 export interface AdminUser {
@@ -590,7 +726,14 @@ export interface EventInput {
   imageAssetId?: number | null;
 }
 
-export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
+export type ServiceStatus = (typeof ServiceStatus)[keyof typeof ServiceStatus];
+
+export const ServiceStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
 
 export interface Service {
   id: string;
@@ -631,15 +774,39 @@ export interface Service {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  status: ArtifactStatus;
+  status?: ServiceStatus;
   /** @nullable */
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  tags: Tag[];
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type SolutionStatus =
+  (typeof SolutionStatus)[keyof typeof SolutionStatus];
+
+export const SolutionStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * @nullable
+ */
+export type SolutionPillar =
+  | (typeof SolutionPillar)[keyof typeof SolutionPillar]
+  | null;
+
+export const SolutionPillar = {
+  strategic: "strategic",
+  technology: "technology",
+  experiences: "experiences",
+  gtm: "gtm",
+} as const;
 
 export interface Solution {
   id: string;
@@ -690,14 +857,14 @@ export interface Solution {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
-  status: ArtifactStatus;
+  status?: SolutionStatus;
   /** @nullable */
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
   /** @nullable */
-  pillar?: CollateralPillar | null;
-  tags: Tag[];
+  pillar?: SolutionPillar;
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }
@@ -771,6 +938,16 @@ export interface CapabilityItemsResponse {
   items: Capability[];
 }
 
+export type UpsertServiceBodyStatus =
+  (typeof UpsertServiceBodyStatus)[keyof typeof UpsertServiceBodyStatus];
+
+export const UpsertServiceBodyStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
 export interface UpsertServiceBody {
   /** @nullable */
   slug?: string | null;
@@ -805,7 +982,7 @@ export interface UpsertServiceBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
-  status?: ArtifactStatus;
+  status?: UpsertServiceBodyStatus;
   /** @nullable */
   publishedAt?: string | null;
   /** @nullable */
@@ -813,6 +990,30 @@ export interface UpsertServiceBody {
   tagIds?: string[];
   active?: boolean;
 }
+
+export type UpsertSolutionBodyStatus =
+  (typeof UpsertSolutionBodyStatus)[keyof typeof UpsertSolutionBodyStatus];
+
+export const UpsertSolutionBodyStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpsertSolutionBodyPillar =
+  | (typeof UpsertSolutionBodyPillar)[keyof typeof UpsertSolutionBodyPillar]
+  | null;
+
+export const UpsertSolutionBodyPillar = {
+  strategic: "strategic",
+  technology: "technology",
+  experiences: "experiences",
+  gtm: "gtm",
+} as const;
 
 export interface UpsertSolutionBody {
   /** @nullable */
@@ -858,13 +1059,13 @@ export interface UpsertSolutionBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
-  status?: ArtifactStatus;
+  status?: UpsertSolutionBodyStatus;
   /** @nullable */
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
   /** @nullable */
-  pillar?: CollateralPillar | null;
+  pillar?: UpsertSolutionBodyPillar;
   tagIds?: string[];
   active?: boolean;
 }

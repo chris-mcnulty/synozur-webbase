@@ -1020,11 +1020,25 @@ export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  seoDefaultTitleTemplate: zod.string().nullish(),
+  seoDefaultDescription: zod.string().nullish(),
+  seoDefaultOgImageUrl: zod.string().nullish(),
+  seoTwitterHandle: zod.string().nullish(),
+  seoTwitterCardType: zod.string().nullish(),
+  seoGoogleSiteVerification: zod.string().nullish(),
+  seoBingSiteVerification: zod.string().nullish(),
+  tagGa4Id: zod.string().nullish(),
+  tagLinkedinPartnerId: zod.string().nullish(),
+  tagMetaPixelId: zod.string().nullish(),
 });
 
 /**
  * @summary Get site settings (admin)
  */
+export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
+
+export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
+
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroImageAssetId: zod.number().nullish(),
@@ -1032,18 +1046,84 @@ export const GetAdminSiteSettingsResponse = zod.object({
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
+  seoDefaultTitleTemplate: zod
+    .string()
+    .max(getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax)
+    .nullish(),
+  seoDefaultDescription: zod
+    .string()
+    .max(getAdminSiteSettingsResponseSeoDefaultDescriptionMax)
+    .nullish(),
+  seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoDefaultOgImageUrl: zod.string().nullish(),
+  seoTwitterHandle: zod.string().nullish(),
+  seoTwitterCardType: zod.string().nullish(),
+  seoLinkedinCompanyUrl: zod.string().nullish(),
+  seoGoogleSiteVerification: zod.string().nullish(),
+  seoBingSiteVerification: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  orgLegalName: zod.string().nullish(),
+  orgLogoAssetId: zod.number().nullish(),
+  orgLogoUrl: zod.string().nullish(),
+  orgStreetAddress: zod.string().nullish(),
+  orgAddressLocality: zod.string().nullish(),
+  orgAddressRegion: zod.string().nullish(),
+  orgPostalCode: zod.string().nullish(),
+  orgAddressCountry: zod.string().nullish(),
+  orgSameAs: zod.array(zod.string().url()).nullish(),
+  tagGa4Id: zod.string().nullish(),
+  tagLinkedinPartnerId: zod.string().nullish(),
+  tagMetaPixelId: zod.string().nullish(),
+  sitemapExcludedPaths: zod.array(zod.string()).nullish(),
+  sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
   updatedAt: zod.coerce.date(),
 });
 
 /**
  * @summary Update site settings (admin)
  */
+export const updateAdminSiteSettingsBodySeoDefaultTitleTemplateMax = 120;
+
+export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
+
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   polarisFeedUrl: zod.string().nullish(),
+  seoDefaultTitleTemplate: zod
+    .string()
+    .max(updateAdminSiteSettingsBodySeoDefaultTitleTemplateMax)
+    .nullish(),
+  seoDefaultDescription: zod
+    .string()
+    .max(updateAdminSiteSettingsBodySeoDefaultDescriptionMax)
+    .nullish(),
+  seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoTwitterHandle: zod.string().nullish(),
+  seoTwitterCardType: zod.string().nullish(),
+  seoLinkedinCompanyUrl: zod.string().nullish(),
+  seoGoogleSiteVerification: zod.string().nullish(),
+  seoBingSiteVerification: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  orgLegalName: zod.string().nullish(),
+  orgLogoAssetId: zod.number().nullish(),
+  orgStreetAddress: zod.string().nullish(),
+  orgAddressLocality: zod.string().nullish(),
+  orgAddressRegion: zod.string().nullish(),
+  orgPostalCode: zod.string().nullish(),
+  orgAddressCountry: zod.string().nullish(),
+  orgSameAs: zod.array(zod.string().url()).nullish(),
+  tagGa4Id: zod.string().nullish(),
+  tagLinkedinPartnerId: zod.string().nullish(),
+  tagMetaPixelId: zod.string().nullish(),
+  sitemapExcludedPaths: zod.array(zod.string()).nullish(),
+  sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
 });
+
+export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
+
+export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1052,6 +1132,36 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
+  seoDefaultTitleTemplate: zod
+    .string()
+    .max(updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax)
+    .nullish(),
+  seoDefaultDescription: zod
+    .string()
+    .max(updateAdminSiteSettingsResponseSeoDefaultDescriptionMax)
+    .nullish(),
+  seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoDefaultOgImageUrl: zod.string().nullish(),
+  seoTwitterHandle: zod.string().nullish(),
+  seoTwitterCardType: zod.string().nullish(),
+  seoLinkedinCompanyUrl: zod.string().nullish(),
+  seoGoogleSiteVerification: zod.string().nullish(),
+  seoBingSiteVerification: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  orgLegalName: zod.string().nullish(),
+  orgLogoAssetId: zod.number().nullish(),
+  orgLogoUrl: zod.string().nullish(),
+  orgStreetAddress: zod.string().nullish(),
+  orgAddressLocality: zod.string().nullish(),
+  orgAddressRegion: zod.string().nullish(),
+  orgPostalCode: zod.string().nullish(),
+  orgAddressCountry: zod.string().nullish(),
+  orgSameAs: zod.array(zod.string().url()).nullish(),
+  tagGa4Id: zod.string().nullish(),
+  tagLinkedinPartnerId: zod.string().nullish(),
+  tagMetaPixelId: zod.string().nullish(),
+  sitemapExcludedPaths: zod.array(zod.string()).nullish(),
+  sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1080,6 +1190,20 @@ export const ListServicesResponse = zod.object({
         seoTitle: zod.string().nullish(),
         seoDescription: zod.string().nullish(),
         sourceId: zod.string().nullish(),
+        status: zod
+          .enum(["draft", "scheduled", "published", "archived"])
+          .optional(),
+        publishedAt: zod.string().nullish(),
+        unpublishedAt: zod.string().nullish(),
+        tags: zod
+          .array(
+            zod.object({
+              id: zod.string().uuid(),
+              slug: zod.string(),
+              name: zod.string(),
+            }),
+          )
+          .optional(),
         createdAt: zod.string(),
         updatedAt: zod.string(),
       })
@@ -1113,6 +1237,29 @@ export const ListServicesResponse = zod.object({
               seoTitle: zod.string().nullish(),
               seoDescription: zod.string().nullish(),
               sourceId: zod.string().nullish(),
+              status: zod
+                .enum(["draft", "scheduled", "published", "archived"])
+                .optional(),
+              publishedAt: zod.string().nullish(),
+              unpublishedAt: zod.string().nullish(),
+              pillar: zod
+                .union([
+                  zod.literal("strategic"),
+                  zod.literal("technology"),
+                  zod.literal("experiences"),
+                  zod.literal("gtm"),
+                  zod.literal(null),
+                ])
+                .nullish(),
+              tags: zod
+                .array(
+                  zod.object({
+                    id: zod.string().uuid(),
+                    slug: zod.string(),
+                    name: zod.string(),
+                  }),
+                )
+                .optional(),
               createdAt: zod.string(),
               updatedAt: zod.string(),
             }),
@@ -1149,6 +1296,20 @@ export const GetServiceResponse = zod
     seoTitle: zod.string().nullish(),
     seoDescription: zod.string().nullish(),
     sourceId: zod.string().nullish(),
+    status: zod
+      .enum(["draft", "scheduled", "published", "archived"])
+      .optional(),
+    publishedAt: zod.string().nullish(),
+    unpublishedAt: zod.string().nullish(),
+    tags: zod
+      .array(
+        zod.object({
+          id: zod.string().uuid(),
+          slug: zod.string(),
+          name: zod.string(),
+        }),
+      )
+      .optional(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   })
@@ -1204,6 +1365,29 @@ export const GetSolutionResponse = zod
     seoTitle: zod.string().nullish(),
     seoDescription: zod.string().nullish(),
     sourceId: zod.string().nullish(),
+    status: zod
+      .enum(["draft", "scheduled", "published", "archived"])
+      .optional(),
+    publishedAt: zod.string().nullish(),
+    unpublishedAt: zod.string().nullish(),
+    pillar: zod
+      .union([
+        zod.literal("strategic"),
+        zod.literal("technology"),
+        zod.literal("experiences"),
+        zod.literal("gtm"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    tags: zod
+      .array(
+        zod.object({
+          id: zod.string().uuid(),
+          slug: zod.string(),
+          name: zod.string(),
+        }),
+      )
+      .optional(),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   })
@@ -1233,6 +1417,20 @@ export const GetSolutionResponse = zod
             seoTitle: zod.string().nullish(),
             seoDescription: zod.string().nullish(),
             sourceId: zod.string().nullish(),
+            status: zod
+              .enum(["draft", "scheduled", "published", "archived"])
+              .optional(),
+            publishedAt: zod.string().nullish(),
+            unpublishedAt: zod.string().nullish(),
+            tags: zod
+              .array(
+                zod.object({
+                  id: zod.string().uuid(),
+                  slug: zod.string(),
+                  name: zod.string(),
+                }),
+              )
+              .optional(),
             createdAt: zod.string(),
             updatedAt: zod.string(),
           }),
@@ -1471,6 +1669,20 @@ export const CmsListServicesResponse = zod.object({
       seoTitle: zod.string().nullish(),
       seoDescription: zod.string().nullish(),
       sourceId: zod.string().nullish(),
+      status: zod
+        .enum(["draft", "scheduled", "published", "archived"])
+        .optional(),
+      publishedAt: zod.string().nullish(),
+      unpublishedAt: zod.string().nullish(),
+      tags: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
     }),
@@ -1495,6 +1707,10 @@ export const CmsCreateServiceBody = zod.object({
   blogCategory: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
 
@@ -1520,6 +1736,10 @@ export const CmsUpdateServiceBody = zod.object({
   blogCategory: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
 
@@ -1545,6 +1765,18 @@ export const CmsUpdateServiceResponse = zod.object({
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
   sourceId: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -1582,6 +1814,29 @@ export const CmsListSolutionsResponse = zod.object({
       seoTitle: zod.string().nullish(),
       seoDescription: zod.string().nullish(),
       sourceId: zod.string().nullish(),
+      status: zod
+        .enum(["draft", "scheduled", "published", "archived"])
+        .optional(),
+      publishedAt: zod.string().nullish(),
+      unpublishedAt: zod.string().nullish(),
+      pillar: zod
+        .union([
+          zod.literal("strategic"),
+          zod.literal("technology"),
+          zod.literal("experiences"),
+          zod.literal("gtm"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      tags: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
     }),
@@ -1611,6 +1866,19 @@ export const CmsCreateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  pillar: zod
+    .union([
+      zod.literal("strategic"),
+      zod.literal("technology"),
+      zod.literal("experiences"),
+      zod.literal("gtm"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
 
@@ -1641,6 +1909,19 @@ export const CmsUpdateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  pillar: zod
+    .union([
+      zod.literal("strategic"),
+      zod.literal("technology"),
+      zod.literal("experiences"),
+      zod.literal("gtm"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
 
@@ -1671,6 +1952,27 @@ export const CmsUpdateSolutionResponse = zod.object({
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
   sourceId: zod.string().nullish(),
+  status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
+  publishedAt: zod.string().nullish(),
+  unpublishedAt: zod.string().nullish(),
+  pillar: zod
+    .union([
+      zod.literal("strategic"),
+      zod.literal("technology"),
+      zod.literal("experiences"),
+      zod.literal("gtm"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  tags: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        name: zod.string(),
+      }),
+    )
+    .optional(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });

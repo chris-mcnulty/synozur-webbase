@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { UpsertSolutionBodyPillar } from "./upsertSolutionBodyPillar";
+import type { UpsertSolutionBodyStatus } from "./upsertSolutionBodyStatus";
 
 export interface UpsertSolutionBody {
   /** @nullable */
@@ -50,5 +52,13 @@ export interface UpsertSolutionBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  status?: UpsertSolutionBodyStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  /** @nullable */
+  pillar?: UpsertSolutionBodyPillar;
+  tagIds?: string[];
   active?: boolean;
 }
