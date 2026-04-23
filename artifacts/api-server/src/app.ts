@@ -12,6 +12,7 @@ import { wixRedirectMiddleware } from "./lib/wixRedirects";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
+import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 
 const app: Express = express();
 
@@ -58,6 +59,17 @@ app.use(trafficCrawlerMiddleware());
 // Site-root SEO artifacts. Also available under /api/* via the router below.
 app.get("/sitemap.xml", handleSitemap);
 app.get("/robots.txt", handleRobots);
+
+// IndexNow key-validation file. Served at /<key>.txt so search engines can
+// verify ownership before accepting bulk submissions. Pattern is restricted to
+// valid IndexNow key filenames (8–128 hex chars + .txt) to avoid shadowing
+// other site-root routes.
+app.get("/:keyfile([a-f0-9]{8,128}\\.txt)", (req, res, next) => {
+  const key = matchIndexNowKeyPath(`/${req.params.keyfile}`);
+  if (!key) return next();
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(key);
+});
 
 // Podcast feed at the canonical site-root URL so directories (Apple, Spotify,
 // Amazon Music) can consume it without an `/api/` prefix. The same handler is

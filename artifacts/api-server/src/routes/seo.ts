@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
+import { z } from "zod";
 import {
   db,
   postsTable,
@@ -12,6 +13,9 @@ import {
   caseStudiesTable,
   modelsTable,
 } from "@workspace/db";
+import { requireAuth, requireRole } from "../middlewares/auth";
+import { runAudit, applyAutofill } from "../lib/seoAudit";
+import { submitUrls } from "../lib/seoSubmit";
 
 const router: IRouter = Router();
 
@@ -292,6 +296,102 @@ function handleRobots(_req: import("express").Request, res: import("express").Re
 
 router.get("/sitemap.xml", handleSitemap);
 router.get("/robots.txt", handleRobots);
+
+// ─── SEO audit & submission — admin/editor only ───────────────────────────
+
+const adminGuard = [requireAuth, requireRole("admin", "editor")];
+
+/** Zod schema for the autofill endpoint — accepts an optional ID list. */
+const AutofillBodySchema = z.object({
+  /** Restrict autofill to specific artifacts by {kind, id}. Omit to apply to all findings. */
+  ids: z
+    .array(
+      z.object({
+        kind: z.enum([
+          "insight",
+          "service",
+          "solution",
+          "application",
+          "case-study",
+          "model",
+        ]),
+        id: z.string().uuid(),
+      }),
+    )
+    .optional(),
+});
+
+/** Zod schema for the submit endpoint. */
+const SubmitBodySchema = z.object({
+  urls: z.array(z.string().url()).max(200),
+});
+
+/**
+ * GET /api/seo/audit
+ * Scans every published artifact for missing / out-of-bounds SEO metadata and
+ * returns a structured report with per-type totals and individual findings.
+ */
+router.get("/seo/audit", adminGuard, async (_req, res): Promise<void> => {
+  try {
+    const report = await runAudit();
+    res.json(report);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /api/seo/audit/autofill
+ * Body: { ids?: Array<{kind, id}> }
+ * Runs a fresh server-side audit and applies suggestions only to empty SEO
+ * fields. Pass `ids` to restrict the operation to specific artifacts. Never
+ * overwrites editor values.  Returns the number of rows touched per kind.
+ */
+router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> => {
+  const parsed = AutofillBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    // Always recompute findings server-side to avoid trusting client data.
+    const report = await runAudit();
+    let findings = report.findings;
+    if (parsed.data.ids && parsed.data.ids.length > 0) {
+      const idSet = new Set(parsed.data.ids.map((i) => `${i.kind}:${i.id}`));
+      findings = findings.filter((f) => idSet.has(`${f.kind}:${f.id}`));
+    }
+    const touched = await applyAutofill(findings);
+    res.json({ touched });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /api/seo/submit
+ * Body: { urls: string[] }  (max 200 absolute URLs)
+ * Submits the provided absolute URLs to every configured search-engine
+ * channel (IndexNow, Google Indexing API, Bing Webmaster Tools).
+ * Channels without credentials report ok:false but never throw.
+ */
+router.post("/seo/submit", adminGuard, async (req, res): Promise<void> => {
+  const parsed = SubmitBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  try {
+    const origin = siteOrigin();
+    const bundle = await submitUrls(origin, parsed.data.urls);
+    res.json(bundle);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
 
 export default router;
 export { handleSitemap, handleRobots };
