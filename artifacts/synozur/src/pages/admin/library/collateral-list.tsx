@@ -144,7 +144,7 @@ function HeroThumb({ url, title }: { url: string | null | undefined; title: stri
   if (!thumb) {
     return (
       <div
-        className="flex h-12 w-12 items-center justify-center rounded border border-border bg-muted text-muted-foreground shrink-0"
+        className="flex h-16 w-16 items-center justify-center rounded border border-border bg-muted text-muted-foreground shrink-0"
         aria-label="No hero image"
       >
         <ImageIcon className="h-4 w-4" />
@@ -159,7 +159,7 @@ function HeroThumb({ url, title }: { url: string | null | undefined; title: stri
       decoding="async"
       width={64}
       height={64}
-      className="h-12 w-12 rounded border border-border object-cover shrink-0 bg-muted"
+      className="h-16 w-16 rounded border border-border object-cover shrink-0 bg-muted"
     />
   );
 }

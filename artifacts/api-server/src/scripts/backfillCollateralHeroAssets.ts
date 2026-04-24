@@ -12,7 +12,7 @@
  *
  * Idempotent: re-running skips hero URLs already represented in `assets`.
  */
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { inArray, isNotNull, sql } from "drizzle-orm";
 import {
   db,
   assetsTable,
@@ -106,36 +106,44 @@ async function main() {
     return;
   }
 
+  const keyArray = Array.from(storageKeys);
+
+  // Batch-fetch all storageKeys already present in the assets table.
+  const existingRows = await db
+    .select({ storageKey: assetsTable.storageKey })
+    .from(assetsTable)
+    .where(inArray(assetsTable.storageKey, keyArray));
+  const alreadyIndexedKeys = new Set(existingRows.map((r) => r.storageKey));
+
+  const missingKeys = keyArray.filter((k) => !alreadyIndexedKeys.has(k));
+  const alreadyIndexed = keyArray.length - missingKeys.length;
+
   let inserted = 0;
-  let alreadyIndexed = 0;
-  for (const storageKey of storageKeys) {
-    const existing = await db
-      .select({ id: assetsTable.id })
-      .from(assetsTable)
-      .where(eq(assetsTable.storageKey, storageKey))
-      .limit(1);
-    if (existing.length > 0) {
-      alreadyIndexed++;
-      continue;
-    }
-    // Pull metadata from the companion cms_media row if we have one.
-    const media = await db
+
+  if (missingKeys.length > 0) {
+    // Batch-fetch all matching cms_media rows in one query.
+    const mediaRows = await db
       .select()
       .from(mediaTable)
-      .where(eq(mediaTable.storageKey, storageKey))
-      .limit(1);
-    const m = media[0];
-    const filename = filenameFrom(storageKey);
-    await db.insert(assetsTable).values({
-      filename,
-      originalName: m?.altText ?? filename,
-      mimeType: m?.mime ?? "image/jpeg",
-      size: m?.byteSize ?? 0,
-      storageKey,
-      uploadedBy: m?.uploadedBy ?? null,
-      category: "abstract",
+      .where(inArray(mediaTable.storageKey, missingKeys));
+    const mediaByKey = new Map(mediaRows.map((m) => [m.storageKey, m]));
+
+    const newAssets = missingKeys.map((storageKey) => {
+      const m = mediaByKey.get(storageKey);
+      const filename = filenameFrom(storageKey);
+      return {
+        filename,
+        originalName: m?.altText ?? filename,
+        mimeType: m?.mime ?? "image/jpeg",
+        size: m?.byteSize ?? 0,
+        storageKey,
+        uploadedBy: m?.uploadedBy ?? null,
+        category: "abstract" as const,
+      };
     });
-    inserted++;
+
+    await db.insert(assetsTable).values(newAssets);
+    inserted = newAssets.length;
   }
 
   const [total] = await db

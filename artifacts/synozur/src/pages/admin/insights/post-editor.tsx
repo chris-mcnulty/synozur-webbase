@@ -38,6 +38,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { MediaPickerModal, mediaUrl, uploadAndRegisterImage } from "@/components/admin/MediaPickerModal";
+import { sanitizeHtml } from "@/components/rich-text";
 import { useToast } from "@/hooks/use-toast";
 import { api, type PostRevisionDetail } from "@/lib/api";
 import {
@@ -842,12 +843,26 @@ function tokenize(s: string): string[] {
   return s.split(/(\s+)/).filter((t) => t.length > 0);
 }
 
+// Maximum number of tokens (words + whitespace) each side may have before we
+// skip the O(n*m) LCS table and fall back to a simple "all-deleted / all-added"
+// diff. This prevents the modal from freezing on very large revision bodies.
+const DIFF_TOKEN_LIMIT = 2000;
+
 function diffWords(a: string, b: string): DiffToken[] {
   const aw = tokenize(a);
   const bw = tokenize(b);
   const n = aw.length;
   const m = bw.length;
-  // LCS table.
+
+  // Hard cap: fall back for very large inputs to avoid O(n*m) memory spike.
+  if (n > DIFF_TOKEN_LIMIT || m > DIFF_TOKEN_LIMIT) {
+    const out: DiffToken[] = [];
+    for (const t of aw) out.push({ op: "del", text: t });
+    for (const t of bw) out.push({ op: "ins", text: t });
+    return out;
+  }
+
+  // LCS table — safe for token counts up to DIFF_TOKEN_LIMIT on each side.
   const dp: number[][] = Array.from({ length: n + 1 }, () =>
     new Array(m + 1).fill(0),
   );
@@ -1153,10 +1168,8 @@ function RevisionViewer(props: {
               )}
               <div
                 className="prose prose-sm dark:prose-invert max-w-none mt-4"
-                // Content is a CMS snapshot we produced ourselves; rendering it
-                // here matches how /insights/:slug renders the live post.
                 dangerouslySetInnerHTML={{
-                  __html: detail.snapshotBodyHtml ?? "",
+                  __html: sanitizeHtml(detail.snapshotBodyHtml ?? ""),
                 }}
               />
             </TabsContent>
