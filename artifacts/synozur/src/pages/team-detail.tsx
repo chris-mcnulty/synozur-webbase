@@ -28,6 +28,15 @@ function stripHtml(input: string | null | undefined): string {
     .trim();
 }
 
+function safeHref(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("mailto:")) {
+    return url.trim();
+  }
+  return undefined;
+}
+
 export default function TeamDetail() {
   const [, params] = useRoute("/team/:slug");
   const slug = params?.slug ?? "";
@@ -133,9 +142,9 @@ export default function TeamDetail() {
                 />
               )}
               <div className="flex flex-wrap gap-3">
-                {person.linkedinUrl && (
+                {safeHref(person.linkedinUrl) && (
                   <a
-                    href={person.linkedinUrl}
+                    href={safeHref(person.linkedinUrl)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-white/20 text-sm text-white hover:bg-white/10 transition-colors"
@@ -151,10 +160,10 @@ export default function TeamDetail() {
                     <Mail className="h-4 w-4" /> Email
                   </a>
                 )}
-                {person.website &&
-                  !/^https?:\/\/(www\.)?wix\.com\/?$/i.test(person.website) && (
+                {safeHref(person.website) &&
+                  !/^https?:\/\/(www\.)?wix\.com\/?$/i.test(person.website ?? "") && (
                     <a
-                      href={person.website}
+                      href={safeHref(person.website)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-white/20 text-sm text-white hover:bg-white/10 transition-colors"
