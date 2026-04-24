@@ -2906,6 +2906,16 @@ components:
           type: string
           nullable: true
           description: Honeypot field. Must be empty for human submissions; populated submissions are silently dropped.
+        turnstileToken:
+          type: string
+          nullable: true
+          description: Cloudflare Turnstile token. Required when the server has TURNSTILE_SECRET_KEY configured; ignored otherwise.
+        notifyOnApproval:
+          type: boolean
+          description: If true, email the commenter when a moderator approves the comment.
+        notifyOnReply:
+          type: boolean
+          description: If true, email the commenter when someone posts a reply to this comment.
     SubmitCommentResponse:
       type: object
       required:

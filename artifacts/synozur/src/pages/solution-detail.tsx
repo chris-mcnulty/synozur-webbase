@@ -31,9 +31,13 @@ function isLightHex(hex: string | null | undefined): boolean {
 export default function SolutionDetail() {
   const [, params] = useRoute("/solutions/:slug");
   const slug = params?.slug ?? "";
+  const previewToken =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("preview")
+      : null;
   const q = useQuery({
-    queryKey: ["solutions", slug],
-    queryFn: () => api.getSolution(slug),
+    queryKey: ["solutions", slug, previewToken ?? ""],
+    queryFn: () => api.getSolution(slug, previewToken),
     enabled: slug.length > 0,
     retry: (count, err) => {
       if (err instanceof Error && /404/.test(err.message)) return false;

@@ -191,6 +191,111 @@ function renderPayloadText(payload: Record<string, unknown>): string {
     .join("\n");
 }
 
+// #53: transactional email to a visitor whose comment has just been
+// approved, or whose comment has just received a reply. Both use the
+// branded shell; the destination post URL is derived from SITE_URL so
+// emails always point at the canonical deployment.
+function commentPostUrl(postSlug: string, commentId: string | null): string {
+  const base = SITE_URL.replace(/\/$/, "");
+  const path = `/insights/${encodeURIComponent(postSlug)}`;
+  return commentId ? `${base}${path}#comment-${commentId}` : `${base}${path}`;
+}
+
+export async function sendCommentApprovedEmail(args: {
+  to: string;
+  commenterName: string | null;
+  postTitle: string;
+  postSlug: string;
+  commentId: string;
+  bodyText: string;
+}): Promise<SendEmailResult> {
+  const url = commentPostUrl(args.postSlug, args.commentId);
+  const greeting =
+    args.commenterName && args.commenterName.trim().length > 0
+      ? `Hi ${escapeHtml(args.commenterName.trim())},`
+      : "Hello,";
+  const html = brandedShell({
+    preheader: `Your comment on "${args.postTitle}" is now live.`,
+    heading: "Your comment is live",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Thanks for joining the conversation. Your comment on <strong>${escapeHtml(args.postTitle)}</strong> has been approved and is now visible to other readers.</p>
+      <blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid ${BRAND_PRIMARY};background:#f7f5ff;color:#1a1a2e;white-space:pre-wrap;">${escapeHtml(args.bodyText)}</blockquote>
+      <p style="margin:0 0 16px;">
+        <a href="${escapeHtml(url)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">View your comment →</a>
+      </p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const text = [
+    args.commenterName && args.commenterName.trim().length > 0
+      ? `Hi ${args.commenterName.trim()},`
+      : "Hello,",
+    "",
+    `Thanks for joining the conversation. Your comment on "${args.postTitle}" has been approved and is now visible to other readers.`,
+    "",
+    args.bodyText,
+    "",
+    `View it here: ${url}`,
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `Your comment on "${args.postTitle}" is live`,
+    html,
+    text,
+  });
+}
+
+export async function sendCommentReplyEmail(args: {
+  to: string;
+  parentCommenterName: string | null;
+  replyAuthorName: string;
+  postTitle: string;
+  postSlug: string;
+  replyCommentId: string;
+  replyBodyText: string;
+}): Promise<SendEmailResult> {
+  const url = commentPostUrl(args.postSlug, args.replyCommentId);
+  const greeting =
+    args.parentCommenterName && args.parentCommenterName.trim().length > 0
+      ? `Hi ${escapeHtml(args.parentCommenterName.trim())},`
+      : "Hello,";
+  const html = brandedShell({
+    preheader: `${args.replyAuthorName} replied to your comment on "${args.postTitle}".`,
+    heading: "Someone replied to your comment",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;"><strong>${escapeHtml(args.replyAuthorName)}</strong> replied to your comment on <strong>${escapeHtml(args.postTitle)}</strong>:</p>
+      <blockquote style="margin:0 0 20px;padding:12px 16px;border-left:3px solid ${BRAND_PRIMARY};background:#f7f5ff;color:#1a1a2e;white-space:pre-wrap;">${escapeHtml(args.replyBodyText)}</blockquote>
+      <p style="margin:0 0 16px;">
+        <a href="${escapeHtml(url)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">Read the reply →</a>
+      </p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const text = [
+    args.parentCommenterName && args.parentCommenterName.trim().length > 0
+      ? `Hi ${args.parentCommenterName.trim()},`
+      : "Hello,",
+    "",
+    `${args.replyAuthorName} replied to your comment on "${args.postTitle}":`,
+    "",
+    args.replyBodyText,
+    "",
+    `Read it here: ${url}`,
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `New reply on "${args.postTitle}"`,
+    html,
+    text,
+  });
+}
+
 export async function sendInternalNotification(args: {
   formType: "contact" | "subscribe" | "start";
   submissionId: number;

@@ -123,7 +123,8 @@ function CommentItem({
   const isReply = depth > 0;
   return (
     <li
-      className={isReply ? "mt-4" : ""}
+      id={`comment-${node.id}`}
+      className={isReply ? "mt-4 scroll-mt-24" : "scroll-mt-24"}
       data-testid={`comment-${node.id}`}
     >
       <article className="rounded-2xl border border-border/60 bg-card p-5">

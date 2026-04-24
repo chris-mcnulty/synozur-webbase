@@ -17,6 +17,9 @@ import {
 import crypto from "node:crypto";
 import { serializePosts } from "../lib/postSerializer";
 import { audit } from "../lib/audit";
+import { verifyTurnstile } from "../lib/turnstile";
+import { sendCommentReplyEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -212,6 +215,13 @@ const SubmitBody = z.object({
   bodyText: z.string().min(1).max(5000),
   parentCommentId: z.string().uuid().nullish(),
   website: z.string().optional().nullable(),
+  // #54: CAPTCHA fallback. Only enforced when TURNSTILE_SECRET_KEY is set.
+  turnstileToken: z.string().optional().nullable(),
+  // #53: opt-in for transactional notifications to the commenter's email.
+  // The commenter will be emailed when the comment is approved and when a
+  // reply is posted, subject to the moderator's per-action toggle.
+  notifyOnApproval: z.boolean().optional(),
+  notifyOnReply: z.boolean().optional(),
 });
 
 function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
@@ -265,6 +275,20 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     res.status(202).json({ id: "00000000-0000-0000-0000-000000000000", status: "pending" });
     return;
   }
+  const ip =
+    (Array.isArray(req.headers["x-forwarded-for"])
+      ? req.headers["x-forwarded-for"][0]
+      : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()) ||
+    req.ip ||
+    null;
+  // CAPTCHA check (#54). No-op when TURNSTILE_SECRET_KEY is unset, so local
+  // dev and environments without Turnstile configured keep working.
+  const captchaOk = await verifyTurnstile(parsed.data.turnstileToken, ip);
+  if (!captchaOk) {
+    await audit({ action: "comment.captcha_failed", entity: "comment", entityId: "" });
+    res.status(202).json({ id: "00000000-0000-0000-0000-000000000000", status: "pending" });
+    return;
+  }
   const post = await db.query.postsTable.findFirst({
     where: and(
       eq(postsTable.slug, String(req.params.slug)),
@@ -276,12 +300,6 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const ip =
-    (Array.isArray(req.headers["x-forwarded-for"])
-      ? req.headers["x-forwarded-for"][0]
-      : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()) ||
-    req.ip ||
-    null;
   const [row] = await db
     .insert(commentsTable)
     .values({
@@ -293,9 +311,51 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
       ip,
       userAgent: req.headers["user-agent"] ?? null,
       status: "pending",
+      notifyOnApproval: parsed.data.notifyOnApproval ?? false,
+      notifyOnReply: parsed.data.notifyOnReply ?? false,
     })
     .returning({ id: commentsTable.id, status: commentsTable.status });
   await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
+
+  // #53: only send reply notifications for replies that are already approved.
+  // We resolve the top-level ancestor (matching the UI's one-level
+  // threading) so double-depth replies still notify the original author.
+  if (parsed.data.parentCommentId && row.status === "approved") {
+    void (async () => {
+      try {
+        let ancestor = await db.query.commentsTable.findFirst({
+          where: eq(commentsTable.id, parsed.data.parentCommentId!),
+        });
+        while (ancestor?.parentCommentId) {
+          const next = await db.query.commentsTable.findFirst({
+            where: eq(commentsTable.id, ancestor.parentCommentId),
+          });
+          if (!next) break;
+          ancestor = next;
+        }
+        if (
+          ancestor &&
+          ancestor.notifyOnReply &&
+          ancestor.authorEmail &&
+          ancestor.authorEmail.trim() !== "" &&
+          ancestor.authorEmail.toLowerCase() !== parsed.data.authorEmail.toLowerCase()
+        ) {
+          await sendCommentReplyEmail({
+            to: ancestor.authorEmail,
+            parentCommenterName: ancestor.authorName,
+            replyAuthorName: parsed.data.authorName,
+            postTitle: post.title,
+            postSlug: post.slug,
+            replyCommentId: row.id,
+            replyBodyText: parsed.data.bodyText,
+          });
+        }
+      } catch (err) {
+        logger.warn({ err }, "comment reply notification failed");
+      }
+    })();
+  }
+
   res.status(202).json({ id: row.id, status: row.status });
 });
 

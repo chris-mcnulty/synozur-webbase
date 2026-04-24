@@ -131,10 +131,14 @@ function RelatedWorkshopsRail({
 export default function ServiceDetail() {
   const [, params] = useRoute("/services/:slug");
   const slug = params?.slug ?? "";
+  const previewToken =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("preview")
+      : null;
 
   const detail = useQuery({
-    queryKey: ["services", slug, "detail"],
-    queryFn: () => api.getService(slug),
+    queryKey: ["services", slug, "detail", previewToken ?? ""],
+    queryFn: () => api.getService(slug, previewToken),
     enabled: slug.length > 0,
     retry: (count, err) => {
       if (err instanceof Error && /404/.test(err.message)) return false;

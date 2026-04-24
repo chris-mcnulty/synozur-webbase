@@ -1,23 +1,9 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 23, 2026  
-> 21 tasks pending · 75 merged · 29 cancelled
+> Last updated: April 24, 2026  
+> 11 tasks pending · 86 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
-
----
-
-## Comments
-
-### #53 · Notify visitors when their comment is approved or replied to
-**Depends on:** #19 (visitor comments)
-
-When a visitor leaves a comment on an Insights post, they have no way of knowing when it is approved or when someone replies. This task sends a transactional email to the commenter's address at each of those moments. Visitors must opt-in (checkbox at comment time). The admin moderation queue gains a "send notification" toggle per comment. Uses the existing Resend email integration.
-
-### #54 · Catch comment spam automatically with a CAPTCHA fallback
-**Depends on:** #19 (visitor comments)
-
-Bot-submitted comments currently pass through to the moderation queue, cluttering it. This task adds a CAPTCHA challenge (hCaptcha or Cloudflare Turnstile) on the comment form as a last line of defence after the existing Turnstile bot-protection layer. Invisible mode first; visible challenge as fallback on failure. Should integrate cleanly with the current `/api/comments` endpoint.
 
 ---
 
@@ -28,16 +14,6 @@ Bot-submitted comments currently pass through to the moderation queue, clutterin
 
 The services hierarchy is the most commercially critical part of the site. This task writes Playwright end-to-end tests covering: home → Services nav → services overview page → service detail → solution detail, verifying content renders and links resolve. Tests run in CI so regressions are caught before merge.
 
-### #60 · Preview services and solutions before publishing
-**Depends on:** #39 (services hierarchy admin UI)
-
-Editors currently have to publish a service or solution to see how it renders. This task adds a "Preview" button to the service and solution edit forms that opens the public-facing detail page in a new tab with a signed preview token, bypassing the `published` check. The preview token expires after 24 hours.
-
-### #61 · Track edit history for services and solutions
-**Depends on:** #39 (services hierarchy admin UI)
-
-Like the post revision system (#48), services and solutions should record a snapshot whenever an editor saves a change, with the editor's name and a timestamp. The admin edit form shows a collapsible history panel. Restoring a revision replaces the current record's fields with the snapshot values (the current state is saved as a new revision before overwriting).
-
 ### #62 · Bulk import services and solutions from a spreadsheet
 **Depends on:** #39 (services hierarchy admin UI)
 
@@ -46,20 +22,6 @@ Currently the services and solutions data can only be updated row-by-row through
 ---
 
 ## Content Library
-
-### #63 · Add asset categories beyond people and north-star
-**Depends on:** #46 (home page image picker)
-
-The asset library currently only supports two categories (`people` and `north-star`), which drive the two home-page image pickers. This task extends the category enum (and the image picker UI) to support additional buckets — for example `abstract`, `event`, `product-screenshot` — so that assets uploaded for other purposes (e.g. collateral hero images, workshop thumbnails) can be browsed by category rather than scrolled through as one flat list.
-
-### #76 · Show a live preview of how a library item will appear on the public site
-**Depends on:** #69 (library live content)
-
-When editing a collateral item in the admin, editors cannot see how it will look in the public library card or the featured carousel. This task adds a "Preview card" panel beside the edit form that renders the `CollateralCard` component with the current (unsaved) field values, giving instant visual feedback before saving.
-
----
-
-## CMS / Post Editor
 
 ### #66 · Preview a revision's content before restoring it
 **Depends on:** #48 (post revisions)
@@ -75,6 +37,16 @@ Related to #66. Rather than previewing a revision in isolation, editors often wa
 **Depends on:** #48 (post revisions)
 
 Every save creates a new revision. Without a retention policy, the `post_revisions` table grows indefinitely. This task adds a scheduled job (daily cron) that deletes revisions older than 90 days, keeping the 10 most recent regardless of age. The retention window and keep-count should be configurable via admin site settings.
+
+### #118 · Show hero-image thumbnails in the Library admin list
+**Depends on:** #69 (library live content)
+
+The admin Library/collateral list (`artifacts/synozur/src/pages/admin/library/collateral-list.tsx`) is text-only — title, type, service, solution, pillar, tags, status columns — so editors cannot tell at a glance whether a row has a hero image attached or which image it is. This task prepends a small (~64px square) hero thumbnail column rendered from `heroImage` (lazy-loaded, `?w=128` variant, falls back to a placeholder when unset). The thumbnail also shows in the Featured-items reorder list above the table. Purely a visual aid — no data-model change.
+
+### #119 · Categorize and filter master visual assets in the hero image picker
+**Depends on:** #63 (asset categories beyond people/north-star) — merged
+
+The Library collateral edit form still opens `MediaPickerModal` to choose a hero image, which has no category filter and no way to tag assets — so the master set of visual assets grows into one flat list that is hard to browse and impossible to classify. The newer `AssetLibraryModal` already supports category filter + upload-tagging against the extended `ASSET_CATEGORIES` enum. This task migrates the collateral-edit hero picker (and the other library edit forms — video, white-paper, workshop) to use `AssetLibraryModal`, so editors can narrow the grid by category and tag new uploads from the same modal. Includes backfilling any collateral hero images currently stored via `cms_media` so they surface in the unified `assets` table with a default category of `abstract` (editors can reclassify afterward).
 
 ---
 
@@ -106,64 +78,18 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 
 ---
 
-## SEO & Analytics
-
-The site already has per-page meta tags (`artifacts/synozur/src/lib/meta.tsx`), a page-type registry (`artifacts/synozur/src/lib/seo-config.ts`), a dynamic `/sitemap.xml` + `/robots.txt` (`artifacts/api-server/src/routes/seo.ts`), first-party traffic analytics, GA4/LinkedIn/Meta Pixel loaders gated by cookie consent, and a SEO audit/autofill + search-engine submission backend. The planning stub at `artifacts/synozur/src/pages/admin/marketing/seo.tsx` lists seven controls that still need to ship; the tasks below turn that list into concrete work and add the structured-data and analytics gaps surfaced by research. Phases 1–3 are the critical path (they unblock marketing); #115–#117 are independent and can parallelize.
-
-### #112 · Database-backed SEO & analytics settings (schema + API)
-**Depends on:** — (foundation)
-
-Move every SEO/analytics dial marketing currently needs a redeploy to change into the `site_settings` row, keeping env vars as fallback. Extend `lib/db/src/schema/siteSettings.ts` with nullable columns for: default title template, default meta description, default OG image (asset FK), Twitter handle + card type, LinkedIn company URL, Google + Bing site-verification tokens, Organization fields (name, legal name, logo asset FK, address parts, `sameAs` as jsonb), marketing tag IDs (GA4, LinkedIn Insight Partner, Meta Pixel), and sitemap controls (`excluded_paths` jsonb, `section_flags` jsonb). Generate a drizzle migration. Extend `GetPublicSiteSettingsResponse` with only what the public site needs (tag IDs, OG image URL, title template, default description, Twitter handle + card type, verification tokens); extend `GetAdminSiteSettingsResponse` + `UpdateAdminSiteSettingsBody` with every new column (validate title ≤ 120, description ≤ 160, `sameAs` entries are absolute URLs). Update `artifacts/api-server/src/routes/siteSettings.ts` to resolve both new asset FKs and read/write every new column with the same nullable trim-to-null behavior used for `polarisFeedUrl`. Purely additive — no behavior change on day one.
-
-### #113 · Admin UI for Marketing → SEO settings
-**Depends on:** #112
-
-Replace the stub at `artifacts/synozur/src/pages/admin/marketing/seo.tsx` with a real form mirroring `artifacts/synozur/src/pages/admin/site-config/site-settings.tsx`: single `useForm` + `react-hook-form` using the generated `UpdateAdminSiteSettingsBody` schema. Seven section cards — Defaults (title template, default description, default OG image asset picker), Social (Twitter handle, card type select, LinkedIn company URL), Marketing tags (GA4, LinkedIn, Meta Pixel with env-var fallback shown greyed out), Search engine verification (GSC + Bing tokens with links to their consoles), Sitemap (section toggles + excluded-paths textarea), Organization (legal name, display name, logo asset picker, address, dynamic `sameAs` URL list), and Status (showing `updatedAt` + links to `/sitemap.xml` and `/robots.txt`). Invalidate the `["public-site-settings"]` query on save so live `Analytics` and `Meta` components pick up changes without a reload.
-
-### #114 · Wire the public site to the new DB settings
-**Depends on:** #112
-
-Every place that reads a hard-coded string or env var consults the `public-site-settings` payload first, with the current constants as fallback so a partial config still renders valid output. In `artifacts/synozur/src/lib/meta.tsx`: apply the DB title template when a page doesn't pass a title; fall back to DB default description + OG image; emit `twitter:site`/`twitter:creator` from the DB handle; honor DB card type. In `artifacts/synozur/src/components/layout/index.tsx`: render `google-site-verification` and `msvalidate.01` meta tags once site-wide when tokens are set. In `artifacts/synozur/src/components/analytics.tsx` — in `loadMarketingTags`, prefer `settings.tagGa4Id` / `tagLinkedInPartnerId` / `tagMetaPixelId` over `import.meta.env.*`; keep the consent gate untouched. In `artifacts/synozur/src/components/organization-jsonld.tsx`: replace the hard-coded object with DB values, falling back to current constants per-field; render `sameAs` from the DB array. In `artifacts/api-server/src/routes/seo.ts`: skip content whose section flag is `false` and filter URLs matching `sitemap_excluded_paths`. Document the 5-minute sitemap cache propagation delay.
-
-### #115 · Structured-data enhancements (Breadcrumb, Article, Event, Person)
-**Depends on:** — (independent of #112–#114)
-
-Close the schema.org gaps surfaced by research. Add `artifacts/synozur/src/components/breadcrumb-jsonld.tsx` and emit `BreadcrumbList` on every page whose `pageType` is in `DETAIL_PREFIXES` — drive the hierarchy from `seo-config.ts`. On the Insights detail page, emit an `Article` schema with `headline`, `image`, `datePublished`, `dateModified`, `author.@type=Person`, and `publisher` pointing at the Organization, using fields from the existing post API payload. On the events detail page, emit `Event` schema with `startDate`, `endDate`, `location`, `eventAttendanceMode`, `organizer`. If team-member detail pages exist, emit `Person` schema with `name`, `jobTitle`, `image`, `sameAs`. Acceptance: Google's Rich Results Test passes for one URL of each new schema type.
-
-### #116 · Analytics enhancements (UTM capture, custom events, CSV export)
-**Depends on:** — (independent; extends existing traffic system)
-
-Three additive improvements to the first-party tracker without adding cookies. (a) UTM parameter capture — parse `utm_source/medium/campaign/term/content` from `window.location.search` in `artifacts/synozur/src/lib/traffic-tracker.ts` and include in the collect payload; add five nullable `text` columns to `lib/db/src/schema/traffic.ts`; prefer `utm_source` over referrer in `classifySource()`; surface UTM breakdowns in `artifacts/synozur/src/pages/admin/marketing/traffic.tsx`. (b) Custom event tracking — add `trackEvent(name, props?)` helper posting to `POST /api/traffic/event`; new `traffic_events` table (id, session_key, path, event_name, properties jsonb, created_at); admin view showing top events grouped by name; instrument contact-form submit, workshop detail CTA clicks, and resource downloads first. (c) CSV export — `GET /api/cms/analytics/overview.csv` and `/sessions.csv` honoring the same filters; download button on the traffic page scoped to current filter state.
-
-### #117 · Admin UI for existing SEO audit + search-engine submit endpoints
-**Depends on:** — (wraps shipped APIs)
-
-The `/api/seo/audit`, `/api/seo/audit/autofill`, and `/api/seo/submit` endpoints exist with no frontend. New page `artifacts/synozur/src/pages/admin/marketing/seo-audit.tsx` with a "Run audit" button that calls `GET /api/seo/audit` and renders findings grouped by artifact type (counts + list), a per-row "Apply autofill" calling `POST /api/seo/audit/autofill` with that id, a bulk "Autofill all empty" control, and links from each row back to the matching CMS editor for manual fixes. Add a submission card on the SEO admin page with a URL textarea (prefilled with the last 7 days of newly-published items from the sitemap endpoint) and a submit button calling `POST /api/seo/submit`, showing per-endpoint results (IndexNow / Google / Bing). Surface a "credentials missing" state when the server reports it; document the required env vars (`INDEXNOW_KEY`, `GOOGLE_INDEXING_*`, `BING_API_KEY`) in `docs/seo-env.md`.
-
----
-
 ## Summary Table
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #53 | Comment approval/reply notifications | Comments | #19 |
-| #54 | CAPTCHA fallback for comment spam | Comments | #19 |
 | #57 | Playwright tests for services pages | QA | #40 |
-| #60 | Preview unpublished services/solutions | Services admin | #39 |
-| #61 | Edit history for services & solutions | Services admin | #39 |
 | #62 | Bulk CSV import for services & solutions | Services admin | #39 |
-| #63 | Asset categories beyond people/north-star | Library | #46 |
 | #66 | Preview a past post revision | CMS | #48 |
 | #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
-| #76 | Live card preview in library edit form | Library | #69 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Expand user/role model to seven audience classes | Admin Access & People | #109 |
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
-| #112 | Database-backed SEO & analytics settings (schema + API) | SEO & Analytics | — |
-| #113 | Admin UI for Marketing → SEO settings | SEO & Analytics | #112 |
-| #114 | Wire the public site to the new DB settings | SEO & Analytics | #112 |
-| #115 | Structured-data enhancements (Breadcrumb, Article, Event, Person) | SEO & Analytics | — |
-| #116 | Analytics enhancements (UTM capture, custom events, CSV export) | SEO & Analytics | — |
-| #117 | Admin UI for existing SEO audit + search-engine submit endpoints | SEO & Analytics | — |
+| #118 | Hero-image thumbnails in the Library admin list | Library | #69 |
+| #119 | Categorize and filter master visual assets in the hero image picker | Library | #63 |

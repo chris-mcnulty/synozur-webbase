@@ -207,6 +207,21 @@ export interface CapabilityDto {
   hidden: boolean;
 }
 
+// #61: shared shape for service + solution revision list entries.
+export interface ServiceRevisionSummary {
+  id: string;
+  serviceId?: string;
+  solutionId?: string;
+  editedAt: string;
+  editor: {
+    id: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+  snapshotTitle: string | null;
+  snapshotStatus: string | null;
+}
+
 export const VIDEO_CATEGORIES = [
   "interview",
   "webinar",
@@ -479,10 +494,56 @@ export interface SeoSubmitBundle {
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
-  getService: (slug: string) =>
-    jsonFetch<ServiceWithMethodologies>(url(`/services/${encodeURIComponent(slug)}`)),
-  getSolution: (slug: string) =>
-    jsonFetch<SolutionWithCapabilities>(url(`/solutions/${encodeURIComponent(slug)}`)),
+  getService: (slug: string, previewToken?: string | null) =>
+    jsonFetch<ServiceWithMethodologies>(
+      url(
+        `/services/${encodeURIComponent(slug)}${
+          previewToken ? `?preview=${encodeURIComponent(previewToken)}` : ""
+        }`,
+      ),
+    ),
+  getSolution: (slug: string, previewToken?: string | null) =>
+    jsonFetch<SolutionWithCapabilities>(
+      url(
+        `/solutions/${encodeURIComponent(slug)}${
+          previewToken ? `?preview=${encodeURIComponent(previewToken)}` : ""
+        }`,
+      ),
+    ),
+  // #60: admin-only — mint a 24 h signed token for the public detail page.
+  createServicePreviewToken: (id: string) =>
+    jsonFetch<{ token: string; expiresAt: string; slug: string; previewPath: string }>(
+      url(`/cms/services/${encodeURIComponent(id)}/preview-token`),
+      { method: "POST" },
+    ),
+  createSolutionPreviewToken: (id: string) =>
+    jsonFetch<{ token: string; expiresAt: string; slug: string; previewPath: string }>(
+      url(`/cms/solutions/${encodeURIComponent(id)}/preview-token`),
+      { method: "POST" },
+    ),
+  // #61: revision history for services and solutions.
+  listServiceRevisions: (id: string) =>
+    jsonFetch<{ items: ServiceRevisionSummary[] }>(
+      url(`/cms/services/${encodeURIComponent(id)}/revisions`),
+    ),
+  restoreServiceRevision: (id: string, revisionId: string) =>
+    jsonFetch<ServiceDto>(
+      url(
+        `/cms/services/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`,
+      ),
+      { method: "POST" },
+    ),
+  listSolutionRevisions: (id: string) =>
+    jsonFetch<{ items: ServiceRevisionSummary[] }>(
+      url(`/cms/solutions/${encodeURIComponent(id)}/revisions`),
+    ),
+  restoreSolutionRevision: (id: string, revisionId: string) =>
+    jsonFetch<SolutionDto>(
+      url(
+        `/cms/solutions/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`,
+      ),
+      { method: "POST" },
+    ),
   publicEvents: () => jsonFetch<PublicEvent[]>(url("/events")),
   publicEvent: (slug: string) => jsonFetch<PublicEvent>(url(`/events/${slug}`)),
   me: () => jsonFetch<AdminMe>(url("/admin/me")),

@@ -308,16 +308,17 @@ function withinPublishWindow(
 
 export async function getServiceWithMethodologies(
   slug: string,
+  opts: { preview?: boolean } = {},
 ): Promise<ServiceWithMethodologies | null> {
   const service = await db.query.servicesTable.findFirst({
     where: eq(servicesTable.slug, slug),
   });
+  if (!service || service.deletedAt) return null;
+  // #60: preview bypasses publish-status + publish-window gates but still
+  // refuses soft-deleted rows — editors should never see a resurrected row.
   if (
-    !service ||
-    service.deletedAt ||
-    !service.active ||
-    service.status !== "published" ||
-    !withinPublishWindow(service)
+    !opts.preview &&
+    (!service.active || service.status !== "published" || !withinPublishWindow(service))
   )
     return null;
   const methodologies = await db
@@ -344,16 +345,16 @@ export async function getServiceWithMethodologies(
 
 export async function getSolutionWithCapabilities(
   slug: string,
+  opts: { preview?: boolean } = {},
 ): Promise<SolutionWithCapabilities | null> {
   const solution = await db.query.solutionsTable.findFirst({
     where: eq(solutionsTable.slug, slug),
   });
+  if (!solution || solution.deletedAt) return null;
+  // #60: preview bypasses publish-status + publish-window gates.
   if (
-    !solution ||
-    solution.deletedAt ||
-    !solution.active ||
-    solution.status !== "published" ||
-    !withinPublishWindow(solution)
+    !opts.preview &&
+    (!solution.active || solution.status !== "published" || !withinPublishWindow(solution))
   )
     return null;
   const capabilities = await db
