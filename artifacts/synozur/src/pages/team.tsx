@@ -83,7 +83,7 @@ export default function Team() {
                     data-testid={`team-card-${p.slug}`}
                   >
                     <Link
-                      href={`/team/${p.slug}`}
+                      href={`/team/${encodeURIComponent(p.slug)}`}
                       className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                     >
                       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
