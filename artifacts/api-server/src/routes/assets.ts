@@ -26,13 +26,12 @@ router.get("/assets", requireAdmin, async (req, res): Promise<void> => {
   }
   const search = params.data.search?.trim();
   const category = params.data.category?.trim();
-  const categoryIdRaw =
-    typeof req.query.categoryId === "string" ? req.query.categoryId.trim() : undefined;
+  const categoryId = params.data.categoryId;
 
   const conditions: SQL[] = [];
   if (search) conditions.push(ilike(assetsTable.originalName, `%${search}%`));
-  if (categoryIdRaw) {
-    conditions.push(eq(assetsTable.categoryId, categoryIdRaw));
+  if (categoryId) {
+    conditions.push(eq(assetsTable.categoryId, categoryId));
   } else if (category) {
     // Legacy callers may still filter by the string category. If a category
     // row matches this slug, prefer the FK; otherwise fall back to the string.
@@ -64,11 +63,8 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { originalName, mimeType, size, storageKey, category } = parsed.data;
-
-  const categoryIdRaw =
-    typeof req.body?.categoryId === "string" ? req.body.categoryId.trim() : undefined;
-  const altText = typeof req.body?.altText === "string" ? req.body.altText : null;
+  const { originalName, mimeType, size, storageKey, category, categoryId: categoryIdRaw, altText: altTextRaw } = parsed.data;
+  const altText = altTextRaw ?? null;
 
   let resolvedCategoryId: string | null = null;
   let resolvedCategorySlug: string | null = null;

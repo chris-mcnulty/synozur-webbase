@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import {
   db,
   assetsTable,
@@ -11,10 +11,14 @@ import { requireAuth } from "../../middlewares/auth";
 
 const router: IRouter = Router();
 
+const PAGE_SIZE_MAX = 100;
+
 const ListQuery = z.object({
   search: z.string().trim().min(1).optional(),
   categoryId: z.string().uuid().optional(),
   source: z.enum(["asset", "media", "all"]).default("all"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(PAGE_SIZE_MAX).default(48),
 });
 
 /**
@@ -30,7 +34,8 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { search, categoryId, source } = parsed.data;
+  const { search, categoryId, source, page, pageSize } = parsed.data;
+  const offset = (page - 1) * pageSize;
 
   const assetConditions: SQL[] = [];
   if (search) {
@@ -72,7 +77,7 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
   const wantAssets = source === "all" || source === "asset";
   const wantMedia = source === "all" || source === "media";
 
-  const [assetRows, mediaRows, categories] = await Promise.all([
+  const [assetRows, mediaRows, assetTotal, mediaTotal, categories] = await Promise.all([
     wantAssets
       ? assetWhere
         ? db
@@ -80,7 +85,14 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
             .from(assetsTable)
             .where(assetWhere)
             .orderBy(desc(assetsTable.uploadedAt))
-        : db.select().from(assetsTable).orderBy(desc(assetsTable.uploadedAt))
+            .limit(pageSize)
+            .offset(offset)
+        : db
+            .select()
+            .from(assetsTable)
+            .orderBy(desc(assetsTable.uploadedAt))
+            .limit(pageSize)
+            .offset(offset)
       : Promise.resolve([]),
     wantMedia
       ? mediaWhere
@@ -89,8 +101,27 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
             .from(mediaTable)
             .where(mediaWhere)
             .orderBy(desc(mediaTable.createdAt))
-        : db.select().from(mediaTable).orderBy(desc(mediaTable.createdAt))
+            .limit(pageSize)
+            .offset(offset)
+        : db
+            .select()
+            .from(mediaTable)
+            .orderBy(desc(mediaTable.createdAt))
+            .limit(pageSize)
+            .offset(offset)
       : Promise.resolve([]),
+    wantAssets
+      ? (assetWhere
+          ? db.select({ n: count() }).from(assetsTable).where(assetWhere)
+          : db.select({ n: count() }).from(assetsTable)
+        ).then((r) => r[0]?.n ?? 0)
+      : Promise.resolve(0),
+    wantMedia
+      ? (mediaWhere
+          ? db.select({ n: count() }).from(mediaTable).where(mediaWhere)
+          : db.select({ n: count() }).from(mediaTable)
+        ).then((r) => r[0]?.n ?? 0)
+      : Promise.resolve(0),
     db.select().from(assetCategoriesTable),
   ]);
 
@@ -161,7 +192,8 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
 
   items.sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 
-  res.json({ items, total: items.length });
+  const total = Number(assetTotal) + Number(mediaTotal);
+  res.json({ items, total, page, pageSize });
 });
 
 export default router;

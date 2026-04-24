@@ -79,6 +79,24 @@ router.patch(
       return;
     }
     const id = String(req.params.id);
+    const updateFields = {
+      ...(parsed.data.slug !== undefined ? { slug: parsed.data.slug } : {}),
+      ...(parsed.data.label !== undefined ? { label: parsed.data.label } : {}),
+      ...(parsed.data.sortOrder !== undefined
+        ? { sortOrder: parsed.data.sortOrder }
+        : {}),
+    };
+    if (Object.keys(updateFields).length === 0) {
+      const existing = await db.query.assetCategoriesTable.findFirst({
+        where: eq(assetCategoriesTable.id, id),
+      });
+      if (!existing) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      res.json(existing);
+      return;
+    }
     if (parsed.data.slug) {
       const clash = await db.query.assetCategoriesTable.findFirst({
         where: eq(assetCategoriesTable.slug, parsed.data.slug),
@@ -90,13 +108,7 @@ router.patch(
     }
     const [row] = await db
       .update(assetCategoriesTable)
-      .set({
-        ...(parsed.data.slug !== undefined ? { slug: parsed.data.slug } : {}),
-        ...(parsed.data.label !== undefined ? { label: parsed.data.label } : {}),
-        ...(parsed.data.sortOrder !== undefined
-          ? { sortOrder: parsed.data.sortOrder }
-          : {}),
-      })
+      .set(updateFields)
       .where(eq(assetCategoriesTable.id, id))
       .returning();
     if (!row) {

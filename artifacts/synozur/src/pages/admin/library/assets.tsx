@@ -321,7 +321,16 @@ export default function AssetsLibrary() {
               item={item}
               categories={categories}
               categoriesById={categoriesById}
-              canDelete={!!access?.isEditorOrAbove}
+              canEdit={
+                item.source === "asset"
+                  ? !!access?.isAllowListed
+                  : !!access?.isEditorOrAbove
+              }
+              canDelete={
+                item.source === "asset"
+                  ? !!access?.isAllowListed
+                  : !!access?.isEditorOrAbove
+              }
               onCopy={(url) => {
                 navigator.clipboard.writeText(url);
                 toast({ title: "URL copied" });
@@ -345,6 +354,7 @@ function AssetCard({
   item,
   categories,
   categoriesById,
+  canEdit,
   canDelete,
   onCopy,
   onDelete,
@@ -354,6 +364,7 @@ function AssetCard({
   item: LibraryAssetItem;
   categories: AssetCategory[];
   categoriesById: Map<string, AssetCategory>;
+  canEdit: boolean;
   canDelete: boolean;
   onCopy: (url: string) => void;
   onDelete: () => void;
@@ -420,6 +431,7 @@ function AssetCard({
             onBlur={handleBlur}
             placeholder="Alt text"
             className="h-8 text-xs pr-7"
+            disabled={!canEdit}
             data-testid={`asset-alt-${item.source}-${item.id}`}
           />
           <div
@@ -437,6 +449,7 @@ function AssetCard({
           onValueChange={(v) =>
             onChangeCategory(v === NONE_CATEGORY ? null : v).catch(() => undefined)
           }
+          disabled={!canEdit}
         >
           <SelectTrigger
             className="h-8 text-xs"
