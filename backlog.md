@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 11 tasks pending · 86 merged · 29 cancelled
+> 7 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -23,30 +23,10 @@ Currently the services and solutions data can only be updated row-by-row through
 
 ## Content Library
 
-### #66 · Preview a revision's content before restoring it
-**Depends on:** #48 (post revisions)
-
-The revision history panel shows a list of past snapshots with dates and author names. Editors cannot currently read the content of a past revision without restoring it (which overwrites the current draft). This task adds a "Preview" link beside each revision that opens a read-only rendered view of that snapshot in a slide-over panel or new tab.
-
-### #67 · Show a diff between the current version and a past revision
-**Depends on:** #48 (post revisions)
-
-Related to #66. Rather than previewing a revision in isolation, editors often want to see exactly what changed. This task renders a word-level diff between the selected revision and the current version of the post, highlighting additions in green and deletions in red, using a library such as `diff-match-patch`.
-
 ### #68 · Automatically trim old revisions to keep storage lean
 **Depends on:** #48 (post revisions)
 
 Every save creates a new revision. Without a retention policy, the `post_revisions` table grows indefinitely. This task adds a scheduled job (daily cron) that deletes revisions older than 90 days, keeping the 10 most recent regardless of age. The retention window and keep-count should be configurable via admin site settings.
-
-### #118 · Show hero-image thumbnails in the Library admin list
-**Depends on:** #69 (library live content)
-
-The admin Library/collateral list (`artifacts/synozur/src/pages/admin/library/collateral-list.tsx`) is text-only — title, type, service, solution, pillar, tags, status columns — so editors cannot tell at a glance whether a row has a hero image attached or which image it is. This task prepends a small (~64px square) hero thumbnail column rendered from `heroImage` (lazy-loaded, `?w=128` variant, falls back to a placeholder when unset). The thumbnail also shows in the Featured-items reorder list above the table. Purely a visual aid — no data-model change.
-
-### #119 · Categorize and filter master visual assets in the hero image picker
-**Depends on:** #63 (asset categories beyond people/north-star) — merged
-
-The Library collateral edit form still opens `MediaPickerModal` to choose a hero image, which has no category filter and no way to tag assets — so the master set of visual assets grows into one flat list that is hard to browse and impossible to classify. The newer `AssetLibraryModal` already supports category filter + upload-tagging against the extended `ASSET_CATEGORIES` enum. This task migrates the collateral-edit hero picker (and the other library edit forms — video, white-paper, workshop) to use `AssetLibraryModal`, so editors can narrow the grid by category and tag new uploads from the same modal. Includes backfilling any collateral hero images currently stored via `cms_media` so they surface in the unified `assets` table with a default category of `abstract` (editors can reclassify afterward).
 
 ---
 
@@ -84,12 +64,8 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 |---|-------|------|-----------|
 | #57 | Playwright tests for services pages | QA | #40 |
 | #62 | Bulk CSV import for services & solutions | Services admin | #39 |
-| #66 | Preview a past post revision | CMS | #48 |
-| #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Expand user/role model to seven audience classes | Admin Access & People | #109 |
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
-| #118 | Hero-image thumbnails in the Library admin list | Library | #69 |
-| #119 | Categorize and filter master visual assets in the hero image picker | Library | #63 |
