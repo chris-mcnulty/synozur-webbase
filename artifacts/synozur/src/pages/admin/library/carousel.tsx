@@ -178,11 +178,13 @@ export default function AdminCarouselPage() {
         { label: "Carousel" },
       ]}
       actions={
-        <Link href="/library/collateral">
-          <Button variant="outline" data-testid="button-back-to-collateral">
-            Back to collateral
-          </Button>
-        </Link>
+        <Button
+          asChild
+          variant="outline"
+          data-testid="button-back-to-collateral"
+        >
+          <Link href="/library/collateral">Back to collateral</Link>
+        </Button>
       }
     >
       <div className="max-w-3xl text-sm text-muted-foreground mb-4">
