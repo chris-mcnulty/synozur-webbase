@@ -856,10 +856,12 @@ function diffWords(a: string, b: string): DiffToken[] {
 
   // Hard cap: fall back for very large inputs to avoid O(n*m) memory spike.
   if (n > DIFF_TOKEN_LIMIT || m > DIFF_TOKEN_LIMIT) {
-    const out: DiffToken[] = [];
-    for (const t of aw) out.push({ op: "del", text: t });
-    for (const t of bw) out.push({ op: "ins", text: t });
-    return out;
+    return [
+      {
+        op: "eq" as const,
+        text: "[Diff omitted — content is too large to compare in the browser. Use the Preview tab to view the revision.]",
+      },
+    ];
   }
 
   // LCS table — safe for token counts up to DIFF_TOKEN_LIMIT on each side.
