@@ -10,6 +10,7 @@ import {
   GripVertical,
   Search,
   SlidersHorizontal,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -115,6 +116,40 @@ const PILLAR_OPTIONS = [
   { value: "experiences", label: "Experiences" },
   { value: "gtm", label: "Go-to-Market" },
 ] as const;
+
+// #118: hero thumbnails in the admin list. Append `?w=128` for a 2x-dense
+// 64px tile; URL-hosted images that ignore the query still work unchanged.
+function heroThumbUrl(url: string | null | undefined): string | null {
+  const s = (url ?? "").trim();
+  if (!s) return null;
+  if (s.includes("?")) return s;
+  return `${s}?w=128`;
+}
+
+function HeroThumb({ url, title }: { url: string | null | undefined; title: string }) {
+  const thumb = heroThumbUrl(url);
+  if (!thumb) {
+    return (
+      <div
+        className="flex h-12 w-12 items-center justify-center rounded border border-border bg-muted text-muted-foreground shrink-0"
+        aria-label="No hero image"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={thumb}
+      alt={title ? `${title} hero` : "Hero image"}
+      loading="lazy"
+      decoding="async"
+      width={64}
+      height={64}
+      className="h-12 w-12 rounded border border-border object-cover shrink-0 bg-muted"
+    />
+  );
+}
 
 export default function AdminCollateralList() {
   const { access } = useAdminAccess();
@@ -539,6 +574,7 @@ export default function AdminCollateralList() {
                   <span className="w-6 text-xs text-muted-foreground tabular-nums">
                     {idx + 1}
                   </span>
+                  <HeroThumb url={item.heroImage} title={item.title} />
                   <Link
                     href={`/library/collateral/${item.id}/edit`}
                     className="flex-1 font-medium hover:underline truncate"
@@ -693,6 +729,7 @@ export default function AdminCollateralList() {
                   data-testid="checkbox-select-all"
                 />
               </TableHead>
+              <TableHead className="w-16">Hero</TableHead>
               <TableHead>Title</TableHead>
               <TableHead className="w-28">Type</TableHead>
               <TableHead className="w-40">Service</TableHead>
@@ -708,13 +745,13 @@ export default function AdminCollateralList() {
           <TableBody>
             {listQ.isLoading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                   {items.length === 0
                     ? "No library items yet."
                     : "No items match the current filters."}
@@ -737,6 +774,9 @@ export default function AdminCollateralList() {
                         aria-label={`Select ${item.title}`}
                         data-testid={`checkbox-select-${item.id}`}
                       />
+                    </TableCell>
+                    <TableCell data-testid={`thumb-collateral-${item.id}`}>
+                      <HeroThumb url={item.heroImage} title={item.title} />
                     </TableCell>
                     <TableCell className="font-medium">
                       <Link href={`/library/collateral/${item.id}/edit`}>

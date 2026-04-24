@@ -18,12 +18,12 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
-  MediaPickerModal,
-  mediaUrl,
-} from "@/components/admin/MediaPickerModal";
+  AssetLibraryModal,
+  assetUrl,
+} from "@/components/admin/AssetLibraryModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
-import type { MediaItem } from "@workspace/api-client-react";
+import type { Asset } from "@workspace/api-zod/types";
 import {
   api,
   VIDEO_CATEGORIES,
@@ -268,8 +268,8 @@ export default function VideoEdit({ id }: Props) {
     else createMut.mutate(body);
   };
 
-  const handleHero = (m: MediaItem) => {
-    update({ heroImage: mediaUrl(m) });
+  const handleHero = (asset: Asset) => {
+    update({ heroImage: assetUrl(asset) });
     setShowHeroPicker(false);
   };
 
@@ -670,11 +670,10 @@ export default function VideoEdit({ id }: Props) {
         </aside>
       </div>
 
-      <MediaPickerModal
+      <AssetLibraryModal
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
-        title="Choose hero image"
       />
     </AdminLayout>
   );

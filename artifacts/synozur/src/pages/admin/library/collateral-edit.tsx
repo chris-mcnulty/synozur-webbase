@@ -19,20 +19,20 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
-  MediaPickerModal,
-  mediaUrl,
-} from "@/components/admin/MediaPickerModal";
+  AssetLibraryModal,
+  assetUrl,
+} from "@/components/admin/AssetLibraryModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
+import type { Asset } from "@workspace/api-zod/types";
 import {
   useCmsListCollateral,
   useCmsCreateCollateral,
   useCmsUpdateCollateral,
   type CollateralItem,
   type UpsertCollateralBody,
-  type MediaItem,
 } from "@workspace/api-client-react";
 
 interface Props {
@@ -285,8 +285,8 @@ export default function CollateralEdit({ id }: Props) {
     }
   };
 
-  const handleHero = (m: MediaItem) => {
-    update({ heroImage: mediaUrl(m) });
+  const handleHero = (asset: Asset) => {
+    update({ heroImage: assetUrl(asset) });
     setShowHeroPicker(false);
   };
 
@@ -667,11 +667,10 @@ export default function CollateralEdit({ id }: Props) {
         </aside>
       </div>
 
-      <MediaPickerModal
+      <AssetLibraryModal
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
-        title="Choose hero image"
       />
     </AdminLayout>
   );
