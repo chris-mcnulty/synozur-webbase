@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Linkedin, Mail, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
+import { RichText } from "@/components/rich-text";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -50,6 +51,17 @@ export default function TeamDetail() {
     return (
       <div className="w-full py-32 text-center text-muted-foreground">
         Loading…
+      </div>
+    );
+  }
+
+  if (detailQ.isError) {
+    const isNotFound =
+      detailQ.error instanceof Error && /404/.test(detailQ.error.message);
+    if (isNotFound) return <NotFound />;
+    return (
+      <div className="w-full py-32 text-center text-muted-foreground">
+        Something went wrong. Please try again later.
       </div>
     );
   }
@@ -114,9 +126,10 @@ export default function TeamDetail() {
                 {person.name}
               </h1>
               {person.shortDescription && (
-                <div
+                <RichText
+                  html={person.shortDescription}
                   className="text-xl text-zinc-300 leading-relaxed mb-8 [&_p]:mb-4 [&_strong]:text-white"
-                  dangerouslySetInnerHTML={{ __html: person.shortDescription }}
+                  invert
                 />
               )}
               <div className="flex flex-wrap gap-3">
@@ -162,9 +175,9 @@ export default function TeamDetail() {
               About {person.name.split(" ")[0]}
             </p>
             <h2 className="text-3xl md:text-4xl font-bold mb-8">Biography</h2>
-            <div
-              className="prose prose-lg max-w-none text-lg text-muted-foreground leading-relaxed [&_p]:mb-5 [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline"
-              dangerouslySetInnerHTML={{ __html: person.longDescription }}
+            <RichText
+              html={person.longDescription}
+              className="prose-lg text-lg text-muted-foreground leading-relaxed [&_p]:mb-5"
             />
           </div>
         </section>

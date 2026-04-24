@@ -57,11 +57,18 @@ function renderText(node: RicosNode): string {
   if (italic) out = `<em>${out}</em>`;
   if (underline) out = `<u>${out}</u>`;
   if (href) {
-    const attrs = [`href="${escapeHtml(href)}"`];
-    if (target === "BLANK") {
-      attrs.push('target="_blank"', 'rel="noopener noreferrer"');
+    const lowercaseHref = href.trim().toLowerCase();
+    const safeScheme =
+      lowercaseHref.startsWith("http://") ||
+      lowercaseHref.startsWith("https://") ||
+      lowercaseHref.startsWith("mailto:");
+    if (safeScheme) {
+      const attrs = [`href="${escapeHtml(href)}"`];
+      if (target === "BLANK") {
+        attrs.push('target="_blank"', 'rel="noopener noreferrer"');
+      }
+      out = `<a ${attrs.join(" ")}>${out}</a>`;
     }
-    out = `<a ${attrs.join(" ")}>${out}</a>`;
   }
   return out;
 }
@@ -98,11 +105,9 @@ export function ricosToHtml(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  // If it doesn't start with '{' assume it's already HTML or plain text.
+  // If it doesn't start with '{' treat it as plain text to prevent XSS.
   if (!trimmed.startsWith("{")) {
-    return /<[a-z][^>]*>/i.test(trimmed)
-      ? trimmed
-      : `<p>${escapeHtml(trimmed)}</p>`;
+    return `<p>${escapeHtml(trimmed)}</p>`;
   }
   try {
     const doc = JSON.parse(trimmed) as { nodes?: RicosNode[] };
@@ -110,8 +115,6 @@ export function ricosToHtml(raw: string | null | undefined): string | null {
     const html = renderChildren(doc.nodes);
     return html || null;
   } catch {
-    return /<[a-z][^>]*>/i.test(trimmed)
-      ? trimmed
-      : `<p>${escapeHtml(trimmed)}</p>`;
+    return `<p>${escapeHtml(trimmed)}</p>`;
   }
 }
