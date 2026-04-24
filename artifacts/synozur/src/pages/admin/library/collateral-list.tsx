@@ -173,13 +173,15 @@ function SortHeader({
     align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
 
   return (
-    <TableHead className={className}>
+    <TableHead
+      className={className}
+      aria-sort={!active ? "none" : dir === "asc" ? "ascending" : "descending"}
+    >
       <button
         type="button"
         onClick={cycle}
         className={`group inline-flex items-center gap-1 select-none ${justify} w-full hover:text-foreground`}
         data-testid={`th-sort-${col}`}
-        aria-sort={!active ? "none" : dir === "asc" ? "ascending" : "descending"}
       >
         <span>{label}</span>
         <Icon
