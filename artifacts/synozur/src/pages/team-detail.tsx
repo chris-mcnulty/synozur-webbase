@@ -185,7 +185,7 @@ export default function TeamDetail() {
                 return (
                   <Link
                     key={o.slug}
-                    href={`/team/${o.slug}`}
+                    href={`/team/${encodeURIComponent(o.slug)}`}
                     className="group rounded-2xl border border-border/60 bg-background overflow-hidden hover:border-primary/40 transition-colors block"
                   >
                     <div className="aspect-[4/5] bg-card overflow-hidden">
