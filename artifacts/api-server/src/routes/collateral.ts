@@ -472,8 +472,25 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
     const nextSlug = (updates.slug as string | undefined) ?? existing.slug;
     const nextType = (updates.type as string | undefined) ?? existing.type;
     const nextExternal = (updates.external as boolean | undefined) ?? existing.external;
-    if (nextExternal && d.url !== undefined) {
-      updates.url = d.url ?? "";
+    if (nextExternal) {
+      if (d.url !== undefined) {
+        const nextUrl = d.url?.trim() ?? "";
+        if (!nextUrl) {
+          res.status(400).json({
+            error: "External collateral requires a non-empty url",
+          });
+          return;
+        }
+        updates.url = nextUrl;
+      } else if (existing.external) {
+        // Preserve the existing off-site URL when patching only curation fields
+        updates.url = existing.url;
+      } else {
+        res.status(400).json({
+          error: "Provide a non-empty url when setting external=true",
+        });
+        return;
+      }
     } else {
       updates.url = canonicalUrlForCollateral(nextType, nextSlug);
     }

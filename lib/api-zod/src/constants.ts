@@ -56,7 +56,7 @@ export function canonicalUrlForCollateral(
     case "insight":
       return `/insights/${slug}`;
     case "podcast":
-      return `/polaris`;
+      return `/polaris/${slug}`;
     default:
       return `/library/${slug}`;
   }

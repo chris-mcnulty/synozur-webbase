@@ -76,6 +76,8 @@ function editorPathForSource(sourceId: string | null | undefined): string | null
       return `/insights/posts/${id}/edit`;
     case "polaris_episode":
       return `/library/polaris-episodes/${id}/edit`;
+    case "event":
+      return `/people/events/${id}`;
     default:
       return null;
   }
