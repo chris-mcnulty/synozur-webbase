@@ -182,13 +182,15 @@ export default function AssetsLibrary() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Library" }, { label: "Assets" }]}
       actions={
         <>
-          <Button
-            variant="outline"
-            onClick={() => setCatsModalOpen(true)}
-            data-testid="button-manage-asset-categories"
-          >
-            <Tags className="h-4 w-4 mr-1" /> Manage Categories
-          </Button>
+          {access?.isAdmin ? (
+            <Button
+              variant="outline"
+              onClick={() => setCatsModalOpen(true)}
+              data-testid="button-manage-asset-categories"
+            >
+              <Tags className="h-4 w-4 mr-1" /> Manage Categories
+            </Button>
+          ) : null}
           <ObjectUploader
             maxNumberOfFiles={20}
             maxFileSize={50 * 1024 * 1024}
