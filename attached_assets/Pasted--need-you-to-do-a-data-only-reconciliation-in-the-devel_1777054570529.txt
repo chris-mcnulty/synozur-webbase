@@ -1,0 +1,46 @@
+ need you to do a data-only reconciliation in the development database. Do not modify any code or commit any files — your only job is to run SQL against the database and report the results. This is being coordinated with a separate codebase change, so any code edits from you would create merge conflicts.
+
+Context
+The collateral table is a unified content index. The white_papers table is the editorial source of truth for whitepaper content. They link via collateral.source_id = 'white_paper:' || white_papers.id.
+
+Currently the link is broken: 7 collateral rows of type='white_paper' exist with either NULL source_ids or raw UUIDs that don't match any white_papers.id. Meanwhile, of the 6 published rows in white_papers, none have a properly-linked collateral mirror, and 2 are entirely missing from the library feed.
+
+Required changes (apply inside a single transaction)
+Delete two seeded orphan collateral rows that have no white_papers backing and represent fictional content:
+slug = 'north-star-strategy-white-paper'
+slug = 'ai-readiness-white-paper'
+Hide last year's operating-system paper (keep the row, mark it inactive so it stays out of public feeds but the URL still resolves):
+slug = 'company-operating-system-paper' → active = false
+Re-link 5 existing collateral rows to their correct white_papers source. The canonical source_id format is 'white_paper:' || white_papers.id::text.
+For these 3 collateral rows, the source is the white_papers row with the matching slug:
+2026-ai-report
+navigating-ai-stratosphere
+leading-ai-playbooks-and-strategic-analysis
+For these 2 collateral rows (the active 2026 op-sys paper and the now-hidden previous version), both link to the same source: the white_papers row with slug upgrading-your-company-operating-system-2026:
+company-operating-system-paper
+company-operating-system-paper-2026
+Create new collateral rows for 2 published white_papers that have no collateral mirror at all. They should appear in the library but not be featured in the carousel:
+care-raft-prompting-industry-examples
+succeeding-with-copilot
+For these, mirror the field mapping that upsertCollateralFromWhitePaper() in artifacts/api-server/src/lib/syncCollateral.ts produces (read that function — do not modify it — to confirm the mapping). Key points:
+type = 'ebook' if white_papers.doc_type = 'ebook' else 'white_paper'
+url = '/white-papers/' || slug
+source_id = 'white_paper:' || id::text
+active = true, featured = false, featured_rank = NULL
+download_url = COALESCE(document_url, external_url) (also check whether the function additionally resolves document_asset_id via assets.storage_key — if so, do the same)
+pillar cast safely to the collateral_pillar enum (strategic, technology, experiences, gtm); NULL otherwise
+tags carried over as jsonb
+Important constraints
+Run the four steps inside a single transaction. Roll back and stop if any step errors; report the exact error.
+Do not modify any code, scripts, or migrations files. No new files. Database changes only.
+Do not run any existing seed scripts (e.g., seedCollateral.ts, seedWhitePapers.ts) — they would conflict with this targeted change.
+The collateral.url for type=white_paper rows should already be /white-papers/<slug> — a separate code change has fixed the URL writer. Verify this is the case for all 5 existing rows; if any are still /items/<slug>, fix them as part of step 3.
+Verification (run after commit and report the output)
+Report the row-counts and contents of these queries verbatim:
+
+SELECT (SELECT COUNT(*) FROM white_papers WHERE status='published' AND active=true AND deleted_at IS NULL) AS published_wp, (SELECT COUNT(*) FROM collateral WHERE type IN ('white_paper','ebook') AND deleted_at IS NULL AND active=true AND source_id LIKE 'white_paper:%') AS active_linked_collateral; — should return 6 and 6.
+SELECT id, slug, source_id FROM collateral WHERE type='white_paper' AND deleted_at IS NULL AND (source_id IS NULL OR source_id NOT LIKE 'white_paper:%'); — should return 0 rows.
+SELECT c.slug AS collateral_slug, c.active, c.source_id, wp.slug AS wp_slug, wp.title FROM collateral c LEFT JOIN white_papers wp ON wp.id::text = REPLACE(c.source_id, 'white_paper:', '') WHERE c.type IN ('white_paper','ebook') AND c.deleted_at IS NULL ORDER BY c.active DESC, c.slug; — every row should have a non-null wp_slug.
+SELECT wp.id, wp.slug, wp.title FROM white_papers wp LEFT JOIN collateral c ON c.source_id='white_paper:'||wp.id::text AND c.deleted_at IS NULL AND c.active=true WHERE wp.status='published' AND wp.active=true AND wp.deleted_at IS NULL AND c.id IS NULL; — should return 0 rows.
+If any verification fails, do not attempt secondary fixes — report the failure and stop. We'll iterate from there.
+
