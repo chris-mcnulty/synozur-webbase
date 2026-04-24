@@ -21,4 +21,10 @@ export interface SubmitCommentBody {
   parentCommentId?: string | null;
   /** Honeypot field. Must be empty for human submissions; populated submissions are silently dropped. */
   website?: string | null;
+  /** Cloudflare Turnstile token. Required when the server has TURNSTILE_SECRET_KEY configured; ignored otherwise. */
+  turnstileToken?: string | null;
+  /** If true, email the commenter when a moderator approves the comment. */
+  notifyOnApproval?: boolean;
+  /** If true, email the commenter when someone posts a reply to this comment. */
+  notifyOnReply?: boolean;
 }

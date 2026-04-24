@@ -25,6 +25,28 @@ const ListQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(12),
 });
 
+// #121: admin-list sort spec. Single "field:dir" tuple (e.g. "title:asc") —
+// multi-column not needed yet but the parser accepts comma-separated tuples
+// so the frontend can grow without a schema change. Unknown fields are
+// silently skipped; callers that want strict validation should pre-check
+// their sort string.
+const SortableCmsCollateralColumns = {
+  title: collateralTable.title,
+  type: collateralTable.type,
+  pillar: collateralTable.pillar,
+  publishedAt: collateralTable.publishedAt,
+  updatedAt: collateralTable.updatedAt,
+  createdAt: collateralTable.createdAt,
+  featured: collateralTable.featured,
+  featuredRank: collateralTable.featuredRank,
+} as const;
+
+type SortableCmsCollateralColumn = keyof typeof SortableCmsCollateralColumns;
+
+const ListCmsQuery = z.object({
+  sort: z.string().optional(),
+});
+
 function serializeItem(row: typeof collateralTable.$inferSelect) {
   return {
     id: row.id,
@@ -209,19 +231,62 @@ function parseDate(input: string | null | undefined): Date | null {
   return d;
 }
 
-router.get("/cms/collateral", ...readGuard, async (_req, res) => {
+router.get("/cms/collateral", ...readGuard, async (req, res) => {
+  const parsed = ListCmsQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query" });
+    return;
+  }
+  const { sort } = parsed.data;
+
+  const orderBy = parseCmsCollateralSort(sort);
+
   const rows = await db
     .select()
     .from(collateralTable)
     .where(isNull(collateralTable.deletedAt))
-    .orderBy(
-      sql`${collateralTable.featured} desc`,
-      sql`${collateralTable.featuredRank} asc nulls last`,
-      desc(collateralTable.publishedAt),
-      asc(collateralTable.title),
-    );
+    .orderBy(...orderBy);
   res.json({ items: rows.map(serializeAdminItem) });
 });
+
+function parseCmsCollateralSort(sort: string | undefined) {
+  const defaultOrder = [
+    sql`${collateralTable.featured} desc`,
+    sql`${collateralTable.featuredRank} asc nulls last`,
+    desc(collateralTable.publishedAt),
+    asc(collateralTable.title),
+  ];
+  if (!sort) return defaultOrder;
+
+  const clauses = [];
+  for (const part of sort.split(",").map((s) => s.trim()).filter(Boolean)) {
+    const [rawCol, rawDir] = part.split(":").map((s) => s.trim());
+    const column =
+      SortableCmsCollateralColumns[rawCol as SortableCmsCollateralColumn];
+    if (!column) continue;
+    const dir = rawDir?.toLowerCase() === "desc" ? "desc" : "asc";
+    // `pillar` and `featuredRank` are nullable — send NULLs to the end for
+    // both directions so the "sorted" view stays coherent for editors.
+    const nullable = rawCol === "pillar" || rawCol === "featuredRank";
+    if (nullable) {
+      clauses.push(
+        dir === "desc"
+          ? sql`${column} desc nulls last`
+          : sql`${column} asc nulls last`,
+      );
+    } else {
+      clauses.push(dir === "desc" ? desc(column) : asc(column));
+    }
+  }
+
+  // Always append title asc as a stable tiebreaker when callers sort on a
+  // non-title column; prevents flicker between requests with the same key.
+  if (clauses.length > 0 && !sort.includes("title")) {
+    clauses.push(asc(collateralTable.title));
+  }
+
+  return clauses.length > 0 ? clauses : defaultOrder;
+}
 
 router.get("/cms/collateral/:id", ...readGuard, async (req, res) => {
   const row = await db.query.collateralTable.findFirst({

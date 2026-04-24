@@ -7,15 +7,15 @@ import {
   Trash2,
   Star,
   ExternalLink,
-  GripVertical,
   Search,
   SlidersHorizontal,
-  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -51,6 +51,11 @@ import {
   useCmsDeleteCollateral,
   type CollateralItem,
 } from "@workspace/api-client-react";
+import {
+  COLLATERAL_TYPE_TABS,
+  COLLATERAL_TYPE_LABELS,
+  HeroThumb,
+} from "./_collateral-helpers";
 
 // Server returns serviceId/solutionId; the generated CollateralItem type
 // doesn't carry them yet (openapi spec lag — same cast the edit form uses).
@@ -61,23 +66,35 @@ type CollateralRow = CollateralItem & {
 
 type TypeTab = "all" | NonNullable<CollateralItem["type"]> | "video" | "ebook";
 
-const TYPE_TABS: { value: TypeTab; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "white_paper", label: "White Paper" },
-  { value: "webinar", label: "Webinar" },
-  { value: "case_study", label: "Case Study" },
-  { value: "podcast", label: "Podcast" },
-  { value: "model", label: "Model" },
-  { value: "training", label: "Workshop" },
-  { value: "event", label: "Event" },
-  { value: "insight", label: "Insight" },
-  { value: "video", label: "Video" },
-  { value: "ebook", label: "eBook" },
-];
+// #121: columns the admin can sort by. Split across two origins:
+// - Server-side (`server`): forwarded to the backend `sort` query param.
+//   Backend validates against its own allow-list, so this list must stay
+//   in sync with SortableCmsCollateralColumns in routes/collateral.ts.
+// - Client-side (`client`): derived display values that live only in the
+//   frontend (service/solution titles are looked up from the services
+//   API). Sorting these would require JOINs on the server; for now we
+//   sort client-side against the already-loaded items.
+type SortCol =
+  | "title"
+  | "type"
+  | "service"
+  | "solution"
+  | "pillar"
+  | "featured"
+  | "featuredRank"
+  | "updatedAt";
+type SortDir = "asc" | "desc";
 
-const TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  TYPE_TABS.filter((t) => t.value !== "all").map((t) => [t.value, t.label]),
-);
+const SORT_ORIGIN: Record<SortCol, "server" | "client"> = {
+  title: "server",
+  type: "server",
+  pillar: "server",
+  featured: "server",
+  featuredRank: "server",
+  updatedAt: "server",
+  service: "client",
+  solution: "client",
+};
 
 const UNCHANGED = "__unchanged__";
 const NONE = "__none__";
@@ -117,50 +134,62 @@ const PILLAR_OPTIONS = [
   { value: "gtm", label: "Go-to-Market" },
 ] as const;
 
-// #118: hero thumbnails in the admin list. Append or override `w=128` for
-// a 2x-dense 64px tile; URL-hosted images that ignore the query still work
-// unchanged.
-function heroThumbUrl(url: string | null | undefined): string | null {
-  const s = (url ?? "").trim();
-  if (!s) return null;
+// #121: click cycles asc → desc → cleared. `current` is the active column on
+// the page; when it doesn't match `col`, the icon shows the neutral double
+// arrow so editors can see the column is sortable but not yet active.
+function SortHeader({
+  col,
+  label,
+  current,
+  dir,
+  onChange,
+  className,
+  align = "left",
+}: {
+  col: SortCol;
+  label: string;
+  current: SortCol | null;
+  dir: SortDir;
+  onChange: (col: SortCol | null, dir: SortDir) => void;
+  className?: string;
+  align?: "left" | "right" | "center";
+}) {
+  const active = current === col;
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
 
-  const hashIndex = s.indexOf("#");
-  const withoutHash = hashIndex >= 0 ? s.slice(0, hashIndex) : s;
-  const hash = hashIndex >= 0 ? s.slice(hashIndex) : "";
+  const cycle = () => {
+    if (!active) {
+      onChange(col, "asc");
+      return;
+    }
+    if (dir === "asc") {
+      onChange(col, "desc");
+      return;
+    }
+    onChange(null, "asc");
+  };
 
-  const queryIndex = withoutHash.indexOf("?");
-  const base = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
-  const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : "";
+  const justify =
+    align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
 
-  const params = new URLSearchParams(query);
-  params.set("w", "128");
-
-  const nextQuery = params.toString();
-  return nextQuery ? `${base}?${nextQuery}${hash}` : `${base}${hash}`;
-}
-
-function HeroThumb({ url, title }: { url: string | null | undefined; title: string }) {
-  const thumb = heroThumbUrl(url);
-  if (!thumb) {
-    return (
-      <div
-        className="flex h-16 w-16 items-center justify-center rounded border border-border bg-muted text-muted-foreground shrink-0"
-        aria-label="No hero image"
-      >
-        <ImageIcon className="h-4 w-4" />
-      </div>
-    );
-  }
   return (
-    <img
-      src={thumb}
-      alt={title ? `${title} hero` : "Hero image"}
-      loading="lazy"
-      decoding="async"
-      width={64}
-      height={64}
-      className="h-16 w-16 rounded border border-border object-cover shrink-0 bg-muted"
-    />
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={cycle}
+        className={`group inline-flex items-center gap-1 select-none ${justify} w-full hover:text-foreground`}
+        data-testid={`th-sort-${col}`}
+        aria-sort={!active ? "none" : dir === "asc" ? "ascending" : "descending"}
+      >
+        <span>{label}</span>
+        <Icon
+          className={
+            "h-3 w-3 shrink-0 " +
+            (active ? "text-foreground" : "text-muted-foreground/70 group-hover:text-foreground")
+          }
+        />
+      </button>
+    </TableHead>
   );
 }
 
@@ -169,7 +198,18 @@ export default function AdminCollateralList() {
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
 
-  const listQ = useCmsListCollateral();
+  // Sort state (#121) — null means fall back to the default server order.
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const serverSortParam =
+    sortCol && SORT_ORIGIN[sortCol] === "server"
+      ? `${sortCol}:${sortDir}`
+      : undefined;
+
+  const listQ = useCmsListCollateral(
+    serverSortParam ? { sort: serverSortParam } : undefined,
+  );
   const items: CollateralRow[] = (listQ.data?.items ?? []) as CollateralRow[];
 
   const servicesQ = useQuery({
@@ -225,7 +265,7 @@ export default function AdminCollateralList() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter((i) => {
+    const base = items.filter((i) => {
       if (tab !== "all" && i.type !== tab) return false;
       if (activeFilter === "active" && !i.active) return false;
       if (activeFilter === "inactive" && i.active) return false;
@@ -238,7 +278,43 @@ export default function AdminCollateralList() {
       }
       return true;
     });
-  }, [items, tab, search, serviceFilter, solutionFilter, activeFilter]);
+
+    // Client-side sort for derived columns (service/solution titles). All
+    // other columns are sorted server-side, so we keep the returned order.
+    if (sortCol && SORT_ORIGIN[sortCol] === "client") {
+      const sign = sortDir === "desc" ? -1 : 1;
+      const keyFor = (row: CollateralRow) => {
+        if (sortCol === "service") {
+          return row.serviceId ? (serviceById.get(row.serviceId) ?? "") : "";
+        }
+        return row.solutionId
+          ? (solutionById.get(row.solutionId)?.title ?? "")
+          : "";
+      };
+      return base.slice().sort((a, b) => {
+        const ka = keyFor(a).toLowerCase();
+        const kb = keyFor(b).toLowerCase();
+        if (ka === kb) return a.title.localeCompare(b.title);
+        // Empty strings go last regardless of direction.
+        if (!ka) return 1;
+        if (!kb) return -1;
+        return sign * ka.localeCompare(kb);
+      });
+    }
+
+    return base;
+  }, [
+    items,
+    tab,
+    search,
+    serviceFilter,
+    solutionFilter,
+    activeFilter,
+    sortCol,
+    sortDir,
+    serviceById,
+    solutionById,
+  ]);
 
   const solutionsForFilter = useMemo(() => {
     if (!serviceFilter) return services.flatMap((s) => s.solutions.map((sol) => ({ ...sol, serviceTitle: s.title })));
@@ -312,79 +388,8 @@ export default function AdminCollateralList() {
 
   const clearSelection = () => setSelected(new Set());
 
-  // Featured reorder --------------------------------------------------------
-  const featuredItems = useMemo(
-    () =>
-      items
-        .filter((i) => i.featured)
-        .slice()
-        .sort((a, b) => {
-          const ra = a.featuredRank ?? Number.POSITIVE_INFINITY;
-          const rb = b.featuredRank ?? Number.POSITIVE_INFINITY;
-          if (ra !== rb) return ra - rb;
-          return a.title.localeCompare(b.title);
-        }),
-    [items],
-  );
-
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
-  const [reordering, setReordering] = useState(false);
-
-  const displayOrder = useMemo(() => {
-    if (localOrder) {
-      const byId = new Map(featuredItems.map((f) => [f.id, f]));
-      const ordered = localOrder
-        .map((id) => byId.get(id))
-        .filter((x): x is CollateralRow => !!x);
-      const extras = featuredItems.filter((f) => !localOrder.includes(f.id));
-      return [...ordered, ...extras];
-    }
-    return featuredItems;
-  }, [featuredItems, localOrder]);
-
-  const commitReorder = async (newIds: string[]) => {
-    setLocalOrder(newIds);
-    setReordering(true);
-    try {
-      await api.reorderFeaturedCollateral(newIds);
-      toast({ title: "Order saved" });
-      await listQ.refetch();
-      setLocalOrder(null);
-    } catch (e) {
-      toast({
-        title: "Reorder failed",
-        description: e instanceof Error ? e.message : "Unknown error",
-        variant: "destructive",
-      });
-      setLocalOrder(null);
-    } finally {
-      setReordering(false);
-    }
-  };
-
-  const handleDrop = (targetId: string) => {
-    if (!dragId || dragId === targetId) {
-      setDragId(null);
-      setOverId(null);
-      return;
-    }
-    const currentIds = displayOrder.map((f) => f.id);
-    const from = currentIds.indexOf(dragId);
-    const to = currentIds.indexOf(targetId);
-    if (from < 0 || to < 0) {
-      setDragId(null);
-      setOverId(null);
-      return;
-    }
-    const next = currentIds.slice();
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    setDragId(null);
-    setOverId(null);
-    void commitReorder(next);
-  };
+  // #120: featured-items drag-to-reorder moved to its own admin page at
+  // /admin/library/carousel so this list stays focused on browsing/editing.
 
   // Bulk edit ---------------------------------------------------------------
   const MAX_BULK_IDS_PER_REQUEST = 200;
@@ -528,86 +533,10 @@ export default function AdminCollateralList() {
         )
       }
     >
-      {featuredItems.length > 0 && (
-        <Card className="mb-6 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="font-semibold">Featured items</h3>
-              <p className="text-xs text-muted-foreground">
-                Drag to reorder the home carousel and featured library row.
-                {reordering ? " Saving…" : ""}
-              </p>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {featuredItems.length} item{featuredItems.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <ul className="space-y-1" data-testid="featured-reorder-list">
-            {displayOrder.map((item, idx) => {
-              const isDragging = dragId === item.id;
-              const isOver = overId === item.id && dragId !== item.id;
-              return (
-                <li
-                  key={item.id}
-                  draggable={canWrite && !reordering}
-                  onDragStart={(e) => {
-                    if (!canWrite || reordering) return;
-                    setDragId(item.id);
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", item.id);
-                  }}
-                  onDragOver={(e) => {
-                    if (!dragId) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    if (overId !== item.id) setOverId(item.id);
-                  }}
-                  onDragLeave={() => {
-                    if (overId === item.id) setOverId(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    handleDrop(item.id);
-                  }}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  className={
-                    "flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm transition-colors " +
-                    (isDragging ? "opacity-50 " : "") +
-                    (isOver ? "border-primary bg-primary/5 " : "") +
-                    (canWrite && !reordering
-                      ? "cursor-grab active:cursor-grabbing"
-                      : "cursor-not-allowed")
-                  }
-                  data-testid={`featured-row-${item.id}`}
-                >
-                  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="w-6 text-xs text-muted-foreground tabular-nums">
-                    {idx + 1}
-                  </span>
-                  <HeroThumb url={item.heroImage} title={item.title} />
-                  <Link
-                    href={`/library/collateral/${item.id}/edit`}
-                    className="flex-1 font-medium hover:underline truncate"
-                  >
-                    {item.title}
-                  </Link>
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {TYPE_LABELS[item.type] ?? item.type}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-      )}
-
       {/* Type tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as TypeTab)} className="w-full">
         <TabsList className="flex-wrap h-auto" data-testid="tabs-collateral-type">
-          {TYPE_TABS.map(({ value, label }) => {
+          {COLLATERAL_TYPE_TABS.map(({ value, label }) => {
             const count =
               value === "all" ? items.length : items.filter((i) => i.type === value).length;
             return (
@@ -743,14 +672,85 @@ export default function AdminCollateralList() {
                 />
               </TableHead>
               <TableHead className="w-16">Hero</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="w-28">Type</TableHead>
-              <TableHead className="w-40">Service</TableHead>
-              <TableHead className="w-40">Solution</TableHead>
-              <TableHead className="w-24">Pillar</TableHead>
+              <SortHeader
+                col="title"
+                label="Title"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+              />
+              <SortHeader
+                col="type"
+                label="Type"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-28"
+              />
+              <SortHeader
+                col="service"
+                label="Service"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-40"
+              />
+              <SortHeader
+                col="solution"
+                label="Solution"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-40"
+              />
+              <SortHeader
+                col="pillar"
+                label="Pillar"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-24"
+              />
               <TableHead className="w-40">Tags</TableHead>
-              <TableHead className="w-20 text-center">Featured</TableHead>
-              <TableHead className="w-20 text-right">Rank</TableHead>
+              <SortHeader
+                col="featured"
+                label="Featured"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-24 text-center"
+                align="center"
+              />
+              <SortHeader
+                col="featuredRank"
+                label="Rank"
+                current={sortCol}
+                dir={sortDir}
+                onChange={(c, d) => {
+                  setSortCol(c);
+                  setSortDir(d);
+                }}
+                className="w-20 text-right"
+                align="right"
+              />
               <TableHead className="w-16">Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -805,7 +805,7 @@ export default function AdminCollateralList() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {TYPE_LABELS[item.type] ?? item.type}
+                      {COLLATERAL_TYPE_LABELS[item.type] ?? item.type}
                     </TableCell>
                     <TableCell className="text-sm">{svcTitle}</TableCell>
                     <TableCell className="text-sm">{solTitle}</TableCell>

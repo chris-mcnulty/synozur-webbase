@@ -216,6 +216,26 @@ export interface PostRevision {
   snapshotExcerpt?: string | null;
 }
 
+export interface PostRevisionDetail {
+  id: string;
+  postId: string;
+  editedAt: string;
+  editor?: AuthorSummary | null;
+  snapshotTitle?: string | null;
+  snapshotSubtitle?: string | null;
+  snapshotExcerpt?: string | null;
+  snapshotBodyHtml?: string | null;
+  snapshotBodyMarkdown?: string | null;
+  snapshotSlug?: string | null;
+  snapshotSeoTitle?: string | null;
+  snapshotSeoDescription?: string | null;
+  snapshotSeoCanonicalUrl?: string | null;
+  snapshotHeroImageId?: string | null;
+  snapshotHeroImageUrl?: string | null;
+  snapshotOgImageId?: string | null;
+  snapshotOgImageUrl?: string | null;
+}
+
 export interface Comment {
   id: string;
   postId: string;
@@ -284,6 +304,12 @@ export interface SubmitCommentBody {
   parentCommentId?: string | null;
   /** Honeypot field. Must be empty for human submissions; populated submissions are silently dropped. */
   website?: string | null;
+  /** Cloudflare Turnstile token. Required when the server has TURNSTILE_SECRET_KEY configured; ignored otherwise. */
+  turnstileToken?: string | null;
+  /** If true, email the commenter when a moderator approves the comment. */
+  notifyOnApproval?: boolean;
+  /** If true, email the commenter when someone posts a reply to this comment. */
+  notifyOnReply?: boolean;
 }
 
 export interface SubmitCommentResponse {
@@ -1491,6 +1517,13 @@ export type ListInsightsParams = {
    * @maximum 50
    */
   pageSize?: number;
+};
+
+export type CmsListCollateralParams = {
+  /**
+   * Optional sort spec as comma-separated `field:dir` tuples. Allowed fields: title, type, pillar, publishedAt, updatedAt, createdAt, featured, featuredRank. Unknown fields are ignored. When omitted, falls back to the default featured-first order.
+   */
+  sort?: string;
 };
 
 export type ListAssetsParams = {
