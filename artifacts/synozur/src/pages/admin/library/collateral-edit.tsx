@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, X, Image as ImageIcon, FileText } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,6 +227,7 @@ export default function CollateralEdit({ id }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
+  const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -290,6 +291,11 @@ export default function CollateralEdit({ id }: Props) {
     setShowHeroPicker(false);
   };
 
+  const handleDocument = (asset: Asset) => {
+    update({ downloadUrl: assetUrl(asset) });
+    setShowDocumentPicker(false);
+  };
+
   if (!isNew && listQ.isLoading && !existing) {
     return (
       <AdminLayout title="Edit Library Item">
@@ -346,7 +352,7 @@ export default function CollateralEdit({ id }: Props) {
             <div>
               <Label htmlFor="slug">Slug</Label>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">/items/</span>
+                <span className="text-sm text-muted-foreground">/white-papers/</span>
                 <Input
                   id="slug"
                   value={form.slug}
@@ -529,12 +535,51 @@ export default function CollateralEdit({ id }: Props) {
               </div>
               <div>
                 <Label htmlFor="downloadUrl">Download URL</Label>
-                <Input
-                  id="downloadUrl"
-                  value={form.downloadUrl}
-                  onChange={(e) => update({ downloadUrl: e.target.value })}
-                  disabled={!canWrite}
-                />
+                {form.type === "white_paper" && canWrite ? (
+                  <div className="space-y-2 mt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowDocumentPicker(true)}
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      {form.downloadUrl ? "Replace document…" : "Upload or pick document…"}
+                    </Button>
+                    {form.downloadUrl && (
+                      <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-3 py-2 text-sm">
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 truncate text-xs text-muted-foreground">
+                          {form.downloadUrl}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 shrink-0"
+                          onClick={() => update({ downloadUrl: "" })}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                    <Input
+                      id="downloadUrl"
+                      placeholder="…or paste a URL directly"
+                      value={form.downloadUrl}
+                      onChange={(e) => update({ downloadUrl: e.target.value })}
+                      className="text-xs"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="downloadUrl"
+                    value={form.downloadUrl}
+                    onChange={(e) => update({ downloadUrl: e.target.value })}
+                    disabled={!canWrite}
+                  />
+                )}
               </div>
             </div>
             <div>
@@ -671,6 +716,12 @@ export default function CollateralEdit({ id }: Props) {
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
+      />
+      <AssetLibraryModal
+        open={showDocumentPicker}
+        onClose={() => setShowDocumentPicker(false)}
+        onSelect={handleDocument}
+        kind="document"
       />
     </AdminLayout>
   );

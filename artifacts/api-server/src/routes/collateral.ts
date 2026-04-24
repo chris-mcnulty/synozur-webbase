@@ -166,9 +166,10 @@ router.get("/collateral", async (req, res) => {
 });
 
 router.get("/collateral/:slug", async (req, res) => {
+  const slugLower = String(req.params.slug).toLowerCase();
   const row = await db.query.collateralTable.findFirst({
     where: and(
-      eq(collateralTable.slug, String(req.params.slug)),
+      sql`lower(${collateralTable.slug}) = ${slugLower}`,
       isNull(collateralTable.deletedAt),
       eq(collateralTable.active, true),
     ),

@@ -5,6 +5,7 @@ import { Meta } from "@/lib/meta";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
 import { trackEvent } from "@/lib/traffic-tracker";
 import { RichText } from "@/components/rich-text";
+import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 
 const DOC_TYPE_LABELS: Record<WhitePaperDocType, string> = {
@@ -14,10 +15,14 @@ const DOC_TYPE_LABELS: Record<WhitePaperDocType, string> = {
   guide: "Guide",
 };
 
+type PageItem =
+  | { source: "white_papers"; data: WhitePaperDto }
+  | { source: "collateral"; data: Collateral };
+
 export default function WhitePaperDetail() {
   const [, params] = useRoute("/white-papers/:slug");
   const slug = params?.slug;
-  const [item, setItem] = useState<WhitePaperDto | null | undefined>(undefined);
+  const [item, setItem] = useState<PageItem | null | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +30,15 @@ export default function WhitePaperDetail() {
     api
       .getWhitePaper(slug)
       .then((res) => {
-        if (!cancelled) setItem(res);
+        if (cancelled) return;
+        if (res) {
+          setItem({ source: "white_papers", data: res });
+          return;
+        }
+        return fetchCollateralBySlug(slug).then((col) => {
+          if (cancelled) return;
+          setItem(col && col.type === "white_paper" ? { source: "collateral", data: col } : null);
+        });
       })
       .catch(() => {
         if (!cancelled) setItem(null);
@@ -44,25 +57,141 @@ export default function WhitePaperDetail() {
   }
   if (!item) return <NotFound />;
 
-  const downloadHref = item.documentUrl || item.externalUrl;
-  const downloadLabel = item.documentUrl ? "Download PDF" : item.externalUrl ? "Open" : null;
-  const downloadIcon = item.documentUrl ? (
-    <Download className="ml-2 h-4 w-4" />
-  ) : (
-    <ArrowRight className="ml-2 h-4 w-4" />
-  );
+  if (item.source === "white_papers") {
+    const wp = item.data;
+    const downloadHref = wp.documentUrl || wp.externalUrl;
+    const downloadLabel = wp.documentUrl ? "Download PDF" : wp.externalUrl ? "Open" : null;
+    const downloadIcon = wp.documentUrl ? (
+      <Download className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowRight className="ml-2 h-4 w-4" />
+    );
+
+    return (
+      <div className="w-full">
+        <Meta
+          title={wp.seoTitle || wp.title}
+          description={wp.seoDescription || wp.shortDescription}
+          image={wp.ogImage || wp.heroImage}
+          path={`/white-papers/${wp.slug}`}
+          type="article"
+        />
+
+        <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-16">
+          <div className="absolute inset-0 nebula-gradient opacity-25" />
+          <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+            <Link
+              href="/white-papers"
+              className="inline-flex items-center text-sm text-zinc-300 hover:text-white mb-8 transition-colors"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> All white papers
+            </Link>
+            <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/25 text-white text-[11px] tracking-[0.2em] font-semibold backdrop-blur-md mb-4">
+              {DOC_TYPE_LABELS[wp.docType].toUpperCase()}
+            </span>
+            {wp.subtitle && <p className="text-base text-primary mb-3">{wp.subtitle}</p>}
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6">
+              {wp.title}
+            </h1>
+            {wp.publishedAt && (
+              <p className="text-sm text-zinc-400">
+                Published{" "}
+                {new Date(wp.publishedAt).toLocaleDateString(undefined, {
+                  dateStyle: "long",
+                  timeZone: "UTC",
+                })}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {wp.heroImage && (
+          <section className="bg-background">
+            <div className="container mx-auto px-4 max-w-4xl -mt-8 relative z-20">
+              <div className="rounded-2xl overflow-hidden border border-border shadow-2xl aspect-[16/9] bg-card">
+                <img
+                  src={wp.heroImage}
+                  alt={wp.heroImageAlt || wp.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className="bg-background py-16">
+          <div className="container mx-auto px-4 max-w-3xl">
+            {wp.bodyHtml ? (
+              <RichText
+                html={wp.bodyHtml}
+                invert
+                className="prose-p:text-foreground prose-headings:text-foreground prose-a:text-primary"
+              />
+            ) : (
+              wp.shortDescription && (
+                <p className="text-lg text-foreground leading-relaxed whitespace-pre-line">
+                  {wp.shortDescription}
+                </p>
+              )
+            )}
+
+            {wp.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-10">
+                {wp.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="px-3 py-1 rounded-full text-xs bg-card border border-border text-muted-foreground"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {downloadHref && downloadLabel && (
+              <div className="mt-12">
+                <a
+                  href={downloadHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                  onClick={() =>
+                    void trackEvent(
+                      wp.documentUrl ? "resource-download" : "resource-open-external",
+                      { slug: wp.slug, docType: wp.docType, title: wp.title },
+                    )
+                  }
+                >
+                  {downloadLabel}
+                  {downloadIcon}
+                </a>
+                {wp.pageCount && (
+                  <p className="text-xs text-muted-foreground mt-2">{wp.pageCount} pages</p>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const col = item.data;
+  const downloadHref = col.downloadUrl || (col.external ? col.url : null);
+  const downloadLabel = col.downloadUrl ? "Download" : col.external ? "Open" : null;
 
   return (
     <div className="w-full">
       <Meta
-        title={item.seoTitle || item.title}
-        description={item.seoDescription || item.shortDescription}
-        image={item.ogImage || item.heroImage}
-        path={`/white-papers/${item.slug}`}
+        title={col.title}
+        description={col.description}
+        image={col.heroImage}
+        path={`/white-papers/${col.slug}`}
         type="article"
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-16">
+        <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <Link
             href="/white-papers"
@@ -71,33 +200,26 @@ export default function WhitePaperDetail() {
             <ArrowLeft className="mr-2 h-4 w-4" /> All white papers
           </Link>
           <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/25 text-white text-[11px] tracking-[0.2em] font-semibold backdrop-blur-md mb-4">
-            {DOC_TYPE_LABELS[item.docType].toUpperCase()}
+            WHITE PAPER
           </span>
-          {item.subtitle && <p className="text-base text-primary mb-3">{item.subtitle}</p>}
+          {col.subtitle && <p className="text-base text-primary mb-3">{col.subtitle}</p>}
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6">
-            {item.title}
+            {col.title}
           </h1>
-          {item.publishedAt && (
+          {col.publishedAt && (
             <p className="text-sm text-zinc-400">
               Published{" "}
-              {new Date(item.publishedAt).toLocaleDateString(undefined, {
-                dateStyle: "long",
-                timeZone: "UTC",
-              })}
+              {new Date(col.publishedAt).toLocaleDateString(undefined, { dateStyle: "long" })}
             </p>
           )}
         </div>
       </section>
 
-      {item.heroImage && (
+      {col.heroImage && (
         <section className="bg-background">
           <div className="container mx-auto px-4 max-w-4xl -mt-8 relative z-20">
             <div className="rounded-2xl overflow-hidden border border-border shadow-2xl aspect-[16/9] bg-card">
-              <img
-                src={item.heroImage}
-                alt={item.heroImageAlt || item.title}
-                className="w-full h-full object-cover"
-              />
+              <img src={col.heroImage} alt={col.title} className="w-full h-full object-cover" />
             </div>
           </div>
         </section>
@@ -105,23 +227,15 @@ export default function WhitePaperDetail() {
 
       <section className="bg-background py-16">
         <div className="container mx-auto px-4 max-w-3xl">
-          {item.bodyHtml ? (
-            <RichText
-              html={item.bodyHtml}
-              invert
-              className="prose-p:text-foreground prose-headings:text-foreground prose-a:text-primary"
-            />
-          ) : (
-            item.shortDescription && (
-              <p className="text-lg text-foreground leading-relaxed whitespace-pre-line">
-                {item.shortDescription}
-              </p>
-            )
+          {col.description && (
+            <p className="text-lg text-foreground leading-relaxed whitespace-pre-line">
+              {col.description}
+            </p>
           )}
 
-          {item.tags.length > 0 && (
+          {col.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-10">
-              {item.tags.map((t) => (
+              {col.tags.map((t) => (
                 <span
                   key={t}
                   className="px-3 py-1 rounded-full text-xs bg-card border border-border text-muted-foreground"
@@ -132,32 +246,33 @@ export default function WhitePaperDetail() {
             </div>
           )}
 
-          {downloadHref && downloadLabel && (
-            <div className="mt-12">
+          <div className="mt-12">
+            {downloadHref && downloadLabel ? (
               <a
                 href={downloadHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
                 onClick={() =>
-                  void trackEvent(
-                    item.documentUrl ? "resource-download" : "resource-open-external",
-                    {
-                      slug: item.slug,
-                      docType: item.docType,
-                      title: item.title,
-                    },
-                  )
+                  void trackEvent("resource-download", { slug: col.slug, title: col.title })
                 }
               >
                 {downloadLabel}
-                {downloadIcon}
+                {col.downloadUrl ? (
+                  <Download className="ml-2 h-4 w-4" />
+                ) : (
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                )}
               </a>
-              {item.pageCount && (
-                <p className="text-xs text-muted-foreground mt-2">{item.pageCount} pages</p>
-              )}
-            </div>
-          )}
+            ) : (
+              <Link
+                href="/contact"
+                className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              >
+                Get in touch <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            )}
+          </div>
         </div>
       </section>
     </div>
