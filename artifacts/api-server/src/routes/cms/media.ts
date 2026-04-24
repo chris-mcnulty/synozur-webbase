@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { desc, eq, sql } from "drizzle-orm";
-import { db, mediaTable } from "@workspace/db";
+import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { db, mediaTable, assetCategoriesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { ObjectStorageService } from "../../lib/objectStorage";
 import { audit } from "../../lib/audit";
@@ -12,6 +12,8 @@ const objectStorageService = new ObjectStorageService();
 const ListQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(50),
+  search: z.string().trim().min(1).optional(),
+  categoryId: z.string().uuid().optional(),
 });
 
 router.get("/cms/media", requireAuth, async (req, res) => {
@@ -20,16 +22,37 @@ router.get("/cms/media", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { page, pageSize } = parsed.data;
+  const { page, pageSize, search, categoryId } = parsed.data;
   const offset = (page - 1) * pageSize;
+
+  const conditions: SQL[] = [];
+  if (search) {
+    const like = `%${search}%`;
+    const searchExpr = or(
+      ilike(mediaTable.altText, like),
+      ilike(mediaTable.originalName, like),
+      ilike(mediaTable.storageKey, like),
+    );
+    if (searchExpr) conditions.push(searchExpr);
+  }
+  if (categoryId) conditions.push(eq(mediaTable.categoryId, categoryId));
+  const where =
+    conditions.length === 0
+      ? undefined
+      : conditions.length === 1
+        ? conditions[0]
+        : and(...conditions);
+
+  const listQuery = where
+    ? db.select().from(mediaTable).where(where)
+    : db.select().from(mediaTable);
+  const countQuery = where
+    ? db.select({ c: sql<number>`count(*)::int` }).from(mediaTable).where(where)
+    : db.select({ c: sql<number>`count(*)::int` }).from(mediaTable);
+
   const [items, totalRow] = await Promise.all([
-    db
-      .select()
-      .from(mediaTable)
-      .orderBy(desc(mediaTable.createdAt))
-      .limit(pageSize)
-      .offset(offset),
-    db.select({ c: sql<number>`count(*)::int` }).from(mediaTable),
+    listQuery.orderBy(desc(mediaTable.createdAt)).limit(pageSize).offset(offset),
+    countQuery,
   ]);
   res.json({ items, page, pageSize, total: totalRow[0]?.c ?? 0 });
 });
@@ -42,6 +65,8 @@ const RegisterBody = z.object({
   height: z.number().int().nullish(),
   byteSize: z.number().int().nullish(),
   altText: z.string().nullish(),
+  originalName: z.string().nullish(),
+  categoryId: z.string().uuid().nullish(),
 });
 
 router.post(
@@ -54,6 +79,15 @@ router.post(
       res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
       return;
     }
+    if (parsed.data.categoryId) {
+      const cat = await db.query.assetCategoriesTable.findFirst({
+        where: eq(assetCategoriesTable.id, parsed.data.categoryId),
+      });
+      if (!cat) {
+        res.status(400).json({ error: "Unknown categoryId" });
+        return;
+      }
+    }
     const [row] = await db
       .insert(mediaTable)
       .values({
@@ -64,6 +98,8 @@ router.post(
         height: parsed.data.height ?? null,
         byteSize: parsed.data.byteSize ?? null,
         altText: parsed.data.altText ?? null,
+        originalName: parsed.data.originalName ?? null,
+        categoryId: parsed.data.categoryId ?? null,
         uploadedBy: req.authedUser!.id,
       })
       .returning();
@@ -76,6 +112,8 @@ const UpdateBody = z.object({
   mime: z.string().nullish(),
   width: z.number().int().nullish(),
   height: z.number().int().nullish(),
+  originalName: z.string().nullish(),
+  categoryId: z.string().uuid().nullish(),
 });
 
 router.patch(
@@ -88,11 +126,24 @@ router.patch(
       res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
       return;
     }
+    if (parsed.data.categoryId) {
+      const cat = await db.query.assetCategoriesTable.findFirst({
+        where: eq(assetCategoriesTable.id, parsed.data.categoryId),
+      });
+      if (!cat) {
+        res.status(400).json({ error: "Unknown categoryId" });
+        return;
+      }
+    }
     const updates: Partial<typeof mediaTable.$inferInsert> = {};
     if (parsed.data.altText !== undefined) updates.altText = parsed.data.altText ?? null;
     if (parsed.data.mime !== undefined) updates.mime = parsed.data.mime ?? null;
     if (parsed.data.width !== undefined) updates.width = parsed.data.width ?? null;
     if (parsed.data.height !== undefined) updates.height = parsed.data.height ?? null;
+    if (parsed.data.originalName !== undefined)
+      updates.originalName = parsed.data.originalName ?? null;
+    if (parsed.data.categoryId !== undefined)
+      updates.categoryId = parsed.data.categoryId ?? null;
     if (Object.keys(updates).length === 0) {
       const existing = await db.query.mediaTable.findFirst({
         where: eq(mediaTable.id, String(req.params.id)),

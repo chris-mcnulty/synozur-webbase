@@ -17,5 +17,8 @@ export interface Asset {
   uploadedBy?: string | null;
   /** @nullable */
   category?: string | null;
+  categoryId?: string | null;
+  /** @nullable */
+  altText?: string | null;
   uploadedAt: Date;
 }

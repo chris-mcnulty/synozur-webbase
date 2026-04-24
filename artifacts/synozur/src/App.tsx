@@ -38,7 +38,6 @@ import AdminPostsList from "@/pages/admin/insights/posts-list";
 import PostEditor from "@/pages/admin/insights/post-editor";
 import PostPreview from "@/pages/admin/insights/post-preview";
 import PostAnalytics from "@/pages/admin/insights/post-analytics";
-import MediaLibrary from "@/pages/admin/insights/media";
 import TaxonomyPage from "@/pages/admin/insights/taxonomy";
 import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/access/users";
@@ -52,6 +51,7 @@ import AdminTeamList from "@/pages/admin/people/team-list";
 import TeamForm from "@/pages/admin/people/team-form";
 import AdminEventsList from "@/pages/admin/people/events-list";
 import EventForm from "@/pages/admin/people/event-form";
+import AssetsLibrary from "@/pages/admin/library/assets";
 import AdminCollateralList from "@/pages/admin/library/collateral-list";
 import CollateralEdit from "@/pages/admin/library/collateral-edit";
 import AdminCarouselPage from "@/pages/admin/library/carousel";
@@ -111,7 +111,7 @@ function AdminRoutes() {
         <Route path="/insights/posts/:id/analytics">
           {(params) => <PostAnalytics id={params.id} />}
         </Route>
-        <Route path="/insights/media" component={MediaLibrary} />
+        <Route path="/insights/media"><Redirect to="/library/assets" /></Route>
         <Route path="/insights/taxonomy" component={TaxonomyPage} />
         <Route path="/insights/comments" component={CommentsModeration} />
 
@@ -127,7 +127,7 @@ function AdminRoutes() {
         <Route path="/posts/:id/analytics">
           {(params) => <Redirect to={`/insights/posts/${params.id}/analytics`} />}
         </Route>
-        <Route path="/media"><Redirect to="/insights/media" /></Route>
+        <Route path="/media"><Redirect to="/library/assets" /></Route>
         <Route path="/taxonomy"><Redirect to="/insights/taxonomy" /></Route>
         <Route path="/comments"><Redirect to="/insights/comments" /></Route>
 
@@ -186,6 +186,7 @@ function AdminRoutes() {
         <Route path="/faq"><Redirect to="/products/faq" /></Route>
 
         {/* Library section */}
+        <Route path="/library/assets" component={AssetsLibrary} />
         <Route path="/library/collateral" component={AdminCollateralList} />
         <Route path="/library/collateral/new">
           <CollateralEdit />

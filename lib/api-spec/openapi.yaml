@@ -561,8 +561,17 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 100
+            maximum: 500
             default: 50
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: categoryId
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Media list
@@ -1604,6 +1613,124 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /cms/asset-categories:
+    get:
+      tags:
+        - CMS Asset Categories
+      operationId: listAssetCategories
+      responses:
+        '200':
+          description: Asset category list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCategoryListResponse'
+    post:
+      tags:
+        - CMS Asset Categories
+      operationId: createAssetCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssetCategoryBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCategory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Slug conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /cms/asset-categories/{id}:
+    patch:
+      tags:
+        - CMS Asset Categories
+      operationId: updateAssetCategory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssetCategoryBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetCategory'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Slug conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+        - CMS Asset Categories
+      operationId: deleteAssetCategory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/library/assets:
+    get:
+      tags:
+        - CMS Library Assets
+      operationId: listLibraryAssets
+      summary: Unified list of asset library items (merges legacy assets and media)
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: categoryId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: source
+          schema:
+            type: string
+            enum:
+              - asset
+              - media
+              - all
+            default: all
+      responses:
+        '200':
+          description: Library asset list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryAssetListResponse'
   /assets:
     get:
       tags:
@@ -1619,9 +1746,16 @@ paths:
         - name: category
           in: query
           required: false
-          description: Filter by asset category (e.g. people, north-star)
+          description: Filter by asset category slug (legacy)
           schema:
             type: string
+        - name: categoryId
+          in: query
+          required: false
+          description: Filter by asset_categories.id
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Asset list
@@ -1668,6 +1802,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
   /assets/{id}:
+    patch:
+      tags:
+        - Assets
+      operationId: updateAsset
+      summary: Update asset category or alt text
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssetBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
     delete:
       tags:
         - Assets
@@ -2449,6 +2615,13 @@ components:
         altText:
           type: string
           nullable: true
+        originalName:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
         uploadedBy:
           type: string
           format: uuid
@@ -2501,6 +2674,13 @@ components:
         altText:
           type: string
           nullable: true
+        originalName:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
     UpdateMediaBody:
       type: object
       properties:
@@ -2516,6 +2696,141 @@ components:
         height:
           type: integer
           nullable: true
+        originalName:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+    AssetCategory:
+      type: object
+      required:
+        - id
+        - slug
+        - label
+        - sortOrder
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        label:
+          type: string
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AssetCategoryListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssetCategory'
+    CreateAssetCategoryBody:
+      type: object
+      required:
+        - slug
+        - label
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        sortOrder:
+          type: integer
+    UpdateAssetCategoryBody:
+      type: object
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        sortOrder:
+          type: integer
+    LibraryAssetItem:
+      type: object
+      required:
+        - source
+        - id
+        - storageKey
+        - uploadedAt
+      properties:
+        source:
+          type: string
+          enum:
+            - asset
+            - media
+        id:
+          type: string
+        storageKey:
+          type: string
+        publicUrl:
+          type: string
+          nullable: true
+        mime:
+          type: string
+          nullable: true
+        byteSize:
+          type: integer
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        altText:
+          type: string
+          nullable: true
+        originalName:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categorySlug:
+          type: string
+          nullable: true
+        categoryLabel:
+          type: string
+          nullable: true
+        uploadedAt:
+          type: string
+          format: date-time
+    LibraryAssetListResponse:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryAssetItem'
+        total:
+          type: integer
     AuthorSummary:
       type: object
       required:
@@ -3472,6 +3787,14 @@ components:
           type:
             - string
             - 'null'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        altText:
+          type:
+            - string
+            - 'null'
         uploadedAt:
           type: string
           format: date-time
@@ -3496,6 +3819,25 @@ components:
           type: string
           minLength: 1
         category:
+          type:
+            - string
+            - 'null'
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        altText:
+          type:
+            - string
+            - 'null'
+    UpdateAssetBody:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        altText:
           type:
             - string
             - 'null'

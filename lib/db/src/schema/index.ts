@@ -4,6 +4,7 @@ export * from "./formSubmissions";
 export * from "./users";
 export * from "./roles";
 export * from "./media";
+export * from "./assetCategories";
 export * from "./posts";
 export * from "./taxonomy";
 export * from "./comments";

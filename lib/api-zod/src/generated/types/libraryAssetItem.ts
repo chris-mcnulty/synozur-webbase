@@ -5,17 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LibraryAssetItemSource } from "./libraryAssetItemSource";
 
-export interface RegisterMediaBody {
-  /** @minLength 1 */
+export interface LibraryAssetItem {
+  source: LibraryAssetItemSource;
+  id: string;
   storageKey: string;
-  /** @minLength 1 */
-  publicUrl: string;
+  publicUrl?: string | null;
   mime?: string | null;
+  byteSize?: number | null;
   width?: number | null;
   height?: number | null;
-  byteSize?: number | null;
   altText?: string | null;
   originalName?: string | null;
   categoryId?: string | null;
+  categorySlug?: string | null;
+  categoryLabel?: string | null;
+  uploadedAt: Date;
 }

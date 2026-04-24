@@ -11,4 +11,6 @@ export interface UpdateMediaBody {
   mime?: string | null;
   width?: number | null;
   height?: number | null;
+  originalName?: string | null;
+  categoryId?: string | null;
 }

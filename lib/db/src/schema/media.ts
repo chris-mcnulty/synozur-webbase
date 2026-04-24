@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, timestamp, integer } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { assetCategoriesTable } from "./assetCategories";
 
 export const mediaTable = pgTable("media", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -10,6 +11,10 @@ export const mediaTable = pgTable("media", {
   height: integer("height"),
   byteSize: integer("byte_size"),
   altText: text("alt_text"),
+  originalName: text("original_name"),
+  categoryId: uuid("category_id").references(() => assetCategoriesTable.id, {
+    onDelete: "set null",
+  }),
   uploadedBy: uuid("uploaded_by").references(() => usersTable.id, {
     onDelete: "set null",
   }),

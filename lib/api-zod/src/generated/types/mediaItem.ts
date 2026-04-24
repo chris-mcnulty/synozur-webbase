@@ -15,6 +15,8 @@ export interface MediaItem {
   height?: number | null;
   byteSize?: number | null;
   altText?: string | null;
+  originalName?: string | null;
+  categoryId?: string | null;
   uploadedBy?: string | null;
   createdAt: Date;
 }

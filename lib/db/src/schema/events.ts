@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, integer, boolean, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { assetCategoriesTable } from "./assetCategories";
 
 export const assetsTable = pgTable("assets", {
   id: serial("id").primaryKey(),
@@ -11,6 +12,10 @@ export const assetsTable = pgTable("assets", {
   storageKey: text("storage_key").notNull(),
   uploadedBy: text("uploaded_by"),
   category: text("category"),
+  categoryId: uuid("category_id").references(() => assetCategoriesTable.id, {
+    onDelete: "set null",
+  }),
+  altText: text("alt_text"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
