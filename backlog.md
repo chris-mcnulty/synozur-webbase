@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 12 tasks pending · 90 merged · 29 cancelled
+> 13 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -53,6 +53,11 @@ Webinars, workshops, and white papers typically ship with more than one companio
 
 `lib/db/src/schema/media.ts` defines `eventsTable` with `startDate`, `location`, `registrationUrl`, `status` (`UPCOMING | ENDED | CANCELLED`) but **no link to a post-event recording**. Today the connection is entirely editorial: an event runs, status flips to `ENDED`, someone manually uploads the recording as a new row in `videos` with `category="webinar"`, then runs "Sync to library" to mirror it into `collateral`. Nothing in the database ties the three rows together — the event page cannot auto-link to the recording, and a slug change on either side silently breaks the connection. This task adds a nullable `recordingVideoId` FK on `eventsTable` pointing at `videos.id`. The event edit form (`artifacts/synozur/src/pages/admin/people/event-form.tsx`) gets a "Recording" picker that lists published videos (most recent first, filterable by slug match) and lets editors attach one; the public event detail page renders an embedded player (reusing the videos page's embed logic) beneath the "This event has ended" banner when a recording is linked. Follow-up idea: once this exists, "Sync event to collateral" on an ended event with a linked recording can promote it directly to a webinar collateral row without the separate video sync step.
 
+### #125 · Upload white-paper PDFs through the asset library and attach them to white-paper objects
+**Depends on:** #123 (AssetLibraryModal accepts documents)
+
+`lib/db/src/schema/whitePapers.ts` has a `documentUrl` text column, and the admin edit form at `artifacts/synozur/src/pages/admin/library/white-paper-edit.tsx` (lines 437–446) renders a bare `<Input>` asking editors to paste a PDF URL. The practical result: most white-paper rows in production have no actual document attached because editors have no in-admin upload path — the file has to exist somewhere else first. This task closes the loop once #123 widens AssetLibraryModal to documents. Add a nullable `documentAssetId` FK on `white_papers` pointing at `assets.id`; replace the text input with a document picker (Upload new / Choose existing through AssetLibraryModal filtered to documents); server derives the rendered `documentUrl` from the linked asset's storageKey so the public white-paper detail download CTA keeps working unchanged. Keep the existing `documentUrl` text column as a secondary fallback for off-platform destinations (Sway, microsites) — the edit form shows a primary "Uploaded PDF" picker and a secondary "External URL" field, with the uploaded asset taking precedence when both are set. Surface the asset's filename, MIME type, and size in the admin form so editors can confirm they picked the right file, and auto-populate `pageCount` from the PDF metadata on upload when feasible.
+
 ---
 
 ## Heterogeneous CMS Artifacts
@@ -99,3 +104,4 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 | #122 | Multiple resource attachments on library items | Library | #63 |
 | #123 | Extend AssetLibraryModal to handle documents (PDF/PPTX/DOCX) | Library | #119 |
 | #124 | Link events to their recording video | Events & Library | — |
+| #125 | Upload white-paper PDFs via the asset library | Library | #123 |
