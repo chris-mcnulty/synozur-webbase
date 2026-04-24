@@ -1,14 +1,15 @@
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   DEFAULT_OG_IMAGE,
   DETAIL_PREFIXES,
   PAGE_TYPES,
   SITE_NAME,
   SITE_ORIGIN,
-  buildTitle,
   derivePageType,
   type PageType,
 } from "./seo-config";
+import { api } from "./api";
 
 interface MetaProps {
   title: string;
@@ -88,6 +89,13 @@ export function Meta({
   isDetail,
   noindex,
 }: MetaProps) {
+  const { data: siteSettings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+    staleTime: 60_000,
+    retry: false,
+  });
+
   useEffect(() => {
     // The raw browser pathname includes the Vite/Wouter base path prefix.
     // Strip it before classification so derivePageType / inferIsDetail receive
@@ -105,15 +113,36 @@ export function Meta({
     const config = PAGE_TYPES[resolvedType];
 
     const detail = isDetail ?? inferIsDetail(normalizedPathname);
-    const fullTitle = buildTitle(title, resolvedType, {
-      isDetail: detail,
-      rawTitle,
-    });
 
-    const resolvedDescription = description ?? config.defaultDescription;
+    // Build title — apply DB title template when one is set and rawTitle is not requested.
+    let fullTitle: string;
+    if (rawTitle) {
+      fullTitle = title;
+    } else {
+      const dbTemplate = siteSettings?.seoDefaultTitleTemplate;
+      if (dbTemplate) {
+        // Template replaces {page} with the leaf title; the rest is literal.
+        // e.g. "{page} | The Synozur Alliance" → "My Page | The Synozur Alliance"
+        fullTitle = dbTemplate.replace("{page}", title);
+      } else {
+        // Fall back to the static section-aware title format.
+        if (config.useSectionInTitle && detail && config.section) {
+          fullTitle = `${title} | ${config.section} | ${SITE_NAME}`;
+        } else {
+          fullTitle = `${title} | ${SITE_NAME}`;
+        }
+      }
+    }
+
+    const resolvedDescription = description ?? siteSettings?.seoDefaultDescription ?? config.defaultDescription;
     const resolvedOgType = type ?? config.ogType;
-    const resolvedImage = image ?? config.defaultImage ?? DEFAULT_OG_IMAGE;
+    // Prefer page-level image over DB OG image, then page type default, then global default.
+    const dbOgImage = siteSettings?.seoDefaultOgImageUrl ?? null;
+    const resolvedImage = image ?? dbOgImage ?? config.defaultImage ?? DEFAULT_OG_IMAGE;
     const resolvedNoindex = noindex ?? config.noindex ?? false;
+
+    // Twitter card type from DB, falling back to summary_large_image.
+    const twitterCardType = siteSettings?.seoTwitterCardType ?? "summary_large_image";
 
     document.title = fullTitle;
 
@@ -133,10 +162,17 @@ export function Meta({
     upsertMeta("property", "og:title", fullTitle);
     upsertMeta("property", "og:url", url);
     upsertMeta("property", "og:image", absImage);
-    upsertMeta("name", "twitter:card", "summary_large_image");
+    upsertMeta("name", "twitter:card", twitterCardType);
     upsertMeta("name", "twitter:title", fullTitle);
     upsertMeta("name", "twitter:image", absImage);
     upsertLink("canonical", url);
+
+    // twitter:site / twitter:creator from DB handle.
+    const twitterHandle = siteSettings?.seoTwitterHandle;
+    if (twitterHandle) {
+      upsertMeta("name", "twitter:site", twitterHandle);
+      upsertMeta("name", "twitter:creator", twitterHandle);
+    }
 
     if (resolvedNoindex) {
       upsertMeta("name", "robots", "noindex,nofollow");
@@ -170,6 +206,7 @@ export function Meta({
     pageType,
     isDetail,
     noindex,
+    siteSettings,
   ]);
 
   return null;

@@ -5,6 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SolutionPillar } from "./solutionPillar";
+import type { SolutionStatus } from "./solutionStatus";
+import type { Tag } from "./tag";
 
 export interface Solution {
   id: string;
@@ -55,6 +58,14 @@ export interface Solution {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
+  status?: SolutionStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  /** @nullable */
+  pillar?: SolutionPillar;
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }

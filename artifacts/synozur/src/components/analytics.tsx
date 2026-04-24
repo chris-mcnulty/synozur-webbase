@@ -64,11 +64,11 @@ function loadMetaPixel(id: string) {
   );
 }
 
-function loadMarketingTags() {
+function loadMarketingTags(settings: { tagGa4Id?: string | null; tagLinkedinPartnerId?: string | null; tagMetaPixelId?: string | null }) {
   const env = import.meta.env as Record<string, string | undefined>;
-  const ga4 = env.VITE_GA4_ID;
-  const li = env.VITE_LINKEDIN_PARTNER_ID ?? "7337793";
-  const meta = env.VITE_META_PIXEL_ID;
+  const ga4 = settings.tagGa4Id ?? env.VITE_GA4_ID;
+  const li = settings.tagLinkedinPartnerId ?? env.VITE_LINKEDIN_PARTNER_ID ?? "7337793";
+  const meta = settings.tagMetaPixelId ?? env.VITE_META_PIXEL_ID;
   if (ga4) loadGA4(ga4);
   if (li) loadLinkedIn(li);
   if (meta) loadMetaPixel(meta);
@@ -89,10 +89,10 @@ export function Analytics() {
   useEffect(() => {
     if (isLoading || !settings) return;
     if (!requireConsent) {
-      loadMarketingTags();
+      loadMarketingTags(settings);
       return;
     }
-    if (consent === "granted") loadMarketingTags();
+    if (consent === "granted") loadMarketingTags(settings);
   }, [isLoading, settings, requireConsent, consent]);
 
   if (isLoading || !settings) return null;

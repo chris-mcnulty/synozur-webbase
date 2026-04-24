@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ServiceStatus } from "./serviceStatus";
+import type { Tag } from "./tag";
 
 export interface Service {
   id: string;
@@ -45,6 +47,12 @@ export interface Service {
   seoDescription?: string | null;
   /** @nullable */
   sourceId?: string | null;
+  status?: ServiceStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  tags?: Tag[];
   createdAt: string;
   updatedAt: string;
 }

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
@@ -14,4 +15,54 @@ export interface SiteSettingsInput {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
+  /**
+   * @maxLength 120
+   * @nullable
+   */
+  seoDefaultTitleTemplate?: string | null;
+  /**
+   * @maxLength 160
+   * @nullable
+   */
+  seoDefaultDescription?: string | null;
+  /** @nullable */
+  seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoTwitterHandle?: string | null;
+  /** @nullable */
+  seoTwitterCardType?: string | null;
+  /** @nullable */
+  seoLinkedinCompanyUrl?: string | null;
+  /** @nullable */
+  seoGoogleSiteVerification?: string | null;
+  /** @nullable */
+  seoBingSiteVerification?: string | null;
+  /** @nullable */
+  orgName?: string | null;
+  /** @nullable */
+  orgLegalName?: string | null;
+  /** @nullable */
+  orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgStreetAddress?: string | null;
+  /** @nullable */
+  orgAddressLocality?: string | null;
+  /** @nullable */
+  orgAddressRegion?: string | null;
+  /** @nullable */
+  orgPostalCode?: string | null;
+  /** @nullable */
+  orgAddressCountry?: string | null;
+  /** @nullable */
+  orgSameAs?: string[] | null;
+  /** @nullable */
+  tagGa4Id?: string | null;
+  /** @nullable */
+  tagLinkedinPartnerId?: string | null;
+  /** @nullable */
+  tagMetaPixelId?: string | null;
+  /** @nullable */
+  sitemapExcludedPaths?: string[] | null;
+  /** @nullable */
+  sitemapSectionFlags?: SiteSettingsInputSitemapSectionFlags;
 }

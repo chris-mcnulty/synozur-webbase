@@ -19,7 +19,7 @@ export interface UpdatePostBody {
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
-  featured?: boolean | null;
+  featured?: boolean;
   featuredRank?: number | null;
   categoryIds?: string[] | null;
   tagIds?: string[] | null;

@@ -82,6 +82,25 @@ export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroImageUrl?: string | null;
   homeEditorialImageUrl?: string | null;
+  seoDefaultTitleTemplate?: string | null;
+  seoDefaultDescription?: string | null;
+  seoDefaultOgImageUrl?: string | null;
+  seoTwitterHandle?: string | null;
+  seoTwitterCardType?: string | null;
+  seoGoogleSiteVerification?: string | null;
+  seoBingSiteVerification?: string | null;
+  tagGa4Id?: string | null;
+  tagLinkedinPartnerId?: string | null;
+  tagMetaPixelId?: string | null;
+  orgName?: string | null;
+  orgLegalName?: string | null;
+  orgLogoUrl?: string | null;
+  orgStreetAddress?: string | null;
+  orgAddressLocality?: string | null;
+  orgAddressRegion?: string | null;
+  orgPostalCode?: string | null;
+  orgAddressCountry?: string | null;
+  orgSameAs?: string[] | null;
 }
 
 export interface AdminSiteSettings {
@@ -91,6 +110,30 @@ export interface AdminSiteSettings {
   homeEditorialImageAssetId?: number | null;
   homeEditorialImageUrl?: string | null;
   polarisFeedUrl?: string | null;
+  seoDefaultTitleTemplate?: string | null;
+  seoDefaultDescription?: string | null;
+  seoDefaultOgImageAssetId?: number | null;
+  seoDefaultOgImageUrl?: string | null;
+  seoTwitterHandle?: string | null;
+  seoTwitterCardType?: string | null;
+  seoLinkedinCompanyUrl?: string | null;
+  seoGoogleSiteVerification?: string | null;
+  seoBingSiteVerification?: string | null;
+  orgName?: string | null;
+  orgLegalName?: string | null;
+  orgLogoAssetId?: number | null;
+  orgLogoUrl?: string | null;
+  orgStreetAddress?: string | null;
+  orgAddressLocality?: string | null;
+  orgAddressRegion?: string | null;
+  orgPostalCode?: string | null;
+  orgAddressCountry?: string | null;
+  orgSameAs?: string[] | null;
+  tagGa4Id?: string | null;
+  tagLinkedinPartnerId?: string | null;
+  tagMetaPixelId?: string | null;
+  sitemapExcludedPaths?: string[] | null;
+  sitemapSectionFlags?: Record<string, boolean> | null;
   updatedAt: string;
 }
 
@@ -334,6 +377,28 @@ export interface UpdateSiteSettingsBody {
   homeHeroImageAssetId?: number | null;
   homeEditorialImageAssetId?: number | null;
   polarisFeedUrl?: string | null;
+  seoDefaultTitleTemplate?: string | null;
+  seoDefaultDescription?: string | null;
+  seoDefaultOgImageAssetId?: number | null;
+  seoTwitterHandle?: string | null;
+  seoTwitterCardType?: string | null;
+  seoLinkedinCompanyUrl?: string | null;
+  seoGoogleSiteVerification?: string | null;
+  seoBingSiteVerification?: string | null;
+  orgName?: string | null;
+  orgLegalName?: string | null;
+  orgLogoAssetId?: number | null;
+  orgStreetAddress?: string | null;
+  orgAddressLocality?: string | null;
+  orgAddressRegion?: string | null;
+  orgPostalCode?: string | null;
+  orgAddressCountry?: string | null;
+  orgSameAs?: string[] | null;
+  tagGa4Id?: string | null;
+  tagLinkedinPartnerId?: string | null;
+  tagMetaPixelId?: string | null;
+  sitemapExcludedPaths?: string[] | null;
+  sitemapSectionFlags?: Record<string, boolean> | null;
 }
 
 export interface BulkCollateralBody {

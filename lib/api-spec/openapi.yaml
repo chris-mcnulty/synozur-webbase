@@ -2963,6 +2963,84 @@ components:
           type:
             - string
             - 'null'
+        seoDefaultTitleTemplate:
+          type:
+            - string
+            - 'null'
+        seoDefaultDescription:
+          type:
+            - string
+            - 'null'
+        seoDefaultOgImageUrl:
+          type:
+            - string
+            - 'null'
+        seoTwitterHandle:
+          type:
+            - string
+            - 'null'
+        seoTwitterCardType:
+          type:
+            - string
+            - 'null'
+        seoGoogleSiteVerification:
+          type:
+            - string
+            - 'null'
+        seoBingSiteVerification:
+          type:
+            - string
+            - 'null'
+        tagGa4Id:
+          type:
+            - string
+            - 'null'
+        tagLinkedinPartnerId:
+          type:
+            - string
+            - 'null'
+        tagMetaPixelId:
+          type:
+            - string
+            - 'null'
+        orgName:
+          type:
+            - string
+            - 'null'
+        orgLegalName:
+          type:
+            - string
+            - 'null'
+        orgLogoUrl:
+          type:
+            - string
+            - 'null'
+        orgStreetAddress:
+          type:
+            - string
+            - 'null'
+        orgAddressLocality:
+          type:
+            - string
+            - 'null'
+        orgAddressRegion:
+          type:
+            - string
+            - 'null'
+        orgPostalCode:
+          type:
+            - string
+            - 'null'
+        orgAddressCountry:
+          type:
+            - string
+            - 'null'
+        orgSameAs:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
     SiteSettings:
       type: object
       required: [requireCookieConsent, updatedAt]
@@ -2989,6 +3067,111 @@ components:
           type:
             - string
             - 'null'
+        seoDefaultTitleTemplate:
+          type:
+            - string
+            - 'null'
+          maxLength: 120
+        seoDefaultDescription:
+          type:
+            - string
+            - 'null'
+          maxLength: 160
+        seoDefaultOgImageAssetId:
+          type:
+            - integer
+            - 'null'
+        seoDefaultOgImageUrl:
+          type:
+            - string
+            - 'null'
+        seoTwitterHandle:
+          type:
+            - string
+            - 'null'
+        seoTwitterCardType:
+          type:
+            - string
+            - 'null'
+        seoLinkedinCompanyUrl:
+          type:
+            - string
+            - 'null'
+        seoGoogleSiteVerification:
+          type:
+            - string
+            - 'null'
+        seoBingSiteVerification:
+          type:
+            - string
+            - 'null'
+        orgName:
+          type:
+            - string
+            - 'null'
+        orgLegalName:
+          type:
+            - string
+            - 'null'
+        orgLogoAssetId:
+          type:
+            - integer
+            - 'null'
+        orgLogoUrl:
+          type:
+            - string
+            - 'null'
+        orgStreetAddress:
+          type:
+            - string
+            - 'null'
+        orgAddressLocality:
+          type:
+            - string
+            - 'null'
+        orgAddressRegion:
+          type:
+            - string
+            - 'null'
+        orgPostalCode:
+          type:
+            - string
+            - 'null'
+        orgAddressCountry:
+          type:
+            - string
+            - 'null'
+        orgSameAs:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+            format: uri
+        tagGa4Id:
+          type:
+            - string
+            - 'null'
+        tagLinkedinPartnerId:
+          type:
+            - string
+            - 'null'
+        tagMetaPixelId:
+          type:
+            - string
+            - 'null'
+        sitemapExcludedPaths:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+        sitemapSectionFlags:
+          type:
+            - object
+            - 'null'
+          additionalProperties:
+            type: boolean
         updatedAt:
           type: string
           format: date-time
@@ -3010,6 +3193,103 @@ components:
           type:
             - string
             - 'null'
+        seoDefaultTitleTemplate:
+          type:
+            - string
+            - 'null'
+          maxLength: 120
+        seoDefaultDescription:
+          type:
+            - string
+            - 'null'
+          maxLength: 160
+        seoDefaultOgImageAssetId:
+          type:
+            - integer
+            - 'null'
+        seoTwitterHandle:
+          type:
+            - string
+            - 'null'
+        seoTwitterCardType:
+          type:
+            - string
+            - 'null'
+        seoLinkedinCompanyUrl:
+          type:
+            - string
+            - 'null'
+        seoGoogleSiteVerification:
+          type:
+            - string
+            - 'null'
+        seoBingSiteVerification:
+          type:
+            - string
+            - 'null'
+        orgName:
+          type:
+            - string
+            - 'null'
+        orgLegalName:
+          type:
+            - string
+            - 'null'
+        orgLogoAssetId:
+          type:
+            - integer
+            - 'null'
+        orgStreetAddress:
+          type:
+            - string
+            - 'null'
+        orgAddressLocality:
+          type:
+            - string
+            - 'null'
+        orgAddressRegion:
+          type:
+            - string
+            - 'null'
+        orgPostalCode:
+          type:
+            - string
+            - 'null'
+        orgAddressCountry:
+          type:
+            - string
+            - 'null'
+        orgSameAs:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+            format: uri
+        tagGa4Id:
+          type:
+            - string
+            - 'null'
+        tagLinkedinPartnerId:
+          type:
+            - string
+            - 'null'
+        tagMetaPixelId:
+          type:
+            - string
+            - 'null'
+        sitemapExcludedPaths:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+        sitemapSectionFlags:
+          type:
+            - object
+            - 'null'
+          additionalProperties:
+            type: boolean
     AdminUser:
       type: object
       required:

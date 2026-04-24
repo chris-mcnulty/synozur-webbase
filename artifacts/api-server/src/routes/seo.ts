@@ -12,6 +12,7 @@ import {
   applicationsTable,
   caseStudiesTable,
   modelsTable,
+  siteSettingsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
@@ -266,9 +267,75 @@ function renderSitemap(entries: Entry[]): string {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
 }
 
+const SETTINGS_ID = 1;
+
+async function loadSitemapSettings(): Promise<{
+  excludedPaths: string[];
+  sectionFlags: Record<string, boolean>;
+}> {
+  const [row] = await db
+    .select({
+      sitemapExcludedPaths: siteSettingsTable.sitemapExcludedPaths,
+      sitemapSectionFlags: siteSettingsTable.sitemapSectionFlags,
+    })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, SETTINGS_ID));
+  return {
+    excludedPaths: row?.sitemapExcludedPaths ?? [],
+    sectionFlags: row?.sitemapSectionFlags ?? {},
+  };
+}
+
 async function handleSitemap(_req: import("express").Request, res: import("express").Response) {
-  const entries = await collectEntries();
-  const xml = renderSitemap(entries);
+  const [entries, { excludedPaths, sectionFlags }] = await Promise.all([
+    collectEntries(),
+    loadSitemapSettings(),
+  ]);
+
+  const origin = siteOrigin();
+
+  // Section key → path prefix(es). Maps section flag names to URL segment(s).
+  // Stored without trailing slash; matching checks both the exact path and sub-paths.
+  const sectionPrefixes: Record<string, string[]> = {
+    insights: ["/insights"],
+    services: ["/services"],
+    solutions: ["/solutions"],
+    library: ["/library"],
+    webinars: ["/webinars"],
+    events: ["/events"],
+    applications: ["/applications"],
+    caseStudies: ["/case-studies"],
+    models: ["/models"],
+    workshops: ["/workshops"],
+  };
+
+  // Build a set of path prefixes to exclude from disabled sections.
+  const disabledPrefixes = new Set<string>();
+  for (const [key, enabled] of Object.entries(sectionFlags)) {
+    if (enabled === false && sectionPrefixes[key]) {
+      for (const prefix of sectionPrefixes[key]) {
+        disabledPrefixes.add(prefix);
+      }
+    }
+  }
+
+  // Build a set of exact paths to exclude.
+  const excludedSet = new Set(excludedPaths.map((p) => p.trim()).filter(Boolean));
+
+  const filtered = entries.filter((e) => {
+    // collectEntries() returns absolute URLs (origin + path). Strip the origin
+    // prefix to get the path for comparison with excluded paths and section prefixes.
+    const path = e.loc.startsWith(origin) ? e.loc.slice(origin.length) : e.loc;
+    if (excludedSet.has(path)) return false;
+    // Match the exact hub/listing page (e.g. /insights) AND any sub-paths
+    // (e.g. /insights/my-post) so disabling a section removes all its URLs.
+    for (const prefix of disabledPrefixes) {
+      if (path === prefix || path.startsWith(prefix + "/")) return false;
+    }
+    return true;
+  });
+
+  const xml = renderSitemap(filtered);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
   res.send(xml);
