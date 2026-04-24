@@ -251,7 +251,7 @@ export default function MarketingSeo() {
       orgAddressRegion: orgRegion.trim() || null,
       orgPostalCode: orgPostal.trim() || null,
       orgAddressCountry: orgCountry.trim() || null,
-      orgSameAs: orgSameAs.filter(Boolean),
+      orgSameAs: orgSameAs.map((value) => value.trim()).filter(Boolean),
       tagGa4Id: ga4Id.trim() || null,
       tagLinkedinPartnerId: liPartnerId.trim() || null,
       tagMetaPixelId: metaPixelId.trim() || null,
