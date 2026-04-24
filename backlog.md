@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 9 tasks pending · 90 merged · 29 cancelled
+> 12 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -37,6 +37,21 @@ The "Featured items" reorder card is currently inline at the top of `artifacts/s
 **Depends on:** #69 (library live content) — merged
 
 The admin collateral table in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` uses static `<TableHead>` cells (lines 729–756) — editors cannot reorder by title, type, service, solution, pillar, featured rank, or last-updated. The backend `GET /cms/collateral` in `artifacts/api-server/src/routes/collateral.ts` (lines 212–224) has a hard-coded `ORDER BY featured DESC, featuredRank ASC NULLS LAST, publishedAt DESC, title ASC` and the `ListQuery` schema (lines 13–26) accepts no sort param. This task adds a `sort` query param (e.g. `sort=title:asc` or `sort=updatedAt:desc`) validated against an allow-list of sortable columns, threads it through the generated API client, and makes each `<TableHead>` clickable with an arrow indicator showing the current direction. Clicking cycles asc → desc → default. The same pattern should be reusable by the sibling videos / white-papers / workshops admin lists in follow-up work.
+
+### #122 · Multiple resource attachments on library items (slides + transcript + code + …)
+**Depends on:** #63 (asset categories beyond people/north-star) — merged
+
+Webinars, workshops, and white papers typically ship with more than one companion file — slides, transcript, Q&A log, code repo link, follow-up deck — but the only attachment slot today is a single `downloadUrl` text column on `collateral` (see `lib/db/src/schema/collateral.ts` and the "Download URL" input in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx`). Editors work around it by concatenating URLs into the body HTML, which breaks the public library detail page's tidy "Download" CTA. This task adds a `collateral_resources` table with `(id, collateralId, assetId, externalUrl, label, mimeType, sortOrder, createdAt)` — asset-backed rows link to the unified `assets` table for uploaded files; externalUrl rows cover off-platform links (GitHub, Figma, external CDNs). Admin edit form gains a "Resources" list editor with drag-to-reorder and inline label; public library detail page (`artifacts/synozur/src/pages/library-detail.tsx`) renders a Resources section when rows exist, falling back to the legacy `downloadUrl` when empty. Keep `downloadUrl` on the schema for now as a read-only mirror of the first resource; deprecate in a follow-up.
+
+### #123 · Extend AssetLibraryModal to handle documents (PDF, PPTX, DOCX, ZIP)
+**Depends on:** #119 (AssetLibraryModal migration for collateral/video/white-paper/workshop) — merged
+
+`artifacts/synozur/src/components/admin/AssetLibraryModal.tsx` is image-scoped — the grid renders `<img>` tags and the upload path only validates `image/*` MIME types (see `assetUrl`, `ASSET_CATEGORIES`). Editors who want to attach a PDF of slides to a past webinar have to host the file elsewhere and paste a URL. This task widens the modal to a dual-mode asset picker: add a "type" filter (`image` | `document`) reading from `assets.mimeType`, swap the grid tile for a document icon + filename + size when `mimeType` is `application/pdf`, PowerPoint, Word, ZIP, etc., and loosen the upload handler to accept those MIME types (with a reasonable size cap — 50MB feels right for webinar decks). `GET /api/storage{storageKey}` already serves non-image assets with the correct Content-Type, so the read path is free. Once this ships, the "Resources" editor in #122 can use the same modal, closing the editor workflow loop so editors never leave the admin to attach a PDF.
+
+### #124 · Link events to their recording video
+**Depends on:** — (foundation change; no blockers)
+
+`lib/db/src/schema/media.ts` defines `eventsTable` with `startDate`, `location`, `registrationUrl`, `status` (`UPCOMING | ENDED | CANCELLED`) but **no link to a post-event recording**. Today the connection is entirely editorial: an event runs, status flips to `ENDED`, someone manually uploads the recording as a new row in `videos` with `category="webinar"`, then runs "Sync to library" to mirror it into `collateral`. Nothing in the database ties the three rows together — the event page cannot auto-link to the recording, and a slug change on either side silently breaks the connection. This task adds a nullable `recordingVideoId` FK on `eventsTable` pointing at `videos.id`. The event edit form (`artifacts/synozur/src/pages/admin/people/event-form.tsx`) gets a "Recording" picker that lists published videos (most recent first, filterable by slug match) and lets editors attach one; the public event detail page renders an embedded player (reusing the videos page's embed logic) beneath the "This event has ended" banner when a recording is linked. Follow-up idea: once this exists, "Sync event to collateral" on an ended event with a linked recording can promote it directly to a webinar collateral row without the separate video sync step.
 
 ---
 
@@ -81,3 +96,6 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
 | #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
 | #121 | Sortable columns on the collateral library admin list | Library | #69 |
+| #122 | Multiple resource attachments on library items | Library | #63 |
+| #123 | Extend AssetLibraryModal to handle documents (PDF/PPTX/DOCX) | Library | #119 |
+| #124 | Link events to their recording video | Events & Library | — |
