@@ -394,10 +394,8 @@ function FindingRow({
   onAutofill: () => void;
   isAutofilling: boolean;
 }) {
-  const canAutofill =
-    !!finding.suggested.seoTitle ||
-    !!finding.suggested.seoDescription ||
-    !!finding.suggested.ogImage;
+  const FILLABLE_KEYS = new Set(["seoTitle", "seoDescription", "ogImage"]);
+  const canAutofill = finding.missing.some((m) => FILLABLE_KEYS.has(m));
 
   return (
     <li className="py-2.5 px-3 flex items-center gap-3" data-testid={`finding-row-${finding.kind}-${finding.id}`}>
@@ -425,6 +423,7 @@ function FindingRow({
         disabled={isAutofilling || !canAutofill}
         data-testid={`autofill-row-${finding.kind}-${finding.id}`}
         title={canAutofill ? "Apply suggested values to empty fields" : "No autofill suggestions available"}
+        aria-label={canAutofill ? "Apply autofill to this row" : "No autofill available for this row"}
       >
         {isAutofilling ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
