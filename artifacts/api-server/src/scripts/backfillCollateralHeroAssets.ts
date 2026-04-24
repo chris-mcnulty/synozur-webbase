@@ -12,7 +12,7 @@
  *
  * Idempotent: re-running skips hero URLs already represented in `assets`.
  */
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { eq, isNotNull, sql } from "drizzle-orm";
 import {
   db,
   assetsTable,
