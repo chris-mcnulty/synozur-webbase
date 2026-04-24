@@ -1,14 +1,19 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq, ne, asc } from "drizzle-orm";
+import { and, eq, ne, asc, desc } from "drizzle-orm";
 import {
   db,
   servicesTable,
   solutionsTable,
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
+  serviceRevisionsTable,
+  solutionRevisionsTable,
+  usersTable,
   ARTIFACT_STATUSES,
   COLLATERAL_PILLARS,
+  type Service,
+  type Solution,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -23,6 +28,7 @@ import {
   serializeCapability,
   setEntityTags,
 } from "../lib/servicesSerializer";
+import { signPreviewToken, verifyPreviewToken } from "../lib/previewToken";
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -40,7 +46,17 @@ router.get("/services", async (_req, res) => {
 });
 
 router.get("/services/:slug", async (req, res) => {
-  const result = await getServiceWithMethodologies(String(req.params.slug));
+  const slug = String(req.params.slug);
+  const previewToken =
+    typeof req.query["preview"] === "string" ? req.query["preview"] : null;
+  let preview = false;
+  if (previewToken) {
+    const row = await db.query.servicesTable.findFirst({
+      where: eq(servicesTable.slug, slug),
+    });
+    preview = Boolean(row && verifyPreviewToken(previewToken, "service", row.id));
+  }
+  const result = await getServiceWithMethodologies(slug, { preview });
   if (!result) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -49,7 +65,17 @@ router.get("/services/:slug", async (req, res) => {
 });
 
 router.get("/solutions/:slug", async (req, res) => {
-  const result = await getSolutionWithCapabilities(String(req.params.slug));
+  const slug = String(req.params.slug);
+  const previewToken =
+    typeof req.query["preview"] === "string" ? req.query["preview"] : null;
+  let preview = false;
+  if (previewToken) {
+    const row = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.slug, slug),
+    });
+    preview = Boolean(row && verifyPreviewToken(previewToken, "solution", row.id));
+  }
+  const result = await getSolutionWithCapabilities(slug, { preview });
   if (!result) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -255,6 +281,12 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  // #61: snapshot prior state before overwriting.
+  await db.insert(serviceRevisionsTable).values({
+    serviceId: id,
+    snapshotJson: existing as never,
+    editedBy: req.authedUser!.id,
+  });
   const [updated] = await db
     .update(servicesTable)
     .set(updates)
@@ -383,6 +415,12 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  // #61: snapshot prior state before overwriting.
+  await db.insert(solutionRevisionsTable).values({
+    solutionId: id,
+    snapshotJson: existing as never,
+    editedBy: req.authedUser!.id,
+  });
   const [updated] = await db
     .update(solutionsTable)
     .set(updates)
@@ -598,6 +636,302 @@ router.delete("/cms/capabilities/:id", ...adminGuard, async (req, res) => {
     entityId: id,
   });
   res.status(204).end();
+});
+
+// #61: revision history for services and solutions. Mirrors the post
+// revision system: GET lists snapshots newest-first with editor + title
+// metadata; POST /.../restore snapshots current state into a new revision
+// and then overwrites the row with the historical content-only fields
+// (status/slug/active/publishedAt/... are preserved on purpose, so a
+// restore never republishes or retitles the public URL).
+
+type ServiceRow = Service;
+type SolutionRow = Solution;
+
+const SERVICE_RESTORABLE_FIELDS = [
+  "title",
+  "displayOrder",
+  "iconId",
+  "parentServiceId",
+  "servicePath",
+  "overviewPath",
+  "buttonText",
+  "heroTextHtml",
+  "secondaryTitle",
+  "secondaryTextHtml",
+  "tertiaryTitle",
+  "tertiaryTextHtml",
+  "blurbHtml",
+  "blogCategory",
+  "seoTitle",
+  "seoDescription",
+] as const;
+
+const SOLUTION_RESTORABLE_FIELDS = [
+  "title",
+  "displayOrder",
+  "parentServiceId",
+  "iconId",
+  "routePath",
+  "buttonText",
+  "heroTextHtml",
+  "secondaryTitle",
+  "secondaryTextHtml",
+  "ourApproachTitle",
+  "ourApproachTextHtml",
+  "blurbHtml",
+  "blurbCopy",
+  "heroTextColor",
+  "tagsText",
+  "blogCategory",
+  "blogTag",
+  "primaryBlogCategoryFilter",
+  "buttonUrl",
+  "seoTitle",
+  "seoDescription",
+  "pillar",
+] as const;
+
+router.get("/cms/services/:id/revisions", ...readGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const service = await db.query.servicesTable.findFirst({ where: eq(servicesTable.id, id) });
+  if (!service || service.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: serviceRevisionsTable.id,
+      serviceId: serviceRevisionsTable.serviceId,
+      editedAt: serviceRevisionsTable.editedAt,
+      editorId: usersTable.id,
+      editorDisplayName: usersTable.displayName,
+      editorAvatarUrl: usersTable.avatarUrl,
+      snapshotJson: serviceRevisionsTable.snapshotJson,
+    })
+    .from(serviceRevisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, serviceRevisionsTable.editedBy))
+    .where(eq(serviceRevisionsTable.serviceId, id))
+    .orderBy(desc(serviceRevisionsTable.editedAt));
+  res.json({
+    items: rows.map((r) => {
+      const snap = (r.snapshotJson ?? {}) as Partial<ServiceRow>;
+      return {
+        id: r.id,
+        serviceId: r.serviceId,
+        editedAt: r.editedAt.toISOString(),
+        editor: r.editorId
+          ? {
+              id: r.editorId,
+              displayName: r.editorDisplayName ?? null,
+              avatarUrl: r.editorAvatarUrl ?? null,
+            }
+          : null,
+        snapshotTitle: snap.title ?? null,
+        snapshotStatus: snap.status ?? null,
+      };
+    }),
+  });
+});
+
+router.post(
+  "/cms/services/:id/revisions/:revisionId/restore",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const revisionId = String(req.params.revisionId);
+    const service = await db.query.servicesTable.findFirst({
+      where: eq(servicesTable.id, id),
+    });
+    if (!service || service.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const revision = await db.query.serviceRevisionsTable.findFirst({
+      where: and(
+        eq(serviceRevisionsTable.id, revisionId),
+        eq(serviceRevisionsTable.serviceId, id),
+      ),
+    });
+    if (!revision) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (revision.snapshotJson ?? {}) as Partial<ServiceRow>;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const field of SERVICE_RESTORABLE_FIELDS) {
+      if (field in snap) {
+        updates[field] = (snap as Record<string, unknown>)[field] ?? null;
+      }
+    }
+    const [updated] = await db.transaction(async (tx) => {
+      await tx.insert(serviceRevisionsTable).values({
+        serviceId: id,
+        snapshotJson: service as never,
+        editedBy: req.authedUser!.id,
+      });
+      return tx
+        .update(servicesTable)
+        .set(updates)
+        .where(eq(servicesTable.id, id))
+        .returning();
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "service.restore_revision",
+      entity: "service",
+      entityId: id,
+      diff: { revisionId },
+    });
+    res.json(await serializeService(updated));
+  },
+);
+
+router.get("/cms/solutions/:id/revisions", ...readGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const solution = await db.query.solutionsTable.findFirst({
+    where: eq(solutionsTable.id, id),
+  });
+  if (!solution || solution.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: solutionRevisionsTable.id,
+      solutionId: solutionRevisionsTable.solutionId,
+      editedAt: solutionRevisionsTable.editedAt,
+      editorId: usersTable.id,
+      editorDisplayName: usersTable.displayName,
+      editorAvatarUrl: usersTable.avatarUrl,
+      snapshotJson: solutionRevisionsTable.snapshotJson,
+    })
+    .from(solutionRevisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, solutionRevisionsTable.editedBy))
+    .where(eq(solutionRevisionsTable.solutionId, id))
+    .orderBy(desc(solutionRevisionsTable.editedAt));
+  res.json({
+    items: rows.map((r) => {
+      const snap = (r.snapshotJson ?? {}) as Partial<SolutionRow>;
+      return {
+        id: r.id,
+        solutionId: r.solutionId,
+        editedAt: r.editedAt.toISOString(),
+        editor: r.editorId
+          ? {
+              id: r.editorId,
+              displayName: r.editorDisplayName ?? null,
+              avatarUrl: r.editorAvatarUrl ?? null,
+            }
+          : null,
+        snapshotTitle: snap.title ?? null,
+        snapshotStatus: snap.status ?? null,
+      };
+    }),
+  });
+});
+
+router.post(
+  "/cms/solutions/:id/revisions/:revisionId/restore",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const revisionId = String(req.params.revisionId);
+    const solution = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.id, id),
+    });
+    if (!solution || solution.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const revision = await db.query.solutionRevisionsTable.findFirst({
+      where: and(
+        eq(solutionRevisionsTable.id, revisionId),
+        eq(solutionRevisionsTable.solutionId, id),
+      ),
+    });
+    if (!revision) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (revision.snapshotJson ?? {}) as Partial<SolutionRow>;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const field of SOLUTION_RESTORABLE_FIELDS) {
+      if (field in snap) {
+        updates[field] = (snap as Record<string, unknown>)[field] ?? null;
+      }
+    }
+    const [updated] = await db.transaction(async (tx) => {
+      await tx.insert(solutionRevisionsTable).values({
+        solutionId: id,
+        snapshotJson: solution as never,
+        editedBy: req.authedUser!.id,
+      });
+      return tx
+        .update(solutionsTable)
+        .set(updates)
+        .where(eq(solutionsTable.id, id))
+        .returning();
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "solution.restore_revision",
+      entity: "solution",
+      entityId: id,
+      diff: { revisionId },
+    });
+    res.json(await serializeSolution(updated));
+  },
+);
+
+// #60: mint a short-lived preview token so an editor can view the draft
+// service or solution on its public detail page. The returned URL uses
+// `routePath`/slug-based path convention; the public page reads the
+// `?preview=` query and hands it to the API.
+router.post("/cms/services/:id/preview-token", ...adminGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const service = await db.query.servicesTable.findFirst({ where: eq(servicesTable.id, id) });
+  if (!service || service.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const { token, expiresAt } = signPreviewToken("service", service.id);
+  await audit({
+    actorId: req.authedUser!.id,
+    action: "service.preview_token",
+    entity: "service",
+    entityId: service.id,
+  });
+  res.json({
+    token,
+    expiresAt: expiresAt.toISOString(),
+    slug: service.slug,
+    previewPath: `/services/${service.slug}?preview=${encodeURIComponent(token)}`,
+  });
+});
+
+router.post("/cms/solutions/:id/preview-token", ...adminGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const solution = await db.query.solutionsTable.findFirst({
+    where: eq(solutionsTable.id, id),
+  });
+  if (!solution || solution.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const { token, expiresAt } = signPreviewToken("solution", solution.id);
+  await audit({
+    actorId: req.authedUser!.id,
+    action: "solution.preview_token",
+    entity: "solution",
+    entityId: solution.id,
+  });
+  res.json({
+    token,
+    expiresAt: expiresAt.toISOString(),
+    slug: solution.slug,
+    previewPath: `/solutions/${solution.slug}?preview=${encodeURIComponent(token)}`,
+  });
 });
 
 export default router;

@@ -1,23 +1,9 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 15 tasks pending · 82 merged · 29 cancelled
+> 11 tasks pending · 86 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
-
----
-
-## Comments
-
-### #53 · Notify visitors when their comment is approved or replied to
-**Depends on:** #19 (visitor comments)
-
-When a visitor leaves a comment on an Insights post, they have no way of knowing when it is approved or when someone replies. This task sends a transactional email to the commenter's address at each of those moments. Visitors must opt-in (checkbox at comment time). The admin moderation queue gains a "send notification" toggle per comment. Uses the existing Resend email integration.
-
-### #54 · Catch comment spam automatically with a CAPTCHA fallback
-**Depends on:** #19 (visitor comments)
-
-Bot-submitted comments currently pass through to the moderation queue, cluttering it. This task adds a CAPTCHA challenge (hCaptcha or Cloudflare Turnstile) on the comment form as a last line of defence after the existing Turnstile bot-protection layer. Invisible mode first; visible challenge as fallback on failure. Should integrate cleanly with the current `/api/comments` endpoint.
 
 ---
 
@@ -27,16 +13,6 @@ Bot-submitted comments currently pass through to the moderation queue, clutterin
 **Depends on:** #40 (services pages refactor)
 
 The services hierarchy is the most commercially critical part of the site. This task writes Playwright end-to-end tests covering: home → Services nav → services overview page → service detail → solution detail, verifying content renders and links resolve. Tests run in CI so regressions are caught before merge.
-
-### #60 · Preview services and solutions before publishing
-**Depends on:** #39 (services hierarchy admin UI)
-
-Editors currently have to publish a service or solution to see how it renders. This task adds a "Preview" button to the service and solution edit forms that opens the public-facing detail page in a new tab with a signed preview token, bypassing the `published` check. The preview token expires after 24 hours.
-
-### #61 · Track edit history for services and solutions
-**Depends on:** #39 (services hierarchy admin UI)
-
-Like the post revision system (#48), services and solutions should record a snapshot whenever an editor saves a change, with the editor's name and a timestamp. The admin edit form shows a collapsible history panel. Restoring a revision replaces the current record's fields with the snapshot values (the current state is saved as a new revision before overwriting).
 
 ### #62 · Bulk import services and solutions from a spreadsheet
 **Depends on:** #39 (services hierarchy admin UI)
@@ -106,11 +82,7 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #53 | Comment approval/reply notifications | Comments | #19 |
-| #54 | CAPTCHA fallback for comment spam | Comments | #19 |
 | #57 | Playwright tests for services pages | QA | #40 |
-| #60 | Preview unpublished services/solutions | Services admin | #39 |
-| #61 | Edit history for services & solutions | Services admin | #39 |
 | #62 | Bulk CSV import for services & solutions | Services admin | #39 |
 | #66 | Preview a past post revision | CMS | #48 |
 | #67 | Diff between post revisions | CMS | #48 |

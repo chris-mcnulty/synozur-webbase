@@ -5,12 +5,14 @@ import {
   integer,
   boolean,
   timestamp,
+  jsonb,
   uniqueIndex,
   index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { mediaTable } from "./media";
+import { usersTable } from "./users";
 import { artifactStatusEnum, collateralPillarEnum } from "./_artifactBase";
 
 export const servicesTable = pgTable(
@@ -162,6 +164,38 @@ export const solutionCapabilitiesTable = pgTable(
   ],
 );
 
+// #61: revision snapshots for services and solutions. Pattern mirrors the
+// post `revisions` table — one row inserted before every PATCH; `restore`
+// snapshots the current state before overwriting. Stored as jsonb so new
+// columns don't require a migration of this table.
+export const serviceRevisionsTable = pgTable(
+  "service_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => servicesTable.id, { onDelete: "cascade" }),
+    snapshotJson: jsonb("snapshot_json").notNull(),
+    editedBy: uuid("edited_by").references(() => usersTable.id, { onDelete: "set null" }),
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("service_revisions_service_edited_idx").on(t.serviceId, t.editedAt)],
+);
+
+export const solutionRevisionsTable = pgTable(
+  "solution_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    solutionId: uuid("solution_id")
+      .notNull()
+      .references(() => solutionsTable.id, { onDelete: "cascade" }),
+    snapshotJson: jsonb("snapshot_json").notNull(),
+    editedBy: uuid("edited_by").references(() => usersTable.id, { onDelete: "set null" }),
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("solution_revisions_solution_edited_idx").on(t.solutionId, t.editedAt)],
+);
+
 export const servicesRelations = relations(servicesTable, ({ one, many }) => ({
   icon: one(mediaTable, { fields: [servicesTable.iconId], references: [mediaTable.id] }),
   parent: one(servicesTable, {
@@ -219,3 +253,7 @@ export type ServiceMethodology = typeof serviceMethodologiesTable.$inferSelect;
 export type InsertServiceMethodology = typeof serviceMethodologiesTable.$inferInsert;
 export type SolutionCapability = typeof solutionCapabilitiesTable.$inferSelect;
 export type InsertSolutionCapability = typeof solutionCapabilitiesTable.$inferInsert;
+export type ServiceRevision = typeof serviceRevisionsTable.$inferSelect;
+export type InsertServiceRevision = typeof serviceRevisionsTable.$inferInsert;
+export type SolutionRevision = typeof solutionRevisionsTable.$inferSelect;
+export type InsertSolutionRevision = typeof solutionRevisionsTable.$inferInsert;

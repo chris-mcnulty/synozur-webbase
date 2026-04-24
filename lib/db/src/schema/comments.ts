@@ -4,6 +4,7 @@ import {
   uuid,
   text,
   timestamp,
+  boolean,
   index,
   AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -38,6 +39,13 @@ export const commentsTable = pgTable(
       onDelete: "set null",
     }),
     moderatedAt: timestamp("moderated_at", { withTimezone: true }),
+    // #53: visitor opt-in for transactional email notifications. Each flag
+    // is captured at submission time. `notifiedApprovedAt` is stamped when
+    // the approval email is sent so re-moderation (approve → unapprove →
+    // approve) doesn't spam the commenter.
+    notifyOnApproval: boolean("notify_on_approval").notNull().default(false),
+    notifyOnReply: boolean("notify_on_reply").notNull().default(false),
+    notifiedApprovedAt: timestamp("notified_approved_at", { withTimezone: true }),
   },
   (t) => [
     index("comments_post_status_idx").on(t.postId, t.status),

@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { desc, eq, sql, and } from "drizzle-orm";
-import { db, commentsTable } from "@workspace/db";
+import { db, commentsTable, postsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
+import { sendCommentApprovedEmail } from "../../lib/email";
+import { logger } from "../../lib/logger";
 
 const router: IRouter = Router();
 
@@ -44,7 +46,14 @@ router.get(
   },
 );
 
-const Action = z.object({ action: z.enum(["approve", "reject", "spam", "delete"]) });
+// `notify` is an optional per-action flag. It defaults to `true` on approve
+// (only effective if the commenter opted in at submission time) and to
+// `false` for reject/spam/delete. Moderators can flip the flag in the UI
+// when they want to silently approve, e.g. after an edit.
+const Action = z.object({
+  action: z.enum(["approve", "reject", "spam", "delete"]),
+  notify: z.boolean().optional(),
+});
 
 router.post(
   "/cms/comments/:id/moderate",
@@ -64,12 +73,33 @@ router.post(
           : parsed.data.action === "spam"
             ? "spam"
             : "deleted";
+
+    const existing = await db.query.commentsTable.findFirst({
+      where: eq(commentsTable.id, String(req.params.id)),
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const wasApproved = existing.status === "approved";
+    const willApprove = newStatus === "approved";
+    const shouldNotify =
+      parsed.data.action === "approve" &&
+      (parsed.data.notify ?? true) &&
+      existing.notifyOnApproval &&
+      !existing.notifiedApprovedAt &&
+      !wasApproved &&
+      willApprove &&
+      existing.authorEmail.trim() !== "";
+
     const [row] = await db
       .update(commentsTable)
       .set({
         status: newStatus,
         moderatedBy: req.authedUser!.id,
         moderatedAt: new Date(),
+        ...(shouldNotify ? { notifiedApprovedAt: new Date() } : {}),
       })
       .where(eq(commentsTable.id, String(req.params.id)))
       .returning();
@@ -77,6 +107,28 @@ router.post(
       res.status(404).json({ error: "Not found" });
       return;
     }
+
+    if (shouldNotify) {
+      void (async () => {
+        try {
+          const post = await db.query.postsTable.findFirst({
+            where: eq(postsTable.id, row.postId),
+          });
+          if (!post) return;
+          await sendCommentApprovedEmail({
+            to: row.authorEmail,
+            commenterName: row.authorName,
+            postTitle: post.title,
+            postSlug: post.slug,
+            commentId: row.id,
+            bodyText: row.bodyText,
+          });
+        } catch (err) {
+          logger.warn({ err }, "comment approval notification failed");
+        }
+      })();
+    }
+
     await audit({
       actorId: req.authedUser!.id,
       action: `comment.${parsed.data.action}`,

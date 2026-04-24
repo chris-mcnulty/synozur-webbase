@@ -1,12 +1,15 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { submitComment } from "@/lib/comments-api";
 import {
-  submitInsightComment,
-  type SubmitCommentBody,
-} from "@workspace/api-client-react";
+  Turnstile,
+  TURNSTILE_SITE_KEY,
+  type TurnstileHandle,
+} from "@/components/turnstile";
 
 interface CommentFormProps {
   slug: string;
@@ -21,9 +24,18 @@ interface FormState {
   authorEmail: string;
   bodyText: string;
   website: string;
+  notifyOnApproval: boolean;
+  notifyOnReply: boolean;
 }
 
-const EMPTY: FormState = { authorName: "", authorEmail: "", bodyText: "", website: "" };
+const EMPTY: FormState = {
+  authorName: "",
+  authorEmail: "",
+  bodyText: "",
+  website: "",
+  notifyOnApproval: false,
+  notifyOnReply: false,
+};
 
 export function CommentForm({
   slug,
@@ -37,6 +49,8 @@ export function CommentForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
@@ -54,16 +68,22 @@ export function CommentForm({
     e.preventDefault();
     setSubmitError(null);
     if (!validate()) return;
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setSubmitError("Please wait a moment while we verify your browser, then try again.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const body: SubmitCommentBody = {
+      await submitComment(slug, {
         authorName: state.authorName.trim(),
         authorEmail: state.authorEmail.trim(),
         bodyText: state.bodyText.trim(),
         parentCommentId: parentCommentId ?? null,
         website: state.website,
-      };
-      await submitInsightComment(slug, body);
+        turnstileToken,
+        notifyOnApproval: state.notifyOnApproval,
+        notifyOnReply: parentCommentId ? false : state.notifyOnReply,
+      });
       setSubmitted(true);
       setState(EMPTY);
       onSuccess?.();
@@ -74,6 +94,8 @@ export function CommentForm({
       } else {
         setSubmitError("We couldn't submit your comment. Please try again in a moment.");
       }
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
     } finally {
       setSubmitting(false);
     }
@@ -178,6 +200,39 @@ export function CommentForm({
         {errors.bodyText && <p className="text-xs text-destructive mt-1">{errors.bodyText}</p>}
       </div>
 
+      <div className="space-y-2">
+        <label
+          className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer"
+          htmlFor={`${idPrefix}-notify-approval`}
+        >
+          <Checkbox
+            id={`${idPrefix}-notify-approval`}
+            checked={state.notifyOnApproval}
+            onCheckedChange={(v) =>
+              setState((s) => ({ ...s, notifyOnApproval: v === true }))
+            }
+            data-testid="comment-notify-approval"
+          />
+          <span>Email me when this comment is approved.</span>
+        </label>
+        {!parentCommentId && (
+          <label
+            className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer"
+            htmlFor={`${idPrefix}-notify-reply`}
+          >
+            <Checkbox
+              id={`${idPrefix}-notify-reply`}
+              checked={state.notifyOnReply}
+              onCheckedChange={(v) =>
+                setState((s) => ({ ...s, notifyOnReply: v === true }))
+              }
+              data-testid="comment-notify-reply"
+            />
+            <span>Email me when someone replies.</span>
+          </label>
+        )}
+      </div>
+
       {/* Honeypot — hidden via off-screen positioning, never display:none. */}
       <div
         aria-hidden="true"
@@ -200,6 +255,14 @@ export function CommentForm({
           onChange={(e) => setState((s) => ({ ...s, website: e.target.value }))}
         />
       </div>
+
+      {TURNSTILE_SITE_KEY && (
+        <Turnstile
+          ref={turnstileRef}
+          onVerify={(token) => setTurnstileToken(token)}
+          className="mt-2"
+        />
+      )}
 
       {submitError && (
         <p className="text-sm text-destructive" data-testid="comment-form-error">
