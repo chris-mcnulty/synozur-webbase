@@ -97,9 +97,9 @@ function formatMissingLabel(field: string): string {
     seoTitle: "SEO title",
     seoDescription: "SEO description",
     ogImage: "OG image",
-    "seoDescription.tooShort": "Desc too short",
-    "seoDescription.tooLong": "Desc too long",
-    "seoTitle.tooLong": "Title too long",
+    seoDescriptionShort: "Desc too short",
+    seoDescriptionLong: "Desc too long",
+    seoTitleLong: "Title too long",
   };
   return map[field] ?? field;
 }
