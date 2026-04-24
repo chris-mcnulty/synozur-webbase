@@ -28,4 +28,6 @@ export interface EventInput {
   featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
 }

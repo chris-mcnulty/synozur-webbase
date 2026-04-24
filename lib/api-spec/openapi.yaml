@@ -3543,6 +3543,22 @@ components:
           type:
             - string
             - 'null'
+        recordingVideoId:
+          type:
+            - string
+            - 'null'
+        recordingVideoSlug:
+          type:
+            - string
+            - 'null'
+        recordingVideoUrl:
+          type:
+            - string
+            - 'null'
+        recordingVideoTitle:
+          type:
+            - string
+            - 'null'
     AdminEvent:
       type: object
       required:
@@ -3596,6 +3612,22 @@ components:
             - integer
             - 'null'
         imageUrl:
+          type:
+            - string
+            - 'null'
+        recordingVideoId:
+          type:
+            - string
+            - 'null'
+        recordingVideoSlug:
+          type:
+            - string
+            - 'null'
+        recordingVideoTitle:
+          type:
+            - string
+            - 'null'
+        recordingVideoUrl:
           type:
             - string
             - 'null'
@@ -3823,6 +3855,10 @@ components:
         imageAssetId:
           type:
             - integer
+            - 'null'
+        recordingVideoId:
+          type:
+            - string
             - 'null'
 
     Service:

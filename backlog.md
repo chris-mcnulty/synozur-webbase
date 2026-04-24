@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 16 tasks pending · 90 merged · 29 cancelled
+> 13 tasks pending · 93 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -42,21 +42,6 @@ The admin collateral table in `artifacts/synozur/src/pages/admin/library/collate
 **Depends on:** #63 (asset categories beyond people/north-star) — merged
 
 Webinars, workshops, and white papers typically ship with more than one companion file — slides, transcript, Q&A log, code repo link, follow-up deck — but the only attachment slot today is a single `downloadUrl` text column on `collateral` (see `lib/db/src/schema/collateral.ts` and the "Download URL" input in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx`). Editors work around it by concatenating URLs into the body HTML, which breaks the public library detail page's tidy "Download" CTA. This task adds a `collateral_resources` table with `(id, collateralId, assetId, externalUrl, label, mimeType, sortOrder, createdAt)` — asset-backed rows link to the unified `assets` table for uploaded files; externalUrl rows cover off-platform links (GitHub, Figma, external CDNs). Admin edit form gains a "Resources" list editor with drag-to-reorder and inline label; public library detail page (`artifacts/synozur/src/pages/library-detail.tsx`) renders a Resources section when rows exist, falling back to the legacy `downloadUrl` when empty. Keep `downloadUrl` on the schema for now as a read-only mirror of the first resource; deprecate in a follow-up.
-
-### #123 · Extend AssetLibraryModal to handle documents (PDF, PPTX, DOCX, ZIP)
-**Depends on:** #119 (AssetLibraryModal migration for collateral/video/white-paper/workshop) — merged
-
-`artifacts/synozur/src/components/admin/AssetLibraryModal.tsx` is image-scoped — the grid renders `<img>` tags and the upload path only validates `image/*` MIME types (see `assetUrl`, `ASSET_CATEGORIES`). Editors who want to attach a PDF of slides to a past webinar have to host the file elsewhere and paste a URL. This task widens the modal to a dual-mode asset picker: add a "type" filter (`image` | `document`) reading from `assets.mimeType`, swap the grid tile for a document icon + filename + size when `mimeType` is `application/pdf`, PowerPoint, Word, ZIP, etc., and loosen the upload handler to accept those MIME types (with a reasonable size cap — 50MB feels right for webinar decks). `GET /api/storage{storageKey}` already serves non-image assets with the correct Content-Type, so the read path is free. Once this ships, the "Resources" editor in #122 can use the same modal, closing the editor workflow loop so editors never leave the admin to attach a PDF.
-
-### #124 · Link events to their recording video
-**Depends on:** — (foundation change; no blockers)
-
-`lib/db/src/schema/media.ts` defines `eventsTable` with `startDate`, `location`, `registrationUrl`, `status` (`UPCOMING | ENDED | CANCELLED`) but **no link to a post-event recording**. Today the connection is entirely editorial: an event runs, status flips to `ENDED`, someone manually uploads the recording as a new row in `videos` with `category="webinar"`, then runs "Sync to library" to mirror it into `collateral`. Nothing in the database ties the three rows together — the event page cannot auto-link to the recording, and a slug change on either side silently breaks the connection. This task adds a nullable `recordingVideoId` FK on `eventsTable` pointing at `videos.id`. The event edit form (`artifacts/synozur/src/pages/admin/people/event-form.tsx`) gets a "Recording" picker that lists published videos (most recent first, filterable by slug match) and lets editors attach one; the public event detail page renders an embedded player (reusing the videos page's embed logic) beneath the "This event has ended" banner when a recording is linked. Follow-up idea: once this exists, "Sync event to collateral" on an ended event with a linked recording can promote it directly to a webinar collateral row without the separate video sync step.
-
-### #125 · Upload white-paper PDFs through the asset library and attach them to white-paper objects
-**Depends on:** #123 (AssetLibraryModal accepts documents)
-
-`lib/db/src/schema/whitePapers.ts` has a `documentUrl` text column, and the admin edit form at `artifacts/synozur/src/pages/admin/library/white-paper-edit.tsx` (lines 437–446) renders a bare `<Input>` asking editors to paste a PDF URL. The practical result: most white-paper rows in production have no actual document attached because editors have no in-admin upload path — the file has to exist somewhere else first. This task closes the loop once #123 widens AssetLibraryModal to documents. Add a nullable `documentAssetId` FK on `white_papers` pointing at `assets.id`; replace the text input with a document picker (Upload new / Choose existing through AssetLibraryModal filtered to documents); server derives the rendered `documentUrl` from the linked asset's storageKey so the public white-paper detail download CTA keeps working unchanged. Keep the existing `documentUrl` text column as a secondary fallback for off-platform destinations (Sway, microsites) — the edit form shows a primary "Uploaded PDF" picker and a secondary "External URL" field, with the uploaded asset taking precedence when both are set. Surface the asset's filename, MIME type, and size in the admin form so editors can confirm they picked the right file, and auto-populate `pageCount` from the PDF metadata on upload when feasible.
 
 ### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
 **Depends on:** — (infrastructure foundation)
@@ -117,9 +102,6 @@ This app owns the canonical `usersTable` plus the role/capability model; other S
 | #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
 | #121 | Sortable columns on the collateral library admin list | Library | #69 |
 | #122 | Multiple resource attachments on library items | Library | #63 |
-| #123 | Extend AssetLibraryModal to handle documents (PDF/PPTX/DOCX) | Library | #119 |
-| #124 | Link events to their recording video | Events & Library | — |
-| #125 | Upload white-paper PDFs via the asset library | Library | #123 |
 | #126 | Microsoft Entra SSO for employees and admins | Admin Access & People | — |
 | #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |

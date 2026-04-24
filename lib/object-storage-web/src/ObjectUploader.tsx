@@ -11,6 +11,12 @@ interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
   /**
+   * Optional list of allowed MIME types / file extensions. Passed through to
+   * Uppy's `restrictions.allowedFileTypes` (e.g. ["image/*"], or explicit
+   * document MIME types for PDF/PPTX/DOCX/ZIP pickers).
+   */
+  allowedFileTypes?: readonly string[];
+  /**
    * Function to get upload parameters for each file.
    * IMPORTANT: This receives the file object - use file.name, file.size, file.type
    * to request per-file presigned URLs from your backend.
@@ -61,6 +67,7 @@ interface ObjectUploaderProps {
 export function ObjectUploader({
   maxNumberOfFiles = 1,
   maxFileSize = 10485760, // 10MB default
+  allowedFileTypes,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -77,6 +84,9 @@ export function ObjectUploader({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
+        ...(allowedFileTypes && allowedFileTypes.length > 0
+          ? { allowedFileTypes: [...allowedFileTypes] }
+          : {}),
       },
       autoProceed: false,
     })
@@ -88,6 +98,21 @@ export function ObjectUploader({
         onCompleteRef.current?.(result);
       })
   );
+
+  // Keep Uppy's restrictions in sync with prop changes so that switching the
+  // asset kind filter in AssetLibraryModal correctly updates file type and
+  // size caps without needing to recreate the Uppy instance.
+  useEffect(() => {
+    uppy.setOptions({
+      restrictions: {
+        maxNumberOfFiles,
+        maxFileSize,
+        ...(allowedFileTypes && allowedFileTypes.length > 0
+          ? { allowedFileTypes: [...allowedFileTypes] }
+          : { allowedFileTypes: undefined }),
+      },
+    });
+  }, [uppy, maxNumberOfFiles, maxFileSize, allowedFileTypes]);
 
   return (
     <div>

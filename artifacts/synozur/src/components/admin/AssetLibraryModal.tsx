@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ObjectUploader } from "@workspace/object-storage-web";
-import { Trash2, Upload, Search, Check } from "lucide-react";
+import { Trash2, Upload, Search, Check, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,10 +25,22 @@ import {
   ASSET_CATEGORY_LABELS,
   type AssetCategory,
 } from "@workspace/api-zod";
+import {
+  type AssetKind,
+  assetKindOf,
+  isDocumentMime,
+  isImageMime,
+  fileExtensionLabel,
+  formatBytes,
+  DOCUMENT_ACCEPT_TYPES,
+  IMAGE_ACCEPT_TYPES,
+} from "@/lib/asset-kind";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 // Thumb size chosen to look sharp at 200–220px display width on 2x screens.
 const THUMB_WIDTH = 400;
+const IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
 
 export function assetUrl(asset: Asset): string {
   return `${BASE_PATH}/api/storage${asset.storageKey}`;
@@ -49,20 +61,38 @@ interface Props {
    * editors can filter and tag uploads using the in-modal category dropdown.
    */
   category?: AssetCategory;
+  /**
+   * Optional asset-kind lock. "image" shows only image assets and restricts
+   * uploads to image/*; "document" shows only PDF/Office/ZIP files and
+   * accepts larger uploads. When omitted, editors can switch between kinds
+   * via the in-modal type filter.
+   */
+  kind?: AssetKind;
 }
 
 const ANY_CATEGORY = "__any__";
+const ANY_KIND = "__any__";
 
-export function AssetLibraryModal({ open, onClose, onSelect, selectedId, category }: Props) {
+export function AssetLibraryModal({
+  open,
+  onClose,
+  onSelect,
+  selectedId,
+  category,
+  kind,
+}: Props) {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [picked, setPicked] = useState<number | null>(selectedId ?? null);
   const [filterCategory, setFilterCategory] = useState<AssetCategory | null>(null);
   const [uploadCategory, setUploadCategory] = useState<AssetCategory | null>(null);
+  const [filterKind, setFilterKind] = useState<AssetKind | null>(null);
   const qc = useQueryClient();
 
-  const locked = !!category;
+  const categoryLocked = !!category;
+  const kindLocked = !!kind;
   const activeCategory: AssetCategory | undefined = category ?? filterCategory ?? undefined;
+  const activeKind: AssetKind | null = kind ?? filterKind;
   const uploadAs: AssetCategory | undefined =
     category ?? uploadCategory ?? filterCategory ?? undefined;
 
@@ -94,31 +124,61 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
     },
   });
 
+  const filteredByKind = useMemo(() => {
+    if (!activeKind) return assets;
+    return assets.filter((a) =>
+      activeKind === "image" ? isImageMime(a.mimeType) : isDocumentMime(a.mimeType),
+    );
+  }, [assets, activeKind]);
+
   const sortedAssets = useMemo(
     () =>
-      [...assets].sort(
+      [...filteredByKind].sort(
         (a, b) =>
           new Date(b.uploadedAt as unknown as string).getTime() -
           new Date(a.uploadedAt as unknown as string).getTime(),
       ),
-    [assets],
+    [filteredByKind],
   );
+
+  // Upload caps/filters: if kind is locked to documents, or the filter is set
+  // to documents, restrict to the document MIME types; otherwise fall back
+  // to the broader image+document allowance so editors can upload either.
+  const uploadAcceptTypes =
+    activeKind === "document"
+      ? DOCUMENT_ACCEPT_TYPES
+      : activeKind === "image"
+        ? IMAGE_ACCEPT_TYPES
+        : [...IMAGE_ACCEPT_TYPES, ...DOCUMENT_ACCEPT_TYPES];
+  const uploadMaxBytes =
+    activeKind === "document" ? DOCUMENT_MAX_BYTES : IMAGE_MAX_BYTES;
+  const titleSuffix =
+    activeKind === "document"
+      ? " — Documents"
+      : activeKind === "image"
+        ? " — Images"
+        : "";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Asset Library</DialogTitle>
+          <DialogTitle>Asset Library{titleSuffix}</DialogTitle>
         </DialogHeader>
 
-        {locked && category && (
+        {categoryLocked && category && (
           <div className="text-xs text-muted-foreground">
             Filtered to <span className="font-medium">{ASSET_CATEGORY_LABELS[category]}</span>.
             Uploads will be tagged with this category.
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        {kindLocked && kind && (
+          <div className="text-xs text-muted-foreground">
+            Showing <span className="font-medium">{kind === "document" ? "documents" : "images"}</span> only.
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[12rem]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search assets…"
@@ -128,7 +188,24 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
               data-testid="input-asset-search"
             />
           </div>
-          {!locked && (
+          {!kindLocked && (
+            <Select
+              value={filterKind ?? ANY_KIND}
+              onValueChange={(v) =>
+                setFilterKind(v === ANY_KIND ? null : (v as AssetKind))
+              }
+            >
+              <SelectTrigger className="w-36" data-testid="select-asset-kind-filter">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY_KIND}>All types</SelectItem>
+                <SelectItem value="image">Images</SelectItem>
+                <SelectItem value="document">Documents</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {!categoryLocked && (
             <Select
               value={filterCategory ?? ANY_CATEGORY}
               onValueChange={(v) =>
@@ -148,7 +225,7 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
               </SelectContent>
             </Select>
           )}
-          {!locked && (
+          {!categoryLocked && (
             <Select
               value={uploadCategory ?? ANY_CATEGORY}
               onValueChange={(v) =>
@@ -170,7 +247,8 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
           )}
           <ObjectUploader
             maxNumberOfFiles={50}
-            maxFileSize={25 * 1024 * 1024}
+            maxFileSize={uploadMaxBytes}
+            allowedFileTypes={uploadAcceptTypes}
             buttonClassName="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
             onGetUploadParameters={async (file) => {
               const { uploadURL } = await api.requestUploadUrl({
@@ -227,6 +305,7 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 py-2">
               {sortedAssets.map((a) => {
                 const isPicked = picked === a.id;
+                const itemKind = assetKindOf(a.mimeType);
                 return (
                   <button
                     key={a.id}
@@ -237,7 +316,7 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
                     } hover-elevate`}
                     data-testid={`asset-item-${a.id}`}
                   >
-                    {a.mimeType.startsWith("image/") ? (
+                    {itemKind === "image" ? (
                       <img
                         src={assetThumbUrl(a)}
                         alt={a.originalName}
@@ -248,8 +327,17 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
                         height={THUMB_WIDTH}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground p-2 break-all">
-                        {a.originalName}
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted p-3 text-center">
+                        <FileText className="h-10 w-10 text-muted-foreground" />
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {fileExtensionLabel(a)}
+                        </div>
+                        <div className="w-full truncate text-xs text-foreground" title={a.originalName}>
+                          {a.originalName}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatBytes(a.size)}
+                        </div>
                       </div>
                     )}
                     {isPicked && (
@@ -304,7 +392,11 @@ export function AssetLibraryModal({ open, onClose, onSelect, selectedId, categor
             disabled={picked == null}
             data-testid="button-asset-select"
           >
-            Select Image
+            {activeKind === "document"
+              ? "Select Document"
+              : activeKind === "image"
+                ? "Select Image"
+                : "Select Asset"}
           </Button>
         </DialogFooter>
       </DialogContent>

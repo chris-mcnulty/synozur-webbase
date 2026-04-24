@@ -1,8 +1,16 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray, and, sql } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { db, eventsTable, assetsTable, type Event, type Asset } from "@workspace/db";
+import {
+  db,
+  eventsTable,
+  assetsTable,
+  videosTable,
+  type Event,
+  type Asset,
+  type Video,
+} from "@workspace/db";
 import {
   ListPublicEventsResponse,
   ListPublicEventsResponseItem,
@@ -23,6 +31,12 @@ import {
 import { seedEventsFromCsv } from "../scripts/seedEvents";
 
 const router: IRouter = Router();
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
 
 function slugify(text: string): string {
   return text
@@ -54,18 +68,91 @@ function imageUrlFor(asset: Asset | undefined | null): string | null {
   return `/api/storage${asset.storageKey}`;
 }
 
-async function loadEventWithImage(
-  event: Event,
-): Promise<{ event: Event; imageUrl: string | null }> {
-  if (!event.imageAssetId) return { event, imageUrl: null };
-  const [asset] = await db
-    .select()
-    .from(assetsTable)
-    .where(eq(assetsTable.id, event.imageAssetId));
-  return { event, imageUrl: imageUrlFor(asset) };
+interface EnrichedEvent {
+  event: Event;
+  imageUrl: string | null;
+  recordingVideo: Pick<Video, "id" | "slug" | "title" | "videoUrl"> | null;
 }
 
-function publicShape(event: Event, imageUrl: string | null) {
+async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
+  const [asset] = event.imageAssetId
+    ? await db
+        .select()
+        .from(assetsTable)
+        .where(eq(assetsTable.id, event.imageAssetId))
+    : [];
+  const now = new Date();
+  const [video] = event.recordingVideoId
+    ? await db
+        .select({
+          id: videosTable.id,
+          slug: videosTable.slug,
+          title: videosTable.title,
+          videoUrl: videosTable.videoUrl,
+        })
+        .from(videosTable)
+        .where(
+          and(
+            eq(videosTable.id, event.recordingVideoId),
+            eq(videosTable.active, true),
+            eq(videosTable.status, "published"),
+            sql`${videosTable.deletedAt} is null`,
+            sql`${videosTable.publishedAt} <= ${now}`,
+            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+          ),
+        )
+    : [];
+  return {
+    event,
+    imageUrl: imageUrlFor(asset),
+    recordingVideo: video ?? null,
+  };
+}
+
+async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
+  const assetIds = Array.from(
+    new Set(events.map((e) => e.imageAssetId).filter((v): v is number => v != null)),
+  );
+  const videoIds = Array.from(
+    new Set(events.map((e) => e.recordingVideoId).filter((v): v is string => v != null)),
+  );
+  const assets = assetIds.length
+    ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
+    : [];
+  const now = new Date();
+  const videos = videoIds.length
+    ? await db
+        .select({
+          id: videosTable.id,
+          slug: videosTable.slug,
+          title: videosTable.title,
+          videoUrl: videosTable.videoUrl,
+        })
+        .from(videosTable)
+        .where(
+          and(
+            inArray(videosTable.id, videoIds),
+            eq(videosTable.active, true),
+            eq(videosTable.status, "published"),
+            sql`${videosTable.deletedAt} is null`,
+            sql`${videosTable.publishedAt} <= ${now}`,
+            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+          ),
+        )
+    : [];
+  const assetsById = new Map(assets.map((a) => [a.id, a]));
+  const videosById = new Map(videos.map((v) => [v.id, v]));
+  return events.map((event) => ({
+    event,
+    imageUrl: imageUrlFor(event.imageAssetId ? assetsById.get(event.imageAssetId) : null),
+    recordingVideo: event.recordingVideoId
+      ? videosById.get(event.recordingVideoId) ?? null
+      : null,
+  }));
+}
+
+function publicShape(enriched: EnrichedEvent) {
+  const { event, imageUrl, recordingVideo } = enriched;
   return {
     id: event.id,
     title: event.title,
@@ -79,10 +166,15 @@ function publicShape(event: Event, imageUrl: string | null) {
     eventType: event.eventType,
     status: event.status,
     imageUrl,
+    recordingVideoId: recordingVideo?.id ?? null,
+    recordingVideoSlug: recordingVideo?.slug ?? null,
+    recordingVideoUrl: recordingVideo?.videoUrl || null,
+    recordingVideoTitle: recordingVideo?.title ?? null,
   };
 }
 
-function adminShape(event: Event, imageUrl: string | null) {
+function adminShape(enriched: EnrichedEvent) {
+  const { event, imageUrl, recordingVideo } = enriched;
   return {
     id: event.id,
     title: event.title,
@@ -99,6 +191,10 @@ function adminShape(event: Event, imageUrl: string | null) {
     featuredRank: event.featuredRank,
     imageAssetId: event.imageAssetId,
     imageUrl,
+    recordingVideoId: recordingVideo?.id ?? null,
+    recordingVideoSlug: recordingVideo?.slug ?? null,
+    recordingVideoTitle: recordingVideo?.title ?? null,
+    recordingVideoUrl: recordingVideo?.videoUrl || null,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
   };
@@ -106,10 +202,8 @@ function adminShape(event: Event, imageUrl: string | null) {
 
 router.get("/events", async (_req, res): Promise<void> => {
   const rows = await db.select().from(eventsTable).orderBy(asc(eventsTable.startDate));
-  const enriched = await Promise.all(rows.map((e) => loadEventWithImage(e)));
-  res.json(
-    ListPublicEventsResponse.parse(enriched.map(({ event, imageUrl }) => publicShape(event, imageUrl))),
-  );
+  const enriched = await loadEventsEnriched(rows);
+  res.json(ListPublicEventsResponse.parse(enriched.map(publicShape)));
 });
 
 router.get("/events/:slug", async (req, res): Promise<void> => {
@@ -122,16 +216,14 @@ router.get("/events/:slug", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  const { imageUrl } = await loadEventWithImage(event);
-  res.json(publicShape(event, imageUrl));
+  const enriched = await loadEventEnriched(event);
+  res.json(publicShape(enriched));
 });
 
 router.get("/admin/events", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select().from(eventsTable).orderBy(asc(eventsTable.startDate));
-  const enriched = await Promise.all(rows.map((e) => loadEventWithImage(e)));
-  res.json(
-    ListAdminEventsResponse.parse(enriched.map(({ event, imageUrl }) => adminShape(event, imageUrl))),
-  );
+  const enriched = await loadEventsEnriched(rows);
+  res.json(ListAdminEventsResponse.parse(enriched.map(adminShape)));
 });
 
 router.get("/admin/events/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -145,14 +237,19 @@ router.get("/admin/events/:id", requireAdmin, async (req, res): Promise<void> =>
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  const { imageUrl } = await loadEventWithImage(event);
-  res.json(GetAdminEventResponse.parse(adminShape(event, imageUrl)));
+  const enriched = await loadEventEnriched(event);
+  res.json(GetAdminEventResponse.parse(adminShape(enriched)));
 });
 
 router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const recordingVideoId = parsed.data.recordingVideoId ?? null;
+  if (recordingVideoId != null && !isValidUuid(recordingVideoId)) {
+    res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
     return;
   }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
@@ -173,18 +270,19 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
+      recordingVideoId,
     })
     .returning();
-  const { imageUrl } = await loadEventWithImage(event);
+  const enriched = await loadEventEnriched(event);
   try {
-    await upsertCollateralFromEvent(event, imageUrl);
+    await upsertCollateralFromEvent(event, enriched.imageUrl);
   } catch (error) {
     console.error("Failed to sync collateral after event create", {
       eventId: event.id,
       error,
     });
   }
-  res.status(201).json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
+  res.status(201).json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
 });
 
 router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -196,6 +294,11 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
   const parsed = UpdateEventBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const recordingVideoId = parsed.data.recordingVideoId ?? null;
+  if (recordingVideoId != null && !isValidUuid(recordingVideoId)) {
+    res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
     return;
   }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
@@ -216,6 +319,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
+      recordingVideoId,
     })
     .where(eq(eventsTable.id, params.data.id))
     .returning();
@@ -223,16 +327,16 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  const { imageUrl } = await loadEventWithImage(event);
+  const enriched = await loadEventEnriched(event);
   try {
-    await upsertCollateralFromEvent(event, imageUrl);
+    await upsertCollateralFromEvent(event, enriched.imageUrl);
   } catch (error) {
     console.error("Failed to sync collateral after event update", {
       eventId: event.id,
       error,
     });
   }
-  res.json(ListAdminEventsResponseItem.parse(adminShape(event, imageUrl)));
+  res.json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
 });
 
 router.delete("/admin/events/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -277,8 +381,8 @@ router.post(
       res.status(404).json({ error: "Event not found" });
       return;
     }
-    const { imageUrl } = await loadEventWithImage(event);
-    await upsertCollateralFromEvent(event, imageUrl);
+    const enriched = await loadEventEnriched(event);
+    await upsertCollateralFromEvent(event, enriched.imageUrl);
     res.json({ ok: true });
   },
 );

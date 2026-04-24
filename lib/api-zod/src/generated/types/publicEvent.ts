@@ -24,4 +24,12 @@ export interface PublicEvent {
   status: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
+  /** @nullable */
+  recordingVideoSlug?: string | null;
+  /** @nullable */
+  recordingVideoUrl?: string | null;
+  /** @nullable */
+  recordingVideoTitle?: string | null;
 }

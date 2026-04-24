@@ -3,6 +3,7 @@ import {
   db,
   collateralTable,
   servicesTable,
+  assetsTable,
   postCategories,
   postTags,
   categoriesTable,
@@ -338,7 +339,16 @@ export async function upsertCollateralFromWhitePaper(
     whitePaper.status === "published" && whitePaper.active && !whitePaper.deletedAt;
   const now = new Date();
   const collateralType = whitePaper.docType === "ebook" ? "ebook" : "white_paper";
-  const downloadUrl = whitePaper.documentUrl || whitePaper.externalUrl || null;
+  let uploadedDocumentUrl: string | null = null;
+  if (whitePaper.documentAssetId) {
+    const [asset] = await db
+      .select({ storageKey: assetsTable.storageKey })
+      .from(assetsTable)
+      .where(eq(assetsTable.id, whitePaper.documentAssetId));
+    if (asset) uploadedDocumentUrl = `/api/storage${asset.storageKey}`;
+  }
+  const downloadUrl =
+    uploadedDocumentUrl || whitePaper.documentUrl || whitePaper.externalUrl || null;
   const normalizedPillar = normalizePillar(whitePaper.pillar);
   const serviceId = await pillarToServiceId(normalizedPillar);
 

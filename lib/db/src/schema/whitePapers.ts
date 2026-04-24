@@ -42,6 +42,7 @@ export const whitePapersTable = pgTable(
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
     pillar: text("pillar"),
     documentUrl: text("document_url"),
+    documentAssetId: integer("document_asset_id"),
     externalUrl: text("external_url"),
     pageCount: integer("page_count"),
     status: whitePaperStatusEnum("status").notNull().default("draft"),
