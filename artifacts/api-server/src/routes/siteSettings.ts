@@ -166,65 +166,87 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     requireCookieConsent: input.requireCookieConsent,
   };
 
-  const applyInt = (
-    key: keyof typeof input,
-    column: keyof typeof siteSettingsTable.$inferInsert,
-  ) => {
-    if (key in input) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (updates as any)[column] = (input as any)[key] ?? null;
-    }
-  };
-  const applyText = (
-    key: keyof typeof input,
-    column: keyof typeof siteSettingsTable.$inferInsert,
-  ) => {
-    if (key in input) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (updates as any)[column] = trimOrNull((input as any)[key]);
-    }
-  };
-  const applyDirect = (
-    key: keyof typeof input,
-    column: keyof typeof siteSettingsTable.$inferInsert,
-  ) => {
-    if (key in input) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (updates as any)[column] = (input as any)[key] ?? null;
-    }
-  };
+  if ("homeHeroImageAssetId" in input) {
+    updates.homeHeroImageAssetId = input.homeHeroImageAssetId ?? null;
+  }
+  if ("homeEditorialImageAssetId" in input) {
+    updates.homeEditorialImageAssetId = input.homeEditorialImageAssetId ?? null;
+  }
+  if ("polarisFeedUrl" in input) {
+    updates.polarisFeedUrl = trimOrNull(input.polarisFeedUrl);
+  }
 
-  applyInt("homeHeroImageAssetId", "homeHeroImageAssetId");
-  applyInt("homeEditorialImageAssetId", "homeEditorialImageAssetId");
-  applyText("polarisFeedUrl", "polarisFeedUrl");
+  if ("seoDefaultTitleTemplate" in input) {
+    updates.seoDefaultTitleTemplate = trimOrNull(input.seoDefaultTitleTemplate);
+  }
+  if ("seoDefaultDescription" in input) {
+    updates.seoDefaultDescription = trimOrNull(input.seoDefaultDescription);
+  }
+  if ("seoDefaultOgImageAssetId" in input) {
+    updates.seoDefaultOgImageAssetId = input.seoDefaultOgImageAssetId ?? null;
+  }
 
-  applyText("seoDefaultTitleTemplate", "seoDefaultTitleTemplate");
-  applyText("seoDefaultDescription", "seoDefaultDescription");
-  applyInt("seoDefaultOgImageAssetId", "seoDefaultOgImageAssetId");
+  if ("seoTwitterHandle" in input) {
+    updates.seoTwitterHandle = trimOrNull(input.seoTwitterHandle);
+  }
+  if ("seoTwitterCardType" in input) {
+    updates.seoTwitterCardType = trimOrNull(input.seoTwitterCardType);
+  }
+  if ("seoLinkedinCompanyUrl" in input) {
+    updates.seoLinkedinCompanyUrl = trimOrNull(input.seoLinkedinCompanyUrl);
+  }
 
-  applyText("seoTwitterHandle", "seoTwitterHandle");
-  applyText("seoTwitterCardType", "seoTwitterCardType");
-  applyText("seoLinkedinCompanyUrl", "seoLinkedinCompanyUrl");
+  if ("seoGoogleSiteVerification" in input) {
+    updates.seoGoogleSiteVerification = trimOrNull(input.seoGoogleSiteVerification);
+  }
+  if ("seoBingSiteVerification" in input) {
+    updates.seoBingSiteVerification = trimOrNull(input.seoBingSiteVerification);
+  }
 
-  applyText("seoGoogleSiteVerification", "seoGoogleSiteVerification");
-  applyText("seoBingSiteVerification", "seoBingSiteVerification");
+  if ("orgName" in input) {
+    updates.orgName = trimOrNull(input.orgName);
+  }
+  if ("orgLegalName" in input) {
+    updates.orgLegalName = trimOrNull(input.orgLegalName);
+  }
+  if ("orgLogoAssetId" in input) {
+    updates.orgLogoAssetId = input.orgLogoAssetId ?? null;
+  }
+  if ("orgStreetAddress" in input) {
+    updates.orgStreetAddress = trimOrNull(input.orgStreetAddress);
+  }
+  if ("orgAddressLocality" in input) {
+    updates.orgAddressLocality = trimOrNull(input.orgAddressLocality);
+  }
+  if ("orgAddressRegion" in input) {
+    updates.orgAddressRegion = trimOrNull(input.orgAddressRegion);
+  }
+  if ("orgPostalCode" in input) {
+    updates.orgPostalCode = trimOrNull(input.orgPostalCode);
+  }
+  if ("orgAddressCountry" in input) {
+    updates.orgAddressCountry = trimOrNull(input.orgAddressCountry);
+  }
+  if ("orgSameAs" in input) {
+    updates.orgSameAs = input.orgSameAs ?? null;
+  }
 
-  applyText("orgName", "orgName");
-  applyText("orgLegalName", "orgLegalName");
-  applyInt("orgLogoAssetId", "orgLogoAssetId");
-  applyText("orgStreetAddress", "orgStreetAddress");
-  applyText("orgAddressLocality", "orgAddressLocality");
-  applyText("orgAddressRegion", "orgAddressRegion");
-  applyText("orgPostalCode", "orgPostalCode");
-  applyText("orgAddressCountry", "orgAddressCountry");
-  applyDirect("orgSameAs", "orgSameAs");
+  if ("tagGa4Id" in input) {
+    updates.tagGa4Id = trimOrNull(input.tagGa4Id);
+  }
+  if ("tagLinkedinPartnerId" in input) {
+    updates.tagLinkedinPartnerId = trimOrNull(input.tagLinkedinPartnerId);
+  }
+  if ("tagMetaPixelId" in input) {
+    updates.tagMetaPixelId = trimOrNull(input.tagMetaPixelId);
+  }
 
-  applyText("tagGa4Id", "tagGa4Id");
-  applyText("tagLinkedinPartnerId", "tagLinkedinPartnerId");
-  applyText("tagMetaPixelId", "tagMetaPixelId");
-
-  applyDirect("sitemapExcludedPaths", "sitemapExcludedPaths");
-  applyDirect("sitemapSectionFlags", "sitemapSectionFlags");
+  if ("sitemapExcludedPaths" in input) {
+    updates.sitemapExcludedPaths = input.sitemapExcludedPaths ?? null;
+  }
+  if ("sitemapSectionFlags" in input) {
+    updates.sitemapSectionFlags = input.sitemapSectionFlags ?? null;
+  }
 
   const [updated] = await db
     .update(siteSettingsTable)
