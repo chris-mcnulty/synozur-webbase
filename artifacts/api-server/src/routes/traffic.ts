@@ -226,7 +226,11 @@ router.post("/traffic/event", eventLimiter, async (req, res) => {
 
     // Cap properties payload — keep the admin view honest and prevent blob abuse.
     const props = parsed.data.properties ?? null;
-    const safeProps = props ? JSON.parse(JSON.stringify(props).slice(0, 4096)) : null;
+    const serializedProps = props ? JSON.stringify(props) : null;
+    const safeProps =
+      serializedProps && serializedProps.length <= 4096
+        ? JSON.parse(serializedProps)
+        : null;
 
     await db.insert(trafficEventsTable).values({
       sessionId,
