@@ -409,14 +409,13 @@ function FindingRow({
           {finding.missing.map((m) => formatMissingLabel(m)).join(", ")}
         </div>
       </div>
-      <Link href={editorHref(finding.kind, finding.id)}>
-        <a
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          data-testid={`edit-link-${finding.kind}-${finding.id}`}
-          title="Open in CMS editor"
-        >
-          Edit <ExternalLink className="h-3 w-3" />
-        </a>
+      <Link
+        href={editorHref(finding.kind, finding.id)}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        data-testid={`edit-link-${finding.kind}-${finding.id}`}
+        title="Open in CMS editor"
+      >
+        Edit <ExternalLink className="h-3 w-3" />
       </Link>
       <Button
         variant="outline"
