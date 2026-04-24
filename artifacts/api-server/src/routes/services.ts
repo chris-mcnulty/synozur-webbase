@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, eq, ne, asc, desc } from "drizzle-orm";
+import { and, eq, ne, asc, desc, sql } from "drizzle-orm";
 import {
   db,
   servicesTable,
@@ -281,17 +281,20 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
-  // #61: snapshot prior state before overwriting.
-  await db.insert(serviceRevisionsTable).values({
-    serviceId: id,
-    snapshotJson: existing as never,
-    editedBy: req.authedUser!.id,
+  // #61: snapshot prior state before overwriting — both ops in one transaction
+  // so a failed update cannot leave an orphan revision row.
+  const [updated] = await db.transaction(async (tx) => {
+    await tx.insert(serviceRevisionsTable).values({
+      serviceId: id,
+      snapshotJson: existing as never,
+      editedBy: req.authedUser!.id,
+    });
+    return tx
+      .update(servicesTable)
+      .set(updates)
+      .where(eq(servicesTable.id, id))
+      .returning();
   });
-  const [updated] = await db
-    .update(servicesTable)
-    .set(updates)
-    .where(eq(servicesTable.id, id))
-    .returning();
   if (d.tagIds !== undefined) {
     await setEntityTags("service", id, d.tagIds);
   }
@@ -415,17 +418,20 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
-  // #61: snapshot prior state before overwriting.
-  await db.insert(solutionRevisionsTable).values({
-    solutionId: id,
-    snapshotJson: existing as never,
-    editedBy: req.authedUser!.id,
+  // #61: snapshot prior state before overwriting — both ops in one transaction
+  // so a failed update cannot leave an orphan revision row.
+  const [updated] = await db.transaction(async (tx) => {
+    await tx.insert(solutionRevisionsTable).values({
+      solutionId: id,
+      snapshotJson: existing as never,
+      editedBy: req.authedUser!.id,
+    });
+    return tx
+      .update(solutionsTable)
+      .set(updates)
+      .where(eq(solutionsTable.id, id))
+      .returning();
   });
-  const [updated] = await db
-    .update(solutionsTable)
-    .set(updates)
-    .where(eq(solutionsTable.id, id))
-    .returning();
   if (d.tagIds !== undefined) {
     await setEntityTags("solution", id, d.tagIds);
   }
@@ -707,30 +713,28 @@ router.get("/cms/services/:id/revisions", ...readGuard, async (req, res) => {
       editorId: usersTable.id,
       editorDisplayName: usersTable.displayName,
       editorAvatarUrl: usersTable.avatarUrl,
-      snapshotJson: serviceRevisionsTable.snapshotJson,
+      snapshotTitle: sql<string | null>`${serviceRevisionsTable.snapshotJson}->>'title'`,
+      snapshotStatus: sql<string | null>`${serviceRevisionsTable.snapshotJson}->>'status'`,
     })
     .from(serviceRevisionsTable)
     .leftJoin(usersTable, eq(usersTable.id, serviceRevisionsTable.editedBy))
     .where(eq(serviceRevisionsTable.serviceId, id))
     .orderBy(desc(serviceRevisionsTable.editedAt));
   res.json({
-    items: rows.map((r) => {
-      const snap = (r.snapshotJson ?? {}) as Partial<ServiceRow>;
-      return {
-        id: r.id,
-        serviceId: r.serviceId,
-        editedAt: r.editedAt.toISOString(),
-        editor: r.editorId
-          ? {
-              id: r.editorId,
-              displayName: r.editorDisplayName ?? null,
-              avatarUrl: r.editorAvatarUrl ?? null,
-            }
-          : null,
-        snapshotTitle: snap.title ?? null,
-        snapshotStatus: snap.status ?? null,
-      };
-    }),
+    items: rows.map((r) => ({
+      id: r.id,
+      serviceId: r.serviceId,
+      editedAt: r.editedAt.toISOString(),
+      editor: r.editorId
+        ? {
+            id: r.editorId,
+            displayName: r.editorDisplayName ?? null,
+            avatarUrl: r.editorAvatarUrl ?? null,
+          }
+        : null,
+      snapshotTitle: r.snapshotTitle ?? null,
+      snapshotStatus: r.snapshotStatus ?? null,
+    })),
   });
 });
 
@@ -804,30 +808,28 @@ router.get("/cms/solutions/:id/revisions", ...readGuard, async (req, res) => {
       editorId: usersTable.id,
       editorDisplayName: usersTable.displayName,
       editorAvatarUrl: usersTable.avatarUrl,
-      snapshotJson: solutionRevisionsTable.snapshotJson,
+      snapshotTitle: sql<string | null>`${solutionRevisionsTable.snapshotJson}->>'title'`,
+      snapshotStatus: sql<string | null>`${solutionRevisionsTable.snapshotJson}->>'status'`,
     })
     .from(solutionRevisionsTable)
     .leftJoin(usersTable, eq(usersTable.id, solutionRevisionsTable.editedBy))
     .where(eq(solutionRevisionsTable.solutionId, id))
     .orderBy(desc(solutionRevisionsTable.editedAt));
   res.json({
-    items: rows.map((r) => {
-      const snap = (r.snapshotJson ?? {}) as Partial<SolutionRow>;
-      return {
-        id: r.id,
-        solutionId: r.solutionId,
-        editedAt: r.editedAt.toISOString(),
-        editor: r.editorId
-          ? {
-              id: r.editorId,
-              displayName: r.editorDisplayName ?? null,
-              avatarUrl: r.editorAvatarUrl ?? null,
-            }
-          : null,
-        snapshotTitle: snap.title ?? null,
-        snapshotStatus: snap.status ?? null,
-      };
-    }),
+    items: rows.map((r) => ({
+      id: r.id,
+      solutionId: r.solutionId,
+      editedAt: r.editedAt.toISOString(),
+      editor: r.editorId
+        ? {
+            id: r.editorId,
+            displayName: r.editorDisplayName ?? null,
+            avatarUrl: r.editorAvatarUrl ?? null,
+          }
+        : null,
+      snapshotTitle: r.snapshotTitle ?? null,
+      snapshotStatus: r.snapshotStatus ?? null,
+    })),
   });
 });
 

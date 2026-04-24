@@ -99,7 +99,6 @@ router.post(
         status: newStatus,
         moderatedBy: req.authedUser!.id,
         moderatedAt: new Date(),
-        ...(shouldNotify ? { notifiedApprovedAt: new Date() } : {}),
       })
       .where(eq(commentsTable.id, String(req.params.id)))
       .returning();
@@ -123,6 +122,12 @@ router.post(
             commentId: row.id,
             bodyText: row.bodyText,
           });
+          // Stamp notifiedApprovedAt only after a successful send so that a
+          // failed delivery does not silently block future retry attempts.
+          await db
+            .update(commentsTable)
+            .set({ notifiedApprovedAt: new Date() })
+            .where(eq(commentsTable.id, row.id));
         } catch (err) {
           logger.warn({ err }, "comment approval notification failed");
         }
