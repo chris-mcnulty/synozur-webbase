@@ -21,10 +21,12 @@ import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
 import {
   api,
+  type PolarisCollateralLinkDto,
   type PolarisEpisodeDto,
   type PolarisEpisodeInput,
   type ArtifactStatus,
 } from "@/lib/api";
+import { BookOpen, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 
 interface Props {
   id?: string;
@@ -189,6 +191,34 @@ export default function PolarisEpisodeEdit({ id }: Props) {
     qc.invalidateQueries({ queryKey: ["admin-polaris-episode", id] });
     qc.invalidateQueries({ queryKey: ["polaris-episodes"] });
   };
+
+  const collateralLinkQ = useQuery({
+    queryKey: ["polaris-collateral-link", id],
+    queryFn: () => api.getPolarisCollateralLink(id!),
+    enabled: !!id,
+  });
+  const collateralLink: PolarisCollateralLinkDto | null =
+    collateralLinkQ.data?.collateral ?? null;
+
+  const syncCollateralMut = useMutation({
+    mutationFn: () => api.syncPolarisToCollateral(id!),
+    onSuccess: () => {
+      toast({ title: collateralLink ? "Library entry synced" : "Added to library" });
+      qc.invalidateQueries({ queryKey: ["polaris-collateral-link", id] });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
+  });
+
+  const removeCollateralMut = useMutation({
+    mutationFn: () => api.removePolarisCollateralLink(id!),
+    onSuccess: () => {
+      toast({ title: "Removed from library" });
+      qc.invalidateQueries({ queryKey: ["polaris-collateral-link", id] });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Remove failed", description: e.message, variant: "destructive" }),
+  });
 
   const createMut = useMutation({
     mutationFn: (body: PolarisEpisodeInput) => api.createPolarisEpisode(body),
@@ -509,6 +539,78 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                 entityId={id ?? null}
                 canWrite={canWrite}
               />
+            </Card>
+          )}
+
+          {!isNew && (
+            <Card className="p-4 space-y-3" data-testid="collateral-library-card">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Collateral Library</span>
+              </div>
+
+              {collateralLinkQ.isLoading ? (
+                <p className="text-xs text-muted-foreground">Checking…</p>
+              ) : collateralLink ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>In library</span>
+                    {collateralLink.featured && (
+                      <span className="ml-1 rounded bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 text-violet-700 dark:text-violet-300 font-medium">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Synced {new Date(collateralLink.updatedAt).toLocaleDateString()}
+                  </p>
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      disabled={!canWrite || syncCollateralMut.isPending}
+                      onClick={() => syncCollateralMut.mutate()}
+                      data-testid="btn-collateral-sync"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      {syncCollateralMut.isPending ? "Syncing…" : "Sync latest changes"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-destructive hover:text-destructive"
+                      disabled={!canWrite || removeCollateralMut.isPending}
+                      onClick={() => removeCollateralMut.mutate()}
+                      data-testid="btn-collateral-remove"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      {removeCollateralMut.isPending ? "Removing…" : "Remove from library"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Not in the library. Add it so this episode can appear in the home
+                    carousel and the collateral feed.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full"
+                    disabled={!canWrite || syncCollateralMut.isPending}
+                    onClick={() => syncCollateralMut.mutate()}
+                    data-testid="btn-collateral-add"
+                  >
+                    <BookOpen className="h-3.5 w-3.5 mr-1.5" />
+                    {syncCollateralMut.isPending ? "Adding…" : "Add to library"}
+                  </Button>
+                </div>
+              )}
             </Card>
           )}
 

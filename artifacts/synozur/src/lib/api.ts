@@ -758,6 +758,20 @@ export const api = {
     jsonFetch<void>(url(`/cms/polaris/episodes/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  getPolarisCollateralLink: (id: string) =>
+    jsonFetch<{ collateral: PolarisCollateralLinkDto | null }>(
+      url(`/cms/polaris/episodes/${encodeURIComponent(id)}/collateral`),
+    ),
+  syncPolarisToCollateral: (id: string) =>
+    jsonFetch<{ collateral: PolarisCollateralLinkDto }>(
+      url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
+      { method: "POST" },
+    ),
+  removePolarisCollateralLink: (id: string) =>
+    jsonFetch<void>(
+      url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
+      { method: "DELETE" },
+    ),
   previewPolarisLibsyn: (feedUrl?: string) => {
     const qs = feedUrl ? `?feedUrl=${encodeURIComponent(feedUrl)}` : "";
     return jsonFetch<{ feedUrl: string; items: PolarisLibsynPreviewItem[] }>(
@@ -970,6 +984,17 @@ export interface PolarisLibsynImportSummary {
   updated: number;
   skipped: number;
   errors: Array<{ guid: string; message: string }>;
+}
+
+export interface PolarisCollateralLinkDto {
+  id: string;
+  slug: string;
+  title: string;
+  featured: boolean;
+  featuredRank: number | null;
+  active: boolean;
+  publishedAt: string | null;
+  updatedAt: string;
 }
 
 export interface PolarisEpisodeDto {

@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { servicesTable, solutionsTable } from "./services";
+import { polarisEpisodesTable } from "./polarisEpisodes";
 import {
   COLLATERAL_PILLARS,
   collateralPillarEnum,
@@ -71,6 +72,14 @@ export const collateralTable = pgTable(
     }),
     active: boolean("active").notNull().default(true),
     sourceId: text("source_id"),
+    // Link back to the Polaris episode that was synced into this collateral
+    // entry. Nullable — only set for podcast entries created via the episode
+    // editor's "Add to Library" / "Sync" action. Cascades to null on episode
+    // delete so the collateral entry survives as a standalone record.
+    polarisEpisodeId: uuid("polaris_episode_id").references(
+      () => polarisEpisodesTable.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -83,6 +92,7 @@ export const collateralTable = pgTable(
     index("collateral_published_at_idx").on(t.publishedAt),
     index("collateral_service_idx").on(t.serviceId),
     index("collateral_solution_idx").on(t.solutionId),
+    index("collateral_polaris_episode_idx").on(t.polarisEpisodeId),
   ],
 );
 

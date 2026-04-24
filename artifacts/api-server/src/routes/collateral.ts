@@ -45,6 +45,7 @@ function serializeItem(row: typeof collateralTable.$inferSelect) {
     downloadUrl: row.downloadUrl ?? undefined,
     serviceId: row.serviceId ?? undefined,
     solutionId: row.solutionId ?? undefined,
+    polarisEpisodeId: row.polarisEpisodeId ?? undefined,
   };
 }
 

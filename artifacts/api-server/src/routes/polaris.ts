@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   db,
   polarisEpisodesTable,
+  collateralTable,
   siteSettingsTable,
   ARTIFACT_STATUSES,
   type PolarisEpisode,
@@ -502,5 +503,188 @@ router.delete("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
   });
   res.status(204).end();
 });
+
+// ----- Collateral Library sync (#sync) -----------------------------------
+// Each episode can be linked to at most one collateral entry (type=podcast).
+// The link is tracked via collateral.polaris_episode_id. All three actions
+// are idempotent and safe to retry.
+
+function serializeCollateralLink(row: typeof collateralTable.$inferSelect) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    featured: row.featured,
+    featuredRank: row.featuredRank ?? null,
+    active: row.active,
+    publishedAt: row.publishedAt ? row.publishedAt.toISOString().split("T")[0] : null,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+// GET  /cms/polaris/episodes/:id/collateral — returns the linked collateral
+// entry (or null) so the editor can show current sync status.
+router.get("/cms/polaris/episodes/:id/collateral", ...readGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const episode = await db.query.polarisEpisodesTable.findFirst({
+    where: eq(polarisEpisodesTable.id, id),
+  });
+  if (!episode || episode.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const linked = await db.query.collateralTable.findFirst({
+    where: and(
+      eq(collateralTable.polarisEpisodeId, id),
+      isNull(collateralTable.deletedAt),
+    ),
+  });
+  res.json({ collateral: linked ? serializeCollateralLink(linked) : null });
+});
+
+// POST /cms/polaris/episodes/:id/sync-collateral — creates or re-syncs the
+// linked collateral entry using the episode's current fields. Preserves the
+// slug on update so public URLs don't break. Featured / featuredRank flow
+// from the episode's own flags so the home carousel can be driven from the
+// episode editor.
+router.post(
+  "/cms/polaris/episodes/:id/sync-collateral",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const episode = await db.query.polarisEpisodesTable.findFirst({
+      where: eq(polarisEpisodesTable.id, id),
+    });
+    if (!episode || episode.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const existing = await db.query.collateralTable.findFirst({
+      where: and(
+        eq(collateralTable.polarisEpisodeId, id),
+        isNull(collateralTable.deletedAt),
+      ),
+    });
+
+    const syncFields = {
+      title: episode.title,
+      description: episode.summary || "",
+      heroImage: episode.artworkUrl || "",
+      url: `/polaris/${episode.slug}`,
+      external: false,
+      publishedAt: episode.publishedAt,
+      active: episode.active,
+      featured: episode.featured,
+      featuredRank: episode.featuredRank ?? null,
+      updatedAt: new Date(),
+    };
+
+    let row: typeof collateralTable.$inferSelect;
+
+    if (existing) {
+      const [updated] = await db
+        .update(collateralTable)
+        .set(syncFields)
+        .where(eq(collateralTable.id, existing.id))
+        .returning();
+      row = updated;
+      await audit({
+        actorId: req.authedUser!.id,
+        action: "polaris_episode.collateral_sync",
+        entity: "collateral",
+        entityId: existing.id,
+        diff: { episodeId: id },
+      });
+    } else {
+      const slug = await (async () => {
+        const base = toSlug(`polaris-${episode.slug}`);
+        let candidate = base;
+        let i = 1;
+        while (true) {
+          const conflict = await db.query.collateralTable.findFirst({
+            where: eq(collateralTable.slug, candidate),
+          });
+          if (!conflict) return candidate;
+          i++;
+          candidate = `${base}-${i}`;
+        }
+      })();
+
+      const [created] = await db
+        .insert(collateralTable)
+        .values({
+          slug,
+          type: "podcast",
+          polarisEpisodeId: id,
+          ...syncFields,
+          tags: [],
+          subtitle: episode.guestName ?? null,
+          pillar: null,
+          videoUrl: null,
+          downloadUrl: null,
+          serviceId: null,
+          solutionId: null,
+          sourceId: null,
+        })
+        .returning();
+      row = created;
+      await audit({
+        actorId: req.authedUser!.id,
+        action: "polaris_episode.collateral_add",
+        entity: "collateral",
+        entityId: created.id,
+        diff: { episodeId: id },
+      });
+    }
+
+    res.json({ collateral: serializeCollateralLink(row) });
+  },
+);
+
+// DELETE /cms/polaris/episodes/:id/sync-collateral — soft-deletes the linked
+// collateral entry. The polaris_episode_id FK stays set so the record can be
+// inspected in the audit log; the null deletedAt check above keeps it hidden
+// from all public and admin list queries.
+router.delete(
+  "/cms/polaris/episodes/:id/sync-collateral",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const episode = await db.query.polarisEpisodesTable.findFirst({
+      where: eq(polarisEpisodesTable.id, id),
+    });
+    if (!episode || episode.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const existing = await db.query.collateralTable.findFirst({
+      where: and(
+        eq(collateralTable.polarisEpisodeId, id),
+        isNull(collateralTable.deletedAt),
+      ),
+    });
+    if (!existing) {
+      res.status(404).json({ error: "No linked collateral entry" });
+      return;
+    }
+
+    const now = new Date();
+    await db
+      .update(collateralTable)
+      .set({ deletedAt: now, active: false, updatedAt: now })
+      .where(eq(collateralTable.id, existing.id));
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "polaris_episode.collateral_remove",
+      entity: "collateral",
+      entityId: existing.id,
+      diff: { episodeId: id },
+    });
+
+    res.status(204).end();
+  },
+);
 
 export default router;
