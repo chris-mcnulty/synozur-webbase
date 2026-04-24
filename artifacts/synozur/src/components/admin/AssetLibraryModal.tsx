@@ -153,7 +153,11 @@ export function AssetLibraryModal({
   const uploadMaxBytes =
     activeKind === "image" ? IMAGE_MAX_BYTES : DOCUMENT_MAX_BYTES;
   const titleSuffix =
-    kind === "document" ? " — Documents" : kind === "image" ? " — Images" : "";
+    activeKind === "document"
+      ? " — Documents"
+      : activeKind === "image"
+        ? " — Images"
+        : "";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
