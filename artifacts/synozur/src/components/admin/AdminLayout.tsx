@@ -18,6 +18,7 @@ import {
   Compass,
   Layers,
   Library as LibraryIcon,
+  LayoutGrid,
   Video as VideoIcon,
   BookOpen as BookOpenIcon,
   CornerDownRight,
@@ -103,6 +104,7 @@ const SECTIONS: NavSection[] = [
     icon: LibraryIcon,
     items: [
       { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.publish", testId: "nav-admin-collateral" },
+      { href: "/library/carousel", label: "Carousel", icon: LayoutGrid, capability: "content.publish", testId: "nav-admin-carousel" },
       { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.publish", testId: "nav-admin-videos" },
       { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.publish", testId: "nav-admin-white-papers" },
       { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.publish", testId: "nav-admin-workshops" },

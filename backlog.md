@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 11 tasks pending · 86 merged · 29 cancelled
+> 16 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -23,30 +23,45 @@ Currently the services and solutions data can only be updated row-by-row through
 
 ## Content Library
 
-### #66 · Preview a revision's content before restoring it
-**Depends on:** #48 (post revisions)
-
-The revision history panel shows a list of past snapshots with dates and author names. Editors cannot currently read the content of a past revision without restoring it (which overwrites the current draft). This task adds a "Preview" link beside each revision that opens a read-only rendered view of that snapshot in a slide-over panel or new tab.
-
-### #67 · Show a diff between the current version and a past revision
-**Depends on:** #48 (post revisions)
-
-Related to #66. Rather than previewing a revision in isolation, editors often want to see exactly what changed. This task renders a word-level diff between the selected revision and the current version of the post, highlighting additions in green and deletions in red, using a library such as `diff-match-patch`.
-
 ### #68 · Automatically trim old revisions to keep storage lean
 **Depends on:** #48 (post revisions)
 
 Every save creates a new revision. Without a retention policy, the `post_revisions` table grows indefinitely. This task adds a scheduled job (daily cron) that deletes revisions older than 90 days, keeping the 10 most recent regardless of age. The retention window and keep-count should be configurable via admin site settings.
 
-### #118 · Show hero-image thumbnails in the Library admin list
-**Depends on:** #69 (library live content)
+### #120 · Move the featured-items carousel manager to a dedicated admin tab with thumbnail and type views
+**Depends on:** #118 (hero thumbnails in Library admin list) — merged
 
-The admin Library/collateral list (`artifacts/synozur/src/pages/admin/library/collateral-list.tsx`) is text-only — title, type, service, solution, pillar, tags, status columns — so editors cannot tell at a glance whether a row has a hero image attached or which image it is. This task prepends a small (~64px square) hero thumbnail column rendered from `heroImage` (lazy-loaded, `?w=128` variant, falls back to a placeholder when unset). The thumbnail also shows in the Featured-items reorder list above the table. Purely a visual aid — no data-model change.
+The "Featured items" reorder card is currently inline at the top of `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` (lines 531–605) — it shows only items already flagged featured, stacked above the full collateral table, which mixes two concerns (curate the home carousel / browse the whole library). Promote the carousel manager to its own admin page (e.g. `/admin/library/carousel`) with two view modes: a **thumbnail grid view** that renders each featured item as a full-size card (hero image + title + type chip) for visual drag-to-reorder, and a **type view** that groups the featured set by artifact type (collateral / video / white-paper / workshop) so marketing can see and balance the mix that will appear in the home carousel and featured-library row. Keep the existing featured-rank persistence and drag-to-reorder behavior. Remove the inline featured card from the collateral list once the new tab is live.
 
-### #119 · Categorize and filter master visual assets in the hero image picker
+### #121 · Sortable columns on the collateral library admin list
+**Depends on:** #69 (library live content) — merged
+
+The admin collateral table in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` uses static `<TableHead>` cells (lines 729–756) — editors cannot reorder by title, type, service, solution, pillar, featured rank, or last-updated. The backend `GET /cms/collateral` in `artifacts/api-server/src/routes/collateral.ts` (lines 212–224) has a hard-coded `ORDER BY featured DESC, featuredRank ASC NULLS LAST, publishedAt DESC, title ASC` and the `ListQuery` schema (lines 13–26) accepts no sort param. This task adds a `sort` query param (e.g. `sort=title:asc` or `sort=updatedAt:desc`) validated against an allow-list of sortable columns, threads it through the generated API client, and makes each `<TableHead>` clickable with an arrow indicator showing the current direction. Clicking cycles asc → desc → default. The same pattern should be reusable by the sibling videos / white-papers / workshops admin lists in follow-up work.
+
+### #122 · Multiple resource attachments on library items (slides + transcript + code + …)
 **Depends on:** #63 (asset categories beyond people/north-star) — merged
 
-The Library collateral edit form still opens `MediaPickerModal` to choose a hero image, which has no category filter and no way to tag assets — so the master set of visual assets grows into one flat list that is hard to browse and impossible to classify. The newer `AssetLibraryModal` already supports category filter + upload-tagging against the extended `ASSET_CATEGORIES` enum. This task migrates the collateral-edit hero picker (and the other library edit forms — video, white-paper, workshop) to use `AssetLibraryModal`, so editors can narrow the grid by category and tag new uploads from the same modal. Includes backfilling any collateral hero images currently stored via `cms_media` so they surface in the unified `assets` table with a default category of `abstract` (editors can reclassify afterward).
+Webinars, workshops, and white papers typically ship with more than one companion file — slides, transcript, Q&A log, code repo link, follow-up deck — but the only attachment slot today is a single `downloadUrl` text column on `collateral` (see `lib/db/src/schema/collateral.ts` and the "Download URL" input in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx`). Editors work around it by concatenating URLs into the body HTML, which breaks the public library detail page's tidy "Download" CTA. This task adds a `collateral_resources` table with `(id, collateralId, assetId, externalUrl, label, mimeType, sortOrder, createdAt)` — asset-backed rows link to the unified `assets` table for uploaded files; externalUrl rows cover off-platform links (GitHub, Figma, external CDNs). Admin edit form gains a "Resources" list editor with drag-to-reorder and inline label; public library detail page (`artifacts/synozur/src/pages/library-detail.tsx`) renders a Resources section when rows exist, falling back to the legacy `downloadUrl` when empty. Keep `downloadUrl` on the schema for now as a read-only mirror of the first resource; deprecate in a follow-up.
+
+### #123 · Extend AssetLibraryModal to handle documents (PDF, PPTX, DOCX, ZIP)
+**Depends on:** #119 (AssetLibraryModal migration for collateral/video/white-paper/workshop) — merged
+
+`artifacts/synozur/src/components/admin/AssetLibraryModal.tsx` is image-scoped — the grid renders `<img>` tags and the upload path only validates `image/*` MIME types (see `assetUrl`, `ASSET_CATEGORIES`). Editors who want to attach a PDF of slides to a past webinar have to host the file elsewhere and paste a URL. This task widens the modal to a dual-mode asset picker: add a "type" filter (`image` | `document`) reading from `assets.mimeType`, swap the grid tile for a document icon + filename + size when `mimeType` is `application/pdf`, PowerPoint, Word, ZIP, etc., and loosen the upload handler to accept those MIME types (with a reasonable size cap — 50MB feels right for webinar decks). `GET /api/storage{storageKey}` already serves non-image assets with the correct Content-Type, so the read path is free. Once this ships, the "Resources" editor in #122 can use the same modal, closing the editor workflow loop so editors never leave the admin to attach a PDF.
+
+### #124 · Link events to their recording video
+**Depends on:** — (foundation change; no blockers)
+
+`lib/db/src/schema/media.ts` defines `eventsTable` with `startDate`, `location`, `registrationUrl`, `status` (`UPCOMING | ENDED | CANCELLED`) but **no link to a post-event recording**. Today the connection is entirely editorial: an event runs, status flips to `ENDED`, someone manually uploads the recording as a new row in `videos` with `category="webinar"`, then runs "Sync to library" to mirror it into `collateral`. Nothing in the database ties the three rows together — the event page cannot auto-link to the recording, and a slug change on either side silently breaks the connection. This task adds a nullable `recordingVideoId` FK on `eventsTable` pointing at `videos.id`. The event edit form (`artifacts/synozur/src/pages/admin/people/event-form.tsx`) gets a "Recording" picker that lists published videos (most recent first, filterable by slug match) and lets editors attach one; the public event detail page renders an embedded player (reusing the videos page's embed logic) beneath the "This event has ended" banner when a recording is linked. Follow-up idea: once this exists, "Sync event to collateral" on an ended event with a linked recording can promote it directly to a webinar collateral row without the separate video sync step.
+
+### #125 · Upload white-paper PDFs through the asset library and attach them to white-paper objects
+**Depends on:** #123 (AssetLibraryModal accepts documents)
+
+`lib/db/src/schema/whitePapers.ts` has a `documentUrl` text column, and the admin edit form at `artifacts/synozur/src/pages/admin/library/white-paper-edit.tsx` (lines 437–446) renders a bare `<Input>` asking editors to paste a PDF URL. The practical result: most white-paper rows in production have no actual document attached because editors have no in-admin upload path — the file has to exist somewhere else first. This task closes the loop once #123 widens AssetLibraryModal to documents. Add a nullable `documentAssetId` FK on `white_papers` pointing at `assets.id`; replace the text input with a document picker (Upload new / Choose existing through AssetLibraryModal filtered to documents); server derives the rendered `documentUrl` from the linked asset's storageKey so the public white-paper detail download CTA keeps working unchanged. Keep the existing `documentUrl` text column as a secondary fallback for off-platform destinations (Sway, microsites) — the edit form shows a primary "Uploaded PDF" picker and a secondary "External URL" field, with the uploaded asset taking precedence when both are set. Surface the asset's filename, MIME type, and size in the admin form so editors can confirm they picked the right file, and auto-populate `pageCount` from the PDF metadata on upload when feasible.
+
+### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
+**Depends on:** — (infrastructure foundation)
+
+Today `artifacts/api-server/src/lib/objectStorage.ts` speaks to Google Cloud Storage through the Replit sidecar (`http://127.0.0.1:1106/token`) — a convenient default on Replit but not where Synozur governs its document lifecycle. All uploaded assets (hero images, carousel tiles, eventual white-paper/webinar PDFs) live in a GCS bucket behind the `/api/storage/{storageKey}` endpoint; ACL state is mirrored in `objectAcl.ts`. This task replaces the GCS backend with SharePoint Embedded (SPE) — a Microsoft Graph-exposed container format that keeps files inside the tenant's own compliance and retention perimeter (DLP, eDiscovery, sensitivity labels) while preserving programmatic access. Introduce an `AssetStorageBackend` abstraction that the existing `ObjectStorageService` delegates to (so routes and the AssetLibraryModal stay unchanged), implement an SPE driver over the Graph API using an app-only token from Entra, and add a one-shot migration script that streams every object from GCS to an SPE container, rewriting `assets.storageKey` rows (and any legacy URL references in `collateral.heroImage`, `white_papers.documentUrl`, `videos.thumbnailUrl`, etc.) as it goes. During the cutover window both drivers run side-by-side behind a `STORAGE_BACKEND=gcs|spe` env flag so we can flip per-environment; decommission the GCS bucket once SPE traffic is verified for ≥30 days.
 
 ---
 
@@ -76,6 +91,16 @@ The current CMS has four roles (admin, editor, author, contributor) plus an allo
 
 The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts` as a hand-edited `Record<RoleName, Capability[]>`. That's fine for today's four roles but will not scale once we're juggling seven audience classes, customer portal permissions, and per-tenant overrides. This task adds a `capabilities` table (`id`, `name`, `description`) and a `role_capabilities` join table, seeds both from the current static map, and switches `/api/auth/me` to return the user's effective capabilities so the client no longer has to recompute them. Admin UI under `/admin/access` gains a capability editor. Existing client code reads `access.capabilities` / `access.hasCapability()` unchanged — only the source of truth moves.
 
+### #126 · Microsoft Entra SSO for employees and admins
+**Depends on:** — (identity foundation; strongly paired with #127)
+
+Authentication today goes through Clerk: `artifacts/synozur/src/main.tsx` wraps the app in `ClerkProvider`, `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts` validates session JWTs, and `auth.ts` → `loadOrCreateUser(clerkUserId)` maps the Clerk user id to a row in `usersTable`. That's fine for public customers but employees and admins should sign in with their Synozur Entra identity so lifecycle (hire / leave / group membership) is governed in one place and MFA / conditional-access policies apply automatically. This task adds Entra ID (OIDC) as an Enterprise SSO connection on the Clerk side so `@synozur.com` email domains are routed to the Entra tenant at sign-in, then extends `loadOrCreateUser` to read the Entra group claims off the Clerk session and map them to the admin role table (e.g. `Synozur-Admins` group → `admin` role, `Synozur-Editors` → `editor`). The `allow-list` flag in the users schema gets backfilled from group membership at login so offboarding an Entra user instantly removes CMS access. Public sign-in UX unchanged; admins land on a branded "Continue with Microsoft" option. Follow-up: once #127 ships we can share the same Entra app registration for Graph API storage access and avoid a second credential set.
+
+### #128 · Act as an OAuth 2.0 / OIDC provider for other Synozur web apps
+**Depends on:** #110 (audience-class model) or can ship in parallel
+
+This app owns the canonical `usersTable` plus the role/capability model; other Synozur web apps (current and future — customer portal, internal tools, partner dashboards) should not re-implement user management or rewire Entra separately. This task turns the api-server into an OAuth 2.0 authorization server with OIDC on top, so downstream apps redirect users here to sign in, receive ID + access + refresh tokens, and read user metadata via a `/oauth/userinfo` endpoint. Scope: new tables `oauth_clients` (`id`, `clientId`, `clientSecretHash`, `name`, `redirectUris jsonb`, `allowedScopes jsonb`, `allowedGrantTypes jsonb`, `createdBy`, timestamps) and `oauth_authorizations` (for authorization-code + refresh-token persistence); endpoints `GET /oauth/authorize`, `POST /oauth/token`, `GET /oauth/userinfo`, `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`; a consent screen that shows the requesting app name + requested scopes; admin UI under `/admin/access/oauth-clients` to register / rotate credentials for downstream apps. Use RS256 with a rotating key pair stored in site settings (or a KMS once available). Scopes mirror the capability model so a consuming app can request only `profile content.read` without getting full admin. Authentication into the consent screen reuses whatever sign-in mechanism the user has (Clerk or Entra via #126) — this task just adds the token-issuing surface on top. Follow-up: publish a `@synozur/auth-sdk` helper package so downstream apps integrate in a handful of lines.
+
 ---
 
 ## Summary Table
@@ -84,12 +109,17 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 |---|-------|------|-----------|
 | #57 | Playwright tests for services pages | QA | #40 |
 | #62 | Bulk CSV import for services & solutions | Services admin | #39 |
-| #66 | Preview a past post revision | CMS | #48 |
-| #67 | Diff between post revisions | CMS | #48 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Expand user/role model to seven audience classes | Admin Access & People | #109 |
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
-| #118 | Hero-image thumbnails in the Library admin list | Library | #69 |
-| #119 | Categorize and filter master visual assets in the hero image picker | Library | #63 |
+| #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
+| #121 | Sortable columns on the collateral library admin list | Library | #69 |
+| #122 | Multiple resource attachments on library items | Library | #63 |
+| #123 | Extend AssetLibraryModal to handle documents (PDF/PPTX/DOCX) | Library | #119 |
+| #124 | Link events to their recording video | Events & Library | — |
+| #125 | Upload white-paper PDFs via the asset library | Library | #123 |
+| #126 | Microsoft Entra SSO for employees and admins | Admin Access & People | — |
+| #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
+| #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |

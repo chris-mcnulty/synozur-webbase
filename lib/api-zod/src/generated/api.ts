@@ -450,6 +450,40 @@ export const ListCmsPostRevisionsResponse = zod.array(
 );
 
 /**
+ * @summary Fetch a single revision with full snapshot content (for preview + diff)
+ */
+export const GetCmsPostRevisionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  revisionId: zod.coerce.string().uuid(),
+});
+
+export const GetCmsPostRevisionResponse = zod.object({
+  id: zod.string().uuid(),
+  postId: zod.string().uuid(),
+  editedAt: zod.coerce.date(),
+  editor: zod
+    .object({
+      id: zod.string().uuid(),
+      displayName: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .nullish(),
+  snapshotTitle: zod.string().nullish(),
+  snapshotSubtitle: zod.string().nullish(),
+  snapshotExcerpt: zod.string().nullish(),
+  snapshotBodyHtml: zod.string().nullish(),
+  snapshotBodyMarkdown: zod.string().nullish(),
+  snapshotSlug: zod.string().nullish(),
+  snapshotSeoTitle: zod.string().nullish(),
+  snapshotSeoDescription: zod.string().nullish(),
+  snapshotSeoCanonicalUrl: zod.string().nullish(),
+  snapshotHeroImageId: zod.string().uuid().nullish(),
+  snapshotHeroImageUrl: zod.string().nullish(),
+  snapshotOgImageId: zod.string().uuid().nullish(),
+  snapshotOgImageUrl: zod.string().nullish(),
+});
+
+/**
  * @summary Restore a post to a previous revision (snapshots current state first)
  */
 export const RestoreCmsPostRevisionParams = zod.object({
@@ -1011,6 +1045,24 @@ export const SubmitInsightCommentBody = zod.object({
     .describe(
       "Honeypot field. Must be empty for human submissions; populated submissions are silently dropped.",
     ),
+  turnstileToken: zod
+    .string()
+    .nullish()
+    .describe(
+      "Cloudflare Turnstile token. Required when the server has TURNSTILE_SECRET_KEY configured; ignored otherwise.",
+    ),
+  notifyOnApproval: zod
+    .boolean()
+    .optional()
+    .describe(
+      "If true, email the commenter when a moderator approves the comment.",
+    ),
+  notifyOnReply: zod
+    .boolean()
+    .optional()
+    .describe(
+      "If true, email the commenter when someone posts a reply to this comment.",
+    ),
 });
 
 /**
@@ -1463,6 +1515,15 @@ export const GetSolutionResponse = zod
       ),
     }),
   );
+
+export const CmsListCollateralQueryParams = zod.object({
+  sort: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Optional sort spec as comma-separated `field:dir` tuples. Allowed fields: title, type, pillar, publishedAt, updatedAt, createdAt, featured, featuredRank. Unknown fields are ignored. When omitted, falls back to the default featured-first order.",
+    ),
+});
 
 export const CmsListCollateralResponse = zod.object({
   items: zod.array(

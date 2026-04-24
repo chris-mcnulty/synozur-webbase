@@ -30,6 +30,7 @@ import type {
   Capability,
   CapabilityItemsResponse,
   Category,
+  CmsListCollateralParams,
   CmsUser,
   CollateralItem,
   CollateralItemsResponse,
@@ -63,6 +64,7 @@ import type {
   PostAnalytics,
   PostListResponse,
   PostRevision,
+  PostRevisionDetail,
   PublicComment,
   PublicEvent,
   PublicPost,
@@ -1044,6 +1046,114 @@ export function useListCmsPostRevisions<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListCmsPostRevisionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch a single revision with full snapshot content (for preview + diff)
+ */
+export const getGetCmsPostRevisionUrl = (id: string, revisionId: string) => {
+  return `/api/cms/posts/${id}/revisions/${revisionId}`;
+};
+
+export const getCmsPostRevision = async (
+  id: string,
+  revisionId: string,
+  options?: RequestInit,
+): Promise<PostRevisionDetail> => {
+  return customFetch<PostRevisionDetail>(
+    getGetCmsPostRevisionUrl(id, revisionId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCmsPostRevisionQueryKey = (
+  id: string,
+  revisionId: string,
+) => {
+  return [`/api/cms/posts/${id}/revisions/${revisionId}`] as const;
+};
+
+export const getGetCmsPostRevisionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsPostRevision>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  revisionId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPostRevision>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsPostRevisionQueryKey(id, revisionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsPostRevision>>
+  > = ({ signal }) =>
+    getCmsPostRevision(id, revisionId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && revisionId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsPostRevision>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsPostRevisionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsPostRevision>>
+>;
+export type GetCmsPostRevisionQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Fetch a single revision with full snapshot content (for preview + diff)
+ */
+
+export function useGetCmsPostRevision<
+  TData = Awaited<ReturnType<typeof getCmsPostRevision>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  revisionId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPostRevision>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsPostRevisionQueryOptions(
+    id,
+    revisionId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -3651,41 +3761,60 @@ export function useGetSolution<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-export const getCmsListCollateralUrl = () => {
-  return `/api/cms/collateral`;
+export const getCmsListCollateralUrl = (params?: CmsListCollateralParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/collateral?${stringifiedParams}`
+    : `/api/cms/collateral`;
 };
 
 export const cmsListCollateral = async (
+  params?: CmsListCollateralParams,
   options?: RequestInit,
 ): Promise<CollateralItemsResponse> => {
-  return customFetch<CollateralItemsResponse>(getCmsListCollateralUrl(), {
+  return customFetch<CollateralItemsResponse>(getCmsListCollateralUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getCmsListCollateralQueryKey = () => {
-  return [`/api/cms/collateral`] as const;
+export const getCmsListCollateralQueryKey = (
+  params?: CmsListCollateralParams,
+) => {
+  return [`/api/cms/collateral`, ...(params ? [params] : [])] as const;
 };
 
 export const getCmsListCollateralQueryOptions = <
   TData = Awaited<ReturnType<typeof cmsListCollateral>>,
   TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof cmsListCollateral>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: CmsListCollateralParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getCmsListCollateralQueryKey();
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListCollateralQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof cmsListCollateral>>
-  > = ({ signal }) => cmsListCollateral({ signal, ...requestOptions });
+  > = ({ signal }) => cmsListCollateral(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof cmsListCollateral>>,
@@ -3704,15 +3833,18 @@ export type CmsListCollateralQueryError = ErrorType<
 export function useCmsListCollateral<
   TData = Awaited<ReturnType<typeof cmsListCollateral>>,
   TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof cmsListCollateral>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getCmsListCollateralQueryOptions(options);
+>(
+  params?: CmsListCollateralParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListCollateralQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

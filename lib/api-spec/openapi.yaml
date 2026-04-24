@@ -1114,6 +1114,16 @@ paths:
       operationId: cmsListCollateral
       tags:
         - CmsCollateral
+      parameters:
+        - in: query
+          name: sort
+          description: >-
+            Optional sort spec as comma-separated `field:dir` tuples.
+            Allowed fields: title, type, pillar, publishedAt, updatedAt,
+            createdAt, featured, featuredRank. Unknown fields are ignored.
+            When omitted, falls back to the default featured-first order.
+          schema:
+            type: string
       responses:
         '200':
           description: All non-deleted collateral items (incl. inactive)
