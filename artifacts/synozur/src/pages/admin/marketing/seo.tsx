@@ -65,11 +65,35 @@ function Field({
   helper?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const generatedId = React.useId();
+  const helperId = `${generatedId}-helper`;
+
+  const childElement = React.isValidElement(children) ? children : null;
+  const existingId = childElement?.props?.id as string | undefined;
+  const controlId = existingId ?? `${generatedId}-control`;
+  const existingDescribedBy = childElement?.props?.["aria-describedby"] as string | undefined;
+  const describedBy = helper
+    ? [existingDescribedBy, helperId].filter(Boolean).join(" ")
+    : existingDescribedBy;
+
+  const content = childElement
+    ? React.cloneElement(childElement, {
+        id: controlId,
+        ...(describedBy ? { "aria-describedby": describedBy } : {}),
+      })
+    : children;
+
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium">{label}</label>
-      {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
-      {children}
+      <label htmlFor={controlId} className="text-sm font-medium">
+        {label}
+      </label>
+      {helper && (
+        <p id={helperId} className="text-xs text-muted-foreground">
+          {helper}
+        </p>
+      )}
+      {content}
     </div>
   );
 }
