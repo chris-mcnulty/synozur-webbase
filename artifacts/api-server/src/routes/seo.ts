@@ -230,8 +230,8 @@ async function collectEntries(): Promise<Entry[]> {
   }
   for (const s of services) entries.push(toEntry(`/services/${s.slug}`, s.updatedAt));
   for (const s of solutions) entries.push(toEntry(`/solutions/${s.slug}`, s.updatedAt));
-  for (const _m of team) {
-    // Team member detail pages don't currently exist; the /team grid suffices.
+  for (const m of team) {
+    entries.push(toEntry(`/team/${encodeURIComponent(m.slug)}`, m.updatedAt));
   }
   for (const _e of events) {
     // Events are listed on /events; no detail route is published yet.

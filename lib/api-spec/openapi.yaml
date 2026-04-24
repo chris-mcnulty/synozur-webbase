@@ -1793,6 +1793,31 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PublicTeamMember'
+  /team-members/{slug}:
+    get:
+      tags:
+        - Team
+      operationId: getPublicTeamMember
+      summary: Get a public team member by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Team member detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTeamMemberDetail'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /admin/team-members:
     get:
       tags:
@@ -4537,6 +4562,55 @@ components:
             - 'null'
         active:
           type: boolean
+
+    PublicTeamMemberDetail:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - jobTitle
+        - active
+        - tags
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        jobTitle:
+          type: string
+        shortDescription:
+          type:
+            - string
+            - 'null'
+        longDescription:
+          type:
+            - string
+            - 'null'
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        linkedinUrl:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        email:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
 
     AdminTeamMember:
       type: object
