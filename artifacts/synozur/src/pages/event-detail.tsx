@@ -14,6 +14,7 @@ import { Meta } from "@/lib/meta";
 import { EventJsonLd } from "@/components/event-jsonld";
 import { Button } from "@/components/ui/button";
 import { startOfCurrentWeek } from "@/lib/eventTime";
+import { toEmbedUrl } from "@/lib/video-embed";
 
 function formatDate(iso: string | Date): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -100,6 +101,9 @@ export default function EventDetail() {
     ? `https://www.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`
     : null;
 
+  const recordingEmbed =
+    isPast && event.recordingVideoUrl ? toEmbedUrl(event.recordingVideoUrl) : null;
+
   return (
     <div className="w-full">
       <Meta
@@ -176,6 +180,44 @@ export default function EventDetail() {
                       {para}
                     </p>
                   ) : null,
+                )}
+              </div>
+            )}
+
+            {isPast && (recordingEmbed || event.recordingVideoUrl) && (
+              <div className="mt-10" data-testid="event-recording">
+                <div className="mb-4 rounded-md border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
+                  This event has ended. Watch the recording below.
+                </div>
+                {recordingEmbed ? (
+                  <div className="rounded-lg overflow-hidden border border-border aspect-video bg-black">
+                    <iframe
+                      src={recordingEmbed}
+                      title={event.recordingVideoTitle ?? `${event.title} recording`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  </div>
+                ) : (
+                  event.recordingVideoUrl && (
+                    <a
+                      href={event.recordingVideoUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      Watch the recording <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )
+                )}
+                {event.recordingVideoSlug && (
+                  <Link
+                    href={`/videos/${event.recordingVideoSlug}`}
+                    className="mt-3 inline-block text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    View on the videos library →
+                  </Link>
                 )}
               </div>
             )}

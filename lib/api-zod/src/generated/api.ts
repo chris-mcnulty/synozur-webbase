@@ -2273,6 +2273,10 @@ export const ListPublicEventsResponseItem = zod.object({
   eventType: zod.string().optional(),
   status: zod.string(),
   imageUrl: zod.string().nullish(),
+  recordingVideoId: zod.string().nullish(),
+  recordingVideoSlug: zod.string().nullish(),
+  recordingVideoUrl: zod.string().nullish(),
+  recordingVideoTitle: zod.string().nullish(),
 });
 export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
 
@@ -2295,6 +2299,10 @@ export const ListAdminEventsResponseItem = zod.object({
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
+  recordingVideoId: zod.string().nullish(),
+  recordingVideoSlug: zod.string().nullish(),
+  recordingVideoTitle: zod.string().nullish(),
+  recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });
@@ -2318,6 +2326,7 @@ export const CreateEventBody = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  recordingVideoId: zod.string().nullish(),
 });
 
 export const GetAdminEventParams = zod.object({
@@ -2340,6 +2349,10 @@ export const GetAdminEventResponse = zod.object({
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
+  recordingVideoId: zod.string().nullish(),
+  recordingVideoSlug: zod.string().nullish(),
+  recordingVideoTitle: zod.string().nullish(),
+  recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });
@@ -2362,6 +2375,7 @@ export const UpdateEventBody = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  recordingVideoId: zod.string().nullish(),
 });
 
 export const UpdateEventResponse = zod.object({
@@ -2380,6 +2394,10 @@ export const UpdateEventResponse = zod.object({
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
+  recordingVideoId: zod.string().nullish(),
+  recordingVideoSlug: zod.string().nullish(),
+  recordingVideoTitle: zod.string().nullish(),
+  recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });

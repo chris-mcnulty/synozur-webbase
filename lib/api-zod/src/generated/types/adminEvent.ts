@@ -29,6 +29,14 @@ export interface AdminEvent {
   imageAssetId?: number | null;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
+  /** @nullable */
+  recordingVideoSlug?: string | null;
+  /** @nullable */
+  recordingVideoTitle?: string | null;
+  /** @nullable */
+  recordingVideoUrl?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

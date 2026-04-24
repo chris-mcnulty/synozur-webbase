@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ne, asc, sql } from "drizzle-orm";
+import { and, desc, eq, ne, asc, sql, inArray } from "drizzle-orm";
 import {
   db,
   whitePapersTable,
+  assetsTable,
   WHITE_PAPER_DOC_TYPES,
   WHITE_PAPER_STATUSES,
   type WhitePaper,
+  type Asset,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -37,7 +39,24 @@ async function ensureUniqueWhitePaperSlug(base: string, excludeId?: string): Pro
   }
 }
 
-function serialize(w: WhitePaper) {
+function assetStorageUrl(asset: Asset): string {
+  return `/api/storage${asset.storageKey}`;
+}
+
+function serializeDocumentAsset(asset: Asset) {
+  return {
+    id: asset.id,
+    originalName: asset.originalName,
+    mimeType: asset.mimeType,
+    size: asset.size,
+    storageKey: asset.storageKey,
+  };
+}
+
+function serialize(w: WhitePaper, documentAsset: Asset | null = null) {
+  const resolvedDocumentUrl = documentAsset
+    ? assetStorageUrl(documentAsset)
+    : w.documentUrl;
   return {
     id: w.id,
     slug: w.slug,
@@ -50,7 +69,9 @@ function serialize(w: WhitePaper) {
     bodyHtml: w.bodyHtml,
     tags: w.tags,
     pillar: w.pillar,
-    documentUrl: w.documentUrl,
+    documentUrl: resolvedDocumentUrl,
+    documentAssetId: w.documentAssetId,
+    documentAsset: documentAsset ? serializeDocumentAsset(documentAsset) : null,
     externalUrl: w.externalUrl,
     pageCount: w.pageCount,
     status: w.status,
@@ -66,6 +87,28 @@ function serialize(w: WhitePaper) {
     createdAt: w.createdAt,
     updatedAt: w.updatedAt,
   };
+}
+
+async function loadDocumentAsset(
+  documentAssetId: number | null | undefined,
+): Promise<Asset | null> {
+  if (!documentAssetId) return null;
+  const [asset] = await db
+    .select()
+    .from(assetsTable)
+    .where(eq(assetsTable.id, documentAssetId));
+  return asset ?? null;
+}
+
+async function loadDocumentAssetsByIds(
+  rows: WhitePaper[],
+): Promise<Map<number, Asset>> {
+  const ids = Array.from(
+    new Set(rows.map((r) => r.documentAssetId).filter((v): v is number => v != null)),
+  );
+  if (!ids.length) return new Map();
+  const assets = await db.select().from(assetsTable).where(inArray(assetsTable.id, ids));
+  return new Map(assets.map((a) => [a.id, a]));
 }
 
 // ----- Public ------------------------------------------------------------
@@ -121,11 +164,14 @@ router.get("/white-papers", async (req, res) => {
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
+  const assetsById = await loadDocumentAssetsByIds(rows);
   res.json({
     total: countRow?.count ?? 0,
     page,
     pageSize,
-    items: rows.map(serialize),
+    items: rows.map((r) =>
+      serialize(r, r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null),
+    ),
   });
 });
 
@@ -146,7 +192,8 @@ router.get("/white-papers/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serialize(row));
+  const documentAsset = await loadDocumentAsset(row.documentAssetId);
+  res.json(serialize(row, documentAsset));
 });
 
 // ----- Admin -------------------------------------------------------------
@@ -163,6 +210,7 @@ const WhitePaperBody = z.object({
   tags: z.array(z.string()).optional(),
   pillar: z.string().nullish(),
   documentUrl: z.string().nullish(),
+  documentAssetId: z.number().int().nullish(),
   externalUrl: z.string().nullish(),
   pageCount: z.number().int().nullish(),
   status: z.enum(WHITE_PAPER_STATUSES).optional(),
@@ -190,7 +238,12 @@ router.get("/cms/white-papers", ...readGuard, async (_req, res) => {
     .from(whitePapersTable)
     .where(sql`${whitePapersTable.deletedAt} IS NULL`)
     .orderBy(desc(whitePapersTable.publishedAt), desc(whitePapersTable.createdAt));
-  res.json({ items: rows.map(serialize) });
+  const assetsById = await loadDocumentAssetsByIds(rows);
+  res.json({
+    items: rows.map((r) =>
+      serialize(r, r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null),
+    ),
+  });
 });
 
 router.get("/cms/white-papers/:id", ...readGuard, async (req, res) => {
@@ -202,7 +255,8 @@ router.get("/cms/white-papers/:id", ...readGuard, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serialize(row));
+  const documentAsset = await loadDocumentAsset(row.documentAssetId);
+  res.json(serialize(row, documentAsset));
 });
 
 router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
@@ -227,6 +281,7 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       tags: d.tags ?? [],
       pillar: d.pillar ?? null,
       documentUrl: d.documentUrl ?? null,
+      documentAssetId: d.documentAssetId ?? null,
       externalUrl: d.externalUrl ?? null,
       pageCount: d.pageCount ?? null,
       status: d.status ?? "draft",
@@ -255,7 +310,8 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper create",
     );
   }
-  res.status(201).json(serialize(row));
+  const documentAsset = await loadDocumentAsset(row.documentAssetId);
+  res.status(201).json(serialize(row, documentAsset));
 });
 
 router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
@@ -288,6 +344,7 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
     "tags",
     "pillar",
     "documentUrl",
+    "documentAssetId",
     "externalUrl",
     "pageCount",
     "status",
@@ -323,7 +380,8 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper update",
     );
   }
-  res.json(serialize(updated));
+  const documentAsset = await loadDocumentAsset(updated.documentAssetId);
+  res.json(serialize(updated, documentAsset));
 });
 
 router.delete("/cms/white-papers/:id", ...adminGuard, async (req, res) => {

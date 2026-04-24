@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Image as ImageIcon,
+  RefreshCw,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +39,9 @@ import {
   type WhitePaperInput,
   type WhitePaperDocType,
   type WhitePaperStatus,
+  type WhitePaperDocumentAsset,
 } from "@/lib/api";
+import { fileExtensionLabel, formatBytes } from "@/lib/asset-kind";
 
 interface Props {
   id?: string;
@@ -79,6 +88,8 @@ interface FormState {
   tagsText: string;
   pillar: string;
   documentUrl: string;
+  documentAssetId: number | null;
+  documentAsset: WhitePaperDocumentAsset | null;
   externalUrl: string;
   pageCount: string;
   status: WhitePaperStatus;
@@ -104,6 +115,8 @@ const EMPTY: FormState = {
   tagsText: "",
   pillar: "",
   documentUrl: "",
+  documentAssetId: null,
+  documentAsset: null,
   externalUrl: "",
   pageCount: "",
   status: "draft",
@@ -125,6 +138,10 @@ function toDateInput(iso: string | null | undefined): string {
 }
 
 function fromItem(item: WhitePaperDto): FormState {
+  // When an uploaded PDF is attached, `documentUrl` in the DTO is the derived
+  // storage URL for the asset. Don't echo that back into the "external PDF"
+  // text input — keep it empty so editors see the uploaded asset as primary.
+  const rawExternalDocumentUrl = item.documentAssetId ? "" : item.documentUrl ?? "";
   return {
     title: item.title,
     slug: item.slug,
@@ -136,7 +153,9 @@ function fromItem(item: WhitePaperDto): FormState {
     bodyHtml: item.bodyHtml ?? "",
     tagsText: (item.tags ?? []).join(", "),
     pillar: item.pillar ?? "",
-    documentUrl: item.documentUrl ?? "",
+    documentUrl: rawExternalDocumentUrl,
+    documentAssetId: item.documentAssetId,
+    documentAsset: item.documentAsset,
     externalUrl: item.externalUrl ?? "",
     pageCount: item.pageCount == null ? "" : String(item.pageCount),
     status: item.status,
@@ -168,6 +187,7 @@ function toBody(f: FormState): WhitePaperInput {
     tags,
     pillar: f.pillar || null,
     documentUrl: f.documentUrl || null,
+    documentAssetId: f.documentAssetId,
     externalUrl: f.externalUrl || null,
     pageCount: f.pageCount === "" ? null : Number(f.pageCount),
     status: f.status,
@@ -199,6 +219,7 @@ export default function WhitePaperEdit({ id }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
+  const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
@@ -269,6 +290,20 @@ export default function WhitePaperEdit({ id }: Props) {
   const handleHero = (asset: Asset) => {
     update({ heroImage: assetUrl(asset) });
     setShowHeroPicker(false);
+  };
+
+  const handleDocument = (asset: Asset) => {
+    update({
+      documentAssetId: asset.id,
+      documentAsset: {
+        id: asset.id,
+        originalName: asset.originalName,
+        mimeType: asset.mimeType,
+        size: asset.size,
+        storageKey: asset.storageKey,
+      },
+    });
+    setShowDocumentPicker(false);
   };
 
   if (!isNew && itemQ.isLoading && !loaded) {
@@ -434,16 +469,77 @@ export default function WhitePaperEdit({ id }: Props) {
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
               Download links
             </h3>
+            <div className="space-y-2">
+              <Label>Uploaded PDF</Label>
+              {form.documentAsset ? (
+                <div
+                  className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3"
+                  data-testid="white-paper-document-asset"
+                >
+                  <FileText className="h-6 w-6 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate text-sm font-medium" title={form.documentAsset.originalName}>
+                      {form.documentAsset.originalName}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {fileExtensionLabel(form.documentAsset)} · {formatBytes(form.documentAsset.size)}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 shrink-0">
+                    {canWrite && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDocumentPicker(true)}
+                        data-testid="button-change-white-paper-document"
+                      >
+                        Change
+                      </Button>
+                    )}
+                    {canWrite && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => update({ documentAssetId: null, documentAsset: null })}
+                        data-testid="button-remove-white-paper-document"
+                      >
+                        <X className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                canWrite && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDocumentPicker(true)}
+                    data-testid="button-pick-white-paper-document"
+                  >
+                    <FileText className="h-4 w-4 mr-1" /> Upload or Choose PDF
+                  </Button>
+                )
+              )}
+              <p className="text-xs text-muted-foreground">
+                Takes precedence over the external URL below. The public download
+                CTA will serve the uploaded file via <code>/api/storage</code>.
+              </p>
+            </div>
             <div>
-              <Label htmlFor="documentUrl">Document (PDF) URL</Label>
+              <Label htmlFor="documentUrl">External PDF URL (fallback)</Label>
               <Input
                 id="documentUrl"
                 value={form.documentUrl}
                 onChange={(e) => update({ documentUrl: e.target.value })}
-                disabled={!canWrite}
+                disabled={!canWrite || !!form.documentAssetId}
                 placeholder="https://.../whitepaper.pdf"
                 data-testid="input-white-paper-document-url"
               />
+              {form.documentAssetId && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Disabled while an uploaded PDF is attached.
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="externalUrl">External URL (e.g., Sway, microsite)</Label>
@@ -675,6 +771,14 @@ export default function WhitePaperEdit({ id }: Props) {
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
+        kind="image"
+      />
+      <AssetLibraryModal
+        open={showDocumentPicker}
+        onClose={() => setShowDocumentPicker(false)}
+        onSelect={handleDocument}
+        selectedId={form.documentAssetId}
+        kind="document"
       />
     </AdminLayout>
   );

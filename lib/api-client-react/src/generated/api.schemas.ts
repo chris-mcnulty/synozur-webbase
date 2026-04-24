@@ -585,6 +585,14 @@ export interface PublicEvent {
   status: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
+  /** @nullable */
+  recordingVideoSlug?: string | null;
+  /** @nullable */
+  recordingVideoUrl?: string | null;
+  /** @nullable */
+  recordingVideoTitle?: string | null;
 }
 
 export interface AdminEvent {
@@ -610,6 +618,14 @@ export interface AdminEvent {
   imageAssetId?: number | null;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
+  /** @nullable */
+  recordingVideoSlug?: string | null;
+  /** @nullable */
+  recordingVideoTitle?: string | null;
+  /** @nullable */
+  recordingVideoUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -768,6 +784,8 @@ export interface EventInput {
   featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
+  /** @nullable */
+  recordingVideoId?: string | null;
 }
 
 export type ServiceStatus = (typeof ServiceStatus)[keyof typeof ServiceStatus];

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, X, RefreshCw, MapPin } from "lucide-react";
+import { Image as ImageIcon, X, RefreshCw, MapPin, Film } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ export default function EventForm({ id }: Props) {
     featured: false,
     featuredRank: null,
     imageAssetId: null,
+    recordingVideoId: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
@@ -78,10 +79,24 @@ export default function EventForm({ id }: Props) {
         featured: existing.featured ?? false,
         featuredRank: existing.featuredRank ?? null,
         imageAssetId: existing.imageAssetId,
+        recordingVideoId: existing.recordingVideoId ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
     }
   }, [existing]);
+
+  const videosQ = useQuery({
+    queryKey: ["admin-videos-for-event"],
+    queryFn: () => api.adminListVideos(),
+  });
+  const videoOptions = useMemo(() => {
+    const items = videosQ.data?.items ?? [];
+    return [...items].sort((a, b) => {
+      const ad = a.publishedAt || a.recordedAt || a.createdAt;
+      const bd = b.publishedAt || b.recordedAt || b.createdAt;
+      return new Date(bd).getTime() - new Date(ad).getTime();
+    });
+  }, [videosQ.data]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -322,6 +337,38 @@ export default function EventForm({ id }: Props) {
               />
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Event Recording</Label>
+          <div className="flex items-start gap-3">
+            <Film className="h-5 w-5 text-muted-foreground mt-2 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Select
+                value={form.recordingVideoId ?? "__none__"}
+                onValueChange={(v) =>
+                  setForm({ ...form, recordingVideoId: v === "__none__" ? null : v })
+                }
+              >
+                <SelectTrigger data-testid="select-recordingVideo">
+                  <SelectValue placeholder="Link a published video as the recording" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No recording</SelectItem>
+                  {videoOptions.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.title} ({v.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Attach a post-event recording from the video library. When set,
+                the public event detail page embeds the player beneath the
+                &ldquo;past event&rdquo; banner.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">

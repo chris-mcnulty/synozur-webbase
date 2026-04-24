@@ -332,6 +332,14 @@ export type WhitePaperDocType = (typeof WHITE_PAPER_DOC_TYPES)[number];
 export const WHITE_PAPER_STATUSES = ["draft", "published", "archived"] as const;
 export type WhitePaperStatus = (typeof WHITE_PAPER_STATUSES)[number];
 
+export interface WhitePaperDocumentAsset {
+  id: number;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  storageKey: string;
+}
+
 export interface WhitePaperDto {
   id: string;
   slug: string;
@@ -345,6 +353,8 @@ export interface WhitePaperDto {
   tags: string[];
   pillar: string | null;
   documentUrl: string | null;
+  documentAssetId: number | null;
+  documentAsset: WhitePaperDocumentAsset | null;
   externalUrl: string | null;
   pageCount: number | null;
   status: WhitePaperStatus;
@@ -373,6 +383,7 @@ export interface WhitePaperInput {
   tags?: string[];
   pillar?: string | null;
   documentUrl?: string | null;
+  documentAssetId?: number | null;
   externalUrl?: string | null;
   pageCount?: number | null;
   status?: WhitePaperStatus;
