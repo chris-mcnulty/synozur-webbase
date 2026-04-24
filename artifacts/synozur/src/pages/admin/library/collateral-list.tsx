@@ -56,6 +56,7 @@ import {
   COLLATERAL_TYPE_TABS,
   COLLATERAL_TYPE_LABELS,
   HeroThumb,
+  editorPathForSource,
 } from "./_collateral-helpers";
 
 // Server returns serviceId/solutionId/sourceId; the generated CollateralItem
@@ -65,35 +66,6 @@ type CollateralRow = CollateralItem & {
   solutionId?: string | null;
   sourceId?: string | null;
 };
-
-// Map a sourceId like "white_paper:<uuid>" to the dedicated editor URL.
-// Synced rows route their Edit action to the source so changes propagate
-// through the upsertCollateralFromX sync. Returns null when the prefix
-// isn't recognized — falls back to the collateral edit form (which shows
-// a banner explaining the row is synced).
-function editorPathForSource(sourceId: string | null | undefined): string | null {
-  if (!sourceId) return null;
-  const [prefix, id] = sourceId.split(":");
-  if (!id) return null;
-  switch (prefix) {
-    case "white_paper":
-      return `/library/white-papers/${id}/edit`;
-    case "case_study":
-      return `/products/case-studies`;
-    case "model":
-      return `/products/models/${id}/edit`;
-    case "video":
-      return `/library/videos/${id}/edit`;
-    case "post":
-      return `/insights/posts/${id}/edit`;
-    case "polaris_episode":
-      return `/library/polaris-episodes/${id}/edit`;
-    case "event":
-      return `/people/events/${id}`;
-    default:
-      return null;
-  }
-}
 
 type TypeTab = "all" | NonNullable<CollateralItem["type"]> | "video" | "ebook";
 

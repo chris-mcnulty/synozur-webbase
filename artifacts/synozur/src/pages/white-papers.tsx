@@ -28,56 +28,55 @@ function iconForType(t: WhitePaperDocType) {
 function WhitePaperCard({ item }: { item: WhitePaperDto }) {
   const Icon = iconForType(item.docType);
   return (
-    <Link href={`/white-papers/${item.slug}`}>
-      <a
-        className="group block rounded-2xl overflow-hidden border border-border/60 bg-card hover:border-primary/40 transition-colors"
-        data-testid={`card-white-paper-${item.slug}`}
-      >
-        <div className="aspect-[16/9] relative overflow-hidden bg-muted">
-          {item.heroImage ? (
-            <img
-              src={item.heroImage}
-              alt={item.heroImageAlt || item.title}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <Icon className="h-12 w-12" />
-            </div>
-          )}
-          <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] tracking-[0.2em] uppercase font-semibold">
-            <Icon className="h-3 w-3" />
-            {DOC_TYPE_LABELS[item.docType]}
+    <Link
+      href={`/white-papers/${item.slug}`}
+      className="group block rounded-2xl overflow-hidden border border-border/60 bg-card hover:border-primary/40 transition-colors"
+      data-testid={`card-white-paper-${item.slug}`}
+    >
+      <div className="aspect-[16/9] relative overflow-hidden bg-muted">
+        {item.heroImage ? (
+          <img
+            src={item.heroImage}
+            alt={item.heroImageAlt || item.title}
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            <Icon className="h-12 w-12" />
           </div>
+        )}
+        <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] tracking-[0.2em] uppercase font-semibold">
+          <Icon className="h-3 w-3" />
+          {DOC_TYPE_LABELS[item.docType]}
         </div>
-        <div className="p-5">
-          {item.subtitle && (
-            <p className="text-xs uppercase tracking-[0.15em] text-primary mb-2">
-              {item.subtitle}
-            </p>
-          )}
-          <h3 className="font-semibold text-lg leading-snug mb-2 group-hover:text-primary transition-colors line-clamp-2">
-            {item.title}
-          </h3>
-          {item.shortDescription && (
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {item.shortDescription}
-            </p>
-          )}
-          {item.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {item.tags.slice(0, 3).map((t) => (
-                <span
-                  key={t}
-                  className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-[0.15em] bg-muted border border-border text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </a>
+      </div>
+      <div className="p-5">
+        {item.subtitle && (
+          <p className="text-xs uppercase tracking-[0.15em] text-primary mb-2">
+            {item.subtitle}
+          </p>
+        )}
+        <h3 className="font-semibold text-lg leading-snug mb-2 group-hover:text-primary transition-colors line-clamp-2">
+          {item.title}
+        </h3>
+        {item.shortDescription && (
+          <p className="text-sm text-muted-foreground line-clamp-3">
+            {item.shortDescription}
+          </p>
+        )}
+        {item.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {item.tags.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-[0.15em] bg-muted border border-border text-muted-foreground"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </Link>
   );
 }

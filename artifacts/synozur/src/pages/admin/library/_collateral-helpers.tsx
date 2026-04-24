@@ -43,6 +43,36 @@ export function heroThumbUrl(url: string | null | undefined): string | null {
   return nextQuery ? `${base}?${nextQuery}${hash}` : `${base}${hash}`;
 }
 
+// Maps a sourceId (e.g. "white_paper:<uuid>") to the dedicated editor URL for
+// that content type. Returns null when the prefix isn't recognised so callers
+// can fall back to the generic collateral edit form.
+//
+// IMPORTANT: keep this list in sync with editorPathForSyncedType() in
+// artifacts/api-server/src/routes/collateral.ts.
+export function editorPathForSource(sourceId: string | null | undefined): string | null {
+  if (!sourceId) return null;
+  const [prefix, id] = sourceId.split(":");
+  if (!id) return null;
+  switch (prefix) {
+    case "white_paper":
+      return `/library/white-papers/${id}/edit`;
+    case "case_study":
+      return `/products/case-studies`;
+    case "model":
+      return `/products/models/${id}/edit`;
+    case "video":
+      return `/library/videos/${id}/edit`;
+    case "post":
+      return `/insights/posts/${id}/edit`;
+    case "polaris_episode":
+      return `/library/polaris-episodes/${id}/edit`;
+    case "event":
+      return `/people/events/${id}`;
+    default:
+      return null;
+  }
+}
+
 export function HeroThumb({
   url,
   title,

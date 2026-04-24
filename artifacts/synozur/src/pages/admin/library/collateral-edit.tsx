@@ -35,6 +35,7 @@ import {
   type CollateralItem,
   type UpsertCollateralBody,
 } from "@workspace/api-client-react";
+import { editorPathForSource } from "./_collateral-helpers";
 
 interface Props {
   id?: string;
@@ -56,32 +57,6 @@ const TYPES: { value: UpsertCollateralBody["type"]; label: string }[] = [
 // excluded — those must be created in their type-specific editor so the
 // canonical record exists and the upsertCollateralFromX sync runs.
 const CREATABLE_TYPES = TYPES.filter((t) => !isSyncedCollateralType(t.value));
-
-// Map a sourceId like "white_paper:<uuid>" to the dedicated editor URL.
-// Returns null when the prefix isn't recognized.
-function editorPathForSource(sourceId: string | null | undefined): string | null {
-  if (!sourceId) return null;
-  const [prefix, id] = sourceId.split(":");
-  if (!id) return null;
-  switch (prefix) {
-    case "white_paper":
-      return `/library/white-papers/${id}/edit`;
-    case "case_study":
-      return `/products/case-studies`;
-    case "model":
-      return `/products/models/${id}/edit`;
-    case "video":
-      return `/library/videos/${id}/edit`;
-    case "post":
-      return `/insights/posts/${id}/edit`;
-    case "polaris_episode":
-      return `/library/polaris-episodes/${id}/edit`;
-    case "event":
-      return `/people/events/${id}`;
-    default:
-      return null;
-  }
-}
 
 const PILLARS: { value: NonNullable<UpsertCollateralBody["pillar"]>; label: string }[] = [
   { value: "strategic", label: "Strategic Transformation" },
