@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 7 tasks pending · 90 merged · 29 cancelled
+> 9 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -27,6 +27,16 @@ Currently the services and solutions data can only be updated row-by-row through
 **Depends on:** #48 (post revisions)
 
 Every save creates a new revision. Without a retention policy, the `post_revisions` table grows indefinitely. This task adds a scheduled job (daily cron) that deletes revisions older than 90 days, keeping the 10 most recent regardless of age. The retention window and keep-count should be configurable via admin site settings.
+
+### #120 · Move the featured-items carousel manager to a dedicated admin tab with thumbnail and type views
+**Depends on:** #118 (hero thumbnails in Library admin list) — merged
+
+The "Featured items" reorder card is currently inline at the top of `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` (lines 531–605) — it shows only items already flagged featured, stacked above the full collateral table, which mixes two concerns (curate the home carousel / browse the whole library). Promote the carousel manager to its own admin page (e.g. `/admin/library/carousel`) with two view modes: a **thumbnail grid view** that renders each featured item as a full-size card (hero image + title + type chip) for visual drag-to-reorder, and a **type view** that groups the featured set by artifact type (collateral / video / white-paper / workshop) so marketing can see and balance the mix that will appear in the home carousel and featured-library row. Keep the existing featured-rank persistence and drag-to-reorder behavior. Remove the inline featured card from the collateral list once the new tab is live.
+
+### #121 · Sortable columns on the collateral library admin list
+**Depends on:** #69 (library live content) — merged
+
+The admin collateral table in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` uses static `<TableHead>` cells (lines 729–756) — editors cannot reorder by title, type, service, solution, pillar, featured rank, or last-updated. The backend `GET /cms/collateral` in `artifacts/api-server/src/routes/collateral.ts` (lines 212–224) has a hard-coded `ORDER BY featured DESC, featuredRank ASC NULLS LAST, publishedAt DESC, title ASC` and the `ListQuery` schema (lines 13–26) accepts no sort param. This task adds a `sort` query param (e.g. `sort=title:asc` or `sort=updatedAt:desc`) validated against an allow-list of sortable columns, threads it through the generated API client, and makes each `<TableHead>` clickable with an arrow indicator showing the current direction. Clicking cycles asc → desc → default. The same pattern should be reusable by the sibling videos / white-papers / workshops admin lists in follow-up work.
 
 ---
 
@@ -69,3 +79,5 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Expand user/role model to seven audience classes | Admin Access & People | #109 |
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
+| #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
+| #121 | Sortable columns on the collateral library admin list | Library | #69 |
