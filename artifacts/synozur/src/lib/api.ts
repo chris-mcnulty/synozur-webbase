@@ -11,6 +11,7 @@ import type {
   AdminFormSubmission,
   AdminFormSubmissionsPage,
   PublicTeamMember,
+  PublicTeamMemberDetail,
   AdminTeamMember,
   TeamMemberInput,
   RetryFailedSubmissionsResult,
@@ -485,6 +486,8 @@ export const api = {
       body: JSON.stringify(body),
     }),
   publicTeamMembers: () => jsonFetch<PublicTeamMember[]>(url("/team-members")),
+  publicTeamMember: (slug: string) =>
+    jsonFetch<PublicTeamMemberDetail>(url(`/team-members/${encodeURIComponent(slug)}`)),
   adminTeamMembers: () => jsonFetch<AdminTeamMember[]>(url("/admin/team-members")),
   getTeamMember: (id: number) =>
     jsonFetch<AdminTeamMember>(url(`/admin/team-members/${id}`)),

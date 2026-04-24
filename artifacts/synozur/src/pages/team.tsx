@@ -82,27 +82,34 @@ export default function Team() {
                     className="group"
                     data-testid={`team-card-${p.slug}`}
                   >
-                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
-                      {imageSrc ? (
-                        <img
-                          src={imageSrc}
-                          alt={p.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                          {p.name}
-                        </div>
+                    <Link
+                      href={`/team/${p.slug}`}
+                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
+                    >
+                      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
+                        {imageSrc ? (
+                          <img
+                            src={imageSrc}
+                            alt={p.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                            {p.name}
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                      </div>
+                      <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">
+                        {p.name}
+                      </h3>
+                      <p className="text-sm text-primary mb-3">{p.jobTitle}</p>
+                      {bio && (
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                          {bio}
+                        </p>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                    </div>
-                    <h3 className="text-lg font-bold leading-tight">{p.name}</h3>
-                    <p className="text-sm text-primary mb-3">{p.jobTitle}</p>
-                    {bio && (
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                        {bio}
-                      </p>
-                    )}
+                    </Link>
                     {p.linkedinUrl && (
                       <a
                         href={p.linkedinUrl}

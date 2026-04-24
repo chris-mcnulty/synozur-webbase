@@ -74,6 +74,7 @@ export * from "./publicPost";
 export * from "./publicPostListResponse";
 export * from "./publicSiteSettings";
 export * from "./publicTeamMember";
+export * from "./publicTeamMemberDetail";
 export * from "./registerMediaBody";
 export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";

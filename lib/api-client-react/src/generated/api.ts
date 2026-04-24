@@ -69,6 +69,7 @@ import type {
   PublicPostListResponse,
   PublicSiteSettings,
   PublicTeamMember,
+  PublicTeamMemberDetail,
   RegisterMediaBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -6440,6 +6441,94 @@ export function useListPublicTeamMembers<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListPublicTeamMembersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a public team member by slug
+ */
+export const getGetPublicTeamMemberUrl = (slug: string) => {
+  return `/api/team-members/${slug}`;
+};
+
+export const getPublicTeamMember = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<PublicTeamMemberDetail> => {
+  return customFetch<PublicTeamMemberDetail>(getGetPublicTeamMemberUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicTeamMemberQueryKey = (slug: string) => {
+  return [`/api/team-members/${slug}`] as const;
+};
+
+export const getGetPublicTeamMemberQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicTeamMember>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicTeamMember>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicTeamMemberQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicTeamMember>>
+  > = ({ signal }) => getPublicTeamMember(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicTeamMember>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicTeamMemberQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicTeamMember>>
+>;
+export type GetPublicTeamMemberQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get a public team member by slug
+ */
+
+export function useGetPublicTeamMember<
+  TData = Awaited<ReturnType<typeof getPublicTeamMember>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicTeamMember>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicTeamMemberQueryOptions(slug, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

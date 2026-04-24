@@ -20,6 +20,7 @@ import ModelDetail from "@/pages/model-detail";
 import Workshops from "@/pages/workshops";
 import WorkshopDetail from "@/pages/workshop-detail";
 import Team from "@/pages/team";
+import TeamDetail from "@/pages/team-detail";
 import Partners from "@/pages/partners";
 import Insights from "@/pages/insights";
 import InsightDetail from "@/pages/insight-detail";
@@ -343,6 +344,7 @@ function Router() {
             <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/faq" component={Faq} />
             <Route path="/team" component={Team} />
+            <Route path="/team/:slug" component={TeamDetail} />
             <Route path="/partners" component={Partners} />
             <Route path="/insights" component={Insights} />
             <Route path="/insights/:slug" component={InsightDetail} />

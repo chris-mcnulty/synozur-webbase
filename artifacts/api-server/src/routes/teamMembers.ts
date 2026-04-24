@@ -3,6 +3,8 @@ import { eq, asc } from "drizzle-orm";
 import { db, teamMembersTable, type TeamMember } from "@workspace/db";
 import {
   ListPublicTeamMembersResponse,
+  GetPublicTeamMemberParams,
+  GetPublicTeamMemberResponse,
   ListAdminTeamMembersResponse,
   ListAdminTeamMembersResponseItem,
   GetAdminTeamMemberResponse,
@@ -13,6 +15,7 @@ import {
   DeleteTeamMemberParams,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { ricosToHtml } from "../lib/ricos";
 
 const router: IRouter = Router();
 
@@ -86,6 +89,38 @@ router.get("/team-members", async (_req, res): Promise<void> => {
     .where(eq(teamMembersTable.active, true))
     .orderBy(asc(teamMembersTable.manualSort), asc(teamMembersTable.name));
   res.json(ListPublicTeamMembersResponse.parse(rows.map(publicShape)));
+});
+
+router.get("/team-members/:slug", async (req, res): Promise<void> => {
+  const params = GetPublicTeamMemberParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [m] = await db
+    .select()
+    .from(teamMembersTable)
+    .where(eq(teamMembersTable.slug, params.data.slug));
+  if (!m || !m.active) {
+    res.status(404).json({ error: "Team member not found" });
+    return;
+  }
+  res.json(
+    GetPublicTeamMemberResponse.parse({
+      id: m.id,
+      name: m.name,
+      slug: m.slug,
+      jobTitle: m.jobTitle,
+      shortDescription: m.shortDescription,
+      longDescription: ricosToHtml(m.longDescription),
+      imageUrl: m.imageUrl,
+      linkedinUrl: m.linkedinUrl,
+      website: m.website,
+      email: m.email,
+      active: m.active,
+      tags: m.tags ?? [],
+    }),
+  );
 });
 
 router.get("/admin/team-members", requireAdmin, async (_req, res): Promise<void> => {

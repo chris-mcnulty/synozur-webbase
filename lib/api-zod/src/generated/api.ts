@@ -2347,6 +2347,28 @@ export const ListPublicTeamMembersResponse = zod.array(
 );
 
 /**
+ * @summary Get a public team member by slug
+ */
+export const GetPublicTeamMemberParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetPublicTeamMemberResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  slug: zod.string(),
+  jobTitle: zod.string(),
+  shortDescription: zod.string().nullish(),
+  longDescription: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  linkedinUrl: zod.string().nullish(),
+  website: zod.string().nullish(),
+  email: zod.string().nullish(),
+  active: zod.boolean(),
+  tags: zod.array(zod.string()),
+});
+
+/**
  * @summary List all team members (admin)
  */
 export const ListAdminTeamMembersResponseItem = zod.object({

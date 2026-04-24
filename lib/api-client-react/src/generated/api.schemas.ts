@@ -1207,6 +1207,27 @@ export interface PublicTeamMember {
   active: boolean;
 }
 
+export interface PublicTeamMemberDetail {
+  id: number;
+  name: string;
+  slug: string;
+  jobTitle: string;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  longDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  active: boolean;
+  tags: string[];
+}
+
 export interface AdminTeamMember {
   id: number;
   name: string;
