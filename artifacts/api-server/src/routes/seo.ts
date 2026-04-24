@@ -231,7 +231,7 @@ async function collectEntries(): Promise<Entry[]> {
   for (const s of services) entries.push(toEntry(`/services/${s.slug}`, s.updatedAt));
   for (const s of solutions) entries.push(toEntry(`/solutions/${s.slug}`, s.updatedAt));
   for (const m of team) {
-    entries.push(toEntry(`/team/${m.slug}`, m.updatedAt));
+    entries.push(toEntry(`/team/${encodeURIComponent(m.slug)}`, m.updatedAt));
   }
   for (const _e of events) {
     // Events are listed on /events; no detail route is published yet.
