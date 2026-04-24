@@ -222,7 +222,7 @@ export default function MarketingSeo() {
     },
   });
 
-  if (!data) return null;
+  if (!data && !isLoading) return null;
 
   // ── build payload helper ───────────────────────────────────────────────────
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody> = {}): UpdateSiteSettingsBody => {
