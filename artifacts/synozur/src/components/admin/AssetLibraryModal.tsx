@@ -84,7 +84,7 @@ export function AssetLibraryModal({
   const [filterKind, setFilterKind] = useState<AssetKind | null>(null);
   const qc = useQueryClient();
 
-  const { data: catsData } = useListAssetCategories({ query: { enabled: open } as never });
+  const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
   const categories = catsData?.items ?? [];
   const categoryLabelBySlug = new Map(categories.map((c) => [c.slug, c.label]));
 
