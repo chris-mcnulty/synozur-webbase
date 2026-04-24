@@ -140,7 +140,7 @@ export function Header() {
       links: [
         { label: "Case Studies", href: "/case-studies" },
         { label: "Webinars", href: "/webinars" },
-        { label: "White Papers", href: "/items" },
+        { label: "White Papers", href: "/white-papers" },
         { label: "Workshops", href: "/workshops" },
         { label: "Models", href: "/models" },
         { label: "FAQ", href: "/faq" },
