@@ -7,6 +7,7 @@ import {
   TYPE_LABELS,
   type Collateral,
 } from "@/data/collateral";
+import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
 
 /**
@@ -160,6 +161,16 @@ export default function LibraryDetail() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                onClick={() =>
+                  void trackEvent(
+                    item.downloadUrl ? "resource-download" : "resource-open-external",
+                    {
+                      slug: item.slug,
+                      type: item.type,
+                      title: item.title,
+                    },
+                  )
+                }
               >
                 {cta.label}
                 {cta.icon}

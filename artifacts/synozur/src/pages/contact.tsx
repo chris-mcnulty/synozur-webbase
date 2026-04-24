@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { trackEvent } from "@/lib/traffic-tracker";
 import {
   Turnstile,
   TURNSTILE_SITE_KEY,
@@ -57,6 +58,9 @@ export default function Contact() {
         turnstileToken,
       });
       setSubmitted(true);
+      void trackEvent("contact-form-submit", {
+        company: data.company.slice(0, 120) || null,
+      });
     } catch (err) {
       if (isBotCheckError(err)) {
         setBotCheckFailed(true);

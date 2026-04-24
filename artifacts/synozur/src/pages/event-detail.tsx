@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Meta } from "@/lib/meta";
+import { EventJsonLd } from "@/components/event-jsonld";
 import { Button } from "@/components/ui/button";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 
@@ -108,6 +109,16 @@ export default function EventDetail() {
           event.description ??
           `${event.title} — Synozur Alliance event.`
         }
+      />
+
+      <EventJsonLd
+        slug={slug!}
+        name={event.title}
+        description={event.teaser ?? event.description ?? null}
+        image={event.imageUrl ?? null}
+        startDate={event.startDate}
+        location={event.location ?? null}
+        registrationUrl={event.registrationUrl ?? null}
       />
 
       {/* Hero */}

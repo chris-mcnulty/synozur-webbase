@@ -9,6 +9,7 @@
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const COLLECT_URL = `${BASE_PATH}/api/traffic/collect`;
+const EVENT_URL = `${BASE_PATH}/api/traffic/event`;
 
 interface PendingPageview {
   pageviewId: string;
@@ -38,9 +39,9 @@ function shouldSkip(path: string): boolean {
   return false;
 }
 
-async function post(body: Record<string, unknown>): Promise<{ pageviewId: string | null } | null> {
+async function post(url: string, body: Record<string, unknown>): Promise<{ pageviewId: string | null } | null> {
   try {
-    const res = await fetch(COLLECT_URL, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -65,7 +66,7 @@ function sendBeacon(body: Record<string, unknown>): void {
   } catch {
     // fall through to fetch
   }
-  void post(body);
+  void post(COLLECT_URL, body);
 }
 
 function finalizePending(): void {
@@ -81,6 +82,34 @@ function finalizePending(): void {
   pending = null;
 }
 
+/**
+ * Build a UTM payload from the current URL's querystring. Empty/absent
+ * params are returned as null so the server can trim to null consistently.
+ */
+function readUtms(): Record<string, string | null> {
+  if (typeof window === "undefined") {
+    return {
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+    };
+  }
+  const q = new URLSearchParams(window.location.search);
+  const take = (k: string) => {
+    const v = q.get(k);
+    return v ? v.slice(0, 120) : null;
+  };
+  return {
+    utmSource: take("utm_source"),
+    utmMedium: take("utm_medium"),
+    utmCampaign: take("utm_campaign"),
+    utmTerm: take("utm_term"),
+    utmContent: take("utm_content"),
+  };
+}
+
 export async function trackPageview(path: string, title?: string | null): Promise<void> {
   if (typeof window === "undefined") return;
   if (shouldSkip(path)) {
@@ -94,12 +123,18 @@ export async function trackPageview(path: string, title?: string | null): Promis
 
   finalizePending();
 
+  // Include the current querystring so the server can harvest UTM params for
+  // first-touch attribution on the session row.
+  const search = window.location.search || "";
+  const pathWithQuery = `${path}${search}`;
+
   const body: Record<string, unknown> = {
-    path,
+    path: pathWithQuery,
     title: title ?? document.title ?? null,
     referrer: document.referrer || null,
+    ...readUtms(),
   };
-  const result = await post(body);
+  const result = await post(COLLECT_URL, body);
   if (result?.pageviewId) {
     pending = {
       pageviewId: result.pageviewId,
@@ -108,6 +143,25 @@ export async function trackPageview(path: string, title?: string | null): Promis
       maxScrollPct: 0,
     };
   }
+}
+
+/**
+ * Record a named custom event (e.g. "contact-form-submit",
+ * "workshop-cta-click", "resource-download"). Fires fire-and-forget; failures
+ * are swallowed so the caller's UI path is never blocked.
+ */
+export async function trackEvent(
+  name: string,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname || "/";
+  if (shouldSkip(path)) return;
+  await post(EVENT_URL, {
+    eventName: name,
+    path,
+    properties: properties ?? null,
+  });
 }
 
 let installed = false;

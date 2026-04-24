@@ -6,6 +6,7 @@ import {
   db,
   trafficSessionsTable,
   trafficPageviewsTable,
+  trafficEventsTable,
 } from "@workspace/db";
 import {
   classifyPageType,
@@ -30,6 +31,22 @@ const CollectBody = z.object({
   scrollDepthPct: z.number().int().min(0).max(100).optional().nullable(),
   // If set, update the existing pageview rather than inserting a new one.
   pageviewId: z.string().uuid().optional().nullable(),
+  // Client-captured UTMs (server also harvests from path querystring).
+  utmSource: z.string().max(120).optional().nullable(),
+  utmMedium: z.string().max(120).optional().nullable(),
+  utmCampaign: z.string().max(120).optional().nullable(),
+  utmTerm: z.string().max(120).optional().nullable(),
+  utmContent: z.string().max(120).optional().nullable(),
+});
+
+const EventBody = z.object({
+  eventName: z
+    .string()
+    .min(1)
+    .max(80)
+    .regex(/^[a-zA-Z0-9_.-]+$/, "eventName must be alphanumeric, dot, dash, or underscore"),
+  path: z.string().min(1).max(2048),
+  properties: z.record(z.unknown()).optional().nullable(),
 });
 
 function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
@@ -46,6 +63,17 @@ const collectLimiter = rateLimit({
   standardHeaders: false,
   legacyHeaders: false,
   keyGenerator: (req) => `t:c:${ipKey(req)}`,
+  handler: (_req, res) => {
+    res.status(202).json({ ok: true });
+  },
+});
+
+const eventLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `t:e:${ipKey(req)}`,
   handler: (_req, res) => {
     res.status(202).json({ ok: true });
   },
@@ -107,16 +135,113 @@ router.post("/traffic/collect", collectLimiter, async (req, res) => {
       return;
     }
 
+    const clientUtms = {
+      utmSource: parsed.data.utmSource ?? null,
+      utmMedium: parsed.data.utmMedium ?? null,
+      utmCampaign: parsed.data.utmCampaign ?? null,
+      utmTerm: parsed.data.utmTerm ?? null,
+      utmContent: parsed.data.utmContent ?? null,
+    };
     const pv = await recordPageview({
       req,
       pathname,
       title: parsed.data.title ?? null,
       referrer: parsed.data.referrer ?? null,
       queryString: extractQueryString(parsed.data.path),
+      clientUtms,
     });
     res.status(202).json({ ok: true, pageviewId: pv?.id ?? null });
   } catch (err) {
     req.log.warn({ err }, "traffic.collect failed");
+    res.status(202).json({ ok: true });
+  }
+});
+
+router.post("/traffic/event", eventLimiter, async (req, res) => {
+  const parsed = EventBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(202).json({ ok: true });
+    return;
+  }
+
+  try {
+    const pathname = normalizePath(parsed.data.path);
+    if (!pathname || shouldSkipTrafficPath(pathname)) {
+      res.status(202).json({ ok: true });
+      return;
+    }
+
+    // Re-use the upsert path so the event attaches to the caller's session
+    // (one session per IP+UA+day) without requiring a pageview to exist.
+    const ua = (req.headers["user-agent"] as string | undefined) ?? "";
+    const uaFacts = parseUa(ua);
+    const ip = clientIpFromRequest(req);
+    const selfHost = selfHostOf(req);
+    const geo = countryFromRequest(req);
+    const sourceCls = classifySource({
+      referrerUrl: null,
+      selfHost,
+      landingQuery: extractQueryString(parsed.data.path),
+      isBotCategory: uaFacts.botCategory,
+    });
+    const bucket = todayBucket();
+    const sessionHash = sessionKey(ip, ua, bucket);
+
+    const inserted = await db
+      .insert(trafficSessionsTable)
+      .values({
+        sessionHash,
+        userAgent: ua.slice(0, 1024) || null,
+        browserName: uaFacts.browserName,
+        browserVersion: uaFacts.browserVersion,
+        osName: uaFacts.osName,
+        deviceType: uaFacts.deviceType,
+        ipHash: ipHash(ip),
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
+        landingPath: pathname,
+        trafficSource: sourceCls.source,
+        utmSource: sourceCls.utmSource,
+        utmMedium: sourceCls.utmMedium,
+        utmCampaign: sourceCls.utmCampaign,
+        utmTerm: sourceCls.utmTerm,
+        utmContent: sourceCls.utmContent,
+        isBot: uaFacts.isBot,
+        botCategory: uaFacts.botCategory,
+        botName: uaFacts.botName,
+        pageviewCount: 0,
+      })
+      .onConflictDoUpdate({
+        target: trafficSessionsTable.sessionHash,
+        set: { lastSeenAt: new Date() },
+      })
+      .returning({ id: trafficSessionsTable.id });
+
+    const sessionId = inserted[0]?.id;
+    if (!sessionId) {
+      res.status(202).json({ ok: true });
+      return;
+    }
+
+    // Cap properties payload — keep the admin view honest and prevent blob abuse.
+    const props = parsed.data.properties ?? null;
+    const serializedProps = props ? JSON.stringify(props) : null;
+    const safeProps =
+      serializedProps && serializedProps.length <= 4096
+        ? JSON.parse(serializedProps)
+        : null;
+
+    await db.insert(trafficEventsTable).values({
+      sessionId,
+      path: pathname,
+      eventName: parsed.data.eventName.slice(0, 80),
+      properties: safeProps,
+    });
+
+    res.status(202).json({ ok: true });
+  } catch (err) {
+    req.log.warn({ err }, "traffic.event failed");
     res.status(202).json({ ok: true });
   }
 });
@@ -143,12 +268,44 @@ function extractQueryString(raw: string): URLSearchParams | null {
   }
 }
 
+function mergeQueryWithUtms(
+  query: URLSearchParams | null,
+  clientUtms: {
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmTerm: string | null;
+    utmContent: string | null;
+  } | null,
+): URLSearchParams | null {
+  if (!clientUtms) return query;
+  const out = new URLSearchParams(query ?? "");
+  const mapping: [string, string | null][] = [
+    ["utm_source", clientUtms.utmSource],
+    ["utm_medium", clientUtms.utmMedium],
+    ["utm_campaign", clientUtms.utmCampaign],
+    ["utm_term", clientUtms.utmTerm],
+    ["utm_content", clientUtms.utmContent],
+  ];
+  for (const [k, v] of mapping) {
+    if (v && !out.get(k)) out.set(k, v);
+  }
+  return out;
+}
+
 interface RecordPageviewArgs {
   req: import("express").Request;
   pathname: string;
   title: string | null;
   referrer: string | null;
   queryString: URLSearchParams | null;
+  clientUtms?: {
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmTerm: string | null;
+    utmContent: string | null;
+  };
 }
 
 /**
@@ -160,16 +317,19 @@ interface RecordPageviewArgs {
  * time-on-page / scroll depth via the unload beacon.
  */
 export async function recordPageview(args: RecordPageviewArgs): Promise<{ id: string } | null> {
-  const { req, pathname, title, referrer, queryString } = args;
+  const { req, pathname, title, referrer, queryString, clientUtms } = args;
   const ua = (req.headers["user-agent"] as string | undefined) ?? "";
   const uaFacts = parseUa(ua);
   const ip = clientIpFromRequest(req);
   const selfHost = selfHostOf(req);
   const geo = countryFromRequest(req);
+  // Merge: query-string UTMs take precedence (they came in on the landing URL);
+  // fall back to client-reported UTMs if the query string didn't carry them.
+  const mergedQuery = mergeQueryWithUtms(queryString, clientUtms ?? null);
   const sourceCls = classifySource({
     referrerUrl: referrer,
     selfHost,
-    landingQuery: queryString,
+    landingQuery: mergedQuery,
     isBotCategory: uaFacts.botCategory,
   });
 

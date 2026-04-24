@@ -121,6 +121,29 @@ export interface TrafficAiCrawlers {
   fromAiPlatforms: AiPlatformRow[];
 }
 
+export interface UtmBreakdownRow { value: string; sessions: number; }
+export interface TrafficUtms {
+  bySource: UtmBreakdownRow[];
+  byMedium: UtmBreakdownRow[];
+  byCampaign: UtmBreakdownRow[];
+}
+
+export interface EventNameRow {
+  eventName: string;
+  total: number;
+  sessions: number;
+}
+export interface EventRecentRow {
+  occurredAt: string;
+  eventName: string;
+  path: string;
+  properties: Record<string, unknown> | null;
+}
+export interface TrafficEvents {
+  byName: EventNameRow[];
+  recent: EventRecentRow[];
+}
+
 export const trafficApi = {
   overview: (filters: TrafficFilters) =>
     jsonFetch<TrafficOverview>(apiUrl(`/cms/traffic/overview${buildQuery(filters)}`)),
@@ -136,6 +159,14 @@ export const trafficApi = {
     jsonFetch<TrafficCountries>(apiUrl(`/cms/traffic/countries${buildQuery(filters)}`)),
   aiCrawlers: (filters: TrafficFilters) =>
     jsonFetch<TrafficAiCrawlers>(apiUrl(`/cms/traffic/ai-crawlers${buildQuery(filters)}`)),
+  utms: (filters: TrafficFilters) =>
+    jsonFetch<TrafficUtms>(apiUrl(`/cms/traffic/utms${buildQuery(filters)}`)),
+  events: (filters: TrafficFilters) =>
+    jsonFetch<TrafficEvents>(apiUrl(`/cms/traffic/events${buildQuery(filters)}`)),
   exportCsvUrl: (filters: TrafficFilters) =>
     apiUrl(`/cms/traffic/export.csv${buildQuery(filters)}`),
+  overviewCsvUrl: (filters: TrafficFilters) =>
+    apiUrl(`/cms/analytics/overview.csv${buildQuery(filters)}`),
+  sessionsCsvUrl: (filters: TrafficFilters) =>
+    apiUrl(`/cms/analytics/sessions.csv${buildQuery(filters)}`),
 };

@@ -283,6 +283,9 @@ export function classifySource(input: {
     } else {
       source = "referral";
     }
+  } else if (utmSource) {
+    // utm_source without a medium — a tagged link still beats the referrer guess.
+    source = "referral";
   } else if (isBotCategory === "ai") {
     source = "ai";
   } else if (isInternal) {

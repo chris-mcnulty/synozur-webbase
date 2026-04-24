@@ -3,6 +3,7 @@ import { Link, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
+import { trackEvent } from "@/lib/traffic-tracker";
 import { RichText } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 
@@ -138,6 +139,16 @@ export default function WhitePaperDetail() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                onClick={() =>
+                  void trackEvent(
+                    item.documentUrl ? "resource-download" : "resource-open-external",
+                    {
+                      slug: item.slug,
+                      docType: item.docType,
+                      title: item.title,
+                    },
+                  )
+                }
               >
                 {downloadLabel}
                 {downloadIcon}
