@@ -32,6 +32,12 @@ import { seedEventsFromCsv } from "../scripts/seedEvents";
 
 const router: IRouter = Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -242,7 +248,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
   const recordingVideoId = parsed.data.recordingVideoId ?? null;
-  if (recordingVideoId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordingVideoId)) {
+  if (recordingVideoId != null && !isValidUuid(recordingVideoId)) {
     res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
     return;
   }
@@ -291,7 +297,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   const recordingVideoId = parsed.data.recordingVideoId ?? null;
-  if (recordingVideoId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordingVideoId)) {
+  if (recordingVideoId != null && !isValidUuid(recordingVideoId)) {
     res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
     return;
   }
