@@ -29,7 +29,7 @@ export function RevisionsPanel({ kind, id, invalidateKeys = [] }: Props) {
   const queryKey = [`${kind}-revisions`, id] as const;
   const listFn =
     kind === "service" ? api.listServiceRevisions : api.listSolutionRevisions;
-  const restoreFn =
+  const restoreFn: (entityId: string, revisionId: string) => Promise<unknown> =
     kind === "service" ? api.restoreServiceRevision : api.restoreSolutionRevision;
 
   const query = useQuery({
@@ -38,7 +38,7 @@ export function RevisionsPanel({ kind, id, invalidateKeys = [] }: Props) {
     enabled: expanded && id.length > 0,
   });
 
-  const restore = useMutation({
+  const restore = useMutation<unknown, Error, string>({
     mutationFn: (revisionId: string) => restoreFn(id, revisionId),
     onSuccess: () => {
       toast({ title: "Revision restored" });
