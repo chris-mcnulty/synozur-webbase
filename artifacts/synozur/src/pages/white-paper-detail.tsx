@@ -27,18 +27,32 @@ export default function WhitePaperDetail() {
   useEffect(() => {
     let cancelled = false;
     if (!slug) return;
-    api
-      .getWhitePaper(slug)
-      .then((res) => {
+    // Collateral is the runtime authority for what's in the library: an
+    // item appears here if and only if a matching collateral row exists.
+    // We then try to hydrate richer editorial fields (bodyHtml, SEO meta)
+    // from the white_papers source table by slug. If hydration fails the
+    // collateral row still renders — so library items can never 404 just
+    // because the source table drifted.
+    fetchCollateralBySlug(slug)
+      .then((col) => {
         if (cancelled) return;
-        if (res) {
-          setItem({ source: "white_papers", data: res });
+        if (!col || (col.type !== "white_paper" && col.type !== "ebook")) {
+          setItem(null);
           return;
         }
-        return fetchCollateralBySlug(slug).then((col) => {
-          if (cancelled) return;
-          setItem(col && col.type === "white_paper" ? { source: "collateral", data: col } : null);
-        });
+        return api
+          .getWhitePaper(col.slug)
+          .then((wp) => {
+            if (cancelled) return;
+            setItem(
+              wp
+                ? { source: "white_papers", data: wp }
+                : { source: "collateral", data: col },
+            );
+          })
+          .catch(() => {
+            if (!cancelled) setItem({ source: "collateral", data: col });
+          });
       })
       .catch(() => {
         if (!cancelled) setItem(null);

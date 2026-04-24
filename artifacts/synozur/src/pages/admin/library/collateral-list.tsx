@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -57,12 +58,40 @@ import {
   HeroThumb,
 } from "./_collateral-helpers";
 
-// Server returns serviceId/solutionId; the generated CollateralItem type
-// doesn't carry them yet (openapi spec lag — same cast the edit form uses).
+// Server returns serviceId/solutionId/sourceId; the generated CollateralItem
+// type doesn't carry them yet (openapi spec lag — same cast the edit form uses).
 type CollateralRow = CollateralItem & {
   serviceId?: string | null;
   solutionId?: string | null;
+  sourceId?: string | null;
 };
+
+// Map a sourceId like "white_paper:<uuid>" to the dedicated editor URL.
+// Synced rows route their Edit action to the source so changes propagate
+// through the upsertCollateralFromX sync. Returns null when the prefix
+// isn't recognized — falls back to the collateral edit form (which shows
+// a banner explaining the row is synced).
+function editorPathForSource(sourceId: string | null | undefined): string | null {
+  if (!sourceId) return null;
+  const [prefix, id] = sourceId.split(":");
+  if (!id) return null;
+  switch (prefix) {
+    case "white_paper":
+      return `/library/white-papers/${id}/edit`;
+    case "case_study":
+      return `/products/case-studies`;
+    case "model":
+      return `/products/models/${id}/edit`;
+    case "video":
+      return `/library/videos/${id}/edit`;
+    case "post":
+      return `/insights/posts/${id}/edit`;
+    case "polaris_episode":
+      return `/library/polaris-episodes/${id}/edit`;
+    default:
+      return null;
+  }
+}
 
 type TypeTab = "all" | NonNullable<CollateralItem["type"]> | "video" | "ebook";
 
@@ -794,12 +823,23 @@ export default function AdminCollateralList() {
                       <HeroThumb url={item.heroImage} title={item.title} />
                     </TableCell>
                     <TableCell className="font-medium">
-                      <Link href={`/library/collateral/${item.id}/edit`}>
+                      <Link
+                        href={
+                          editorPathForSource(item.sourceId) ??
+                          `/library/collateral/${item.id}/edit`
+                        }
+                      >
                         <a
-                          className="hover:underline"
+                          className="hover:underline inline-flex items-center gap-1.5"
                           data-testid={`link-edit-collateral-${item.id}`}
                         >
-                          {item.title}
+                          {item.sourceId && (
+                            <Lock
+                              className="h-3 w-3 text-blue-400"
+                              aria-label="Synced from source — edit at source"
+                            />
+                          )}
+                          <span>{item.title}</span>
                         </a>
                       </Link>
                       <div className="text-xs text-muted-foreground font-mono">
@@ -860,8 +900,21 @@ export default function AdminCollateralList() {
                             </Button>
                           </a>
                         )}
-                        <Link href={`/library/collateral/${item.id}/edit`}>
-                          <Button variant="ghost" size="icon">
+                        <Link
+                          href={
+                            editorPathForSource(item.sourceId) ??
+                            `/library/collateral/${item.id}/edit`
+                          }
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={
+                              item.sourceId
+                                ? "Edit content at the source"
+                                : "Edit"
+                            }
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </Link>

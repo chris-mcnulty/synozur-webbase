@@ -17,6 +17,7 @@ import {
   type Model,
   type CollateralPillar,
 } from "@workspace/db";
+import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { toSlug } from "./slug";
 
 // Cache pillar -> primary service id mapping. Services are stable
@@ -117,7 +118,7 @@ export async function upsertCollateralFromEvent(
     // When an event is syndicated into the library / carousel, link to our
     // own event page — not the external registration URL. The registration
     // CTA still lives on the event detail page for visitors who want it.
-    url: `/events/${event.slug}`,
+    url: canonicalUrlForCollateral("event", event.slug),
     external: false,
     publishedAt: event.startDate,
     featured: event.featured,
@@ -189,7 +190,7 @@ export async function upsertCollateralFromVideo(video: Video): Promise<void> {
     heroImage: video.heroImage ?? "",
     pillar: normalizedPillar,
     tags: video.tags ?? [],
-    url: `/videos/${video.slug}`,
+    url: canonicalUrlForCollateral("video", video.slug),
     external: false,
     publishedAt: video.publishedAt ?? video.recordedAt,
     videoUrl: video.videoUrl || null,
@@ -291,7 +292,7 @@ export async function upsertCollateralFromPost(
     subtitle: post.subtitle ?? null,
     description: post.excerpt ?? "",
     heroImage: heroImageUrl ?? "",
-    url: `/insights/${post.slug}`,
+    url: canonicalUrlForCollateral("insight", post.slug),
     external: false,
     publishedAt: post.publishedAt,
     featured: post.featured,
@@ -360,7 +361,7 @@ export async function upsertCollateralFromWhitePaper(
     heroImage: whitePaper.heroImage ?? "",
     pillar: normalizedPillar,
     tags: whitePaper.tags ?? [],
-    url: `/white-papers/${whitePaper.slug}`,
+    url: canonicalUrlForCollateral(collateralType, whitePaper.slug),
     external: false,
     publishedAt: whitePaper.publishedAt,
     downloadUrl,
@@ -422,7 +423,7 @@ export async function upsertCollateralFromCaseStudy(
     description: caseStudy.summary,
     heroImage: caseStudy.heroImage,
     tags: [] as string[],
-    url: `/case-studies/${caseStudy.slug}`,
+    url: canonicalUrlForCollateral("case_study", caseStudy.slug),
     external: false,
     publishedAt: caseStudy.publishedAt,
     featured: caseStudy.featured,
@@ -512,7 +513,7 @@ export async function upsertCollateralFromModel(model: Model): Promise<void> {
     heroImage: model.heroImage,
     pillar: normalizedPillar,
     tags: [] as string[],
-    url: `/models/${model.slug}`,
+    url: canonicalUrlForCollateral("model", model.slug),
     external: false,
     publishedAt: model.publishedAt,
     featured: model.featured,
