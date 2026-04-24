@@ -324,6 +324,38 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /cms/posts/{id}/revisions/{revisionId}:
+    get:
+      operationId: getCmsPostRevision
+      tags:
+        - CMS Posts
+      summary: Fetch a single revision with full snapshot content (for preview + diff)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: revisionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revision detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostRevisionDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /cms/posts/{id}/revisions/{revisionId}/restore:
     post:
       operationId: restoreCmsPostRevision
@@ -2728,6 +2760,67 @@ components:
           type: string
           nullable: true
         snapshotExcerpt:
+          type: string
+          nullable: true
+    PostRevisionDetail:
+      type: object
+      required:
+        - id
+        - postId
+        - editedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        postId:
+          type: string
+          format: uuid
+        editedAt:
+          type: string
+          format: date-time
+        editor:
+          allOf:
+            - $ref: '#/components/schemas/AuthorSummary'
+          nullable: true
+        snapshotTitle:
+          type: string
+          nullable: true
+        snapshotSubtitle:
+          type: string
+          nullable: true
+        snapshotExcerpt:
+          type: string
+          nullable: true
+        snapshotBodyHtml:
+          type: string
+          nullable: true
+        snapshotBodyMarkdown:
+          type: string
+          nullable: true
+        snapshotSlug:
+          type: string
+          nullable: true
+        snapshotSeoTitle:
+          type: string
+          nullable: true
+        snapshotSeoDescription:
+          type: string
+          nullable: true
+        snapshotSeoCanonicalUrl:
+          type: string
+          nullable: true
+        snapshotHeroImageId:
+          type: string
+          format: uuid
+          nullable: true
+        snapshotHeroImageUrl:
+          type: string
+          nullable: true
+        snapshotOgImageId:
+          type: string
+          format: uuid
+          nullable: true
+        snapshotOgImageUrl:
           type: string
           nullable: true
     Comment:

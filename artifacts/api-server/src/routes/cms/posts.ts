@@ -448,6 +448,74 @@ router.get("/cms/posts/:id/revisions", requireAuth, async (req, res) => {
   );
 });
 
+// #66/#67: full snapshot for preview and diff. The list endpoint only
+// returns summary fields; reading the body of a revision is an on-demand
+// fetch so the listing stays cheap and the bodyHtml only travels when an
+// editor actually opens preview/diff.
+router.get(
+  "/cms/posts/:id/revisions/:revisionId",
+  requireAuth,
+  async (req, res) => {
+    const post = await db.query.postsTable.findFirst({
+      where: eq(postsTable.id, String(req.params.id)),
+    });
+    if (!post || post.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const user = req.authedUser!;
+    if (!canEdit(user, post)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const row = await db
+      .select({
+        id: revisionsTable.id,
+        postId: revisionsTable.postId,
+        editedAt: revisionsTable.editedAt,
+        snapshotJson: revisionsTable.snapshotJson,
+        editorId: usersTable.id,
+        editorDisplayName: usersTable.displayName,
+        editorAvatarUrl: usersTable.avatarUrl,
+      })
+      .from(revisionsTable)
+      .leftJoin(usersTable, eq(usersTable.id, revisionsTable.editedBy))
+      .where(
+        and(
+          eq(revisionsTable.id, String(req.params.revisionId)),
+          eq(revisionsTable.postId, post.id),
+        ),
+      )
+      .limit(1);
+    const r = row[0];
+    if (!r) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (r.snapshotJson ?? {}) as Partial<PostRow>;
+    res.json({
+      id: r.id,
+      postId: r.postId,
+      editedAt: r.editedAt.toISOString(),
+      editor: r.editorId
+        ? {
+            id: r.editorId,
+            displayName: r.editorDisplayName ?? null,
+            avatarUrl: r.editorAvatarUrl ?? null,
+          }
+        : null,
+      snapshotTitle: snap.title ?? null,
+      snapshotSubtitle: snap.subtitle ?? null,
+      snapshotExcerpt: snap.excerpt ?? null,
+      snapshotBodyHtml: snap.bodyHtml ?? null,
+      snapshotBodyMarkdown: snap.bodyMarkdown ?? null,
+      snapshotSlug: snap.slug ?? null,
+      snapshotSeoTitle: snap.seoTitle ?? null,
+      snapshotSeoDescription: snap.seoDescription ?? null,
+    });
+  },
+);
+
 router.post(
   "/cms/posts/:id/revisions/:revisionId/restore",
   requireAuth,

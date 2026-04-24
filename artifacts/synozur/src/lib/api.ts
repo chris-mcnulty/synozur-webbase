@@ -222,6 +222,27 @@ export interface ServiceRevisionSummary {
   snapshotStatus: string | null;
 }
 
+// #66/#67: full snapshot returned by the per-revision detail endpoint so
+// editors can preview a past version and diff it against the live draft.
+export interface PostRevisionDetail {
+  id: string;
+  postId: string;
+  editedAt: string;
+  editor: {
+    id: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+  snapshotTitle: string | null;
+  snapshotSubtitle: string | null;
+  snapshotExcerpt: string | null;
+  snapshotBodyHtml: string | null;
+  snapshotBodyMarkdown: string | null;
+  snapshotSlug: string | null;
+  snapshotSeoTitle: string | null;
+  snapshotSeoDescription: string | null;
+}
+
 export const VIDEO_CATEGORIES = [
   "interview",
   "webinar",
@@ -536,6 +557,13 @@ export const api = {
   listSolutionRevisions: (id: string) =>
     jsonFetch<{ items: ServiceRevisionSummary[] }>(
       url(`/cms/solutions/${encodeURIComponent(id)}/revisions`),
+    ),
+  // #66/#67: full snapshot for a single post revision.
+  getCmsPostRevision: (postId: string, revisionId: string) =>
+    jsonFetch<PostRevisionDetail>(
+      url(
+        `/cms/posts/${encodeURIComponent(postId)}/revisions/${encodeURIComponent(revisionId)}`,
+      ),
     ),
   restoreSolutionRevision: (id: string, revisionId: string) =>
     jsonFetch<SolutionDto>(

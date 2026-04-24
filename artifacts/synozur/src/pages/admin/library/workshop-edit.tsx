@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import {
+  AssetLibraryModal,
+  assetUrl,
+} from "@/components/admin/AssetLibraryModal";
 import { useToast } from "@/hooks/use-toast";
+import type { Asset } from "@workspace/api-zod/types";
 import {
   emptyWorkshopInput,
   workshopsApi,
@@ -133,6 +138,7 @@ export default function WorkshopEdit({ id }: Props) {
 
   const [form, setForm] = useState<WorkshopInput>(() => emptyWorkshopInput());
   const [error, setError] = useState<string | null>(null);
+  const [showHeroPicker, setShowHeroPicker] = useState(false);
   const { access } = useAdminAccess();
 
   const existingQ = useQuery<WorkshopDto>({
@@ -301,18 +307,49 @@ export default function WorkshopEdit({ id }: Props) {
               onChange={(e) => update("heroSubhead", e.target.value)}
             />
           </Field>
-          <Field label="Hero image URL" hint="e.g. /images/workshops/ai-academy.jpg">
-            <Input
-              value={form.heroImage}
-              onChange={(e) => update("heroImage", e.target.value)}
-            />
-            {form.heroImage && (
-              <img
-                src={form.heroImage}
-                alt="Hero preview"
-                className="mt-2 w-48 h-36 rounded-md object-cover border border-border"
-              />
-            )}
+          <Field label="Hero image" hint="Pick from the asset library or paste a URL.">
+            <div className="flex items-start gap-3">
+              <div className="w-48 h-36 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                {form.heroImage ? (
+                  <img
+                    src={form.heroImage}
+                    alt="Hero preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={form.heroImage}
+                  placeholder="Image URL"
+                  onChange={(e) => update("heroImage", e.target.value)}
+                  data-testid="input-workshop-hero-image"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowHeroPicker(true)}
+                    data-testid="button-pick-workshop-hero"
+                  >
+                    {form.heroImage ? "Change" : "Pick image"}
+                  </Button>
+                  {form.heroImage && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => update("heroImage", "")}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </Field>
           <Field label="Hero trust bullets">
             <StringListEditor
@@ -907,6 +944,15 @@ export default function WorkshopEdit({ id }: Props) {
           </Button>
         </div>
       </form>
+
+      <AssetLibraryModal
+        open={showHeroPicker}
+        onClose={() => setShowHeroPicker(false)}
+        onSelect={(asset: Asset) => {
+          update("heroImage", assetUrl(asset));
+          setShowHeroPicker(false);
+        }}
+      />
     </AdminLayout>
   );
 }

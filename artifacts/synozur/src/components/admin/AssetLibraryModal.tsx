@@ -30,7 +30,7 @@ const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 // Thumb size chosen to look sharp at 200–220px display width on 2x screens.
 const THUMB_WIDTH = 400;
 
-function assetUrl(asset: Asset): string {
+export function assetUrl(asset: Asset): string {
   return `${BASE_PATH}/api/storage${asset.storageKey}`;
 }
 
