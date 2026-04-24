@@ -85,8 +85,9 @@ export default function Faq() {
       />
       {jsonLd && <JsonLd data={jsonLd} id="faq-jsonld" />}
 
-      <section className="bg-[#0B0B1A] pt-24 pb-12">
-        <div className="container mx-auto px-4 max-w-4xl">
+      <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-12">
+        <div className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
             FAQ
           </p>
