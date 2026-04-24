@@ -157,7 +157,7 @@ router.get("/admin/site-settings", requireAdmin, async (_req, res): Promise<void
 router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<void> => {
   const parsed = UpdateAdminSiteSettingsBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
     return;
   }
   await loadOrCreateSettings();
