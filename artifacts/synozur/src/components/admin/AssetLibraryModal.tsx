@@ -392,9 +392,9 @@ export function AssetLibraryModal({
             disabled={picked == null}
             data-testid="button-asset-select"
           >
-            {kind === "document"
+            {activeKind === "document"
               ? "Select Document"
-              : kind === "image"
+              : activeKind === "image"
                 ? "Select Image"
                 : "Select Asset"}
           </Button>
