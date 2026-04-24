@@ -3003,6 +3003,44 @@ components:
           type:
             - string
             - 'null'
+        orgName:
+          type:
+            - string
+            - 'null'
+        orgLegalName:
+          type:
+            - string
+            - 'null'
+        orgLogoUrl:
+          type:
+            - string
+            - 'null'
+        orgStreetAddress:
+          type:
+            - string
+            - 'null'
+        orgAddressLocality:
+          type:
+            - string
+            - 'null'
+        orgAddressRegion:
+          type:
+            - string
+            - 'null'
+        orgPostalCode:
+          type:
+            - string
+            - 'null'
+        orgAddressCountry:
+          type:
+            - string
+            - 'null'
+        orgSameAs:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
     SiteSettings:
       type: object
       required: [requireCookieConsent, updatedAt]

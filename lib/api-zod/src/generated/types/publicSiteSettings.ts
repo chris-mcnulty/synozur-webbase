@@ -32,4 +32,22 @@ export interface PublicSiteSettings {
   tagLinkedinPartnerId?: string | null;
   /** @nullable */
   tagMetaPixelId?: string | null;
+  /** @nullable */
+  orgName?: string | null;
+  /** @nullable */
+  orgLegalName?: string | null;
+  /** @nullable */
+  orgLogoUrl?: string | null;
+  /** @nullable */
+  orgStreetAddress?: string | null;
+  /** @nullable */
+  orgAddressLocality?: string | null;
+  /** @nullable */
+  orgAddressRegion?: string | null;
+  /** @nullable */
+  orgPostalCode?: string | null;
+  /** @nullable */
+  orgAddressCountry?: string | null;
+  /** @nullable */
+  orgSameAs?: string[] | null;
 }

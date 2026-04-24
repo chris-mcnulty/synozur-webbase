@@ -135,6 +135,15 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       tagGa4Id: settings.tagGa4Id,
       tagLinkedinPartnerId: settings.tagLinkedinPartnerId,
       tagMetaPixelId: settings.tagMetaPixelId,
+      orgName: settings.orgName,
+      orgLegalName: settings.orgLegalName,
+      orgLogoUrl: urls.orgLogoUrl,
+      orgStreetAddress: settings.orgStreetAddress,
+      orgAddressLocality: settings.orgAddressLocality,
+      orgAddressRegion: settings.orgAddressRegion,
+      orgPostalCode: settings.orgPostalCode,
+      orgAddressCountry: settings.orgAddressCountry,
+      orgSameAs: settings.orgSameAs,
     }),
   );
 });

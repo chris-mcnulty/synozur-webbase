@@ -1030,6 +1030,15 @@ export const GetPublicSiteSettingsResponse = zod.object({
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  orgLegalName: zod.string().nullish(),
+  orgLogoUrl: zod.string().nullish(),
+  orgStreetAddress: zod.string().nullish(),
+  orgAddressLocality: zod.string().nullish(),
+  orgAddressRegion: zod.string().nullish(),
+  orgPostalCode: zod.string().nullish(),
+  orgAddressCountry: zod.string().nullish(),
+  orgSameAs: zod.array(zod.string()).nullish(),
 });
 
 /**
