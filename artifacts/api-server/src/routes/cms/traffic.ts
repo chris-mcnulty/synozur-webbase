@@ -6,6 +6,7 @@ import {
   db,
   trafficSessionsTable,
   trafficPageviewsTable,
+  trafficEventsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 
@@ -344,6 +345,176 @@ router.get("/cms/traffic/ai-crawlers", ...adminOnly, async (req, res) => {
   res.json({ byBot, fromAiPlatforms });
 });
 
+router.get("/cms/traffic/utms", ...adminOnly, async (req, res) => {
+  const f = parseFilters(req, res);
+  if (!f) return;
+  const window = resolveWindow(f);
+  const sessWhere = sessionFilters(f, window);
+  const taggedWhere = [
+    ...sessWhere,
+    sql`(${trafficSessionsTable.utmSource} is not null
+         or ${trafficSessionsTable.utmMedium} is not null
+         or ${trafficSessionsTable.utmCampaign} is not null)`,
+  ];
+
+  const bySource = await db
+    .select({
+      value: sql<string>`coalesce(${trafficSessionsTable.utmSource}, '(none)')`,
+      sessions: sql<number>`count(*)::int`,
+    })
+    .from(trafficSessionsTable)
+    .where(and(...taggedWhere))
+    .groupBy(trafficSessionsTable.utmSource)
+    .orderBy(desc(sql`count(*)`))
+    .limit(25);
+
+  const byMedium = await db
+    .select({
+      value: sql<string>`coalesce(${trafficSessionsTable.utmMedium}, '(none)')`,
+      sessions: sql<number>`count(*)::int`,
+    })
+    .from(trafficSessionsTable)
+    .where(and(...taggedWhere))
+    .groupBy(trafficSessionsTable.utmMedium)
+    .orderBy(desc(sql`count(*)`))
+    .limit(25);
+
+  const byCampaign = await db
+    .select({
+      value: sql<string>`coalesce(${trafficSessionsTable.utmCampaign}, '(none)')`,
+      sessions: sql<number>`count(*)::int`,
+    })
+    .from(trafficSessionsTable)
+    .where(and(...taggedWhere))
+    .groupBy(trafficSessionsTable.utmCampaign)
+    .orderBy(desc(sql`count(*)`))
+    .limit(25);
+
+  res.json({ bySource, byMedium, byCampaign });
+});
+
+router.get("/cms/traffic/events", ...adminOnly, async (req, res) => {
+  const f = parseFilters(req, res);
+  if (!f) return;
+  const window = resolveWindow(f);
+
+  const evWhere: SQL[] = [
+    gte(trafficEventsTable.occurredAt, window.from),
+    lte(trafficEventsTable.occurredAt, window.to),
+  ];
+  if (f.includeBots === "false") evWhere.push(eq(trafficSessionsTable.isBot, false));
+  if (f.includeBots === "only") evWhere.push(eq(trafficSessionsTable.isBot, true));
+  if (f.country) evWhere.push(eq(trafficSessionsTable.country, f.country.toUpperCase()));
+  if (f.source) evWhere.push(eq(trafficSessionsTable.trafficSource, f.source));
+
+  const byName = await db
+    .select({
+      eventName: trafficEventsTable.eventName,
+      total: sql<number>`count(*)::int`,
+      sessions: countDistinct(trafficEventsTable.sessionId),
+    })
+    .from(trafficEventsTable)
+    .innerJoin(trafficSessionsTable, eq(trafficEventsTable.sessionId, trafficSessionsTable.id))
+    .where(and(...evWhere))
+    .groupBy(trafficEventsTable.eventName)
+    .orderBy(desc(sql`count(*)`))
+    .limit(50);
+
+  const recent = await db
+    .select({
+      occurredAt: trafficEventsTable.occurredAt,
+      eventName: trafficEventsTable.eventName,
+      path: trafficEventsTable.path,
+      properties: trafficEventsTable.properties,
+    })
+    .from(trafficEventsTable)
+    .innerJoin(trafficSessionsTable, eq(trafficEventsTable.sessionId, trafficSessionsTable.id))
+    .where(and(...evWhere))
+    .orderBy(desc(trafficEventsTable.occurredAt))
+    .limit(50);
+
+  res.json({ byName, recent });
+});
+
+router.get("/cms/analytics/overview.csv", ...adminOnly, async (req, res) => {
+  const f = parseFilters(req, res);
+  if (!f) return;
+  const window = resolveWindow(f);
+  const pvWhere = pageviewFilters(f, window);
+
+  const rows = await db
+    .select({
+      day: sql<string>`to_char(date_trunc('day', ${trafficPageviewsTable.viewedAt}), 'YYYY-MM-DD')`,
+      pageviews: sql<number>`count(*)::int`,
+      sessions: countDistinct(trafficPageviewsTable.sessionId),
+    })
+    .from(trafficPageviewsTable)
+    .innerJoin(
+      trafficSessionsTable,
+      eq(trafficPageviewsTable.sessionId, trafficSessionsTable.id),
+    )
+    .where(and(...pvWhere))
+    .groupBy(sql`date_trunc('day', ${trafficPageviewsTable.viewedAt})`)
+    .orderBy(sql`date_trunc('day', ${trafficPageviewsTable.viewedAt})`);
+
+  sendCsv(res, "analytics-overview", ["day", "pageviews", "sessions"], rows, (r) => [
+    r.day, r.pageviews, r.sessions,
+  ]);
+});
+
+router.get("/cms/analytics/sessions.csv", ...adminOnly, async (req, res) => {
+  const f = parseFilters(req, res);
+  if (!f) return;
+  const window = resolveWindow(f);
+  const sessWhere = sessionFilters(f, window);
+
+  const rows = await db
+    .select({
+      firstSeenAt: trafficSessionsTable.firstSeenAt,
+      lastSeenAt: trafficSessionsTable.lastSeenAt,
+      sessionHash: trafficSessionsTable.sessionHash,
+      pageviewCount: trafficSessionsTable.pageviewCount,
+      deviceType: trafficSessionsTable.deviceType,
+      browserName: trafficSessionsTable.browserName,
+      osName: trafficSessionsTable.osName,
+      country: trafficSessionsTable.country,
+      region: trafficSessionsTable.region,
+      city: trafficSessionsTable.city,
+      landingPath: trafficSessionsTable.landingPath,
+      trafficSource: trafficSessionsTable.trafficSource,
+      referrerHost: trafficSessionsTable.referrerHost,
+      utmSource: trafficSessionsTable.utmSource,
+      utmMedium: trafficSessionsTable.utmMedium,
+      utmCampaign: trafficSessionsTable.utmCampaign,
+      utmTerm: trafficSessionsTable.utmTerm,
+      utmContent: trafficSessionsTable.utmContent,
+      isBot: trafficSessionsTable.isBot,
+      botName: trafficSessionsTable.botName,
+      botCategory: trafficSessionsTable.botCategory,
+    })
+    .from(trafficSessionsTable)
+    .where(and(...sessWhere))
+    .orderBy(desc(trafficSessionsTable.firstSeenAt))
+    .limit(50_000);
+
+  const headers = [
+    "firstSeenAt", "lastSeenAt", "sessionHash", "pageviewCount",
+    "deviceType", "browserName", "osName",
+    "country", "region", "city",
+    "landingPath", "trafficSource", "referrerHost",
+    "utmSource", "utmMedium", "utmCampaign", "utmTerm", "utmContent",
+    "isBot", "botName", "botCategory",
+  ];
+  sendCsv(res, "analytics-sessions", headers, rows, (r) => [
+    r.firstSeenAt, r.lastSeenAt, r.sessionHash, r.pageviewCount,
+    r.deviceType, r.browserName, r.osName,
+    r.country, r.region, r.city,
+    r.landingPath, r.trafficSource, r.referrerHost,
+    r.utmSource, r.utmMedium, r.utmCampaign, r.utmTerm, r.utmContent,
+    r.isBot, r.botName, r.botCategory,
+  ]);
+});
+
 router.get("/cms/traffic/export.csv", ...adminOnly, async (req, res) => {
   const f = parseFilters(req, res);
   if (!f) return;
@@ -392,31 +563,39 @@ router.get("/cms/traffic/export.csv", ...adminOnly, async (req, res) => {
     "utmSource", "utmMedium", "utmCampaign",
     "isBot", "botName", "botCategory",
   ];
+  sendCsv(res, "traffic", headers, rows, (r) => [
+    r.viewedAt, r.path, r.pageType, r.title,
+    r.timeOnPageMs, r.scrollDepthPct,
+    r.sessionHash, r.deviceType, r.browserName, r.osName,
+    r.country, r.region, r.city,
+    r.trafficSource, r.referrerHost,
+    r.utmSource, r.utmMedium, r.utmCampaign,
+    r.isBot, r.botName, r.botCategory,
+  ]);
+});
 
-  const escape = (v: unknown): string => {
-    if (v === null || v === undefined) return "";
-    const s = v instanceof Date ? v.toISOString() : String(v);
-    if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = v instanceof Date ? v.toISOString() : String(v);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
 
+function sendCsv<T>(
+  res: import("express").Response,
+  filenamePrefix: string,
+  headers: string[],
+  rows: T[],
+  mapRow: (r: T) => unknown[],
+): void {
   const lines: string[] = [headers.join(",")];
   for (const r of rows) {
-    lines.push([
-      r.viewedAt, r.path, r.pageType, r.title,
-      r.timeOnPageMs, r.scrollDepthPct,
-      r.sessionHash, r.deviceType, r.browserName, r.osName,
-      r.country, r.region, r.city,
-      r.trafficSource, r.referrerHost,
-      r.utmSource, r.utmMedium, r.utmCampaign,
-      r.isBot, r.botName, r.botCategory,
-    ].map(escape).join(","));
+    lines.push(mapRow(r).map(csvEscape).join(","));
   }
-
   const stamp = new Date().toISOString().slice(0, 10);
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="traffic-${stamp}.csv"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${filenamePrefix}-${stamp}.csv"`);
   res.send(lines.join("\r\n"));
-});
+}
 
 export default router;

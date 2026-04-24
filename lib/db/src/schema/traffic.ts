@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -80,8 +81,33 @@ export const trafficPageviewsTable = pgTable(
   ],
 );
 
+/**
+ * Custom events fired from the first-party tracker (form submits, CTA clicks,
+ * resource downloads, …). Keyed off the parent session so segmentation by
+ * device/country/source joins naturally.
+ */
+export const trafficEventsTable = pgTable(
+  "traffic_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => trafficSessionsTable.id, { onDelete: "cascade" }),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    path: text("path").notNull(),
+    eventName: text("event_name").notNull(),
+    properties: jsonb("properties"),
+  },
+  (t) => [
+    index("traffic_events_session_idx").on(t.sessionId),
+    index("traffic_events_occurred_at_idx").on(t.occurredAt),
+    index("traffic_events_event_name_idx").on(t.eventName, t.occurredAt),
+  ],
+);
+
 export const trafficSessionsRelations = relations(trafficSessionsTable, ({ many }) => ({
   pageviews: many(trafficPageviewsTable),
+  events: many(trafficEventsTable),
 }));
 
 export const trafficPageviewsRelations = relations(trafficPageviewsTable, ({ one }) => ({
@@ -91,7 +117,16 @@ export const trafficPageviewsRelations = relations(trafficPageviewsTable, ({ one
   }),
 }));
 
+export const trafficEventsRelations = relations(trafficEventsTable, ({ one }) => ({
+  session: one(trafficSessionsTable, {
+    fields: [trafficEventsTable.sessionId],
+    references: [trafficSessionsTable.id],
+  }),
+}));
+
 export type TrafficSession = typeof trafficSessionsTable.$inferSelect;
 export type InsertTrafficSession = typeof trafficSessionsTable.$inferInsert;
 export type TrafficPageview = typeof trafficPageviewsTable.$inferSelect;
 export type InsertTrafficPageview = typeof trafficPageviewsTable.$inferInsert;
+export type TrafficEvent = typeof trafficEventsTable.$inferSelect;
+export type InsertTrafficEvent = typeof trafficEventsTable.$inferInsert;

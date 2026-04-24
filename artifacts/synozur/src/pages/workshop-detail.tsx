@@ -14,6 +14,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import { workshopsApi, WorkshopsApiError, type WorkshopCTA as CTA } from "@/lib/api-workshops";
+import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
 
 function isExternal(href: string) {
@@ -23,14 +24,24 @@ function isExternal(href: string) {
 function CTAButton({
   cta,
   variant = "primary",
+  workshopSlug,
 }: {
   cta: CTA;
   variant?: "primary" | "secondary";
+  workshopSlug?: string;
 }) {
   const className =
     variant === "primary"
       ? "inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
       : "inline-flex h-12 items-center justify-center rounded-md border border-border bg-transparent px-8 text-base font-medium text-foreground hover:border-primary hover:text-primary transition-colors";
+  const onClick = () => {
+    void trackEvent("workshop-cta-click", {
+      slug: workshopSlug ?? null,
+      label: cta.label,
+      href: cta.href,
+      variant,
+    });
+  };
   if (isExternal(cta.href)) {
     return (
       <a
@@ -38,6 +49,7 @@ function CTAButton({
         target="_blank"
         rel="noopener noreferrer"
         className={className}
+        onClick={onClick}
       >
         {cta.label}
         {variant === "primary" && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -45,7 +57,7 @@ function CTAButton({
     );
   }
   return (
-    <Link href={cta.href} className={className}>
+    <Link href={cta.href} className={className} onClick={onClick}>
       {cta.label}
       {variant === "primary" && <ArrowRight className="ml-2 h-4 w-4" />}
     </Link>
@@ -157,9 +169,9 @@ export default function WorkshopDetail() {
                 </ul>
               )}
               <div className="flex flex-wrap gap-4">
-                <CTAButton cta={w.primaryCTA} variant="primary" />
+                <CTAButton cta={w.primaryCTA} variant="primary" workshopSlug={slug} />
                 {w.secondaryCTA && w.secondaryCTA.href && (
-                  <CTAButton cta={w.secondaryCTA} variant="secondary" />
+                  <CTAButton cta={w.secondaryCTA} variant="secondary" workshopSlug={slug} />
                 )}
               </div>
             </div>
@@ -512,9 +524,9 @@ export default function WorkshopDetail() {
         <div className="absolute inset-0 nebula-gradient opacity-10" />
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
           <div className="flex flex-wrap justify-center gap-4">
-            <CTAButton cta={w.primaryCTA} variant="primary" />
+            <CTAButton cta={w.primaryCTA} variant="primary" workshopSlug={slug} />
             {w.secondaryCTA && w.secondaryCTA.href && (
-              <CTAButton cta={w.secondaryCTA} variant="secondary" />
+              <CTAButton cta={w.secondaryCTA} variant="secondary" workshopSlug={slug} />
             )}
           </div>
         </div>

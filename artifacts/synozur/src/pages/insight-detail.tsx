@@ -3,6 +3,7 @@ import { Link, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { Button } from "@/components/ui/button";
+import { ArticleJsonLd } from "@/components/article-jsonld";
 import { useInsight, useInsightsList, resolveMediaUrl, resolveBodyHtml } from "@/lib/insights";
 import NotFound from "./not-found";
 import { CommentThread } from "@/components/comments/comment-thread";
@@ -162,6 +163,15 @@ export default function InsightDetail() {
         type="article"
         rawTitle={Boolean(post.seoTitle)}
         feedHref={`${BASE_PATH}/api/insights/rss.xml`}
+      />
+
+      <ArticleJsonLd
+        slug={post.slug}
+        title={post.title}
+        description={seoDescription ?? null}
+        image={ogImage ?? null}
+        publishedAt={post.publishedAt ?? null}
+        authorName={post.author?.displayName ?? null}
       />
 
       <article className="bg-background">
