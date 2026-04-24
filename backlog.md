@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 24, 2026  
-> 13 tasks pending · 90 merged · 29 cancelled
+> 16 tasks pending · 90 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -58,6 +58,11 @@ Webinars, workshops, and white papers typically ship with more than one companio
 
 `lib/db/src/schema/whitePapers.ts` has a `documentUrl` text column, and the admin edit form at `artifacts/synozur/src/pages/admin/library/white-paper-edit.tsx` (lines 437–446) renders a bare `<Input>` asking editors to paste a PDF URL. The practical result: most white-paper rows in production have no actual document attached because editors have no in-admin upload path — the file has to exist somewhere else first. This task closes the loop once #123 widens AssetLibraryModal to documents. Add a nullable `documentAssetId` FK on `white_papers` pointing at `assets.id`; replace the text input with a document picker (Upload new / Choose existing through AssetLibraryModal filtered to documents); server derives the rendered `documentUrl` from the linked asset's storageKey so the public white-paper detail download CTA keeps working unchanged. Keep the existing `documentUrl` text column as a secondary fallback for off-platform destinations (Sway, microsites) — the edit form shows a primary "Uploaded PDF" picker and a secondary "External URL" field, with the uploaded asset taking precedence when both are set. Surface the asset's filename, MIME type, and size in the admin form so editors can confirm they picked the right file, and auto-populate `pageCount` from the PDF metadata on upload when feasible.
 
+### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
+**Depends on:** — (infrastructure foundation)
+
+Today `artifacts/api-server/src/lib/objectStorage.ts` speaks to Google Cloud Storage through the Replit sidecar (`http://127.0.0.1:1106/token`) — a convenient default on Replit but not where Synozur governs its document lifecycle. All uploaded assets (hero images, carousel tiles, eventual white-paper/webinar PDFs) live in a GCS bucket behind the `/api/storage/{storageKey}` endpoint; ACL state is mirrored in `objectAcl.ts`. This task replaces the GCS backend with SharePoint Embedded (SPE) — a Microsoft Graph-exposed container format that keeps files inside the tenant's own compliance and retention perimeter (DLP, eDiscovery, sensitivity labels) while preserving programmatic access. Introduce an `AssetStorageBackend` abstraction that the existing `ObjectStorageService` delegates to (so routes and the AssetLibraryModal stay unchanged), implement an SPE driver over the Graph API using an app-only token from Entra, and add a one-shot migration script that streams every object from GCS to an SPE container, rewriting `assets.storageKey` rows (and any legacy URL references in `collateral.heroImage`, `white_papers.documentUrl`, `videos.thumbnailUrl`, etc.) as it goes. During the cutover window both drivers run side-by-side behind a `STORAGE_BACKEND=gcs|spe` env flag so we can flip per-environment; decommission the GCS bucket once SPE traffic is verified for ≥30 days.
+
 ---
 
 ## Heterogeneous CMS Artifacts
@@ -86,6 +91,16 @@ The current CMS has four roles (admin, editor, author, contributor) plus an allo
 
 The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts` as a hand-edited `Record<RoleName, Capability[]>`. That's fine for today's four roles but will not scale once we're juggling seven audience classes, customer portal permissions, and per-tenant overrides. This task adds a `capabilities` table (`id`, `name`, `description`) and a `role_capabilities` join table, seeds both from the current static map, and switches `/api/auth/me` to return the user's effective capabilities so the client no longer has to recompute them. Admin UI under `/admin/access` gains a capability editor. Existing client code reads `access.capabilities` / `access.hasCapability()` unchanged — only the source of truth moves.
 
+### #126 · Microsoft Entra SSO for employees and admins
+**Depends on:** — (identity foundation; strongly paired with #127)
+
+Authentication today goes through Clerk: `artifacts/synozur/src/main.tsx` wraps the app in `ClerkProvider`, `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts` validates session JWTs, and `auth.ts` → `loadOrCreateUser(clerkUserId)` maps the Clerk user id to a row in `usersTable`. That's fine for public customers but employees and admins should sign in with their Synozur Entra identity so lifecycle (hire / leave / group membership) is governed in one place and MFA / conditional-access policies apply automatically. This task adds Entra ID (OIDC) as an Enterprise SSO connection on the Clerk side so `@synozur.com` email domains are routed to the Entra tenant at sign-in, then extends `loadOrCreateUser` to read the Entra group claims off the Clerk session and map them to the admin role table (e.g. `Synozur-Admins` group → `admin` role, `Synozur-Editors` → `editor`). The `allow-list` flag in the users schema gets backfilled from group membership at login so offboarding an Entra user instantly removes CMS access. Public sign-in UX unchanged; admins land on a branded "Continue with Microsoft" option. Follow-up: once #127 ships we can share the same Entra app registration for Graph API storage access and avoid a second credential set.
+
+### #128 · Act as an OAuth 2.0 / OIDC provider for other Synozur web apps
+**Depends on:** #110 (audience-class model) or can ship in parallel
+
+This app owns the canonical `usersTable` plus the role/capability model; other Synozur web apps (current and future — customer portal, internal tools, partner dashboards) should not re-implement user management or rewire Entra separately. This task turns the api-server into an OAuth 2.0 authorization server with OIDC on top, so downstream apps redirect users here to sign in, receive ID + access + refresh tokens, and read user metadata via a `/oauth/userinfo` endpoint. Scope: new tables `oauth_clients` (`id`, `clientId`, `clientSecretHash`, `name`, `redirectUris jsonb`, `allowedScopes jsonb`, `allowedGrantTypes jsonb`, `createdBy`, timestamps) and `oauth_authorizations` (for authorization-code + refresh-token persistence); endpoints `GET /oauth/authorize`, `POST /oauth/token`, `GET /oauth/userinfo`, `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`; a consent screen that shows the requesting app name + requested scopes; admin UI under `/admin/access/oauth-clients` to register / rotate credentials for downstream apps. Use RS256 with a rotating key pair stored in site settings (or a KMS once available). Scopes mirror the capability model so a consuming app can request only `profile content.read` without getting full admin. Authentication into the consent screen reuses whatever sign-in mechanism the user has (Clerk or Entra via #126) — this task just adds the token-issuing surface on top. Follow-up: publish a `@synozur/auth-sdk` helper package so downstream apps integrate in a handful of lines.
+
 ---
 
 ## Summary Table
@@ -105,3 +120,6 @@ The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts
 | #123 | Extend AssetLibraryModal to handle documents (PDF/PPTX/DOCX) | Library | #119 |
 | #124 | Link events to their recording video | Events & Library | — |
 | #125 | Upload white-paper PDFs via the asset library | Library | #123 |
+| #126 | Microsoft Entra SSO for employees and admins | Admin Access & People | — |
+| #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
+| #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
