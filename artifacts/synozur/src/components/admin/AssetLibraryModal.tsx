@@ -388,7 +388,11 @@ export function AssetLibraryModal({
             disabled={picked == null}
             data-testid="button-asset-select"
           >
-            {kind === "document" ? "Select Document" : "Select Image"}
+            {kind === "document"
+              ? "Select Document"
+              : kind === "image"
+                ? "Select Image"
+                : "Select Asset"}
           </Button>
         </DialogFooter>
       </DialogContent>
