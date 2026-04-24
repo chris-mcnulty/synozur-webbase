@@ -1220,12 +1220,12 @@ function DiffSpan({ token }: { token: DiffToken }) {
   if (token.op === "eq") return <span>{token.text}</span>;
   if (token.op === "ins")
     return (
-      <span className="bg-emerald-500/20 text-emerald-200 rounded px-0.5">
+      <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 rounded px-0.5">
         {token.text}
       </span>
     );
   return (
-    <span className="bg-rose-500/20 text-rose-200 rounded px-0.5 line-through">
+    <span className="bg-rose-500/20 text-rose-700 dark:text-rose-200 rounded px-0.5 line-through">
       {token.text}
     </span>
   );
