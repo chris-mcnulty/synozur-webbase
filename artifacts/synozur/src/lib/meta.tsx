@@ -136,7 +136,7 @@ export function Meta({
 
     const resolvedDescription = description ?? siteSettings?.seoDefaultDescription ?? config.defaultDescription;
     const resolvedOgType = type ?? config.ogType;
-    // Prefer DB OG image over page-level image, then page type default, then global default.
+    // Prefer page-level image over DB OG image, then page type default, then global default.
     const dbOgImage = siteSettings?.seoDefaultOgImageUrl ?? null;
     const resolvedImage = image ?? dbOgImage ?? config.defaultImage ?? DEFAULT_OG_IMAGE;
     const resolvedNoindex = noindex ?? config.noindex ?? false;
