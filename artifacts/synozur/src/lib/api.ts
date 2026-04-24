@@ -428,6 +428,54 @@ export interface BulkCollateralBody {
   };
 }
 
+// ─── SEO audit & submission types ─────────────────────────────────────────────
+
+export type SeoArtifactKind =
+  | "insight"
+  | "service"
+  | "solution"
+  | "application"
+  | "case-study"
+  | "model";
+
+export interface SeoAuditFinding {
+  kind: SeoArtifactKind;
+  id: string;
+  slug: string;
+  title: string;
+  path: string;
+  missing: string[];
+  suggested: {
+    seoTitle?: string;
+    seoDescription?: string;
+    ogImage?: string;
+  };
+}
+
+export interface SeoAuditReport {
+  generatedAt: string;
+  totals: Record<SeoArtifactKind, { total: number; missing: number }>;
+  findings: SeoAuditFinding[];
+}
+
+export interface SeoAutofillResult {
+  touched: Record<SeoArtifactKind, number>;
+}
+
+export interface SeoSubmitResult {
+  target: "indexnow" | "google-indexing" | "bing-webmaster";
+  ok: boolean;
+  status?: number;
+  submitted: number;
+  error?: string;
+}
+
+export interface SeoSubmitBundle {
+  origin: string;
+  urls: string[];
+  results: SeoSubmitResult[];
+}
+
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
@@ -484,6 +532,17 @@ export const api = {
     jsonFetch<AdminSiteSettings>(url("/admin/site-settings"), {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+  seoAudit: () => jsonFetch<SeoAuditReport>(url("/seo/audit")),
+  seoAuditAutofill: (ids?: Array<{ kind: SeoArtifactKind; id: string }>) =>
+    jsonFetch<SeoAutofillResult>(url("/seo/audit/autofill"), {
+      method: "POST",
+      body: JSON.stringify(ids && ids.length > 0 ? { ids } : {}),
+    }),
+  seoSubmit: (urls: string[]) =>
+    jsonFetch<SeoSubmitBundle>(url("/seo/submit"), {
+      method: "POST",
+      body: JSON.stringify({ urls }),
     }),
   publicTeamMembers: () => jsonFetch<PublicTeamMember[]>(url("/team-members")),
   publicTeamMember: (slug: string) =>

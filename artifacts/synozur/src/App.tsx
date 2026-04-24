@@ -73,6 +73,7 @@ import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingTraffic from "@/pages/admin/marketing/traffic";
 import MarketingSeo from "@/pages/admin/marketing/seo";
+import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import { AdminGate } from "@/components/admin/AdminGate";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
@@ -296,6 +297,7 @@ function AdminRoutes() {
         {/* Marketing section */}
         <Route path="/marketing/traffic" component={MarketingTraffic} />
         <Route path="/marketing/seo" component={MarketingSeo} />
+        <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
 
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />
