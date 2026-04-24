@@ -577,8 +577,10 @@ router.get("/cms/traffic/export.csv", ...adminOnly, async (req, res) => {
 function csvEscape(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = v instanceof Date ? v.toISOString() : String(v);
-  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+  const needsFormulaHardening = /^[=+\-@]/.test(s.trimStart());
+  const safe = needsFormulaHardening ? `'${s}` : s;
+  if (/[",\r\n]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
+  return safe;
 }
 
 function sendCsv<T>(
