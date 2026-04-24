@@ -138,10 +138,10 @@ function toDateInput(iso: string | null | undefined): string {
 }
 
 function fromItem(item: WhitePaperDto): FormState {
-  // When an uploaded PDF is attached, `documentUrl` in the DTO is the derived
-  // storage URL for the asset. Don't echo that back into the "external PDF"
+  // When an uploaded document is attached, `documentUrl` in the DTO is the derived
+  // storage URL for the asset. Don't echo that back into the "external document"
   // text input — keep it empty so editors see the uploaded asset as primary.
-  const rawExternalDocumentUrl = item.documentAssetId ? "" : item.documentUrl ?? "";
+  const rawExternalDocumentUrl = item.documentAsset ? "" : item.documentUrl ?? "";
   return {
     title: item.title,
     slug: item.slug,
@@ -302,6 +302,7 @@ export default function WhitePaperEdit({ id }: Props) {
         size: asset.size,
         storageKey: asset.storageKey,
       },
+      documentUrl: "",
     });
     setShowDocumentPicker(false);
   };
@@ -470,8 +471,33 @@ export default function WhitePaperEdit({ id }: Props) {
               Download links
             </h3>
             <div className="space-y-2">
-              <Label>Uploaded PDF</Label>
-              {form.documentAsset ? (
+              <Label>Uploaded Document</Label>
+              {form.documentAssetId && !form.documentAsset ? (
+                <div
+                  className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3"
+                  data-testid="white-paper-document-broken"
+                >
+                  <FileText className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-destructive">
+                      Attached document not found
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      The previously attached document could not be loaded. Clear it to use an external URL.
+                    </div>
+                  </div>
+                  {canWrite && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => update({ documentAssetId: null, documentAsset: null })}
+                      data-testid="button-clear-broken-white-paper-document"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Clear
+                    </Button>
+                  )}
+                </div>
+              ) : form.documentAsset ? (
                 <div
                   className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3"
                   data-testid="white-paper-document-asset"
@@ -516,7 +542,7 @@ export default function WhitePaperEdit({ id }: Props) {
                     onClick={() => setShowDocumentPicker(true)}
                     data-testid="button-pick-white-paper-document"
                   >
-                    <FileText className="h-4 w-4 mr-1" /> Upload or Choose PDF
+                    <FileText className="h-4 w-4 mr-1" /> Upload or Choose Document
                   </Button>
                 )
               )}
@@ -526,18 +552,18 @@ export default function WhitePaperEdit({ id }: Props) {
               </p>
             </div>
             <div>
-              <Label htmlFor="documentUrl">External PDF URL (fallback)</Label>
+              <Label htmlFor="documentUrl">External Document URL (fallback)</Label>
               <Input
                 id="documentUrl"
                 value={form.documentUrl}
                 onChange={(e) => update({ documentUrl: e.target.value })}
-                disabled={!canWrite || !!form.documentAssetId}
+                disabled={!canWrite || !!form.documentAsset}
                 placeholder="https://.../whitepaper.pdf"
                 data-testid="input-white-paper-document-url"
               />
-              {form.documentAssetId && (
+              {form.documentAsset && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Disabled while an uploaded PDF is attached.
+                  Disabled while an uploaded document is attached.
                 </p>
               )}
             </div>

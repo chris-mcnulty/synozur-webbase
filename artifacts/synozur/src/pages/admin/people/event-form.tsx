@@ -90,7 +90,13 @@ export default function EventForm({ id }: Props) {
     queryFn: () => api.adminListVideos(),
   });
   const videoOptions = useMemo(() => {
-    const items = videosQ.data?.items ?? [];
+    const now = Date.now();
+    const items = (videosQ.data?.items ?? []).filter((v) => {
+      if (v.status !== "published" || !v.active) return false;
+      if (!v.publishedAt || new Date(v.publishedAt).getTime() > now) return false;
+      if (v.unpublishedAt && new Date(v.unpublishedAt).getTime() <= now) return false;
+      return true;
+    });
     return [...items].sort((a, b) => {
       const ad = a.publishedAt || a.recordedAt || a.createdAt;
       const bd = b.publishedAt || b.recordedAt || b.createdAt;

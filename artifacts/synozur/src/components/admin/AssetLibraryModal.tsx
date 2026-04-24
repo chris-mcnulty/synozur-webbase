@@ -151,7 +151,7 @@ export function AssetLibraryModal({
         ? IMAGE_ACCEPT_TYPES
         : [...IMAGE_ACCEPT_TYPES, ...DOCUMENT_ACCEPT_TYPES];
   const uploadMaxBytes =
-    activeKind === "image" ? IMAGE_MAX_BYTES : DOCUMENT_MAX_BYTES;
+    activeKind === "document" ? DOCUMENT_MAX_BYTES : IMAGE_MAX_BYTES;
   const titleSuffix =
     activeKind === "document"
       ? " — Documents"

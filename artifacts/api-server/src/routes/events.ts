@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, and, sql } from "drizzle-orm";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -75,6 +75,7 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
         .from(assetsTable)
         .where(eq(assetsTable.id, event.imageAssetId))
     : [];
+  const now = new Date();
   const [video] = event.recordingVideoId
     ? await db
         .select({
@@ -84,7 +85,16 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
           videoUrl: videosTable.videoUrl,
         })
         .from(videosTable)
-        .where(eq(videosTable.id, event.recordingVideoId))
+        .where(
+          and(
+            eq(videosTable.id, event.recordingVideoId),
+            eq(videosTable.active, true),
+            eq(videosTable.status, "published"),
+            sql`${videosTable.deletedAt} is null`,
+            sql`${videosTable.publishedAt} <= ${now}`,
+            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+          ),
+        )
     : [];
   return {
     event,
@@ -103,6 +113,7 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
   const assets = assetIds.length
     ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
     : [];
+  const now = new Date();
   const videos = videoIds.length
     ? await db
         .select({
@@ -112,7 +123,16 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
           videoUrl: videosTable.videoUrl,
         })
         .from(videosTable)
-        .where(inArray(videosTable.id, videoIds))
+        .where(
+          and(
+            inArray(videosTable.id, videoIds),
+            eq(videosTable.active, true),
+            eq(videosTable.status, "published"),
+            sql`${videosTable.deletedAt} is null`,
+            sql`${videosTable.publishedAt} <= ${now}`,
+            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+          ),
+        )
     : [];
   const assetsById = new Map(assets.map((a) => [a.id, a]));
   const videosById = new Map(videos.map((v) => [v.id, v]));
@@ -221,6 +241,11 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const recordingVideoId = parsed.data.recordingVideoId ?? null;
+  if (recordingVideoId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordingVideoId)) {
+    res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
+    return;
+  }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
   const slug = await ensureUniqueSlug(slugBase);
   const [event] = await db
@@ -239,7 +264,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
-      recordingVideoId: parsed.data.recordingVideoId ?? null,
+      recordingVideoId,
     })
     .returning();
   const enriched = await loadEventEnriched(event);
@@ -265,6 +290,11 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const recordingVideoId = parsed.data.recordingVideoId ?? null;
+  if (recordingVideoId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordingVideoId)) {
+    res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
+    return;
+  }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
   const slug = await ensureUniqueSlug(slugBase, params.data.id);
   const [event] = await db
@@ -283,7 +313,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
-      recordingVideoId: parsed.data.recordingVideoId ?? null,
+      recordingVideoId,
     })
     .where(eq(eventsTable.id, params.data.id))
     .returning();

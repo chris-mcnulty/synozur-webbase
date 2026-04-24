@@ -43,6 +43,19 @@ function assetStorageUrl(asset: Asset): string {
   return `/api/storage${asset.storageKey}`;
 }
 
+const ALLOWED_DOCUMENT_MIME_PATTERNS: readonly RegExp[] = [
+  /^application\/pdf$/,
+  /^application\/msword$/,
+  /^application\/vnd\.openxmlformats-officedocument\./,
+  /^application\/vnd\.ms-(powerpoint|excel)$/,
+  /^application\/(zip|x-zip-compressed)$/,
+  /^text\/(plain|csv)$/,
+];
+
+function isAllowedDocumentMime(mime: string): boolean {
+  return ALLOWED_DOCUMENT_MIME_PATTERNS.some((re) => re.test(mime));
+}
+
 function serializeDocumentAsset(asset: Asset) {
   return {
     id: asset.id,
@@ -266,6 +279,20 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
     return;
   }
   const d = parsed.data;
+  if (d.documentAssetId != null) {
+    const [docAsset] = await db
+      .select()
+      .from(assetsTable)
+      .where(eq(assetsTable.id, d.documentAssetId));
+    if (!docAsset) {
+      res.status(400).json({ error: "documentAssetId references a non-existent asset" });
+      return;
+    }
+    if (!isAllowedDocumentMime(docAsset.mimeType)) {
+      res.status(400).json({ error: `Asset MIME type '${docAsset.mimeType}' is not an allowed document type` });
+      return;
+    }
+  }
   const slug = await ensureUniqueWhitePaperSlug(d.slug || d.title);
   const [row] = await db
     .insert(whitePapersTable)
@@ -329,6 +356,20 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
     return;
   }
   const d = parsed.data;
+  if (d.documentAssetId != null) {
+    const [docAsset] = await db
+      .select()
+      .from(assetsTable)
+      .where(eq(assetsTable.id, d.documentAssetId));
+    if (!docAsset) {
+      res.status(400).json({ error: "documentAssetId references a non-existent asset" });
+      return;
+    }
+    if (!isAllowedDocumentMime(docAsset.mimeType)) {
+      res.status(400).json({ error: `Asset MIME type '${docAsset.mimeType}' is not an allowed document type` });
+      return;
+    }
+  }
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (d.slug !== undefined && d.slug !== null) {
     updates.slug = await ensureUniqueWhitePaperSlug(d.slug, id);

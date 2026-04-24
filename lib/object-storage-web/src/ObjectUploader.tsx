@@ -99,6 +99,21 @@ export function ObjectUploader({
       })
   );
 
+  // Keep Uppy's restrictions in sync with prop changes so that switching the
+  // asset kind filter in AssetLibraryModal correctly updates file type and
+  // size caps without needing to recreate the Uppy instance.
+  useEffect(() => {
+    uppy.setOptions({
+      restrictions: {
+        maxNumberOfFiles,
+        maxFileSize,
+        ...(allowedFileTypes && allowedFileTypes.length > 0
+          ? { allowedFileTypes: [...allowedFileTypes] }
+          : { allowedFileTypes: undefined }),
+      },
+    });
+  }, [uppy, maxNumberOfFiles, maxFileSize, allowedFileTypes]);
+
   return (
     <div>
       <button onClick={() => setShowModal(true)} className={buttonClassName}>
