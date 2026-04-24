@@ -41,7 +41,7 @@ export function AssetCategoriesModal({ open, onClose }: Props) {
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListAssetCategoriesQueryKey() });
 
-  const { data } = useListAssetCategories({ query: { enabled: open } as never });
+  const { data } = useListAssetCategories({ query: { enabled: open } });
   const categories = data?.items ?? [];
 
   const [newLabel, setNewLabel] = useState("");
