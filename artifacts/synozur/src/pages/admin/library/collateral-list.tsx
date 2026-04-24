@@ -117,13 +117,26 @@ const PILLAR_OPTIONS = [
   { value: "gtm", label: "Go-to-Market" },
 ] as const;
 
-// #118: hero thumbnails in the admin list. Append `?w=128` for a 2x-dense
-// 64px tile; URL-hosted images that ignore the query still work unchanged.
+// #118: hero thumbnails in the admin list. Append or override `w=128` for
+// a 2x-dense 64px tile; URL-hosted images that ignore the query still work
+// unchanged.
 function heroThumbUrl(url: string | null | undefined): string | null {
   const s = (url ?? "").trim();
   if (!s) return null;
-  if (s.includes("?")) return s;
-  return `${s}?w=128`;
+
+  const hashIndex = s.indexOf("#");
+  const withoutHash = hashIndex >= 0 ? s.slice(0, hashIndex) : s;
+  const hash = hashIndex >= 0 ? s.slice(hashIndex) : "";
+
+  const queryIndex = withoutHash.indexOf("?");
+  const base = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+  const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : "";
+
+  const params = new URLSearchParams(query);
+  params.set("w", "128");
+
+  const nextQuery = params.toString();
+  return nextQuery ? `${base}?${nextQuery}${hash}` : `${base}${hash}`;
 }
 
 function HeroThumb({ url, title }: { url: string | null | undefined; title: string }) {
