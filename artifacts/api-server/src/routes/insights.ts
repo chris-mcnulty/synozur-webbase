@@ -317,11 +317,10 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     .returning({ id: commentsTable.id, status: commentsTable.status });
   await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
 
-  // #53: if this comment is a reply and we can resolve a parent comment
-  // whose author opted into reply notifications, fire a fire-and-forget
-  // email. We resolve the top-level ancestor (matching the UI's one-level
+  // #53: only send reply notifications for replies that are already approved.
+  // We resolve the top-level ancestor (matching the UI's one-level
   // threading) so double-depth replies still notify the original author.
-  if (parsed.data.parentCommentId) {
+  if (parsed.data.parentCommentId && row.status === "approved") {
     void (async () => {
       try {
         let ancestor = await db.query.commentsTable.findFirst({
