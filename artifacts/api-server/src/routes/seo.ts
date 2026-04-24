@@ -294,18 +294,19 @@ async function handleSitemap(_req: import("express").Request, res: import("expre
 
   const origin = siteOrigin();
 
-  // Section key → path prefix(es). Maps section flag names to URL prefixes.
+  // Section key → path prefix(es). Maps section flag names to URL segment(s).
+  // Stored without trailing slash; matching checks both the exact path and sub-paths.
   const sectionPrefixes: Record<string, string[]> = {
-    insights: ["/insights/"],
-    services: ["/services/"],
-    solutions: ["/solutions/"],
-    library: ["/library/"],
-    webinars: ["/webinars/"],
-    events: ["/events/"],
-    applications: ["/applications/"],
-    caseStudies: ["/case-studies/"],
-    models: ["/models/"],
-    workshops: ["/workshops/"],
+    insights: ["/insights"],
+    services: ["/services"],
+    solutions: ["/solutions"],
+    library: ["/library"],
+    webinars: ["/webinars"],
+    events: ["/events"],
+    applications: ["/applications"],
+    caseStudies: ["/case-studies"],
+    models: ["/models"],
+    workshops: ["/workshops"],
   };
 
   // Build a set of path prefixes to exclude from disabled sections.
@@ -326,8 +327,10 @@ async function handleSitemap(_req: import("express").Request, res: import("expre
     // prefix to get the path for comparison with excluded paths and section prefixes.
     const path = e.loc.startsWith(origin) ? e.loc.slice(origin.length) : e.loc;
     if (excludedSet.has(path)) return false;
+    // Match the exact hub/listing page (e.g. /insights) AND any sub-paths
+    // (e.g. /insights/my-post) so disabling a section removes all its URLs.
     for (const prefix of disabledPrefixes) {
-      if (path.startsWith(prefix)) return false;
+      if (path === prefix || path.startsWith(prefix + "/")) return false;
     }
     return true;
   });
