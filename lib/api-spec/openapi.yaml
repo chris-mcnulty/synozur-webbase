@@ -2806,6 +2806,23 @@ components:
         snapshotSeoDescription:
           type: string
           nullable: true
+        snapshotSeoCanonicalUrl:
+          type: string
+          nullable: true
+        snapshotHeroImageId:
+          type: string
+          format: uuid
+          nullable: true
+        snapshotHeroImageUrl:
+          type: string
+          nullable: true
+        snapshotOgImageId:
+          type: string
+          format: uuid
+          nullable: true
+        snapshotOgImageUrl:
+          type: string
+          nullable: true
     Comment:
       type: object
       required:
