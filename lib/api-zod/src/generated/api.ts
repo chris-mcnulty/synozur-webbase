@@ -612,7 +612,7 @@ export const DeleteCmsTagParams = zod.object({
 export const listCmsMediaQueryPageDefault = 1;
 
 export const listCmsMediaQueryPageSizeDefault = 50;
-export const listCmsMediaQueryPageSizeMax = 100;
+export const listCmsMediaQueryPageSizeMax = 500;
 
 export const ListCmsMediaQueryParams = zod.object({
   page: zod.coerce.number().min(1).default(listCmsMediaQueryPageDefault),
@@ -621,6 +621,8 @@ export const ListCmsMediaQueryParams = zod.object({
     .min(1)
     .max(listCmsMediaQueryPageSizeMax)
     .default(listCmsMediaQueryPageSizeDefault),
+  search: zod.coerce.string().optional(),
+  categoryId: zod.coerce.string().uuid().optional(),
 });
 
 export const ListCmsMediaResponse = zod.object({
@@ -634,6 +636,8 @@ export const ListCmsMediaResponse = zod.object({
       height: zod.number().nullish(),
       byteSize: zod.number().nullish(),
       altText: zod.string().nullish(),
+      originalName: zod.string().nullish(),
+      categoryId: zod.string().uuid().nullish(),
       uploadedBy: zod.string().uuid().nullish(),
       createdAt: zod.coerce.date(),
     }),
@@ -655,6 +659,8 @@ export const RegisterCmsMediaBody = zod.object({
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
   altText: zod.string().nullish(),
+  originalName: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
 });
 
 /**
@@ -669,6 +675,8 @@ export const UpdateCmsMediaBody = zod.object({
   mime: zod.string().nullish(),
   width: zod.number().nullish(),
   height: zod.number().nullish(),
+  originalName: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
 });
 
 export const UpdateCmsMediaResponse = zod.object({
@@ -680,6 +688,8 @@ export const UpdateCmsMediaResponse = zod.object({
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
   altText: zod.string().nullish(),
+  originalName: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
   uploadedBy: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -2214,6 +2224,106 @@ export const GetAdminMeResponse = zod.object({
   authorized: zod.boolean(),
 });
 
+export const ListAssetCategoriesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      slug: zod.string(),
+      label: zod.string(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+export const createAssetCategoryBodySlugMax = 64;
+
+export const createAssetCategoryBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const createAssetCategoryBodyLabelMax = 120;
+
+export const CreateAssetCategoryBody = zod.object({
+  slug: zod
+    .string()
+    .min(1)
+    .max(createAssetCategoryBodySlugMax)
+    .regex(createAssetCategoryBodySlugRegExp),
+  label: zod.string().min(1).max(createAssetCategoryBodyLabelMax),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateAssetCategoryParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const updateAssetCategoryBodySlugMax = 64;
+
+export const updateAssetCategoryBodySlugRegExp = new RegExp(
+  "^[a-z0-9]+(?:-[a-z0-9]+)\*$",
+);
+export const updateAssetCategoryBodyLabelMax = 120;
+
+export const UpdateAssetCategoryBody = zod.object({
+  slug: zod
+    .string()
+    .min(1)
+    .max(updateAssetCategoryBodySlugMax)
+    .regex(updateAssetCategoryBodySlugRegExp)
+    .optional(),
+  label: zod.string().min(1).max(updateAssetCategoryBodyLabelMax).optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateAssetCategoryResponse = zod.object({
+  id: zod.string().uuid(),
+  slug: zod.string(),
+  label: zod.string(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const DeleteAssetCategoryParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Unified list of asset library items (merges legacy assets and media)
+ */
+export const listLibraryAssetsQuerySourceDefault = `all`;
+
+export const ListLibraryAssetsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  categoryId: zod.coerce.string().uuid().optional(),
+  source: zod
+    .enum(["asset", "media", "all"])
+    .default(listLibraryAssetsQuerySourceDefault),
+});
+
+export const ListLibraryAssetsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      source: zod.enum(["asset", "media"]),
+      id: zod.string(),
+      storageKey: zod.string(),
+      publicUrl: zod.string().nullish(),
+      mime: zod.string().nullish(),
+      byteSize: zod.number().nullish(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+      altText: zod.string().nullish(),
+      originalName: zod.string().nullish(),
+      categoryId: zod.string().uuid().nullish(),
+      categorySlug: zod.string().nullish(),
+      categoryLabel: zod.string().nullish(),
+      uploadedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+});
+
 /**
  * @summary List uploaded image assets
  */
@@ -2222,7 +2332,12 @@ export const ListAssetsQueryParams = zod.object({
   category: zod.coerce
     .string()
     .optional()
-    .describe("Filter by asset category (e.g. people, north-star)"),
+    .describe("Filter by asset category slug (legacy)"),
+  categoryId: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Filter by asset_categories.id"),
 });
 
 export const ListAssetsResponseItem = zod.object({
@@ -2234,6 +2349,8 @@ export const ListAssetsResponseItem = zod.object({
   storageKey: zod.string(),
   uploadedBy: zod.string().nullish(),
   category: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
+  altText: zod.string().nullish(),
   uploadedAt: zod.coerce.date(),
 });
 export const ListAssetsResponse = zod.array(ListAssetsResponseItem);
@@ -2248,6 +2365,34 @@ export const CreateAssetBody = zod.object({
   size: zod.number().min(1),
   storageKey: zod.string().min(1),
   category: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
+  altText: zod.string().nullish(),
+});
+
+/**
+ * @summary Update asset category or alt text
+ */
+export const UpdateAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAssetBody = zod.object({
+  categoryId: zod.string().uuid().nullish(),
+  altText: zod.string().nullish(),
+});
+
+export const UpdateAssetResponse = zod.object({
+  id: zod.number(),
+  filename: zod.string(),
+  originalName: zod.string(),
+  mimeType: zod.string(),
+  size: zod.number(),
+  storageKey: zod.string(),
+  uploadedBy: zod.string().nullish(),
+  category: zod.string().nullish(),
+  categoryId: zod.string().uuid().nullish(),
+  altText: zod.string().nullish(),
+  uploadedAt: zod.coerce.date(),
 });
 
 /**

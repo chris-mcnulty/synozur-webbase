@@ -24,6 +24,8 @@ import type {
   AdminUser,
   AnalyticsOverview,
   Asset,
+  AssetCategory,
+  AssetCategoryListResponse,
   AssetInput,
   BadRequestResponse,
   BatchViewsResult,
@@ -37,6 +39,7 @@ import type {
   Comment,
   CommentListResponse,
   ContactFormInput,
+  CreateAssetCategoryBody,
   CreatePostBody,
   CurrentUser,
   ErrorEnvelope,
@@ -48,12 +51,14 @@ import type {
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
   HealthStatus,
+  LibraryAssetListResponse,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
   ListCmsCommentsParams,
   ListCmsMediaParams,
   ListCmsPostsParams,
   ListInsightsParams,
+  ListLibraryAssetsParams,
   MediaItem,
   MediaListResponse,
   Methodology,
@@ -97,6 +102,8 @@ import type {
   TrackInsightView202,
   TrackInsightViewBody,
   UnauthorizedResponse,
+  UpdateAssetBody,
+  UpdateAssetCategoryBody,
   UpdateMediaBody,
   UpdatePostBody,
   UpsertCapabilityBody,
@@ -5767,6 +5774,417 @@ export function useGetAdminMe<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+export const getListAssetCategoriesUrl = () => {
+  return `/api/cms/asset-categories`;
+};
+
+export const listAssetCategories = async (
+  options?: RequestInit,
+): Promise<AssetCategoryListResponse> => {
+  return customFetch<AssetCategoryListResponse>(getListAssetCategoriesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAssetCategoriesQueryKey = () => {
+  return [`/api/cms/asset-categories`] as const;
+};
+
+export const getListAssetCategoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAssetCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAssetCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAssetCategoriesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAssetCategories>>
+  > = ({ signal }) => listAssetCategories({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAssetCategories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAssetCategoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAssetCategories>>
+>;
+export type ListAssetCategoriesQueryError = ErrorType<unknown>;
+
+export function useListAssetCategories<
+  TData = Awaited<ReturnType<typeof listAssetCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAssetCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAssetCategoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateAssetCategoryUrl = () => {
+  return `/api/cms/asset-categories`;
+};
+
+export const createAssetCategory = async (
+  createAssetCategoryBody: CreateAssetCategoryBody,
+  options?: RequestInit,
+): Promise<AssetCategory> => {
+  return customFetch<AssetCategory>(getCreateAssetCategoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createAssetCategoryBody),
+  });
+};
+
+export const getCreateAssetCategoryMutationOptions = <
+  TError = ErrorType<BadRequestResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAssetCategory>>,
+    TError,
+    { data: BodyType<CreateAssetCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAssetCategory>>,
+  TError,
+  { data: BodyType<CreateAssetCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["createAssetCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAssetCategory>>,
+    { data: BodyType<CreateAssetCategoryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAssetCategory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAssetCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAssetCategory>>
+>;
+export type CreateAssetCategoryMutationBody = BodyType<CreateAssetCategoryBody>;
+export type CreateAssetCategoryMutationError = ErrorType<
+  BadRequestResponse | ErrorEnvelope
+>;
+
+export const useCreateAssetCategory = <
+  TError = ErrorType<BadRequestResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAssetCategory>>,
+    TError,
+    { data: BodyType<CreateAssetCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAssetCategory>>,
+  TError,
+  { data: BodyType<CreateAssetCategoryBody> },
+  TContext
+> => {
+  return useMutation(getCreateAssetCategoryMutationOptions(options));
+};
+
+export const getUpdateAssetCategoryUrl = (id: string) => {
+  return `/api/cms/asset-categories/${id}`;
+};
+
+export const updateAssetCategory = async (
+  id: string,
+  updateAssetCategoryBody: UpdateAssetCategoryBody,
+  options?: RequestInit,
+): Promise<AssetCategory> => {
+  return customFetch<AssetCategory>(getUpdateAssetCategoryUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateAssetCategoryBody),
+  });
+};
+
+export const getUpdateAssetCategoryMutationOptions = <
+  TError = ErrorType<NotFoundResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAssetCategory>>,
+    TError,
+    { id: string; data: BodyType<UpdateAssetCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAssetCategory>>,
+  TError,
+  { id: string; data: BodyType<UpdateAssetCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAssetCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAssetCategory>>,
+    { id: string; data: BodyType<UpdateAssetCategoryBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAssetCategory(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAssetCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAssetCategory>>
+>;
+export type UpdateAssetCategoryMutationBody = BodyType<UpdateAssetCategoryBody>;
+export type UpdateAssetCategoryMutationError = ErrorType<
+  NotFoundResponse | ErrorEnvelope
+>;
+
+export const useUpdateAssetCategory = <
+  TError = ErrorType<NotFoundResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAssetCategory>>,
+    TError,
+    { id: string; data: BodyType<UpdateAssetCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAssetCategory>>,
+  TError,
+  { id: string; data: BodyType<UpdateAssetCategoryBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAssetCategoryMutationOptions(options));
+};
+
+export const getDeleteAssetCategoryUrl = (id: string) => {
+  return `/api/cms/asset-categories/${id}`;
+};
+
+export const deleteAssetCategory = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAssetCategoryUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAssetCategoryMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssetCategory>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAssetCategory>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAssetCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAssetCategory>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAssetCategory(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAssetCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAssetCategory>>
+>;
+
+export type DeleteAssetCategoryMutationError = ErrorType<NotFoundResponse>;
+
+export const useDeleteAssetCategory = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssetCategory>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAssetCategory>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAssetCategoryMutationOptions(options));
+};
+
+/**
+ * @summary Unified list of asset library items (merges legacy assets and media)
+ */
+export const getListLibraryAssetsUrl = (params?: ListLibraryAssetsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/library/assets?${stringifiedParams}`
+    : `/api/cms/library/assets`;
+};
+
+export const listLibraryAssets = async (
+  params?: ListLibraryAssetsParams,
+  options?: RequestInit,
+): Promise<LibraryAssetListResponse> => {
+  return customFetch<LibraryAssetListResponse>(
+    getListLibraryAssetsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListLibraryAssetsQueryKey = (
+  params?: ListLibraryAssetsParams,
+) => {
+  return [`/api/cms/library/assets`, ...(params ? [params] : [])] as const;
+};
+
+export const getListLibraryAssetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLibraryAssets>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLibraryAssetsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLibraryAssets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListLibraryAssetsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLibraryAssets>>
+  > = ({ signal }) => listLibraryAssets(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLibraryAssets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLibraryAssetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLibraryAssets>>
+>;
+export type ListLibraryAssetsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Unified list of asset library items (merges legacy assets and media)
+ */
+
+export function useListLibraryAssets<
+  TData = Awaited<ReturnType<typeof listLibraryAssets>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListLibraryAssetsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLibraryAssets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLibraryAssetsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 /**
  * @summary List uploaded image assets
  */
@@ -5945,6 +6363,95 @@ export const useCreateAsset = <
   TContext
 > => {
   return useMutation(getCreateAssetMutationOptions(options));
+};
+
+/**
+ * @summary Update asset category or alt text
+ */
+export const getUpdateAssetUrl = (id: number) => {
+  return `/api/assets/${id}`;
+};
+
+export const updateAsset = async (
+  id: number,
+  updateAssetBody: UpdateAssetBody,
+  options?: RequestInit,
+): Promise<Asset> => {
+  return customFetch<Asset>(getUpdateAssetUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateAssetBody),
+  });
+};
+
+export const getUpdateAssetMutationOptions = <
+  TError = ErrorType<BadRequestResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAsset>>,
+    TError,
+    { id: number; data: BodyType<UpdateAssetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAsset>>,
+  TError,
+  { id: number; data: BodyType<UpdateAssetBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAsset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAsset>>,
+    { id: number; data: BodyType<UpdateAssetBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAsset(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAsset>>
+>;
+export type UpdateAssetMutationBody = BodyType<UpdateAssetBody>;
+export type UpdateAssetMutationError = ErrorType<
+  BadRequestResponse | ErrorEnvelope
+>;
+
+/**
+ * @summary Update asset category or alt text
+ */
+export const useUpdateAsset = <
+  TError = ErrorType<BadRequestResponse | ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAsset>>,
+    TError,
+    { id: number; data: BodyType<UpdateAssetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAsset>>,
+  TError,
+  { id: number; data: BodyType<UpdateAssetBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAssetMutationOptions(options));
 };
 
 /**

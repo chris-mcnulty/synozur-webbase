@@ -9,7 +9,11 @@
 export type ListAssetsParams = {
   search?: string;
   /**
-   * Filter by asset category (e.g. people, north-star)
+   * Filter by asset category slug (legacy)
    */
   category?: string;
+  /**
+   * Filter by asset_categories.id
+   */
+  categoryId?: string;
 };

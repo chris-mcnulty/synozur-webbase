@@ -80,7 +80,6 @@ const SECTIONS: NavSection[] = [
     icon: Newspaper,
     items: [
       { href: "/insights/posts", label: "Posts", icon: FileText, capability: "content.author", testId: "nav-admin-posts" },
-      { href: "/insights/media", label: "Media", icon: ImageIcon, capability: "content.author", testId: "nav-admin-media" },
       { href: "/insights/taxonomy", label: "Taxonomy", icon: Tags, capability: "content.author", testId: "nav-admin-taxonomy" },
       { href: "/insights/comments", label: "Comments", icon: MessageSquare, capability: "content.moderate", testId: "nav-admin-comments" },
     ],
@@ -103,6 +102,7 @@ const SECTIONS: NavSection[] = [
     label: "Library",
     icon: LibraryIcon,
     items: [
+      { href: "/library/assets", label: "Assets", icon: ImageIcon, capability: "content.author", testId: "nav-admin-assets" },
       { href: "/library/collateral", label: "Collateral", icon: LibraryIcon, capability: "content.publish", testId: "nav-admin-collateral" },
       { href: "/library/carousel", label: "Carousel", icon: LayoutGrid, capability: "content.publish", testId: "nav-admin-carousel" },
       { href: "/library/videos", label: "Videos", icon: VideoIcon, capability: "content.publish", testId: "nav-admin-videos" },

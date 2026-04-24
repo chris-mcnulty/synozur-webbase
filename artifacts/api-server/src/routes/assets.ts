@@ -1,18 +1,22 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { eq, and, ilike, desc, type SQL } from "drizzle-orm";
-import { db, assetsTable } from "@workspace/db";
+import { db, assetsTable, assetCategoriesTable } from "@workspace/db";
 import {
   ListAssetsResponseItem,
   ListAssetsResponse,
   CreateAssetBody,
   ListAssetsQueryParams,
   DeleteAssetParams,
-  ASSET_CATEGORIES,
-  isAssetCategory,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
+
+const UpdateAssetBody = z.object({
+  categoryId: z.string().uuid().nullable().optional(),
+  altText: z.string().nullable().optional(),
+});
 
 router.get("/assets", requireAdmin, async (req, res): Promise<void> => {
   const params = ListAssetsQueryParams.safeParse(req.query);
@@ -22,9 +26,26 @@ router.get("/assets", requireAdmin, async (req, res): Promise<void> => {
   }
   const search = params.data.search?.trim();
   const category = params.data.category?.trim();
+  const categoryIdRaw =
+    typeof req.query.categoryId === "string" ? req.query.categoryId.trim() : undefined;
+
   const conditions: SQL[] = [];
   if (search) conditions.push(ilike(assetsTable.originalName, `%${search}%`));
-  if (category) conditions.push(eq(assetsTable.category, category));
+  if (categoryIdRaw) {
+    conditions.push(eq(assetsTable.categoryId, categoryIdRaw));
+  } else if (category) {
+    // Legacy callers may still filter by the string category. If a category
+    // row matches this slug, prefer the FK; otherwise fall back to the string.
+    const cat = await db.query.assetCategoriesTable.findFirst({
+      where: eq(assetCategoriesTable.slug, category),
+    });
+    if (cat) {
+      conditions.push(eq(assetsTable.categoryId, cat.id));
+    } else {
+      conditions.push(eq(assetsTable.category, category));
+    }
+  }
+
   const where =
     conditions.length === 0
       ? undefined
@@ -44,12 +65,36 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
   const { originalName, mimeType, size, storageKey, category } = parsed.data;
-  if (category != null && !isAssetCategory(category)) {
-    res.status(400).json({
-      error: `Unknown category "${category}". Allowed: ${ASSET_CATEGORIES.join(", ")}`,
+
+  const categoryIdRaw =
+    typeof req.body?.categoryId === "string" ? req.body.categoryId.trim() : undefined;
+  const altText = typeof req.body?.altText === "string" ? req.body.altText : null;
+
+  let resolvedCategoryId: string | null = null;
+  let resolvedCategorySlug: string | null = null;
+
+  if (categoryIdRaw) {
+    const cat = await db.query.assetCategoriesTable.findFirst({
+      where: eq(assetCategoriesTable.id, categoryIdRaw),
     });
-    return;
+    if (!cat) {
+      res.status(400).json({ error: `Unknown categoryId "${categoryIdRaw}"` });
+      return;
+    }
+    resolvedCategoryId = cat.id;
+    resolvedCategorySlug = cat.slug;
+  } else if (category != null) {
+    const cat = await db.query.assetCategoriesTable.findFirst({
+      where: eq(assetCategoriesTable.slug, category),
+    });
+    if (!cat) {
+      res.status(400).json({ error: `Unknown category "${category}"` });
+      return;
+    }
+    resolvedCategoryId = cat.id;
+    resolvedCategorySlug = cat.slug;
   }
+
   const filename = originalName;
   const [row] = await db
     .insert(assetsTable)
@@ -59,11 +104,65 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
       mimeType,
       size,
       storageKey,
-      category: category ?? null,
+      category: resolvedCategorySlug,
+      categoryId: resolvedCategoryId,
+      altText,
       uploadedBy: req.admin?.email ?? null,
     })
     .returning();
   res.status(201).json(ListAssetsResponseItem.parse(row));
+});
+
+router.patch("/assets/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = UpdateAssetBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const updates: Partial<typeof assetsTable.$inferInsert> = {};
+  if (parsed.data.altText !== undefined) updates.altText = parsed.data.altText;
+  if (parsed.data.categoryId !== undefined) {
+    if (parsed.data.categoryId === null) {
+      updates.categoryId = null;
+      updates.category = null;
+    } else {
+      const cat = await db.query.assetCategoriesTable.findFirst({
+        where: eq(assetCategoriesTable.id, parsed.data.categoryId),
+      });
+      if (!cat) {
+        res.status(400).json({ error: "Unknown categoryId" });
+        return;
+      }
+      updates.categoryId = cat.id;
+      updates.category = cat.slug;
+    }
+  }
+  if (Object.keys(updates).length === 0) {
+    const existing = await db.query.assetsTable.findFirst({
+      where: eq(assetsTable.id, id),
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json(ListAssetsResponseItem.parse(existing));
+    return;
+  }
+  const [row] = await db
+    .update(assetsTable)
+    .set(updates)
+    .where(eq(assetsTable.id, id))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(ListAssetsResponseItem.parse(row));
 });
 
 router.delete("/assets/:id", requireAdmin, async (req, res): Promise<void> => {

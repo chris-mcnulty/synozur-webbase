@@ -5,17 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListLibraryAssetsSource } from "./listLibraryAssetsSource";
 
-export type ListCmsMediaParams = {
-  /**
-   * @minimum 1
-   */
-  page?: number;
-  /**
-   * @minimum 1
-   * @maximum 500
-   */
-  pageSize?: number;
+export type ListLibraryAssetsParams = {
   search?: string;
   categoryId?: string;
+  source?: ListLibraryAssetsSource;
 };

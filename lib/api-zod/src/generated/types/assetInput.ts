@@ -17,4 +17,7 @@ export interface AssetInput {
   storageKey: string;
   /** @nullable */
   category?: string | null;
+  categoryId?: string | null;
+  /** @nullable */
+  altText?: string | null;
 }

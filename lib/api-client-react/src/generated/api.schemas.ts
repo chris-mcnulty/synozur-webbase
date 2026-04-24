@@ -98,6 +98,8 @@ export interface MediaItem {
   height?: number | null;
   byteSize?: number | null;
   altText?: string | null;
+  originalName?: string | null;
+  categoryId?: string | null;
   uploadedBy?: string | null;
   createdAt: string;
 }
@@ -119,6 +121,8 @@ export interface RegisterMediaBody {
   height?: number | null;
   byteSize?: number | null;
   altText?: string | null;
+  originalName?: string | null;
+  categoryId?: string | null;
 }
 
 export interface UpdateMediaBody {
@@ -126,6 +130,81 @@ export interface UpdateMediaBody {
   mime?: string | null;
   width?: number | null;
   height?: number | null;
+  originalName?: string | null;
+  categoryId?: string | null;
+}
+
+export interface AssetCategory {
+  id: string;
+  slug: string;
+  label: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetCategoryListResponse {
+  items: AssetCategory[];
+}
+
+export interface CreateAssetCategoryBody {
+  /**
+   * @minLength 1
+   * @maxLength 64
+   * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+   */
+  slug: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  label: string;
+  sortOrder?: number;
+}
+
+export interface UpdateAssetCategoryBody {
+  /**
+   * @minLength 1
+   * @maxLength 64
+   * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+   */
+  slug?: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  label?: string;
+  sortOrder?: number;
+}
+
+export type LibraryAssetItemSource =
+  (typeof LibraryAssetItemSource)[keyof typeof LibraryAssetItemSource];
+
+export const LibraryAssetItemSource = {
+  asset: "asset",
+  media: "media",
+} as const;
+
+export interface LibraryAssetItem {
+  source: LibraryAssetItemSource;
+  id: string;
+  storageKey: string;
+  publicUrl?: string | null;
+  mime?: string | null;
+  byteSize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  altText?: string | null;
+  originalName?: string | null;
+  categoryId?: string | null;
+  categorySlug?: string | null;
+  categoryLabel?: string | null;
+  uploadedAt: string;
+}
+
+export interface LibraryAssetListResponse {
+  items: LibraryAssetItem[];
+  total: number;
 }
 
 export interface AuthorSummary {
@@ -551,6 +630,9 @@ export interface Asset {
   uploadedBy?: string | null;
   /** @nullable */
   category?: string | null;
+  categoryId?: string | null;
+  /** @nullable */
+  altText?: string | null;
   uploadedAt: string;
 }
 
@@ -565,6 +647,15 @@ export interface AssetInput {
   storageKey: string;
   /** @nullable */
   category?: string | null;
+  categoryId?: string | null;
+  /** @nullable */
+  altText?: string | null;
+}
+
+export interface UpdateAssetBody {
+  categoryId?: string | null;
+  /** @nullable */
+  altText?: string | null;
 }
 
 export interface PublicEvent {
@@ -1450,9 +1541,11 @@ export type ListCmsMediaParams = {
   page?: number;
   /**
    * @minimum 1
-   * @maximum 100
+   * @maximum 500
    */
   pageSize?: number;
+  search?: string;
+  categoryId?: string;
 };
 
 export type ListCmsCommentsParams = {
@@ -1544,12 +1637,31 @@ export type CmsListCollateralParams = {
   sort?: string;
 };
 
+export type ListLibraryAssetsParams = {
+  search?: string;
+  categoryId?: string;
+  source?: ListLibraryAssetsSource;
+};
+
+export type ListLibraryAssetsSource =
+  (typeof ListLibraryAssetsSource)[keyof typeof ListLibraryAssetsSource];
+
+export const ListLibraryAssetsSource = {
+  asset: "asset",
+  media: "media",
+  all: "all",
+} as const;
+
 export type ListAssetsParams = {
   search?: string;
   /**
-   * Filter by asset category (e.g. people, north-star)
+   * Filter by asset category slug (legacy)
    */
   category?: string;
+  /**
+   * Filter by asset_categories.id
+   */
+  categoryId?: string;
 };
 
 export type ListAdminFormSubmissionsParams = {
