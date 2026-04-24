@@ -121,13 +121,11 @@ export function Meta({
     } else {
       const dbTemplate = siteSettings?.seoDefaultTitleTemplate;
       if (dbTemplate) {
-        // The template uses {page} as the placeholder; apply section for detail pages.
-        const siteName = config.useSectionInTitle && detail && config.section
-          ? `${config.section} | ${SITE_NAME}`
-          : SITE_NAME;
-        fullTitle = dbTemplate.replace("{page}", title).replace("{site}", siteName);
+        // Template replaces {page} with the leaf title; the rest is literal.
+        // e.g. "{page} | The Synozur Alliance" → "My Page | The Synozur Alliance"
+        fullTitle = dbTemplate.replace("{page}", title);
       } else {
-        // Fall back to the static buildTitle logic.
+        // Fall back to the static section-aware title format.
         if (config.useSectionInTitle && detail && config.section) {
           fullTitle = `${title} | ${config.section} | ${SITE_NAME}`;
         } else {

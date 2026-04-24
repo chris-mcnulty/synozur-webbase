@@ -322,7 +322,8 @@ async function handleSitemap(_req: import("express").Request, res: import("expre
   const excludedSet = new Set(excludedPaths.map((p) => p.trim()).filter(Boolean));
 
   const filtered = entries.filter((e) => {
-    // Strip origin prefix for comparison.
+    // collectEntries() returns absolute URLs (origin + path). Strip the origin
+    // prefix to get the path for comparison with excluded paths and section prefixes.
     const path = e.loc.startsWith(origin) ? e.loc.slice(origin.length) : e.loc;
     if (excludedSet.has(path)) return false;
     for (const prefix of disabledPrefixes) {

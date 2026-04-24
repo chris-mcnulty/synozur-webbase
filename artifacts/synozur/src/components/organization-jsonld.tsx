@@ -31,7 +31,14 @@ export function OrganizationJsonLd() {
     let logoUrl = ORG_DEFAULTS.logo;
     if (settings?.orgLogoUrl) {
       const raw = settings.orgLogoUrl;
-      logoUrl = raw.startsWith("http") ? raw : `${SITE_URL}${raw.startsWith("/") ? "" : "/"}${raw}`;
+      try {
+        // If it's already an absolute URL, use it as-is.
+        new URL(raw);
+        logoUrl = raw;
+      } catch {
+        // Relative path — prepend the site origin.
+        logoUrl = `${SITE_URL}/${raw.replace(/^\/+/, "")}`;
+      }
     }
 
     const data = {
