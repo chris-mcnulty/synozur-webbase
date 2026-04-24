@@ -63,18 +63,18 @@ router.post("/assets", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { originalName, mimeType, size, storageKey, category, categoryId: categoryIdRaw, altText: altTextRaw } = parsed.data;
+  const { originalName, mimeType, size, storageKey, category, categoryId, altText: altTextRaw } = parsed.data;
   const altText = altTextRaw ?? null;
 
   let resolvedCategoryId: string | null = null;
   let resolvedCategorySlug: string | null = null;
 
-  if (categoryIdRaw) {
+  if (categoryId) {
     const cat = await db.query.assetCategoriesTable.findFirst({
-      where: eq(assetCategoriesTable.id, categoryIdRaw),
+      where: eq(assetCategoriesTable.id, categoryId),
     });
     if (!cat) {
-      res.status(400).json({ error: `Unknown categoryId "${categoryIdRaw}"` });
+      res.status(400).json({ error: `Unknown categoryId "${categoryId}"` });
       return;
     }
     resolvedCategoryId = cat.id;
