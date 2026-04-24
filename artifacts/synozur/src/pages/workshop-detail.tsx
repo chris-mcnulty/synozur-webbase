@@ -397,31 +397,38 @@ export default function WorkshopDetail() {
 
       {/* Outcomes */}
       <section className="py-16 bg-background">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-5xl">
           <SectionHeader title={w.outcomes.header} />
-          <BulletList items={w.outcomes.bullets} />
+          <div className="max-w-4xl">
+            <BulletList items={w.outcomes.bullets} />
+          </div>
+
+          {(w.beforeExample || w.afterExample) && (
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {w.beforeExample && (
+                <div className="rounded-xl border border-border/60 bg-card p-8">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+                    Before
+                  </p>
+                  <p className="text-lg leading-relaxed text-muted-foreground">
+                    {w.beforeExample}
+                  </p>
+                </div>
+              )}
+              {w.afterExample && (
+                <div className="rounded-xl border border-primary/40 bg-card p-8">
+                  <p className="text-xs uppercase tracking-widest text-primary mb-3">
+                    After
+                  </p>
+                  <p className="text-lg leading-relaxed text-foreground">
+                    {w.afterExample}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
-
-      {/* Before / After */}
-      {(w.beforeExample || w.afterExample) && (
-        <section className="py-16 bg-card border-y border-border">
-          <div className="container mx-auto px-4 max-w-5xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-border/60 bg-background p-8">
-                <p className="text-lg leading-relaxed text-muted-foreground">
-                  {w.beforeExample}
-                </p>
-              </div>
-              <div className="rounded-xl border border-primary/40 bg-background p-8">
-                <p className="text-lg leading-relaxed text-foreground">
-                  {w.afterExample}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Sample Deliverables */}
       {w.sampleDeliverables.header && (
