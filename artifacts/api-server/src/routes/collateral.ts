@@ -259,11 +259,13 @@ function parseCmsCollateralSort(sort: string | undefined) {
   if (!sort) return defaultOrder;
 
   const clauses = [];
+  let titleIncluded = false;
   for (const part of sort.split(",").map((s) => s.trim()).filter(Boolean)) {
     const [rawCol, rawDir] = part.split(":").map((s) => s.trim());
     const column =
       SortableCmsCollateralColumns[rawCol as SortableCmsCollateralColumn];
     if (!column) continue;
+    if (rawCol === "title") titleIncluded = true;
     const dir = rawDir?.toLowerCase() === "desc" ? "desc" : "asc";
     // `pillar` and `featuredRank` are nullable — send NULLs to the end for
     // both directions so the "sorted" view stays coherent for editors.
@@ -281,7 +283,7 @@ function parseCmsCollateralSort(sort: string | undefined) {
 
   // Always append title asc as a stable tiebreaker when callers sort on a
   // non-title column; prevents flicker between requests with the same key.
-  if (clauses.length > 0 && !sort.includes("title")) {
+  if (clauses.length > 0 && !titleIncluded) {
     clauses.push(asc(collateralTable.title));
   }
 
