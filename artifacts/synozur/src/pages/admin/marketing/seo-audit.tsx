@@ -104,6 +104,9 @@ function formatMissingLabel(field: string): string {
   return map[field] ?? field;
 }
 
+// Keys the backend autofill endpoint will actually patch (only missing/empty fields).
+const FILLABLE_KEYS = new Set(["seoTitle", "seoDescription", "ogImage"]);
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MarketingSeoAudit() {
@@ -394,7 +397,6 @@ function FindingRow({
   onAutofill: () => void;
   isAutofilling: boolean;
 }) {
-  const FILLABLE_KEYS = new Set(["seoTitle", "seoDescription", "ogImage"]);
   const canAutofill = finding.missing.some((m) => FILLABLE_KEYS.has(m));
 
   return (
