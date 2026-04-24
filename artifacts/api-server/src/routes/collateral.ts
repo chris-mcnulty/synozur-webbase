@@ -2,6 +2,10 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, asc, desc, eq, isNull, ne, inArray, sql } from "drizzle-orm";
 import { db, collateralTable, COLLATERAL_TYPES } from "@workspace/db";
+import {
+  canonicalUrlForCollateral,
+  isSyncedCollateralType,
+} from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
@@ -9,6 +13,43 @@ import { toSlug } from "../lib/slug";
 const router: IRouter = Router();
 
 const COLLATERAL_PILLARS = ["strategic", "technology", "experiences", "gtm"] as const;
+
+// Admin path for the dedicated editor of a synced content type. Returned to
+// the admin UI so it can deep-link the user to the right editor when they
+// try to manage typed content via the generic collateral admin.
+function editorPathForSyncedType(type: string): string {
+  switch (type) {
+    case "white_paper":
+    case "ebook":
+      return "/library/white-papers";
+    case "case_study":
+      return "/products/case-studies";
+    case "model":
+      return "/products/models";
+    case "video":
+      return "/library/videos";
+    case "event":
+      return "/events";
+    case "insight":
+      return "/insights/posts";
+    case "podcast":
+      return "/library/polaris-episodes";
+    default:
+      return "/library/collateral";
+  }
+}
+
+// Fields safe to edit on a synced collateral row directly. These are
+// presentation/curation properties owned by the library admin, not content
+// owned by the source-of-truth table. Everything else must be edited at
+// the source.
+const SYNCED_ROW_EDITABLE_FIELDS = new Set([
+  "featured",
+  "featuredRank",
+  "active",
+  "serviceId",
+  "solutionId",
+] as const);
 
 const ListQuery = z.object({
   type: z.string().optional(),
@@ -75,6 +116,10 @@ function serializeAdminItem(row: typeof collateralTable.$inferSelect) {
   return {
     ...serializeItem(row),
     active: row.active,
+    // sourceId distinguishes synced rows (mirrored from a source-of-truth
+    // table like white_papers) from purely standalone collateral rows. The
+    // admin UI uses this to redirect content edits to the source editor.
+    sourceId: row.sourceId ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -309,7 +354,23 @@ router.post("/cms/collateral", ...adminGuard, async (req, res) => {
     return;
   }
   const d = parsed.data;
+  // Block direct creation of types that have a dedicated source-of-truth
+  // table. Editors must use the type-specific admin (e.g. /library/white-papers)
+  // so the canonical record exists and the upsertCollateralFromX sync runs.
+  if (isSyncedCollateralType(d.type)) {
+    res.status(400).json({
+      error: "Use the dedicated editor for this content type",
+      details: {
+        type: d.type,
+        editorPath: editorPathForSyncedType(d.type),
+      },
+    });
+    return;
+  }
   const slug = await ensureUniqueSlug(d.slug || d.title);
+  // Derive url server-side from type+slug. Client-supplied url is ignored to
+  // prevent regressions like the legacy /items/<slug> pattern that 404s.
+  const derivedUrl = canonicalUrlForCollateral(d.type, slug);
   const [row] = await db
     .insert(collateralTable)
     .values({
@@ -321,7 +382,7 @@ router.post("/cms/collateral", ...adminGuard, async (req, res) => {
       heroImage: d.heroImage ?? "",
       pillar: d.pillar ?? null,
       tags: d.tags ?? [],
-      url: d.url ?? "",
+      url: d.external && d.url ? d.url : derivedUrl,
       external: d.external ?? false,
       publishedAt: parseDate(d.publishedAt),
       featured: d.featured ?? false,
@@ -358,26 +419,82 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   }
   const d = parsed.data;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (d.slug !== undefined && d.slug !== null && d.slug !== existing.slug) {
-    updates.slug = await ensureUniqueSlug(d.slug, id);
+
+  // Synced rows (sourceId set) are mirrors of a source-of-truth table.
+  // Reject edits to content fields — those must be made at the source so
+  // the next sync doesn't overwrite them. Curation fields (featured,
+  // featuredRank, active, service/solution links) remain editable here.
+  if (existing.sourceId) {
+    const supplied = Object.entries(d).filter(([, v]) => v !== undefined);
+    const disallowed = supplied
+      .map(([k]) => k)
+      .filter((k) => !SYNCED_ROW_EDITABLE_FIELDS.has(k as never));
+    if (disallowed.length > 0) {
+      res.status(400).json({
+        error: "Edit content at the source",
+        details: {
+          sourceId: existing.sourceId,
+          disallowedFields: disallowed,
+          editorPath: editorPathForSyncedType(existing.type),
+        },
+      });
+      return;
+    }
+    if (d.featured !== undefined) updates.featured = d.featured;
+    if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
+    if (d.active !== undefined) updates.active = d.active;
+    if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
+    if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
+  } else {
+    if (d.slug !== undefined && d.slug !== null && d.slug !== existing.slug) {
+      updates.slug = await ensureUniqueSlug(d.slug, id);
+    }
+    if (d.type !== undefined) updates.type = d.type;
+    if (d.title !== undefined) updates.title = d.title;
+    if (d.subtitle !== undefined) updates.subtitle = d.subtitle;
+    if (d.description !== undefined) updates.description = d.description ?? "";
+    if (d.heroImage !== undefined) updates.heroImage = d.heroImage ?? "";
+    if (d.pillar !== undefined) updates.pillar = d.pillar;
+    if (d.tags !== undefined) updates.tags = d.tags ?? [];
+    if (d.external !== undefined) updates.external = d.external;
+    if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
+    if (d.featured !== undefined) updates.featured = d.featured;
+    if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
+    if (d.videoUrl !== undefined) updates.videoUrl = d.videoUrl;
+    if (d.downloadUrl !== undefined) updates.downloadUrl = d.downloadUrl;
+    if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
+    if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
+    if (d.active !== undefined) updates.active = d.active;
+
+    // Re-derive url whenever slug or type changes. For external rows the
+    // client url is preserved (those point at off-site resources). Client
+    // url is otherwise ignored to prevent /items/<slug> regressions.
+    const nextSlug = (updates.slug as string | undefined) ?? existing.slug;
+    const nextType = (updates.type as string | undefined) ?? existing.type;
+    const nextExternal = (updates.external as boolean | undefined) ?? existing.external;
+    if (nextExternal) {
+      if (d.url !== undefined) {
+        const nextUrl = d.url?.trim() ?? "";
+        if (!nextUrl) {
+          res.status(400).json({
+            error: "External collateral requires a non-empty url",
+          });
+          return;
+        }
+        updates.url = nextUrl;
+      } else if (existing.external) {
+        // Preserve the existing off-site URL when patching only curation fields
+        updates.url = existing.url;
+      } else {
+        res.status(400).json({
+          error: "Provide a non-empty url when setting external=true",
+        });
+        return;
+      }
+    } else {
+      updates.url = canonicalUrlForCollateral(nextType, nextSlug);
+    }
   }
-  if (d.type !== undefined) updates.type = d.type;
-  if (d.title !== undefined) updates.title = d.title;
-  if (d.subtitle !== undefined) updates.subtitle = d.subtitle;
-  if (d.description !== undefined) updates.description = d.description ?? "";
-  if (d.heroImage !== undefined) updates.heroImage = d.heroImage ?? "";
-  if (d.pillar !== undefined) updates.pillar = d.pillar;
-  if (d.tags !== undefined) updates.tags = d.tags ?? [];
-  if (d.url !== undefined) updates.url = d.url ?? "";
-  if (d.external !== undefined) updates.external = d.external;
-  if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
-  if (d.featured !== undefined) updates.featured = d.featured;
-  if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
-  if (d.videoUrl !== undefined) updates.videoUrl = d.videoUrl;
-  if (d.downloadUrl !== undefined) updates.downloadUrl = d.downloadUrl;
-  if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
-  if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
-  if (d.active !== undefined) updates.active = d.active;
 
   const [updated] = await db
     .update(collateralTable)

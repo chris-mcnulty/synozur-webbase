@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, FileText } from "lucide-react";
+import { ArrowLeft, Save, X, Image as ImageIcon, FileText, Lock } from "lucide-react";
+import { isSyncedCollateralType } from "@workspace/api-zod";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,38 @@ const TYPES: { value: UpsertCollateralBody["type"]; label: string }[] = [
   { value: "insight", label: "Insight" },
 ];
 
+// Types creatable via the generic library admin. Types with a dedicated
+// source-of-truth table (white_paper, case_study, model, etc.) are
+// excluded — those must be created in their type-specific editor so the
+// canonical record exists and the upsertCollateralFromX sync runs.
+const CREATABLE_TYPES = TYPES.filter((t) => !isSyncedCollateralType(t.value));
+
+// Map a sourceId like "white_paper:<uuid>" to the dedicated editor URL.
+// Returns null when the prefix isn't recognized.
+function editorPathForSource(sourceId: string | null | undefined): string | null {
+  if (!sourceId) return null;
+  const [prefix, id] = sourceId.split(":");
+  if (!id) return null;
+  switch (prefix) {
+    case "white_paper":
+      return `/library/white-papers/${id}/edit`;
+    case "case_study":
+      return `/products/case-studies`;
+    case "model":
+      return `/products/models/${id}/edit`;
+    case "video":
+      return `/library/videos/${id}/edit`;
+    case "post":
+      return `/insights/posts/${id}/edit`;
+    case "polaris_episode":
+      return `/library/polaris-episodes/${id}/edit`;
+    case "event":
+      return `/people/events/${id}`;
+    default:
+      return null;
+  }
+}
+
 const PILLARS: { value: NonNullable<UpsertCollateralBody["pillar"]>; label: string }[] = [
   { value: "strategic", label: "Strategic Transformation" },
   { value: "technology", label: "Technology Transformation" },
@@ -92,7 +125,9 @@ interface FormState {
 const EMPTY: FormState = {
   title: "",
   slug: "",
-  type: "white_paper",
+  // Default to webinar — the first CREATABLE type. Synced types
+  // (white_paper, case_study, model, …) are blocked from creation here.
+  type: "webinar",
   pillar: "",
   subtitle: "",
   description: "",
@@ -224,6 +259,24 @@ export default function CollateralEdit({ id }: Props) {
   const all: CollateralItem[] = (listQ.data?.items ?? []) as CollateralItem[];
   const existing = id ? all.find((x) => x.id === id) ?? null : null;
 
+  // sourceId distinguishes synced rows (mirrored from a source-of-truth
+  // table) from standalone collateral. Synced rows lock content fields
+  // and surface an "Edit at source" link. The generated CollateralItem
+  // type doesn't expose sourceId yet (the OpenAPI spec is regenerated
+  // separately), so read it via a loose cast — same pattern as serviceId
+  // higher in fromItem().
+  const sourceId =
+    (existing as unknown as { sourceId?: string | null } | null)?.sourceId ?? null;
+  const isSynced = !!sourceId;
+  const sourceEditorPath = editorPathForSource(sourceId);
+  // On a synced row, only curation fields (featured, featuredRank, active,
+  // service/solution) are writable. Content fields are read-only here and
+  // edited at the source.
+  const contentReadOnly = isSynced;
+  // Two derived flags simplify the field-level disabled wiring below.
+  const contentDisabled = !canWrite || contentReadOnly;
+  const curationDisabled = !canWrite;
+
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
@@ -335,6 +388,28 @@ export default function CollateralEdit({ id }: Props) {
           You have read-only access. Only editors and admins can change library items.
         </div>
       )}
+      {isSynced && (
+        <div className="mb-4 rounded-md border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-100 flex items-start gap-3">
+          <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="font-medium">This item is synced from a source editor.</div>
+            <div className="text-blue-200/80 mt-1">
+              Title, description, body, hero image, tags, and other content
+              fields are managed at the source and read-only here. You can
+              still control carousel placement (featured, rank, active) and
+              service/solution links from this page.
+            </div>
+            {sourceEditorPath && (
+              <Link
+                href={sourceEditorPath}
+                className="inline-flex items-center gap-1 mt-2 font-medium text-blue-100 hover:text-white underline underline-offset-2"
+              >
+                Edit content at the source →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-4 min-w-0">
           <Card className="p-4 space-y-4">
@@ -344,7 +419,7 @@ export default function CollateralEdit({ id }: Props) {
                 id="title"
                 value={form.title}
                 onChange={(e) => update({ title: e.target.value })}
-                disabled={!canWrite}
+                disabled={!canWrite || contentReadOnly}
                 data-testid="input-collateral-title"
                 className="text-xl font-semibold h-11"
               />
@@ -360,7 +435,7 @@ export default function CollateralEdit({ id }: Props) {
                     setSlugTouched(true);
                     update({ slug: slugify(e.target.value) });
                   }}
-                  disabled={!canWrite}
+                  disabled={!canWrite || contentReadOnly}
                   data-testid="input-collateral-slug"
                 />
               </div>
@@ -371,26 +446,32 @@ export default function CollateralEdit({ id }: Props) {
                 <Select
                   value={form.type}
                   onValueChange={(v) => update({ type: v as UpsertCollateralBody["type"] })}
-                  disabled={!canWrite}
+                  disabled={!canWrite || contentReadOnly}
                 >
                   <SelectTrigger id="type" data-testid="select-collateral-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TYPES.map((t) => (
+                    {(isNew ? CREATABLE_TYPES : TYPES).map((t) => (
                       <SelectItem key={t.value} value={t.value}>
                         {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isNew && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Whitepapers, case studies, models, videos, podcasts,
+                    posts and events are created in their dedicated editors.
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="pillar">Pillar</Label>
                 <Select
                   value={form.pillar || "__none__"}
                   onValueChange={(v) => update({ pillar: v === "__none__" ? "" : v })}
-                  disabled={!canWrite}
+                  disabled={contentDisabled}
                 >
                   <SelectTrigger id="pillar" data-testid="select-collateral-pillar">
                     <SelectValue placeholder="None" />
@@ -426,7 +507,7 @@ export default function CollateralEdit({ id }: Props) {
                             : "",
                     })
                   }
-                  disabled={!canWrite || servicesQ.isLoading}
+                  disabled={curationDisabled || servicesQ.isLoading}
                 >
                   <SelectTrigger id="serviceId" data-testid="select-collateral-service">
                     <SelectValue placeholder="None" />
@@ -449,7 +530,7 @@ export default function CollateralEdit({ id }: Props) {
                 <Select
                   value={form.solutionId || "__none__"}
                   onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
-                  disabled={!canWrite || servicesQ.isLoading}
+                  disabled={curationDisabled || servicesQ.isLoading}
                 >
                   <SelectTrigger id="solutionId" data-testid="select-collateral-solution">
                     <SelectValue placeholder="None" />
@@ -473,7 +554,7 @@ export default function CollateralEdit({ id }: Props) {
                 id="subtitle"
                 value={form.subtitle}
                 onChange={(e) => update({ subtitle: e.target.value })}
-                disabled={!canWrite}
+                disabled={contentDisabled}
               />
             </div>
             <div>
@@ -482,7 +563,7 @@ export default function CollateralEdit({ id }: Props) {
                 id="description"
                 value={form.description}
                 onChange={(e) => update({ description: e.target.value })}
-                disabled={!canWrite}
+                disabled={contentDisabled}
                 rows={4}
                 data-testid="input-collateral-description"
               />
@@ -493,7 +574,7 @@ export default function CollateralEdit({ id }: Props) {
                 id="tags"
                 value={form.tagsText}
                 onChange={(e) => update({ tagsText: e.target.value })}
-                disabled={!canWrite}
+                disabled={contentDisabled}
                 placeholder="leadership, strategy, ai"
                 data-testid="input-collateral-tags"
               />
@@ -507,10 +588,16 @@ export default function CollateralEdit({ id }: Props) {
                 id="url"
                 value={form.url}
                 onChange={(e) => update({ url: e.target.value })}
-                disabled={!canWrite}
+                disabled={contentDisabled || !form.external}
                 placeholder="/case-studies/example or https://example.com"
                 data-testid="input-collateral-url"
               />
+              {!form.external && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto-derived from type and slug. Toggle "External link" to
+                  override with an off-site URL.
+                </p>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="external" className="text-sm font-medium">
@@ -520,7 +607,7 @@ export default function CollateralEdit({ id }: Props) {
                 id="external"
                 checked={form.external}
                 onCheckedChange={(v) => update({ external: v })}
-                disabled={!canWrite}
+                disabled={contentDisabled}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -530,12 +617,12 @@ export default function CollateralEdit({ id }: Props) {
                   id="videoUrl"
                   value={form.videoUrl}
                   onChange={(e) => update({ videoUrl: e.target.value })}
-                  disabled={!canWrite}
+                  disabled={contentDisabled}
                 />
               </div>
               <div>
                 <Label htmlFor="downloadUrl">Download URL</Label>
-                {form.type === "white_paper" && canWrite ? (
+                {form.type === "white_paper" && canWrite && !contentReadOnly ? (
                   <div className="space-y-2 mt-1">
                     <Button
                       type="button"
@@ -577,7 +664,7 @@ export default function CollateralEdit({ id }: Props) {
                     id="downloadUrl"
                     value={form.downloadUrl}
                     onChange={(e) => update({ downloadUrl: e.target.value })}
-                    disabled={!canWrite}
+                    disabled={contentDisabled}
                   />
                 )}
               </div>
@@ -589,7 +676,7 @@ export default function CollateralEdit({ id }: Props) {
                 type="date"
                 value={form.publishedAt}
                 onChange={(e) => update({ publishedAt: e.target.value })}
-                disabled={!canWrite}
+                disabled={contentDisabled}
               />
             </div>
           </Card>
@@ -660,12 +747,12 @@ export default function CollateralEdit({ id }: Props) {
             <Input
               value={form.heroImage}
               onChange={(e) => update({ heroImage: e.target.value })}
-              disabled={!canWrite}
+              disabled={contentDisabled}
               placeholder="Image URL"
               data-testid="input-collateral-hero-image"
             />
             <div className="flex gap-2">
-              {canWrite && (
+              {canWrite && !contentReadOnly && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -675,7 +762,7 @@ export default function CollateralEdit({ id }: Props) {
                   {form.heroImage ? "Change" : "Pick image"}
                 </Button>
               )}
-              {canWrite && form.heroImage && (
+              {canWrite && !contentReadOnly && form.heroImage && (
                 <Button
                   variant="ghost"
                   size="sm"

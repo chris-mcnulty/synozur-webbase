@@ -9,6 +9,7 @@ import {
   ARTIFACT_STATUSES,
   type PolarisEpisode,
 } from "@workspace/db";
+import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
@@ -571,12 +572,13 @@ router.post(
       title: episode.title,
       description: episode.summary || "",
       heroImage: episode.artworkUrl || "",
-      url: `/polaris/${episode.slug}`,
+      url: canonicalUrlForCollateral("podcast", episode.slug),
       external: false,
       publishedAt: episode.publishedAt,
       active: episode.active,
       featured: episode.featured,
       featuredRank: episode.featuredRank ?? null,
+      sourceId: `polaris_episode:${id}`,
       updatedAt: new Date(),
     };
 
@@ -625,7 +627,6 @@ router.post(
           downloadUrl: null,
           serviceId: null,
           solutionId: null,
-          sourceId: null,
         })
         .returning();
       row = created;

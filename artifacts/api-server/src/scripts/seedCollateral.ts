@@ -14,6 +14,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, pool, collateralTable, mediaTable } from "@workspace/db";
 import { count, eq } from "drizzle-orm";
+import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { parseCsvAsObjects } from "../lib/csv";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { toSlug } from "../lib/slug";
@@ -151,7 +152,7 @@ const MOCK_DATA = [
     heroImage: "/images/home/feed/feed-7-ai-predictions.jpg",
     pillar: "technology" as const,
     tags: ["AI", "White Paper", "Readiness"],
-    url: "/items/ai-readiness-white-paper",
+    url: canonicalUrlForCollateral("white_paper", "ai-readiness-white-paper"),
     external: false,
     publishedAt: new Date("2025-03-04"),
     featured: false,
@@ -167,7 +168,7 @@ const MOCK_DATA = [
     heroImage: "/images/home/feed/feed-3-dynamic-2024.jpg",
     pillar: "strategic" as const,
     tags: ["Strategy", "Purpose", "Leadership"],
-    url: "/items/north-star-strategy-white-paper",
+    url: canonicalUrlForCollateral("white_paper", "north-star-strategy-white-paper"),
     external: false,
     publishedAt: new Date("2025-02-11"),
     featured: false,

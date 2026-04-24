@@ -346,6 +346,7 @@ function Router() {
             <Route path="/white-papers" component={WhitePapers} />
             <Route path="/white-papers/:slug" component={WhitePaperDetail} />
             <Route path="/items" component={Items} />
+            <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/faq" component={Faq} />
             <Route path="/team" component={Team} />
             <Route path="/team/:slug" component={TeamDetail} />
