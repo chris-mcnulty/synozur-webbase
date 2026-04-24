@@ -36,9 +36,9 @@ import {
   type Solution,
   type UpsertSolutionBody,
   type MediaItem,
-  type ArtifactStatus,
   type CollateralPillar,
 } from "@workspace/api-client-react";
+import { type ArtifactStatus } from "@/lib/api";
 
 const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -172,7 +172,7 @@ function fromSolution(s: Solution): FormState {
     primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
-    status: s.status,
+    status: (s.status ?? "draft") as ArtifactStatus,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
     pillar: s.pillar ?? null,

@@ -23,7 +23,7 @@ import {
   uploadAndRegisterImage,
 } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api, type ArtifactStatus } from "@/lib/api";
 import { RevisionsPanel } from "@/components/admin/RevisionsPanel";
 import {
   useCmsListServices,
@@ -33,7 +33,6 @@ import {
   type Service,
   type UpsertServiceBody,
   type MediaItem,
-  type ArtifactStatus,
 } from "@workspace/api-client-react";
 
 const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
@@ -144,7 +143,7 @@ function fromService(s: Service): FormState {
     blogCategory: s.blogCategory ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
-    status: s.status,
+    status: (s.status ?? "draft") as ArtifactStatus,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
     tagIds: (s.tags ?? []).map((t) => t.id),
