@@ -213,6 +213,14 @@ export function AdminLayout({
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Track whether we're at the md breakpoint or above so the drawer's a11y
+  // hiding (inert/aria-hidden) only applies on mobile, where the drawer is
+  // actually translated off-canvas.
+  const [isMdUp, setIsMdUp] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 768px)").matches
+      : true,
+  );
 
   useEffect(() => {
     if (activeSectionId) {
@@ -227,15 +235,43 @@ export function AdminLayout({
     setMobileMenuOpen(false);
   }, [location]);
 
-  // Lock body scroll while the mobile drawer is open.
+  // Watch the md breakpoint. When the viewport grows past md (e.g. orientation
+  // change), force the drawer closed so the body-scroll lock releases and the
+  // user can't be stranded with no visible close control.
   useEffect(() => {
-    if (!mobileMenuOpen) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = (e: MediaQueryListEvent) => {
+      setIsMdUp(e.matches);
+      if (e.matches) setMobileMenuOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Lock body scroll while the mobile drawer is open. Skip on desktop — the
+  // drawer is always "open" (in-flow sidebar) at md+ but should never lock.
+  useEffect(() => {
+    if (!mobileMenuOpen || isMdUp) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
+  }, [mobileMenuOpen, isMdUp]);
+
+  // Close the drawer on Escape so keyboard users have a non-pointer dismissal.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [mobileMenuOpen]);
+
+  // When the drawer is closed on mobile, hide it from a11y/keyboard so its
+  // links aren't tab-reachable or announced by screen readers.
+  const drawerHidden = !isMdUp && !mobileMenuOpen;
 
   const toggleSection = (id: string) =>
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -292,6 +328,8 @@ export function AdminLayout({
             // Desktop: in-flow sticky sidebar (overrides the mobile classes above).
             "md:translate-x-0 md:sticky md:top-0 md:left-auto md:bottom-auto md:z-auto md:min-h-screen",
           )}
+          inert={drawerHidden || undefined}
+          aria-hidden={drawerHidden || undefined}
         >
           <div className="p-5 border-b border-border flex items-start justify-between gap-3">
             <Link href="/">
