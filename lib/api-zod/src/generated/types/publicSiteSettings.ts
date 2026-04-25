@@ -8,6 +8,7 @@
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */

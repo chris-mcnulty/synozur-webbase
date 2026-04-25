@@ -9,6 +9,7 @@ import type { SiteSettingsSitemapSectionFlags } from "./siteSettingsSitemapSecti
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

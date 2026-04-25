@@ -3414,6 +3414,10 @@ components:
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroBackgroundType:
+          type: string
+          enum: [image, video]
+          default: image
         homeHeroImageUrl:
           type:
             - string
@@ -3506,6 +3510,10 @@ components:
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroBackgroundType:
+          type: string
+          enum: [image, video]
+          default: image
         homeHeroImageAssetId:
           type:
             - integer
@@ -3640,6 +3648,9 @@ components:
       properties:
         requireCookieConsent:
           type: boolean
+        homeHeroBackgroundType:
+          type: string
+          enum: [image, video]
         homeHeroImageAssetId:
           type:
             - integer

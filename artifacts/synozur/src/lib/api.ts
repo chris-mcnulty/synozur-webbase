@@ -95,6 +95,7 @@ export interface AdminMe {
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageUrl?: string | null;
   homeEditorialImageUrl?: string | null;
@@ -121,6 +122,7 @@ export interface PublicSiteSettings {
 
 export interface AdminSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageAssetId?: number | null;
   homeHeroImageUrl?: string | null;
@@ -438,6 +440,7 @@ export type SolutionWithCapabilities = SolutionDto & {
 
 export interface UpdateSiteSettingsBody {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageAssetId?: number | null;
   homeEditorialImageAssetId?: number | null;

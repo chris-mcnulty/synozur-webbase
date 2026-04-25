@@ -430,6 +430,7 @@ export interface UploadUrlResponse {
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */
@@ -481,6 +482,7 @@ export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -557,6 +559,7 @@ export type SiteSettingsInputSitemapSectionFlags = {
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
+  homeHeroBackgroundType?: "image" | "video";
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

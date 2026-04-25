@@ -26,6 +26,7 @@ export default function AdminSiteSettings() {
   const [requireConsent, setRequireConsent] = useState<boolean | null>(null);
   const [polarisFeedDraft, setPolarisFeedDraft] = useState<string | null>(null);
   type SiteTheme = "cosmic" | "aurora";
+  type HeroBackgroundType = "image" | "video";
 
   useEffect(() => {
     if (data && requireConsent === null) {
@@ -56,8 +57,12 @@ export default function AdminSiteSettings() {
   const currentTheme: SiteTheme =
     (data?.siteTheme as SiteTheme | null | undefined) === "aurora" ? "aurora" : "cosmic";
 
+  const currentHeroBgType: HeroBackgroundType =
+    (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) === "video" ? "video" : "image";
+
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
     requireCookieConsent: current,
+    homeHeroBackgroundType: currentHeroBgType,
     siteTheme: currentTheme,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
@@ -200,6 +205,10 @@ export default function AdminSiteSettings() {
             onResetHero={() => handleReset("hero")}
             onResetEditorial={() => handleReset("editorial")}
             disabled={updateMutation.isPending}
+            heroBgType={currentHeroBgType}
+            onHeroBgTypeChange={(type) =>
+              updateMutation.mutate(buildPayload({ homeHeroBackgroundType: type }))
+            }
           />
 
           <div className="rounded-md border border-border p-6 space-y-4">
@@ -299,6 +308,8 @@ interface HomeSectionProps {
   onResetHero: () => void;
   onResetEditorial: () => void;
   disabled: boolean;
+  heroBgType: "image" | "video";
+  onHeroBgTypeChange: (type: "image" | "video") => void;
 }
 
 function HomePageSection(props: HomeSectionProps) {
@@ -309,8 +320,48 @@ function HomePageSection(props: HomeSectionProps) {
         <p className="text-sm text-muted-foreground">{props.description}</p>
       </div>
 
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Hero background type</div>
+        <p className="text-xs text-muted-foreground">
+          Choose whether the hero section displays a static image or the bundled background video (autoplay, muted, looped).
+        </p>
+        <div className="flex gap-3">
+          {(["image", "video"] as const).map((type) => {
+            const active = props.heroBgType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                disabled={props.disabled}
+                data-testid={`hero-bg-type-${type}`}
+                onClick={() => props.onHeroBgTypeChange(type)}
+                className={`flex-1 text-left rounded-lg border-2 px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 capitalize ${
+                  active
+                    ? "border-primary bg-primary/5 font-medium"
+                    : "border-border hover:border-muted-foreground/40"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{type === "image" ? "Image (default)" : "Video"}</span>
+                  {active && (
+                    <span className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {type === "image"
+                    ? "Displays the static hero background image."
+                    : "Plays the bundled video silently on loop; image is used as poster/fallback."}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <ImagePicker
-        label="Hero background"
+        label="Hero background image"
         helper="Cosmic / starry background that sits behind the home page hero. Filter: north-star."
         previewUrl={props.heroUrl ?? props.heroFallback}
         isOverridden={props.heroUrl != null}

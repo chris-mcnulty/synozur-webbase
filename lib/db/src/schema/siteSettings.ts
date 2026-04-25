@@ -55,6 +55,10 @@ export const siteSettingsTable = pgTable("site_settings", {
   hubspotFormToggles: jsonb("hubspot_form_toggles").$type<Record<string, boolean>>(),
   hubspotLifecycleMappings: jsonb("hubspot_lifecycle_mappings").$type<Record<string, string>>(),
 
+  // Hero background type: "image" (default) or "video". Controls whether the
+  // homepage hero shows the static image or the bundled background video.
+  homeHeroBackgroundType: text("home_hero_background_type").notNull().default("image"),
+
   // Site theme: "cosmic" (default) or "aurora". Controls which CSS token set
   // is applied site-wide. Chosen by an admin in Site Settings.
   siteTheme: text("site_theme").notNull().default("cosmic"),

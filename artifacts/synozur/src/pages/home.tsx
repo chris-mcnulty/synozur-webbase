@@ -221,12 +221,31 @@ export default function Home() {
       <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
-          <img
-            src={heroBg}
-            alt="Cosmic nebula background"
-            className="w-full h-full object-cover"
-            data-testid="img-home-hero-bg"
-          />
+          {settings?.homeHeroBackgroundType === "video" ? (
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={heroBg}
+              className="w-full h-full object-cover"
+              data-testid="video-home-hero-bg"
+            >
+              <source src={`${BASE_PATH_HOME}/videos/hero-bg.mov`} type="video/quicktime" />
+              <img
+                src={heroBg}
+                alt="Cosmic nebula background"
+                className="w-full h-full object-cover"
+              />
+            </video>
+          ) : (
+            <img
+              src={heroBg}
+              alt="Cosmic nebula background"
+              className="w-full h-full object-cover"
+              data-testid="img-home-hero-bg"
+            />
+          )}
         </div>
 
         <div className="container relative z-10 mx-auto px-4 py-20 md:py-28">
