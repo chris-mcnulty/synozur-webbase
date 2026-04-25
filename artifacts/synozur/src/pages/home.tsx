@@ -192,7 +192,7 @@ function HomeShortcuts() {
           type="button"
           onClick={() => signIn("/admin")}
           className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/40 text-xs px-3 py-1.5 hover:text-white/70 hover:bg-white/10 transition-colors"
-          title="Sign in with Microsoft"
+          title="Sign in"
         >
           <Lock className="h-3 w-3" />
           Sign in
@@ -307,7 +307,7 @@ export default function Home() {
               <img
                 src={`${BASE_PATH_HOME}/images/sa-logo-horizontal-white.png`}
                 alt="The Synozur Alliance"
-                className="h-14 md:h-16 w-auto mb-10"
+                className="h-28 md:h-32 w-auto mb-10"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
                 The <span className="nebula-text">Transformation</span> Company
