@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import {
   db,
   applicationsTable,
+  collateralTable,
   ARTIFACT_STATUSES,
   type Application,
 } from "@workspace/db";
@@ -53,6 +54,8 @@ function serialize(a: Application) {
     screenshot: a.screenshot,
     userGuideUrl: a.userGuideUrl,
     showInNav: a.showInNav,
+    serviceId: a.serviceId,
+    solutionId: a.solutionId,
     status: a.status,
     publishedAt: a.publishedAt,
     unpublishedAt: a.unpublishedAt,
@@ -66,6 +69,26 @@ function serialize(a: Application) {
     createdAt: a.createdAt,
     updatedAt: a.updatedAt,
   };
+}
+
+async function syncCollateralLinks(
+  applicationId: string,
+  serviceId: string | null | undefined,
+  solutionId: string | null | undefined,
+) {
+  await db
+    .update(collateralTable)
+    .set({
+      serviceId: serviceId ?? null,
+      solutionId: solutionId ?? null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(collateralTable.sourceId, applicationId),
+        sql`${collateralTable.type} = 'application'`,
+      ),
+    );
 }
 
 // ----- Public ------------------------------------------------------------
@@ -136,6 +159,8 @@ const ApplicationBody = z.object({
   screenshot: z.string().optional(),
   userGuideUrl: z.string().nullish(),
   showInNav: z.boolean().optional(),
+  serviceId: z.string().uuid().nullish(),
+  solutionId: z.string().uuid().nullish(),
   status: z.enum(ARTIFACT_STATUSES).optional(),
   publishedAt: z.string().nullish(),
   unpublishedAt: z.string().nullish(),
@@ -206,6 +231,8 @@ router.post("/cms/applications", ...adminGuard, async (req, res) => {
       screenshot: d.screenshot ?? "",
       userGuideUrl: d.userGuideUrl ?? null,
       showInNav: d.showInNav !== false,
+      serviceId: d.serviceId ?? null,
+      solutionId: d.solutionId ?? null,
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
@@ -270,6 +297,8 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
+  if (d.serviceId !== undefined) updates.serviceId = d.serviceId ?? null;
+  if (d.solutionId !== undefined) updates.solutionId = d.solutionId ?? null;
   if (d.description !== undefined) updates.descriptionParagraphs = d.description;
   if (d.showInNav !== undefined) {
     updates.showInNav = d.showInNav;
@@ -283,6 +312,11 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(applicationsTable.id, id))
     .returning();
+
+  if (d.serviceId !== undefined || d.solutionId !== undefined) {
+    await syncCollateralLinks(id, updated.serviceId, updated.solutionId);
+  }
+
   await audit({
     actorId: req.authedUser!.id,
     action: "application.update",

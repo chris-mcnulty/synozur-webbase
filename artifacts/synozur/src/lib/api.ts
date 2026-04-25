@@ -1149,6 +1149,8 @@ export interface ApplicationDto {
   screenshot: string;
   userGuideUrl: string | null;
   showInNav: boolean;
+  serviceId: string | null;
+  solutionId: string | null;
   status: ArtifactStatus;
   publishedAt: string | null;
   unpublishedAt: string | null;
@@ -1177,6 +1179,8 @@ export interface ApplicationInput {
   screenshot?: string;
   userGuideUrl?: string | null;
   showInNav?: boolean;
+  serviceId?: string | null;
+  solutionId?: string | null;
   status?: ArtifactStatus;
   publishedAt?: string | null;
   unpublishedAt?: string | null;

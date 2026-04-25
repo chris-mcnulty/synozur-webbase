@@ -80,6 +80,7 @@ export const SYNCED_COLLATERAL_TYPES = [
   "event",
   "insight",
   "podcast",
+  "application",
 ] as const;
 
 export type SyncedCollateralType = (typeof SYNCED_COLLATERAL_TYPES)[number];

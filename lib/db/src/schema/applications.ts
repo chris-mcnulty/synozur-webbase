@@ -3,6 +3,7 @@ import {
   text,
   boolean,
   jsonb,
+  uuid,
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
@@ -12,6 +13,7 @@ import {
   artifactSeo,
   artifactTimestamps,
 } from "./_artifactBase";
+import { servicesTable, solutionsTable } from "./services";
 
 // Applications (#103). Moves the 143-line static TS file at
 // `artifacts/synozur/src/data/applications.ts` into a DB table built on
@@ -42,6 +44,12 @@ export const applicationsTable = pgTable(
     // the global nav (e.g. a soft-launched beta that still has a
     // public page).
     showInNav: boolean("show_in_nav").notNull().default(true),
+    serviceId: uuid("service_id").references(() => servicesTable.id, {
+      onDelete: "set null",
+    }),
+    solutionId: uuid("solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,
@@ -51,6 +59,8 @@ export const applicationsTable = pgTable(
     uniqueIndex("applications_source_id_key").on(t.sourceId),
     index("applications_published_at_idx").on(t.publishedAt),
     index("applications_featured_rank_idx").on(t.featured, t.featuredRank),
+    index("applications_service_idx").on(t.serviceId),
+    index("applications_solution_idx").on(t.solutionId),
   ],
 );
 

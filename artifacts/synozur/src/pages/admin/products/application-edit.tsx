@@ -29,7 +29,12 @@ import {
   mediaUrl,
 } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import { api, type ApplicationDto, type ArtifactStatus } from "@/lib/api";
+import {
+  api,
+  type ApplicationDto,
+  type ArtifactStatus,
+  type ServiceWithSolutions,
+} from "@/lib/api";
 import type { MediaItem } from "@workspace/api-client-react";
 
 interface Props {
@@ -82,6 +87,8 @@ interface FormState {
   screenshot: string | null;
   screenshotUrl: string | null;
   showInNav: boolean;
+  serviceId: string;
+  solutionId: string;
   status: ArtifactStatus;
   publishedAt: string;
   unpublishedAt: string;
@@ -109,6 +116,8 @@ const EMPTY: FormState = {
   screenshot: null,
   screenshotUrl: null,
   showInNav: true,
+  serviceId: "",
+  solutionId: "",
   status: "published",
   publishedAt: "",
   unpublishedAt: "",
@@ -137,6 +146,8 @@ function fromDto(a: ApplicationDto): FormState {
     screenshot: a.screenshot || null,
     screenshotUrl: a.screenshot || null,
     showInNav: a.showInNav,
+    serviceId: a.serviceId ?? "",
+    solutionId: a.solutionId ?? "",
     status: (a.status ?? "draft") as ArtifactStatus,
     publishedAt: toDatetimeLocal(a.publishedAt),
     unpublishedAt: toDatetimeLocal(a.unpublishedAt),
@@ -164,11 +175,20 @@ export default function ApplicationEdit({ id }: Props) {
   });
   const existing: ApplicationDto | null = fetchQ.data ?? null;
 
+  const servicesQ = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api.listServices(),
+  });
+  const allServices: ServiceWithSolutions[] = servicesQ.data?.items ?? [];
+
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showLogoPicker, setShowLogoPicker] = useState(false);
   const [showScreenshotPicker, setShowScreenshotPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const selectedService = allServices.find((s) => s.id === form.serviceId) ?? null;
+  const availableSolutions = selectedService?.solutions ?? [];
 
   useEffect(() => {
     if (existing && !loaded) {
@@ -224,6 +244,8 @@ export default function ApplicationEdit({ id }: Props) {
     screenshot: form.screenshot || undefined,
     userGuideUrl: form.userGuideUrl || null,
     showInNav: form.showInNav,
+    serviceId: form.serviceId || null,
+    solutionId: form.solutionId || null,
     status: form.status,
     publishedAt: fromDatetimeLocal(form.publishedAt),
     unpublishedAt: fromDatetimeLocal(form.unpublishedAt),
@@ -690,6 +712,67 @@ export default function ApplicationEdit({ id }: Props) {
                 disabled={!canWrite}
                 data-testid="switch-application-show-in-nav"
               />
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <Label className="text-sm font-medium">Linking</Label>
+            <div className="space-y-1">
+              <Label htmlFor="serviceId" className="text-xs">
+                Service
+              </Label>
+              <Select
+                value={form.serviceId || "__none__"}
+                onValueChange={(v) => {
+                  const next = v === "__none__" ? "" : v;
+                  update({ serviceId: next, solutionId: "" });
+                }}
+                disabled={!canWrite}
+              >
+                <SelectTrigger id="serviceId" data-testid="select-service">
+                  <SelectValue placeholder="No service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No service</SelectItem>
+                  {allServices.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="solutionId" className="text-xs">
+                Solution
+              </Label>
+              <Select
+                value={form.solutionId || "__none__"}
+                onValueChange={(v) =>
+                  update({ solutionId: v === "__none__" ? "" : v })
+                }
+                disabled={!canWrite || availableSolutions.length === 0}
+              >
+                <SelectTrigger id="solutionId" data-testid="select-solution">
+                  <SelectValue
+                    placeholder={
+                      form.serviceId
+                        ? availableSolutions.length === 0
+                          ? "No solutions"
+                          : "No solution"
+                        : "Select a service first"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No solution</SelectItem>
+                  {availableSolutions.map((sol) => (
+                    <SelectItem key={sol.id} value={sol.id}>
+                      {sol.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </Card>
         </aside>
