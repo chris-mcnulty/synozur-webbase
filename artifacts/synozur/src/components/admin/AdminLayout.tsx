@@ -41,6 +41,8 @@ import {
   FileSearch,
   ShieldCheck,
   Settings,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -210,6 +212,15 @@ export function AdminLayout({
   }, [visibleSections, location]);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Track whether we're at the md breakpoint or above so the drawer's a11y
+  // hiding (inert/aria-hidden) only applies on mobile, where the drawer is
+  // actually translated off-canvas.
+  const [isMdUp, setIsMdUp] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 768px)").matches
+      : true,
+  );
 
   useEffect(() => {
     if (activeSectionId) {
@@ -219,14 +230,108 @@ export function AdminLayout({
     }
   }, [activeSectionId]);
 
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
+
+  // Watch the md breakpoint. When the viewport grows past md (e.g. orientation
+  // change), force the drawer closed so the body-scroll lock releases and the
+  // user can't be stranded with no visible close control.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = (e: MediaQueryListEvent) => {
+      setIsMdUp(e.matches);
+      if (e.matches) setMobileMenuOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Lock body scroll while the mobile drawer is open. Skip on desktop — the
+  // drawer is always "open" (in-flow sidebar) at md+ but should never lock.
+  useEffect(() => {
+    if (!mobileMenuOpen || isMdUp) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileMenuOpen, isMdUp]);
+
+  // Close the drawer on Escape so keyboard users have a non-pointer dismissal.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileMenuOpen]);
+
+  // When the drawer is closed on mobile, hide it from a11y/keyboard so its
+  // links aren't tab-reachable or announced by screen readers.
+  const drawerHidden = !isMdUp && !mobileMenuOpen;
+
   const toggleSection = (id: string) =>
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className={cn("min-h-screen bg-background text-foreground", theme)}>
+      {/* Mobile top bar — only visible below md breakpoint. */}
+      <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md hover-elevate"
+          aria-label="Open admin menu"
+          aria-expanded={mobileMenuOpen}
+          data-testid="button-admin-mobile-menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Link href="/">
+          <a className="text-sm" data-testid="link-admin-mobile-home">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              Synozur
+            </span>{" "}
+            <span className="font-semibold">Admin</span>
+          </a>
+        </Link>
+        <a
+          href={`${baseUrl || ""}/`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover-elevate"
+          aria-label="View website"
+          data-testid="link-admin-mobile-view-site"
+        >
+          <ExternalLink className="h-5 w-5" />
+        </a>
+      </div>
+
+      {/* Backdrop for mobile drawer. */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+          data-testid="admin-mobile-backdrop"
+        />
+      )}
+
       <div className="flex">
-        <aside className="w-60 shrink-0 border-r border-border min-h-screen sticky top-0 hidden md:flex flex-col">
-          <div className="p-5 border-b border-border">
+        <aside
+          className={cn(
+            "w-60 shrink-0 border-r border-border bg-background flex flex-col",
+            // Mobile: slide-in drawer.
+            "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out",
+            mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+            // Desktop: in-flow sticky sidebar (overrides the mobile classes above).
+            "md:translate-x-0 md:sticky md:top-0 md:left-auto md:bottom-auto md:z-auto md:min-h-screen",
+          )}
+          inert={drawerHidden || undefined}
+          aria-hidden={drawerHidden || undefined}
+        >
+          <div className="p-5 border-b border-border flex items-start justify-between gap-3">
             <Link href="/">
               <a className="block">
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -235,6 +340,15 @@ export function AdminLayout({
                 <div className="text-lg font-semibold">Admin</div>
               </a>
             </Link>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate"
+              aria-label="Close admin menu"
+              data-testid="button-admin-mobile-close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
           <nav className="flex-1 py-3 overflow-y-auto" data-testid="admin-sidebar">
             {TOP_LEVEL.map((item) => {
