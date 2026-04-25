@@ -55,6 +55,10 @@ export const siteSettingsTable = pgTable("site_settings", {
   hubspotFormToggles: jsonb("hubspot_form_toggles").$type<Record<string, boolean>>(),
   hubspotLifecycleMappings: jsonb("hubspot_lifecycle_mappings").$type<Record<string, string>>(),
 
+  // Site theme: "cosmic" (default) or "aurora". Controls which CSS token set
+  // is applied site-wide. Chosen by an admin in Site Settings.
+  siteTheme: text("site_theme").notNull().default("cosmic"),
+
   // #126: Microsoft Entra SSO. The tenant id is published so the api-server
   // can scope token validation; `entraAdminGroupFallback` is a per-tenant
   // safety net used while the `entra_group_role_mappings` table is being

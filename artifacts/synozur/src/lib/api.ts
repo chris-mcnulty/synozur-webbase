@@ -95,6 +95,7 @@ export interface AdminMe {
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
+  siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageUrl?: string | null;
   homeEditorialImageUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
@@ -120,6 +121,7 @@ export interface PublicSiteSettings {
 
 export interface AdminSiteSettings {
   requireCookieConsent: boolean;
+  siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageAssetId?: number | null;
   homeHeroImageUrl?: string | null;
   homeEditorialImageAssetId?: number | null;
@@ -436,6 +438,7 @@ export type SolutionWithCapabilities = SolutionDto & {
 
 export interface UpdateSiteSettingsBody {
   requireCookieConsent: boolean;
+  siteTheme?: "cosmic" | "aurora" | null;
   homeHeroImageAssetId?: number | null;
   homeEditorialImageAssetId?: number | null;
   polarisFeedUrl?: string | null;

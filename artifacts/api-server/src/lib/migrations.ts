@@ -266,6 +266,12 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens (user_id);`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS password_reset_tokens_expires_idx ON password_reset_tokens (expires_at);`);
 
+    // 12. site_settings: add site_theme column for admin-selectable themes.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS site_theme text NOT NULL DEFAULT 'cosmic';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

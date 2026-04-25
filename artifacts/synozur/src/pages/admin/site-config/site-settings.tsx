@@ -25,6 +25,7 @@ export default function AdminSiteSettings() {
 
   const [requireConsent, setRequireConsent] = useState<boolean | null>(null);
   const [polarisFeedDraft, setPolarisFeedDraft] = useState<string | null>(null);
+  type SiteTheme = "cosmic" | "aurora";
 
   useEffect(() => {
     if (data && requireConsent === null) {
@@ -52,8 +53,12 @@ export default function AdminSiteSettings() {
 
   const current = requireConsent ?? data?.requireCookieConsent ?? false;
 
+  const currentTheme: SiteTheme =
+    (data?.siteTheme as SiteTheme | null | undefined) === "aurora" ? "aurora" : "cosmic";
+
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
     requireCookieConsent: current,
+    siteTheme: currentTheme,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
@@ -94,6 +99,65 @@ export default function AdminSiteSettings() {
         <div className="text-muted-foreground">Loading…</div>
       ) : (
         <div className="space-y-6 max-w-3xl">
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Site theme</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Choose the colour palette applied across the public site and admin shell.
+                The change takes effect immediately for all visitors.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(["cosmic", "aurora"] as const).map((slug) => {
+                const active = currentTheme === slug;
+                const label = slug === "cosmic" ? "Cosmic (default)" : "Aurora";
+                const description =
+                  slug === "cosmic"
+                    ? "Deep indigo night sky · Violet #810FFB primary"
+                    : "Aurora borealis · Teal primary · Violet accent";
+                const swatches =
+                  slug === "cosmic"
+                    ? ["#810FFB", "#5E2DA0", "#CC1E8A", "#2563EB"]
+                    : ["#0D9488", "#0891B2", "#22C55E", "#810FFB"];
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    disabled={updateMutation.isPending}
+                    data-testid={`theme-option-${slug}`}
+                    onClick={() =>
+                      updateMutation.mutate(buildPayload({ siteTheme: slug }))
+                    }
+                    className={`flex-1 text-left rounded-lg border-2 p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                      active
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">{label}</span>
+                      {active && (
+                        <span className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{description}</p>
+                    <div className="flex gap-1.5">
+                      {swatches.map((color) => (
+                        <span
+                          key={color}
+                          className="h-5 w-5 rounded-full border border-black/10"
+                          style={{ background: color }}
+                        />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="rounded-md border border-border p-6 space-y-4">
             <div className="flex items-start justify-between gap-6">
               <div>

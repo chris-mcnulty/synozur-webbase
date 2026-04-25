@@ -76,6 +76,7 @@ async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUr
 function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
   return GetAdminSiteSettingsResponse.parse({
     requireCookieConsent: settings.requireCookieConsent,
+    siteTheme: settings.siteTheme ?? "cosmic",
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
     homeEditorialImageAssetId: settings.homeEditorialImageAssetId,
@@ -123,6 +124,7 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
   res.json(
     GetPublicSiteSettingsResponse.parse({
       requireCookieConsent: settings.requireCookieConsent,
+      siteTheme: settings.siteTheme ?? "cosmic",
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
       seoDefaultTitleTemplate: settings.seoDefaultTitleTemplate,
@@ -165,6 +167,10 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   const updates: Partial<typeof siteSettingsTable.$inferInsert> = {
     requireCookieConsent: input.requireCookieConsent,
   };
+
+  if ("siteTheme" in input && input.siteTheme) {
+    updates.siteTheme = input.siteTheme;
+  }
 
   if ("homeHeroImageAssetId" in input) {
     updates.homeHeroImageAssetId = input.homeHeroImageAssetId ?? null;

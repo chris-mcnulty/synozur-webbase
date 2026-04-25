@@ -1083,6 +1083,7 @@ export const SubmitInsightCommentBody = zod.object({
  */
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod.string().nullish(),
@@ -1115,6 +1116,7 @@ export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
@@ -1162,6 +1164,7 @@ export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
 
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
+  siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   polarisFeedUrl: zod.string().nullish(),
@@ -1201,6 +1204,7 @@ export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
+  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
