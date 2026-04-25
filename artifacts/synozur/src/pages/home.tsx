@@ -231,7 +231,8 @@ export default function Home() {
               className="w-full h-full object-cover"
               data-testid="video-home-hero-bg"
             >
-              <source src={`${BASE_PATH_HOME}/videos/hero-bg.mov`} type="video/quicktime" />
+              <source src={`${BASE_PATH_HOME}/videos/hero-bg.webm`} type="video/webm" />
+              <source src={`${BASE_PATH_HOME}/videos/hero-bg.mp4`} type="video/mp4" />
               <img
                 src={heroBg}
                 alt="Cosmic nebula background"
