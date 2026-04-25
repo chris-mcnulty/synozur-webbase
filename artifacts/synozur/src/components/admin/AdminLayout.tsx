@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk } from "@clerk/react";
+import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
 import {
   LayoutDashboard,
@@ -138,6 +138,7 @@ const SECTIONS: NavSection[] = [
       { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
       { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
       { href: "/marketing/seo-audit", label: "SEO Audit", icon: FileSearch, capability: "content.moderate", testId: "nav-admin-marketing-seo-audit" },
+      { href: "/integrations/hubspot", label: "HubSpot", icon: Network, capability: "site.manage", testId: "nav-admin-hubspot" },
     ],
   },
   {
@@ -146,6 +147,7 @@ const SECTIONS: NavSection[] = [
     icon: ShieldCheck,
     items: [
       { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+      { href: "/access/entra", label: "Entra Mappings", icon: ShieldCheck, capability: "users.manage", testId: "nav-admin-entra" },
     ],
   },
   {
@@ -186,7 +188,7 @@ export function AdminLayout({
   actions?: ReactNode;
 }) {
   const [location, navigate] = useLocation();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
   const { access } = useAdminAccess();
   const { theme } = useTheme();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -436,7 +438,7 @@ export function AdminLayout({
               variant="ghost"
               size="sm"
               className="mt-1 w-full justify-start px-1"
-              onClick={() => signOut({ redirectUrl: `${baseUrl || ""}/` })}
+              onClick={() => { void signOut(); }}
               data-testid="button-sign-out"
             >
               <LogOut className="h-3.5 w-3.5 mr-2" /> Sign out

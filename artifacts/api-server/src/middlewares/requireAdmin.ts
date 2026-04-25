@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
+import { eq } from "drizzle-orm";
+import { db, rolesTable, userRoles } from "@workspace/db";
 
 export interface AdminInfo {
-  userId: string;
+  userId: string;     // internal users.id (uuid)
   email: string;
 }
 
@@ -23,26 +24,38 @@ function getAllowedEmails(): string[] {
     .filter((e) => e.length > 0);
 }
 
+// Resolves admin authorization off the cookie-bound session populated by
+// `attachUserIfPresent`. Authority comes from ANY of:
+//   1) email present in the ADMIN_EMAILS allow-list (env-controlled bootstrap)
+//   2) an `admin` role grant in the user_roles table — the canonical signal
+//      once #126 (Entra group → role mappings) is in active use
 export async function getCurrentAdmin(
   req: Request,
-): Promise<{ status: "unauthenticated" } | { status: "unauthorized"; email: string } | { status: "ok"; info: AdminInfo }> {
-  const auth = getAuth(req);
-  const userId = auth?.userId;
-  if (!userId) return { status: "unauthenticated" };
-
-  const user = await clerkClient.users.getUser(userId);
-  const email =
-    user.primaryEmailAddress?.emailAddress?.toLowerCase() ??
-    user.emailAddresses[0]?.emailAddress?.toLowerCase() ??
-    "";
-
+): Promise<
+  | { status: "unauthenticated" }
+  | { status: "unauthorized"; email: string }
+  | { status: "ok"; info: AdminInfo }
+> {
+  const user = req.authedUser;
+  if (!user) return { status: "unauthenticated" };
+  const email = (user.email ?? "").toLowerCase();
   const allowed = getAllowedEmails();
-  // If no allow-list is configured, treat any signed-in user as authorized
-  // (useful for first-run/dev). Otherwise enforce membership.
-  if (allowed.length > 0 && !allowed.includes(email)) {
-    return { status: "unauthorized", email };
+
+  // ADMIN_EMAILS bypass — always grants access if listed.
+  if (allowed.length === 0 || allowed.includes(email)) {
+    return { status: "ok", info: { userId: user.id, email } };
   }
-  return { status: "ok", info: { userId, email } };
+
+  // Database-backed admin role.
+  const adminGrant = await db
+    .select({ name: rolesTable.name })
+    .from(userRoles)
+    .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
+    .where(eq(userRoles.userId, user.id));
+  if (adminGrant.some((r) => r.name === "admin")) {
+    return { status: "ok", info: { userId: user.id, email } };
+  }
+  return { status: "unauthorized", email };
 }
 
 export async function requireAdmin(

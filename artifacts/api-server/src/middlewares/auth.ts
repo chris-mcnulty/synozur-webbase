@@ -1,11 +1,25 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
-import { eq, inArray } from "drizzle-orm";
-import { db, usersTable, rolesTable, userRoles, type RoleName, ROLE_NAMES } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  rolesTable,
+  userRoles,
+  type RoleName,
+  ROLE_NAMES,
+} from "@workspace/db";
+import {
+  clearSessionCookie,
+  destroySession,
+  readSessionToken,
+  resolveSession,
+  setSessionCookie,
+} from "../lib/sessions";
 
 export type AuthedUser = {
   id: string;
-  clerkUserId: string;
+  externalSubject: string | null;
+  authProvider: string | null;
   email: string | null;
   displayName: string | null;
   avatarUrl: string | null;
@@ -13,121 +27,68 @@ export type AuthedUser = {
   roles: RoleName[];
 };
 
-async function loadOrCreateUser(clerkUserId: string): Promise<AuthedUser> {
-  const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkUserId, clerkUserId),
+export async function loadUserById(userId: string): Promise<AuthedUser | null> {
+  const userRow = await db.query.usersTable.findFirst({
+    where: eq(usersTable.id, userId),
   });
-
-  let userId: string;
-  let userRow: typeof usersTable.$inferSelect;
-
-  if (existing) {
-    userRow = existing;
-    userId = existing.id;
-  } else {
-    let email: string | null = null;
-    let displayName: string | null = null;
-    let avatarUrl: string | null = null;
-    try {
-      const clerkUser = await clerkClient.users.getUser(clerkUserId);
-      email =
-        clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-          ?.emailAddress ??
-        clerkUser.emailAddresses[0]?.emailAddress ??
-        null;
-      const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim();
-      displayName = fullName || clerkUser.username || null;
-      avatarUrl = clerkUser.imageUrl ?? null;
-    } catch {
-      // best-effort: clerk API may be unreachable in dev
-    }
-
-    const [inserted] = await db
-      .insert(usersTable)
-      .values({ clerkUserId, email, displayName, avatarUrl })
-      .returning();
-    userRow = inserted;
-    userId = inserted.id;
-
-    // Bootstrap: first user becomes admin.
-    const userCount = await db.$count(usersTable);
-    if (userCount === 1) {
-      const adminRole = await db.query.rolesTable.findFirst({
-        where: eq(rolesTable.name, "admin"),
-      });
-      if (adminRole) {
-        await db
-          .insert(userRoles)
-          .values({ userId, roleId: adminRole.id })
-          .onConflictDoNothing();
-      }
-    }
-  }
-
-  // Auto-restore admin role for any email listed in ADMIN_EMAILS.
-  // This survives DB resets: the next sign-in re-grants the role automatically.
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
-  const userEmail = userRow.email?.toLowerCase() ?? "";
-  if (adminEmails.length > 0 && userEmail && adminEmails.includes(userEmail)) {
-    const adminRole = await db.query.rolesTable.findFirst({
-      where: eq(rolesTable.name, "admin"),
-    });
-    if (adminRole) {
-      await db
-        .insert(userRoles)
-        .values({ userId: userRow.id, roleId: adminRole.id })
-        .onConflictDoNothing();
-    }
-  }
-
+  if (!userRow) return null;
   const roleRows = await db
     .select({ name: rolesTable.name })
     .from(userRoles)
     .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
     .where(eq(userRoles.userId, userId));
-
   return {
     id: userRow.id,
-    clerkUserId: userRow.clerkUserId,
+    externalSubject: userRow.externalSubject,
+    authProvider: userRow.authProvider,
     email: userRow.email,
     displayName: userRow.displayName,
     avatarUrl: userRow.avatarUrl,
     bio: userRow.bio,
-    roles: roleRows.map((r) => r.name).filter((n): n is RoleName => ROLE_NAMES.includes(n as RoleName)),
+    roles: roleRows
+      .map((r) => r.name)
+      .filter((n): n is RoleName => ROLE_NAMES.includes(n as RoleName)),
   };
 }
 
-export const requireAuth: RequestHandler = async (req, res, next) => {
+// `attachUserIfPresent` resolves the cookie-bound session and hydrates
+// `req.authedUser` if any. Mounted globally; downstream handlers decide
+// whether to require auth.
+//
+// Two pieces of housekeeping happen here so callers don't have to think about
+// session lifecycle:
+//   1. If the session row was renewed by `resolveSession`, we re-issue the
+//      cookie so the browser's own expiry stays in sync with the row's.
+//   2. If a session resolves but the referenced user is gone (deleted, or
+//      the auth provider link was rotated), we destroy the session row and
+//      clear the cookie so we don't repeatedly look up a phantom user.
+export const attachUserIfPresent: RequestHandler = async (req, res, next) => {
   try {
-    const auth = getAuth(req);
-    const clerkUserId = auth?.userId;
-    if (!clerkUserId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
+    const token = readSessionToken(req);
+    if (!token) return next();
+    const session = await resolveSession(token);
+    if (!session) return next();
+    const user = await loadUserById(session.userId);
+    if (!user) {
+      await destroySession(token);
+      clearSessionCookie(req, res);
+      return next();
     }
-    if (!req.authedUser) {
-      req.authedUser = await loadOrCreateUser(clerkUserId);
+    req.session = session;
+    req.authedUser = user;
+    if (session.renewed) {
+      setSessionCookie(req, res, token, session.expiresAt);
     }
-    next();
   } catch (err) {
-    req.log.error({ err }, "requireAuth failed");
-    res.status(500).json({ error: "Internal authentication error" });
+    req.log?.warn({ err }, "attachUserIfPresent failed");
   }
+  next();
 };
 
-/** Optional auth: attaches authedUser if signed in, otherwise continues. */
-export const attachUserIfPresent: RequestHandler = async (req, _res, next) => {
-  try {
-    const auth = getAuth(req);
-    const clerkUserId = auth?.userId;
-    if (clerkUserId && !req.authedUser) {
-      req.authedUser = await loadOrCreateUser(clerkUserId);
-    }
-  } catch (err) {
-    req.log.warn({ err }, "attachUserIfPresent failed");
+export const requireAuth: RequestHandler = async (req, res, next) => {
+  if (!req.authedUser) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   next();
 };

@@ -88,7 +88,6 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@clerk/react": "^6.4.2",
     "@tiptap/core": "^3.22.4",
     "@uppy/aws-s3": "^5.1.0",
     "@uppy/core": "^5.2.0",

@@ -63,7 +63,7 @@ function UserRow({
   return (
     <Card className="p-4 flex items-center gap-4 flex-wrap" data-testid={`user-row-${user.id}`}>
       <div className="min-w-0 flex-1">
-        <div className="font-medium">{user.displayName ?? user.email ?? user.clerkUserId}</div>
+        <div className="font-medium">{user.displayName ?? user.email ?? user.externalSubject ?? user.id}</div>
         <div className="text-xs text-muted-foreground">{user.email}</div>
       </div>
       <div className="flex items-center gap-2">

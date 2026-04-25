@@ -41,3 +41,26 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
 export type Role = typeof rolesTable.$inferSelect;
 export type InsertRole = typeof rolesTable.$inferInsert;
 export type UserRole = typeof userRoles.$inferSelect;
+
+// #126: admin-managed mapping from Entra security-group object-ids to CMS
+// roles. On every Entra-backed sign-in we resolve the user's group set, look
+// up the active mappings, and reconcile `user_roles`. A row deletion does not
+// remove existing role grants — only an absent group on next sign-in does.
+export const entraGroupRoleMappingsTable = pgTable(
+  "entra_group_role_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entraGroupId: text("entra_group_id").notNull(),
+    entraGroupName: text("entra_group_name"),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => rolesTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("entra_group_role_unique").on(t.entraGroupId, t.roleId),
+  ],
+);
+
+export type EntraGroupRoleMapping = typeof entraGroupRoleMappingsTable.$inferSelect;
+export type InsertEntraGroupRoleMapping = typeof entraGroupRoleMappingsTable.$inferInsert;

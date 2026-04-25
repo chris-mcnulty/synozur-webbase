@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { and, desc, eq, ilike, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 import {
   SubmitContactBody,
   SubmitSubscribeBody,
@@ -13,15 +14,79 @@ import {
   RetryFailedAdminFormSubmissionsQueryParams,
   RetryFailedAdminFormSubmissionsResponse,
 } from "@workspace/api-zod";
-import { db, formSubmissionsTable, type FormSubmission } from "@workspace/db";
+import { db, formSubmissionsTable, siteSettingsTable, type FormSubmission } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { logger } from "../lib/logger";
 import { sendVisitorConfirmation, sendInternalNotification } from "../lib/email";
 import { verifyTurnstile } from "../lib/turnstile";
+import { enqueueContactSubmission, type FormType } from "../lib/hubspotSync";
 
 const router: IRouter = Router();
 
 const WEBHOOK_URL = process.env["FORMS_WEBHOOK_URL"] ?? "";
+
+// #131: marketing-opt-in + first-touch attribution. The schemas regenerate
+// from openapi.yaml don't yet carry these fields, so we extend with passthrough
+// here. Older clients that don't supply them remain valid.
+const MarketingExtension = z.object({
+  marketingOptIn: z.boolean().nullish(),
+  utmSource: z.string().max(200).nullish(),
+  utmMedium: z.string().max(200).nullish(),
+  utmCampaign: z.string().max(200).nullish(),
+  utmTerm: z.string().max(200).nullish(),
+  utmContent: z.string().max(200).nullish(),
+  landingPage: z.string().max(2048).nullish(),
+  referrer: z.string().max(2048).nullish(),
+});
+
+const ContactBodyExt = SubmitContactBody.and(MarketingExtension);
+const SubscribeBodyExt = SubmitSubscribeBody.and(MarketingExtension);
+const StartBodyExt = SubmitStartBody.and(MarketingExtension);
+
+interface AttributionFields {
+  marketingOptIn: boolean;
+  utm: {
+    source: string | null;
+    medium: string | null;
+    campaign: string | null;
+    term: string | null;
+    content: string | null;
+    landingPage: string | null;
+    referrer: string | null;
+  };
+}
+
+async function resolveAttribution(
+  formType: FormType,
+  body: z.infer<typeof MarketingExtension>,
+): Promise<AttributionFields> {
+  // EU-default opt-out is implemented as a server-side default flip when no
+  // explicit choice was made by the client. In Phase 1 we use a single global
+  // `hubspotEuOptInDefault` flag in site settings; geo-based defaults are a
+  // follow-up once we add a geo lookup.
+  let optIn = body.marketingOptIn ?? null;
+  if (optIn === null) {
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, 1),
+    });
+    optIn = settings?.hubspotEuOptInDefault === true ? false : true;
+  }
+  // Newsletter subscribe is itself an explicit opt-in even if the client didn't
+  // toggle the flag — treat it as consent.
+  if (formType === "subscribe") optIn = true;
+  return {
+    marketingOptIn: optIn,
+    utm: {
+      source: body.utmSource ?? null,
+      medium: body.utmMedium ?? null,
+      campaign: body.utmCampaign ?? null,
+      term: body.utmTerm ?? null,
+      content: body.utmContent ?? null,
+      landingPage: body.landingPage ?? null,
+      referrer: body.referrer ?? null,
+    },
+  };
+}
 
 function clientIp(req: Request): string | null {
   const fwd = req.headers["x-forwarded-for"];
@@ -67,6 +132,7 @@ interface PersistArgs {
   payload: Record<string, unknown>;
   req: Request;
   webhook: ForwardResult;
+  attribution?: AttributionFields | null;
 }
 
 async function sendEmails(args: {
@@ -107,6 +173,7 @@ async function sendEmails(args: {
 }
 
 async function persist(args: PersistArgs): Promise<number> {
+  const attr = args.attribution;
   const [row] = await db
     .insert(formSubmissionsTable)
     .values({
@@ -119,6 +186,15 @@ async function persist(args: PersistArgs): Promise<number> {
       userAgent: userAgent(args.req),
       webhookStatus: args.webhook.status,
       webhookError: args.webhook.error,
+      marketingOptIn: attr?.marketingOptIn ?? null,
+      utmSource: attr?.utm.source ?? null,
+      utmMedium: attr?.utm.medium ?? null,
+      utmCampaign: attr?.utm.campaign ?? null,
+      utmTerm: attr?.utm.term ?? null,
+      utmContent: attr?.utm.content ?? null,
+      landingPage: attr?.utm.landingPage ?? null,
+      referrer: attr?.utm.referrer ?? null,
+      hubspotSyncStatus: null,
     })
     .returning({ id: formSubmissionsTable.id });
   return row!.id;
@@ -360,7 +436,7 @@ router.post(
 );
 
 router.post("/forms/contact", async (req, res): Promise<void> => {
-  const parsed = SubmitContactBody.safeParse(req.body);
+  const parsed = ContactBodyExt.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -375,7 +451,20 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
-  const { turnstileToken: _t, website: _w, ...payload } = data;
+  const {
+    turnstileToken: _t,
+    website: _w,
+    marketingOptIn: _m,
+    utmSource: _us,
+    utmMedium: _um,
+    utmCampaign: _uc,
+    utmTerm: _ut,
+    utmContent: _uct,
+    landingPage: _lp,
+    referrer: _ref,
+    ...payload
+  } = data;
+  const attribution = await resolveAttribution("contact", data);
   const webhook = await forwardToWebhook({ formType: "contact", ...payload });
   const id = await persist({
     formType: "contact",
@@ -385,6 +474,7 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     payload,
     req,
     webhook,
+    attribution,
   });
   void sendEmails({
     formType: "contact",
@@ -393,11 +483,21 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     name: payload.name,
     payload,
   });
+  void enqueueContactSubmission({
+    formType: "contact",
+    submissionId: id,
+    email: payload.email,
+    name: payload.name,
+    company: payload.company,
+    marketingOptIn: attribution.marketingOptIn,
+    payload,
+    utm: attribution.utm,
+  }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (contact)"));
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 
 router.post("/forms/subscribe", async (req, res): Promise<void> => {
-  const parsed = SubmitSubscribeBody.safeParse(req.body);
+  const parsed = SubscribeBodyExt.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -412,7 +512,20 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
-  const { turnstileToken: _t, website: _w, ...payload } = data;
+  const {
+    turnstileToken: _t,
+    website: _w,
+    marketingOptIn: _m,
+    utmSource: _us,
+    utmMedium: _um,
+    utmCampaign: _uc,
+    utmTerm: _ut,
+    utmContent: _uct,
+    landingPage: _lp,
+    referrer: _ref,
+    ...payload
+  } = data;
+  const attribution = await resolveAttribution("subscribe", data);
   const webhook = await forwardToWebhook({ formType: "subscribe", ...payload });
   const id = await persist({
     formType: "subscribe",
@@ -422,6 +535,7 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     payload,
     req,
     webhook,
+    attribution,
   });
   void sendEmails({
     formType: "subscribe",
@@ -430,11 +544,21 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     name: null,
     payload,
   });
+  void enqueueContactSubmission({
+    formType: "subscribe",
+    submissionId: id,
+    email: payload.email,
+    name: null,
+    company: null,
+    marketingOptIn: attribution.marketingOptIn,
+    payload,
+    utm: attribution.utm,
+  }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (subscribe)"));
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 
 router.post("/forms/start", async (req, res): Promise<void> => {
-  const parsed = SubmitStartBody.safeParse(req.body);
+  const parsed = StartBodyExt.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -449,7 +573,20 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
-  const { turnstileToken: _t, website: _w, ...payload } = data;
+  const {
+    turnstileToken: _t,
+    website: _w,
+    marketingOptIn: _m,
+    utmSource: _us,
+    utmMedium: _um,
+    utmCampaign: _uc,
+    utmTerm: _ut,
+    utmContent: _uct,
+    landingPage: _lp,
+    referrer: _ref,
+    ...payload
+  } = data;
+  const attribution = await resolveAttribution("start", data);
   const webhook = await forwardToWebhook({ formType: "start", ...payload });
   const id = await persist({
     formType: "start",
@@ -459,6 +596,7 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     payload,
     req,
     webhook,
+    attribution,
   });
   void sendEmails({
     formType: "start",
@@ -467,6 +605,16 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     name: payload.name,
     payload,
   });
+  void enqueueContactSubmission({
+    formType: "start",
+    submissionId: id,
+    email: payload.email,
+    name: payload.name,
+    company: payload.company,
+    marketingOptIn: attribution.marketingOptIn,
+    payload,
+    utm: attribution.utm,
+  }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (start)"));
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 

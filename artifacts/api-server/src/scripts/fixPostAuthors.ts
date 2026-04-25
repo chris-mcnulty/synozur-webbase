@@ -63,14 +63,16 @@ async function findOrCreateUser(
     return id;
   }
 
-  // Not found — create the account
-  const clerkPlaceholder = `synozur:author:${email.split("@")[0]}`;
+  // Not found — create the account. These rows are placeholders for imported
+  // author bylines and have no upstream identity yet; sign-in via Entra
+  // populates externalSubject/authProvider when the matching email signs in.
   const result = await db
     .insert(usersTable)
     .values({
       displayName,
       email,
-      clerkUserId: clerkPlaceholder,
+      authProvider: "imported",
+      externalSubject: `imported:${email.split("@")[0]}`,
     })
     .onConflictDoNothing()
     .returning({ id: usersTable.id });

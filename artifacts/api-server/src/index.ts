@@ -1,6 +1,10 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduledPublishWorker } from "./lib/scheduler";
+import { startHubspotWorker, stopHubspotWorker } from "./lib/hubspotSync";
+import { pruneExpiredSessions } from "./lib/sessions";
+import { pruneExpiredAuthStates } from "./lib/authStateStore";
+import { warnIfMisconfigured } from "./lib/entraOidc";
 
 const rawPort = process.env["PORT"];
 
@@ -25,10 +29,21 @@ const server = app.listen(port, (err) => {
 });
 
 const worker = startScheduledPublishWorker(logger);
+startHubspotWorker();
+warnIfMisconfigured();
+
+// Hourly GC: clean expired sessions + abandoned OAuth state rows.
+const sessionGc = setInterval(() => {
+  void pruneExpiredSessions();
+  void pruneExpiredAuthStates();
+}, 60 * 60 * 1000);
+sessionGc.unref();
 
 function shutdown(signal: string) {
   logger.info({ signal }, "Shutting down");
   worker.stop();
+  stopHubspotWorker();
+  clearInterval(sessionGc);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();
 }

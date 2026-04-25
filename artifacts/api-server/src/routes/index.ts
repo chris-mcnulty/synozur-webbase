@@ -33,6 +33,8 @@ import modelsRouter from "./models";
 import aboutContentRouter from "./aboutContent";
 import faqRouter from "./faq";
 import contentParentPagesRouter from "./contentParentPages";
+import entraMappingsRouter from "./entraMappings";
+import hubspotAdminRouter from "./hubspotAdmin";
 
 const router: IRouter = Router();
 
@@ -70,5 +72,7 @@ router.use(modelsRouter);
 router.use(aboutContentRouter);
 router.use(faqRouter);
 router.use(contentParentPagesRouter);
+router.use(entraMappingsRouter);
+router.use(hubspotAdminRouter);
 
 export default router;
