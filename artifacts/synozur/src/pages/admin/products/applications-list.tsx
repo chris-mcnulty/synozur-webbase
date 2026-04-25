@@ -1,4 +1,3 @@
-import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2, Star, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -193,7 +192,11 @@ export default function AdminApplicationsList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/applications/${a.slug}`}>
+                      <a
+                        href={`/applications/${a.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Button
                           variant="ghost"
                           size="icon"
@@ -201,7 +204,7 @@ export default function AdminApplicationsList() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                      </Link>
+                      </a>
                       {canWrite && (
                         <Button
                           variant="ghost"
