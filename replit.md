@@ -2,7 +2,7 @@
 
 ## Deployment Policy
 
-**Pre-release mode.** The site is under active development and not yet publicly launched. Production is kept in sync with development by suspending the deployed app and re-syncing the development database to production — not by maintaining content separately in both environments. Do not assume production content needs to be managed independently; all content entry happens in the development (Replit) environment and is promoted to production as a whole via re-sync.
+**Pre-release mode.** The site is under active development and not yet publicly launched. Production is used as a read-only reviewer preview — stakeholders can browse it but do not make content changes there. All content entry and database changes happen exclusively in the development (Replit) environment. Production is kept in sync by periodically suspending the deployed app and re-syncing the development database across, rather than maintaining content in two places.
 
 ## Overview
 
