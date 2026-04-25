@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
@@ -212,6 +212,39 @@ export default function Home() {
   const customVideoSrc = settings?.homeHeroVideoUrl
     ? resolveImageUrl(settings.homeHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
     : null;
+
+  const [videoReady, setVideoReady] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoReady && videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [videoReady]);
+
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
+    const schedule = ric ? ric.bind(window) : (cb: () => void) => setTimeout(cb, 200);
+    if (!("IntersectionObserver" in window)) {
+      schedule(() => setVideoReady(true));
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          schedule(() => setVideoReady(true));
+          observer.disconnect();
+        }
+      },
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="w-full">
       <Meta
@@ -223,11 +256,12 @@ export default function Home() {
       />
 
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
+      <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
           {settings?.homeHeroBackgroundType === "video" ? (
             <video
+              ref={videoRef}
               autoPlay
               muted
               loop
@@ -236,13 +270,15 @@ export default function Home() {
               className="w-full h-full object-cover"
               data-testid="video-home-hero-bg"
             >
-              {customVideoSrc ? (
-                <source src={customVideoSrc} />
-              ) : (
-                <>
-                  <source src={BUNDLED_HERO_VIDEO_WEBM} type="video/webm" />
-                  <source src={BUNDLED_HERO_VIDEO_MP4} type="video/mp4" />
-                </>
+              {videoReady && (
+                customVideoSrc ? (
+                  <source src={customVideoSrc} />
+                ) : (
+                  <>
+                    <source src={BUNDLED_HERO_VIDEO_WEBM} type="video/webm" />
+                    <source src={BUNDLED_HERO_VIDEO_MP4} type="video/mp4" />
+                  </>
+                )
               )}
               <img
                 src={heroBg}
