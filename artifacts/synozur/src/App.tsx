@@ -54,6 +54,7 @@ import EventForm from "@/pages/admin/people/event-form";
 import AssetsLibrary from "@/pages/admin/library/assets";
 import AdminCollateralList from "@/pages/admin/library/collateral-list";
 import CollateralEdit from "@/pages/admin/library/collateral-edit";
+import AdminCollateralAudit from "@/pages/admin/library/audit";
 import AdminCarouselPage from "@/pages/admin/library/carousel";
 import AdminVideosList from "@/pages/admin/library/videos-list";
 import VideoEdit from "@/pages/admin/library/video-edit";
@@ -195,6 +196,7 @@ function AdminRoutes() {
         <Route path="/library/collateral/:id/edit">
           {(params) => <CollateralEdit id={params.id} />}
         </Route>
+        <Route path="/library/audit" component={AdminCollateralAudit} />
         <Route path="/library/carousel" component={AdminCarouselPage} />
         <Route path="/library/videos" component={AdminVideosList} />
         <Route path="/library/videos/new">

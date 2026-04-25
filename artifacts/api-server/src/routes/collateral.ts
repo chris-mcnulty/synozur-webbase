@@ -1,7 +1,18 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, asc, desc, eq, isNull, ne, inArray, sql } from "drizzle-orm";
-import { db, collateralTable, COLLATERAL_TYPES } from "@workspace/db";
+import {
+  db,
+  collateralTable,
+  COLLATERAL_TYPES,
+  whitePapersTable,
+  caseStudiesTable,
+  modelsTable,
+  videosTable,
+  postsTable,
+  polarisEpisodesTable,
+  eventsTable,
+} from "@workspace/db";
 import {
   canonicalUrlForCollateral,
   isSyncedCollateralType,
@@ -335,6 +346,412 @@ function parseCmsCollateralSort(sort: string | undefined) {
 
   return clauses.length > 0 ? clauses : defaultOrder;
 }
+
+// ----- Audit ------------------------------------------------------------
+//
+// Admin-only diagnostic that scans the collateral table and source-of-truth
+// tables for consistency drift. Read-only; never mutates anything. Findings
+// are returned as a structured JSON document the audit page renders as
+// collapsible sections. Each entry carries enough context (id, slug, type)
+// for an editor to navigate to the offender and resolve it.
+//
+// white_papers can mirror to either `white_paper` or `ebook` because the
+// docType column in white_papers distinguishes the two at sync time.
+
+router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
+  const generatedAt = new Date().toISOString();
+
+  // Pull every collateral row (including hidden, excluding soft-deleted).
+  const collateralRows = await db
+    .select()
+    .from(collateralTable)
+    .where(isNull(collateralTable.deletedAt));
+
+  const totals = {
+    collateralRows: collateralRows.length,
+    syncedRows: collateralRows.filter((r) => r.sourceId).length,
+    standaloneRows: collateralRows.filter((r) => !r.sourceId).length,
+  };
+
+  // Check 1: URL drift — collateral.url should equal canonicalUrlFor(type, slug)
+  // unless the row is external (off-site link, e.g. an external event registration).
+  const urlDrift = collateralRows
+    .filter((r) => !r.external)
+    .filter((r) => r.url !== canonicalUrlForCollateral(r.type, r.slug))
+    .map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      type: r.type,
+      currentUrl: r.url,
+      expectedUrl: canonicalUrlForCollateral(r.type, r.slug),
+    }));
+
+  // Check 2: sourceId format drift — synced rows should have "<prefix>:<uuid>"
+  // shape, not a raw UUID or other format.
+  const SOURCE_ID_PATTERN = /^[a-z_]+:[0-9a-f-]+$/;
+  const sourceIdFormatDrift = collateralRows
+    .filter((r) => r.sourceId && !SOURCE_ID_PATTERN.test(r.sourceId))
+    .map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      type: r.type,
+      sourceId: r.sourceId!,
+    }));
+
+  // Check 3: type mismatch — sourceId prefix should map to a collateral.type
+  // that's in the expected set for that source table.
+  const PREFIX_TO_EXPECTED_TYPES: Record<string, string[]> = {
+    white_paper: ["white_paper", "ebook"],
+    case_study: ["case_study"],
+    model: ["model"],
+    video: ["video"],
+    post: ["insight"],
+    polaris_episode: ["podcast"],
+    event: ["event"],
+  };
+  const typeMismatch = collateralRows
+    .filter((r) => r.sourceId && SOURCE_ID_PATTERN.test(r.sourceId))
+    .map((r) => {
+      const [prefix] = r.sourceId!.split(":");
+      const expected = PREFIX_TO_EXPECTED_TYPES[prefix];
+      return { row: r, prefix, expected };
+    })
+    .filter(({ row, expected }) => expected && !expected.includes(row.type))
+    .map(({ row, prefix, expected }) => ({
+      id: row.id,
+      slug: row.slug,
+      type: row.type,
+      sourceId: row.sourceId!,
+      sourcePrefix: prefix,
+      expectedTypes: expected!,
+    }));
+
+  // Check 4: duplicate sourceId — multiple collateral rows pointing at the
+  // same source. The sync helper's findFirst will only update one of them,
+  // leaving the others stale.
+  const sourceIdCounts = new Map<string, typeof collateralRows>();
+  for (const r of collateralRows) {
+    if (!r.sourceId) continue;
+    const list = sourceIdCounts.get(r.sourceId) ?? [];
+    list.push(r);
+    sourceIdCounts.set(r.sourceId, list);
+  }
+  const duplicateSourceId = Array.from(sourceIdCounts.entries())
+    .filter(([, list]) => list.length > 1)
+    .map(([sourceId, list]) => ({
+      sourceId,
+      collateral: list.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        type: r.type,
+        active: r.active,
+      })),
+    }));
+
+  // Per-source-table cross-checks (Checks 5, 6, 7).
+  //
+  // For each source table we run three queries-worth of cross-references
+  // against `collateralRows`:
+  //   - orphanedSync: collateral rows whose sourceId points at a row that
+  //     doesn't exist (or is soft-deleted) in the source table
+  //   - missingMirror: published source rows with no active collateral mirror
+  //   - countMismatch: published-active source rows vs active collateral
+  //     mirrors of expected types
+
+  const orphanedSync: Array<{
+    id: string;
+    slug: string;
+    type: string;
+    sourceId: string;
+    reason: string;
+  }> = [];
+  const missingMirror: Record<
+    string,
+    Array<{ id: string; slug: string; title: string }>
+  > = {};
+  const countMismatch: Array<{
+    sourceTable: string;
+    publishedActive: number;
+    activeMirrors: number;
+    delta: number;
+  }> = [];
+
+  // Fetch source rows for each table. Each query selects the minimum we need.
+  const [whitePaperRows, caseStudyRows, modelRows, videoRows, postRows, polarisRows, eventRows] =
+    await Promise.all([
+      db
+        .select({
+          id: whitePapersTable.id,
+          slug: whitePapersTable.slug,
+          title: whitePapersTable.title,
+          status: whitePapersTable.status,
+          active: whitePapersTable.active,
+          deletedAt: whitePapersTable.deletedAt,
+        })
+        .from(whitePapersTable),
+      db
+        .select({
+          id: caseStudiesTable.id,
+          slug: caseStudiesTable.slug,
+          title: caseStudiesTable.title,
+          status: caseStudiesTable.status,
+          active: caseStudiesTable.active,
+          deletedAt: caseStudiesTable.deletedAt,
+        })
+        .from(caseStudiesTable),
+      db
+        .select({
+          id: modelsTable.id,
+          slug: modelsTable.slug,
+          title: modelsTable.title,
+          status: modelsTable.status,
+          active: modelsTable.active,
+          deletedAt: modelsTable.deletedAt,
+        })
+        .from(modelsTable),
+      db
+        .select({
+          id: videosTable.id,
+          slug: videosTable.slug,
+          title: videosTable.title,
+          status: videosTable.status,
+          active: videosTable.active,
+          deletedAt: videosTable.deletedAt,
+        })
+        .from(videosTable),
+      db
+        .select({
+          id: postsTable.id,
+          slug: postsTable.slug,
+          title: postsTable.title,
+          status: postsTable.status,
+          // Posts only sync to collateral when featured=true (see
+          // upsertCollateralFromPost). Audit checks must mirror this gate
+          // or every published post would falsely show up as missing.
+          featured: postsTable.featured,
+          deletedAt: postsTable.deletedAt,
+        })
+        .from(postsTable),
+      db
+        .select({
+          id: polarisEpisodesTable.id,
+          slug: polarisEpisodesTable.slug,
+          title: polarisEpisodesTable.title,
+          status: polarisEpisodesTable.status,
+          active: polarisEpisodesTable.active,
+          deletedAt: polarisEpisodesTable.deletedAt,
+        })
+        .from(polarisEpisodesTable),
+      db
+        .select({
+          id: eventsTable.id,
+          slug: eventsTable.slug,
+          title: eventsTable.title,
+          status: eventsTable.status,
+        })
+        .from(eventsTable),
+    ]);
+
+  // Build a sourceId -> source row index for orphan detection. The source's
+  // own id is namespaced by prefix to avoid collisions across tables.
+  const sourceIndex = new Map<string, { active: boolean }>();
+  const addToIndex = <T extends { id: unknown }>(
+    prefix: string,
+    rows: ReadonlyArray<T>,
+    isActive: (r: T) => boolean,
+  ) => {
+    for (const row of rows) {
+      sourceIndex.set(`${prefix}:${String(row.id)}`, { active: isActive(row) });
+    }
+  };
+  addToIndex(
+    "white_paper",
+    whitePaperRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  addToIndex(
+    "case_study",
+    caseStudyRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  addToIndex(
+    "model",
+    modelRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  addToIndex(
+    "video",
+    videoRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  addToIndex(
+    "post",
+    postRows,
+    // Match upsertCollateralFromPost's eligibility: featured + published
+    // + not deleted. An unfeatured post should drop out of collateral.
+    (r) => r.featured === true && r.status === "published" && !r.deletedAt,
+  );
+  addToIndex(
+    "polaris_episode",
+    polarisRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  // Events sync uses status !== "CANCELLED" as the active gate.
+  addToIndex("event", eventRows, (r) => r.status !== "CANCELLED");
+
+  // orphanedSync: collateral.sourceId is set but doesn't resolve to any row
+  for (const r of collateralRows) {
+    if (!r.sourceId || !SOURCE_ID_PATTERN.test(r.sourceId)) continue;
+    const hit = sourceIndex.get(r.sourceId);
+    if (!hit) {
+      orphanedSync.push({
+        id: r.id,
+        slug: r.slug,
+        type: r.type,
+        sourceId: r.sourceId,
+        reason: "source_row_missing",
+      });
+    } else if (!hit.active) {
+      // Row exists but is unpublished/inactive/deleted — the mirror should
+      // probably be inactive too. Sync handles this on edit, but if the row
+      // never gets re-edited, the mirror can stay live.
+      if (r.active) {
+        orphanedSync.push({
+          id: r.id,
+          slug: r.slug,
+          type: r.type,
+          sourceId: r.sourceId,
+          reason: "source_unpublished_but_mirror_active",
+        });
+      }
+    }
+  }
+
+  // missingMirror + countMismatch: for each source table, find published-active
+  // rows that don't have any active collateral mirror (matching expected types).
+  type SourceCheckRow = {
+    id: string;
+    slug: string;
+    title: string;
+    isPublishedActive: boolean;
+  };
+  const checkSourceTable = (
+    label: string,
+    prefix: string,
+    rows: SourceCheckRow[],
+    expectedTypes: string[],
+  ) => {
+    const published = rows.filter((r) => r.isPublishedActive);
+    // Track whether *any* mirror with this sourceId is active. The
+    // duplicateSourceId check separately reports the duplication; here we
+    // only want to flag a source row as "missing" when no active mirror
+    // exists for it — otherwise a stale inactive duplicate would mask the
+    // valid active one.
+    const hasActiveMirror = new Map<string, boolean>();
+    for (const r of collateralRows) {
+      if (!r.sourceId) continue;
+      if (!r.sourceId.startsWith(`${prefix}:`)) continue;
+      if (r.active) {
+        hasActiveMirror.set(r.sourceId, true);
+      } else if (!hasActiveMirror.has(r.sourceId)) {
+        hasActiveMirror.set(r.sourceId, false);
+      }
+    }
+    const missing = published
+      .filter((r) => !hasActiveMirror.get(`${prefix}:${r.id}`))
+      .map((r) => ({ id: r.id, slug: r.slug, title: r.title }));
+    if (missing.length > 0) missingMirror[label] = missing;
+
+    const activeMirrors = collateralRows.filter(
+      (r) =>
+        r.active &&
+        r.sourceId &&
+        r.sourceId.startsWith(`${prefix}:`) &&
+        expectedTypes.includes(r.type),
+    ).length;
+    if (activeMirrors !== published.length) {
+      countMismatch.push({
+        sourceTable: label,
+        publishedActive: published.length,
+        activeMirrors,
+        delta: activeMirrors - published.length,
+      });
+    }
+  };
+  checkSourceTable(
+    "white_papers",
+    "white_paper",
+    whitePaperRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      isPublishedActive: r.status === "published" && r.active === true && !r.deletedAt,
+    })),
+    ["white_paper", "ebook"],
+  );
+  checkSourceTable(
+    "case_studies",
+    "case_study",
+    caseStudyRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      isPublishedActive: r.status === "published" && r.active === true && !r.deletedAt,
+    })),
+    ["case_study"],
+  );
+  checkSourceTable(
+    "models",
+    "model",
+    modelRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      isPublishedActive: r.status === "published" && r.active === true && !r.deletedAt,
+    })),
+    ["model"],
+  );
+  checkSourceTable(
+    "videos",
+    "video",
+    videoRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      isPublishedActive: r.status === "published" && r.active === true && !r.deletedAt,
+    })),
+    ["video"],
+  );
+  checkSourceTable(
+    "posts",
+    "post",
+    postRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      // Posts opt into the library via the featured flag — only featured
+      // published posts get a collateral mirror, so only those are
+      // eligible to flag as missing.
+      isPublishedActive:
+        r.featured === true && r.status === "published" && !r.deletedAt,
+    })),
+    ["insight"],
+  );
+
+  res.json({
+    generatedAt,
+    totals,
+    findings: {
+      urlDrift,
+      sourceIdFormatDrift,
+      typeMismatch,
+      duplicateSourceId,
+      orphanedSync,
+      missingMirror,
+      countMismatch,
+    },
+  });
+});
 
 router.get("/cms/collateral/:id", ...readGuard, async (req, res) => {
   const row = await db.query.collateralTable.findFirst({
