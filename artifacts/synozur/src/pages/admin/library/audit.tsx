@@ -22,7 +22,7 @@ import { editorPathForSource } from "./_collateral-helpers";
 
 // Read-only diagnostic surface for the collateral library. Calls
 // /api/cms/collateral/audit which scans collateral and the source-of-truth
-// tables for drift, then renders findings as collapsible sections so an
+// tables for drift, then renders findings as sections so an
 // editor can see each offending row and click through to fix it.
 //
 // All findings are advisory — this page never mutates anything.
@@ -94,8 +94,30 @@ interface AuditReport {
   };
 }
 
+// Maps a source-table name (e.g. "white_papers") to the sourceId prefix
+// (e.g. "white_paper") used by collateral. Used to deep-link Missing-mirror
+// rows to the dedicated source editor via editorPathForSource.
+const SOURCE_TABLE_TO_PREFIX: Record<string, string> = {
+  white_papers: "white_paper",
+  case_studies: "case_study",
+  models: "model",
+  videos: "video",
+  posts: "post",
+  polaris_episodes: "polaris_episode",
+  events: "event",
+};
+
+// Honor the build-time base URL so deployments under a non-root path
+// (e.g. /app/) keep working. Mirrors the AdminGate.tsx convention.
+const BASE_PATH =
+  import.meta.env.BASE_URL === "/"
+    ? ""
+    : import.meta.env.BASE_URL.replace(/\/$/, "");
+
 async function fetchAudit(): Promise<AuditReport> {
-  const res = await fetch("/api/cms/collateral/audit", { credentials: "include" });
+  const res = await fetch(`${BASE_PATH}/api/cms/collateral/audit`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error(`Audit failed: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -262,7 +284,7 @@ export default function AdminCollateralAudit() {
 
           <FindingSection
             title="sourceId format drift"
-            description='collateral.sourceId should be "<prefix>:<uuid>" for synced rows. Raw UUIDs or other formats indicate a sync that pre-dates the current format. Re-save at the source to fix.'
+            description='collateral.sourceId should be "<prefix>:<id>" for synced rows. Raw IDs or other formats indicate a sync that pre-dates the current format. Re-save at the source to fix. Note that some sources use UUIDs and others use numeric IDs (e.g. event:24).'
             count={auditQ.data.findings.sourceIdFormatDrift.length}
           >
             <Table>
@@ -402,23 +424,40 @@ export default function AdminCollateralAudit() {
           >
             <div className="space-y-3">
               {Object.entries(auditQ.data.findings.missingMirror).map(
-                ([sourceTable, rows]) => (
-                  <div key={sourceTable} className="text-sm">
-                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {sourceTable} ({rows.length})
+                ([sourceTable, rows]) => {
+                  const prefix = SOURCE_TABLE_TO_PREFIX[sourceTable];
+                  return (
+                    <div key={sourceTable} className="text-sm">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        {sourceTable} ({rows.length})
+                      </div>
+                      <ul className="ml-4 mt-1 space-y-1">
+                        {rows.map((r) => {
+                          const editorPath = prefix
+                            ? editorPathForSource(`${prefix}:${r.id}`)
+                            : null;
+                          return (
+                            <li key={r.id} className="text-xs">
+                              {editorPath ? (
+                                <Link href={editorPath}>
+                                  <a className="inline-flex items-center gap-1 font-mono text-primary hover:underline">
+                                    <Pencil className="h-3 w-3" />
+                                    {r.slug}
+                                  </a>
+                                </Link>
+                              ) : (
+                                <span className="font-mono">{r.slug}</span>
+                              )}
+                              <span className="ml-2 text-muted-foreground">
+                                — {r.title}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
-                    <ul className="ml-4 mt-1 space-y-1">
-                      {rows.map((r) => (
-                        <li key={r.id} className="text-xs">
-                          <span className="font-mono">{r.slug}</span>
-                          <span className="ml-2 text-muted-foreground">
-                            — {r.title}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ),
+                  );
+                },
               )}
             </div>
           </FindingSection>

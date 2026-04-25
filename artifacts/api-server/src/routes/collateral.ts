@@ -525,6 +525,10 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
           slug: postsTable.slug,
           title: postsTable.title,
           status: postsTable.status,
+          // Posts only sync to collateral when featured=true (see
+          // upsertCollateralFromPost). Audit checks must mirror this gate
+          // or every published post would falsely show up as missing.
+          featured: postsTable.featured,
           deletedAt: postsTable.deletedAt,
         })
         .from(postsTable),
@@ -533,6 +537,9 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
           id: polarisEpisodesTable.id,
           slug: polarisEpisodesTable.slug,
           title: polarisEpisodesTable.title,
+          status: polarisEpisodesTable.status,
+          active: polarisEpisodesTable.active,
+          deletedAt: polarisEpisodesTable.deletedAt,
         })
         .from(polarisEpisodesTable),
       db
@@ -580,10 +587,17 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
   addToIndex(
     "post",
     postRows,
-    (r) => r.status === "published" && !r.deletedAt,
+    // Match upsertCollateralFromPost's eligibility: featured + published
+    // + not deleted. An unfeatured post should drop out of collateral.
+    (r) => r.featured === true && r.status === "published" && !r.deletedAt,
   );
-  addToIndex("polaris_episode", polarisRows, () => true);
-  addToIndex("event", eventRows, () => true);
+  addToIndex(
+    "polaris_episode",
+    polarisRows,
+    (r) => r.status === "published" && r.active === true && !r.deletedAt,
+  );
+  // Events sync uses status !== "CANCELLED" as the active gate.
+  addToIndex("event", eventRows, (r) => r.status !== "CANCELLED");
 
   // orphanedSync: collateral.sourceId is set but doesn't resolve to any row
   for (const r of collateralRows) {
@@ -628,17 +642,23 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
     expectedTypes: string[],
   ) => {
     const published = rows.filter((r) => r.isPublishedActive);
-    const mirrorIndex = new Map<string, (typeof collateralRows)[number]>();
+    // Track whether *any* mirror with this sourceId is active. The
+    // duplicateSourceId check separately reports the duplication; here we
+    // only want to flag a source row as "missing" when no active mirror
+    // exists for it — otherwise a stale inactive duplicate would mask the
+    // valid active one.
+    const hasActiveMirror = new Map<string, boolean>();
     for (const r of collateralRows) {
       if (!r.sourceId) continue;
       if (!r.sourceId.startsWith(`${prefix}:`)) continue;
-      mirrorIndex.set(r.sourceId, r);
+      if (r.active) {
+        hasActiveMirror.set(r.sourceId, true);
+      } else if (!hasActiveMirror.has(r.sourceId)) {
+        hasActiveMirror.set(r.sourceId, false);
+      }
     }
     const missing = published
-      .filter((r) => {
-        const mirror = mirrorIndex.get(`${prefix}:${r.id}`);
-        return !mirror || !mirror.active;
-      })
+      .filter((r) => !hasActiveMirror.get(`${prefix}:${r.id}`))
       .map((r) => ({ id: r.id, slug: r.slug, title: r.title }));
     if (missing.length > 0) missingMirror[label] = missing;
 
@@ -709,7 +729,11 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
       id: r.id,
       slug: r.slug,
       title: r.title,
-      isPublishedActive: r.status === "published" && !r.deletedAt,
+      // Posts opt into the library via the featured flag — only featured
+      // published posts get a collateral mirror, so only those are
+      // eligible to flag as missing.
+      isPublishedActive:
+        r.featured === true && r.status === "published" && !r.deletedAt,
     })),
     ["insight"],
   );
