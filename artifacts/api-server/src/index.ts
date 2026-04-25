@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduledPublishWorker } from "./lib/scheduler";
+import { startHubspotWorker, stopHubspotWorker } from "./lib/hubspotSync";
 
 const rawPort = process.env["PORT"];
 
@@ -25,10 +26,12 @@ const server = app.listen(port, (err) => {
 });
 
 const worker = startScheduledPublishWorker(logger);
+startHubspotWorker();
 
 function shutdown(signal: string) {
   logger.info({ signal }, "Shutting down");
   worker.stop();
+  stopHubspotWorker();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();
 }

@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { ThemeProvider } from "@/context/theme";
+import { captureAttributionOnLoad } from "@/lib/attribution";
 
 import Home from "@/pages/home";
 import About from "@/pages/about";
@@ -41,6 +43,8 @@ import PostAnalytics from "@/pages/admin/insights/post-analytics";
 import TaxonomyPage from "@/pages/admin/insights/taxonomy";
 import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/access/users";
+import EntraMappingsPage from "@/pages/admin/access/entra";
+import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
 import AdminServicesList from "@/pages/admin/products/services-list";
 import ServiceEdit from "@/pages/admin/products/service-edit";
 import ServiceMethodologiesPage from "@/pages/admin/products/service-methodologies";
@@ -313,7 +317,11 @@ function AdminRoutes() {
 
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />
+        <Route path="/access/entra" component={EntraMappingsPage} />
         <Route path="/users"><Redirect to="/access/users" /></Route>
+
+        {/* Marketing integrations */}
+        <Route path="/integrations/hubspot" component={HubspotAdminPage} />
 
         <Route component={NotFound} />
       </Switch>
@@ -380,6 +388,9 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    captureAttributionOnLoad();
+  }, []);
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>

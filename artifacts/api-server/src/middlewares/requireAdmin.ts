@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
+import { eq } from "drizzle-orm";
+import { db, usersTable, rolesTable, userRoles } from "@workspace/db";
 
 export interface AdminInfo {
   userId: string;
@@ -40,7 +42,27 @@ export async function getCurrentAdmin(
   // If no allow-list is configured, treat any signed-in user as authorized
   // (useful for first-run/dev). Otherwise enforce membership.
   if (allowed.length > 0 && !allowed.includes(email)) {
-    return { status: "unauthorized", email };
+    // #126: an Entra-mapped admin role grants admin access even when the
+    // ADMIN_EMAILS allow-list excludes the user — group-managed authority
+    // is the canonical signal once Entra is wired in.
+    const adminGrant = await db
+      .select({ id: userRoles.userId })
+      .from(userRoles)
+      .innerJoin(usersTable, eq(userRoles.userId, usersTable.id))
+      .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
+      .where(eq(usersTable.clerkUserId, userId))
+      .limit(1);
+    const hasAdminRole = adminGrant.length > 0
+      && (await db
+          .select({ name: rolesTable.name })
+          .from(userRoles)
+          .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
+          .innerJoin(usersTable, eq(userRoles.userId, usersTable.id))
+          .where(eq(usersTable.clerkUserId, userId))
+        ).some((r) => r.name === "admin");
+    if (!hasAdminRole) {
+      return { status: "unauthorized", email };
+    }
   }
   return { status: "ok", info: { userId, email } };
 }

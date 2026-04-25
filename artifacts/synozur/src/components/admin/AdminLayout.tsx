@@ -138,6 +138,7 @@ const SECTIONS: NavSection[] = [
       { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
       { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
       { href: "/marketing/seo-audit", label: "SEO Audit", icon: FileSearch, capability: "content.moderate", testId: "nav-admin-marketing-seo-audit" },
+      { href: "/integrations/hubspot", label: "HubSpot", icon: Network, capability: "site.manage", testId: "nav-admin-hubspot" },
     ],
   },
   {
@@ -146,6 +147,7 @@ const SECTIONS: NavSection[] = [
     icon: ShieldCheck,
     items: [
       { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+      { href: "/access/entra", label: "Entra Mappings", icon: ShieldCheck, capability: "users.manage", testId: "nav-admin-entra" },
     ],
   },
   {

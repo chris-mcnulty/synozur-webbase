@@ -16,6 +16,20 @@ import type {
   TeamMemberInput,
   RetryFailedSubmissionsResult,
 } from "@workspace/api-zod/types";
+import { attributionPayload, type AttributionPayload } from "./attribution";
+
+// #131: enrich any form submission body with first-touch attribution + the
+// caller-supplied marketing opt-in flag. Server schemas accept these as
+// optional fields.
+type FormBodyExtension = AttributionPayload & { marketingOptIn?: boolean };
+
+function withAttribution<T extends object>(
+  body: T,
+  extras: { marketingOptIn?: boolean } = {},
+): T & FormBodyExtension {
+  const attr = attributionPayload();
+  return { ...body, ...attr, ...extras };
+}
 
 export interface SubmissionsQuery {
   formType?: string;
@@ -614,12 +628,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  submitContact: (body: ContactFormInput) =>
-    jsonFetch<FormSubmissionAck>(url("/forms/contact"), { method: "POST", body: JSON.stringify(body) }),
-  submitSubscribe: (body: SubscribeFormInput) =>
-    jsonFetch<FormSubmissionAck>(url("/forms/subscribe"), { method: "POST", body: JSON.stringify(body) }),
-  submitStart: (body: StartFormInput) =>
-    jsonFetch<FormSubmissionAck>(url("/forms/start"), { method: "POST", body: JSON.stringify(body) }),
+  submitContact: (body: ContactFormInput, opts: { marketingOptIn?: boolean } = {}) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/contact"), {
+      method: "POST",
+      body: JSON.stringify(withAttribution(body, opts)),
+    }),
+  submitSubscribe: (body: SubscribeFormInput, opts: { marketingOptIn?: boolean } = {}) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/subscribe"), {
+      method: "POST",
+      body: JSON.stringify(withAttribution(body, opts)),
+    }),
+  submitStart: (body: StartFormInput, opts: { marketingOptIn?: boolean } = {}) =>
+    jsonFetch<FormSubmissionAck>(url("/forms/start"), {
+      method: "POST",
+      body: JSON.stringify(withAttribution(body, opts)),
+    }),
   listSubmissions: (q: SubmissionsQuery = {}) =>
     jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
   submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>

@@ -1,7 +1,8 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
-import { eq, inArray } from "drizzle-orm";
-import { db, usersTable, rolesTable, userRoles, type RoleName, ROLE_NAMES } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db, usersTable, rolesTable, userRoles, siteSettingsTable, type RoleName, ROLE_NAMES } from "@workspace/db";
+import { applyEntraSignIn } from "../lib/entra";
 
 export type AuthedUser = {
   id: string;
@@ -20,6 +21,12 @@ async function loadOrCreateUser(clerkUserId: string): Promise<AuthedUser> {
 
   let userId: string;
   let userRow: typeof usersTable.$inferSelect;
+  let clerkUser: Awaited<ReturnType<typeof clerkClient.users.getUser>> | null = null;
+  try {
+    clerkUser = await clerkClient.users.getUser(clerkUserId);
+  } catch {
+    // best-effort: clerk API may be unreachable in dev
+  }
 
   if (existing) {
     userRow = existing;
@@ -28,18 +35,15 @@ async function loadOrCreateUser(clerkUserId: string): Promise<AuthedUser> {
     let email: string | null = null;
     let displayName: string | null = null;
     let avatarUrl: string | null = null;
-    try {
-      const clerkUser = await clerkClient.users.getUser(clerkUserId);
+    if (clerkUser) {
       email =
-        clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+        clerkUser.emailAddresses.find((e) => e.id === clerkUser!.primaryEmailAddressId)
           ?.emailAddress ??
         clerkUser.emailAddresses[0]?.emailAddress ??
         null;
       const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim();
       displayName = fullName || clerkUser.username || null;
       avatarUrl = clerkUser.imageUrl ?? null;
-    } catch {
-      // best-effort: clerk API may be unreachable in dev
     }
 
     const [inserted] = await db
@@ -80,6 +84,31 @@ async function loadOrCreateUser(clerkUserId: string): Promise<AuthedUser> {
         .insert(userRoles)
         .values({ userId: userRow.id, roleId: adminRole.id })
         .onConflictDoNothing();
+    }
+  }
+
+  // #126: if the user authenticated via Microsoft/Entra, mirror the tenant +
+  // object id, refresh group claims via Graph, and reconcile roles against
+  // the entra_group_role_mappings table. This is purely additive — non-Entra
+  // sign-ins fall through with no DB writes.
+  if (clerkUser) {
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, 1),
+    });
+    if (!settings || settings.entraEnabled !== false) {
+      try {
+        await applyEntraSignIn(
+          clerkUserId,
+          userRow.id,
+          clerkUser as unknown as Parameters<typeof applyEntraSignIn>[2],
+          settings?.entraAdminGroupFallback ?? null,
+        );
+      } catch (err) {
+        // Failures here must never block sign-in. Log and continue — the user
+        // gets whatever roles they had before the failed reconciliation.
+        // eslint-disable-next-line no-console
+        console.warn("applyEntraSignIn failed", err);
+      }
     }
   }
 

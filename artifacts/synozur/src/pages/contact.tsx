@@ -25,6 +25,7 @@ const schema = z.object({
   email: z.string().email("Please share a valid email"),
   message: z.string().min(10, "A few sentences helps us route this well"),
   website: z.string().optional(),
+  marketingOptIn: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -49,14 +50,17 @@ export default function Contact() {
       return;
     }
     try {
-      await api.submitContact({
-        name: data.name,
-        company: data.company,
-        email: data.email,
-        message: data.message,
-        website: data.website ?? null,
-        turnstileToken,
-      });
+      await api.submitContact(
+        {
+          name: data.name,
+          company: data.company,
+          email: data.email,
+          message: data.message,
+          website: data.website ?? null,
+          turnstileToken,
+        },
+        { marketingOptIn: data.marketingOptIn === true },
+      );
       setSubmitted(true);
       void trackEvent("contact-form-submit", {
         company: data.company.slice(0, 120) || null,
@@ -194,6 +198,17 @@ export default function Contact() {
                   className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
                   {...register("website")}
                 />
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    {...register("marketingOptIn")}
+                  />
+                  <span>
+                    Keep me posted on Synozur insights and announcements. You
+                    can unsubscribe at any time.
+                  </span>
+                </label>
                 <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
                 {botCheckFailed && <BotCheckCallout />}
                 {submitError && (
