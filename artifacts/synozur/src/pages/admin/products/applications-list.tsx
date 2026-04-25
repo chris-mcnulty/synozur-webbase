@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Star, ExternalLink } from "lucide-react";
+import { useLocation } from "wouter";
+import { Pencil, Trash2, Star, ExternalLink, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -23,6 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function AdminApplicationsList() {
+  const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { access } = useAdminAccess();
   const { toast } = useToast();
@@ -88,6 +90,13 @@ export default function AdminApplicationsList() {
     <AdminLayout
       title="Applications"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Applications" }]}
+      actions={
+        canWrite ? (
+          <Button onClick={() => navigate("/applications/new")} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> New application
+          </Button>
+        ) : undefined
+      }
     >
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
@@ -202,9 +211,17 @@ export default function AdminApplicationsList() {
                           size="icon"
                           title="View on public site"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </a>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Edit application"
+                        onClick={() => navigate(`/applications/${a.id}/edit`)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {canWrite && (
                         <Button
                           variant="ghost"
