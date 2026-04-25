@@ -1,4 +1,3 @@
-import { clerkClient } from "@clerk/express";
 import { eq, and, inArray } from "drizzle-orm";
 import {
   db,
@@ -6,99 +5,26 @@ import {
   rolesTable,
   userRoles,
   entraGroupRoleMappingsTable,
+  siteSettingsTable,
   type RoleName,
   ROLE_NAMES,
 } from "@workspace/db";
 import { logger } from "./logger";
 
-// #126: Microsoft Entra SSO
+// #126: Microsoft Entra group reconciliation.
 //
-// Entra is wired in *through* Clerk: a Clerk Enterprise SSO connection routes
-// the @synozur.com email domain to the Entra tenant, and the OIDC token from
-// Microsoft is available to us as a Clerk OAuth external account on the user
-// record. This module owns:
-//   1. Detecting that a Clerk user signed in via Microsoft.
-//   2. Resolving the user's Entra group membership via Microsoft Graph.
-//   3. Reconciling our `user_roles` rows against the active group→role
-//      mappings — including *removing* roles when the group falls away, so
-//      Entra offboarding instantly removes CMS access on next sign-in.
-//
-// The integration is purely additive: with no Entra tenant configured, none
-// of this code path runs and the existing Clerk-only auth stays unchanged.
+// Identity now lands here from the native OIDC flow in `entraOidc.ts`, not
+// from Clerk. After the ID token is verified and the user row is upserted in
+// `routes/auth.ts`, we call `applyEntraSignIn` to:
+//   1. Mirror tenant + object id onto the user row (idempotent).
+//   2. Resolve the user's transitive group membership via Microsoft Graph
+//      (app-only credential — `ENTRA_APP_CLIENT_ID` + `ENTRA_APP_CLIENT_SECRET`
+//      with the `GroupMember.Read.All` application permission).
+//   3. Reconcile `user_roles` against the active `entra_group_role_mappings`
+//      rows — adding new grants and removing any role grant that was sourced
+//      from a group the user no longer belongs to.
 
-const MS_OAUTH_PROVIDERS = new Set(["oauth_microsoft", "saml_microsoft"]);
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
-
-export interface EntraSignInContext {
-  tenantId: string;
-  objectId: string;
-  groupIds: string[];
-}
-
-interface ClerkExternalAccount {
-  provider?: string;
-  externalId?: string;
-  identityProvider?: string;
-  publicMetadata?: Record<string, unknown> | null;
-}
-
-interface ClerkUserLike {
-  externalAccounts?: ClerkExternalAccount[];
-  publicMetadata?: Record<string, unknown> | null;
-  primaryEmailAddress?: { emailAddress?: string } | null;
-}
-
-export function detectEntraIdentity(
-  user: ClerkUserLike,
-): { tenantId: string; objectId: string } | null {
-  // Clerk surfaces enterprise SSO connections on the user's `externalAccounts`
-  // list; the tenant id is exposed via the connection's public metadata
-  // (configured in the Clerk dashboard at SSO setup time) and the object id
-  // arrives as `externalId` on the Microsoft account.
-  const accounts = user.externalAccounts ?? [];
-  for (const acct of accounts) {
-    const provider = acct.provider ?? acct.identityProvider ?? "";
-    if (!MS_OAUTH_PROVIDERS.has(provider)) continue;
-    const objectId = acct.externalId;
-    if (!objectId) continue;
-    const meta = (acct.publicMetadata ?? {}) as Record<string, unknown>;
-    const tenantId =
-      typeof meta["tenantId"] === "string" && (meta["tenantId"] as string).length > 0
-        ? (meta["tenantId"] as string)
-        : (process.env["ENTRA_TENANT_ID"] ?? "");
-    if (!tenantId) {
-      logger.warn(
-        { objectId },
-        "Entra account detected but no tenant id available — set ENTRA_TENANT_ID or attach tenantId to the Clerk SSO connection metadata",
-      );
-      continue;
-    }
-    return { tenantId, objectId };
-  }
-  return null;
-}
-
-// Microsoft Graph requires a token with the `User.Read` and `GroupMember.Read.All`
-// scopes (or equivalent). Clerk surfaces the user's OAuth access token via
-// `clerkClient.users.getUserOauthAccessToken(userId, providerId)`. When the
-// SSO connection grants those scopes, the same token can call Graph; when it
-// doesn't, we fall back to the app-only token below.
-async function getDelegatedGraphToken(clerkUserId: string): Promise<string | null> {
-  try {
-    const list = await clerkClient.users.getUserOauthAccessToken(
-      clerkUserId,
-      "oauth_microsoft",
-    );
-    // Clerk SDK has shifted shape across versions; handle both.
-    const tokens = (list as unknown as { data?: Array<{ token?: string }> }).data
-      ?? (list as unknown as Array<{ token?: string }>);
-    const first = Array.isArray(tokens) ? tokens[0] : undefined;
-    return first?.token ?? null;
-  } catch (err) {
-    logger.warn({ err }, "Clerk getUserOauthAccessToken(microsoft) failed");
-    return null;
-  }
-}
 
 interface AppTokenCache {
   token: string;
@@ -145,17 +71,10 @@ async function getAppOnlyGraphToken(tenantId: string): Promise<string | null> {
   }
 }
 
-async function fetchGroupIds(
-  token: string,
-  userIdentifier: string,
-  asAppOnly: boolean,
-): Promise<string[]> {
-  // Delegated calls hit /me; app-only calls hit /users/{id}.
-  const path = asAppOnly
-    ? `/users/${encodeURIComponent(userIdentifier)}/transitiveMemberOf?$select=id&$top=200`
-    : `/me/transitiveMemberOf?$select=id&$top=200`;
+async function fetchGroupIds(token: string, objectId: string): Promise<string[]> {
   const groupIds: string[] = [];
-  let next: string | null = `${GRAPH_BASE}${path}`;
+  let next: string | null =
+    `${GRAPH_BASE}/users/${encodeURIComponent(objectId)}/transitiveMemberOf?$select=id&$top=200`;
   while (next) {
     const res: Response = await fetch(next, {
       headers: { Authorization: `Bearer ${token}` },
@@ -183,23 +102,18 @@ async function fetchGroupIds(
 }
 
 export async function resolveEntraGroups(
-  clerkUserId: string,
-  identity: { tenantId: string; objectId: string },
+  tenantId: string,
+  objectId: string,
 ): Promise<string[]> {
-  const delegated = await getDelegatedGraphToken(clerkUserId);
-  if (delegated) {
-    const ids = await fetchGroupIds(delegated, identity.objectId, false);
-    if (ids.length > 0) return ids;
+  const token = await getAppOnlyGraphToken(tenantId);
+  if (!token) {
+    logger.info(
+      { objectId },
+      "Entra group resolution skipped — no app-only credentials configured (set ENTRA_APP_CLIENT_ID and ENTRA_APP_CLIENT_SECRET with GroupMember.Read.All)",
+    );
+    return [];
   }
-  const appOnly = await getAppOnlyGraphToken(identity.tenantId);
-  if (appOnly) {
-    return await fetchGroupIds(appOnly, identity.objectId, true);
-  }
-  logger.info(
-    { clerkUserId },
-    "Entra group resolution skipped — no delegated token and no app-only credentials configured",
-  );
-  return [];
+  return fetchGroupIds(token, objectId);
 }
 
 export async function reconcileEntraRoles(
@@ -207,7 +121,6 @@ export async function reconcileEntraRoles(
   groupIds: string[],
   fallbackAdminGroupId: string | null,
 ): Promise<{ added: RoleName[]; removed: RoleName[] }> {
-  // Read the active mapping table.
   const mappings = groupIds.length > 0
     ? await db
         .select({
@@ -233,11 +146,9 @@ export async function reconcileEntraRoles(
     targetRoleNames.add("admin");
   }
 
-  // Read current Entra-derived role grants on this user. We tag Entra-managed
-  // grants by inserting through this same code path; to make removal safe we
-  // only ever remove role grants whose role currently maps from *some* Entra
-  // group in the mapping table. This way a user manually granted a role in
-  // /admin/access/users keeps it even if they have no Entra grant for it.
+  // Read all role-ids that are *currently* sourced from any Entra group, so
+  // we know which grants are safe to remove on offboarding without disturbing
+  // manually-granted roles in /admin/access/users.
   const allMappedRoleRows = await db
     .select({ roleId: entraGroupRoleMappingsTable.roleId, roleName: rolesTable.name })
     .from(entraGroupRoleMappingsTable)
@@ -287,40 +198,49 @@ export async function reconcileEntraRoles(
   return { added, removed };
 }
 
-export async function applyEntraSignIn(
-  clerkUserId: string,
-  userId: string,
-  clerkUser: ClerkUserLike,
-  fallbackAdminGroupId: string | null,
-): Promise<EntraSignInContext | null> {
-  const identity = detectEntraIdentity(clerkUser);
-  if (!identity) return null;
+export interface ApplyEntraSignInArgs {
+  userId: string;
+  tenantId: string | null;
+  objectId: string | null;
+}
+
+export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void> {
+  if (!args.tenantId || !args.objectId) return;
+
   let groups: string[] = [];
   try {
-    groups = await resolveEntraGroups(clerkUserId, identity);
+    groups = await resolveEntraGroups(args.tenantId, args.objectId);
   } catch (err) {
-    logger.warn({ err, clerkUserId }, "Entra group resolution threw");
+    logger.warn({ err, userId: args.userId }, "Entra group resolution threw");
   }
 
   await db
     .update(usersTable)
     .set({
-      entraTenantId: identity.tenantId,
-      entraObjectId: identity.objectId,
+      entraTenantId: args.tenantId,
+      entraObjectId: args.objectId,
       entraGroupClaims: groups,
       entraGroupsRefreshedAt: new Date(),
       lastSsoProvider: "entra",
     })
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.id, args.userId));
+
+  const settings = await db.query.siteSettingsTable.findFirst({
+    where: eq(siteSettingsTable.id, 1),
+  });
+  if (settings && settings.entraEnabled === false) return;
 
   try {
-    const result = await reconcileEntraRoles(userId, groups, fallbackAdminGroupId);
+    const result = await reconcileEntraRoles(
+      args.userId,
+      groups,
+      settings?.entraAdminGroupFallback ?? null,
+    );
     if (result.added.length > 0 || result.removed.length > 0) {
       logger.info(
         {
-          clerkUserId,
-          userId,
-          objectId: identity.objectId,
+          userId: args.userId,
+          objectId: args.objectId,
           added: result.added,
           removed: result.removed,
         },
@@ -328,8 +248,6 @@ export async function applyEntraSignIn(
       );
     }
   } catch (err) {
-    logger.warn({ err, userId }, "Entra role reconciliation failed");
+    logger.warn({ err, userId: args.userId }, "Entra role reconciliation failed");
   }
-
-  return { ...identity, groupIds: groups };
 }

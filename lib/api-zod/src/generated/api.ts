@@ -19,7 +19,8 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetCurrentUserResponse = zod.object({
   id: zod.string().uuid(),
-  clerkUserId: zod.string(),
+  externalSubject: zod.string().nullish(),
+  authProvider: zod.string().nullish(),
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
@@ -755,7 +756,8 @@ export const ModerateCmsCommentResponse = zod.object({
 
 export const ListCmsUsersResponseItem = zod.object({
   id: zod.string().uuid(),
-  clerkUserId: zod.string(),
+  externalSubject: zod.string().nullish(),
+  authProvider: zod.string().nullish(),
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
@@ -774,7 +776,8 @@ export const SetCmsUserRolesBody = zod.object({
 
 export const SetCmsUserRolesResponse = zod.object({
   id: zod.string().uuid(),
-  clerkUserId: zod.string(),
+  externalSubject: zod.string().nullish(),
+  authProvider: zod.string().nullish(),
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),

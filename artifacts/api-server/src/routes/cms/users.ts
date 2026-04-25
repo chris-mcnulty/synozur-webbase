@@ -33,7 +33,8 @@ router.get(
     res.json(
       users.map((u) => ({
         id: u.id,
-        clerkUserId: u.clerkUserId,
+        externalSubject: u.externalSubject,
+        authProvider: u.authProvider,
         email: u.email,
         displayName: u.displayName,
         avatarUrl: u.avatarUrl,
@@ -89,7 +90,8 @@ router.put(
 
     res.json({
       id: user.id,
-      clerkUserId: user.clerkUserId,
+      externalSubject: user.externalSubject,
+      authProvider: user.authProvider,
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,

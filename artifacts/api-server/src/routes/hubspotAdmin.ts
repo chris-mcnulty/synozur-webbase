@@ -29,8 +29,16 @@ router.get("/admin/integrations/hubspot/status", requireAdmin, async (_req, res)
     .from(hubspotSyncEventsTable)
     .orderBy(desc(hubspotSyncEventsTable.createdAt))
     .limit(25);
+  // Discriminate the token source so admins can tell at a glance whether
+  // we're reading from Replit Connections or a static env var.
+  const tokenSource = process.env["REPLIT_CONNECTORS_HOSTNAME"]
+    ? "replit-connections"
+    : process.env["HUBSPOT_ACCESS_TOKEN"]
+      ? "env"
+      : "none";
   res.json({
     configured,
+    tokenSource,
     enabled: settings?.hubspotEnabled === true,
     portalId: process.env["HUBSPOT_PORTAL_ID"] ?? null,
     timelineAppId: settings?.hubspotTimelineAppId ?? null,

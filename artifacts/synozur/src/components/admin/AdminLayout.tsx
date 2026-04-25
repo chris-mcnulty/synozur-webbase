@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk } from "@clerk/react";
+import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
 import {
   LayoutDashboard,
@@ -188,7 +188,7 @@ export function AdminLayout({
   actions?: ReactNode;
 }) {
   const [location, navigate] = useLocation();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
   const { access } = useAdminAccess();
   const { theme } = useTheme();
   const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -438,7 +438,7 @@ export function AdminLayout({
               variant="ghost"
               size="sm"
               className="mt-1 w-full justify-start px-1"
-              onClick={() => signOut({ redirectUrl: `${baseUrl || ""}/` })}
+              onClick={() => { void signOut(); }}
               data-testid="button-sign-out"
             >
               <LogOut className="h-3.5 w-3.5 mr-2" /> Sign out

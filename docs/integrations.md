@@ -7,12 +7,29 @@ Configuration runbook for the third-party integrations wired into the api-server
 Lead-capture sync. Every contact / subscribe / start form submission upserts a
 HubSpot Contact and emits a custom timeline event.
 
-### Environment
+### Access-token sources (in priority order)
+
+1. **Replit Connections** — when `REPLIT_CONNECTORS_HOSTNAME` is set in the
+   environment (Replit injects this automatically when a HubSpot connector is
+   added in the Connections UI), the api-server fetches a fresh OAuth token
+   from `https://${REPLIT_CONNECTORS_HOSTNAME}/api/v2/connection?include_secrets=true&connector_names=hubspot`
+   on demand. Tokens are cached until shortly before expiry. Auth header is
+   sourced from `WEB_REPL_RENEWAL` or `REPL_IDENTITY` (whichever Replit
+   provides for the deployment). This is the recommended production path —
+   token rotation, scopes, and per-environment scoping are all managed in the
+   Replit UI.
+2. **Static env var** — `HUBSPOT_ACCESS_TOKEN` (private-app token) is used as
+   a fallback for self-hosted/local dev or any deployment without Replit
+   Connections.
+
+The `/admin/integrations/hubspot` page surfaces the active source so an
+operator can tell at a glance which path is in use.
+
+### Other env
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `HUBSPOT_ACCESS_TOKEN` | yes (to sync) | Private-app access token. Scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.schemas.contacts.read`, `timeline`. |
-| `HUBSPOT_PORTAL_ID` | yes (display) | Numeric portal id. Surfaced on `/admin/integrations/hubspot`. |
+| `HUBSPOT_PORTAL_ID` | display only | Numeric portal id. Surfaced on the admin page. |
 
 ### Runtime configuration
 
@@ -26,10 +43,8 @@ All policy knobs live in `site_settings` and are editable at
   marked `skipped`.
 - `hubspotEuOptInDefault` — when no explicit `marketingOptIn` is supplied with
   the form payload, default to `false` (opt-out). Otherwise default to `true`.
-- `hubspotFormToggles` — per-form-type enable map, e.g.
-  `{ "contact": true, "subscribe": true, "start": false }`.
-- `hubspotLifecycleMappings` — per-form-type lifecycle override, e.g.
-  `{ "contact": "lead", "subscribe": "subscriber", "start": "marketingqualifiedlead" }`.
+- `hubspotFormToggles` — per-form-type enable map.
+- `hubspotLifecycleMappings` — per-form-type lifecycle override.
 
 ### Custom HubSpot properties (one-time setup)
 
@@ -44,13 +59,9 @@ under Settings → Properties → Contact properties:
 Create the following event templates against the HubSpot Public App whose id
 goes in `hubspotTimelineAppId`:
 
-- `synozur_form_submitted` — emitted on contact-form submissions
-- `synozur_newsletter_subscribed` — emitted on subscribe submissions
-- `synozur_get_started_submitted` — emitted on Get Started submissions
-
-Each template should accept the tokens emitted by `enqueueContactSubmission`:
-`form_type`, `utm_source`, `utm_medium`, `utm_campaign`, `landing_page`,
-`marketing_opt_in`.
+- `synozur_form_submitted`
+- `synozur_newsletter_subscribed`
+- `synozur_get_started_submitted`
 
 ### Operations
 
@@ -63,29 +74,48 @@ The worker auto-runs every 30s in-process; manual drain is for triage only.
 
 ---
 
-## Microsoft Entra SSO (#126)
+## Microsoft Entra SSO (#126) — native OIDC
 
-Employees and admins authenticate with their Synozur Entra identity. Routed
-through Clerk's Enterprise SSO connection so the public sign-in surface stays
-unchanged; group membership is read off Microsoft Graph and reconciled against
-the CMS role table on every sign-in.
+Employees and admins authenticate with their Synozur Entra identity through a
+native OIDC flow (no third-party identity provider). The flow:
+
+1. **`/api/auth/sign-in`** — issues a `state`, PKCE challenge, and `nonce`,
+   persists them in `auth_pending_states`, and 302s the browser to Entra's
+   authorize endpoint.
+2. **`/api/auth/callback`** — exchanges the auth code for tokens, validates
+   the ID token against the tenant JWKS (via `jose`), upserts the user row,
+   reconciles role grants from group membership, mints a session row, and
+   sets the `sid` HttpOnly cookie.
+3. **`/api/auth/sign-out`** — destroys the local session and returns a
+   redirect URL to Entra's RP-initiated logout endpoint.
+4. **`/api/auth/me`** — returns the current user.
+5. **`/api/auth/session`** — `{ signedIn, user }` probe, never 401s.
+
+### Entra app registration (one-time setup)
+
+1. **Microsoft Entra admin center → App registrations → New registration.**
+2. Set redirect URI type to **Web** with the value of `AUTH_REDIRECT_URI`
+   (e.g. `https://synozur.com/api/auth/callback`).
+3. Under **API permissions**, add delegated permissions: `openid`, `profile`,
+   `email`, `offline_access`, `User.Read`. Grant admin consent.
+4. (Group reconciliation) Under **API permissions**, also add the application
+   permission `GroupMember.Read.All` and grant admin consent — this lets the
+   server resolve transitive group membership via app-only Graph tokens.
+5. Under **Certificates & secrets**, create a client secret if you registered
+   as a confidential web app. Public-client (PKCE-only) registrations don't
+   need a secret.
 
 ### Environment
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `ENTRA_TENANT_ID` | yes (or per-connection metadata) | Synozur tenant id. Required to mint app-only Graph tokens. |
-| `ENTRA_APP_CLIENT_ID` | optional | Entra app registration with `GroupMember.Read.All` (application permission). Used as fallback when the delegated SSO token doesn't carry the scope. |
-| `ENTRA_APP_CLIENT_SECRET` | optional | Paired with `ENTRA_APP_CLIENT_ID`. |
-
-### Clerk dashboard configuration
-
-1. Create an Enterprise SSO connection of type **Microsoft / Entra ID**.
-2. Bind the `synozur.com` email domain to the connection.
-3. Set the connection's **Public metadata** to `{ "tenantId": "<tenant id>" }`
-   so the api-server can pick it up without an env round-trip.
-4. (Optional) Request the `GroupMember.Read.All` delegated scope so the SSO
-   token can call Graph directly without app-only credentials.
+| `ENTRA_TENANT_ID` | yes | Tenant GUID, or `common` / `organizations` for multi-tenant. |
+| `ENTRA_APP_CLIENT_ID` | yes | App registration client id. |
+| `AUTH_REDIRECT_URI` | yes | Absolute callback URL — must match the app reg. |
+| `ENTRA_APP_CLIENT_SECRET` | conditional | Required when registered as a confidential web app, or to mint app-only Graph tokens. |
+| `AUTH_POST_LOGOUT_URI` | optional | Where Entra sends the browser after RP-initiated logout. |
+| `ADMIN_EMAILS` | optional | Comma-separated allow-list. Listed emails always resolve to admin (bootstrap). |
+| `ALLOW_DEV_LOGIN` | optional | Set to `1` in dev (and `NODE_ENV` !== `production`) to enable `POST /api/auth/dev-login` from localhost — sign in as any email without going through Entra. |
 
 ### Group → role mapping
 
@@ -99,8 +129,11 @@ are preserved.
 The `entraAdminGroupFallback` site setting, when set, grants `admin` to any
 member of that group regardless of the mapping table — useful for bootstrap.
 
-### Operations
+### Sessions
 
-- List mappings: `GET /api/admin/entra/group-mappings`
-- Create mapping: `POST /api/admin/entra/group-mappings`
-- Delete mapping: `DELETE /api/admin/entra/group-mappings/:id`
+- Backed by the `sessions` table; cookie carries only the (high-entropy)
+  session id, hashed at rest.
+- 8-hour rolling inactivity window; 30-day absolute cap.
+- Hourly GC purges expired rows and abandoned auth-pending state.
+- `pruneExpiredSessions()` and `destroyAllSessionsForUser(userId)` are
+  available for ops scripts.

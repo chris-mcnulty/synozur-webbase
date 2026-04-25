@@ -43,7 +43,8 @@ export const CommentStatus = {
 
 export interface CurrentUser {
   id: string;
-  clerkUserId: string;
+  externalSubject?: string | null;
+  authProvider?: string | null;
   email?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
@@ -53,7 +54,8 @@ export interface CurrentUser {
 
 export interface CmsUser {
   id: string;
-  clerkUserId: string;
+  externalSubject?: string | null;
+  authProvider?: string | null;
   email?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;

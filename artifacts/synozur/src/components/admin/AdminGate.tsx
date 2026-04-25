@@ -1,11 +1,11 @@
 import { ReactNode } from "react";
-import { useUser } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import type { CurrentUser } from "@workspace/api-client-react";
 import { computeCapabilities, type Capability } from "@/lib/capabilities";
+import { useAuth } from "@/context/auth";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -25,7 +25,7 @@ export function useAdminAccess(): {
   isLoading: boolean;
   signedIn: boolean;
 } {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useAuth();
 
   const { data: adminMe, isLoading: adminLoading } = useQuery({
     queryKey: ["admin-me"],
@@ -61,7 +61,7 @@ export function useAdminAccess(): {
   const isAllowListed = !!adminMe?.authorized;
   const capabilities = computeCapabilities(roles, isAllowListed);
   const access: AdminAccess = {
-    signedInEmail: adminMe?.email ?? cmsUser?.email ?? null,
+    signedInEmail: adminMe?.email ?? cmsUser?.email ?? user?.email ?? null,
     cmsUser: cmsUser ?? null,
     hasCmsRole: roles.length > 0,
     isAdmin,
@@ -74,8 +74,8 @@ export function useAdminAccess(): {
 }
 
 export function AdminGate({ children }: { children: ReactNode }) {
-  const [, navigate] = useLocation();
   const { access, isLoading, signedIn } = useAdminAccess();
+  const { signIn } = useAuth();
 
   if (isLoading) {
     return (
@@ -92,8 +92,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
         <p className="text-muted-foreground mb-6">
           You need to sign in to access the admin area.
         </p>
-        <Button onClick={() => navigate("/sign-in")} data-testid="button-go-sign-in">
-          Go to Sign In
+        <Button onClick={() => signIn("/admin")} data-testid="button-go-sign-in">
+          Sign in with Microsoft
         </Button>
       </div>
     );

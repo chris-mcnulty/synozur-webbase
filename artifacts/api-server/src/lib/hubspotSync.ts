@@ -2,6 +2,107 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, hubspotSyncEventsTable, siteSettingsTable, formSubmissionsTable } from "@workspace/db";
 import { logger } from "./logger";
 
+// HubSpot access token resolution.
+//
+// Replit ships a Connections sidecar that mints short-lived OAuth tokens for
+// integrated services. When `REPLIT_CONNECTORS_HOSTNAME` is set we prefer it
+// — that means token rotation, refresh, and per-environment scoping are all
+// managed in the Replit Connections UI rather than in our env. We fall back
+// to a static `HUBSPOT_ACCESS_TOKEN` env var for self-hosted/local dev.
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+let cachedToken: CachedToken | null = null;
+
+function replitConnectorsHostname(): string | null {
+  const v = process.env["REPLIT_CONNECTORS_HOSTNAME"];
+  return v && v.length > 0 ? v : null;
+}
+
+function replitAuthHeader(): string | null {
+  // Replit injects either WEB_REPL_RENEWAL (browser-side) or REPL_IDENTITY
+  // (server-side). The Connections API accepts either as the X-Replit-Token.
+  const renewal = process.env["WEB_REPL_RENEWAL"];
+  if (renewal) return `repl ${renewal}`;
+  const identity = process.env["REPL_IDENTITY"];
+  if (identity) return `repl ${identity}`;
+  return null;
+}
+
+async function fetchTokenFromReplitConnectors(): Promise<string | null> {
+  const hostname = replitConnectorsHostname();
+  const auth = replitAuthHeader();
+  if (!hostname || !auth) return null;
+  try {
+    const url = `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=hubspot`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json", X_REPLIT_TOKEN: auth },
+    });
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 500);
+      logger.warn(
+        { status: res.status, body: text },
+        "Replit Connectors HubSpot fetch failed",
+      );
+      return null;
+    }
+    const json = (await res.json()) as {
+      items?: Array<{
+        settings?: {
+          access_token?: string;
+          oauth?: { credentials?: { access_token?: string; expires_at?: string | number } };
+          expires_at?: string | number;
+        };
+        expires_at?: string | number;
+      }>;
+    };
+    const item = json.items?.[0];
+    if (!item) return null;
+    const settings = item.settings ?? {};
+    const token =
+      settings.access_token ??
+      settings.oauth?.credentials?.access_token ??
+      null;
+    const rawExpiresAt =
+      settings.oauth?.credentials?.expires_at ??
+      settings.expires_at ??
+      item.expires_at ??
+      null;
+    if (!token) return null;
+    const expiresAt = rawExpiresAt
+      ? typeof rawExpiresAt === "number"
+        ? rawExpiresAt
+        : Date.parse(String(rawExpiresAt))
+      : Date.now() + 30 * 60 * 1000;
+    cachedToken = { token, expiresAt };
+    return token;
+  } catch (err) {
+    logger.warn({ err }, "Replit Connectors HubSpot fetch threw");
+    return null;
+  }
+}
+
+export async function getHubspotAccessToken(): Promise<string | null> {
+  // Cache hit — keep a small safety margin before treating as fresh.
+  if (cachedToken && cachedToken.expiresAt - 60_000 > Date.now()) {
+    return cachedToken.token;
+  }
+  // Replit Connectors first (if available).
+  if (replitConnectorsHostname() && replitAuthHeader()) {
+    const fromReplit = await fetchTokenFromReplitConnectors();
+    if (fromReplit) return fromReplit;
+  }
+  // Static env fallback.
+  const fromEnv = process.env["HUBSPOT_ACCESS_TOKEN"];
+  if (fromEnv && fromEnv.length > 0) {
+    cachedToken = { token: fromEnv, expiresAt: Date.now() + 12 * 60 * 60 * 1000 };
+    return fromEnv;
+  }
+  return null;
+}
+
 // #131: HubSpot lead-capture sync
 //
 // Form handlers enqueue rows in `hubspot_sync_events` instead of calling
@@ -100,7 +201,7 @@ async function loadSettings() {
 }
 
 export async function isHubspotConfigured(): Promise<boolean> {
-  const token = process.env["HUBSPOT_ACCESS_TOKEN"];
+  const token = await getHubspotAccessToken();
   if (!token) return false;
   const settings = await loadSettings();
   return settings?.hubspotEnabled === true;
@@ -384,7 +485,7 @@ async function failOrDeadLetter(
 }
 
 export async function drainHubspotQueue(limit = 25): Promise<{ processed: number }> {
-  const token = process.env["HUBSPOT_ACCESS_TOKEN"];
+  const token = await getHubspotAccessToken();
   if (!token) return { processed: 0 };
   const settings = await loadSettings();
   if (!settings || settings.hubspotEnabled !== true) return { processed: 0 };
@@ -474,7 +575,7 @@ export async function queueDepth(): Promise<{ pending: number; deadLetter: numbe
 // expose it through /admin/integrations/hubspot/erasure so legal can fulfill
 // erasure requests without leaving the admin shell.
 export async function eraseContact(email: string): Promise<{ ok: boolean; error?: string }> {
-  const token = process.env["HUBSPOT_ACCESS_TOKEN"];
+  const token = await getHubspotAccessToken();
   if (!token) return { ok: false, error: "no_access_token" };
   try {
     const url = `${HUBSPOT_API}/crm/v3/objects/contacts/gdpr-delete`;

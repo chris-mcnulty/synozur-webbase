@@ -2475,14 +2475,17 @@ components:
       type: object
       required:
         - id
-        - clerkUserId
         - roles
       properties:
         id:
           type: string
           format: uuid
-        clerkUserId:
+        externalSubject:
           type: string
+          nullable: true
+        authProvider:
+          type: string
+          nullable: true
         email:
           type: string
           nullable: true
@@ -2503,14 +2506,17 @@ components:
       type: object
       required:
         - id
-        - clerkUserId
         - roles
       properties:
         id:
           type: string
           format: uuid
-        clerkUserId:
+        externalSubject:
           type: string
+          nullable: true
+        authProvider:
+          type: string
+          nullable: true
         email:
           type: string
           nullable: true

@@ -6,18 +6,22 @@ export const usersTable = pgTable(
   "users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clerkUserId: text("clerk_user_id").notNull(),
+    // Native auth identity. `externalSubject` is the canonical identifier from
+    // the upstream IdP — for Entra it's the user's directory object id, which
+    // is stable across email changes. `authProvider` discriminates the IdP so
+    // we can support Entra alongside an admin-bootstrap provider in dev
+    // without colliding ids.
+    externalSubject: text("external_subject"),
+    authProvider: text("auth_provider"),
     email: text("email"),
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
     bio: text("bio"),
-    // #126: Microsoft Entra SSO. When a user signs in via Entra (routed through
-    // Clerk's enterprise SSO connection for the @synozur.com domain), the
-    // tenant id + object id from the Entra token are mirrored here so role
-    // mapping and offboarding stay deterministic if Clerk is later swapped.
-    // `lastSsoProvider` records the most recent sign-in surface ("entra",
-    // "google", "email-password", …) so admins can see how each user actually
-    // authenticates.
+    // #126: Microsoft Entra SSO. tenant id + object id from the Entra ID token
+    // are mirrored here. `entraObjectId` is the same value the IdP delivers
+    // as the OIDC `sub` claim (and as `oid` in the Microsoft-specific claim
+    // set); we store it explicitly to keep group reconciliation queries fast
+    // and to survive future swaps of the auth provider without a re-link.
     entraTenantId: text("entra_tenant_id"),
     entraObjectId: text("entra_object_id"),
     lastSsoProvider: text("last_sso_provider"),
@@ -32,13 +36,60 @@ export const usersTable = pgTable(
     // which surface flipped it.
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
     marketingOptInUpdatedAt: timestamp("marketing_opt_in_updated_at", { withTimezone: true }),
+    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("users_clerk_user_id_key").on(t.clerkUserId),
+    uniqueIndex("users_external_subject_key").on(t.authProvider, t.externalSubject),
     index("users_entra_object_id_idx").on(t.entraObjectId),
+    index("users_email_idx").on(t.email),
   ],
 );
+
+// Server-side session store. The session id (a high-entropy random string) is
+// the only thing carried in the cookie; everything else lives here so we can
+// invalidate any session unilaterally (sign-out, password rotation, admin
+// kick) and so the cookie itself never carries authority.
+export const sessionsTable = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    userAgent: text("user_agent"),
+    ip: text("ip"),
+  },
+  (t) => [
+    index("sessions_user_id_idx").on(t.userId),
+    index("sessions_expires_at_idx").on(t.expiresAt),
+  ],
+);
+
+export type Session = typeof sessionsTable.$inferSelect;
+export type InsertSession = typeof sessionsTable.$inferInsert;
+
+// Single-use OAuth/OIDC state record — captures `state`, PKCE `code_verifier`,
+// the post-auth `returnTo` URL, and a `nonce` to bind to the ID token. The row
+// is consumed (deleted) on callback so replays are impossible.
+export const authPendingStatesTable = pgTable(
+  "auth_pending_states",
+  {
+    state: text("state").primaryKey(),
+    codeVerifier: text("code_verifier").notNull(),
+    nonce: text("nonce").notNull(),
+    returnTo: text("return_to"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("auth_pending_states_expires_at_idx").on(t.expiresAt)],
+);
+
+export type AuthPendingState = typeof authPendingStatesTable.$inferSelect;
+export type InsertAuthPendingState = typeof authPendingStatesTable.$inferInsert;
 
 export const usersRelations = relations(usersTable, ({ many }) => ({
   userRoles: many(userRoles),

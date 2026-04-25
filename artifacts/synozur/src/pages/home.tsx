@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock, Monitor, Lock, Settings2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/context/auth";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -165,7 +165,7 @@ function CarouselNextProxy({ api }: { api: CarouselApi | null }) {
 }
 
 function HomeShortcuts() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, signIn } = useAuth();
   const { access, isLoading: accessLoading } = useAdminAccess();
   const basePath = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -186,14 +186,15 @@ function HomeShortcuts() {
         </a>
       )}
       {!isSignedIn && (
-        <a
-          href={`${basePath}/sign-in`}
+        <button
+          type="button"
+          onClick={() => signIn("/admin")}
           className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/40 text-xs px-3 py-1.5 hover:text-white/70 hover:bg-white/10 transition-colors"
-          title="Sign in"
+          title="Sign in with Microsoft"
         >
           <Lock className="h-3 w-3" />
           Sign in
-        </a>
+        </button>
       )}
     </div>
   );
