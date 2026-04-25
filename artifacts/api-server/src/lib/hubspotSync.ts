@@ -38,7 +38,7 @@ async function fetchTokenFromReplitConnectors(): Promise<string | null> {
   try {
     const url = `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=hubspot`;
     const res = await fetch(url, {
-      headers: { Accept: "application/json", X_REPLIT_TOKEN: auth },
+      headers: { Accept: "application/json", "X-Replit-Token": auth },
     });
     if (!res.ok) {
       const text = (await res.text()).slice(0, 500);
