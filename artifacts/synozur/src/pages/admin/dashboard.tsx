@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Plus,
   FileText,
@@ -10,6 +11,8 @@ import {
   TrendingUp,
   Activity,
   BarChart2,
+  Users,
+  MousePointerClick,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +31,7 @@ import {
   useGetCmsAnalyticsOverview,
 } from "@workspace/api-client-react";
 import type { AnalyticsActivityItem } from "@workspace/api-client-react";
+import { trafficApi, type TrafficFilters } from "@/lib/traffic-api";
 import {
   AreaChart,
   Area,
@@ -124,9 +128,34 @@ export default function AdminDashboard() {
     { query: { enabled: !!access?.hasCmsRole } as never },
   );
 
+  // Site-wide traffic — queried separately because it covers all pages, not
+  // just posts, and uses session-aware aggregation. The endpoint requires
+  // editor or admin role.
+  const trafficFilters = useMemo<TrafficFilters>(
+    () => ({ days: rangeDays, includeBots: "false" }),
+    [rangeDays],
+  );
+  const trafficEnabled = !!access?.isEditorOrAbove;
+  const trafficOverview = useQuery({
+    queryKey: ["dashboard-traffic-overview", trafficFilters],
+    queryFn: () => trafficApi.overview(trafficFilters),
+    enabled: trafficEnabled,
+  });
+  const trafficSeries = useQuery({
+    queryKey: ["dashboard-traffic-series", trafficFilters],
+    queryFn: () => trafficApi.timeseries(trafficFilters),
+    enabled: trafficEnabled,
+  });
+
   const seriesData = (analytics.data?.series ?? []).map((d) => ({
     day: new Date(d.day + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     views: d.views,
+  }));
+
+  const trafficSeriesData = (trafficSeries.data?.series ?? []).map((d) => ({
+    day: new Date(d.day + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    pageviews: d.pageviews,
+    sessions: d.sessions,
   }));
 
   return (
@@ -194,9 +223,90 @@ export default function AdminDashboard() {
             </Select>
           </div>
 
+          {/* Site-wide traffic (editors+) — sits above post-only metrics so the
+              dashboard always reflects whole-site activity, not just posts. */}
+          {access.isEditorOrAbove && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <StatCard
+                  label={`Pageviews (${rangeDays}d)`}
+                  value={trafficOverview.data?.totals.pageviews ?? 0}
+                  icon={MousePointerClick}
+                  testId="stat-pageviews"
+                />
+                <StatCard
+                  label={`Sessions (${rangeDays}d)`}
+                  value={trafficOverview.data?.totals.sessions ?? 0}
+                  icon={Activity}
+                  testId="stat-sessions"
+                />
+                <StatCard
+                  label={`Unique visitors (${rangeDays}d)`}
+                  value={trafficOverview.data?.totals.uniqueVisitors ?? 0}
+                  icon={Users}
+                  testId="stat-unique-visitors"
+                />
+              </div>
+
+              <Card className="p-5 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Site traffic — last {rangeDays} days
+                  </div>
+                  <Link href="/marketing/traffic">
+                    <a className="text-xs text-primary hover:underline" data-testid="link-traffic-details">
+                      Details
+                    </a>
+                  </Link>
+                </div>
+                {trafficSeries.isLoading ? (
+                  <div className="text-sm text-muted-foreground py-6 text-center">Loading…</div>
+                ) : trafficSeriesData.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-6 text-center">
+                    No site traffic recorded yet in this window.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={trafficSeriesData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                      <defs>
+                        <linearGradient id="pageviewsGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        tickLine={false}
+                        axisLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} />
+                      <Area
+                        type="monotone"
+                        dataKey="pageviews"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fill="url(#pageviewsGrad)"
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </Card>
+            </>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <StatCard
-              label={`Views (${rangeDays}d)`}
+              label={`Post views (${rangeDays}d)`}
               value={analytics.data?.totals.views ?? 0}
               icon={Eye}
               testId="stat-views"
@@ -219,7 +329,7 @@ export default function AdminDashboard() {
           {seriesData.length > 0 && (
             <Card className="p-5 mb-4">
               <div className="text-sm font-medium mb-3 text-muted-foreground">
-                Views per day — last {rangeDays} days
+                Post views per day — last {rangeDays} days
               </div>
               <ResponsiveContainer width="100%" height={140}>
                 <AreaChart data={seriesData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
