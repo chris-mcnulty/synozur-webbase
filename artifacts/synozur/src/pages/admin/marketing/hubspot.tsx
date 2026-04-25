@@ -71,6 +71,7 @@ export default function HubspotAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [erasureEmail, setErasureEmail] = useState("");
+  const [timelineAppIdDraft, setTimelineAppIdDraft] = useState("");
 
   async function refresh() {
     setLoading(true);
@@ -85,6 +86,12 @@ export default function HubspotAdminPage() {
   }
 
   useEffect(() => { void refresh(); }, []);
+  // Keep the controlled timeline-app-id input in sync with whatever the
+  // server reports. Without this the field would freeze on its first read
+  // and ignore later refreshes (e.g. after a save round-trip).
+  useEffect(() => {
+    if (status) setTimelineAppIdDraft(status.timelineAppId ?? "");
+  }, [status?.timelineAppId]);
 
   async function save(patch: Record<string, unknown>) {
     setSaving(true);
@@ -171,10 +178,11 @@ export default function HubspotAdminPage() {
               <div className="flex gap-2">
                 <Input
                   id="hs-app-id"
-                  defaultValue={status.timelineAppId ?? ""}
+                  value={timelineAppIdDraft}
+                  onChange={(e) => setTimelineAppIdDraft(e.target.value)}
                   placeholder="HubSpot Public App id (numeric)"
-                  onBlur={(e) => {
-                    const v = e.currentTarget.value.trim();
+                  onBlur={() => {
+                    const v = timelineAppIdDraft.trim();
                     if (v !== (status.timelineAppId ?? "")) save({ timelineAppId: v || null });
                   }}
                 />

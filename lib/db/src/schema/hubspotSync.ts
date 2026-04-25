@@ -10,9 +10,12 @@ import { pgTable, uuid, text, integer, jsonb, timestamp, index } from "drizzle-o
 //   - "contact.upsert"            → create-or-update Contact by email
 //   - "timeline.<event_template>" → emit a custom timeline event
 //
-// `status` walks `pending → in_flight → succeeded | failed | dead_letter`.
-// A row hits `dead_letter` once `attempts >= MAX_ATTEMPTS`; the admin replay
-// endpoint resets it to `pending`.
+// `status` walks `pending → in_flight → succeeded | dead_letter | skipped`.
+// Retryable failures bounce back to `pending` with an updated `next_attempt_at`
+// (so they're no separate state, just an attempt counter). A row hits
+// `dead_letter` once `attempts >= MAX_ATTEMPTS` or on a non-retryable error;
+// the admin replay endpoint resets it to `pending`. `skipped` is terminal-but-
+// not-an-error, e.g. a `timeline.*` event with no `hubspotTimelineAppId` set.
 export const hubspotSyncEventsTable = pgTable(
   "hubspot_sync_events",
   {

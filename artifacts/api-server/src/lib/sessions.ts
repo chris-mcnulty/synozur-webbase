@@ -104,6 +104,10 @@ export interface ResolvedSession {
   id: string;
   userId: string;
   expiresAt: Date;
+  // True iff the resolver bumped lastSeenAt + expiresAt on this request.
+  // Callers should re-issue the cookie when this is set so the browser's
+  // own expiry tracks the renewed server-side row.
+  renewed: boolean;
 }
 
 export async function resolveSession(token: string): Promise<ResolvedSession | null> {
@@ -123,15 +127,14 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
   // Rolling renewal: extend the inactivity window without thrashing the row
   // on every request.
   if (now.getTime() - row.lastSeenAt.getTime() > ROLLING_RENEW_MS) {
+    const newExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
     await db
       .update(sessionsTable)
-      .set({
-        lastSeenAt: now,
-        expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
-      })
+      .set({ lastSeenAt: now, expiresAt: newExpiresAt })
       .where(eq(sessionsTable.id, id));
+    return { id, userId: row.userId, expiresAt: newExpiresAt, renewed: true };
   }
-  return { id, userId: row.userId, expiresAt: row.expiresAt };
+  return { id, userId: row.userId, expiresAt: row.expiresAt, renewed: false };
 }
 
 export async function destroySession(token: string): Promise<void> {

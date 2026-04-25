@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   db,
@@ -53,8 +53,11 @@ function userAgent(req: Request): string | null {
   return typeof ua === "string" ? ua.slice(0, 1000) : null;
 }
 
-// `returnTo` is open-redirect-prone if we trust it blindly. Allow only same-
-// origin paths and explicit allow-listed external URLs.
+// `returnTo` is open-redirect-prone if we trust it blindly. We only honor
+// same-origin paths (must start with a single `/`); anything else falls back
+// to the caller-supplied default. We deliberately do NOT support external
+// allow-list URLs here — adding cross-app return targets would be a separate,
+// configurable feature, not a quiet branch in this helper.
 function safeReturnTo(returnTo: string | null | undefined, fallback: string): string {
   if (!returnTo) return fallback;
   if (returnTo.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
@@ -143,11 +146,16 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  // Upsert by (authProvider, externalSubject); fall back to email match if a
-  // pre-existing row was seeded without an externalSubject (e.g. by the
+  // Upsert by (authProvider, externalSubject) — the schema's compound unique
+  // index. Filtering on both prevents cross-provider collisions if we later
+  // add a second IdP with overlapping subject ids. Fall back to email match
+  // if a pre-existing row was seeded without an externalSubject (e.g. by the
   // imported-author bootstrap script).
   let userRow = await db.query.usersTable.findFirst({
-    where: eq(usersTable.externalSubject, identity.externalSubject),
+    where: and(
+      eq(usersTable.authProvider, "entra"),
+      eq(usersTable.externalSubject, identity.externalSubject),
+    ),
   });
   if (!userRow && identity.email) {
     const byEmail = await db.query.usersTable.findFirst({

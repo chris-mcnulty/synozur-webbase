@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
-import { db, usersTable, rolesTable, userRoles } from "@workspace/db";
+import { db, rolesTable, userRoles } from "@workspace/db";
 
 export interface AdminInfo {
   userId: string;     // internal users.id (uuid)
@@ -75,6 +75,3 @@ export async function requireAdmin(
   req.admin = result.info;
   next();
 }
-
-// Suppress unused-import warning for shared schema reference.
-void usersTable;

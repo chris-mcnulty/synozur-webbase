@@ -6,22 +6,24 @@ export const usersTable = pgTable(
   "users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // Native auth identity. `externalSubject` is the canonical identifier from
-    // the upstream IdP — for Entra it's the user's directory object id, which
-    // is stable across email changes. `authProvider` discriminates the IdP so
-    // we can support Entra alongside an admin-bootstrap provider in dev
-    // without colliding ids.
+    // Native auth identity. `externalSubject` is the OIDC `sub` claim from
+    // the upstream IdP — opaque, per-app, and stable across email changes.
+    // For Entra, `sub` is *not* the same as the directory object id; the
+    // object id (`oid`) is mirrored separately in `entraObjectId` below.
+    // `authProvider` discriminates the IdP so we can support Entra alongside
+    // an admin-bootstrap provider in dev without colliding ids.
     externalSubject: text("external_subject"),
     authProvider: text("auth_provider"),
     email: text("email"),
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
     bio: text("bio"),
-    // #126: Microsoft Entra SSO. tenant id + object id from the Entra ID token
-    // are mirrored here. `entraObjectId` is the same value the IdP delivers
-    // as the OIDC `sub` claim (and as `oid` in the Microsoft-specific claim
-    // set); we store it explicitly to keep group reconciliation queries fast
-    // and to survive future swaps of the auth provider without a re-link.
+    // #126: Microsoft Entra SSO. `entraObjectId` is the directory object id
+    // delivered as the Microsoft-specific `oid` claim — distinct from `sub`,
+    // and the value Microsoft Graph queries (e.g. /users/{id}/transitiveMemberOf)
+    // accept. We store it explicitly so group reconciliation queries don't
+    // need to re-derive it from the OIDC subject and so we survive future
+    // swaps of the auth provider without a re-link.
     entraTenantId: text("entra_tenant_id"),
     entraObjectId: text("entra_object_id"),
     lastSsoProvider: text("last_sso_provider"),
