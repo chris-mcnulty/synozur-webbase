@@ -80,7 +80,12 @@ export default function SignInPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          <div
+            role="alert"
+            aria-live="assertive"
+            data-testid="sign-in-error"
+            className="mb-4 rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive"
+          >
             {error}
           </div>
         )}
@@ -139,6 +144,7 @@ export default function SignInPage() {
               type="button"
               variant="outline"
               className="w-full"
+              data-testid="button-sign-in-microsoft"
               onClick={handleEntraSignIn}
             >
               Continue with Microsoft
