@@ -4,13 +4,16 @@ import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import {
   db,
   applicationsTable,
-  collateralTable,
   ARTIFACT_STATUSES,
   type Application,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import {
+  upsertCollateralFromApplication,
+  softDeleteCollateralForApplication,
+} from "../lib/syncCollateral";
 
 const router: IRouter = Router();
 
@@ -69,26 +72,6 @@ function serialize(a: Application) {
     createdAt: a.createdAt,
     updatedAt: a.updatedAt,
   };
-}
-
-async function syncCollateralLinks(
-  applicationId: string,
-  serviceId: string | null | undefined,
-  solutionId: string | null | undefined,
-) {
-  await db
-    .update(collateralTable)
-    .set({
-      serviceId: serviceId ?? null,
-      solutionId: solutionId ?? null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(collateralTable.sourceId, applicationId),
-        sql`${collateralTable.type} = 'application'`,
-      ),
-    );
 }
 
 // ----- Public ------------------------------------------------------------
@@ -245,6 +228,7 @@ router.post("/cms/applications", ...adminGuard, async (req, res) => {
       sourceId: d.sourceId ?? null,
     })
     .returning();
+  await upsertCollateralFromApplication(row);
   await audit({
     actorId: req.authedUser!.id,
     action: "application.create",
@@ -313,9 +297,7 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
     .where(eq(applicationsTable.id, id))
     .returning();
 
-  if (d.serviceId !== undefined || d.solutionId !== undefined) {
-    await syncCollateralLinks(id, updated.serviceId, updated.solutionId);
-  }
+  await upsertCollateralFromApplication(updated);
 
   await audit({
     actorId: req.authedUser!.id,
@@ -340,6 +322,7 @@ router.delete("/cms/applications/:id", ...adminGuard, async (req, res) => {
     .update(applicationsTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(applicationsTable.id, id));
+  await softDeleteCollateralForApplication(id);
   await audit({
     actorId: req.authedUser!.id,
     action: "application.delete",

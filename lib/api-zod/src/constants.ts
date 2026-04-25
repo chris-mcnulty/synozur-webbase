@@ -53,6 +53,8 @@ export function canonicalUrlForCollateral(
       return `/events/${slug}`;
     case "video":
       return `/videos/${slug}`;
+    case "application":
+      return `/applications/${slug}`;
     case "insight":
       return `/insights/${slug}`;
     case "podcast":

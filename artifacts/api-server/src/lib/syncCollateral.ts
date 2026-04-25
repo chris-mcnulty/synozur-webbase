@@ -464,23 +464,74 @@ export async function softDeleteCollateralForCaseStudy(
     .where(eq(collateralTable.sourceId, sourceId));
 }
 
-// Applications are products, not library artifacts, so they intentionally
-// do not sync to `collateralTable`. The helpers below mirror the video /
-// white-paper shape so an admin button can trigger a no-op
-// reconciliation (useful if a future change does want them in the
-// library), but by default they are excluded from /library queries.
+// Applications surface in /library as collateral `type="application"` so they
+// can be linked to a service/solution and discovered alongside other content.
+// The library card links to the internal detail page (/applications/:slug).
 export async function upsertCollateralFromApplication(
-  _application: Application,
+  application: Application,
 ): Promise<void> {
-  // Intentional no-op: see comment above.
-  return;
+  const sourceId = applicationSourceId(application.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const now = new Date();
+  const withinWindow =
+    (!application.publishedAt || application.publishedAt <= now) &&
+    (!application.unpublishedAt || application.unpublishedAt > now);
+  const isPublished =
+    application.status === "published" &&
+    application.active &&
+    !application.deletedAt &&
+    withinWindow;
+
+  const syncedFields = {
+    type: "application" as const,
+    title: application.title,
+    subtitle: application.tagline ?? null,
+    description: application.shortSummary ?? "",
+    heroImage: application.screenshot ?? application.logo ?? "",
+    pillar: null as CollateralPillar | null,
+    tags: [] as string[],
+    url: canonicalUrlForCollateral("application", application.slug),
+    external: false,
+    publishedAt: application.publishedAt,
+    featured: application.featured,
+    featuredRank: application.featuredRank,
+    serviceId: application.serviceId,
+    solutionId: application.solutionId,
+    active: isPublished,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({
+        ...syncedFields,
+        deletedAt: isPublished ? null : existing.deletedAt,
+      })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(application.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
 }
 
 export async function softDeleteCollateralForApplication(
-  _applicationId: string,
+  applicationId: string,
 ): Promise<void> {
-  // Intentional no-op.
-  return;
+  const sourceId = applicationSourceId(applicationId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
 }
 
 // Models (#106). Flow into the library as collateral `type="model"` so a

@@ -18,7 +18,8 @@ export type CollateralType =
   | "model"
   | "training"
   | "event"
-  | "insight";
+  | "insight"
+  | "application";
 
 export type Pillar =
   | "strategic"
@@ -55,6 +56,7 @@ export const TYPE_LABELS: Record<CollateralType, string> = {
   training: "WORKSHOP",
   event: "EVENT",
   insight: "INSIGHT",
+  application: "APPLICATION",
 };
 
 export const PILLAR_LABELS: Record<Pillar, string> = {
@@ -150,6 +152,7 @@ export function getTypeFacets(): CollateralType[] {
     "training",
     "event",
     "insight",
+    "application",
   ];
 }
 
