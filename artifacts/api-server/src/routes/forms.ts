@@ -194,7 +194,7 @@ async function persist(args: PersistArgs): Promise<number> {
       utmContent: attr?.utm.content ?? null,
       landingPage: attr?.utm.landingPage ?? null,
       referrer: attr?.utm.referrer ?? null,
-      hubspotSyncStatus: args.email ? "queued" : null,
+      hubspotSyncStatus: null,
     })
     .returning({ id: formSubmissionsTable.id });
   return row!.id;
