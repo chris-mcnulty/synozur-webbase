@@ -36,7 +36,7 @@ router.get("/admin/entra/group-mappings", requireAdmin, async (_req, res): Promi
 router.post("/admin/entra/group-mappings", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreateMappingBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
     return;
   }
   const role = await db.query.rolesTable.findFirst({
