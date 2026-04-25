@@ -10,7 +10,9 @@ type NavLink = { label: string; href: string };
 type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
 type NavGroup = { title: string; links: NavLink[]; nested?: NestedSection[] };
 
-const LOGO_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
+const LOGO_COLOR_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
+const BASE_PATH_HEADER = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+const MARK_URL = `${BASE_PATH_HEADER}/images/synozur-mark-color.png`;
 
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
@@ -46,7 +48,8 @@ function NavLinkItem({
 }
 
 export function Header() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const isHome = location === "/" || location === "";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -164,7 +167,19 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <img src={LOGO_URL} alt="The Synozur Alliance Logo" className="h-10 w-auto" />
+          {isHome ? (
+            <img
+              src={MARK_URL}
+              alt="Synozur Alliance Wayfinder Mark"
+              className="h-10 w-auto"
+            />
+          ) : (
+            <img
+              src={LOGO_COLOR_URL}
+              alt="The Synozur Alliance Logo"
+              className="h-10 w-auto"
+            />
+          )}
         </Link>
 
         {/* Desktop Nav */}

@@ -257,9 +257,11 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="lg:col-span-6"
             >
-              <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 text-white text-sm font-medium mb-6 backdrop-blur-sm">
-                The Synozur Alliance
-              </span>
+              <img
+                src={`${BASE_PATH_HOME}/images/sa-logo-horizontal-white.png`}
+                alt="The Synozur Alliance"
+                className="h-14 md:h-16 w-auto mb-10"
+              />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
                 The <span className="nebula-text">Transformation</span> Company
               </h1>
