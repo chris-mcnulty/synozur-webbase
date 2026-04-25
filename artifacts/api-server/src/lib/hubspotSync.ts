@@ -202,9 +202,7 @@ async function loadSettings() {
 
 export async function isHubspotConfigured(): Promise<boolean> {
   const token = await getHubspotAccessToken();
-  if (!token) return false;
-  const settings = await loadSettings();
-  return settings?.hubspotEnabled === true;
+  return !!token;
 }
 
 export async function enqueueContactSubmission(args: EnqueueContactArgs): Promise<void> {
