@@ -297,6 +297,54 @@ export async function listServicesWithSolutions(): Promise<ServiceWithSolutions[
   }));
 }
 
+/** All non-deleted services with all non-deleted solutions — no status/active filter.
+ *  Used by admin dropdowns so draft/inactive records are still selectable. */
+export async function listAllServicesWithSolutions(): Promise<ServiceWithSolutions[]> {
+  const allServices = await db
+    .select()
+    .from(servicesTable)
+    .where(isNull(servicesTable.deletedAt))
+    .orderBy(asc(servicesTable.displayOrder), asc(servicesTable.title));
+
+  const allSolutions = await db
+    .select()
+    .from(solutionsTable)
+    .where(isNull(solutionsTable.deletedAt))
+    .orderBy(asc(solutionsTable.displayOrder), asc(solutionsTable.title));
+
+  const iconIds = [
+    ...allServices.map((s) => s.iconId),
+    ...allSolutions.map((s) => s.iconId),
+  ];
+  const [icons, serviceTags, solutionTags] = await Promise.all([
+    loadIcons(iconIds),
+    loadTags("service", allServices.map((s) => s.id)),
+    loadTags("solution", allSolutions.map((s) => s.id)),
+  ]);
+
+  const solutionsByParent = new Map<string, SolutionDto[]>();
+  for (const sol of allSolutions) {
+    if (!sol.parentServiceId) continue;
+    const dto = shapeSolution(
+      sol,
+      sol.iconId ? icons.get(sol.iconId) ?? null : null,
+      solutionTags.get(sol.id) ?? [],
+    );
+    const arr = solutionsByParent.get(sol.parentServiceId) ?? [];
+    arr.push(dto);
+    solutionsByParent.set(sol.parentServiceId, arr);
+  }
+
+  return allServices.map((s) => ({
+    ...shapeService(
+      s,
+      s.iconId ? icons.get(s.iconId) ?? null : null,
+      serviceTags.get(s.id) ?? [],
+    ),
+    solutions: solutionsByParent.get(s.id) ?? [],
+  }));
+}
+
 function withinPublishWindow(
   row: { publishedAt: Date | null; unpublishedAt: Date | null },
   now: Date = new Date(),

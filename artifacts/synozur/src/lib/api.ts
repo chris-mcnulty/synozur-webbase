@@ -526,6 +526,8 @@ export interface SeoSubmitBundle {
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
+  listServicesAdmin: () =>
+    jsonFetch<{ items: ServiceWithSolutions[] }>(url("/cms/services-with-solutions")),
   getService: (slug: string, previewToken?: string | null) =>
     jsonFetch<ServiceWithMethodologies>(
       url(

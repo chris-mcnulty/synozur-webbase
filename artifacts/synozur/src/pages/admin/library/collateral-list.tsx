@@ -219,8 +219,8 @@ export default function AdminCollateralList() {
   const items: CollateralRow[] = (listQ.data?.items ?? []) as CollateralRow[];
 
   const servicesQ = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
   });
   const services = servicesQ.data?.items ?? [];
 

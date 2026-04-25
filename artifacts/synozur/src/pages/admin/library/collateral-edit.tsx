@@ -217,8 +217,8 @@ export default function CollateralEdit({ id }: Props) {
 
   // Services + solutions power the new FK pickers (#100).
   const servicesQ = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
   });
   const services = servicesQ.data?.items ?? [];
   const solutionsForService = useMemo(() => {

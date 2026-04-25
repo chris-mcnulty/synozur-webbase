@@ -20,6 +20,7 @@ import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import {
   listServicesWithSolutions,
+  listAllServicesWithSolutions,
   getServiceWithMethodologies,
   getSolutionWithCapabilities,
   serializeService,
@@ -199,6 +200,11 @@ const CapabilityBody = z.object({
 const CapabilityPatch = CapabilityBody.partial();
 
 // --- admin: services list (includes inactive) ---
+router.get("/cms/services-with-solutions", ...readGuard, async (_req, res) => {
+  const items = await listAllServicesWithSolutions();
+  res.json({ items });
+});
+
 router.get("/cms/services", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()

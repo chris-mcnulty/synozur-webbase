@@ -176,8 +176,8 @@ export default function ApplicationEdit({ id }: Props) {
   const existing: ApplicationDto | null = fetchQ.data ?? null;
 
   const servicesQ = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
   });
   const allServices: ServiceWithSolutions[] = servicesQ.data?.items ?? [];
 

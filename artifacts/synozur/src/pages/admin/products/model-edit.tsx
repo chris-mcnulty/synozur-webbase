@@ -176,8 +176,8 @@ export default function ModelEdit({ id }: Props) {
   const canWrite = !!access?.isEditorOrAbove;
 
   const servicesQ = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
   });
   const services = servicesQ.data?.items ?? [];
 
