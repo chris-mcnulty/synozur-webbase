@@ -5,6 +5,7 @@ import { startHubspotWorker, stopHubspotWorker } from "./lib/hubspotSync";
 import { pruneExpiredSessions } from "./lib/sessions";
 import { pruneExpiredAuthStates } from "./lib/authStateStore";
 import { warnIfMisconfigured } from "./lib/entraOidc";
+import { runMigrations } from "./lib/migrations";
 
 const rawPort = process.env["PORT"];
 
@@ -19,6 +20,8 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+await runMigrations();
 
 const server = app.listen(port, (err) => {
   if (err) {
