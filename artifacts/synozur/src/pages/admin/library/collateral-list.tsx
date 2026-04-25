@@ -13,6 +13,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -271,7 +272,15 @@ export default function AdminCollateralList() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const base = items.filter((i) => {
-      if (tab !== "all" && i.type !== tab) return false;
+      // The "white_paper" tab also includes ebooks — both are stored in
+      // the white_papers source table (distinguished by docType), so an
+      // editor expects to see them together when viewing whitepapers.
+      if (tab !== "all") {
+        const matches =
+          i.type === tab ||
+          (tab === "white_paper" && i.type === "ebook");
+        if (!matches) return false;
+      }
       if (activeFilter === "active" && !i.active) return false;
       if (activeFilter === "inactive" && i.active) return false;
       if (serviceFilter && i.serviceId !== serviceFilter) return false;
@@ -529,21 +538,36 @@ export default function AdminCollateralList() {
       title="Library"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Library" }]}
       actions={
-        canWrite && (
-          <Link href="/library/collateral/new">
-            <Button data-testid="button-create-collateral">
-              <Plus className="h-4 w-4 mr-2" /> New item
+        <div className="flex items-center gap-2">
+          <Link href="/library/audit">
+            <Button variant="outline" data-testid="button-library-audit">
+              <ShieldCheck className="h-4 w-4 mr-2" /> Audit library
             </Button>
           </Link>
-        )
+          {canWrite && (
+            <Link href="/library/collateral/new">
+              <Button data-testid="button-create-collateral">
+                <Plus className="h-4 w-4 mr-2" /> New item
+              </Button>
+            </Link>
+          )}
+        </div>
       }
     >
       {/* Type tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as TypeTab)} className="w-full">
         <TabsList className="flex-wrap h-auto" data-testid="tabs-collateral-type">
           {COLLATERAL_TYPE_TABS.map(({ value, label }) => {
+            // Mirror the same widening for the "white_paper" tab here so
+            // its count badge matches the rows actually shown.
             const count =
-              value === "all" ? items.length : items.filter((i) => i.type === value).length;
+              value === "all"
+                ? items.length
+                : items.filter(
+                    (i) =>
+                      i.type === value ||
+                      (value === "white_paper" && i.type === "ebook"),
+                  ).length;
             return (
               <TabsTrigger key={value} value={value} data-testid={`tab-${value}`}>
                 {label}
