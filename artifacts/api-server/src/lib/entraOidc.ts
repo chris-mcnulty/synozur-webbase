@@ -10,10 +10,20 @@ import { logger } from "./logger";
 // returns the canonical claim set used by the app's session/identity layer.
 //
 // Configuration is env-driven so we can run without DB writes:
-//   ENTRA_TENANT_ID            tenant GUID or "common"/"organizations" (multi-tenant)
+//   ENTRA_TENANT_ID            Synozur's own tenant GUID, OR "organizations"
+//                              for a multi-tenant Azure app registration. When
+//                              set to a GUID, users from that tenant are treated
+//                              as Synozur internal (group reconciliation runs).
+//                              When set to "organizations", tenant validation is
+//                              deferred to the post-callback allowlist check in
+//                              routes/auth.ts (supports client org SSO).
 //   ENTRA_APP_CLIENT_ID        public-client / web app client id
 //   ENTRA_APP_CLIENT_SECRET    only required when the app reg is "web" (confidential)
-//   AUTH_REDIRECT_URI          absolute callback URL, e.g. https://site/api/auth/callback
+//   AUTH_REDIRECT_URI          optional override for the callback URL. When
+//                              absent the callback URL is derived from the
+//                              incoming request's host header so both dev
+//                              (Replit preview domain) and prod work without
+//                              separate deployments or env-var swaps.
 //   AUTH_POST_LOGOUT_URI       optional, where Entra sends the browser after RP-initiated logout
 //
 // Group claims are NOT relied on from the ID token by default — Entra only
@@ -50,7 +60,7 @@ const DISCOVERY_TTL_MS = 60 * 60 * 1000; // 1 hour
 const discoveryCache = new Map<string, DiscoveryCacheEntry>();
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
-function tenantId(): string {
+export function tenantAuthority(): string {
   return process.env["ENTRA_TENANT_ID"] ?? "";
 }
 
@@ -63,8 +73,11 @@ function clientSecret(): string | null {
   return v && v.length > 0 ? v : null;
 }
 
-export function redirectUri(): string {
-  return process.env["AUTH_REDIRECT_URI"] ?? "";
+// Returns the env-override redirect URI, or null when the caller should
+// derive it dynamically from the request (see deriveCallbackUri in auth.ts).
+export function redirectUriOverride(): string | null {
+  const v = process.env["AUTH_REDIRECT_URI"];
+  return v && v.length > 0 ? v : null;
 }
 
 export function postLogoutRedirectUri(): string | null {
@@ -73,11 +86,11 @@ export function postLogoutRedirectUri(): string | null {
 }
 
 export function isEntraConfigured(): boolean {
-  return tenantId().length > 0 && clientId().length > 0 && redirectUri().length > 0;
+  return tenantAuthority().length > 0 && clientId().length > 0;
 }
 
-export async function fetchDiscovery(): Promise<EntraDiscovery> {
-  const tid = tenantId();
+export async function fetchDiscovery(tenantHint?: string): Promise<EntraDiscovery> {
+  const tid = tenantHint ?? tenantAuthority();
   if (!tid) throw new Error("ENTRA_TENANT_ID not configured");
   const cached = discoveryCache.get(tid);
   if (cached && Date.now() - cached.fetchedAt < DISCOVERY_TTL_MS) {
@@ -136,6 +149,7 @@ export interface AuthorizeUrlInput {
   state: string;
   nonce: string;
   pkceChallenge: string;
+  redirectUri: string;
   scope?: string[];
   prompt?: "login" | "select_account" | "consent" | "none";
   loginHint?: string;
@@ -145,14 +159,14 @@ const DEFAULT_SCOPES = ["openid", "profile", "email", "offline_access", "User.Re
 
 export async function buildAuthorizeUrl(input: AuthorizeUrlInput): Promise<string> {
   if (!isEntraConfigured()) {
-    throw new Error("Entra OIDC is not configured (ENTRA_TENANT_ID / ENTRA_APP_CLIENT_ID / AUTH_REDIRECT_URI)");
+    throw new Error("Entra OIDC is not configured (ENTRA_TENANT_ID / ENTRA_APP_CLIENT_ID)");
   }
   const disco = await fetchDiscovery();
   const scopes = (input.scope ?? DEFAULT_SCOPES).join(" ");
   const params = new URLSearchParams({
     client_id: clientId(),
     response_type: "code",
-    redirect_uri: redirectUri(),
+    redirect_uri: input.redirectUri,
     response_mode: "query",
     scope: scopes,
     state: input.state,
@@ -176,13 +190,14 @@ export interface TokenSet {
 export async function exchangeCodeForTokens(args: {
   code: string;
   codeVerifier: string;
+  redirectUri: string;
 }): Promise<TokenSet> {
   const disco = await fetchDiscovery();
   const body = new URLSearchParams({
     client_id: clientId(),
     grant_type: "authorization_code",
     code: args.code,
-    redirect_uri: redirectUri(),
+    redirect_uri: args.redirectUri,
     code_verifier: args.codeVerifier,
     scope: DEFAULT_SCOPES.join(" "),
   });
@@ -220,7 +235,7 @@ export async function verifyIdToken(idToken: string, expectedNonce: string): Pro
   // For multi-tenant apps the issuer in the discovery doc contains a {tenantid}
   // placeholder; jose's iss check would fail. We override by accepting any issuer
   // whose host matches login.microsoftonline.com / sts.windows.net and verify
-  // the tid claim ourselves.
+  // the tid claim in routes/auth.ts against the configured allowlist.
   const { payload } = await jwtVerify(idToken, jwks(disco.jwksUri), {
     audience: clientId(),
     clockTolerance: 30,
@@ -238,22 +253,12 @@ export async function verifyIdToken(idToken: string, expectedNonce: string): Pro
   if (issHost !== "login.microsoftonline.com" && issHost !== "sts.windows.net") {
     throw new Error(`Unexpected ID token issuer: ${iss}`);
   }
-  // For single-tenant apps, also pin the tenant.
-  const tid = tenantId();
-  if (tid && tid !== "common" && tid !== "organizations" && tid !== "consumers") {
-    if (claims.tid !== tid) {
-      throw new Error(`ID token tid (${claims.tid}) does not match configured tenant`);
-    }
-  }
   return { claims, raw: idToken };
 }
 
 export function buildLogoutUrl(args: { idTokenHint?: string | null; postLogoutRedirectUri?: string | null }): string | null {
-  const tid = tenantId();
+  const tid = tenantAuthority();
   if (!tid) return null;
-  // We could read end_session_endpoint from discovery, but it's a fixed pattern
-  // for Entra and avoiding the discovery round-trip on sign-out keeps logout
-  // snappy. Discovery is still authoritative — fall back to it on demand.
   const url = new URL(
     `https://login.microsoftonline.com/${encodeURIComponent(tid)}/oauth2/v2.0/logout`,
   );
@@ -298,9 +303,14 @@ export function normalizeIdentity(claims: EntraIdTokenClaims): NormalizedIdentit
 export function warnIfMisconfigured(): void {
   if (!isEntraConfigured()) {
     logger.warn(
-      "Entra OIDC not fully configured — sign-in is disabled. Set ENTRA_TENANT_ID, ENTRA_APP_CLIENT_ID, AUTH_REDIRECT_URI.",
+      "Entra OIDC not fully configured — SSO sign-in is disabled. Set ENTRA_TENANT_ID and ENTRA_APP_CLIENT_ID.",
     );
     return;
+  }
+  if (!redirectUriOverride()) {
+    logger.info(
+      "Entra: AUTH_REDIRECT_URI not set — callback URI will be derived dynamically from each incoming request's host. Both dev and prod work automatically this way.",
+    );
   }
   if (clientSecret() === null) {
     logger.info(

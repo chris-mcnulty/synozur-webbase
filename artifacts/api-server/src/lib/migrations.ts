@@ -97,7 +97,7 @@ export async function runMigrations(): Promise<void> {
       );
     `);
     await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS entra_group_role_unique
+      CREATE UNIQUE INDEX IF NOT EXISTS entra_group_role_synozur_unique_v0
         ON entra_group_role_mappings (entra_group_id, role_id);
     `);
 
@@ -147,6 +147,83 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS hubspot_contact_id text,
         ADD COLUMN IF NOT EXISTS hubspot_sync_status text,
         ADD COLUMN IF NOT EXISTS hubspot_sync_error text;
+    `);
+
+    // 10. Multi-environment + multi-tenant + local auth additions
+    // -------------------------------------------------------
+
+    // 10a. auth_pending_states: store the redirect_uri used in the authorize
+    //      request so the callback token-exchange always echoes back the exact
+    //      same URI. This is required by OIDC spec and also means both the dev
+    //      (Replit preview domain) and prod (custom domain) work with one
+    //      deployment — no AUTH_REDIRECT_URI env var required.
+    await db.execute(sql`
+      ALTER TABLE auth_pending_states
+        ADD COLUMN IF NOT EXISTS redirect_uri text;
+    `);
+
+    // 10b. client_organizations: external entities whose members get portal
+    //      access. Supports Entra SSO (via entraTenantId), email/password
+    //      registrants (via approved domains or admin assignment), and future
+    //      OAuth-linked accounts — all under one org record.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS client_organizations (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        slug text NOT NULL,
+        entra_tenant_id text,
+        entra_tenant_name text,
+        approved_email_domains text[],
+        is_active boolean NOT NULL DEFAULT true,
+        default_role_id uuid REFERENCES roles(id) ON DELETE SET NULL,
+        notes text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS client_orgs_slug_key ON client_organizations (slug);`);
+    // Partial unique index so NULLs don't compete but one org per Entra tenant is enforced.
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS client_orgs_entra_tenant_key
+        ON client_organizations (entra_tenant_id)
+        WHERE entra_tenant_id IS NOT NULL;
+    `);
+
+    // 10c. users: local password hash for email/password registration and
+    //      FK to the owning client organization.
+    await db.execute(sql`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS password_hash text,
+        ADD COLUMN IF NOT EXISTS client_organization_id uuid REFERENCES client_organizations(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS users_client_org_idx ON users (client_organization_id);`);
+
+    // 10d. entra_group_role_mappings: add client_organization_id FK so mappings
+    //      can be scoped to a client org's directory (NULL = Synozur-internal).
+    //      Replace the old broad unique index with two partial ones.
+    await db.execute(sql`
+      ALTER TABLE entra_group_role_mappings
+        ADD COLUMN IF NOT EXISTS client_organization_id uuid REFERENCES client_organizations(id) ON DELETE CASCADE;
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS entra_group_role_org_idx ON entra_group_role_mappings (client_organization_id);`);
+    // Drop old unique index that didn't account for org scope, replace with partial variants.
+    await db.execute(sql`DROP INDEX IF EXISTS entra_group_role_unique;`);
+    await db.execute(sql`DROP INDEX IF EXISTS entra_group_role_synozur_unique_v0;`);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS entra_group_role_synozur_unique
+        ON entra_group_role_mappings (entra_group_id, role_id)
+        WHERE client_organization_id IS NULL;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS entra_group_role_client_unique
+        ON entra_group_role_mappings (entra_group_id, role_id, client_organization_id)
+        WHERE client_organization_id IS NOT NULL;
+    `);
+
+    // 10e. Ensure all canonical roles exist, including the new "client" role.
+    await db.execute(sql`
+      INSERT INTO roles (id, name, description)
+      VALUES (gen_random_uuid(), 'client', 'Portal access for approved client organization members')
+      ON CONFLICT (name) DO NOTHING;
     `);
 
     logger.info("Startup migrations complete");

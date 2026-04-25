@@ -35,6 +35,7 @@ import faqRouter from "./faq";
 import contentParentPagesRouter from "./contentParentPages";
 import entraMappingsRouter from "./entraMappings";
 import hubspotAdminRouter from "./hubspotAdmin";
+import clientOrgsRouter from "./clientOrgs";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(faqRouter);
 router.use(contentParentPagesRouter);
 router.use(entraMappingsRouter);
 router.use(hubspotAdminRouter);
+router.use(clientOrgsRouter);
 
 export default router;

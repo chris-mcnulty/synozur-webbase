@@ -5,6 +5,7 @@ import {
   rolesTable,
   userRoles,
   entraGroupRoleMappingsTable,
+  clientOrganizationsTable,
   siteSettingsTable,
   type RoleName,
   ROLE_NAMES,
@@ -23,6 +24,10 @@ import { logger } from "./logger";
 //   3. Reconcile `user_roles` against the active `entra_group_role_mappings`
 //      rows — adding new grants and removing any role grant that was sourced
 //      from a group the user no longer belongs to.
+//
+// Multi-tenant note: the app-token cache is keyed by tenant ID so that
+// client-org tenants can have their own token without evicting the Synozur
+// internal token.
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
@@ -30,15 +35,18 @@ interface AppTokenCache {
   token: string;
   expiresAt: number;
 }
-let appTokenCache: AppTokenCache | null = null;
+
+// Per-tenant token cache — keyed by tenantId GUID.
+const appTokenCacheByTenant = new Map<string, AppTokenCache>();
 
 async function getAppOnlyGraphToken(tenantId: string): Promise<string | null> {
   const clientId = process.env["ENTRA_APP_CLIENT_ID"];
   const clientSecret = process.env["ENTRA_APP_CLIENT_SECRET"];
   if (!clientId || !clientSecret) return null;
   const now = Date.now();
-  if (appTokenCache && appTokenCache.expiresAt - 60_000 > now) {
-    return appTokenCache.token;
+  const cached = appTokenCacheByTenant.get(tenantId);
+  if (cached && cached.expiresAt - 60_000 > now) {
+    return cached.token;
   }
   try {
     const url = `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`;
@@ -55,18 +63,18 @@ async function getAppOnlyGraphToken(tenantId: string): Promise<string | null> {
     });
     if (!res.ok) {
       const text = (await res.text()).slice(0, 500);
-      logger.warn({ status: res.status, body: text }, "Entra app-only token fetch failed");
+      logger.warn({ status: res.status, body: text, tenantId }, "Entra app-only token fetch failed");
       return null;
     }
     const json = (await res.json()) as { access_token?: string; expires_in?: number };
     if (!json.access_token) return null;
-    appTokenCache = {
+    appTokenCacheByTenant.set(tenantId, {
       token: json.access_token,
       expiresAt: now + (json.expires_in ?? 3600) * 1000,
-    };
+    });
     return json.access_token;
   } catch (err) {
-    logger.warn({ err }, "Entra app-only token fetch threw");
+    logger.warn({ err, tenantId }, "Entra app-only token fetch threw");
     return null;
   }
 }
@@ -89,7 +97,6 @@ async function fetchGroupIds(token: string, objectId: string): Promise<string[]>
       "@odata.nextLink"?: string | null;
     };
     for (const v of json.value ?? []) {
-      // Only true groups — the response also lists directoryRoles.
       if (v.id && (v["@odata.type"] ?? "").endsWith("group")) {
         groupIds.push(v.id);
       } else if (v.id && !v["@odata.type"]) {
@@ -120,7 +127,11 @@ export async function reconcileEntraRoles(
   userId: string,
   groupIds: string[],
   fallbackAdminGroupId: string | null,
+  clientOrganizationId?: string | null,
 ): Promise<{ added: RoleName[]; removed: RoleName[] }> {
+  // Filter mappings by org scope:
+  //   NULL clientOrganizationId  → Synozur internal mappings
+  //   set clientOrganizationId   → client org mappings
   const mappings = groupIds.length > 0
     ? await db
         .select({
@@ -130,7 +141,14 @@ export async function reconcileEntraRoles(
         })
         .from(entraGroupRoleMappingsTable)
         .innerJoin(rolesTable, eq(entraGroupRoleMappingsTable.roleId, rolesTable.id))
-        .where(inArray(entraGroupRoleMappingsTable.entraGroupId, groupIds))
+        .where(
+          and(
+            inArray(entraGroupRoleMappingsTable.entraGroupId, groupIds),
+            clientOrganizationId
+              ? eq(entraGroupRoleMappingsTable.clientOrganizationId, clientOrganizationId)
+              : eq(entraGroupRoleMappingsTable.clientOrganizationId, null as unknown as string),
+          ),
+        )
     : [];
 
   const targetRoleNames = new Set<RoleName>();
@@ -140,15 +158,10 @@ export async function reconcileEntraRoles(
     }
   }
 
-  // Backstop: env-configured admin group always grants admin even with an
-  // empty mapping table. Useful for bootstrap.
   if (fallbackAdminGroupId && groupIds.includes(fallbackAdminGroupId)) {
     targetRoleNames.add("admin");
   }
 
-  // Read all role-ids that are *currently* sourced from any Entra group, so
-  // we know which grants are safe to remove on offboarding without disturbing
-  // manually-granted roles in /admin/access/users.
   const allMappedRoleRows = await db
     .select({ roleId: entraGroupRoleMappingsTable.roleId, roleName: rolesTable.name })
     .from(entraGroupRoleMappingsTable)
@@ -202,10 +215,27 @@ export interface ApplyEntraSignInArgs {
   userId: string;
   tenantId: string | null;
   objectId: string | null;
+  clientOrganizationId?: string | null;
+  isSynozurTenant: boolean;
 }
 
 export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void> {
   if (!args.tenantId || !args.objectId) return;
+
+  await db
+    .update(usersTable)
+    .set({
+      entraTenantId: args.tenantId,
+      entraObjectId: args.objectId,
+      lastSsoProvider: "entra",
+    })
+    .where(eq(usersTable.id, args.userId));
+
+  // Group reconciliation only runs for Synozur's own tenant — we don't have
+  // GroupMember.Read.All permission (and it wouldn't be meaningful) for
+  // external client org directories. Client org users get their roles through
+  // the org's defaultRoleId instead.
+  if (!args.isSynozurTenant) return;
 
   let groups: string[] = [];
   try {
@@ -217,11 +247,8 @@ export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void
   await db
     .update(usersTable)
     .set({
-      entraTenantId: args.tenantId,
-      entraObjectId: args.objectId,
       entraGroupClaims: groups,
       entraGroupsRefreshedAt: new Date(),
-      lastSsoProvider: "entra",
     })
     .where(eq(usersTable.id, args.userId));
 
@@ -235,6 +262,7 @@ export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void
       args.userId,
       groups,
       settings?.entraAdminGroupFallback ?? null,
+      null,
     );
     if (result.added.length > 0 || result.removed.length > 0) {
       logger.info(
@@ -250,4 +278,23 @@ export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void
   } catch (err) {
     logger.warn({ err, userId: args.userId }, "Entra role reconciliation failed");
   }
+}
+
+// Grant the client org's default role to a user if the org is active.
+// Idempotent — uses onConflictDoNothing so repeated calls are safe.
+export async function applyClientOrgRole(
+  userId: string,
+  clientOrganizationId: string,
+): Promise<void> {
+  const org = await db.query.clientOrganizationsTable.findFirst({
+    where: and(
+      eq(clientOrganizationsTable.id, clientOrganizationId),
+      eq(clientOrganizationsTable.isActive, true),
+    ),
+  });
+  if (!org?.defaultRoleId) return;
+  await db
+    .insert(userRoles)
+    .values({ userId, roleId: org.defaultRoleId })
+    .onConflictDoNothing();
 }

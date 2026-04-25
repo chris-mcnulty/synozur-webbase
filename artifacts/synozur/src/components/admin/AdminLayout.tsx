@@ -147,6 +147,7 @@ const SECTIONS: NavSection[] = [
     icon: ShieldCheck,
     items: [
       { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
+      { href: "/access/organizations", label: "Organizations", icon: UsersRound, capability: "users.manage", testId: "nav-admin-organizations" },
       { href: "/access/entra", label: "Entra Mappings", icon: ShieldCheck, capability: "users.manage", testId: "nav-admin-entra" },
     ],
   },

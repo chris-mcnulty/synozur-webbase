@@ -1,8 +1,9 @@
-import { pgTable, text, uuid, primaryKey, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, primaryKey, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { usersTable } from "./users";
+import { clientOrganizationsTable } from "./clientOrganizations";
 
-export const ROLE_NAMES = ["admin", "editor", "author", "contributor"] as const;
+export const ROLE_NAMES = ["admin", "editor", "author", "contributor", "client"] as const;
 export type RoleName = (typeof ROLE_NAMES)[number];
 
 export const rolesTable = pgTable(
@@ -43,9 +44,10 @@ export type InsertRole = typeof rolesTable.$inferInsert;
 export type UserRole = typeof userRoles.$inferSelect;
 
 // #126: admin-managed mapping from Entra security-group object-ids to CMS
-// roles. On every Entra-backed sign-in we resolve the user's group set, look
-// up the active mappings, and reconcile `user_roles`. A row deletion does not
-// remove existing role grants — only an absent group on next sign-in does.
+// roles. clientOrganizationId scopes the mapping to a specific client org
+// (NULL = Synozur-internal mapping). Unique constraints are partial-index
+// based and enforced via migrations.ts rather than schema-level declarations
+// so Postgres can handle the NULL-scoped variants correctly.
 export const entraGroupRoleMappingsTable = pgTable(
   "entra_group_role_mappings",
   {
@@ -55,11 +57,14 @@ export const entraGroupRoleMappingsTable = pgTable(
     roleId: uuid("role_id")
       .notNull()
       .references(() => rolesTable.id, { onDelete: "cascade" }),
+    // NULL = Synozur-internal group mapping; set = scoped to a client org
+    clientOrganizationId: uuid("client_organization_id").references(
+      () => clientOrganizationsTable.id,
+      { onDelete: "cascade" },
+    ),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("entra_group_role_unique").on(t.entraGroupId, t.roleId),
-  ],
+  (t) => [index("entra_group_role_org_idx").on(t.clientOrganizationId)],
 );
 
 export type EntraGroupRoleMapping = typeof entraGroupRoleMappingsTable.$inferSelect;

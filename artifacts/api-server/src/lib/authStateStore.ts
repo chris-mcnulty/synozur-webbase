@@ -2,9 +2,13 @@ import { eq, lt } from "drizzle-orm";
 import { db, authPendingStatesTable } from "@workspace/db";
 
 // Single-use OAuth/OIDC state record. Captures the `state` parameter, the
-// PKCE `code_verifier`, the post-auth `returnTo`, and the ID-token `nonce`.
-// The row is deleted on successful callback consumption so replay is
-// impossible.
+// PKCE `code_verifier`, the post-auth `returnTo`, the ID-token `nonce`, and
+// the `redirectUri` used in the authorize request. The redirect URI is stored
+// here so the token-exchange at callback uses the EXACT same URI that was
+// submitted — this is required by OIDC spec and also lets the same code path
+// work correctly across dev (Replit preview domain) and production (custom
+// domain) without any special casing.
+// The row is deleted on successful callback consumption so replay is impossible.
 
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -13,6 +17,7 @@ export async function persistAuthPendingState(args: {
   codeVerifier: string;
   nonce: string;
   returnTo: string | null;
+  redirectUri: string;
 }): Promise<void> {
   const now = new Date();
   await db.insert(authPendingStatesTable).values({
@@ -20,6 +25,7 @@ export async function persistAuthPendingState(args: {
     codeVerifier: args.codeVerifier,
     nonce: args.nonce,
     returnTo: args.returnTo,
+    redirectUri: args.redirectUri,
     createdAt: now,
     expiresAt: new Date(now.getTime() + STATE_TTL_MS),
   });
@@ -27,7 +33,7 @@ export async function persistAuthPendingState(args: {
 
 export async function consumeAuthPendingState(
   state: string,
-): Promise<{ codeVerifier: string; nonce: string; returnTo: string | null } | null> {
+): Promise<{ codeVerifier: string; nonce: string; returnTo: string | null; redirectUri: string | null } | null> {
   const [row] = await db
     .delete(authPendingStatesTable)
     .where(eq(authPendingStatesTable.state, state))
@@ -38,6 +44,7 @@ export async function consumeAuthPendingState(
     codeVerifier: row.codeVerifier,
     nonce: row.nonce,
     returnTo: row.returnTo,
+    redirectUri: row.redirectUri,
   };
 }
 

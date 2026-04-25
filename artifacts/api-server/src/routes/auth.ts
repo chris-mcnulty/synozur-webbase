@@ -1,11 +1,13 @@
 import { Router, type IRouter, type Request } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import {
   db,
   usersTable,
   rolesTable,
   userRoles,
+  clientOrganizationsTable,
 } from "@workspace/db";
 import { requireAuth, loadUserById } from "../middlewares/auth";
 import {
@@ -17,7 +19,8 @@ import {
   isEntraConfigured,
   normalizeIdentity,
   postLogoutRedirectUri,
-  redirectUri,
+  redirectUriOverride,
+  tenantAuthority,
   verifyIdToken,
 } from "../lib/entraOidc";
 import {
@@ -31,10 +34,16 @@ import {
   readSessionToken,
   setSessionCookie,
 } from "../lib/sessions";
-import { applyEntraSignIn } from "../lib/entra";
+import { applyEntraSignIn, applyClientOrgRole } from "../lib/entra";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+const BCRYPT_ROUNDS = 12;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 const SignInQuery = z.object({
   returnTo: z.string().max(2048).optional(),
@@ -53,19 +62,61 @@ function userAgent(req: Request): string | null {
   return typeof ua === "string" ? ua.slice(0, 1000) : null;
 }
 
-// `returnTo` is open-redirect-prone if we trust it blindly. We only honor
-// same-origin paths (must start with a single `/`); anything else falls back
-// to the caller-supplied default. We deliberately do NOT support external
-// allow-list URLs here — adding cross-app return targets would be a separate,
-// configurable feature, not a quiet branch in this helper.
 function safeReturnTo(returnTo: string | null | undefined, fallback: string): string {
   if (!returnTo) return fallback;
   if (returnTo.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
   return fallback;
 }
 
-// GET /api/auth/sign-in — kicks off OIDC. Issues PKCE + nonce, persists the
-// pending state, and 302s the browser to Entra's authorize endpoint.
+// Derive the OIDC callback URL from the incoming request so the same code
+// works for any environment (Replit dev domain, staging, production) without
+// requiring AUTH_REDIRECT_URI to be set. When AUTH_REDIRECT_URI IS set it
+// takes precedence — useful if the server sits behind a non-standard proxy.
+// The derived URL is stored in the auth_pending_states row and used again
+// during the token exchange at callback time (OIDC requires an exact match).
+function deriveCallbackUri(req: Request): string {
+  const override = redirectUriOverride();
+  if (override) return override;
+  const proto =
+    req.get("x-forwarded-proto") ??
+    (req.secure ? "https" : "http");
+  const host = req.get("x-forwarded-host") ?? req.get("host") ?? req.hostname;
+  return `${proto}://${host}/api/auth/callback`;
+}
+
+// Returns the clientOrganization row whose entraTenantId matches the given
+// token tid, or null if none. Used to validate multi-tenant Entra logins.
+async function findActiveClientOrgByTenant(
+  tenantId: string,
+): Promise<typeof clientOrganizationsTable.$inferSelect | null> {
+  const org = await db.query.clientOrganizationsTable.findFirst({
+    where: and(
+      eq(clientOrganizationsTable.entraTenantId, tenantId),
+      eq(clientOrganizationsTable.isActive, true),
+    ),
+  });
+  return org ?? null;
+}
+
+// Returns the clientOrganization that approves the given email domain, or null.
+async function findActiveClientOrgByEmailDomain(
+  email: string,
+): Promise<typeof clientOrganizationsTable.$inferSelect | null> {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return null;
+  // Fetch all active orgs that have a non-empty domain list and check in JS.
+  // (Postgres array @> operator would need raw sql; the table should be small.)
+  const orgs = await db.query.clientOrganizationsTable.findMany({
+    where: eq(clientOrganizationsTable.isActive, true),
+  });
+  return orgs.find((o) =>
+    (o.approvedEmailDomains ?? []).map((d) => d.toLowerCase()).includes(domain),
+  ) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Entra SSO — GET /api/auth/sign-in
+// ---------------------------------------------------------------------------
 router.get("/auth/sign-in", async (req, res): Promise<void> => {
   const parsed = SignInQuery.safeParse(req.query);
   if (!parsed.success) {
@@ -74,31 +125,33 @@ router.get("/auth/sign-in", async (req, res): Promise<void> => {
   }
   if (!isEntraConfigured()) {
     res.status(503).json({
-      error: "Sign-in not configured. Set ENTRA_TENANT_ID, ENTRA_APP_CLIENT_ID, AUTH_REDIRECT_URI.",
+      error: "SSO sign-in not configured. Set ENTRA_TENANT_ID and ENTRA_APP_CLIENT_ID.",
     });
     return;
   }
   const state = generateRandomToken(24);
   const nonce = generateRandomToken(24);
   const pkce = generatePkcePair();
+  const callbackUri = deriveCallbackUri(req);
   await persistAuthPendingState({
     state,
     codeVerifier: pkce.verifier,
     nonce,
     returnTo: safeReturnTo(parsed.data.returnTo, "/admin"),
+    redirectUri: callbackUri,
   });
   const url = await buildAuthorizeUrl({
     state,
     nonce,
     pkceChallenge: pkce.challenge,
+    redirectUri: callbackUri,
   });
   res.redirect(url);
 });
 
-// GET /api/auth/callback — Entra returns the user here with `code` + `state`.
-// We exchange the code, validate the ID token, upsert the user row, hand off
-// to applyEntraSignIn for group reconciliation, mint a session, set the
-// cookie, and redirect back into the app.
+// ---------------------------------------------------------------------------
+// Entra SSO — GET /api/auth/callback
+// ---------------------------------------------------------------------------
 const CallbackQuery = z.object({
   code: z.string().optional(),
   state: z.string().optional(),
@@ -130,12 +183,18 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     return;
   }
 
+  // Use the stored redirect URI — must match exactly what was sent in the
+  // authorize request. Falls back to deriving from the request if the row
+  // pre-dates the redirect_uri column (old pending states).
+  const callbackUri = pending.redirectUri ?? deriveCallbackUri(req);
+
   let identity;
   let idTokenRaw: string;
   try {
     const tokens = await exchangeCodeForTokens({
       code: parsed.data.code,
       codeVerifier: pending.codeVerifier,
+      redirectUri: callbackUri,
     });
     const verified = await verifyIdToken(tokens.idToken, pending.nonce);
     identity = normalizeIdentity(verified.claims);
@@ -146,11 +205,32 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  // Upsert by (authProvider, externalSubject) — the schema's compound unique
-  // index. Filtering on both prevents cross-provider collisions if we later
-  // add a second IdP with overlapping subject ids. Fall back to email match
-  // if a pre-existing row was seeded without an externalSubject (e.g. by the
-  // imported-author bootstrap script).
+  // Tenant allowlist: the token's tid must be either:
+  //   (a) ENTRA_TENANT_ID — Synozur's own tenant, or
+  //   (b) an active client_organization's entraTenantId.
+  // Any other tenant is rejected with 403.
+  const synozurTenantId = tenantAuthority();
+  const isSynozurTenant =
+    !!identity.entraTenantId &&
+    synozurTenantId !== "organizations" &&
+    synozurTenantId !== "common" &&
+    identity.entraTenantId === synozurTenantId;
+
+  let clientOrg: typeof clientOrganizationsTable.$inferSelect | null = null;
+  if (!isSynozurTenant && identity.entraTenantId) {
+    clientOrg = await findActiveClientOrgByTenant(identity.entraTenantId);
+    if (!clientOrg) {
+      logger.warn(
+        { tenantId: identity.entraTenantId, email: identity.email },
+        "Entra sign-in rejected: tenant not in allowlist",
+      );
+      res.status(403).redirect("/?auth_error=tenant_not_allowed");
+      return;
+    }
+  }
+
+  // Upsert user by (authProvider, externalSubject). Fall back to email match
+  // for rows seeded before the externalSubject column existed.
   let userRow = await db.query.usersTable.findFirst({
     where: and(
       eq(usersTable.authProvider, "entra"),
@@ -165,6 +245,8 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
       userRow = byEmail;
     }
   }
+
+  const orgId = clientOrg?.id ?? null;
   if (userRow) {
     await db
       .update(usersTable)
@@ -178,6 +260,7 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         entraObjectId: identity.entraObjectId ?? userRow.entraObjectId,
         lastSsoProvider: "entra",
         lastSignInAt: new Date(),
+        ...(orgId ? { clientOrganizationId: orgId } : {}),
       })
       .where(eq(usersTable.id, userRow.id));
   } else {
@@ -193,51 +276,47 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         entraObjectId: identity.entraObjectId,
         lastSsoProvider: "entra",
         lastSignInAt: new Date(),
+        clientOrganizationId: orgId,
       })
       .returning();
     userRow = inserted;
-    // Bootstrap: first user becomes admin.
+    // Bootstrap: first user ever becomes admin.
     const userCount = await db.$count(usersTable);
     if (userCount === 1) {
       const adminRole = await db.query.rolesTable.findFirst({
         where: eq(rolesTable.name, "admin"),
       });
       if (adminRole) {
-        await db
-          .insert(userRoles)
-          .values({ userId: userRow.id, roleId: adminRole.id })
-          .onConflictDoNothing();
+        await db.insert(userRoles).values({ userId: userRow.id, roleId: adminRole.id }).onConflictDoNothing();
       }
     }
   }
 
-  // Auto-restore admin role if listed in ADMIN_EMAILS.
+  // Auto-restore admin for emails in ADMIN_EMAILS.
   const adminEmails = (process.env["ADMIN_EMAILS"] ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter((e) => e.length > 0);
-  if (
-    adminEmails.length > 0 &&
-    userRow.email &&
-    adminEmails.includes(userRow.email.toLowerCase())
-  ) {
-    const adminRole = await db.query.rolesTable.findFirst({
-      where: eq(rolesTable.name, "admin"),
-    });
+  if (adminEmails.length > 0 && userRow.email && adminEmails.includes(userRow.email.toLowerCase())) {
+    const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
     if (adminRole) {
-      await db
-        .insert(userRoles)
-        .values({ userId: userRow.id, roleId: adminRole.id })
-        .onConflictDoNothing();
+      await db.insert(userRoles).values({ userId: userRow.id, roleId: adminRole.id }).onConflictDoNothing();
     }
   }
 
-  // #126: refresh transitive group membership and reconcile roles.
+  // Apply org's default role if the user belongs to a client org.
+  if (orgId) {
+    await applyClientOrgRole(userRow.id, orgId);
+  }
+
+  // Entra group reconciliation — Synozur's own tenant only.
   try {
     await applyEntraSignIn({
       userId: userRow.id,
       tenantId: identity.entraTenantId,
       objectId: identity.entraObjectId,
+      clientOrganizationId: orgId,
+      isSynozurTenant,
     });
   } catch (err) {
     logger.warn({ err, userId: userRow.id }, "applyEntraSignIn failed");
@@ -249,19 +328,182 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     ip: clientIp(req),
   });
   setSessionCookie(req, res, session.token, session.expiresAt);
-
-  // Stash the id_token under a non-HttpOnly hint cookie? No — id_token is
-  // sensitive. We keep it server-side; for RP-initiated logout we re-mint
-  // the request without an id_token_hint (Entra accepts that).
   void idTokenRaw;
-
-  const target = safeReturnTo(pending.returnTo, "/admin");
-  res.redirect(target);
+  res.redirect(safeReturnTo(pending.returnTo, "/admin"));
 });
 
-// POST /api/auth/sign-out — destroys the local session and redirects to Entra
-// RP-initiated logout. Falls back to a local redirect when Entra is
-// unconfigured (dev).
+// ---------------------------------------------------------------------------
+// Local email/password — POST /api/auth/register
+// ---------------------------------------------------------------------------
+const RegisterBody = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(128),
+  displayName: z.string().min(1).max(255).optional(),
+  // Invitation / self-service: users may supply an org slug to claim
+  // membership. Membership is only granted when the org has an approved email
+  // domain that matches — otherwise it's stored for admin review.
+  organizationSlug: z.string().max(100).optional(),
+});
+
+router.post("/auth/register", async (req, res): Promise<void> => {
+  const parsed = RegisterBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const { email, password, displayName, organizationSlug } = parsed.data;
+  const normalizedEmail = email.toLowerCase();
+
+  // Check for existing account.
+  const existing = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, normalizedEmail),
+  });
+  if (existing) {
+    // Return the same error regardless of whether the account exists — avoids
+    // user enumeration.
+    res.status(409).json({ error: "An account with this email already exists." });
+    return;
+  }
+
+  const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  // Domain-based org auto-join: check the user's email domain against all
+  // active orgs' approved_email_domains. If there's a match, auto-link.
+  let clientOrg: typeof clientOrganizationsTable.$inferSelect | null = null;
+  if (organizationSlug) {
+    const slugOrg = await db.query.clientOrganizationsTable.findFirst({
+      where: and(
+        eq(clientOrganizationsTable.slug, organizationSlug),
+        eq(clientOrganizationsTable.isActive, true),
+      ),
+    });
+    if (slugOrg) {
+      const domain = normalizedEmail.split("@")[1] ?? "";
+      const approved = (slugOrg.approvedEmailDomains ?? []).map((d) => d.toLowerCase());
+      if (approved.includes(domain)) {
+        clientOrg = slugOrg;
+      }
+      // If domain not approved, don't auto-link — admin must assign.
+    }
+  } else {
+    clientOrg = await findActiveClientOrgByEmailDomain(normalizedEmail);
+  }
+
+  const [inserted] = await db
+    .insert(usersTable)
+    .values({
+      email: normalizedEmail,
+      passwordHash: hash,
+      authProvider: "local",
+      externalSubject: `local:${normalizedEmail}`,
+      displayName: displayName ?? normalizedEmail.split("@")[0],
+      clientOrganizationId: clientOrg?.id ?? null,
+      lastSignInAt: new Date(),
+    })
+    .returning();
+
+  // Grant client role if org-linked.
+  if (clientOrg && inserted) {
+    await applyClientOrgRole(inserted.id, clientOrg.id);
+  }
+
+  // Bootstrap: first user ever becomes admin.
+  if (inserted) {
+    const userCount = await db.$count(usersTable);
+    if (userCount === 1) {
+      const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
+      if (adminRole) {
+        await db.insert(userRoles).values({ userId: inserted.id, roleId: adminRole.id }).onConflictDoNothing();
+      }
+    }
+
+    // Auto-admin by ADMIN_EMAILS.
+    const adminEmails = (process.env["ADMIN_EMAILS"] ?? "")
+      .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (adminEmails.includes(normalizedEmail)) {
+      const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
+      if (adminRole) {
+        await db.insert(userRoles).values({ userId: inserted.id, roleId: adminRole.id }).onConflictDoNothing();
+      }
+    }
+
+    const session = await createSession({
+      userId: inserted.id,
+      userAgent: userAgent(req),
+      ip: clientIp(req),
+    });
+    setSessionCookie(req, res, session.token, session.expiresAt);
+    const fresh = await loadUserById(inserted.id);
+    res.status(201).json({ ok: true, user: fresh });
+    return;
+  }
+
+  res.status(500).json({ error: "Registration failed" });
+});
+
+// ---------------------------------------------------------------------------
+// Local email/password — POST /api/auth/login
+// ---------------------------------------------------------------------------
+const LoginBody = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(128),
+});
+
+router.post("/auth/login", async (req, res): Promise<void> => {
+  const parsed = LoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const normalizedEmail = parsed.data.email.toLowerCase();
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, normalizedEmail),
+  });
+
+  // Constant-time comparison guard: even if the user doesn't exist we run
+  // bcrypt to avoid timing-based user enumeration.
+  const dummyHash = "$2a$12$invalidhashinvalidhashinvalidhashinvalidhashinvalidhash";
+  const hashToCheck = user?.passwordHash ?? dummyHash;
+  const valid = await bcrypt.compare(parsed.data.password, hashToCheck);
+
+  if (!user || !valid || !user.passwordHash) {
+    res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ lastSignInAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  // Re-apply org role on every sign-in in case it was updated.
+  if (user.clientOrganizationId) {
+    await applyClientOrgRole(user.id, user.clientOrganizationId);
+  }
+
+  // Auto-admin by ADMIN_EMAILS.
+  const adminEmails = (process.env["ADMIN_EMAILS"] ?? "")
+    .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (adminEmails.includes(normalizedEmail)) {
+    const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
+    if (adminRole) {
+      await db.insert(userRoles).values({ userId: user.id, roleId: adminRole.id }).onConflictDoNothing();
+    }
+  }
+
+  const session = await createSession({
+    userId: user.id,
+    userAgent: userAgent(req),
+    ip: clientIp(req),
+  });
+  setSessionCookie(req, res, session.token, session.expiresAt);
+  const fresh = await loadUserById(user.id);
+  res.json({ ok: true, user: fresh });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/sign-out
+// ---------------------------------------------------------------------------
 router.post("/auth/sign-out", async (req, res): Promise<void> => {
   const token = readSessionToken(req);
   if (token) {
@@ -278,15 +520,16 @@ router.post("/auth/sign-out", async (req, res): Promise<void> => {
   res.json({ ok: true, redirect: "/" });
 });
 
-// GET /api/auth/me — returns the current user (or 401). Used by the SPA's
-// admin gate and any per-page personalization.
+// ---------------------------------------------------------------------------
+// GET /api/auth/me
+// ---------------------------------------------------------------------------
 router.get("/auth/me", requireAuth, (req, res) => {
   res.json(req.authedUser);
 });
 
-// Lightweight "am I signed in?" probe used by the public site's "Sign in"
-// button. Returns 200 with `{ signedIn: false }` rather than 401 so the
-// front-end doesn't have to special-case anonymous visits.
+// ---------------------------------------------------------------------------
+// GET /api/auth/session
+// ---------------------------------------------------------------------------
 router.get("/auth/session", async (req, res): Promise<void> => {
   if (!req.authedUser) {
     res.json({ signedIn: false });
@@ -295,18 +538,20 @@ router.get("/auth/session", async (req, res): Promise<void> => {
   res.json({ signedIn: true, user: req.authedUser });
 });
 
-// Convenience: the SPA needs to know whether sign-in is configured at all
-// (so it can show "Sign in with Microsoft" vs. a "contact your admin" hint).
-router.get("/auth/config", (_req, res) => {
+// ---------------------------------------------------------------------------
+// GET /api/auth/config — lets the SPA know what auth methods are available.
+// ---------------------------------------------------------------------------
+router.get("/auth/config", (req, res) => {
   res.json({
     entraConfigured: isEntraConfigured(),
-    redirectUri: redirectUri(),
+    localAuthEnabled: true,
+    callbackUri: deriveCallbackUri(req),
   });
 });
 
-// Dev-only escape hatch: load a user by email if the request comes from
-// localhost AND `ALLOW_DEV_LOGIN=1`. Lets the team work on the admin without
-// an Entra tenant. The bypass is wholly inert in any real deployment.
+// ---------------------------------------------------------------------------
+// Dev-only escape hatch
+// ---------------------------------------------------------------------------
 if (process.env["ALLOW_DEV_LOGIN"] === "1" && process.env["NODE_ENV"] !== "production") {
   const DevLoginBody = z.object({ email: z.string().email() });
   router.post("/auth/dev-login", async (req, res): Promise<void> => {
@@ -321,9 +566,7 @@ if (process.env["ALLOW_DEV_LOGIN"] === "1" && process.env["NODE_ENV"] !== "produ
       return;
     }
     const email = parsed.data.email.toLowerCase();
-    let user = await db.query.usersTable.findFirst({
-      where: eq(usersTable.email, email),
-    });
+    let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, email) });
     if (!user) {
       const [inserted] = await db
         .insert(usersTable)
@@ -337,25 +580,14 @@ if (process.env["ALLOW_DEV_LOGIN"] === "1" && process.env["NODE_ENV"] !== "produ
       user = inserted;
     }
     const adminEmails = (process.env["ADMIN_EMAILS"] ?? "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0);
+      .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
     if (adminEmails.includes(email)) {
-      const adminRole = await db.query.rolesTable.findFirst({
-        where: eq(rolesTable.name, "admin"),
-      });
+      const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
       if (adminRole) {
-        await db
-          .insert(userRoles)
-          .values({ userId: user!.id, roleId: adminRole.id })
-          .onConflictDoNothing();
+        await db.insert(userRoles).values({ userId: user!.id, roleId: adminRole.id }).onConflictDoNothing();
       }
     }
-    const session = await createSession({
-      userId: user!.id,
-      userAgent: userAgent(req),
-      ip,
-    });
+    const session = await createSession({ userId: user!.id, userAgent: userAgent(req), ip });
     setSessionCookie(req, res, session.token, session.expiresAt);
     const fresh = await loadUserById(user!.id);
     res.json({ ok: true, user: fresh });

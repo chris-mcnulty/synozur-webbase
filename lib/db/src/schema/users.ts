@@ -1,6 +1,7 @@
 import { pgTable, uuid, text, timestamp, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { userRoles } from "./roles";
+import { clientOrganizationsTable } from "./clientOrganizations";
 
 export const usersTable = pgTable(
   "users",
@@ -18,6 +19,10 @@ export const usersTable = pgTable(
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
     bio: text("bio"),
+    // Local email/password auth. NULL when the user authenticates via SSO only.
+    // This website doubles as a future OAuth provider for other Synozur apps,
+    // so we store credentials locally alongside SSO identities.
+    passwordHash: text("password_hash"),
     // #126: Microsoft Entra SSO. `entraObjectId` is the directory object id
     // delivered as the Microsoft-specific `oid` claim — distinct from `sub`,
     // and the value Microsoft Graph queries (e.g. /users/{id}/transitiveMemberOf)
@@ -33,6 +38,12 @@ export const usersTable = pgTable(
     // group state (we still re-resolve on every sign-in).
     entraGroupClaims: jsonb("entra_group_claims").$type<string[]>(),
     entraGroupsRefreshedAt: timestamp("entra_groups_refreshed_at", { withTimezone: true }),
+    // Client organization this user belongs to. When the org is active, the
+    // org's defaultRoleId is automatically granted on every sign-in.
+    clientOrganizationId: uuid("client_organization_id").references(
+      () => clientOrganizationsTable.id,
+      { onDelete: "set null" },
+    ),
     // #131: marketing-consent state mirrored on the user row so a registered
     // user's opt-in/out propagates to HubSpot lifecycle changes regardless of
     // which surface flipped it.
@@ -45,6 +56,7 @@ export const usersTable = pgTable(
     uniqueIndex("users_external_subject_key").on(t.authProvider, t.externalSubject),
     index("users_entra_object_id_idx").on(t.entraObjectId),
     index("users_email_idx").on(t.email),
+    index("users_client_org_idx").on(t.clientOrganizationId),
   ],
 );
 
@@ -75,8 +87,11 @@ export type Session = typeof sessionsTable.$inferSelect;
 export type InsertSession = typeof sessionsTable.$inferInsert;
 
 // Single-use OAuth/OIDC state record — captures `state`, PKCE `code_verifier`,
-// the post-auth `returnTo` URL, and a `nonce` to bind to the ID token. The row
-// is consumed (deleted) on callback so replays are impossible.
+// the post-auth `returnTo` URL, a `nonce` to bind to the ID token, and the
+// `redirectUri` that was sent in the authorize request (so the callback uses
+// the exact same URI — required for PKCE and supports multi-environment
+// deployments where the host differs between dev and prod).
+// The row is consumed (deleted) on callback so replays are impossible.
 export const authPendingStatesTable = pgTable(
   "auth_pending_states",
   {
@@ -84,6 +99,7 @@ export const authPendingStatesTable = pgTable(
     codeVerifier: text("code_verifier").notNull(),
     nonce: text("nonce").notNull(),
     returnTo: text("return_to"),
+    redirectUri: text("redirect_uri"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
