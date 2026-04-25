@@ -736,7 +736,7 @@ export default function ApplicationEdit({ id }: Props) {
                   <SelectItem value="__none__">No service</SelectItem>
                   {allServices.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {s.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -768,7 +768,7 @@ export default function ApplicationEdit({ id }: Props) {
                   <SelectItem value="__none__">No solution</SelectItem>
                   {availableSolutions.map((sol) => (
                     <SelectItem key={sol.id} value={sol.id}>
-                      {sol.name}
+                      {sol.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
