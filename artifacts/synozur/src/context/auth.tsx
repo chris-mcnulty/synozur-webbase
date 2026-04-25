@@ -10,7 +10,7 @@ import {
 
 // Native auth context. Replaces Clerk's `useUser` / `useAuth` / `useClerk` —
 // the SPA reads identity from `/api/auth/me` and triggers sign-in by
-// redirecting to `/api/auth/sign-in`, which kicks off the OIDC flow.
+// redirecting to `/sign-in`, which handles both SSO and email/password flows.
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback((returnTo?: string) => {
     const target = returnTo ?? window.location.pathname + window.location.search;
-    const url = new URL(`${BASE_PATH}/api/auth/sign-in`, window.location.origin);
+    const url = new URL(`${BASE_PATH}/sign-in`, window.location.origin);
     url.searchParams.set("returnTo", target);
     window.location.assign(url.toString());
   }, []);

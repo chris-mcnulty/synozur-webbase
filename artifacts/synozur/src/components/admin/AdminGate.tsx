@@ -75,7 +75,6 @@ export function useAdminAccess(): {
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const { access, isLoading, signedIn } = useAdminAccess();
-  const { signIn } = useAuth();
 
   if (isLoading) {
     return (
@@ -92,9 +91,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
         <p className="text-muted-foreground mb-6">
           You need to sign in to access the admin area.
         </p>
-        <Button onClick={() => signIn("/admin")} data-testid="button-go-sign-in">
-          Sign in with Microsoft
-        </Button>
+        <Link href="/sign-in?returnTo=/admin">
+          <Button data-testid="button-go-sign-in">Sign in</Button>
+        </Link>
       </div>
     );
   }
