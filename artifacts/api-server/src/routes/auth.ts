@@ -1,13 +1,16 @@
 import { Router, type IRouter, type Request } from "express";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import {
   db,
   usersTable,
   rolesTable,
   userRoles,
   clientOrganizationsTable,
+  emailVerificationTokensTable,
+  passwordResetTokensTable,
 } from "@workspace/db";
 import { requireAuth, loadUserById } from "../middlewares/auth";
 import {
@@ -36,10 +39,15 @@ import {
 } from "../lib/sessions";
 import { applyEntraSignIn, applyClientOrgRole } from "../lib/entra";
 import { logger } from "../lib/logger";
+import { sendEmailVerification, sendPasswordReset } from "../lib/email";
 
 const router: IRouter = Router();
 
 const BCRYPT_ROUNDS = 12;
+
+function generateSecureToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -433,6 +441,20 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       ip: clientIp(req),
     });
     setSessionCookie(req, res, session.token, session.expiresAt);
+
+    // Send email verification link (fire-and-forget — don't block response).
+    const verifyToken = generateSecureToken();
+    await db.insert(emailVerificationTokensTable).values({
+      token: verifyToken,
+      userId: inserted.id,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+    void sendEmailVerification({
+      to: normalizedEmail,
+      name: inserted.displayName,
+      token: verifyToken,
+    });
+
     const fresh = await loadUserById(inserted.id);
     res.status(201).json({ ok: true, user: fresh });
     return;
@@ -547,6 +569,158 @@ router.get("/auth/config", (req, res) => {
     localAuthEnabled: true,
     callbackUri: deriveCallbackUri(req),
   });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/verify-email — consume a verification token
+// ---------------------------------------------------------------------------
+const VerifyEmailBody = z.object({ token: z.string().min(1).max(128) });
+
+router.post("/auth/verify-email", async (req, res): Promise<void> => {
+  const parsed = VerifyEmailBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const row = await db.query.emailVerificationTokensTable.findFirst({
+    where: eq(emailVerificationTokensTable.token, parsed.data.token),
+  });
+  if (!row) {
+    res.status(400).json({ error: "Invalid or expired verification link." });
+    return;
+  }
+  if (row.usedAt) {
+    res.status(400).json({ error: "This verification link has already been used." });
+    return;
+  }
+  if (row.expiresAt < new Date()) {
+    res.status(400).json({ error: "This verification link has expired. Request a new one." });
+    return;
+  }
+  // Mark token used and set emailVerified on the user atomically.
+  await db
+    .update(emailVerificationTokensTable)
+    .set({ usedAt: new Date() })
+    .where(eq(emailVerificationTokensTable.token, parsed.data.token));
+  await db
+    .update(usersTable)
+    .set({ emailVerified: true })
+    .where(eq(usersTable.id, row.userId));
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/resend-verification — send a fresh verification email
+// ---------------------------------------------------------------------------
+const ResendVerificationBody = z.object({ email: z.string().email().max(255) });
+
+router.post("/auth/resend-verification", async (req, res): Promise<void> => {
+  const parsed = ResendVerificationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, parsed.data.email.toLowerCase()),
+  });
+  if (!user || user.authProvider !== "local" || user.emailVerified) {
+    // Always return 200 — avoids enumeration and is harmless when already verified.
+    res.json({ ok: true });
+    return;
+  }
+  // Expire all previous unused tokens.
+  await db
+    .update(emailVerificationTokensTable)
+    .set({ usedAt: new Date() })
+    .where(and(
+      eq(emailVerificationTokensTable.userId, user.id),
+      isNull(emailVerificationTokensTable.usedAt),
+    ));
+  const token = generateSecureToken();
+  await db.insert(emailVerificationTokensTable).values({
+    token,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+  void sendEmailVerification({ to: user.email!, name: user.displayName, token });
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/forgot-password — send a password-reset email
+// Always returns 200 to prevent email enumeration.
+// ---------------------------------------------------------------------------
+const ForgotPasswordBody = z.object({ email: z.string().email().max(255) });
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const normalizedEmail = parsed.data.email.toLowerCase();
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, normalizedEmail),
+  });
+  if (user && user.authProvider === "local" && user.passwordHash) {
+    const token = generateSecureToken();
+    await db.insert(passwordResetTokensTable).values({
+      token,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    void sendPasswordReset({ to: normalizedEmail, name: user.displayName, token });
+  }
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/reset-password — consume a reset token and set new password
+// ---------------------------------------------------------------------------
+const ResetPasswordBody = z.object({
+  token: z.string().min(1).max(128),
+  password: z.string().min(8).max(128),
+});
+
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const row = await db.query.passwordResetTokensTable.findFirst({
+    where: eq(passwordResetTokensTable.token, parsed.data.token),
+  });
+  if (!row) {
+    res.status(400).json({ error: "Invalid or expired reset link." });
+    return;
+  }
+  if (row.usedAt) {
+    res.status(400).json({ error: "This reset link has already been used." });
+    return;
+  }
+  if (row.expiresAt < new Date()) {
+    res.status(400).json({ error: "This reset link has expired. Request a new one." });
+    return;
+  }
+  const hash = await bcrypt.hash(parsed.data.password, BCRYPT_ROUNDS);
+  // Mark token used, update password, invalidate all other reset tokens.
+  await db
+    .update(passwordResetTokensTable)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokensTable.token, parsed.data.token));
+  await db
+    .update(usersTable)
+    .set({ passwordHash: hash })
+    .where(eq(usersTable.id, row.userId));
+  // Delete all remaining (unused, unexpired) reset tokens for this user.
+  await db
+    .delete(passwordResetTokensTable)
+    .where(and(
+      eq(passwordResetTokensTable.userId, row.userId),
+      eq(passwordResetTokensTable.token, parsed.data.token),
+    ));
+  res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------

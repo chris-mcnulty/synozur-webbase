@@ -296,6 +296,74 @@ export async function sendCommentReplyEmail(args: {
   });
 }
 
+export async function sendEmailVerification(args: {
+  to: string;
+  name: string | null;
+  token: string;
+}): Promise<SendEmailResult> {
+  const link = `${SITE_URL}/verify-email?token=${encodeURIComponent(args.token)}`;
+  const greeting = args.name && args.name.trim().length > 0 ? `Hi ${escapeHtml(args.name.trim())},` : "Hello,";
+  const html = brandedShell({
+    preheader: "Verify your email address to activate your Synozur Alliance account.",
+    heading: "Verify your email address",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Thanks for creating an account with The Synozur Alliance. Please verify your email address by clicking the button below. This link expires in 24 hours.</p>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(link)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Verify email address</a>
+      </p>
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">If you didn't create an account, you can safely ignore this email.</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#9999aa;word-break:break-all;">Or copy this link: ${escapeHtml(link)}</p>
+    `,
+  });
+  const text = [
+    args.name && args.name.trim().length > 0 ? `Hi ${args.name.trim()},` : "Hello,",
+    "",
+    "Thanks for creating an account with The Synozur Alliance. Please verify your email address by visiting the link below. This link expires in 24 hours.",
+    "",
+    link,
+    "",
+    "If you didn't create an account, you can safely ignore this email.",
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({ to: args.to, subject: "Verify your email — The Synozur Alliance", html, text });
+}
+
+export async function sendPasswordReset(args: {
+  to: string;
+  name: string | null;
+  token: string;
+}): Promise<SendEmailResult> {
+  const link = `${SITE_URL}/reset-password?token=${encodeURIComponent(args.token)}`;
+  const greeting = args.name && args.name.trim().length > 0 ? `Hi ${escapeHtml(args.name.trim())},` : "Hello,";
+  const html = brandedShell({
+    preheader: "Reset your Synozur Alliance account password.",
+    heading: "Reset your password",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">We received a request to reset the password for your account. Click the button below to choose a new password. This link expires in 1 hour.</p>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(link)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Reset password</a>
+      </p>
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#9999aa;word-break:break-all;">Or copy this link: ${escapeHtml(link)}</p>
+    `,
+  });
+  const text = [
+    args.name && args.name.trim().length > 0 ? `Hi ${args.name.trim()},` : "Hello,",
+    "",
+    "We received a request to reset the password for your account. Visit the link below to choose a new password. This link expires in 1 hour.",
+    "",
+    link,
+    "",
+    "If you didn't request a password reset, you can safely ignore this email — your password won't change.",
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({ to: args.to, subject: "Reset your password — The Synozur Alliance", html, text });
+}
+
 export async function sendInternalNotification(args: {
   formType: "contact" | "subscribe" | "start";
   submissionId: number;

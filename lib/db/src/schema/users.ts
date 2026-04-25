@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { userRoles } from "./roles";
 import { clientOrganizationsTable } from "./clientOrganizations";
 
+
 export const usersTable = pgTable(
   "users",
   {
@@ -49,6 +50,10 @@ export const usersTable = pgTable(
     // which surface flipped it.
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
     marketingOptInUpdatedAt: timestamp("marketing_opt_in_updated_at", { withTimezone: true }),
+    // Whether the user's email address has been verified via a confirmation link.
+    // SSO users (Entra) are considered implicitly verified — the IdP vouches for
+    // the address. Only local (email/password) registrants go through the flow.
+    emailVerified: boolean("email_verified").notNull().default(false),
     lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -115,3 +120,47 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 
 export type User = typeof usersTable.$inferSelect;
 export type InsertUser = typeof usersTable.$inferInsert;
+
+// Single-use token for email address verification. Created at registration
+// time for local (email/password) accounts; consumed when the user clicks
+// the link. Entra SSO users skip this flow entirely.
+export const emailVerificationTokensTable = pgTable(
+  "email_verification_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("email_verification_tokens_user_idx").on(t.userId),
+    index("email_verification_tokens_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export type EmailVerificationToken = typeof emailVerificationTokensTable.$inferSelect;
+
+// Single-use password-reset token. Valid for 1 hour; consumed (usedAt set)
+// when the user submits a new password. All pending reset tokens for a user
+// are deleted after a successful reset so old links are dead immediately.
+export const passwordResetTokensTable = pgTable(
+  "password_reset_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("password_reset_tokens_user_idx").on(t.userId),
+    index("password_reset_tokens_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export type PasswordResetToken = typeof passwordResetTokensTable.$inferSelect;

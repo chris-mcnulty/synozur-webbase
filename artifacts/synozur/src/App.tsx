@@ -35,6 +35,9 @@ import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
+import VerifyEmailPage from "@/pages/verify-email";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminPostsList from "@/pages/admin/insights/posts-list";
 import PostEditor from "@/pages/admin/insights/post-editor";
@@ -381,6 +384,9 @@ function Router() {
             <Route path="/terms" component={Terms} />
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
+            <Route path="/verify-email" component={VerifyEmailPage} />
+            <Route path="/forgot-password" component={ForgotPasswordPage} />
+            <Route path="/reset-password" component={ResetPasswordPage} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

@@ -226,6 +226,46 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (name) DO NOTHING;
     `);
 
+    // 11. Email verification + password reset flows
+    // -------------------------------------------------------
+
+    // 11a. users: add email_verified column (local registrants only; SSO users
+    //      are implicitly verified by the IdP).
+    await db.execute(sql`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false;
+    `);
+
+    // 11b. email_verification_tokens: single-use 24-hour tokens sent to new
+    //      local registrants. Consumed (usedAt set) when the user clicks the
+    //      link; the row is also cleaned up by expiry sweeps.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_verification_tokens (
+        token text PRIMARY KEY,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at timestamptz NOT NULL,
+        used_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS email_verification_tokens_user_idx ON email_verification_tokens (user_id);`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS email_verification_tokens_expires_idx ON email_verification_tokens (expires_at);`);
+
+    // 11c. password_reset_tokens: single-use 1-hour tokens for the
+    //      forgot-password / reset-password flow. All tokens for a user are
+    //      purged on successful reset so old links are immediately dead.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token text PRIMARY KEY,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at timestamptz NOT NULL,
+        used_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS password_reset_tokens_user_idx ON password_reset_tokens (user_id);`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS password_reset_tokens_expires_idx ON password_reset_tokens (expires_at);`);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
