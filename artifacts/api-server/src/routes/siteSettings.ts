@@ -38,6 +38,7 @@ function imageUrlFor(asset: Asset | undefined): string | null {
 
 type ResolvedImageUrls = {
   homeHeroImageUrl: string | null;
+  homeHeroVideoUrl: string | null;
   homeEditorialImageUrl: string | null;
   seoDefaultOgImageUrl: string | null;
   orgLogoUrl: string | null;
@@ -46,6 +47,7 @@ type ResolvedImageUrls = {
 async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUrls> {
   const ids = [
     settings.homeHeroImageAssetId,
+    settings.homeHeroVideoAssetId,
     settings.homeEditorialImageAssetId,
     settings.seoDefaultOgImageAssetId,
     settings.orgLogoAssetId,
@@ -53,6 +55,7 @@ async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUr
   if (ids.length === 0) {
     return {
       homeHeroImageUrl: null,
+      homeHeroVideoUrl: null,
       homeEditorialImageUrl: null,
       seoDefaultOgImageUrl: null,
       orgLogoUrl: null,
@@ -67,6 +70,7 @@ async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUr
     imageUrlFor(id !== null ? byId.get(id) : undefined);
   return {
     homeHeroImageUrl: urlFor(settings.homeHeroImageAssetId),
+    homeHeroVideoUrl: urlFor(settings.homeHeroVideoAssetId ?? null),
     homeEditorialImageUrl: urlFor(settings.homeEditorialImageAssetId),
     seoDefaultOgImageUrl: urlFor(settings.seoDefaultOgImageAssetId),
     orgLogoUrl: urlFor(settings.orgLogoAssetId),
@@ -80,6 +84,8 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     siteTheme: settings.siteTheme ?? "cosmic",
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
+    homeHeroVideoAssetId: settings.homeHeroVideoAssetId,
+    homeHeroVideoUrl: urls.homeHeroVideoUrl,
     homeEditorialImageAssetId: settings.homeEditorialImageAssetId,
     homeEditorialImageUrl: urls.homeEditorialImageUrl,
     polarisFeedUrl: settings.polarisFeedUrl,
@@ -128,6 +134,7 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
       siteTheme: settings.siteTheme ?? "cosmic",
       homeHeroImageUrl: urls.homeHeroImageUrl,
+      homeHeroVideoUrl: urls.homeHeroVideoUrl,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
       seoDefaultTitleTemplate: settings.seoDefaultTitleTemplate,
       seoDefaultDescription: settings.seoDefaultDescription,
@@ -180,6 +187,9 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
 
   if ("homeHeroImageAssetId" in input) {
     updates.homeHeroImageAssetId = input.homeHeroImageAssetId ?? null;
+  }
+  if ("homeHeroVideoAssetId" in input) {
+    updates.homeHeroVideoAssetId = input.homeHeroVideoAssetId ?? null;
   }
   if ("homeEditorialImageAssetId" in input) {
     updates.homeEditorialImageAssetId = input.homeEditorialImageAssetId ?? null;

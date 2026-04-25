@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ObjectUploader } from "@workspace/object-storage-web";
-import { Trash2, Upload, Search, Check, FileText } from "lucide-react";
+import { Trash2, Upload, Search, Check, FileText, Video } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +26,12 @@ import {
   assetKindOf,
   isDocumentMime,
   isImageMime,
+  isVideoMime,
   fileExtensionLabel,
   formatBytes,
   DOCUMENT_ACCEPT_TYPES,
   IMAGE_ACCEPT_TYPES,
+  VIDEO_ACCEPT_TYPES,
 } from "@/lib/asset-kind";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -37,6 +39,7 @@ const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const THUMB_WIDTH = 400;
 const IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 500 * 1024 * 1024;
 
 export function assetUrl(asset: Asset): string {
   return `${BASE_PATH}/api/storage${asset.storageKey}`;
@@ -125,9 +128,10 @@ export function AssetLibraryModal({
 
   const filteredByKind = useMemo(() => {
     if (!activeKind) return assets;
-    return assets.filter((a) =>
-      activeKind === "image" ? isImageMime(a.mimeType) : isDocumentMime(a.mimeType),
-    );
+    if (activeKind === "image") return assets.filter((a) => isImageMime(a.mimeType));
+    if (activeKind === "document") return assets.filter((a) => isDocumentMime(a.mimeType));
+    if (activeKind === "video") return assets.filter((a) => isVideoMime(a.mimeType));
+    return assets;
   }, [assets, activeKind]);
 
   const sortedAssets = useMemo(
@@ -140,23 +144,29 @@ export function AssetLibraryModal({
     [filteredByKind],
   );
 
-  // Upload caps/filters: if kind is locked to documents, or the filter is set
-  // to documents, restrict to the document MIME types; otherwise fall back
-  // to the broader image+document allowance so editors can upload either.
+  // Upload caps/filters: restrict to the relevant MIME types based on kind.
   const uploadAcceptTypes =
     activeKind === "document"
       ? DOCUMENT_ACCEPT_TYPES
       : activeKind === "image"
         ? IMAGE_ACCEPT_TYPES
-        : [...IMAGE_ACCEPT_TYPES, ...DOCUMENT_ACCEPT_TYPES];
+        : activeKind === "video"
+          ? VIDEO_ACCEPT_TYPES
+          : [...IMAGE_ACCEPT_TYPES, ...DOCUMENT_ACCEPT_TYPES, ...VIDEO_ACCEPT_TYPES];
   const uploadMaxBytes =
-    activeKind === "document" ? DOCUMENT_MAX_BYTES : IMAGE_MAX_BYTES;
+    activeKind === "document"
+      ? DOCUMENT_MAX_BYTES
+      : activeKind === "video"
+        ? VIDEO_MAX_BYTES
+        : IMAGE_MAX_BYTES;
   const titleSuffix =
     activeKind === "document"
       ? " — Documents"
       : activeKind === "image"
         ? " — Images"
-        : "";
+        : activeKind === "video"
+          ? " — Videos"
+          : "";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -176,7 +186,11 @@ export function AssetLibraryModal({
         )}
         {kindLocked && kind && (
           <div className="text-xs text-muted-foreground">
-            Showing <span className="font-medium">{kind === "document" ? "documents" : "images"}</span> only.
+            Showing{" "}
+            <span className="font-medium">
+              {kind === "document" ? "documents" : kind === "video" ? "videos" : "images"}
+            </span>{" "}
+            only.
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2">
@@ -204,6 +218,7 @@ export function AssetLibraryModal({
                 <SelectItem value={ANY_KIND}>All types</SelectItem>
                 <SelectItem value="image">Images</SelectItem>
                 <SelectItem value="document">Documents</SelectItem>
+                <SelectItem value="video">Videos</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -328,6 +343,19 @@ export function AssetLibraryModal({
                         width={THUMB_WIDTH}
                         height={THUMB_WIDTH}
                       />
+                    ) : itemKind === "video" ? (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted p-3 text-center">
+                        <Video className="h-10 w-10 text-muted-foreground" />
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {fileExtensionLabel(a)}
+                        </div>
+                        <div className="w-full truncate text-xs text-foreground" title={a.originalName}>
+                          {a.originalName}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatBytes(a.size)}
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted p-3 text-center">
                         <FileText className="h-10 w-10 text-muted-foreground" />
@@ -398,7 +426,9 @@ export function AssetLibraryModal({
               ? "Select Document"
               : activeKind === "image"
                 ? "Select Image"
-                : "Select Asset"}
+                : activeKind === "video"
+                  ? "Select Video"
+                  : "Select Asset"}
           </Button>
         </DialogFooter>
       </DialogContent>

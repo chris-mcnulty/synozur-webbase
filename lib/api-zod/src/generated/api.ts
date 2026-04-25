@@ -1081,11 +1081,15 @@ export const SubmitInsightCommentBody = zod.object({
 /**
  * @summary Public site settings
  */
+export const getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
+
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
-  homeHeroBackgroundType: zod.enum(["image", "video"]).default("image"),
-  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
+  homeHeroBackgroundType: zod
+    .enum(["image", "video"])
+    .default(getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault),
   homeHeroImageUrl: zod.string().nullish(),
+  homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod.string().nullish(),
   seoDefaultDescription: zod.string().nullish(),
@@ -1111,16 +1115,20 @@ export const GetPublicSiteSettingsResponse = zod.object({
 /**
  * @summary Get site settings (admin)
  */
+export const getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
-  homeHeroBackgroundType: zod.enum(["image", "video"]).default("image"),
-  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
+  homeHeroBackgroundType: zod
+    .enum(["image", "video"])
+    .default(getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
+  homeHeroVideoAssetId: zod.number().nullish(),
+  homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
@@ -1167,8 +1175,8 @@ export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod.enum(["image", "video"]).optional(),
-  siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroVideoAssetId: zod.number().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
@@ -1201,16 +1209,20 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
 });
 
+export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
-  homeHeroBackgroundType: zod.enum(["image", "video"]).default("image"),
-  siteTheme: zod.enum(["cosmic", "aurora"]).default("cosmic"),
+  homeHeroBackgroundType: zod
+    .enum(["image", "video"])
+    .default(updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
+  homeHeroVideoAssetId: zod.number().nullish(),
+  homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),

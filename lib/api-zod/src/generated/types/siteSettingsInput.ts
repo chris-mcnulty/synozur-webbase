@@ -5,13 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
 import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
-  homeHeroBackgroundType?: "image" | "video";
+  homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeHeroVideoAssetId?: number | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
   /** @nullable */

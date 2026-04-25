@@ -5,12 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
-  homeHeroBackgroundType?: "image" | "video";
+  homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   /** @nullable */
   homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
   /** @nullable */

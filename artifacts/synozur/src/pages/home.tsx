@@ -11,6 +11,8 @@ import { useAdminAccess } from "@/components/admin/AdminGate";
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
 const DEFAULT_EDITORIAL = "/images/home-hero-editorial.png";
+const BUNDLED_HERO_VIDEO_WEBM = `${BASE_PATH_HOME}/videos/hero-bg.webm`;
+const BUNDLED_HERO_VIDEO_MP4 = `${BASE_PATH_HOME}/videos/hero-bg.mp4`;
 
 function resolveImageUrl(url: string | null | undefined, fallback: string): string {
   if (!url) return fallback;
@@ -207,6 +209,9 @@ export default function Home() {
   });
   const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
   const editorial = resolveImageUrl(settings?.homeEditorialImageUrl, DEFAULT_EDITORIAL);
+  const customVideoSrc = settings?.homeHeroVideoUrl
+    ? resolveImageUrl(settings.homeHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
+    : null;
   return (
     <div className="w-full">
       <Meta
@@ -231,8 +236,14 @@ export default function Home() {
               className="w-full h-full object-cover"
               data-testid="video-home-hero-bg"
             >
-              <source src={`${BASE_PATH_HOME}/videos/hero-bg.webm`} type="video/webm" />
-              <source src={`${BASE_PATH_HOME}/videos/hero-bg.mp4`} type="video/mp4" />
+              {customVideoSrc ? (
+                <source src={customVideoSrc} />
+              ) : (
+                <>
+                  <source src={BUNDLED_HERO_VIDEO_WEBM} type="video/webm" />
+                  <source src={BUNDLED_HERO_VIDEO_MP4} type="video/mp4" />
+                </>
+              )}
               <img
                 src={heroBg}
                 alt="Cosmic nebula background"

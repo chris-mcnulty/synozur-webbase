@@ -428,11 +428,21 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export type PublicSiteSettingsHomeHeroBackgroundType =
+  (typeof PublicSiteSettingsHomeHeroBackgroundType)[keyof typeof PublicSiteSettingsHomeHeroBackgroundType];
+
+export const PublicSiteSettingsHomeHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
-  homeHeroBackgroundType?: "image" | "video";
+  homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   /** @nullable */
   homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
   /** @nullable */
@@ -475,6 +485,14 @@ export interface PublicSiteSettings {
   orgSameAs?: string[] | null;
 }
 
+export type SiteSettingsHomeHeroBackgroundType =
+  (typeof SiteSettingsHomeHeroBackgroundType)[keyof typeof SiteSettingsHomeHeroBackgroundType];
+
+export const SiteSettingsHomeHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
 /**
  * @nullable
  */
@@ -482,11 +500,15 @@ export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
 
 export interface SiteSettings {
   requireCookieConsent: boolean;
-  homeHeroBackgroundType?: "image" | "video";
+  homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
   homeHeroImageUrl?: string | null;
+  /** @nullable */
+  homeHeroVideoAssetId?: number | null;
+  /** @nullable */
+  homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
@@ -550,6 +572,14 @@ export interface SiteSettings {
   updatedAt: string;
 }
 
+export type SiteSettingsInputHomeHeroBackgroundType =
+  (typeof SiteSettingsInputHomeHeroBackgroundType)[keyof typeof SiteSettingsInputHomeHeroBackgroundType];
+
+export const SiteSettingsInputHomeHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
 /**
  * @nullable
  */
@@ -559,9 +589,11 @@ export type SiteSettingsInputSitemapSectionFlags = {
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
-  homeHeroBackgroundType?: "image" | "video";
+  homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
+  /** @nullable */
+  homeHeroVideoAssetId?: number | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
   /** @nullable */

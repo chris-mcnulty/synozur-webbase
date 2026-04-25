@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Image as ImageIcon, X } from "lucide-react";
+import { Check, Image as ImageIcon, Video as VideoIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -16,7 +16,7 @@ const DEFAULT_EDITORIAL = `${BASE_PATH}/images/home-hero-editorial.png`;
 export default function AdminSiteSettings() {
   const qc = useQueryClient();
   const [showSaved, setShowSaved] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState<null | "hero" | "editorial">(null);
+  const [pickerOpen, setPickerOpen] = useState<null | "hero" | "editorial" | "video">(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-site-settings"],
@@ -65,6 +65,7 @@ export default function AdminSiteSettings() {
     homeHeroBackgroundType: currentHeroBgType,
     siteTheme: currentTheme,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
+    homeHeroVideoAssetId: data?.homeHeroVideoAssetId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
     ...overrides,
@@ -75,15 +76,19 @@ export default function AdminSiteSettings() {
       updateMutation.mutate(buildPayload({ homeHeroImageAssetId: asset.id }));
     } else if (pickerOpen === "editorial") {
       updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: asset.id }));
+    } else if (pickerOpen === "video") {
+      updateMutation.mutate(buildPayload({ homeHeroVideoAssetId: asset.id }));
     }
     setPickerOpen(null);
   };
 
-  const handleReset = (which: "hero" | "editorial") => {
+  const handleReset = (which: "hero" | "editorial" | "video") => {
     if (which === "hero") {
       updateMutation.mutate(buildPayload({ homeHeroImageAssetId: null }));
-    } else {
+    } else if (which === "editorial") {
       updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: null }));
+    } else {
+      updateMutation.mutate(buildPayload({ homeHeroVideoAssetId: null }));
     }
   };
 
@@ -195,15 +200,18 @@ export default function AdminSiteSettings() {
 
           <HomePageSection
             title="Home page"
-            description="Pick the imagery used at the top of the public home page. Each picker is filtered to a curated category from the asset library. Reset to use the original built-in image."
+            description="Pick the imagery and video used at the top of the public home page. Each picker is filtered to a curated category from the asset library. Reset to use the original built-in defaults."
             heroUrl={data?.homeHeroImageUrl ?? null}
             heroFallback={DEFAULT_HERO}
             editorialUrl={data?.homeEditorialImageUrl ?? null}
             editorialFallback={DEFAULT_EDITORIAL}
+            heroVideoUrl={data?.homeHeroVideoUrl ?? null}
             onOpenHero={() => setPickerOpen("hero")}
             onOpenEditorial={() => setPickerOpen("editorial")}
+            onOpenVideo={() => setPickerOpen("video")}
             onResetHero={() => handleReset("hero")}
             onResetEditorial={() => handleReset("editorial")}
+            onResetVideo={() => handleReset("video")}
             disabled={updateMutation.isPending}
             heroBgType={currentHeroBgType}
             onHeroBgTypeChange={(type) =>
@@ -288,9 +296,12 @@ export default function AdminSiteSettings() {
             ? data?.homeHeroImageAssetId ?? null
             : pickerOpen === "editorial"
               ? data?.homeEditorialImageAssetId ?? null
-              : null
+              : pickerOpen === "video"
+                ? data?.homeHeroVideoAssetId ?? null
+                : null
         }
         category={pickerOpen === "hero" ? "north-star" : pickerOpen === "editorial" ? "people" : undefined}
+        kind={pickerOpen === "video" ? "video" : undefined}
       />
     </AdminLayout>
   );
@@ -303,10 +314,13 @@ interface HomeSectionProps {
   heroFallback: string;
   editorialUrl: string | null;
   editorialFallback: string;
+  heroVideoUrl: string | null;
   onOpenHero: () => void;
   onOpenEditorial: () => void;
+  onOpenVideo: () => void;
   onResetHero: () => void;
   onResetEditorial: () => void;
+  onResetVideo: () => void;
   disabled: boolean;
   heroBgType: "image" | "video";
   onHeroBgTypeChange: (type: "image" | "video") => void;
@@ -323,7 +337,7 @@ function HomePageSection(props: HomeSectionProps) {
       <div className="space-y-2">
         <div className="text-sm font-medium">Hero background type</div>
         <p className="text-xs text-muted-foreground">
-          Choose whether the hero section displays a static image or the bundled background video (autoplay, muted, looped).
+          Choose whether the hero section displays a static image or a background video (autoplay, muted, looped).
         </p>
         <div className="flex gap-3">
           {(["image", "video"] as const).map((type) => {
@@ -352,7 +366,7 @@ function HomePageSection(props: HomeSectionProps) {
                 <p className="text-xs text-muted-foreground mt-1">
                   {type === "image"
                     ? "Displays the static hero background image."
-                    : "Plays the bundled video silently on loop; image is used as poster/fallback."}
+                    : "Plays the background video silently on loop; image is used as poster/fallback."}
                 </p>
               </button>
             );
@@ -368,6 +382,17 @@ function HomePageSection(props: HomeSectionProps) {
         testIdPrefix="home-hero"
         onPick={props.onOpenHero}
         onReset={props.onResetHero}
+        disabled={props.disabled}
+      />
+
+      <VideoPicker
+        label="Hero background video"
+        helper="Custom video played silently on loop in the hero section when the type is set to Video. When cleared, the bundled default video is used."
+        isOverridden={props.heroVideoUrl != null}
+        originalName={props.heroVideoUrl ? "Custom video" : null}
+        testIdPrefix="home-hero-video"
+        onPick={props.onOpenVideo}
+        onReset={props.onResetVideo}
         disabled={props.disabled}
       />
 
@@ -425,6 +450,69 @@ function ImagePicker({ label, helper, previewUrl, isOverridden, testIdPrefix, on
             data-testid={`${testIdPrefix}-pick`}
           >
             {isOverridden ? "Change image" : "Pick from library"}
+          </Button>
+          {isOverridden && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onReset}
+              disabled={disabled}
+              data-testid={`${testIdPrefix}-reset`}
+            >
+              <X className="h-4 w-4 mr-1" /> Reset to default
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface VideoPickerProps {
+  label: string;
+  helper: string;
+  isOverridden: boolean;
+  originalName: string | null;
+  testIdPrefix: string;
+  onPick: () => void;
+  onReset: () => void;
+  disabled: boolean;
+}
+
+function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, onPick, onReset, disabled }: VideoPickerProps) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="text-sm font-medium">{label}</div>
+        <p className="text-xs text-muted-foreground">{helper}</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="w-40 h-24 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center">
+          {isOverridden ? (
+            <div className="flex flex-col items-center gap-1 p-2 text-center">
+              <VideoIcon className="h-8 w-8 text-primary" />
+              {originalName && (
+                <span className="text-[10px] text-muted-foreground truncate w-full px-1" title={originalName}>
+                  {originalName}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1 p-2 text-center">
+              <VideoIcon className="h-8 w-8 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">Bundled default</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onPick}
+            disabled={disabled}
+            data-testid={`${testIdPrefix}-pick`}
+          >
+            {isOverridden ? "Change video" : "Upload / pick video"}
           </Button>
           {isOverridden && (
             <Button

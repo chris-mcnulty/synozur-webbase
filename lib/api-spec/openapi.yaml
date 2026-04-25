@@ -3422,6 +3422,10 @@ components:
           type:
             - string
             - 'null'
+        homeHeroVideoUrl:
+          type:
+            - string
+            - 'null'
         homeEditorialImageUrl:
           type:
             - string
@@ -3519,6 +3523,14 @@ components:
             - integer
             - 'null'
         homeHeroImageUrl:
+          type:
+            - string
+            - 'null'
+        homeHeroVideoAssetId:
+          type:
+            - integer
+            - 'null'
+        homeHeroVideoUrl:
           type:
             - string
             - 'null'
@@ -3652,6 +3664,10 @@ components:
           type: string
           enum: [image, video]
         homeHeroImageAssetId:
+          type:
+            - integer
+            - 'null'
+        homeHeroVideoAssetId:
           type:
             - integer
             - 'null'

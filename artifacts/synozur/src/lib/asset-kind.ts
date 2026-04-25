@@ -1,4 +1,4 @@
-export type AssetKind = "image" | "document";
+export type AssetKind = "image" | "document" | "video";
 
 export const DOCUMENT_MIME_TYPES: readonly string[] = [
   "application/pdf",
@@ -31,9 +31,14 @@ export function isDocumentMime(mime: string): boolean {
   return DOCUMENT_MIME_PATTERNS.some((re) => re.test(mime));
 }
 
+export function isVideoMime(mime: string): boolean {
+  return mime.startsWith("video/");
+}
+
 export function assetKindOf(mime: string): AssetKind | null {
   if (isImageMime(mime)) return "image";
   if (isDocumentMime(mime)) return "document";
+  if (isVideoMime(mime)) return "video";
   return null;
 }
 
@@ -58,3 +63,4 @@ export function fileExtensionLabel(asset: {
 
 export const IMAGE_ACCEPT_TYPES = ["image/*"];
 export const DOCUMENT_ACCEPT_TYPES = [...DOCUMENT_MIME_TYPES];
+export const VIDEO_ACCEPT_TYPES = ["video/*"];

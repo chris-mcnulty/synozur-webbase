@@ -59,6 +59,11 @@ export const siteSettingsTable = pgTable("site_settings", {
   // homepage hero shows the static image or the bundled background video.
   homeHeroBackgroundType: text("home_hero_background_type").notNull().default("image"),
 
+  // Custom hero background video. When set, the hero <video> element uses this
+  // asset's storage URL instead of the bundled /videos/hero-bg.mov.
+  // Null means "use the bundled default".
+  homeHeroVideoAssetId: integer("home_hero_video_asset_id"),
+
   // Site theme: "cosmic" (default) or "aurora". Controls which CSS token set
   // is applied site-wide. Chosen by an admin in Site Settings.
   siteTheme: text("site_theme").notNull().default("cosmic"),
