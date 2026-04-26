@@ -14,7 +14,15 @@ const CwvBody = z.object({
   // Cap the route to a sane length so a pathological URL doesn't bloat
   // the table. The client-supplied pathname is stored verbatim for v0;
   // a future iteration will normalize slugs to template paths.
-  route: z.string().trim().min(1).max(256),
+  route: z
+    .string()
+    .trim()
+    .min(1)
+    .max(256)
+    .startsWith("/", { message: "Route must be a pathname starting with '/'" })
+    .refine((route) => !route.includes("?") && !route.includes("#"), {
+      message: "Route must not include a query string or fragment",
+    }),
   metric: z.enum(["LCP", "INP", "CLS", "FCP", "TTFB"]),
   // Reject negative values and ridiculous outliers (e.g. > 10 minutes
   // for time-based metrics, > 100 for the unitless CLS). Anything past
