@@ -27,6 +27,7 @@ import Partners from "@/pages/partners";
 import Insights from "@/pages/insights";
 import InsightDetail from "@/pages/insight-detail";
 import Polaris from "@/pages/polaris";
+import PolarisEpisodeDetail from "@/pages/polaris-episode-detail";
 import Contact from "@/pages/contact";
 import Start from "@/pages/start";
 import Events from "@/pages/events";
@@ -392,6 +393,7 @@ function Router() {
             <Route path="/partners" component={Partners} />
             <Route path="/insights" component={Insights} />
             <Route path="/insights/:slug" component={InsightDetail} />
+            <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />
             <Route path="/contact" component={Contact} />
             <Route path="/start" component={Start} />
