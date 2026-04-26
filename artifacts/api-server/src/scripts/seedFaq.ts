@@ -537,10 +537,13 @@ async function main() {
       .insert(faqCategoriesTable)
       .values({
         slug: cat.slug,
+        // #108: artifact-pattern title mirrors the domain-facing `name`.
+        title: cat.name,
         name: cat.name,
         description: cat.description,
         displayOrder: cat.order,
         status: "published",
+        publishedAt: NOW,
         createdAt: NOW,
         updatedAt: NOW,
       })
@@ -553,6 +556,7 @@ async function main() {
       await db.insert(faqItemsTable).values({
         categoryId,
         slug: item.slug,
+        title: item.question,
         question: item.question,
         answerHtml: item.answer,
         displayOrder: (i + 1) * 10,

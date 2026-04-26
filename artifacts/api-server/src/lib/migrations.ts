@@ -398,6 +398,116 @@ export async function runMigrations(): Promise<void> {
         ON not_found_logs (resolved, hit_count DESC, last_seen_at DESC);
     `);
 
+    // 16. faq_categories + faq_items — #108: bring FAQ onto the shared
+    //     artifact-type pattern. Adds the lifecycle columns (`title`,
+    //     `unpublished_at`, `featured`, `featured_rank`, `active`,
+    //     `source_id`, `og_image`, `deleted_at`) and converts `status` from
+    //     plain text to the `artifact_status` enum. Existing values
+    //     ('draft' / 'published') are preserved by the USING cast; the
+    //     `published_at` column is backfilled for already-published rows
+    //     so the visibility filter (which honors publish windows) doesn't
+    //     hide content that was visible before the migration.
+
+    // 16-pre. Ensure the artifact_status enum exists. Other artifact
+    //         tables (applications, polaris_episodes, …) already create
+    //         it via drizzle push, but if a fresh DB only has the
+    //         hand-rolled FAQ tables this guard makes the conversion
+    //         safe to run standalone.
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        CREATE TYPE artifact_status AS ENUM ('draft', 'scheduled', 'published', 'archived');
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    for (const table of ["faq_categories", "faq_items"] as const) {
+      // 16a. New artifact-lifecycle columns. NOT NULL columns with non-null
+      //      defaults are safe to add against an existing table.
+      //      `published_at` already exists on faq_items (from #107) but not
+      //      on faq_categories — IF NOT EXISTS makes the same statement
+      //      safe for both. `og_image` from `artifactSeo` is intentionally
+      //      omitted: the FAQ schema only spreads identity/lifecycle/
+      //      timestamps, so adding the column would create dead weight
+      //      with no Drizzle field or DTO surfacing it.
+      await db.execute(sql.raw(`
+        ALTER TABLE ${table}
+          ADD COLUMN IF NOT EXISTS title text,
+          ADD COLUMN IF NOT EXISTS published_at timestamptz,
+          ADD COLUMN IF NOT EXISTS unpublished_at timestamptz,
+          ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS featured_rank integer,
+          ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true,
+          ADD COLUMN IF NOT EXISTS source_id text,
+          ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+      `));
+    }
+
+    // 16b. Backfill `title` from the existing display field. Categories
+    //      use `name`, items use `question`.
+    await db.execute(sql`
+      UPDATE faq_categories SET title = name WHERE title IS NULL;
+    `);
+    await db.execute(sql`
+      UPDATE faq_items SET title = question WHERE title IS NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE faq_categories ALTER COLUMN title SET NOT NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE faq_items ALTER COLUMN title SET NOT NULL;
+    `);
+
+    // 16c. faq_items already had `published_at` (from #107). For
+    //      faq_categories it's new — fall back to created_at on rows that
+    //      were already 'published' so the visibility filter doesn't hide
+    //      them.
+    await db.execute(sql`
+      UPDATE faq_categories
+        SET published_at = created_at
+        WHERE published_at IS NULL AND status = 'published';
+    `);
+    await db.execute(sql`
+      UPDATE faq_items
+        SET published_at = created_at
+        WHERE published_at IS NULL AND status = 'published';
+    `);
+
+    // 16d. Convert status from text → artifact_status. Existing values
+    //      ('draft' / 'published') are valid enum members so the USING
+    //      cast preserves them. Drop the old text default first because
+    //      Postgres rejects the type change otherwise.
+    for (const table of ["faq_categories", "faq_items"] as const) {
+      await db.execute(sql.raw(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = '${table}'
+              AND column_name = 'status'
+              AND data_type = 'text'
+          ) THEN
+            ALTER TABLE ${table} ALTER COLUMN status DROP DEFAULT;
+            ALTER TABLE ${table}
+              ALTER COLUMN status TYPE artifact_status
+              USING status::artifact_status;
+            ALTER TABLE ${table}
+              ALTER COLUMN status SET DEFAULT 'draft';
+          END IF;
+        END $$;
+      `));
+    }
+
+    // 16e. Add the published_at index that the artifact pattern uses for
+    //      sorting / filtering by publish window.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS faq_categories_published_at_idx
+        ON faq_categories (published_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS faq_items_published_at_idx
+        ON faq_items (published_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

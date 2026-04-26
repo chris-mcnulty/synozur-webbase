@@ -1353,8 +1353,16 @@ export interface PartnerDescriptionDto {
   updatedAt: string;
 }
 
-// FAQ (#107).
-export type FaqStatus = "draft" | "published";
+// FAQ (#107, #108). #108 brought the schema onto the shared artifact pattern,
+// so `status` is now the four-state ArtifactStatus enum and the admin
+// endpoints surface the full lifecycle (publish window, featured, active).
+// `FaqStatus` is now an alias for `ArtifactStatus` — the admin UI's
+// draft↔published toggle only writes the two original values, but the
+// type intentionally permits the full enum so anything that already
+// holds a `'scheduled'` or `'archived'` row (e.g. via the API) keeps
+// type-checking. Future UI work can lean on the wider type without
+// another migration.
+export type FaqStatus = ArtifactStatus;
 
 export interface FaqCategoryDto {
   id: string;
@@ -1362,9 +1370,20 @@ export interface FaqCategoryDto {
   name: string;
   description: string | null;
   displayOrder: number;
-  status: FaqStatus;
+  status: ArtifactStatus;
   createdAt: string;
   updatedAt: string;
+  // #108 admin-only lifecycle fields. Optional so the public /api/faq
+  // payload (which doesn't include them) still type-checks as a valid
+  // FaqCategoryDto on the client.
+  title?: string;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  active?: boolean;
+  sourceId?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface FaqItemDto {
@@ -1374,12 +1393,20 @@ export interface FaqItemDto {
   question: string;
   answerHtml: string;
   displayOrder: number;
-  status: FaqStatus;
+  status: ArtifactStatus;
   publishedAt: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   createdAt: string;
   updatedAt: string;
+  // #108 admin-only lifecycle fields (see FaqCategoryDto).
+  title?: string;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  active?: boolean;
+  sourceId?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface FaqCategoryWithItemsDto extends FaqCategoryDto {
@@ -1391,7 +1418,12 @@ export interface FaqCategoryInput {
   name: string;
   description?: string | null;
   displayOrder?: number;
-  status?: FaqStatus;
+  status?: ArtifactStatus;
+  publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  active?: boolean;
 }
 export type FaqCategoryPatchInput = Partial<FaqCategoryInput>;
 
@@ -1401,8 +1433,12 @@ export interface FaqItemInput {
   question: string;
   answerHtml?: string;
   displayOrder?: number;
-  status?: FaqStatus;
+  status?: ArtifactStatus;
   publishedAt?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  active?: boolean;
   seoTitle?: string | null;
   seoDescription?: string | null;
 }
