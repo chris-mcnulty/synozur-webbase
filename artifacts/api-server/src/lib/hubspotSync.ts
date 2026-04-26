@@ -1,106 +1,45 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, hubspotSyncEventsTable, siteSettingsTable, formSubmissionsTable } from "@workspace/db";
 import { logger } from "./logger";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 
-// HubSpot access token resolution.
+// HubSpot API proxy via Replit Connectors SDK.
 //
-// Replit ships a Connections sidecar that mints short-lived OAuth tokens for
-// integrated services. When `REPLIT_CONNECTORS_HOSTNAME` is set we prefer it
-// — that means token rotation, refresh, and per-environment scoping are all
-// managed in the Replit Connections UI rather than in our env. We fall back
-// to a static `HUBSPOT_ACCESS_TOKEN` env var for self-hosted/local dev.
+// The SDK handles OAuth token injection, refresh, and rotation automatically.
+// We call all HubSpot endpoints through connectors.proxy() so we never need
+// to extract or cache a raw token. Falls back to a static HUBSPOT_ACCESS_TOKEN
+// env var for self-hosted / local dev (outside of Replit).
 
-interface CachedToken {
-  token: string;
-  expiresAt: number;
-}
-let cachedToken: CachedToken | null = null;
+const REPLIT_CONNECTORS_AVAILABLE = !!process.env["REPLIT_CONNECTORS_HOSTNAME"];
 
-function replitConnectorsHostname(): string | null {
-  const v = process.env["REPLIT_CONNECTORS_HOSTNAME"];
-  return v && v.length > 0 ? v : null;
-}
-
-function replitAuthHeader(): string | null {
-  // Replit injects either WEB_REPL_RENEWAL (browser-side) or REPL_IDENTITY
-  // (server-side). The Connections API accepts either as the X-Replit-Token.
-  const renewal = process.env["WEB_REPL_RENEWAL"];
-  if (renewal) return `repl ${renewal}`;
-  const identity = process.env["REPL_IDENTITY"];
-  if (identity) return `repl ${identity}`;
-  return null;
-}
-
-async function fetchTokenFromReplitConnectors(): Promise<string | null> {
-  const hostname = replitConnectorsHostname();
-  const auth = replitAuthHeader();
-  if (!hostname || !auth) return null;
-  try {
-    const url = `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=hubspot`;
-    const res = await fetch(url, {
-      headers: { Accept: "application/json", "X-Replit-Token": auth },
-    });
-    if (!res.ok) {
-      const text = (await res.text()).slice(0, 500);
-      logger.warn(
-        { status: res.status, body: text },
-        "Replit Connectors HubSpot fetch failed",
-      );
-      return null;
-    }
-    const json = (await res.json()) as {
-      items?: Array<{
-        settings?: {
-          access_token?: string;
-          oauth?: { credentials?: { access_token?: string; expires_at?: string | number } };
-          expires_at?: string | number;
-        };
-        expires_at?: string | number;
-      }>;
-    };
-    const item = json.items?.[0];
-    if (!item) return null;
-    const settings = item.settings ?? {};
-    const token =
-      settings.access_token ??
-      settings.oauth?.credentials?.access_token ??
-      null;
-    const rawExpiresAt =
-      settings.oauth?.credentials?.expires_at ??
-      settings.expires_at ??
-      item.expires_at ??
-      null;
-    if (!token) return null;
-    const expiresAt = rawExpiresAt
-      ? typeof rawExpiresAt === "number"
-        ? rawExpiresAt
-        : Date.parse(String(rawExpiresAt))
-      : Date.now() + 30 * 60 * 1000;
-    cachedToken = { token, expiresAt };
-    return token;
-  } catch (err) {
-    logger.warn({ err }, "Replit Connectors HubSpot fetch threw");
-    return null;
+async function hubspotProxy(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  if (REPLIT_CONNECTORS_AVAILABLE) {
+    const connectors = new ReplitConnectors();
+    return connectors.proxy("hubspot", path, init) as Promise<Response>;
   }
+  // Static token fallback for local dev / self-hosted.
+  const token = process.env["HUBSPOT_ACCESS_TOKEN"];
+  if (!token) throw new Error("No HubSpot access token available");
+  const headers = new Headers(init.headers as HeadersInit | undefined);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (init.body) headers.set("Content-Type", "application/json");
+  return fetch(`${HUBSPOT_API}${path}`, { ...init, headers });
 }
 
+export async function isHubspotConfigured(): Promise<boolean> {
+  if (REPLIT_CONNECTORS_AVAILABLE) return true;
+  return !!(process.env["HUBSPOT_ACCESS_TOKEN"]);
+}
+
+// Keep getHubspotAccessToken as a compat shim used by the admin status endpoint.
+// It now only reports whether a token source is configured, not the actual token.
 export async function getHubspotAccessToken(): Promise<string | null> {
-  // Cache hit — keep a small safety margin before treating as fresh.
-  if (cachedToken && cachedToken.expiresAt - 60_000 > Date.now()) {
-    return cachedToken.token;
-  }
-  // Replit Connectors first (if available).
-  if (replitConnectorsHostname() && replitAuthHeader()) {
-    const fromReplit = await fetchTokenFromReplitConnectors();
-    if (fromReplit) return fromReplit;
-  }
-  // Static env fallback.
+  if (REPLIT_CONNECTORS_AVAILABLE) return "replit-connectors";
   const fromEnv = process.env["HUBSPOT_ACCESS_TOKEN"];
-  if (fromEnv && fromEnv.length > 0) {
-    cachedToken = { token: fromEnv, expiresAt: Date.now() + 12 * 60 * 60 * 1000 };
-    return fromEnv;
-  }
-  return null;
+  return fromEnv && fromEnv.length > 0 ? fromEnv : null;
 }
 
 // #131: HubSpot lead-capture sync
@@ -200,11 +139,6 @@ async function loadSettings() {
   return row ?? null;
 }
 
-export async function isHubspotConfigured(): Promise<boolean> {
-  const token = await getHubspotAccessToken();
-  return !!token;
-}
-
 export async function enqueueContactSubmission(args: EnqueueContactArgs): Promise<void> {
   const settings = await loadSettings();
   if (!settings || settings.hubspotEnabled !== true) return;
@@ -283,35 +217,24 @@ interface UpsertResponse {
 }
 
 async function callUpsertContact(
-  token: string,
   properties: ContactProperties,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string; retryable: boolean }> {
-  // HubSpot exposes a `POST /crm/v3/objects/contacts/{email}?idProperty=email`
-  // *update* path that 404s if the contact doesn't exist; create-then-update
+  // HubSpot exposes a PATCH /crm/v3/objects/contacts/{email}?idProperty=email
+  // update path that 404s if the contact doesn't exist; create-then-update
   // is the documented idempotent pattern. We try the update first, then fall
   // back to a create if absent.
   try {
-    const updateUrl = `${HUBSPOT_API}/crm/v3/objects/contacts/${encodeURIComponent(properties.email)}?idProperty=email`;
-    const updateRes = await fetch(updateUrl, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ properties }),
-    });
+    const updateRes = await hubspotProxy(
+      `/crm/v3/objects/contacts/${encodeURIComponent(properties.email)}?idProperty=email`,
+      { method: "PATCH", body: JSON.stringify({ properties }) },
+    );
     if (updateRes.ok) {
       const json = (await updateRes.json()) as UpsertResponse;
       return { ok: true, id: json.id ?? "" };
     }
     if (updateRes.status === 404) {
-      const createUrl = `${HUBSPOT_API}/crm/v3/objects/contacts`;
-      const createRes = await fetch(createUrl, {
+      const createRes = await hubspotProxy("/crm/v3/objects/contacts", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ properties }),
       });
       if (createRes.ok) {
@@ -341,26 +264,19 @@ async function callUpsertContact(
 }
 
 async function callTimelineEvent(
-  token: string,
   appId: string,
   eventTemplateId: string,
   email: string,
   tokens: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string; retryable: boolean }> {
   try {
-    const url = `${HUBSPOT_API}/crm/v3/timeline/${encodeURIComponent(appId)}/events`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const res = await hubspotProxy(
+      `/crm/v3/timeline/${encodeURIComponent(appId)}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify({ eventTemplateId, email, tokens }),
       },
-      body: JSON.stringify({
-        eventTemplateId,
-        email,
-        tokens,
-      }),
-    });
+    );
     if (res.ok) return { ok: true };
     const text = (await res.text()).slice(0, 500);
     return {
@@ -378,7 +294,6 @@ async function callTimelineEvent(
 }
 
 async function processOne(
-  token: string,
   appId: string | null,
   row: typeof hubspotSyncEventsTable.$inferSelect,
 ): Promise<void> {
@@ -394,7 +309,7 @@ async function processOne(
 
   if (row.kind === "contact.upsert") {
     const properties = (payload["properties"] ?? {}) as ContactProperties;
-    const result = await callUpsertContact(token, properties);
+    const result = await callUpsertContact(properties);
     if (result.ok) {
       await db
         .update(hubspotSyncEventsTable)
@@ -433,7 +348,7 @@ async function processOne(
       return;
     }
     const tokens = (payload["tokens"] ?? {}) as Record<string, unknown>;
-    const result = await callTimelineEvent(token, appId, eventTemplateId, email, tokens);
+    const result = await callTimelineEvent(appId, eventTemplateId, email, tokens);
     if (result.ok) {
       await db
         .update(hubspotSyncEventsTable)
@@ -483,8 +398,8 @@ async function failOrDeadLetter(
 }
 
 export async function drainHubspotQueue(limit = 25): Promise<{ processed: number }> {
-  const token = await getHubspotAccessToken();
-  if (!token) return { processed: 0 };
+  const configured = await isHubspotConfigured();
+  if (!configured) return { processed: 0 };
   const settings = await loadSettings();
   if (!settings || settings.hubspotEnabled !== true) return { processed: 0 };
 
@@ -530,7 +445,7 @@ export async function drainHubspotQueue(limit = 25): Promise<{ processed: number
       succeededAt: null,
     } as unknown as typeof hubspotSyncEventsTable.$inferSelect;
     try {
-      await processOne(token, settings.hubspotTimelineAppId, row);
+      await processOne(settings.hubspotTimelineAppId, row);
       processed += 1;
     } catch (err) {
       logger.warn({ err, eventId: row.id }, "HubSpot processOne threw");
@@ -573,16 +488,11 @@ export async function queueDepth(): Promise<{ pending: number; deadLetter: numbe
 // expose it through /admin/integrations/hubspot/erasure so legal can fulfill
 // erasure requests without leaving the admin shell.
 export async function eraseContact(email: string): Promise<{ ok: boolean; error?: string }> {
-  const token = await getHubspotAccessToken();
-  if (!token) return { ok: false, error: "no_access_token" };
+  const configured = await isHubspotConfigured();
+  if (!configured) return { ok: false, error: "no_access_token" };
   try {
-    const url = `${HUBSPOT_API}/crm/v3/objects/contacts/gdpr-delete`;
-    const res = await fetch(url, {
+    const res = await hubspotProxy("/crm/v3/objects/contacts/gdpr-delete", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({ idProperty: "email", objectId: email }),
     });
     if (res.ok || res.status === 204) return { ok: true };
