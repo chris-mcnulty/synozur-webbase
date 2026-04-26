@@ -6,6 +6,7 @@ import {
   timestamp,
   boolean,
   index,
+  jsonb,
   AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -46,6 +47,10 @@ export const commentsTable = pgTable(
     notifyOnApproval: boolean("notify_on_approval").notNull().default(false),
     notifyOnReply: boolean("notify_on_reply").notNull().default(false),
     notifiedApprovedAt: timestamp("notified_approved_at", { withTimezone: true }),
+    // #54: spam scorer signals. Stored as a JSON array of signal strings so
+    // admins can see exactly why the scorer flagged the comment. null means
+    // the scorer was not run (e.g. before this feature was deployed).
+    spamSignals: jsonb("spam_signals").$type<string[]>(),
   },
   (t) => [
     index("comments_post_status_idx").on(t.postId, t.status),

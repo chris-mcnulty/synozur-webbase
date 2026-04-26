@@ -165,6 +165,9 @@ export interface AdminSiteSettings {
   tagMetaPixelId?: string | null;
   sitemapExcludedPaths?: string[] | null;
   sitemapSectionFlags?: Record<string, boolean> | null;
+  spamLinkThreshold?: number | null;
+  spamKeywords?: string[] | null;
+  spamDomainBlocklist?: string[] | null;
   updatedAt: string;
 }
 
@@ -480,6 +483,9 @@ export interface UpdateSiteSettingsBody {
   sitemapExcludedPaths?: string[] | null;
   sitemapSectionFlags?: Record<string, boolean> | null;
   idleTimeoutMs?: number | null;
+  spamLinkThreshold?: number | null;
+  spamKeywords?: string[] | null;
+  spamDomainBlocklist?: string[] | null;
 }
 
 export interface BulkCollateralBody {

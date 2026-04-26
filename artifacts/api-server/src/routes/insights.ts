@@ -20,6 +20,7 @@ import { audit } from "../lib/audit";
 import { verifyTurnstile } from "../lib/turnstile";
 import { logger } from "../lib/logger";
 import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
+import { scoreComment } from "../lib/spamScorer";
 
 const router: IRouter = Router();
 
@@ -300,6 +301,21 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     res.status(404).json({ error: "Not found" });
     return;
   }
+
+  // #54: run the spam scorer after CAPTCHA passes. Spam comments are stored
+  // with status `spam` so they can be rescued by admins; they are never
+  // silently dropped.
+  const siteUrl = (process.env["SITE_URL"] ?? "https://www.synozur.com").replace(/\/$/, "");
+  const verdict = await scoreComment({
+    authorName: parsed.data.authorName,
+    authorEmail: parsed.data.authorEmail,
+    bodyText: parsed.data.bodyText,
+    ip,
+    userAgent: req.headers["user-agent"] ?? null,
+    postUrl: `${siteUrl}/insights/${encodeURIComponent(post.slug)}`,
+  });
+  const insertStatus = verdict.isSpam ? "spam" : "pending";
+
   const [row] = await db
     .insert(commentsTable)
     .values({
@@ -310,19 +326,26 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
       bodyText: parsed.data.bodyText,
       ip,
       userAgent: req.headers["user-agent"] ?? null,
-      status: "pending",
+      status: insertStatus,
       notifyOnApproval: parsed.data.notifyOnApproval ?? false,
       notifyOnReply: parsed.data.notifyOnReply ?? false,
+      spamSignals: verdict.signals.length > 0 ? verdict.signals : null,
     })
     .returning({ id: commentsTable.id, status: commentsTable.status });
-  await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
+  if (verdict.isSpam) {
+    await audit({ action: "comment.auto_spam", entity: "comment", entityId: row.id });
+  } else {
+    await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
+  }
 
   // #53: reply notification path. Replies are always inserted as "pending"
   // so row.status is never "approved" here. The authoritative notification
   // send happens in the moderation route (POST /cms/comments/:id/moderate)
   // when the reply is first approved — see routes/cms/comments.ts.
 
-  res.status(202).json({ id: row.id, status: row.status });
+  // Always return "pending" to the client so spammers cannot tell their
+  // comment was auto-flagged. Admins see the real status in the Spam tab.
+  res.status(202).json({ id: row.id, status: "pending" });
 });
 
 // #53: one-click unsubscribe. Decodes a signed token and clears the relevant

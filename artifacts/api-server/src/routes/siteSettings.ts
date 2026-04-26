@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { invalidateIdleTimeoutCache } from "../lib/sessions";
+import { invalidateSpamRulesCache } from "../lib/spamScorer";
 
 const router: IRouter = Router();
 
@@ -115,6 +116,9 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     sitemapExcludedPaths: settings.sitemapExcludedPaths,
     sitemapSectionFlags: settings.sitemapSectionFlags,
     idleTimeoutMs: settings.idleTimeoutMs,
+    spamLinkThreshold: settings.spamLinkThreshold,
+    spamKeywords: settings.spamKeywords,
+    spamDomainBlocklist: settings.spamDomainBlocklist,
     updatedAt: settings.updatedAt,
   });
 }
@@ -283,6 +287,23 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     idleTimeoutChanged = true;
   }
 
+  let spamRulesChanged = false;
+  if ("spamLinkThreshold" in input) {
+    updates.spamLinkThreshold =
+      typeof input.spamLinkThreshold === "number" && input.spamLinkThreshold > 0
+        ? input.spamLinkThreshold
+        : null;
+    spamRulesChanged = true;
+  }
+  if ("spamKeywords" in input) {
+    updates.spamKeywords = input.spamKeywords ?? null;
+    spamRulesChanged = true;
+  }
+  if ("spamDomainBlocklist" in input) {
+    updates.spamDomainBlocklist = input.spamDomainBlocklist ?? null;
+    spamRulesChanged = true;
+  }
+
   const [updated] = await db
     .update(siteSettingsTable)
     .set(updates)
@@ -292,6 +313,9 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     // Drop the cached resolver value so the next session resolution picks up
     // the admin's new idle window without waiting for the cache TTL.
     invalidateIdleTimeoutCache();
+  }
+  if (spamRulesChanged) {
+    invalidateSpamRulesCache();
   }
   const urls = await resolveImageUrls(updated!);
   res.json(buildAdminResponse(updated!, urls));

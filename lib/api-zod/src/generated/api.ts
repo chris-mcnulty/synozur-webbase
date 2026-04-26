@@ -1181,6 +1181,9 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
     ),
+  spamLinkThreshold: zod.number().int().min(1).nullish(),
+  spamKeywords: zod.array(zod.string()).nullish(),
+  spamDomainBlocklist: zod.array(zod.string()).nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1238,6 +1241,9 @@ export const UpdateAdminSiteSettingsBody = zod.object({
     .describe(
       "Session idle timeout in milliseconds. Pass null to fall back to the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective value is clamped to at least 30 minutes server-side.\n",
     ),
+  spamLinkThreshold: zod.number().int().min(1).nullish(),
+  spamKeywords: zod.array(zod.string()).nullish(),
+  spamDomainBlocklist: zod.array(zod.string()).nullish(),
 });
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
@@ -1302,6 +1308,9 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
     ),
+  spamLinkThreshold: zod.number().int().min(1).nullish(),
+  spamKeywords: zod.array(zod.string()).nullish(),
+  spamDomainBlocklist: zod.array(zod.string()).nullish(),
   updatedAt: zod.coerce.date(),
 });
 

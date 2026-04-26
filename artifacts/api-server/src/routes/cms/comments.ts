@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { desc, eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and, inArray } from "drizzle-orm";
 import { db, commentsTable, postsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
@@ -51,7 +51,8 @@ router.get(
 // `false` for reject/spam/delete. Moderators can flip the flag in the UI
 // when they want to silently approve, e.g. after an edit.
 const Action = z.object({
-  action: z.enum(["approve", "reject", "spam", "delete"]),
+  // "pending" restores a spam-flagged comment to pending for re-review.
+  action: z.enum(["approve", "reject", "spam", "delete", "pending"]),
   notify: z.boolean().optional(),
 });
 
@@ -72,7 +73,9 @@ router.post(
           ? "deleted"
           : parsed.data.action === "spam"
             ? "spam"
-            : "deleted";
+            : parsed.data.action === "pending"
+              ? "pending"
+              : "deleted";
 
     const existing = await db.query.commentsTable.findFirst({
       where: eq(commentsTable.id, String(req.params.id)),
@@ -186,6 +189,38 @@ router.post(
       entityId: row.id,
     });
     res.json(row);
+  },
+);
+
+// #54: Bulk delete spam comments. Only deletes comments that are currently
+// in `spam` status so this endpoint cannot be used to mass-delete arbitrary
+// comments.
+const BulkDeleteBody = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+});
+
+router.post(
+  "/cms/comments/bulk-delete-spam",
+  requireAuth,
+  requireRole("admin", "editor"),
+  async (req, res) => {
+    const parsed = BulkDeleteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { ids } = parsed.data;
+    const deleted = await db
+      .delete(commentsTable)
+      .where(and(inArray(commentsTable.id, ids), eq(commentsTable.status, "spam")))
+      .returning({ id: commentsTable.id });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "comment.bulk_delete_spam",
+      entity: "comment",
+      entityId: ids.join(","),
+    });
+    res.json({ deleted: deleted.map((r) => r.id) });
   },
 );
 

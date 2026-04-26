@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Image as ImageIcon, Video as VideoIcon, X } from "lucide-react";
+import { Check, Image as ImageIcon, Video as VideoIcon, X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -25,6 +25,13 @@ export default function AdminSiteSettings() {
 
   const [requireConsent, setRequireConsent] = useState<boolean | null>(null);
   const [polarisFeedDraft, setPolarisFeedDraft] = useState<string | null>(null);
+
+  // #54: spam rule editor local state
+  const [spamLinkThresholdDraft, setSpamLinkThresholdDraft] = useState<string | null>(null);
+  const [spamKeywordsDraft, setSpamKeywordsDraft] = useState<string[] | null>(null);
+  const [spamKeywordInput, setSpamKeywordInput] = useState("");
+  const [spamDomainDraft, setSpamDomainDraft] = useState<string[] | null>(null);
+  const [spamDomainInput, setSpamDomainInput] = useState("");
   type SiteTheme = "cosmic" | "aurora";
   type HeroBackgroundType = "image" | "video";
 
@@ -40,6 +47,26 @@ export default function AdminSiteSettings() {
     }
   }, [data, polarisFeedDraft]);
 
+  useEffect(() => {
+    if (data && spamLinkThresholdDraft === null) {
+      setSpamLinkThresholdDraft(
+        typeof data.spamLinkThreshold === "number" ? String(data.spamLinkThreshold) : "",
+      );
+    }
+  }, [data, spamLinkThresholdDraft]);
+
+  useEffect(() => {
+    if (data && spamKeywordsDraft === null) {
+      setSpamKeywordsDraft(data.spamKeywords ?? []);
+    }
+  }, [data, spamKeywordsDraft]);
+
+  useEffect(() => {
+    if (data && spamDomainDraft === null) {
+      setSpamDomainDraft(data.spamDomainBlocklist ?? []);
+    }
+  }, [data, spamDomainDraft]);
+
   const updateMutation = useMutation({
     mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
     onSuccess: (result) => {
@@ -47,6 +74,11 @@ export default function AdminSiteSettings() {
       qc.invalidateQueries({ queryKey: ["public-site-settings"] });
       setRequireConsent(result.requireCookieConsent);
       setPolarisFeedDraft(result.polarisFeedUrl ?? "");
+      setSpamLinkThresholdDraft(
+        typeof result.spamLinkThreshold === "number" ? String(result.spamLinkThreshold) : "",
+      );
+      setSpamKeywordsDraft(result.spamKeywords ?? []);
+      setSpamDomainDraft(result.spamDomainBlocklist ?? []);
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     },
@@ -84,6 +116,9 @@ export default function AdminSiteSettings() {
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
     idleTimeoutMs: data?.idleTimeoutMs ?? null,
+    spamLinkThreshold: data?.spamLinkThreshold ?? null,
+    spamKeywords: data?.spamKeywords ?? [],
+    spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
     ...overrides,
   });
 
@@ -334,6 +369,198 @@ export default function AdminSiteSettings() {
                   <X className="h-4 w-4 mr-1" /> Use server default
                 </Button>
               )}
+            </div>
+          </div>
+
+          {/* #54: Spam filter rules */}
+          <div className="rounded-md border border-border p-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Spam filter rules</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Server-side rules applied to every comment submission after CAPTCHA
+                verification. Comments that exceed the threshold are flagged as spam
+                and held for review — they are never silently dropped.
+              </p>
+            </div>
+
+            {/* Link threshold */}
+            <div className="space-y-2">
+              <label htmlFor="spam-link-threshold" className="text-sm font-medium">
+                Link count threshold
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Comments containing more than this many URLs are flagged as spam.
+                Set to 0 to disable this rule.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="spam-link-threshold"
+                  type="number"
+                  min={0}
+                  step={1}
+                  className="w-28"
+                  placeholder="3"
+                  value={spamLinkThresholdDraft ?? ""}
+                  onChange={(e) => setSpamLinkThresholdDraft(e.target.value)}
+                  disabled={updateMutation.isPending}
+                  data-testid="input-spam-link-threshold"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const parsed = parseInt(spamLinkThresholdDraft ?? "", 10);
+                    updateMutation.mutate(
+                      buildPayload({
+                        spamLinkThreshold: Number.isFinite(parsed) && parsed >= 0 ? parsed : null,
+                      }),
+                    );
+                  }}
+                  disabled={
+                    updateMutation.isPending ||
+                    spamLinkThresholdDraft === (
+                      typeof data?.spamLinkThreshold === "number"
+                        ? String(data.spamLinkThreshold)
+                        : ""
+                    )
+                  }
+                  data-testid="button-save-spam-link-threshold"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+
+            {/* Blocked keywords */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Blocked keywords</div>
+              <p className="text-xs text-muted-foreground">
+                Comments containing any of these words (case-insensitive) are flagged as spam.
+              </p>
+              <div className="flex flex-wrap gap-1.5 min-h-[2rem]">
+                {(spamKeywordsDraft ?? []).map((kw) => (
+                  <span
+                    key={kw}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                  >
+                    {kw}
+                    <button
+                      type="button"
+                      aria-label={`Remove keyword ${kw}`}
+                      className="hover:text-destructive"
+                      disabled={updateMutation.isPending}
+                      onClick={() => {
+                        const next = (spamKeywordsDraft ?? []).filter((k) => k !== kw);
+                        setSpamKeywordsDraft(next);
+                        updateMutation.mutate(buildPayload({ spamKeywords: next }));
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add keyword…"
+                  value={spamKeywordInput}
+                  onChange={(e) => setSpamKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const kw = spamKeywordInput.trim().toLowerCase();
+                      if (!kw || (spamKeywordsDraft ?? []).includes(kw)) return;
+                      const next = [...(spamKeywordsDraft ?? []), kw];
+                      setSpamKeywordsDraft(next);
+                      setSpamKeywordInput("");
+                      updateMutation.mutate(buildPayload({ spamKeywords: next }));
+                    }
+                  }}
+                  disabled={updateMutation.isPending}
+                  data-testid="input-spam-keyword"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const kw = spamKeywordInput.trim().toLowerCase();
+                    if (!kw || (spamKeywordsDraft ?? []).includes(kw)) return;
+                    const next = [...(spamKeywordsDraft ?? []), kw];
+                    setSpamKeywordsDraft(next);
+                    setSpamKeywordInput("");
+                    updateMutation.mutate(buildPayload({ spamKeywords: next }));
+                  }}
+                  disabled={updateMutation.isPending || !spamKeywordInput.trim()}
+                  data-testid="button-add-spam-keyword"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Blocked domains */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Blocked domains</div>
+              <p className="text-xs text-muted-foreground">
+                Comments linking to any of these domains are flagged as spam.
+                Enter bare domains, e.g. <code>spam-site.com</code>.
+              </p>
+              <div className="flex flex-wrap gap-1.5 min-h-[2rem]">
+                {(spamDomainDraft ?? []).map((d) => (
+                  <span
+                    key={d}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                  >
+                    {d}
+                    <button
+                      type="button"
+                      aria-label={`Remove domain ${d}`}
+                      className="hover:text-destructive"
+                      disabled={updateMutation.isPending}
+                      onClick={() => {
+                        const next = (spamDomainDraft ?? []).filter((x) => x !== d);
+                        setSpamDomainDraft(next);
+                        updateMutation.mutate(buildPayload({ spamDomainBlocklist: next }));
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add domain…"
+                  value={spamDomainInput}
+                  onChange={(e) => setSpamDomainInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const d = spamDomainInput.trim().toLowerCase();
+                      if (!d || (spamDomainDraft ?? []).includes(d)) return;
+                      const next = [...(spamDomainDraft ?? []), d];
+                      setSpamDomainDraft(next);
+                      setSpamDomainInput("");
+                      updateMutation.mutate(buildPayload({ spamDomainBlocklist: next }));
+                    }
+                  }}
+                  disabled={updateMutation.isPending}
+                  data-testid="input-spam-domain"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const d = spamDomainInput.trim().toLowerCase();
+                    if (!d || (spamDomainDraft ?? []).includes(d)) return;
+                    const next = [...(spamDomainDraft ?? []), d];
+                    setSpamDomainDraft(next);
+                    setSpamDomainInput("");
+                    updateMutation.mutate(buildPayload({ spamDomainBlocklist: next }));
+                  }}
+                  disabled={updateMutation.isPending || !spamDomainInput.trim()}
+                  data-testid="button-add-spam-domain"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
+              </div>
             </div>
           </div>
 

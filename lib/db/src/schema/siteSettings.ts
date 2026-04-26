@@ -84,6 +84,16 @@ export const siteSettingsTable = pgTable("site_settings", {
   entraTenantId: text("entra_tenant_id"),
   entraAdminGroupFallback: text("entra_admin_group_fallback"),
 
+  // #54: Spam detection rules. All fields are nullable so new deployments
+  // fall back to sensible hard-coded defaults without a migration.
+  // spamLinkThreshold: max external links allowed before a comment is
+  //   flagged (default 3).
+  // spamKeywords: blocked keyword/phrase list matched case-insensitively.
+  // spamDomainBlocklist: email domains that are immediately flagged.
+  spamLinkThreshold: integer("spam_link_threshold"),
+  spamKeywords: jsonb("spam_keywords").$type<string[]>(),
+  spamDomainBlocklist: jsonb("spam_domain_blocklist").$type<string[]>(),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
