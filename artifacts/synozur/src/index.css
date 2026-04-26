@@ -243,110 +243,103 @@
 }
 
 /* ── AURORA THEME ──────────────────────────────────────────────────────────
-   Deep indigo night with violet primary and hot-pink / magenta accents.
-   Matches the Constellation (SCDP) dark-purple palette.
+   Pixel-exact port of SCDP aurora.css (github.com/chris-mcnulty/synozur-scdp).
+   Violet #810FFB primary · hot-pink/magenta secondary · deep indigo darks.
    Applied when <html class="theme-aurora"> is set by the ThemeProvider.
    Both light and dark modes are overridden.                                  */
 
 html.theme-aurora {
-  /* Aurora palette tokens — violet + magenta, no teal */
-  --aurora-violet:  269 97% 52%;   /* #810FFB brand violet */
-  --aurora-magenta: 320 80% 50%;   /* hot pink / magenta accent */
-  --aurora-pink:    300 65% 58%;   /* mid pink for charts */
-  --aurora-indigo:  250 72% 58%;   /* blue-violet for charts */
-  --aurora-grape:   285 68% 48%;   /* deep grape for charts */
+  /* Light mode — sourced directly from SCDP aurora.css :root */
+  --background:  260 20% 98%;
+  --foreground:  268 25% 8%;
+  --border:      268 18% 86%;
+  --input:       268 18% 94%;
+  --ring:        268.98 96.72% 52.16%;
 
-  /* Light mode overrides */
-  --background: 270 28% 98%;
-  --foreground: 270 40% 10%;
-  --border:     270 20% 88%;
-  --input:      270 20% 88%;
-  --ring:       var(--aurora-violet);
+  --card:             268 25% 95.5%;
+  --card-foreground:  268 25% 8%;
+  --card-border:      268 18% 86%;
 
-  --card:             0 0% 100%;
-  --card-foreground:  270 40% 10%;
-  --card-border:      270 20% 88%;
+  --popover:            268 30% 97%;
+  --popover-foreground: 268 25% 8%;
+  --popover-border:     268 18% 86%;
 
-  --popover:            0 0% 100%;
-  --popover-foreground: 270 40% 10%;
-  --popover-border:     270 20% 88%;
-
-  --primary:            var(--aurora-violet);
+  --primary:            268.98 96.72% 52.16%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary:            var(--aurora-magenta);
+  --secondary:            314.04 90.08% 47.45%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted:            270 18% 93%;
-  --muted-foreground: 270 12% 42%;
+  --muted:            268 15% 89%;
+  --muted-foreground: 268 8% 38%;
 
-  --accent:            270 18% 93%;
-  --accent-foreground: 270 40% 10%;
+  --accent:            268 50% 92%;
+  --accent-foreground: 268 80% 25%;
 
-  --destructive:            0 84% 60%;
+  --destructive:            356.3 90.56% 54.31%;
   --destructive-foreground: 0 0% 100%;
 
-  --sidebar:            0 0% 100%;
-  --sidebar-foreground: 270 40% 10%;
-  --sidebar-border:     270 20% 88%;
-  --sidebar-primary:    var(--aurora-violet);
+  --sidebar:            268 25% 95%;
+  --sidebar-foreground: 268 25% 8%;
+  --sidebar-border:     268 18% 86%;
+  --sidebar-primary:    268.98 96.72% 52.16%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:     270 18% 93%;
-  --sidebar-accent-foreground: 270 40% 10%;
-  --sidebar-ring:       var(--aurora-violet);
+  --sidebar-accent:     268 50% 91%;
+  --sidebar-accent-foreground: 268.98 96.72% 45%;
+  --sidebar-ring:       268.98 96.72% 52.16%;
 
-  --chart-1: var(--aurora-violet);
-  --chart-2: var(--aurora-magenta);
-  --chart-3: var(--aurora-pink);
-  --chart-4: var(--aurora-indigo);
-  --chart-5: var(--aurora-grape);
+  --chart-1: 268.98 96.72% 52.16%;
+  --chart-2: 314.04 90.08% 47.45%;
+  --chart-3: 269.16 80.45% 26.08%;
+  --chart-4: 147.14 78.5% 41.96%;
+  --chart-5: 341.49 75.2% 50.98%;
 }
 
 html.theme-aurora .dark {
-  /* Deep warm-indigo backgrounds — hue 268-272, more purple than Cosmic's 240 */
-  --background: 270 42% 6.5%;
-  --foreground: 270 20% 97%;
-  --border:     270 32% 17%;
-  --input:      270 32% 17%;
-  --ring:       var(--aurora-violet);
+  /* Dark mode — sourced directly from SCDP aurora.css .dark */
+  --background:  268 20% 7%;
+  --foreground:  268 8% 88%;
+  --border:      268 18% 17%;
+  --input:       268 18% 13%;
+  --ring:        268.98 92% 64%;
 
-  --card:             270 36% 9.5%;
-  --card-foreground:  270 20% 97%;
-  --card-border:      270 32% 17%;
+  --card:             268 20% 10%;
+  --card-foreground:  268 8% 85%;
+  --card-border:      268 18% 17%;
 
-  --popover:            270 36% 9.5%;
-  --popover-foreground: 270 20% 97%;
-  --popover-border:     270 32% 17%;
+  --popover:            268 20% 7%;
+  --popover-foreground: 268 8% 88%;
+  --popover-border:     268 18% 17%;
 
-  --primary:            var(--aurora-violet);
+  --primary:            268.98 92% 64%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary:            var(--aurora-magenta);
+  --secondary:            314.04 85% 61%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted:            270 28% 13%;
-  --muted-foreground: 270 18% 68%;
+  --muted:            268 15% 15%;
+  --muted-foreground: 268 6% 53%;
 
-  --accent:            270 28% 13%;
-  --accent-foreground: 270 20% 97%;
+  --accent:            268 35% 16%;
+  --accent-foreground: 268.98 92% 70%;
 
-  --destructive:            0 62% 30%;
-  --destructive-foreground: 270 20% 97%;
+  --destructive:            356.3 85% 60%;
+  --destructive-foreground: 0 0% 100%;
 
-  --sidebar:            270 45% 5.5%;
-  --sidebar-foreground: 270 20% 97%;
-  --sidebar-border:     270 32% 17%;
-  --sidebar-primary:    var(--aurora-violet);
+  --sidebar:            268 25% 6%;
+  --sidebar-foreground: 268 8% 80%;
+  --sidebar-border:     268 18% 14%;
+  --sidebar-primary:    268.98 92% 64%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:     270 28% 13%;
-  --sidebar-accent-foreground: 270 20% 97%;
-  --sidebar-ring:       var(--aurora-violet);
+  --sidebar-accent:     268 35% 14%;
+  --sidebar-accent-foreground: 268.98 92% 72%;
+  --sidebar-ring:       268.98 92% 64%;
 
-  --chart-1: var(--aurora-violet);
-  --chart-2: var(--aurora-magenta);
-  --chart-3: var(--aurora-pink);
-  --chart-4: var(--aurora-indigo);
-  --chart-5: var(--aurora-grape);
+  --chart-1: 268.98 92% 64%;
+  --chart-2: 314.04 85% 61%;
+  --chart-3: 269.16 75% 72%;
+  --chart-4: 147.14 68% 54%;
+  --chart-5: 341.49 72% 63%;
 }
 
 .nebula-gradient {
