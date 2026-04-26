@@ -114,9 +114,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
           Please ask an administrator to grant you a role (contributor, author,
           editor, or admin).
         </p>
-        <Link href="/">
+        <a href={BASE_PATH ? `${BASE_PATH}/` : "/"}>
           <Button variant="outline">Return Home</Button>
-        </Link>
+        </a>
       </div>
     );
   }

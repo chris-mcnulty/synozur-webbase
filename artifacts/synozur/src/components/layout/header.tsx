@@ -1,12 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ArrowRight, Search } from "lucide-react";
+import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut } from "lucide-react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
-import { useAuth } from "@/context/auth";
+import { useAuth, type AuthedUser } from "@/context/auth";
 
 type NavLink = { label: string; href: string };
 type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
@@ -49,19 +49,106 @@ function NavLinkItem({
   );
 }
 
+function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClick);
+      document.addEventListener("keydown", handleEsc);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [open]);
+
+  const initial = ((user.displayName || user.email || "U")[0] ?? "U").toUpperCase();
+  const shortName = user.displayName?.split(" ")[0] ?? user.email?.split("@")[0] ?? "Account";
+  const hasRole = user.roles.length > 0;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label="Account menu"
+        data-testid="button-user-menu"
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors text-sm"
+      >
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={shortName}
+            className="h-7 w-7 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <span className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0">
+            {initial}
+          </span>
+        )}
+        <span className="hidden sm:block font-medium truncate max-w-[100px]">{shortName}</span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-2 w-56 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+        >
+          <div className="px-4 py-3 border-b border-border">
+            {user.displayName && (
+              <div className="font-medium text-sm truncate">{user.displayName}</div>
+            )}
+            {user.email && (
+              <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+            )}
+          </div>
+          {hasRole && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted transition-colors"
+            >
+              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+              Admin dashboard
+            </Link>
+          )}
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); void signOut(); }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+          >
+            <LogOut className="h-4 w-4 text-muted-foreground" />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Header() {
   const [location, navigate] = useLocation();
   const isHome = location === "/" || location === "";
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (searchOpen) {
-      searchInputRef.current?.focus();
-    }
+    if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
   function handleSearchSubmit(e: FormEvent) {
@@ -88,10 +175,6 @@ export function Header() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Single source of truth for the Resources dropdown's application
-  // links (#103). Falls back to the static applications list when the
-  // API is empty or unreachable, preserving behaviour during the
-  // migration from hardcoded nav entries.
   const applicationsQuery = useQuery({
     queryKey: ["applications", "nav"],
     queryFn: () => api.listApplications(true),
@@ -104,9 +187,7 @@ export function Header() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }));
   })();
 
-  const pillars = (servicesQuery.data?.items ?? []).filter(
-    (s) => s.slug !== "our-services",
-  );
+  const pillars = (servicesQuery.data?.items ?? []).filter((s) => s.slug !== "our-services");
 
   const servicesGroup: NavGroup = {
     title: "Services",
@@ -114,10 +195,7 @@ export function Header() {
     nested: pillars.map((p) => ({
       label: p.title,
       href: `/services/${p.slug}`,
-      children: p.solutions.map((s) => ({
-        label: s.title,
-        href: `/solutions/${s.slug}`,
-      })),
+      children: p.solutions.map((s) => ({ label: s.title, href: `/solutions/${s.slug}` })),
     })),
   };
 
@@ -130,7 +208,7 @@ export function Header() {
         { label: "Clients", href: "/clients" },
         { label: "Partners", href: "/partners" },
         { label: "Careers", href: "https://careers.synozur.com" },
-      ]
+      ],
     },
     servicesGroup,
     {
@@ -139,7 +217,7 @@ export function Header() {
         { label: "Insights Blog", href: "/insights" },
         { label: "Polaris Podcast", href: "/polaris" },
         { label: "Events", href: "/events" },
-      ]
+      ],
     },
     {
       title: "Resources",
@@ -163,30 +241,38 @@ export function Header() {
           })),
         },
       ],
-    }
+    },
   ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+      <div className="container mx-auto px-4 h-20 flex items-center gap-3">
+
+        {/* ── App switcher: left-most on both desktop and mobile (signed-in only) ── */}
+        {isSignedIn && <SynozurAppSwitcher currentApp="synozur" />}
+
+        {/* ── Mobile hamburger (only shown when NOT signed-in on mobile, so it stays left-most) ── */}
+        {/* On mobile, when signed-in the app switcher is already leftmost */}
+        <button
+          className={`lg:hidden p-2 text-foreground flex-shrink-0 ${isSignedIn ? "hidden" : ""}`}
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+
+        {/* ── Logo ── */}
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80 flex-shrink-0">
           {isHome ? (
-            <img
-              src={MARK_URL}
-              alt="Synozur Alliance Wayfinder Mark"
-              className="h-10 w-auto"
-            />
+            <img src={MARK_URL} alt="Synozur Alliance Wayfinder Mark" className="h-10 w-auto" />
           ) : (
-            <img
-              src={LOGO_COLOR_URL}
-              alt="The Synozur Alliance Logo"
-              className="h-10 w-auto"
-            />
+            <img src={LOGO_COLOR_URL} alt="The Synozur Alliance Logo" className="h-10 w-auto" />
           )}
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-8">
+        {/* ── Desktop Nav (centered) ── */}
+        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
           {navGroups.map((group) => (
             <div key={group.title} className="relative group">
               <button
@@ -208,22 +294,22 @@ export function Header() {
                       className="text-sm text-popover-foreground/80 hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
                     />
                   ))}
-                  {group.nested && group.nested.length > 0 ? (
+                  {group.nested && group.nested.length > 0 && (
                     <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
                       {group.nested.map((section) => (
                         <div key={section.label}>
-                          {section.sectionTitle ? (
+                          {section.sectionTitle && (
                             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">
                               {section.sectionTitle}
                             </p>
-                          ) : null}
+                          )}
                           <Link
                             href={section.href}
                             className="block text-sm font-semibold text-popover-foreground hover:text-primary px-3 py-1 rounded-md"
                           >
                             {section.label}
                           </Link>
-                          {section.children.length > 0 ? (
+                          {section.children.length > 0 && (
                             <ul className="pl-3 mt-1 space-y-0.5">
                               {section.children.map((c) => (
                                 <li key={c.href}>
@@ -236,20 +322,22 @@ export function Header() {
                                 </li>
                               ))}
                             </ul>
-                          ) : null}
+                          )}
                         </div>
                       ))}
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-3">
+        {/* ── Right-side controls (desktop + mobile share this group) ── */}
+        <div className="ml-auto flex items-center gap-2">
+
           {/* Desktop expandable search */}
-          <div className="flex items-center">
+          <div className="hidden lg:flex items-center">
             {searchOpen ? (
               <form onSubmit={handleSearchSubmit} className="flex items-center gap-1">
                 <input
@@ -261,63 +349,54 @@ export function Header() {
                   aria-label="Search library"
                   className="h-9 w-48 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      setSearchOpen(false);
-                      setSearchQuery("");
-                    }
+                    if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
                   }}
                 />
-                <button
-                  type="submit"
-                  aria-label="Submit search"
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
+                <button type="submit" aria-label="Submit search" className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <Search className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  aria-label="Close search"
-                  onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
+                <button type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </form>
             ) : (
-              <button
-                type="button"
-                aria-label="Open search"
-                onClick={() => setSearchOpen(true)}
-                className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
+              <button type="button" aria-label="Open search" onClick={() => setSearchOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                 <Search className="h-4 w-4" />
               </button>
             )}
           </div>
-          {isSignedIn && <SynozurAppSwitcher currentApp="synozur" />}
-          <ThemeToggle />
-          <Link href="/start" className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
-            Get Started
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
 
-        {/* Mobile Nav Toggle */}
-        <div className="lg:hidden flex items-center gap-2">
-          {isSignedIn && <SynozurAppSwitcher currentApp="synozur" />}
+          {/* Theme toggle */}
           <ThemeToggle />
-          <button
-            className="p-2 text-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+
+          {/* User button (signed-in) or Get Started (signed-out) */}
+          {isSignedIn && user ? (
+            <UserButton user={user} signOut={signOut} />
+          ) : (
+            <Link
+              href="/start"
+              className="hidden lg:inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              Get Started
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          )}
+
+          {/* Mobile hamburger (only when signed-in — positioned right after user button) */}
+          {isSignedIn && (
+            <button
+              className="lg:hidden p-2 text-foreground flex-shrink-0"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Nav Drawer */}
+      {/* ── Mobile Nav Drawer ── */}
       {mobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 w-full h-[calc(100vh-5rem)] bg-background border-t border-border overflow-y-auto z-40">
           <div className="p-6 flex flex-col gap-6">
@@ -331,14 +410,11 @@ export function Header() {
                 aria-label="Search library"
                 className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <button
-                type="submit"
-                aria-label="Submit search"
-                className="h-10 w-10 inline-flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors"
-              >
+              <button type="submit" aria-label="Submit search" className="h-10 w-10 inline-flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors">
                 <Search className="h-4 w-4" />
               </button>
             </form>
+
             {navGroups.map((group) => (
               <div key={group.title} className="flex flex-col gap-3">
                 <h3 className="font-semibold text-foreground">{group.title}</h3>
@@ -353,11 +429,11 @@ export function Header() {
                   ))}
                   {group.nested?.map((section) => (
                     <div key={section.label} className="mt-2">
-                      {section.sectionTitle ? (
+                      {section.sectionTitle && (
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pb-1">
                           {section.sectionTitle}
                         </p>
-                      ) : null}
+                      )}
                       <Link
                         href={section.href}
                         className="block font-medium text-foreground/90 hover:text-primary py-1"
@@ -365,7 +441,7 @@ export function Header() {
                       >
                         {section.label}
                       </Link>
-                      {section.children.length > 0 ? (
+                      {section.children.length > 0 && (
                         <ul className="pl-4 border-l border-border/40 ml-1 mt-1 space-y-1">
                           {section.children.map((c) => (
                             <li key={c.href}>
@@ -379,21 +455,34 @@ export function Header() {
                             </li>
                           ))}
                         </ul>
-                      ) : null}
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-            <div className="pt-6 mt-6 border-t border-border">
-              <Link 
-                href="/start" 
-                className="flex w-full h-12 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+
+            <div className="pt-6 mt-6 border-t border-border flex flex-col gap-3">
+              {!isSignedIn && (
+                <Link
+                  href="/start"
+                  className="flex w-full h-12 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Get Started
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              )}
+              {isSignedIn && user && user.roles.length > 0 && (
+                <Link
+                  href="/admin"
+                  className="flex w-full h-12 items-center justify-center rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors gap-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Admin Dashboard
+                </Link>
+              )}
             </div>
           </div>
         </div>

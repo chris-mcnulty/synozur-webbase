@@ -13,7 +13,7 @@ export default function SignUpPage() {
   const search = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
-  const returnTo = params.get("returnTo") ?? "/admin";
+  const returnTo = params.get("returnTo") ?? "/";
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -59,7 +59,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/admin");
+      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/");
     }
   }, [isLoaded, isSignedIn, returnTo, navigate]);
 
@@ -124,7 +124,7 @@ export default function SignUpPage() {
             Please check your inbox and click the link to verify your address.
           </p>
           <Button asChild className="w-full">
-            <Link href={returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/admin"}>
+            <Link href={returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/"}>
               Continue to your account
             </Link>
           </Button>
@@ -232,7 +232,7 @@ export default function SignUpPage() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
-            href={`/sign-in${returnTo !== "/admin" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+            href={`/sign-in${returnTo && returnTo !== "/" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
             className="font-medium text-foreground hover:underline"
           >
             Sign in

@@ -13,7 +13,7 @@ export default function SignInPage() {
   const search = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
-  const returnTo = params.get("returnTo") ?? "/admin";
+  const returnTo = params.get("returnTo") ?? "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +25,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/admin");
+      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/");
     }
   }, [isLoaded, isSignedIn, returnTo, navigate]);
 
@@ -66,7 +66,7 @@ export default function SignInPage() {
         return;
       }
       await refresh();
-      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/admin");
+      navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/");
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -183,7 +183,7 @@ export default function SignInPage() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link
-            href={`/sign-up${returnTo !== "/admin" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+            href={`/sign-up${returnTo && returnTo !== "/" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
             className="font-medium text-foreground hover:underline"
           >
             Create one
