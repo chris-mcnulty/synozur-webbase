@@ -469,6 +469,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 const LoginBody = z.object({
   email: z.string().email().max(255),
   password: z.string().min(1).max(128),
+  rememberMe: z.boolean().optional(),
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -517,6 +518,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     userId: user.id,
     userAgent: userAgent(req),
     ip: clientIp(req),
+    rememberMe: parsed.data.rememberMe ?? false,
   });
   setSessionCookie(req, res, session.token, session.expiresAt);
   const fresh = await loadUserById(user.id);

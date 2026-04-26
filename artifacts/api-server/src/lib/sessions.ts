@@ -15,9 +15,10 @@ import { logger } from "./logger";
 // session tokens — same pattern as a password hash.
 
 const COOKIE_NAME = "sid";
-const SESSION_TTL_MS = 8 * 60 * 60 * 1000;        // 8 hours of inactivity
-const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30-day absolute cap
-const ROLLING_RENEW_MS = 30 * 60 * 1000;          // bump lastSeenAt at most every 30 min
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;               // 8 hours of inactivity (default)
+const REMEMBER_ME_TTL_MS = 30 * 24 * 60 * 60 * 1000;     // 30 days of inactivity (remember me)
+const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000;        // 30-day absolute cap
+const ROLLING_RENEW_MS = 30 * 60 * 1000;                 // bump lastSeenAt at most every 30 min
 
 function hashSessionId(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -83,11 +84,13 @@ export async function createSession(args: {
   userId: string;
   userAgent: string | null;
   ip: string | null;
+  rememberMe?: boolean;
 }): Promise<CreatedSession> {
   const token = newSessionToken();
   const id = hashSessionId(token);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+  const ttl = args.rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
+  const expiresAt = new Date(now.getTime() + ttl);
   await db.insert(sessionsTable).values({
     id,
     userId: args.userId,
@@ -96,6 +99,7 @@ export async function createSession(args: {
     expiresAt,
     userAgent: args.userAgent,
     ip: args.ip,
+    rememberMe: args.rememberMe ?? false,
   });
   return { token, rowId: id, expiresAt };
 }
@@ -125,9 +129,10 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
     return null;
   }
   // Rolling renewal: extend the inactivity window without thrashing the row
-  // on every request.
+  // on every request. Use the remember-me TTL if the session was created with it.
   if (now.getTime() - row.lastSeenAt.getTime() > ROLLING_RENEW_MS) {
-    const newExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+    const renewTtl = row.rememberMe ? REMEMBER_ME_TTL_MS : SESSION_TTL_MS;
+    const newExpiresAt = new Date(now.getTime() + renewTtl);
     await db
       .update(sessionsTable)
       .set({ lastSeenAt: now, expiresAt: newExpiresAt })

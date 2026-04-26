@@ -17,6 +17,7 @@ export default function SignInPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [entraAvailable, setEntraAvailable] = useState(false);
@@ -44,7 +45,7 @@ export default function SignInPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password, rememberMe }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) {
@@ -124,6 +125,20 @@ export default function SignInPage() {
               placeholder="••••••••"
               disabled={loading}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="remember-me"
+              type="checkbox"
+              data-testid="checkbox-remember-me"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              disabled={loading}
+              className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+            />
+            <Label htmlFor="remember-me" className="cursor-pointer font-normal text-sm">
+              Remember me for 30 days
+            </Label>
           </div>
           <Button type="submit" className="w-full" disabled={loading} data-testid="button-sign-in">
             {loading ? "Signing in…" : "Sign in"}
