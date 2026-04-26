@@ -207,11 +207,16 @@ export default function Home() {
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
-  const { data: workshopsData } = useQuery({
+  const {
+    data: workshopsData,
+    isLoading: workshopsLoading,
+    isError: workshopsError,
+  } = useQuery({
     queryKey: ["public-workshops"],
     queryFn: () => workshopsApi.listPublic(),
   });
   const workshops: WorkshopDto[] = (workshopsData?.items ?? []).slice(0, 4);
+  const hasWorkshopsTeaserFallback = workshopsLoading || workshopsError;
   const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
   const editorial = resolveImageUrl(settings?.homeEditorialImageUrl, DEFAULT_EDITORIAL);
   const customVideoSrc = settings?.homeHeroVideoUrl
