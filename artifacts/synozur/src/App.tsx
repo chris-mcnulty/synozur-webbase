@@ -72,6 +72,7 @@ import VideoEdit from "@/pages/admin/library/video-edit";
 import AdminWhitePapersList from "@/pages/admin/library/white-papers-list";
 import WhitePaperEdit from "@/pages/admin/library/white-paper-edit";
 import AdminWixRedirects from "@/pages/admin/site-config/redirects";
+import AdminNotFoundLogs from "@/pages/admin/site-config/not-found-logs";
 import AdminWorkshopsList from "@/pages/admin/library/workshops-list";
 import WorkshopEdit from "@/pages/admin/library/workshop-edit";
 import AdminPolarisEpisodesList from "@/pages/admin/library/polaris-episodes-list";
@@ -323,6 +324,7 @@ function AdminRoutes() {
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
+        <Route path="/site-config/not-found-logs" component={AdminNotFoundLogs} />
         <Route path="/site-config/health" component={AdminSiteHealth} />
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>

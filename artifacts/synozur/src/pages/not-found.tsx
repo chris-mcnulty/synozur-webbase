@@ -1,8 +1,47 @@
+import { useEffect } from "react";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { Compass } from "lucide-react";
 
+function reportNotFound(): void {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname + window.location.search;
+  // Skip admin/auth paths — they're handled by their own routers and
+  // shouldn't pollute the public 404 log.
+  if (
+    path === "/admin" ||
+    path.startsWith("/admin/") ||
+    path.startsWith("/sign-in") ||
+    path.startsWith("/sign-up")
+  ) {
+    return;
+  }
+  const body = JSON.stringify({
+    path,
+    referrer: document.referrer || null,
+  });
+  try {
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+      if (navigator.sendBeacon("/api/traffic/not-found", blob)) return;
+    }
+  } catch {
+    // fall through to fetch
+  }
+  void fetch("/api/traffic/not-found", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+    credentials: "same-origin",
+  }).catch(() => {});
+}
+
 export default function NotFound() {
+  useEffect(() => {
+    reportNotFound();
+  }, []);
+
   return (
     <div className="relative w-full min-h-[80vh] flex items-center justify-center overflow-hidden bg-[#0B0B1A]">
       <Meta title="Lost in the constellation" description="The page you were looking for is not on the map." pageType="not-found" />
