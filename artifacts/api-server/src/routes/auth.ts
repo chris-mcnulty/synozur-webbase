@@ -141,6 +141,38 @@ const loginRateLimiter = rateLimit({
 });
 
 // ---------------------------------------------------------------------------
+// Rate limiter — POST /api/auth/forgot-password (5 requests per 15 min per IP)
+// ---------------------------------------------------------------------------
+const forgotPasswordRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `forgot-password:${ipKeyGenerator(req)}`,
+  handler: (_req: Request, res: Response): void => {
+    res.status(429).json({
+      error: "Too many password reset requests. Please try again in 15 minutes.",
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Rate limiter — POST /api/auth/reset-password (10 requests per 15 min per IP)
+// ---------------------------------------------------------------------------
+const resetPasswordRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `reset-password:${ipKeyGenerator(req)}`,
+  handler: (_req: Request, res: Response): void => {
+    res.status(429).json({
+      error: "Too many password reset attempts. Please try again in 15 minutes.",
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Entra SSO — GET /api/auth/sign-in
 // ---------------------------------------------------------------------------
 router.get("/auth/sign-in", async (req, res): Promise<void> => {
@@ -672,7 +704,7 @@ router.post("/auth/resend-verification", async (req, res): Promise<void> => {
 // ---------------------------------------------------------------------------
 const ForgotPasswordBody = z.object({ email: z.string().email().max(255) });
 
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+router.post("/auth/forgot-password", forgotPasswordRateLimiter, async (req, res): Promise<void> => {
   const parsed = ForgotPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
@@ -702,7 +734,7 @@ const ResetPasswordBody = z.object({
   password: z.string().min(8).max(128),
 });
 
-router.post("/auth/reset-password", async (req, res): Promise<void> => {
+router.post("/auth/reset-password", resetPasswordRateLimiter, async (req, res): Promise<void> => {
   const parsed = ResetPasswordBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
