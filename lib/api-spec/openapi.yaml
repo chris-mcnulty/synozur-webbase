@@ -1223,6 +1223,129 @@ paths:
           description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources:
+    get:
+      operationId: cmsListCollateralResources
+      tags:
+        - CmsCollateral
+      summary: List companion resources attached to a collateral item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resources for the collateral item, sorted by sortOrder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResourcesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: cmsCreateCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCollateralResourceBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources/{resourceId}:
+    patch:
+      operationId: cmsUpdateCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: resourceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCollateralResourceBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResource'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: resourceId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources/reorder:
+    post:
+      operationId: cmsReorderCollateralResources
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollateralResourceReorderBody'
+      responses:
+        '204':
+          description: Reordered
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /cms/services:
     get:
       operationId: cmsListServices
@@ -4987,12 +5110,108 @@ components:
           type:
             - string
             - 'null'
+        resources:
+          description: >-
+            Companion files attached to this item (slides, transcript,
+            code repo link, follow-up deck). Empty when no resources are
+            attached; consumers should fall back to `downloadUrl` in that
+            case until the legacy field is dropped.
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralResource'
         active:
           type: boolean
         createdAt:
           type: string
         updatedAt:
           type: string
+    CollateralResource:
+      type: object
+      required:
+        - id
+        - collateralId
+        - label
+        - sortOrder
+        - url
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        collateralId:
+          type: string
+          format: uuid
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+        url:
+          description: >-
+            Resolved URL the client can render directly. For media-backed
+            rows this is the media's publicUrl; for external rows it's the
+            externalUrl as supplied.
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CollateralResourcesResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralResource'
+    UpsertCollateralResourceBody:
+      type: object
+      properties:
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+    CollateralResourceReorderBody:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          description: Resource ids in their new order. All must belong to the path collateral id.
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
     CollateralItemsResponse:
       type: object
       required:

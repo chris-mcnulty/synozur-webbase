@@ -1338,6 +1338,23 @@ export const CollateralPillar = {
   gtm: "gtm",
 } as const;
 
+export interface CollateralResource {
+  id: string;
+  collateralId: string;
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  label: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder: number;
+  /** Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied. */
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CollateralItem {
   id: string;
   slug: string;
@@ -1359,9 +1376,34 @@ export interface CollateralItem {
   videoUrl?: string | null;
   /** @nullable */
   downloadUrl?: string | null;
+  /** Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped. */
+  resources?: CollateralResource[];
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CollateralResourcesResponse {
+  items: CollateralResource[];
+}
+
+export interface UpsertCollateralResourceBody {
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  label?: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder?: number;
+}
+
+export interface CollateralResourceReorderBody {
+  /**
+   * Resource ids in their new order. All must belong to the path collateral id.
+   * @minItems 1
+   */
+  ids: string[];
 }
 
 export interface CollateralItemsResponse {

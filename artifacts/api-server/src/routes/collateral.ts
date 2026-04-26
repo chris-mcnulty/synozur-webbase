@@ -20,6 +20,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { loadSerializedResourcesForCollateral } from "./collateralResources";
 
 const router: IRouter = Router();
 
@@ -234,7 +235,12 @@ router.get("/collateral/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serializeItem(row));
+  // Inline resources on the by-slug response so the public detail page can
+  // render the Resources section without a follow-up request. The list
+  // endpoint deliberately omits this — the carousel/grid only needs the
+  // first-CTA hint, which is mirrored to the legacy `downloadUrl` column.
+  const resources = await loadSerializedResourcesForCollateral(row.id);
+  res.json({ ...serializeItem(row), resources });
 });
 
 // ----- Admin -------------------------------------------------------------

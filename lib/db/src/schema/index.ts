@@ -13,6 +13,7 @@ export * from "./auditLog";
 export * from "./siteSettings";
 export * from "./services";
 export * from "./collateral";
+export * from "./collateralResources";
 export * from "./teamMembers";
 export * from "./analytics";
 export * from "./traffic";

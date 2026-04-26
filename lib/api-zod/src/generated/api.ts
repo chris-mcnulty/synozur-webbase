@@ -1637,6 +1637,29 @@ export const CmsListCollateralResponse = zod.object({
       featuredRank: zod.number().nullish(),
       videoUrl: zod.string().nullish(),
       downloadUrl: zod.string().nullish(),
+      resources: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            collateralId: zod.string().uuid(),
+            mediaId: zod.string().uuid().nullish(),
+            externalUrl: zod.string().nullish(),
+            label: zod.string(),
+            mimeType: zod.string().nullish(),
+            sortOrder: zod.number(),
+            url: zod
+              .string()
+              .describe(
+                "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+              ),
+            createdAt: zod.coerce.date(),
+            updatedAt: zod.coerce.date(),
+          }),
+        )
+        .optional()
+        .describe(
+          "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+        ),
       active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -1712,6 +1735,29 @@ export const CmsGetCollateralResponse = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        collateralId: zod.string().uuid(),
+        mediaId: zod.string().uuid().nullish(),
+        externalUrl: zod.string().nullish(),
+        label: zod.string(),
+        mimeType: zod.string().nullish(),
+        sortOrder: zod.number(),
+        url: zod
+          .string()
+          .describe(
+            "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+          ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+    ),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1785,6 +1831,29 @@ export const CmsUpdateCollateralResponse = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        collateralId: zod.string().uuid(),
+        mediaId: zod.string().uuid().nullish(),
+        externalUrl: zod.string().nullish(),
+        label: zod.string(),
+        mimeType: zod.string().nullish(),
+        sortOrder: zod.number(),
+        url: zod
+          .string()
+          .describe(
+            "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+          ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+    ),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1792,6 +1861,94 @@ export const CmsUpdateCollateralResponse = zod.object({
 
 export const CmsDeleteCollateralParams = zod.object({
   id: zod.coerce.string(),
+});
+
+/**
+ * @summary List companion resources attached to a collateral item
+ */
+export const CmsListCollateralResourcesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListCollateralResourcesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      collateralId: zod.string().uuid(),
+      mediaId: zod.string().uuid().nullish(),
+      externalUrl: zod.string().nullish(),
+      label: zod.string(),
+      mimeType: zod.string().nullish(),
+      sortOrder: zod.number(),
+      url: zod
+        .string()
+        .describe(
+          "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+        ),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+export const CmsCreateCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsCreateCollateralResourceBody = zod.object({
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string().optional(),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const CmsUpdateCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+  resourceId: zod.coerce.string(),
+});
+
+export const CmsUpdateCollateralResourceBody = zod.object({
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string().optional(),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const CmsUpdateCollateralResourceResponse = zod.object({
+  id: zod.string().uuid(),
+  collateralId: zod.string().uuid(),
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string(),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number(),
+  url: zod
+    .string()
+    .describe(
+      "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+    ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const CmsDeleteCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+  resourceId: zod.coerce.string(),
+});
+
+export const CmsReorderCollateralResourcesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsReorderCollateralResourcesBody = zod.object({
+  ids: zod
+    .array(zod.string().uuid())
+    .min(1)
+    .describe(
+      "Resource ids in their new order. All must belong to the path collateral id.",
+    ),
 });
 
 export const CmsListServicesResponse = zod.object({

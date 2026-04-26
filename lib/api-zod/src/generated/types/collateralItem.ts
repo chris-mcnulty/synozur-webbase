@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CollateralPillar } from "./collateralPillar";
+import type { CollateralResource } from "./collateralResource";
 import type { CollateralType } from "./collateralType";
 
 export interface CollateralItem {
@@ -29,6 +30,8 @@ export interface CollateralItem {
   videoUrl?: string | null;
   /** @nullable */
   downloadUrl?: string | null;
+  /** Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped. */
+  resources?: CollateralResource[];
   active: boolean;
   createdAt: string;
   updatedAt: string;

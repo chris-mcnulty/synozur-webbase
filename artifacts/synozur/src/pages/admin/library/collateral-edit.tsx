@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, FileText, Lock } from "lucide-react";
+import { ArrowLeft, Save, X, Image as ImageIcon, Lock } from "lucide-react";
 import { isSyncedCollateralType } from "@workspace/api-zod";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   assetUrl,
 } from "@/components/admin/AssetLibraryModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
+import { CollateralResourcesEditor } from "@/components/admin/CollateralResourcesEditor";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
@@ -88,7 +89,6 @@ interface FormState {
   featured: boolean;
   featuredRank: string;
   videoUrl: string;
-  downloadUrl: string;
   tagsText: string;
   active: boolean;
   // #100 — real foreign keys to the services/solutions tables replace the
@@ -96,6 +96,11 @@ interface FormState {
   serviceId: string;
   solutionId: string;
 }
+
+// `downloadUrl` is intentionally not in this form. As of #122 it is a
+// server-side mirror of the first row in `collateral_resources`, refreshed
+// on every resource mutation. Editors manage attachments through the
+// Resources editor below.
 
 const EMPTY: FormState = {
   title: "",
@@ -113,7 +118,6 @@ const EMPTY: FormState = {
   featured: false,
   featuredRank: "",
   videoUrl: "",
-  downloadUrl: "",
   tagsText: "",
   active: true,
   serviceId: "",
@@ -143,7 +147,6 @@ function fromItem(item: CollateralItem): FormState {
     featured: !!item.featured,
     featuredRank: item.featuredRank == null ? "" : String(item.featuredRank),
     videoUrl: item.videoUrl ?? "",
-    downloadUrl: item.downloadUrl ?? "",
     tagsText: (item.tags ?? []).join(", "),
     active: item.active,
     serviceId: extra.serviceId ?? "",
@@ -172,7 +175,6 @@ function toPreviewItem(f: FormState): Collateral {
     featured: f.featured,
     featuredRank: f.featuredRank === "" ? undefined : Number(f.featuredRank),
     videoUrl: f.videoUrl || undefined,
-    downloadUrl: f.downloadUrl || undefined,
   };
 }
 
@@ -181,6 +183,9 @@ function toBody(f: FormState): UpsertCollateralBody {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
+  // `downloadUrl` deliberately omitted: it is server-derived from the first
+  // collateral_resources row (see #122 / refreshDownloadUrlMirror). Including
+  // it here would let a stale form value clobber the server-side mirror.
   const body: UpsertCollateralBody & {
     serviceId?: string | null;
     solutionId?: string | null;
@@ -198,7 +203,6 @@ function toBody(f: FormState): UpsertCollateralBody {
     featured: f.featured,
     featuredRank: f.featuredRank === "" ? null : Number(f.featuredRank),
     videoUrl: f.videoUrl || null,
-    downloadUrl: f.downloadUrl || null,
     tags,
     active: f.active,
     serviceId: f.serviceId || null,
@@ -255,7 +259,6 @@ export default function CollateralEdit({ id }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
-  const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -317,11 +320,6 @@ export default function CollateralEdit({ id }: Props) {
   const handleHero = (asset: Asset) => {
     update({ heroImage: assetUrl(asset) });
     setShowHeroPicker(false);
-  };
-
-  const handleDocument = (asset: Asset) => {
-    update({ downloadUrl: assetUrl(asset) });
-    setShowDocumentPicker(false);
   };
 
   if (!isNew && listQ.isLoading && !existing) {
@@ -585,64 +583,14 @@ export default function CollateralEdit({ id }: Props) {
                 disabled={contentDisabled}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="videoUrl">Video URL</Label>
-                <Input
-                  id="videoUrl"
-                  value={form.videoUrl}
-                  onChange={(e) => update({ videoUrl: e.target.value })}
-                  disabled={contentDisabled}
-                />
-              </div>
-              <div>
-                <Label htmlFor="downloadUrl">Download URL</Label>
-                {form.type === "white_paper" && canWrite && !contentReadOnly ? (
-                  <div className="space-y-2 mt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start gap-2"
-                      onClick={() => setShowDocumentPicker(true)}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      {form.downloadUrl ? "Replace document…" : "Upload or pick document…"}
-                    </Button>
-                    {form.downloadUrl && (
-                      <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-3 py-2 text-sm">
-                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 truncate text-xs text-muted-foreground">
-                          {form.downloadUrl}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 shrink-0"
-                          onClick={() => update({ downloadUrl: "" })}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                    <Input
-                      id="downloadUrl"
-                      placeholder="…or paste a URL directly"
-                      value={form.downloadUrl}
-                      onChange={(e) => update({ downloadUrl: e.target.value })}
-                      className="text-xs"
-                    />
-                  </div>
-                ) : (
-                  <Input
-                    id="downloadUrl"
-                    value={form.downloadUrl}
-                    onChange={(e) => update({ downloadUrl: e.target.value })}
-                    disabled={contentDisabled}
-                  />
-                )}
-              </div>
+            <div>
+              <Label htmlFor="videoUrl">Video URL</Label>
+              <Input
+                id="videoUrl"
+                value={form.videoUrl}
+                onChange={(e) => update({ videoUrl: e.target.value })}
+                disabled={contentDisabled}
+              />
             </div>
             <div>
               <Label htmlFor="publishedAt">Published date</Label>
@@ -654,6 +602,33 @@ export default function CollateralEdit({ id }: Props) {
                 disabled={contentDisabled}
               />
             </div>
+          </Card>
+
+          {/* #122 — Resources editor. Replaces the single Download URL input
+              with a list of attachments (slides, transcript, code repo, etc.).
+              The first row becomes the public detail page's primary CTA;
+              the legacy `downloadUrl` column is kept in sync server-side as
+              a read-only mirror until it is dropped in a follow-up. */}
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Resources</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Companion files: slides, transcript, code repo link, follow-up
+                  deck, etc. Drag to reorder.
+                </p>
+              </div>
+            </div>
+            {isNew ? (
+              <p className="text-sm text-muted-foreground">
+                Save this item first, then attach resources here.
+              </p>
+            ) : id ? (
+              <CollateralResourcesEditor
+                collateralId={id}
+                canWrite={canWrite && !contentReadOnly}
+              />
+            ) : null}
           </Card>
         </div>
 
@@ -778,12 +753,6 @@ export default function CollateralEdit({ id }: Props) {
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
-      />
-      <AssetLibraryModal
-        open={showDocumentPicker}
-        onClose={() => setShowDocumentPicker(false)}
-        onSelect={handleDocument}
-        kind="document"
       />
     </AdminLayout>
   );

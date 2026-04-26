@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { Meta } from "@/lib/meta";
-import { ArrowLeft, ArrowRight, Download } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, ExternalLink, FileText } from "lucide-react";
 import {
   fetchCollateralBySlug,
   TYPE_LABELS,
   type Collateral,
+  type CollateralResource,
 } from "@/data/collateral";
 import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
@@ -37,6 +38,19 @@ function hasRicherLocalRoute(item: Collateral): boolean {
 }
 
 function primaryCtaFor(item: Collateral) {
+  // #122 — Prefer the first resource (sorted by the server) over the legacy
+  // `downloadUrl` mirror. The mirror is still used as a fallback for items
+  // that haven't been migrated yet, and for list-endpoint responses that
+  // don't include the full resources array.
+  const firstResource = item.resources?.[0];
+  if (firstResource) {
+    return {
+      label: firstResource.label || "Download",
+      href: firstResource.url,
+      external: true,
+      icon: <Download className="ml-2 h-4 w-4" />,
+    };
+  }
   if (item.downloadUrl) {
     return {
       label: "Download",
@@ -49,6 +63,60 @@ function primaryCtaFor(item: Collateral) {
     return { label: "Open", href: item.url, external: true, icon: <ArrowRight className="ml-2 h-4 w-4" /> };
   }
   return { label: "Get in touch", href: "/contact", external: false, icon: <ArrowRight className="ml-2 h-4 w-4" /> };
+}
+
+function ResourcesList({
+  resources,
+  itemSlug,
+  itemType,
+  itemTitle,
+}: {
+  resources: CollateralResource[];
+  itemSlug: string;
+  itemType: string;
+  itemTitle: string;
+}) {
+  // The first resource is the primary CTA above the list. The remainder
+  // render here as a secondary "More resources" group.
+  const additional = resources.slice(1);
+  if (additional.length === 0) return null;
+  return (
+    <div className="mt-12 border-t border-border pt-8">
+      <h2 className="text-sm font-semibold tracking-wider uppercase text-muted-foreground mb-4">
+        More resources
+      </h2>
+      <ul className="space-y-2">
+        {additional.map((r) => {
+          const Icon = r.mediaId ? FileText : ExternalLink;
+          return (
+            <li key={r.id}>
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() =>
+                  void trackEvent("resource-secondary-open", {
+                    slug: itemSlug,
+                    type: itemType,
+                    title: itemTitle,
+                    resourceLabel: r.label,
+                    resourceMediaBacked: !!r.mediaId,
+                  })
+                }
+                className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 hover:border-primary/40 hover:bg-card/60 transition-colors"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                <span className="flex-1 text-sm font-medium text-foreground">
+                  {r.label}
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export default function LibraryDetail() {
@@ -163,7 +231,9 @@ export default function LibraryDetail() {
                 className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
                 onClick={() =>
                   void trackEvent(
-                    item.downloadUrl ? "resource-download" : "resource-open-external",
+                    item.resources?.[0] || item.downloadUrl
+                      ? "resource-download"
+                      : "resource-open-external",
                     {
                       slug: item.slug,
                       type: item.type,
@@ -185,6 +255,15 @@ export default function LibraryDetail() {
               </Link>
             )}
           </div>
+
+          {item.resources && item.resources.length > 1 && (
+            <ResourcesList
+              resources={item.resources}
+              itemSlug={item.slug}
+              itemType={item.type}
+              itemTitle={item.title}
+            />
+          )}
         </div>
       </section>
     </div>
