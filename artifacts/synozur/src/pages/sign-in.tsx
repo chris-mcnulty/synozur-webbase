@@ -20,6 +20,7 @@ export default function SignInPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const [entraAvailable, setEntraAvailable] = useState(false);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function SignInPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (loading) return;
+    if (loading || rateLimited) return;
     setError(null);
     setLoading(true);
     try {
@@ -48,6 +49,18 @@ export default function SignInPage() {
         body: JSON.stringify({ email: email.trim(), password, rememberMe }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (res.status === 429) {
+        setRateLimited(true);
+        const retryAfter = Number(res.headers.get("Retry-After") ?? 0);
+        const waitSecs = retryAfter > 0 ? retryAfter : 15 * 60;
+        const mins = Math.ceil(waitSecs / 60);
+        setError(`Too many failed sign-in attempts. Please wait ${mins} minute${mins === 1 ? "" : "s"} before trying again.`);
+        setTimeout(() => {
+          setRateLimited(false);
+          setError(null);
+        }, waitSecs * 1000);
+        return;
+      }
       if (!res.ok || !json.ok) {
         setError(json.error ?? "Sign-in failed. Please try again.");
         return;
@@ -102,7 +115,7 @@ export default function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              disabled={loading}
+              disabled={loading || rateLimited}
             />
           </div>
           <div className="space-y-1.5">
@@ -123,7 +136,7 @@ export default function SignInPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              disabled={loading}
+              disabled={loading || rateLimited}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -133,15 +146,15 @@ export default function SignInPage() {
               data-testid="checkbox-remember-me"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              disabled={loading}
+              disabled={loading || rateLimited}
               className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
             />
             <Label htmlFor="remember-me" className="cursor-pointer font-normal text-sm">
               Remember me for 30 days
             </Label>
           </div>
-          <Button type="submit" className="w-full" disabled={loading} data-testid="button-sign-in">
-            {loading ? "Signing in…" : "Sign in"}
+          <Button type="submit" className="w-full" disabled={loading || rateLimited} data-testid="button-sign-in">
+            {loading ? "Signing in…" : rateLimited ? "Too many attempts" : "Sign in"}
           </Button>
         </form>
 

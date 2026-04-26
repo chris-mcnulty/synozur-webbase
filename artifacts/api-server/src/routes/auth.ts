@@ -1,8 +1,9 @@
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import {
   db,
   usersTable,
@@ -121,6 +122,23 @@ async function findActiveClientOrgByEmailDomain(
     (o.approvedEmailDomains ?? []).map((d) => d.toLowerCase()).includes(domain),
   ) ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Rate limiter — POST /api/auth/login (failed-attempts only, per IP)
+// ---------------------------------------------------------------------------
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `login:${ipKeyGenerator(req)}`,
+  handler: (_req: Request, res: Response): void => {
+    res.status(429).json({
+      error: "Too many sign-in attempts. Please try again in 15 minutes.",
+    });
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Entra SSO — GET /api/auth/sign-in
@@ -472,7 +490,7 @@ const LoginBody = z.object({
   rememberMe: z.boolean().optional(),
 });
 
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
