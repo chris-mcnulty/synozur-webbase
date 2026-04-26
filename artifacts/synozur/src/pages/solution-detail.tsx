@@ -92,6 +92,11 @@ export default function SolutionDetail() {
 
   const seoDescription =
     sol?.seoDescription || stripHtml(sol?.blurbHtml) || sol?.blurbCopy || undefined;
+  const absoluteImage = sol?.iconUrl
+    ? sol.iconUrl.startsWith("http")
+      ? sol.iconUrl
+      : `${SITE_ORIGIN}${sol.iconUrl}`
+    : null;
   const solutionJsonLd = sol
     ? {
         "@context": "https://schema.org",
@@ -99,7 +104,7 @@ export default function SolutionDetail() {
         name: sol.title,
         url: `${SITE_ORIGIN}/solutions/${sol.slug}`,
         ...(seoDescription ? { description: seoDescription } : {}),
-        ...(sol.iconUrl ? { image: sol.iconUrl } : {}),
+        ...(absoluteImage ? { image: absoluteImage } : {}),
         provider: {
           "@type": "Organization",
           name: SITE_NAME,
@@ -116,6 +121,53 @@ export default function SolutionDetail() {
           : {}),
       }
     : null;
+  // Breadcrumbs trace the navigation path so search engines can render
+  // rich-result rails. When the parent service is known we surface it as
+  // an intermediate hop: Home › Services › {Parent Service} › {Solution}.
+  // Orphaned solutions fall back to: Home › Services › {Solution}.
+  const breadcrumbJsonLd = sol
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: SITE_ORIGIN,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Services",
+            item: `${SITE_ORIGIN}/services-overview/default`,
+          },
+          ...(sol.parentService
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: sol.parentService.title,
+                  item: `${SITE_ORIGIN}/services/${sol.parentService.slug}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: sol.title,
+                  item: `${SITE_ORIGIN}/solutions/${sol.slug}`,
+                },
+              ]
+            : [
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: sol.title,
+                  item: `${SITE_ORIGIN}/solutions/${sol.slug}`,
+                },
+              ]),
+        ],
+      }
+    : null;
 
   return (
     <div className="w-full">
@@ -126,6 +178,9 @@ export default function SolutionDetail() {
         rawTitle={!!sol?.seoTitle}
       />
       {solutionJsonLd ? <JsonLd data={solutionJsonLd} id="solution-jsonld" /> : null}
+      {breadcrumbJsonLd ? (
+        <JsonLd data={breadcrumbJsonLd} id="solution-breadcrumb-jsonld" />
+      ) : null}
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />

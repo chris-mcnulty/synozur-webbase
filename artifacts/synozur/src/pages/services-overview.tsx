@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import NotFound from "./not-found";
+import { JsonLd } from "@/components/jsonld";
+import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 
 const OVERVIEW_HERO_SLUG = "our-services";
 
@@ -65,6 +67,32 @@ function DefaultOverview() {
   const heroService = list.data?.items.find((s) => s.slug === OVERVIEW_HERO_SLUG);
   const pillars = (list.data?.items ?? []).filter((s) => s.slug !== OVERVIEW_HERO_SLUG);
 
+  // Hub-level breadcrumbs (Home › Services) and an ItemList of pillars so
+  // search engines can render the four pillars as a sitelinks-style rail.
+  const overviewUrl = `${SITE_ORIGIN}/services-overview/default`;
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_ORIGIN },
+      { "@type": "ListItem", position: 2, name: "Services", item: overviewUrl },
+    ],
+  };
+  const pillarsItemListJsonLd =
+    pillars.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: "Service pillars",
+          itemListElement: pillars.map((p, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: `${SITE_ORIGIN}/services/${p.slug}`,
+            name: p.title,
+          })),
+        }
+      : null;
+
   return (
     <PageShell>
       <Meta
@@ -78,6 +106,10 @@ function DefaultOverview() {
         image={heroService?.iconUrl ?? undefined}
         rawTitle={!!heroService?.seoTitle}
       />
+      <JsonLd data={breadcrumbJsonLd} id="services-overview-breadcrumb-jsonld" />
+      {pillarsItemListJsonLd ? (
+        <JsonLd data={pillarsItemListJsonLd} id="services-overview-itemlist-jsonld" />
+      ) : null}
 
       {list.isLoading ? (
         <LoadingHero />
@@ -210,17 +242,69 @@ function PillarOverview({ slug }: { slug: string }) {
     );
   }
 
+  // Pillar overview pages render the same service as /services/:slug, so we
+  // emit the canonical Service URL here too. The Meta component still sets
+  // rel=canonical to the current pathname, but search engines will see this
+  // URL inside the JSON-LD as the authoritative service identifier.
+  const seoDescription =
+    service?.seoDescription ||
+    (service?.blurbHtml ? stripHtml(service.blurbHtml) : undefined);
+  const absoluteImage = service?.iconUrl
+    ? service.iconUrl.startsWith("http")
+      ? service.iconUrl
+      : `${SITE_ORIGIN}${service.iconUrl}`
+    : null;
+  const serviceJsonLd = service
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: service.title,
+        url: `${SITE_ORIGIN}/services/${service.slug}`,
+        ...(seoDescription ? { description: seoDescription } : {}),
+        ...(absoluteImage ? { image: absoluteImage } : {}),
+        provider: {
+          "@type": "Organization",
+          name: SITE_NAME,
+          url: SITE_ORIGIN,
+        },
+      }
+    : null;
+  const breadcrumbJsonLd = service
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: SITE_ORIGIN },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Services",
+            item: `${SITE_ORIGIN}/services-overview/default`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: service.title,
+            item: `${SITE_ORIGIN}/services/${service.slug}`,
+          },
+        ],
+      }
+    : null;
+
   return (
     <PageShell>
       <Meta
         title={service?.seoTitle || service?.title || "Services"}
-        description={
-          service?.seoDescription ||
-          (service?.blurbHtml ? stripHtml(service.blurbHtml) : undefined)
-        }
+        description={seoDescription}
         image={service?.iconUrl ?? undefined}
         rawTitle={!!service?.seoTitle}
       />
+      {serviceJsonLd ? (
+        <JsonLd data={serviceJsonLd} id="pillar-overview-service-jsonld" />
+      ) : null}
+      {breadcrumbJsonLd ? (
+        <JsonLd data={breadcrumbJsonLd} id="pillar-overview-breadcrumb-jsonld" />
+      ) : null}
 
       {detail.isLoading || !service ? (
         <LoadingHero />

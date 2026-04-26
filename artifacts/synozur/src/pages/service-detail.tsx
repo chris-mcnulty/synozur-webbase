@@ -194,6 +194,11 @@ export default function ServiceDetail() {
 
   const seoDescription =
     service?.seoDescription ?? stripHtml(service?.blurbHtml) ?? undefined;
+  const absoluteImage = service?.iconUrl
+    ? service.iconUrl.startsWith("http")
+      ? service.iconUrl
+      : `${SITE_ORIGIN}${service.iconUrl}`
+    : null;
   const serviceJsonLd = service
     ? {
         "@context": "https://schema.org",
@@ -201,7 +206,7 @@ export default function ServiceDetail() {
         name: service.title,
         url: `${SITE_ORIGIN}/services/${service.slug}`,
         ...(seoDescription ? { description: seoDescription } : {}),
-        ...(service.iconUrl ? { image: service.iconUrl } : {}),
+        ...(absoluteImage ? { image: absoluteImage } : {}),
         provider: {
           "@type": "Organization",
           name: SITE_NAME,
@@ -226,6 +231,34 @@ export default function ServiceDetail() {
           : {}),
       }
     : null;
+  // Breadcrumbs trace the navigation path so search engines can render
+  // rich-result rails: Home › Services › {this service}.
+  const breadcrumbJsonLd = service
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: SITE_ORIGIN,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Services",
+            item: `${SITE_ORIGIN}/services-overview/default`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: service.title,
+            item: `${SITE_ORIGIN}/services/${service.slug}`,
+          },
+        ],
+      }
+    : null;
 
   return (
     <div className="w-full">
@@ -236,6 +269,9 @@ export default function ServiceDetail() {
         rawTitle={!!service?.seoTitle}
       />
       {serviceJsonLd ? <JsonLd data={serviceJsonLd} id="service-jsonld" /> : null}
+      {breadcrumbJsonLd ? (
+        <JsonLd data={breadcrumbJsonLd} id="service-breadcrumb-jsonld" />
+      ) : null}
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
