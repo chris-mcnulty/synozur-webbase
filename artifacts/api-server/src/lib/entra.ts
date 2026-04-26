@@ -41,7 +41,7 @@ const appTokenCacheByTenant = new Map<string, AppTokenCache>();
 
 async function getAppOnlyGraphToken(tenantId: string): Promise<string | null> {
   const clientId = process.env["ENTRA_APP_CLIENT_ID"];
-  const clientSecret = process.env["ENTRA_APP_CLIENT_SECRET"];
+  const clientSecret = process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"];
   if (!clientId || !clientSecret) return null;
   const now = Date.now();
   const cached = appTokenCacheByTenant.get(tenantId);

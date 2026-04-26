@@ -69,7 +69,7 @@ function clientId(): string {
 }
 
 function clientSecret(): string | null {
-  const v = process.env["ENTRA_APP_CLIENT_SECRET"];
+  const v = process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"];
   return v && v.length > 0 ? v : null;
 }
 
