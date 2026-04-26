@@ -587,6 +587,14 @@ export interface SiteSettings {
   sitemapExcludedPaths?: string[] | null;
   /** @nullable */
   sitemapSectionFlags?: SiteSettingsSitemapSectionFlags;
+  /**
+   * Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.
+
+   * @minimum 1800000
+   * @maximum 2592000000
+   * @nullable
+   */
+  idleTimeoutMs?: number | null;
   updatedAt: string;
 }
 
@@ -675,6 +683,14 @@ export interface SiteSettingsInput {
   sitemapExcludedPaths?: string[] | null;
   /** @nullable */
   sitemapSectionFlags?: SiteSettingsInputSitemapSectionFlags;
+  /**
+   * Session idle timeout in milliseconds. Pass null to fall back to the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective value is clamped to at least 30 minutes server-side.
+
+   * @minimum 1800000
+   * @maximum 2592000000
+   * @nullable
+   */
+  idleTimeoutMs?: number | null;
 }
 
 export interface AdminUser {

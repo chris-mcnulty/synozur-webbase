@@ -7,6 +7,7 @@ import {
   UpdateAdminSiteSettingsBody,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { invalidateIdleTimeoutCache } from "../lib/sessions";
 
 const router: IRouter = Router();
 
@@ -113,6 +114,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     tagMetaPixelId: settings.tagMetaPixelId,
     sitemapExcludedPaths: settings.sitemapExcludedPaths,
     sitemapSectionFlags: settings.sitemapSectionFlags,
+    idleTimeoutMs: settings.idleTimeoutMs,
     updatedAt: settings.updatedAt,
   });
 }
@@ -270,11 +272,27 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     updates.sitemapSectionFlags = input.sitemapSectionFlags ?? null;
   }
 
+  let idleTimeoutChanged = false;
+  if ("idleTimeoutMs" in input) {
+    // Treat 0 / negative as "unset" so the server falls back to the env/default.
+    const next =
+      typeof input.idleTimeoutMs === "number" && input.idleTimeoutMs > 0
+        ? input.idleTimeoutMs
+        : null;
+    updates.idleTimeoutMs = next;
+    idleTimeoutChanged = true;
+  }
+
   const [updated] = await db
     .update(siteSettingsTable)
     .set(updates)
     .where(eq(siteSettingsTable.id, SETTINGS_ID))
     .returning();
+  if (idleTimeoutChanged) {
+    // Drop the cached resolver value so the next session resolution picks up
+    // the admin's new idle window without waiting for the cache TTL.
+    invalidateIdleTimeoutCache();
+  }
   const urls = await resolveImageUrls(updated!);
   res.json(buildAdminResponse(updated!, urls));
 });

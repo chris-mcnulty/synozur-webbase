@@ -52,6 +52,21 @@ export default function AdminSiteSettings() {
     },
   });
 
+  // Idle timeout (#125): admin override for the session idle window. null
+  // means "use the IDLE_TIMEOUT_MS env var / 4 hour default".
+  const IDLE_TIMEOUT_OPTIONS: { hours: number; label: string }[] = [
+    { hours: 1, label: "1 hour" },
+    { hours: 2, label: "2 hours" },
+    { hours: 4, label: "4 hours (default)" },
+    { hours: 8, label: "8 hours" },
+    { hours: 12, label: "12 hours" },
+    { hours: 24, label: "24 hours" },
+  ];
+  const idleTimeoutValue: string =
+    typeof data?.idleTimeoutMs === "number" && data.idleTimeoutMs > 0
+      ? String(data.idleTimeoutMs)
+      : "default";
+
   const current = requireConsent ?? data?.requireCookieConsent ?? false;
 
   const currentTheme: SiteTheme =
@@ -68,6 +83,7 @@ export default function AdminSiteSettings() {
     homeHeroVideoAssetId: data?.homeHeroVideoAssetId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
+    idleTimeoutMs: data?.idleTimeoutMs ?? null,
     ...overrides,
   });
 
@@ -269,6 +285,53 @@ export default function AdminSiteSettings() {
                   data-testid="button-clear-polaris-feed-url"
                 >
                   <X className="h-4 w-4 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Session idle timeout</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                How long an admin or member can be inactive before they're
+                signed out. Choose <em>Server default</em> to use the value
+                set by the <code>IDLE_TIMEOUT_MS</code> environment variable
+                (or the built-in 4 hour fallback). Changes apply to all new
+                session checks within a few seconds — already signed-in users
+                keep their session until their next request.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                disabled={updateMutation.isPending}
+                value={idleTimeoutValue}
+                data-testid="select-idle-timeout"
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const next = raw === "default" ? null : parseInt(raw, 10);
+                  updateMutation.mutate(buildPayload({ idleTimeoutMs: next }));
+                }}
+              >
+                <option value="default">Server default</option>
+                {IDLE_TIMEOUT_OPTIONS.map(({ hours, label }) => (
+                  <option key={hours} value={hours * 60 * 60 * 1000}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {idleTimeoutValue !== "default" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() =>
+                    updateMutation.mutate(buildPayload({ idleTimeoutMs: null }))
+                  }
+                  disabled={updateMutation.isPending}
+                  data-testid="button-reset-idle-timeout"
+                >
+                  <X className="h-4 w-4 mr-1" /> Use server default
                 </Button>
               )}
             </div>

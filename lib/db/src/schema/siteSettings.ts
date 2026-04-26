@@ -68,6 +68,13 @@ export const siteSettingsTable = pgTable("site_settings", {
   // is applied site-wide. Chosen by an admin in Site Settings.
   siteTheme: text("site_theme").notNull().default("cosmic"),
 
+  // #125: Admin-tunable session idle timeout (milliseconds). When null we fall
+  // back to the IDLE_TIMEOUT_MS env var, which itself falls back to a 4 hour
+  // default. resolveSession() always clamps the effective value to at least
+  // ROLLING_RENEW_MS to prevent false sign-outs of active users between
+  // lastSeenAt heartbeat bumps.
+  idleTimeoutMs: integer("idle_timeout_ms"),
+
   // #126: Microsoft Entra SSO. The tenant id is published so the api-server
   // can scope token validation; `entraAdminGroupFallback` is a per-tenant
   // safety net used while the `entra_group_role_mappings` table is being

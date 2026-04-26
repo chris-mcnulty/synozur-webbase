@@ -1125,6 +1125,9 @@ export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
+export const getAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
+export const getAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
+
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod
@@ -1170,6 +1173,14 @@ export const GetAdminSiteSettingsResponse = zod.object({
   tagMetaPixelId: zod.string().nullish(),
   sitemapExcludedPaths: zod.array(zod.string()).nullish(),
   sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
+  idleTimeoutMs: zod
+    .number()
+    .min(getAdminSiteSettingsResponseIdleTimeoutMsMin)
+    .max(getAdminSiteSettingsResponseIdleTimeoutMsMax)
+    .nullish()
+    .describe(
+      "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
+    ),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1179,6 +1190,9 @@ export const GetAdminSiteSettingsResponse = zod.object({
 export const updateAdminSiteSettingsBodySeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
+
+export const updateAdminSiteSettingsBodyIdleTimeoutMsMin = 1800000;
+export const updateAdminSiteSettingsBodyIdleTimeoutMsMax = 2592000000;
 
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1216,6 +1230,14 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   tagMetaPixelId: zod.string().nullish(),
   sitemapExcludedPaths: zod.array(zod.string()).nullish(),
   sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
+  idleTimeoutMs: zod
+    .number()
+    .min(updateAdminSiteSettingsBodyIdleTimeoutMsMin)
+    .max(updateAdminSiteSettingsBodyIdleTimeoutMsMax)
+    .nullish()
+    .describe(
+      "Session idle timeout in milliseconds. Pass null to fall back to the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective value is clamped to at least 30 minutes server-side.\n",
+    ),
 });
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
@@ -1223,6 +1245,9 @@ export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
+
+export const updateAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
+export const updateAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1269,6 +1294,14 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   tagMetaPixelId: zod.string().nullish(),
   sitemapExcludedPaths: zod.array(zod.string()).nullish(),
   sitemapSectionFlags: zod.record(zod.string(), zod.boolean()).nullish(),
+  idleTimeoutMs: zod
+    .number()
+    .min(updateAdminSiteSettingsResponseIdleTimeoutMsMin)
+    .max(updateAdminSiteSettingsResponseIdleTimeoutMsMax)
+    .nullish()
+    .describe(
+      "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
+    ),
   updatedAt: zod.coerce.date(),
 });
 

@@ -139,6 +139,7 @@ export interface AdminSiteSettings {
   homeHeroImageUrl?: string | null;
   homeEditorialImageAssetId?: number | null;
   homeEditorialImageUrl?: string | null;
+  idleTimeoutMs?: number | null;
   polarisFeedUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
   seoDefaultDescription?: string | null;
@@ -478,6 +479,7 @@ export interface UpdateSiteSettingsBody {
   tagMetaPixelId?: string | null;
   sitemapExcludedPaths?: string[] | null;
   sitemapSectionFlags?: Record<string, boolean> | null;
+  idleTimeoutMs?: number | null;
 }
 
 export interface BulkCollateralBody {

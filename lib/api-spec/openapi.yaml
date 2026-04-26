@@ -3659,6 +3659,17 @@ components:
             - 'null'
           additionalProperties:
             type: boolean
+        idleTimeoutMs:
+          description: >
+            Session idle timeout in milliseconds. When null the server falls
+            back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The
+            effective value is clamped to at least 30 minutes (the rolling
+            heartbeat interval) to prevent false sign-outs of active users.
+          type:
+            - integer
+            - 'null'
+          minimum: 1800000
+          maximum: 2592000000
         updatedAt:
           type: string
           format: date-time
@@ -3787,6 +3798,16 @@ components:
             - 'null'
           additionalProperties:
             type: boolean
+        idleTimeoutMs:
+          description: >
+            Session idle timeout in milliseconds. Pass null to fall back to
+            the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective
+            value is clamped to at least 30 minutes server-side.
+          type:
+            - integer
+            - 'null'
+          minimum: 1800000
+          maximum: 2592000000
     AdminUser:
       type: object
       required:

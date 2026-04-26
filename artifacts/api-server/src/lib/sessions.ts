@@ -1,7 +1,7 @@
 import { randomBytes, createHash } from "crypto";
 import type { Request, Response } from "express";
 import { and, eq, gt, lt } from "drizzle-orm";
-import { db, sessionsTable } from "@workspace/db";
+import { db, sessionsTable, siteSettingsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 // Cookie-based session store backed by the `sessions` table.
@@ -19,25 +19,70 @@ const SESSION_TTL_MS = 8 * 60 * 60 * 1000;               // 8 hours of inactivit
 const REMEMBER_ME_TTL_MS = 30 * 24 * 60 * 60 * 1000;     // 30 days of inactivity (remember me)
 const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000;        // 30-day absolute cap
 const ROLLING_RENEW_MS = 30 * 60 * 1000;                 // bump lastSeenAt at most every 30 min
-const IDLE_TIMEOUT_MS = (() => {
+const DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;      // 4 hours default
+
+// Env-derived fallback for the idle timeout. Used when site_settings has no
+// admin-set override. Parsed once at module load.
+const ENV_IDLE_TIMEOUT_MS: number = (() => {
   const raw = process.env["IDLE_TIMEOUT_MS"];
-  const defaultMs = 4 * 60 * 60 * 1000; // 4 hours default
   if (raw) {
     const parsed = parseInt(raw, 10);
     if (!Number.isNaN(parsed) && parsed > 0) {
-      // Clamp to at least ROLLING_RENEW_MS so active users are never
-      // falsely expired between lastSeenAt bumps.
-      if (parsed < ROLLING_RENEW_MS) {
-        console.warn(
-          `[sessions] IDLE_TIMEOUT_MS (${parsed}ms) is below ROLLING_RENEW_MS (${ROLLING_RENEW_MS}ms); clamping to ${ROLLING_RENEW_MS}ms to prevent false sign-outs of active users.`
-        );
-        return ROLLING_RENEW_MS;
-      }
       return parsed;
     }
   }
-  return defaultMs;
+  return DEFAULT_IDLE_TIMEOUT_MS;
 })();
+
+// Small in-memory cache so resolveSession() doesn't issue an extra DB
+// roundtrip on every authenticated request. The admin update endpoint calls
+// invalidateIdleTimeoutCache() so changes take effect immediately; otherwise
+// the cache refreshes naturally after IDLE_TIMEOUT_CACHE_TTL_MS.
+const IDLE_TIMEOUT_CACHE_TTL_MS = 30 * 1000;
+let cachedIdleTimeoutMs: number | null = null;
+let cachedIdleTimeoutAt = 0;
+
+function clampIdleTimeout(value: number): number {
+  // Clamp to at least ROLLING_RENEW_MS so active users are never falsely
+  // expired between lastSeenAt bumps. Returning early avoids a noisy log on
+  // every cache miss when an admin has deliberately picked a small value.
+  if (value < ROLLING_RENEW_MS) return ROLLING_RENEW_MS;
+  return value;
+}
+
+export function invalidateIdleTimeoutCache(): void {
+  cachedIdleTimeoutMs = null;
+  cachedIdleTimeoutAt = 0;
+}
+
+async function getEffectiveIdleTimeoutMs(): Promise<number> {
+  const now = Date.now();
+  if (
+    cachedIdleTimeoutMs !== null &&
+    now - cachedIdleTimeoutAt < IDLE_TIMEOUT_CACHE_TTL_MS
+  ) {
+    return cachedIdleTimeoutMs;
+  }
+  let dbValue: number | null = null;
+  try {
+    const [row] = await db
+      .select({ idleTimeoutMs: siteSettingsTable.idleTimeoutMs })
+      .from(siteSettingsTable)
+      .where(eq(siteSettingsTable.id, 1))
+      .limit(1);
+    if (row && typeof row.idleTimeoutMs === "number" && row.idleTimeoutMs > 0) {
+      dbValue = row.idleTimeoutMs;
+    }
+  } catch (err) {
+    // If the settings row can't be loaded for any reason, fall through to the
+    // env-derived value rather than locking everyone out.
+    logger.warn({ err }, "failed to load idle timeout from site_settings; falling back to env default");
+  }
+  const effective = clampIdleTimeout(dbValue ?? ENV_IDLE_TIMEOUT_MS);
+  cachedIdleTimeoutMs = effective;
+  cachedIdleTimeoutAt = now;
+  return effective;
+}
 
 function hashSessionId(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -147,9 +192,12 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
     await db.delete(sessionsTable).where(eq(sessionsTable.id, id));
     return null;
   }
-  // Idle timeout: expire sessions that have had no activity for IDLE_TIMEOUT_MS,
-  // regardless of the rolling expiresAt window.
-  if (now.getTime() - row.lastSeenAt.getTime() > IDLE_TIMEOUT_MS) {
+  // Idle timeout: expire sessions that have had no activity for the
+  // admin-configured idle window (or env/default fallback), regardless of the
+  // rolling expiresAt window. Resolved per-call (with a short cache) so
+  // changing the value in Site Settings takes effect immediately.
+  const idleTimeoutMs = await getEffectiveIdleTimeoutMs();
+  if (now.getTime() - row.lastSeenAt.getTime() > idleTimeoutMs) {
     await db.delete(sessionsTable).where(eq(sessionsTable.id, id));
     return null;
   }
