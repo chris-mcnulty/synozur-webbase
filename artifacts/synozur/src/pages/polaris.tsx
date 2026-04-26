@@ -1,6 +1,7 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Headphones, Play, Mail, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 interface PolarisEpisodeDto {
@@ -187,7 +188,7 @@ export default function Polaris() {
               Episodes
             </p>
             <h2 className="text-3xl md:text-4xl font-bold">
-              Latest conversations
+              Featured conversations
             </h2>
           </div>
           {episodesQ.isLoading ? (
@@ -218,7 +219,7 @@ export default function Polaris() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {episodes.map((e, i) => {
-                const detailHref = e.appleUrl ?? e.audioUrl;
+                const detailHref = `/polaris/${e.slug}`;
                 return (
                   <motion.article
                     key={e.id}
@@ -228,7 +229,7 @@ export default function Polaris() {
                     transition={{ duration: 0.4, delay: i * 0.05 }}
                     className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
                   >
-                    <div className="relative aspect-square overflow-hidden bg-card">
+                    <Link href={detailHref} className="block relative aspect-square overflow-hidden bg-card">
                       <img
                         src={e.artworkUrl}
                         alt={e.title}
@@ -238,21 +239,13 @@ export default function Polaris() {
                       <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
                         Episode {e.episodeNumber}
                       </div>
-                      {detailHref ? (
-                        <div className="absolute bottom-5 right-5">
-                          <a
-                            href={detailHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform"
-                            aria-label={`Listen to: ${e.title}`}
-                          >
-                            <Play className="h-5 w-5 ml-0.5 fill-current" />
-                          </a>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="p-6 flex flex-col flex-1">
+                      <div className="absolute bottom-5 right-5">
+                        <span className="h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="h-5 w-5 ml-0.5 fill-current" />
+                        </span>
+                      </div>
+                    </Link>
+                    <Link href={detailHref} className="p-6 flex flex-col flex-1">
                       <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
                         {e.title}
                       </h3>
@@ -263,7 +256,7 @@ export default function Polaris() {
                         <span>{formatReleaseDate(e.publishedAt)}</span>
                         <span>{formatDurationMin(e.durationSeconds)}</span>
                       </div>
-                    </div>
+                    </Link>
                   </motion.article>
                 );
               })}

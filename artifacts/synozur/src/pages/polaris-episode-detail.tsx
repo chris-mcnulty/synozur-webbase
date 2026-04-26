@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Headphones,
-  Play,
   Calendar,
   Clock,
   User,
@@ -170,17 +169,6 @@ export default function PolarisEpisodeDetail() {
 
               {/* Platform links */}
               <div className="flex flex-wrap gap-3 mb-8">
-                {episode.audioUrl && (
-                  <a
-                    href={episode.audioUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
-                  >
-                    <Play className="h-4 w-4 fill-current" />
-                    Play Episode
-                  </a>
-                )}
                 {platformLinks.map((p) => {
                   const href = p.url(episode);
                   if (!href) return null;
