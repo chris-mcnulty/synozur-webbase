@@ -33,6 +33,9 @@ const DEFAULTS: SeedCategory[] = [
   { slug: "service-icon", label: "Service Icon", sortOrder: 100 },
   { slug: "client-logo", label: "Client Logo", sortOrder: 110 },
   { slug: "team-headshot", label: "Team Headshot", sortOrder: 120 },
+  { slug: "white-paper", label: "White Paper", sortOrder: 130 },
+  { slug: "modern-workplace", label: "Modern Workplace", sortOrder: 140 },
+  { slug: "night-sky", label: "Night Sky", sortOrder: 150 },
 ];
 
 export async function seedAssetCategories(): Promise<void> {
