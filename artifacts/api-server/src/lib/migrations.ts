@@ -537,6 +537,32 @@ export async function runMigrations(): Promise<void> {
         ON faq_items (published_at);
     `);
 
+    // 17. bookings — PR53: Microsoft Bookings embed entries surfaced on /start.
+    //     Each row holds one Bookings calendar URL with optional time-gating
+    //     (startsAt / endsAt) and a scope tag (general | offer | conference).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug           text NOT NULL,
+        title          text NOT NULL,
+        teaser         text,
+        description_html text,
+        embed_url      text NOT NULL,
+        scope          text NOT NULL DEFAULT 'general',
+        starts_at      timestamptz,
+        ends_at        timestamptz,
+        display_order  integer NOT NULL DEFAULT 0,
+        active         boolean NOT NULL DEFAULT true,
+        seo_title      text,
+        seo_description text,
+        created_at     timestamptz NOT NULL DEFAULT now(),
+        updated_at     timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS bookings_slug_key ON bookings (slug);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
