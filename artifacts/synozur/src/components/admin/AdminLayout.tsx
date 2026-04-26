@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import type { Capability } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
 
@@ -311,14 +312,17 @@ export function AdminLayout({
             <span className="font-semibold">Admin</span>
           </a>
         </Link>
-        <a
-          href={`${baseUrl || ""}/`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover-elevate"
-          aria-label="View website"
-          data-testid="link-admin-mobile-view-site"
-        >
-          <ExternalLink className="h-5 w-5" />
-        </a>
+        <div className="flex items-center gap-1">
+          <SynozurAppSwitcher currentApp="synozur" />
+          <a
+            href={`${baseUrl || ""}/`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover-elevate"
+            aria-label="View website"
+            data-testid="link-admin-mobile-view-site"
+          >
+            <ExternalLink className="h-5 w-5" />
+          </a>
+        </div>
       </div>
 
       {/* Backdrop for mobile drawer. */}
@@ -353,15 +357,20 @@ export function AdminLayout({
                 <div className="text-lg font-semibold">Admin</div>
               </a>
             </Link>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate"
-              aria-label="Close admin menu"
-              data-testid="button-admin-mobile-close"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <div className="hidden md:block">
+                <SynozurAppSwitcher currentApp="synozur" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate"
+                aria-label="Close admin menu"
+                data-testid="button-admin-mobile-close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
           <nav className="flex-1 py-3 overflow-y-auto" data-testid="admin-sidebar">
             {TOP_LEVEL.map((item) => {

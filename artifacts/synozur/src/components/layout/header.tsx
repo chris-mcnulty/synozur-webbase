@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
+import { useAuth } from "@/context/auth";
 
 type NavLink = { label: string; href: string };
 type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
@@ -50,6 +52,7 @@ function NavLinkItem({
 export function Header() {
   const [location, navigate] = useLocation();
   const isHome = location === "/" || location === "";
+  const { isSignedIn } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -291,6 +294,7 @@ export function Header() {
               </button>
             )}
           </div>
+          {isSignedIn && <SynozurAppSwitcher currentApp="synozur" />}
           <ThemeToggle />
           <Link href="/start" className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
             Get Started
@@ -300,6 +304,7 @@ export function Header() {
 
         {/* Mobile Nav Toggle */}
         <div className="lg:hidden flex items-center gap-2">
+          {isSignedIn && <SynozurAppSwitcher currentApp="synozur" />}
           <ThemeToggle />
           <button
             className="p-2 text-foreground"
