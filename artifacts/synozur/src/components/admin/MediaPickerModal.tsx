@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { Search, Upload, Check } from "lucide-react";
 import {
@@ -8,6 +8,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,7 +27,16 @@ import { api } from "@/lib/api";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-export function mediaUrl(m: { storageKey: string | null; publicUrl?: string | null }): string {
+// Accepts either a plain URL string or a media item object so callers can
+// pass either form.heroImage (string) or a MediaItem from the picker.
+export function mediaUrl(
+  m: string | { storageKey: string | null; publicUrl?: string | null },
+): string {
+  if (typeof m === "string") {
+    if (!m) return "";
+    if (m.startsWith("http")) return m;
+    return `${BASE_PATH}${m}`;
+  }
   if (m.publicUrl) {
     if (m.publicUrl.startsWith("http")) return m.publicUrl;
     return `${BASE_PATH}${m.publicUrl}`;
@@ -46,15 +62,37 @@ interface Props {
 
 export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = "Media Library", categorySlug }: Props) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("__all__");
   const [picked, setPicked] = useState<string | null>(selectedId ?? null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: catsData } = useListAssetCategories({ query: { enabled: open && !!categorySlug } });
-  const categoryId = categorySlug
-    ? (catsData?.items ?? []).find((c) => c.slug === categorySlug)?.id
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 350);
+  };
+
+  const { data: catsData } = useListAssetCategories({ query: { enabled: open } as never });
+  const categories = catsData?.items ?? [];
+
+  const initialCategoryId = categorySlug
+    ? categories.find((c) => c.slug === categorySlug)?.id
     : undefined;
 
+  const resolvedCategoryId =
+    categoryFilter === "__all__"
+      ? initialCategoryId
+      : categoryFilter === "__none__"
+        ? undefined
+        : categoryFilter;
+
   const { data, isLoading, refetch } = useListCmsMedia(
-    { pageSize: 100, ...(categoryId ? { categoryId } : {}) },
+    {
+      pageSize: 500,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(resolvedCategoryId ? { categoryId: resolvedCategoryId } : {}),
+    },
     { query: { enabled: open } as never },
   );
 
@@ -68,18 +106,15 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
   });
 
   useEffect(() => {
-    if (open) setPicked(selectedId ?? null);
+    if (open) {
+      setPicked(selectedId ?? null);
+      setSearch("");
+      setDebouncedSearch("");
+      setCategoryFilter("__all__");
+    }
   }, [open, selectedId]);
 
-  const items = (data?.items ?? []).filter((m) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (m.altText ?? "").toLowerCase().includes(s) ||
-      (m.publicUrl ?? "").toLowerCase().includes(s) ||
-      m.storageKey.toLowerCase().includes(s)
-    );
-  });
+  const items = data?.items ?? [];
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -91,13 +126,26 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search media…"
+              placeholder="Search by name…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
               data-testid="input-media-search"
             />
           </div>
+          {categories.length > 0 && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-40" data-testid="select-media-category">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ObjectUploader
             maxNumberOfFiles={5}
             maxFileSize={10 * 1024 * 1024}
@@ -154,12 +202,21 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
           </ObjectUploader>
         </div>
 
+        {!isLoading && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            {items.length} {items.length === 1 ? "item" : "items"}
+            {(debouncedSearch || resolvedCategoryId) ? " matching filter" : ""}
+          </p>
+        )}
+
         <div className="flex-1 overflow-y-auto -mx-6 px-6 mt-2">
           {isLoading ? (
             <div className="py-12 text-center text-muted-foreground">Loading…</div>
           ) : items.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
-              No media yet. Upload to get started.
+              {debouncedSearch
+                ? `No results for "${debouncedSearch}". Try a different term.`
+                : "No media yet. Upload to get started."}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 py-2">
