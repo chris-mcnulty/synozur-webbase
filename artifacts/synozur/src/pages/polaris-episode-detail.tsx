@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -68,6 +69,10 @@ const platformLinks = [
 export default function PolarisEpisodeDetail() {
   const [, params] = useRoute("/polaris/:slug");
   const slug = params?.slug ?? "";
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [slug]);
 
   const { data: episode, isLoading, error } = useQuery({
     queryKey: ["polaris-episode", slug],

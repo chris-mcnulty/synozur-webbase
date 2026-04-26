@@ -1,6 +1,7 @@
+import { useRef, useState } from "react";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
-import { Headphones, Play, Mail, ArrowRight } from "lucide-react";
+import { Headphones, Play, Pause, Mail, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
@@ -102,6 +103,25 @@ export default function Polaris() {
     queryFn: fetchPolarisEpisodes,
   });
   const episodes = episodesQ.data ?? [];
+
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  function togglePlay(ep: PolarisEpisodeDto, ev: React.MouseEvent) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (playingId === ep.id) {
+      currentAudioRef.current?.pause();
+      setPlayingId(null);
+    } else {
+      currentAudioRef.current?.pause();
+      const audio = new Audio(ep.audioUrl);
+      audio.play().catch(() => {});
+      audio.addEventListener("ended", () => setPlayingId(null));
+      currentAudioRef.current = audio;
+      setPlayingId(ep.id);
+    }
+  }
 
   return (
     <div className="w-full">
@@ -229,22 +249,28 @@ export default function Polaris() {
                     transition={{ duration: 0.4, delay: i * 0.05 }}
                     className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
                   >
-                    <Link href={detailHref} className="block relative aspect-square overflow-hidden bg-card">
-                      <img
-                        src={e.artworkUrl}
-                        alt={e.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                      <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
-                        Episode {e.episodeNumber}
-                      </div>
-                      <div className="absolute bottom-5 right-5">
-                        <span className="h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                          <Play className="h-5 w-5 ml-0.5 fill-current" />
-                        </span>
-                      </div>
-                    </Link>
+                    <div className="relative aspect-square overflow-hidden bg-card">
+                      <Link href={detailHref} className="block w-full h-full">
+                        <img
+                          src={e.artworkUrl}
+                          alt={e.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                        <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
+                          Episode {e.episodeNumber}
+                        </div>
+                      </Link>
+                      <button
+                        onClick={(ev) => togglePlay(e, ev)}
+                        aria-label={playingId === e.id ? `Pause ${e.title}` : `Play ${e.title}`}
+                        className="absolute bottom-5 right-5 h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform hover:bg-white z-10"
+                      >
+                        {playingId === e.id
+                          ? <Pause className="h-5 w-5 fill-current" />
+                          : <Play className="h-5 w-5 ml-0.5 fill-current" />}
+                      </button>
+                    </div>
                     <Link href={detailHref} className="p-6 flex flex-col flex-1">
                       <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
                         {e.title}
