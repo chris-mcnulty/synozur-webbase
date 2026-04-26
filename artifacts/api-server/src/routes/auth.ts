@@ -175,6 +175,22 @@ const resetPasswordRateLimiter = rateLimit({
 });
 
 // ---------------------------------------------------------------------------
+// Rate limiter — POST /api/auth/resend-verification (5 requests per 15 min per IP)
+// ---------------------------------------------------------------------------
+const resendVerificationRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `resend-verification:${ipKeyGenerator(req)}`,
+  handler: (_req: Request, res: Response): void => {
+    res.status(429).json({
+      error: "Too many verification email requests. Please try again in 15 minutes.",
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Entra SSO — GET /api/auth/sign-in
 // ---------------------------------------------------------------------------
 router.get("/auth/sign-in", async (req, res): Promise<void> => {
@@ -668,7 +684,7 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
 // ---------------------------------------------------------------------------
 const ResendVerificationBody = z.object({ email: z.string().email().max(255) });
 
-router.post("/auth/resend-verification", async (req, res): Promise<void> => {
+router.post("/auth/resend-verification", resendVerificationRateLimiter, async (req, res): Promise<void> => {
   const parsed = ResendVerificationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body" });
