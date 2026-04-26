@@ -81,6 +81,7 @@ import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminActiveSessions from "@/pages/admin/account/sessions";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingTraffic from "@/pages/admin/marketing/traffic";
 import MarketingSeo from "@/pages/admin/marketing/seo";
@@ -328,6 +329,9 @@ function AdminRoutes() {
 
         {/* Marketing integrations */}
         <Route path="/integrations/hubspot" component={HubspotAdminPage} />
+
+        {/* Account section */}
+        <Route path="/account/sessions" component={AdminActiveSessions} />
 
         <Route component={NotFound} />
       </Switch>

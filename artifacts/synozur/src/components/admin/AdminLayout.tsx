@@ -43,6 +43,8 @@ import {
   Settings,
   Menu,
   X,
+  KeyRound,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -159,6 +161,14 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
+    ],
+  },
+  {
+    id: "account",
+    label: "Account",
+    icon: UserCog,
+    items: [
+      { href: "/account/sessions", label: "Active Sessions", icon: KeyRound, testId: "nav-admin-account-sessions" },
     ],
   },
 ];

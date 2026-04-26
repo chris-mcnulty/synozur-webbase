@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from "crypto";
 import type { Request, Response } from "express";
-import { eq, lt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { db, sessionsTable } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -174,6 +174,37 @@ export async function destroySession(token: string): Promise<void> {
 
 export async function destroyAllSessionsForUser(userId: string): Promise<void> {
   await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId));
+}
+
+export interface SessionSummary {
+  id: string;
+  userAgent: string | null;
+  ip: string | null;
+  createdAt: Date;
+  lastSeenAt: Date;
+  expiresAt: Date;
+  rememberMe: boolean;
+}
+
+export async function listSessionsForUser(userId: string): Promise<SessionSummary[]> {
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(sessionsTable)
+    .where(and(eq(sessionsTable.userId, userId), gt(sessionsTable.expiresAt, now)));
+  return rows.map((r) => ({
+    id: r.id,
+    userAgent: r.userAgent,
+    ip: r.ip,
+    createdAt: r.createdAt,
+    lastSeenAt: r.lastSeenAt,
+    expiresAt: r.expiresAt,
+    rememberMe: r.rememberMe ?? false,
+  }));
+}
+
+export async function destroySessionById(id: string): Promise<void> {
+  await db.delete(sessionsTable).where(eq(sessionsTable.id, id));
 }
 
 // Periodic GC. The api-server tick only needs this once an hour because the

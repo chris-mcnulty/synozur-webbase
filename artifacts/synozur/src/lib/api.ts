@@ -93,6 +93,17 @@ export interface AdminMe {
   authorized: boolean;
 }
 
+export interface AdminSession {
+  id: string;
+  userAgent: string | null;
+  ip: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  rememberMe: boolean;
+  isCurrent: boolean;
+}
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
@@ -656,6 +667,11 @@ export const api = {
   resendSubmissionWebhook: (id: number) =>
     jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/resend-webhook`), {
       method: "POST",
+    }),
+  listSessions: () => jsonFetch<AdminSession[]>(url("/auth/sessions")),
+  revokeSession: (id: string) =>
+    jsonFetch<{ ok: boolean }>(url(`/auth/sessions/${encodeURIComponent(id)}`), {
+      method: "DELETE",
     }),
   getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
   getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),

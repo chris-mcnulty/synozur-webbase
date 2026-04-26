@@ -35,6 +35,8 @@ import {
   clearSessionCookie,
   createSession,
   destroySession,
+  destroySessionById,
+  listSessionsForUser,
   readSessionToken,
   setSessionCookie,
 } from "../lib/sessions";
@@ -772,6 +774,52 @@ router.post("/auth/reset-password", resetPasswordRateLimiter, async (req, res): 
       eq(passwordResetTokensTable.userId, row.userId),
       eq(passwordResetTokensTable.token, parsed.data.token),
     ));
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/auth/sessions — list active sessions for the signed-in user
+// ---------------------------------------------------------------------------
+router.get("/auth/sessions", requireAuth, async (req, res): Promise<void> => {
+  const user = req.authedUser!;
+  const currentSessionId = req.session?.id ?? null;
+  const sessions = await listSessionsForUser(user.id);
+  res.json(
+    sessions.map((s) => ({
+      id: s.id,
+      userAgent: s.userAgent,
+      ip: s.ip,
+      createdAt: s.createdAt,
+      lastSeenAt: s.lastSeenAt,
+      expiresAt: s.expiresAt,
+      rememberMe: s.rememberMe,
+      isCurrent: s.id === currentSessionId,
+    })),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/auth/sessions/:id — revoke a specific session (not the current one)
+// ---------------------------------------------------------------------------
+router.delete("/auth/sessions/:id", requireAuth, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const user = req.authedUser!;
+  const currentSessionId = req.session?.id ?? null;
+
+  if (id === currentSessionId) {
+    res.status(400).json({ error: "Cannot revoke your current session. Use sign-out instead." });
+    return;
+  }
+
+  // Verify the session belongs to the requesting user.
+  const sessions = await listSessionsForUser(user.id);
+  const owned = sessions.some((s) => s.id === id);
+  if (!owned) {
+    res.status(404).json({ error: "Session not found." });
+    return;
+  }
+
+  await destroySessionById(id);
   res.json({ ok: true });
 });
 
