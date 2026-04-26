@@ -145,7 +145,9 @@ export default function SignUpPage() {
             </p>
           )}
           {resendStatus.kind === "error" && (
-            <p className="mt-2 text-xs text-destructive">{resendStatus.message}</p>
+            <p className="mt-2 text-xs text-destructive" role="alert" aria-live="assertive">
+              {resendStatus.message}
+            </p>
           )}
         </div>
       </div>
