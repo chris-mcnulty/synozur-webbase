@@ -29,6 +29,7 @@ import InsightDetail from "@/pages/insight-detail";
 import Polaris from "@/pages/polaris";
 import PolarisEpisodeDetail from "@/pages/polaris-episode-detail";
 import Contact from "@/pages/contact";
+import Join from "@/pages/join";
 import Start from "@/pages/start";
 import Events from "@/pages/events";
 import EventDetail from "@/pages/event-detail";
@@ -400,6 +401,7 @@ function Router() {
             <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />
             <Route path="/contact" component={Contact} />
+            <Route path="/join" component={Join} />
             <Route path="/start" component={Start} />
             <Route path="/events" component={Events} />
             <Route path="/events/:slug" component={EventDetail} />
