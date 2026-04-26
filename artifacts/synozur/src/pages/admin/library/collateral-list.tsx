@@ -349,7 +349,7 @@ export default function AdminCollateralList() {
     if (!canWrite) return;
     updateMut.mutate({
       id: item.id,
-      data: { type: item.type, title: item.title, active },
+      data: { active } as Parameters<typeof updateMut.mutate>[0]["data"],
     });
   };
 
@@ -357,7 +357,10 @@ export default function AdminCollateralList() {
     if (!canWrite) return;
     updateMut.mutate({
       id: item.id,
-      data: { type: item.type, title: item.title, featured },
+      // Send only the curation field being changed. Sending content fields
+      // (type, title, etc.) alongside curation fields causes a 400 on synced
+      // rows where those fields are read-only at source.
+      data: { featured } as Parameters<typeof updateMut.mutate>[0]["data"],
     });
   };
 
@@ -367,7 +370,8 @@ export default function AdminCollateralList() {
     if (n !== null && (!Number.isFinite(n) || !Number.isInteger(n))) return;
     updateMut.mutate({
       id: item.id,
-      data: { type: item.type, title: item.title, featuredRank: n },
+      // Same as above — only send the curation field being changed.
+      data: { featuredRank: n } as Parameters<typeof updateMut.mutate>[0]["data"],
     });
   };
 

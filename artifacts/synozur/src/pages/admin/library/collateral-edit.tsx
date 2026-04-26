@@ -303,12 +303,24 @@ export default function CollateralEdit({ id }: Props) {
   });
 
   const onSave = async () => {
-    if (!form.title.trim()) {
+    if (!isSynced && !form.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
     if (id) {
-      await updateMut.mutateAsync({ id, data: toBody(form) });
+      // Synced rows only allow curation fields (featured, featuredRank, active,
+      // serviceId, solutionId). Sending content fields (title, type, etc.)
+      // returns a 400 "Edit content at the source" from the server.
+      const data = isSynced
+        ? ({
+            featured: form.featured,
+            featuredRank: form.featuredRank === "" ? null : Number(form.featuredRank),
+            active: form.active,
+            serviceId: form.serviceId || null,
+            solutionId: form.solutionId || null,
+          } as unknown as Parameters<typeof updateMut.mutateAsync>[0]["data"])
+        : toBody(form);
+      await updateMut.mutateAsync({ id, data });
     } else {
       await createMut.mutateAsync({ data: toBody(form) });
     }
