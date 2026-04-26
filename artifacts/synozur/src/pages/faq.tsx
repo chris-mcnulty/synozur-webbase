@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Accordion,
   AccordionContent,
@@ -213,8 +213,26 @@ export default function Faq() {
                   )}
                   <Accordion
                     type="multiple"
-                    value={openItems}
-                    onValueChange={setOpenItems}
+                    // Each category accordion is controlled with only the
+                    // open ids that belong to it, and `onValueChange` merges
+                    // back into the global `openItems` set. Otherwise opening
+                    // a question in one category would clobber state in
+                    // another (Radix only reports the value of the accordion
+                    // that fired the event).
+                    value={openItems.filter((id) =>
+                      c.items.some((it) => anchorId(c.slug, it.slug) === id),
+                    )}
+                    onValueChange={(next) => {
+                      setOpenItems((prev) => [
+                        ...prev.filter(
+                          (id) =>
+                            !c.items.some(
+                              (it) => anchorId(c.slug, it.slug) === id,
+                            ),
+                        ),
+                        ...next,
+                      ]);
+                    }}
                     className="rounded-xl border border-border/60 bg-card divide-y divide-border"
                   >
                     {c.items.map((it) => {
@@ -234,19 +252,24 @@ export default function Faq() {
                           <AccordionTrigger className="text-left font-medium">
                             {it.question}
                           </AccordionTrigger>
-                          <AccordionContent>
+                          {/* `forceMount` keeps the answer in the DOM even
+                              when collapsed so search engines and LLM
+                              crawlers see every Q&A on first paint. Scoped
+                              here so it doesn't apply to every Accordion
+                              elsewhere in the app. */}
+                          <AccordionContent forceMount>
                             <RichText
                               html={it.answerHtml}
                               className="prose-sm"
                             />
                             <div className="mt-3 text-xs text-muted-foreground">
-                              <a
+                              <Link
                                 href={itemUrl}
                                 className="hover:text-foreground"
                                 data-testid={`faq-permalink-${c.slug}-${it.slug}`}
                               >
                                 Link to this question
-                              </a>
+                              </Link>
                             </div>
                           </AccordionContent>
                         </AccordionItem>

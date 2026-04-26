@@ -38,19 +38,24 @@ const AccordionTrigger = React.forwardRef<
 ))
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
-// `forceMount` keeps collapsed content in the DOM so search engines and
-// LLM crawlers that don't simulate clicks (or that read raw HTML) still see
-// the answers. `data-[state=closed]:hidden` applies `display:none` so the
-// close transition is a snap rather than an animation; the open transition
-// (`animate-accordion-down`) still plays when the user expands an item.
+// `forceMount` is opt-in via the underlying Radix prop. Pages that need
+// SEO/LLM-crawler visibility on collapsed answers (notably /faq) pass
+// `forceMount` so the content stays in the DOM regardless of state; in that
+// mode we also apply `data-[state=closed]:hidden` to keep collapsed content
+// visually hidden (display:none, which trades the close animation for a
+// reliably hidden state). Default (no `forceMount`) keeps Radix's normal
+// presence behavior and both open + close animations.
 const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, forceMount, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
-    forceMount
-    className="overflow-hidden text-sm data-[state=closed]:hidden data-[state=open]:animate-accordion-down"
+    forceMount={forceMount}
+    className={cn(
+      "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+      forceMount && "data-[state=closed]:hidden",
+    )}
     {...props}
   >
     <div className={cn("pb-4 pt-0", className)}>{children}</div>
