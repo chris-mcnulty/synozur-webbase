@@ -342,6 +342,82 @@ export async function sendEmailVerification(args: {
   return sendEmail({ to: args.to, subject: "Verify your email — The Synozur Alliance", html, text });
 }
 
+// Sent to a new Entra user whose sign-in auto-created a pending org.
+export async function sendOrgPendingApproval(args: {
+  to: string;
+  name: string | null;
+  orgName: string;
+}): Promise<SendEmailResult> {
+  const greeting = args.name && args.name.trim().length > 0 ? `Hi ${escapeHtml(args.name.trim())},` : "Hello,";
+  const html = brandedShell({
+    preheader: `Welcome to The Synozur Alliance — your organization is pending approval.`,
+    heading: "Your account is registered",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Welcome! You've signed in to The Synozur Alliance for the first time. We've automatically registered your organization, <strong>${escapeHtml(args.orgName)}</strong>, in our portal.</p>
+      <p style="margin:0 0 16px;">Before your team can access our client applications, a Synozur partner needs to approve your organization. This usually happens within one business day.</p>
+      <p style="margin:0 0 16px;">You'll receive another email once your organization has been approved and your account is fully activated.</p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const text = [
+    args.name && args.name.trim().length > 0 ? `Hi ${args.name.trim()},` : "Hello,",
+    "",
+    `Welcome! You've signed in to The Synozur Alliance for the first time. We've automatically registered your organization, ${args.orgName}, in our portal.`,
+    "",
+    "Before your team can access our client applications, a Synozur partner needs to approve your organization. This usually happens within one business day.",
+    "",
+    "You'll receive another email once your organization has been approved and your account is fully activated.",
+    "",
+    "— The Synozur Alliance",
+    SITE_URL,
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: "Your Synozur Alliance account is registered — pending org approval",
+    html,
+    text,
+  });
+}
+
+// Sent when Synozur admin approves a pending client organization.
+export async function sendOrgApproved(args: {
+  to: string;
+  name: string | null;
+  orgName: string;
+}): Promise<SendEmailResult> {
+  const portalUrl = `${SITE_URL}/sign-in`;
+  const greeting = args.name && args.name.trim().length > 0 ? `Hi ${escapeHtml(args.name.trim())},` : "Hello,";
+  const html = brandedShell({
+    preheader: `Your organization ${args.orgName} has been approved — you can now access Synozur apps.`,
+    heading: "Your organization is approved",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Great news — The Synozur Alliance has approved <strong>${escapeHtml(args.orgName)}</strong>. Your account now has full access to our client portal and applications.</p>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(portalUrl)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Sign in to the portal</a>
+      </p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const text = [
+    args.name && args.name.trim().length > 0 ? `Hi ${args.name.trim()},` : "Hello,",
+    "",
+    `Great news — The Synozur Alliance has approved ${args.orgName}. Your account now has full access to our client portal and applications.`,
+    "",
+    `Sign in here: ${portalUrl}`,
+    "",
+    "— The Synozur Alliance",
+    SITE_URL,
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `Your organization ${args.orgName} is approved — The Synozur Alliance`,
+    html,
+    text,
+  });
+}
+
 export async function sendPasswordReset(args: {
   to: string;
   name: string | null;

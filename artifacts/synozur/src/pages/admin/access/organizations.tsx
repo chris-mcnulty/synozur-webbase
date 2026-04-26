@@ -22,6 +22,7 @@ interface Org {
   entraTenantName: string | null;
   approvedEmailDomains: string[] | null;
   isActive: boolean;
+  autoCreated: boolean | null;
   defaultRoleId: string | null;
   defaultRoleName: string | null;
   notes: string | null;
@@ -148,7 +149,8 @@ export default function OrganizationsPage() {
         method: "PATCH",
         body: JSON.stringify({ isActive: !org.isActive }),
       });
-      toast({ title: org.isActive ? "Organization deactivated" : "Organization activated" });
+      const activateLabel = org.autoCreated ? "approved" : "activated";
+      toast({ title: org.isActive ? "Organization deactivated" : `Organization ${activateLabel}` });
       await refresh();
     } catch (e) {
       toast({ title: "Update failed", description: (e as Error).message, variant: "destructive" });
@@ -294,7 +296,12 @@ export default function OrganizationsPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{org.name}</span>
                     <Badge variant="outline" className="text-xs">{org.slug}</Badge>
-                    {!org.isActive && <Badge variant="secondary">Inactive</Badge>}
+                    {!org.isActive && org.autoCreated && (
+                      <Badge variant="outline" className="text-xs border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400">
+                        Pending approval
+                      </Badge>
+                    )}
+                    {!org.isActive && !org.autoCreated && <Badge variant="secondary">Inactive</Badge>}
                   </div>
                   {org.entraTenantId && (
                     <div className="font-mono text-xs text-muted-foreground mt-1">
@@ -313,7 +320,7 @@ export default function OrganizationsPage() {
                     {expandedOrg === org.id ? "Hide members" : "Members"}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => toggleActive(org)}>
-                    {org.isActive ? "Deactivate" : "Activate"}
+                    {org.isActive ? "Deactivate" : org.autoCreated ? "Approve" : "Activate"}
                   </Button>
                   <Button variant="ghost" size="sm" className="text-destructive" onClick={() => remove(org.id)}>
                     Delete

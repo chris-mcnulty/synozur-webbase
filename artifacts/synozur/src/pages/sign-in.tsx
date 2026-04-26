@@ -22,6 +22,8 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const [entraAvailable, setEntraAvailable] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
@@ -36,10 +38,28 @@ export default function SignInPage() {
       .catch(() => undefined);
   }, []);
 
+  async function handleResendVerification() {
+    if (!unverifiedEmail || resendStatus === "sending") return;
+    setResendStatus("sending");
+    try {
+      const res = await fetch(`${BASE_PATH}/api/auth/resend-verification`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+      setResendStatus(res.ok ? "sent" : "error");
+    } catch {
+      setResendStatus("error");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading || rateLimited) return;
     setError(null);
+    setUnverifiedEmail(null);
+    setResendStatus("idle");
     setLoading(true);
     try {
       const res = await fetch(`${BASE_PATH}/api/auth/login`, {
@@ -48,7 +68,7 @@ export default function SignInPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password, rememberMe }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string; email?: string };
       if (res.status === 429) {
         setRateLimited(true);
         const retryAfter = Number(res.headers.get("Retry-After") ?? 0);
@@ -59,6 +79,10 @@ export default function SignInPage() {
           setRateLimited(false);
           setError(null);
         }, waitSecs * 1000);
+        return;
+      }
+      if (json.code === "EMAIL_NOT_VERIFIED") {
+        setUnverifiedEmail(json.email ?? email.trim());
         return;
       }
       if (!res.ok || !json.ok) {
@@ -101,6 +125,29 @@ export default function SignInPage() {
             className="mb-4 rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive"
           >
             {error}
+          </div>
+        )}
+
+        {unverifiedEmail && (
+          <div role="alert" aria-live="polite" className="mb-4 rounded-md bg-primary/10 border border-primary/20 px-4 py-3 text-sm">
+            <p className="font-medium text-foreground mb-1">Email not yet verified</p>
+            <p className="text-muted-foreground mb-2">
+              Please click the verification link sent to <strong className="text-foreground">{unverifiedEmail}</strong> to activate your account.
+            </p>
+            <button
+              type="button"
+              disabled={resendStatus === "sending" || resendStatus === "sent"}
+              onClick={() => void handleResendVerification()}
+              className="text-primary underline hover:no-underline disabled:opacity-50 disabled:no-underline text-xs"
+            >
+              {resendStatus === "sending"
+                ? "Sending…"
+                : resendStatus === "sent"
+                  ? "Verification email sent — check your inbox"
+                  : resendStatus === "error"
+                    ? "Failed to resend — try again"
+                    : "Resend verification email"}
+            </button>
           </div>
         )}
 

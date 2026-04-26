@@ -57,11 +57,12 @@ export default function SignUpPage() {
     }
   }
 
+  // Redirect signed-in users only when not in the post-registration state.
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (!registered && isLoaded && isSignedIn) {
       navigate(returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/");
     }
-  }, [isLoaded, isSignedIn, returnTo, navigate]);
+  }, [registered, isLoaded, isSignedIn, returnTo, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,12 +90,12 @@ export default function SignUpPage() {
           displayName: displayName.trim() || undefined,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      const json = (await res.json()) as { ok?: boolean; requiresVerification?: boolean; error?: string };
       if (!res.ok || !json.ok) {
         setError(json.error ?? "Registration failed. Please try again.");
         return;
       }
-      await refresh();
+      // Session is NOT created yet — user must verify email first.
       setRegistered(true);
     } catch {
       setError("Network error. Please try again.");
@@ -115,17 +116,17 @@ export default function SignUpPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Account created</h1>
+          <h1 className="text-2xl font-bold mb-2">Check your email</h1>
           <p className="text-muted-foreground text-sm mb-2">
-            Welcome to The Synozur Alliance. We&apos;ve sent a verification email to{" "}
+            We&apos;ve sent a verification link to{" "}
             <strong className="text-foreground">{email}</strong>.
           </p>
           <p className="text-muted-foreground text-sm mb-6">
-            Please check your inbox and click the link to verify your address.
+            Click the link in that email to verify your address and activate your account.
           </p>
           <Button asChild className="w-full">
-            <Link href={returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/"}>
-              Continue to your account
+            <Link href={`/sign-in${returnTo && returnTo !== "/" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>
+              Back to sign in
             </Link>
           </Button>
           <p className="mt-4 text-xs text-muted-foreground">

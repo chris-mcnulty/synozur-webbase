@@ -11,6 +11,8 @@ import {
   type RoleName,
 } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { applyClientOrgRole } from "../lib/entra";
+import { sendOrgApproved } from "../lib/email";
 
 // Admin CRUD for client organizations. Organizations are the unit of client
 // access — any user (Entra SSO or email/password) linked to an active org
@@ -48,6 +50,7 @@ router.get("/admin/client-orgs", requireAdmin, async (_req, res): Promise<void> 
       entraTenantName: clientOrganizationsTable.entraTenantName,
       approvedEmailDomains: clientOrganizationsTable.approvedEmailDomains,
       isActive: clientOrganizationsTable.isActive,
+      autoCreated: clientOrganizationsTable.autoCreated,
       defaultRoleId: clientOrganizationsTable.defaultRoleId,
       defaultRoleName: rolesTable.name,
       notes: clientOrganizationsTable.notes,
@@ -138,6 +141,15 @@ router.patch("/admin/client-orgs/:id", requireAdmin, async (req, res): Promise<v
     return;
   }
 
+  // Fetch the org before update so we can detect activation transition.
+  const existing = await db.query.clientOrganizationsTable.findFirst({
+    where: eq(clientOrganizationsTable.id, id),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
   const [updated] = await db
     .update(clientOrganizationsTable)
     .set(updatePayload)
@@ -147,6 +159,26 @@ router.patch("/admin/client-orgs/:id", requireAdmin, async (req, res): Promise<v
     res.status(404).json({ error: "Not found" });
     return;
   }
+
+  // When a pending org is activated, backfill the default role for all members
+  // and notify them by email (fire-and-forget).
+  const beingActivated = !existing.isActive && updated.isActive;
+  if (beingActivated) {
+    const members = await db.query.usersTable.findMany({
+      where: eq(usersTable.clientOrganizationId, id),
+    });
+    for (const member of members) {
+      void applyClientOrgRole(member.id, id);
+      if (member.email) {
+        void sendOrgApproved({
+          to: member.email,
+          name: member.displayName,
+          orgName: updated.name,
+        });
+      }
+    }
+  }
+
   res.json(updated);
 });
 

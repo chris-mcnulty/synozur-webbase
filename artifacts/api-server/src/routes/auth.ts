@@ -43,7 +43,11 @@ import {
 } from "../lib/sessions";
 import { applyEntraSignIn, applyClientOrgRole } from "../lib/entra";
 import { logger } from "../lib/logger";
-import { sendEmailVerification, sendPasswordReset } from "../lib/email";
+import {
+  sendEmailVerification,
+  sendPasswordReset,
+  sendOrgPendingApproval,
+} from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -358,10 +362,11 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     return;
   }
 
-  // Tenant allowlist: the token's tid must be either:
-  //   (a) ENTRA_TENANT_ID — Synozur's own tenant, or
-  //   (b) an active client_organization's entraTenantId.
-  // Any other tenant is rejected with 403.
+  // Resolve the client org for this Entra sign-in:
+  //   (a) Synozur's own tenant → no client org, proceed normally.
+  //   (b) Known active client org tenant → link and grant default role.
+  //   (c) Known but INACTIVE org (pending approval) → link user, no role yet.
+  //   (d) Unknown tenant → auto-create a pending org, link user, send notification.
   const synozurTenantId = tenantAuthority();
   const isSynozurTenant =
     !!identity.entraTenantId &&
@@ -369,16 +374,27 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     synozurTenantId !== "common" &&
     identity.entraTenantId === synozurTenantId;
 
+  // `clientOrg` is only set when the org is ACTIVE — used to gate role grants.
+  // `linkedOrgId` is the org to store on the user row (active or pending).
   let clientOrg: typeof clientOrganizationsTable.$inferSelect | null = null;
+  let linkedOrgId: string | null = null;
+  let orgIsPending = false;
+
   if (!isSynozurTenant && identity.entraTenantId) {
     clientOrg = await findActiveClientOrgByTenant(identity.entraTenantId);
-    if (!clientOrg) {
-      logger.warn(
-        { tenantId: identity.entraTenantId, email: identity.email },
-        "Entra sign-in rejected: tenant not in allowlist",
-      );
-      res.status(403).redirect("/?auth_error=tenant_not_allowed");
-      return;
+    if (clientOrg) {
+      linkedOrgId = clientOrg.id;
+    } else {
+      const anyOrg = await findAnyOrgByTenant(identity.entraTenantId);
+      if (anyOrg) {
+        linkedOrgId = anyOrg.id;
+        orgIsPending = !anyOrg.isActive;
+      } else {
+        // Brand-new tenant — create a pending org for Synozur to approve.
+        const newOrg = await autoCreatePendingOrg(identity);
+        linkedOrgId = newOrg.id;
+        orgIsPending = true;
+      }
     }
   }
 
@@ -399,7 +415,8 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     }
   }
 
-  const orgId = clientOrg?.id ?? null;
+  const isNewEntraUser = !userRow;
+  const orgId = linkedOrgId;
   if (userRow) {
     await db
       .update(usersTable)
@@ -457,9 +474,25 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
     }
   }
 
-  // Apply org's default role if the user belongs to a client org.
-  if (orgId) {
-    await applyClientOrgRole(userRow.id, orgId);
+  // Apply org's default role only when the org is ACTIVE.
+  // Pending orgs (isActive=false) don't grant roles until Synozur approves them.
+  if (clientOrg?.id) {
+    await applyClientOrgRole(userRow.id, clientOrg.id);
+  }
+
+  // Send "pending approval" notification to brand-new Entra users from an
+  // unknown / not-yet-approved tenant (fire-and-forget).
+  if (orgIsPending && isNewEntraUser && userRow.email) {
+    const pendingOrg = linkedOrgId
+      ? await db.query.clientOrganizationsTable.findFirst({
+          where: eq(clientOrganizationsTable.id, linkedOrgId),
+        })
+      : null;
+    void sendOrgPendingApproval({
+      to: userRow.email,
+      name: userRow.displayName,
+      orgName: pendingOrg?.name ?? "your organization",
+    });
   }
 
   // Entra group reconciliation — Synozur's own tenant only.
@@ -482,7 +515,11 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
   });
   setSessionCookie(req, res, session.token, session.expiresAt);
   void idTokenRaw;
-  res.redirect(safeReturnTo(pending.returnTo, "/admin"));
+  // Pending-org users land on a waiting page rather than /admin.
+  const postSignInDest = orgIsPending
+    ? "/pending-approval"
+    : safeReturnTo(pending.returnTo, "/admin");
+  res.redirect(postSignInDest);
 });
 
 // ---------------------------------------------------------------------------
@@ -580,14 +617,8 @@ router.post("/auth/register", registerRateLimiter, async (req, res): Promise<voi
       }
     }
 
-    const session = await createSession({
-      userId: inserted.id,
-      userAgent: userAgent(req),
-      ip: clientIp(req),
-    });
-    setSessionCookie(req, res, session.token, session.expiresAt);
-
-    // Send email verification link (fire-and-forget — don't block response).
+    // Send email verification link. No session is created yet — the user
+    // must click the link before they can sign in.
     const verifyToken = generateSecureToken();
     await db.insert(emailVerificationTokensTable).values({
       token: verifyToken,
@@ -600,8 +631,7 @@ router.post("/auth/register", registerRateLimiter, async (req, res): Promise<voi
       token: verifyToken,
     });
 
-    const fresh = await loadUserById(inserted.id);
-    res.status(201).json({ ok: true, user: fresh });
+    res.status(201).json({ ok: true, requiresVerification: true });
     return;
   }
 
@@ -636,6 +666,16 @@ router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => 
 
   if (!user || !valid || !user.passwordHash) {
     res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  // Block local users who have not yet verified their email address.
+  if (user.authProvider === "local" && !user.emailVerified) {
+    res.status(403).json({
+      error: "Please verify your email address before signing in. Check your inbox for a verification link.",
+      code: "EMAIL_NOT_VERIFIED",
+      email: user.email,
+    });
     return;
   }
 
@@ -751,9 +791,18 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
     .where(eq(emailVerificationTokensTable.token, parsed.data.token));
   await db
     .update(usersTable)
-    .set({ emailVerified: true })
+    .set({ emailVerified: true, lastSignInAt: new Date() })
     .where(eq(usersTable.id, row.userId));
-  res.json({ ok: true });
+
+  // Create a session now that the email is verified — this signs the user in.
+  const session = await createSession({
+    userId: row.userId,
+    userAgent: userAgent(req),
+    ip: clientIp(req),
+  });
+  setSessionCookie(req, res, session.token, session.expiresAt);
+  const fresh = await loadUserById(row.userId);
+  res.json({ ok: true, user: fresh });
 });
 
 // ---------------------------------------------------------------------------
