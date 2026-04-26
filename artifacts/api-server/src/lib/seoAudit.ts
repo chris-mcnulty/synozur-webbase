@@ -742,21 +742,29 @@ export async function applyAutofill(
         if (!existing) break;
         const seo = existing.seo ?? { title: "", description: "" };
         const next = { ...seo };
+        const guards = [eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt))];
         let changed = false;
         if (patch.seoTitle && !(seo.title ?? "").trim()) {
           next.title = patch.seoTitle;
+          guards.push(
+            sql`(((${workshopsTable.seo} ->> 'title') is null) or trim(${workshopsTable.seo} ->> 'title') = '')`,
+          );
           changed = true;
         }
         if (patch.seoDescription && !(seo.description ?? "").trim()) {
           next.description = patch.seoDescription;
+          guards.push(
+            sql`(((${workshopsTable.seo} ->> 'description') is null) or trim(${workshopsTable.seo} ->> 'description') = '')`,
+          );
           changed = true;
         }
         if (changed) {
-          await db
+          const rows = await db
             .update(workshopsTable)
             .set({ seo: next, updatedAt: new Date() })
-            .where(eq(workshopsTable.id, f.id));
-          touched.workshop += 1;
+            .where(and(...guards))
+            .returning({ id: workshopsTable.id });
+          if (rows.length > 0) touched.workshop += 1;
         }
         break;
       }
