@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
 import { db, pool, sessionsTable, usersTable } from "@workspace/db";
-import { createSession, resolveSession } from "./sessions";
+import { createSession, pruneExpiredSessions, resolveSession } from "./sessions";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -315,6 +315,64 @@ test("resolveSession: lastSeenAt younger than ROLLING_RENEW_MS resolves with ren
       "expiresAt should be left untouched when within the rolling window",
     );
   } finally {
+    await deleteUser(userId);
+  }
+});
+
+test("pruneExpiredSessions: deletes only rows with expiresAt in the past", async () => {
+  const userId = await makeTestUser();
+  try {
+    // Two sessions for the same throwaway user: one we'll backdate so it
+    // looks expired, one we'll leave alone so it represents a live session.
+    const expired = await createSession({
+      userId,
+      userAgent: null,
+      ip: null,
+    });
+    const live = await createSession({
+      userId,
+      userAgent: null,
+      ip: null,
+    });
+
+    const past = new Date(Date.now() - HOUR);
+    await db
+      .update(sessionsTable)
+      .set({ expiresAt: past })
+      .where(eq(sessionsTable.id, expired.rowId));
+
+    // pruneExpiredSessions deletes globally, so other already-expired rows
+    // left over from earlier runs would inflate the returned count. Measure
+    // the true expected delta against the live table state instead of
+    // hard-coding "1".
+    const now = new Date();
+    const expectedDeleted = (await db.select().from(sessionsTable)).filter(
+      (r) => r.expiresAt.getTime() < now.getTime(),
+    ).length;
+
+    const result = await pruneExpiredSessions();
+    assert.equal(
+      result.deleted,
+      expectedDeleted,
+      "deleted count should match the number of rows whose expiresAt was already in the past",
+    );
+
+    const [expiredRow] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, expired.rowId))
+      .limit(1);
+    assert.equal(expiredRow, undefined, "the past-expiry row should be gone");
+
+    const [liveRow] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, live.rowId))
+      .limit(1);
+    assert.ok(liveRow, "the future-expiry row should still be present");
+    assert.equal(liveRow.userId, userId, "the surviving row belongs to our test user");
+  } finally {
+    // Cascades to any remaining sessions via the FK on sessions.user_id.
     await deleteUser(userId);
   }
 });
