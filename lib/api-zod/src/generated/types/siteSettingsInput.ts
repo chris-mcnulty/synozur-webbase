@@ -7,10 +7,12 @@
  */
 import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
 import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
+import type { SiteSettingsInputSiteTheme } from "./siteSettingsInputSiteTheme";
 
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
+  siteTheme?: SiteSettingsInputSiteTheme;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

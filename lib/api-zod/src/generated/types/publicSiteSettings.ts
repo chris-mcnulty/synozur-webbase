@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
+import type { PublicSiteSettingsSiteTheme } from "./publicSiteSettingsSiteTheme";
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
+  siteTheme?: PublicSiteSettingsSiteTheme;
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */

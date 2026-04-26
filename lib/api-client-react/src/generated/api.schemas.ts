@@ -436,9 +436,18 @@ export const PublicSiteSettingsHomeHeroBackgroundType = {
   video: "video",
 } as const;
 
+export type PublicSiteSettingsSiteTheme =
+  (typeof PublicSiteSettingsSiteTheme)[keyof typeof PublicSiteSettingsSiteTheme];
+
+export const PublicSiteSettingsSiteTheme = {
+  cosmic: "cosmic",
+  aurora: "aurora",
+} as const;
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
+  siteTheme?: PublicSiteSettingsSiteTheme;
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */
@@ -493,6 +502,14 @@ export const SiteSettingsHomeHeroBackgroundType = {
   video: "video",
 } as const;
 
+export type SiteSettingsSiteTheme =
+  (typeof SiteSettingsSiteTheme)[keyof typeof SiteSettingsSiteTheme];
+
+export const SiteSettingsSiteTheme = {
+  cosmic: "cosmic",
+  aurora: "aurora",
+} as const;
+
 /**
  * @nullable
  */
@@ -501,6 +518,7 @@ export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
 export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
+  siteTheme?: SiteSettingsSiteTheme;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -580,6 +598,14 @@ export const SiteSettingsInputHomeHeroBackgroundType = {
   video: "video",
 } as const;
 
+export type SiteSettingsInputSiteTheme =
+  (typeof SiteSettingsInputSiteTheme)[keyof typeof SiteSettingsInputSiteTheme];
+
+export const SiteSettingsInputSiteTheme = {
+  cosmic: "cosmic",
+  aurora: "aurora",
+} as const;
+
 /**
  * @nullable
  */
@@ -590,6 +616,7 @@ export type SiteSettingsInputSitemapSectionFlags = {
 export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
+  siteTheme?: SiteSettingsInputSiteTheme;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

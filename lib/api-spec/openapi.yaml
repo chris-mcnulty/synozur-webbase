@@ -3418,6 +3418,10 @@ components:
           type: string
           enum: [image, video]
           default: image
+        siteTheme:
+          type: string
+          enum: [cosmic, aurora]
+          default: cosmic
         homeHeroImageUrl:
           type:
             - string
@@ -3518,6 +3522,10 @@ components:
           type: string
           enum: [image, video]
           default: image
+        siteTheme:
+          type: string
+          enum: [cosmic, aurora]
+          default: cosmic
         homeHeroImageAssetId:
           type:
             - integer
@@ -3663,6 +3671,9 @@ components:
         homeHeroBackgroundType:
           type: string
           enum: [image, video]
+        siteTheme:
+          type: string
+          enum: [cosmic, aurora]
         homeHeroImageAssetId:
           type:
             - integer
