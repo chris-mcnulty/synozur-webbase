@@ -20,6 +20,7 @@ export * from "./traffic";
 export * from "./videos";
 export * from "./whitePapers";
 export * from "./wixRedirects";
+export * from "./notFoundLogs";
 export * from "./workshops";
 export * from "./polarisEpisodes";
 export * from "./caseStudies";
