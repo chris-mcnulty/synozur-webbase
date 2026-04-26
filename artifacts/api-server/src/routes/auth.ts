@@ -31,6 +31,7 @@ import {
   consumeAuthPendingState,
   persistAuthPendingState,
 } from "../lib/authStateStore";
+import { audit } from "../lib/audit";
 import {
   clearSessionCookie,
   createSession,
@@ -135,7 +136,13 @@ const loginRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => `login:${ipKeyGenerator(req)}`,
-  handler: (_req: Request, res: Response): void => {
+  handler: (req: Request, res: Response): void => {
+    const ip = ipKeyGenerator(req);
+    void audit({
+      action: "auth.login_rate_limited",
+      entity: "ip",
+      entityId: ip,
+    });
     res.status(429).json({
       error: "Too many sign-in attempts. Please try again in 15 minutes.",
     });

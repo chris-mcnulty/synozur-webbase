@@ -36,6 +36,7 @@ import contentParentPagesRouter from "./contentParentPages";
 import entraMappingsRouter from "./entraMappings";
 import hubspotAdminRouter from "./hubspotAdmin";
 import clientOrgsRouter from "./clientOrgs";
+import securityLogRouter from "./cms/securityLog";
 
 const router: IRouter = Router();
 
@@ -76,5 +77,6 @@ router.use(contentParentPagesRouter);
 router.use(entraMappingsRouter);
 router.use(hubspotAdminRouter);
 router.use(clientOrgsRouter);
+router.use(securityLogRouter);
 
 export default router;
