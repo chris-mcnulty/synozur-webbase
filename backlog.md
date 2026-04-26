@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 27 tasks pending · 93 merged · 29 cancelled
+> 25 tasks pending · 95 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -81,11 +81,6 @@ The current CMS has four roles (admin, editor, author, contributor) plus an allo
 
 The capability map currently lives in `artifacts/synozur/src/lib/capabilities.ts` as a hand-edited `Record<RoleName, Capability[]>`. That's fine for today's four roles but will not scale once we're juggling seven audience classes, customer portal permissions, and per-tenant overrides. This task adds a `capabilities` table (`id`, `name`, `description`) and a `role_capabilities` join table, seeds both from the current static map, and switches `/api/auth/me` to return the user's effective capabilities so the client no longer has to recompute them. Admin UI under `/admin/access` gains a capability editor. Existing client code reads `access.capabilities` / `access.hasCapability()` unchanged — only the source of truth moves.
 
-### #126 · Microsoft Entra SSO for employees and admins
-**Depends on:** — (identity foundation; strongly paired with #127)
-
-Authentication today goes through Clerk: `artifacts/synozur/src/main.tsx` wraps the app in `ClerkProvider`, `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts` validates session JWTs, and `auth.ts` → `loadOrCreateUser(clerkUserId)` maps the Clerk user id to a row in `usersTable`. That's fine for public customers but employees and admins should sign in with their Synozur Entra identity so lifecycle (hire / leave / group membership) is governed in one place and MFA / conditional-access policies apply automatically. This task adds Entra ID (OIDC) as an Enterprise SSO connection on the Clerk side so `@synozur.com` email domains are routed to the Entra tenant at sign-in, then extends `loadOrCreateUser` to read the Entra group claims off the Clerk session and map them to the admin role table (e.g. `Synozur-Admins` group → `admin` role, `Synozur-Editors` → `editor`). The `allow-list` flag in the users schema gets backfilled from group membership at login so offboarding an Entra user instantly removes CMS access. Public sign-in UX unchanged; admins land on a branded "Continue with Microsoft" option. Follow-up: once #127 ships we can share the same Entra app registration for Graph API storage access and avoid a second credential set.
-
 ### #128 · Act as an OAuth 2.0 / OIDC provider for other Synozur web apps
 **Depends on:** #110 (audience-class model) or can ship in parallel
 
@@ -132,21 +127,6 @@ Out of scope: a full PRM (partner-relationship management) replacement, commissi
 ---
 
 ## Marketing & Lifecycle
-
-### #131 · HubSpot integration for lead capture and on-site activity
-**Depends on:** — (can ship independently); pairs with #110 (audience classes) and #126 (Entra SSO) for cleaner contact mapping
-
-The site captures prospect signal in many places — the contact form, newsletter subscribe, start-inquiry forms, comment submissions on Insights, eventually authenticated sign-ups via Clerk and Entra (#126) — and emits anonymous analytics to GA4 / LinkedIn / Meta pixels, but none of that lands in a CRM where sales and marketing can act on it. Today a lead who fills the contact form gets a Resend confirmation and an internal email, full stop; there is no Contact record, no lifecycle stage, no first-touch attribution, no timeline of what they read before they reached out. This task wires the api-server and the marketing site into **HubSpot** so every captured lead becomes a Contact and every meaningful interaction becomes a Timeline event on that contact.
-
-Scope:
-- **Server-side identity sync.** New module `artifacts/api-server/src/lib/hubspotSync.ts` that owns idempotent upsert into HubSpot (`/crm/v3/objects/contacts`) keyed by email, queue-backed with retry + dead-letter so a HubSpot outage doesn't drop submissions or block the form response. The existing form handlers (`/api/contact`, `/api/newsletter`, `/api/start-inquiry`, comment submission with email, the future Clerk/Entra sign-up webhook) call into this module fire-and-forget *after* the existing Resend confirmation is enqueued.
-- **Activity timeline.** Define HubSpot custom timeline event types — `synozur_form_submitted`, `synozur_insight_viewed`, `synozur_application_demo_requested`, `synozur_polaris_chat_engaged`, `synozur_signed_in` — and emit them via `/crm/v3/timeline/{appId}/events`. High-intent events emit server-side (so they survive ad-blockers); page views and scroll-depth come from the HubSpot tracking script wrapped behind the existing cookie-consent gate.
-- **Cookie consent + GDPR.** The HubSpot tracking script joins GA4 / LinkedIn / Meta in the consent gate. Server-side upserts honor a `marketing_opt_in` boolean captured on every form (default off in EU geos, default on elsewhere, configurable). A `/admin/integrations/hubspot/erasure` endpoint forwards GDPR delete requests to HubSpot's GDPR API.
-- **UTM + first-touch attribution.** Capture `utm_source / medium / campaign / term / content` on first landing (already passed to analytics), persist in a first-party cookie, and write them onto the HubSpot contact's first-touch + last-touch properties on upsert.
-- **Admin surface.** New page under `/admin/integrations/hubspot` shows connection status (private-app token health, last successful sync, queue depth, dead-letter count), per-form on/off toggles, the field → contact-property mapping table, an audience-class → lifecycle-stage mapping (e.g. `customer` → `Customer`, `partner` → `Other`, `registered` → `Subscriber`), and a recent-events log with replay action for debugging.
-- **Configuration.** `HUBSPOT_ACCESS_TOKEN` (private app) and `HUBSPOT_PORTAL_ID` in env; mappings + per-form toggles live in site settings so non-engineers can tune them.
-
-Out of scope: bidirectional sync (CRM → site enrichment), replacing Resend for marketing email sends, replacing GA4. Follow-up once #128 ships: write app entitlements (Constellation, Vega, etc.) onto the HubSpot contact as properties so account managers can see at-a-glance which apps a customer is licensed for; once #129 ships emit a `synozur_app_launched` timeline event whenever a user clicks through the cross-app switcher.
 
 ### #132 · SendGrid integration for marketing email and deliverability redundancy
 **Depends on:** — (can ship independently); pairs with #131 (HubSpot lead capture)
@@ -268,12 +248,10 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 | #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
 | #121 | Sortable columns on the collateral library admin list | Library | #69 |
 | #122 | Multiple resource attachments on library items | Library | #63 |
-| #126 | Microsoft Entra SSO for employees and admins | Admin Access & People | — |
 | #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
 | #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
-| #131 | HubSpot integration for lead capture and on-site activity | Marketing & Lifecycle | — |
 | #132 | SendGrid integration for marketing email and deliverability redundancy | Marketing & Lifecycle | — |
 | #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
 | #134 | "Ask Synozur" RAG-powered Q&A across editorial content | Public Site UX | — |
