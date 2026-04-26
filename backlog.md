@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 25 tasks pending · 95 merged · 29 cancelled
+> 24 tasks pending · 95 merged · 30 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -13,11 +13,6 @@ Tasks are grouped by theme. Each entry includes the task reference, a plain-Engl
 **Depends on:** #40 (services pages refactor)
 
 The services hierarchy is the most commercially critical part of the site. This task writes Playwright end-to-end tests covering: home → Services nav → services overview page → service detail → solution detail, verifying content renders and links resolve. Tests run in CI so regressions are caught before merge.
-
-### #62 · Bulk import services and solutions from a spreadsheet
-**Depends on:** #39 (services hierarchy admin UI)
-
-Currently the services and solutions data can only be updated row-by-row through the admin edit form or by re-running the seed script. This task adds a CSV/XLSX upload endpoint (`POST /api/admin/services/import` and `/solutions/import`) and a drag-and-drop import UI in the admin, with a column-mapping step and a dry-run preview before commit. Useful for quarterly content refreshes.
 
 ---
 
@@ -239,7 +234,6 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
 | #57 | Playwright tests for services pages | QA | #40 |
-| #62 | Bulk CSV import for services & solutions | Services admin | #39 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
