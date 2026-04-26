@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 27 tasks pending · 93 merged · 29 cancelled
+> 29 tasks pending · 93 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -254,6 +254,20 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 
 ---
 
+## Admin Security & UX
+
+### #143 · Audit trail for admin site-settings changes
+**Depends on:** — (additive); pairs with #125 (admin-controlled idle timeout, merged)
+
+The admin Site Settings panel now controls security-critical values — session idle timeout, and eventually more session, auth, and content-governance parameters — but there is no record of who changed what and when. This task adds an **audit trail** specifically for site-settings mutations: a new `site_settings_audit` table (`id`, `changedBy` FK to users, `changedAt`, `field` text, `oldValue jsonb`, `newValue jsonb`, `ipAddress`, `userAgent`) populated on every successful PATCH to `/api/admin/site-settings`. Admin UI under `/admin/site/settings` gains a collapsible "Recent changes" log beneath the form showing the last 20 entries (who, when, what field, old → new value). Sensitive values (any field whose name contains `secret`, `token`, `key`, or `password`) are redacted to `[redacted]` in both the stored values and the UI. The same audit pattern should be reused by future admin-controlled security settings (OAuth client secrets, email provider keys, etc.) — design the table and service layer generically enough that a second call site is trivial. Out of scope for this task: audit trails on CMS content mutations (separate task), user-facing notification of changed security settings (follow-up once the audit log is established).
+
+### #144 · Idle sign-out warning that reflects the admin-configured timeout
+**Depends on:** #125 (admin-controlled idle timeout, merged) and #143 (audit trail, for context) — can ship independently of #143
+
+The browser-side idle-warning modal (`useIdleTimeout` hook in `artifacts/synozur/src/hooks/`) currently hard-codes a 4-hour threshold and fires its "you'll be signed out soon" warning at a fixed offset before that. Now that admins can set the idle timeout via Site Settings (#125), the hard-coded value can silently produce misleading warnings — an admin who tightens the timeout to 1 hour will still see a "4h" countdown, and a user genuinely active on a short-timeout deployment gets no warning before being ejected. This task wires the browser hook to the server's **effective** idle timeout: on session bootstrap `GET /api/auth/me` (or a dedicated `/api/session/config` endpoint if preferred) returns the effective timeout value; the hook reads this and sets both the inactivity detection window and the warning lead time proportionally (e.g. warn at 90 % of the timeout, minimum 60 s notice). UI copy in the warning modal becomes dynamic ("You'll be signed out in X minutes due to inactivity") rather than a fixed string. The hook should gracefully fall back to 4 h if the endpoint is unavailable so an API hiccup doesn't break the auth flow. Out of scope: per-user timeout overrides (admin-set value applies to all users until a future per-role timeout feature is added).
+
+---
+
 ## Summary Table
 
 | # | Title | Area | Depends On |
@@ -285,3 +299,5 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
 | #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
 | #142 | Accessibility & Core Web Vitals compliance dashboard | Quality & Compliance | — |
+| #143 | Audit trail for admin site-settings changes | Admin Security & UX | — |
+| #144 | Idle sign-out warning that reflects the admin-configured timeout | Admin Security & UX | #125 |
