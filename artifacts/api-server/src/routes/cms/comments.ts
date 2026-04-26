@@ -4,7 +4,7 @@ import { desc, eq, sql, and } from "drizzle-orm";
 import { db, commentsTable, postsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
-import { sendCommentApprovedEmail } from "../../lib/email";
+import { sendCommentApprovedEmail, sendCommentReplyEmail } from "../../lib/email";
 import { logger } from "../../lib/logger";
 
 const router: IRouter = Router();
@@ -130,6 +130,51 @@ router.post(
             .where(eq(commentsTable.id, row.id));
         } catch (err) {
           logger.warn({ err }, "comment approval notification failed");
+        }
+      })();
+    }
+
+    // #53: when a reply is approved for the first time, notify the top-level
+    // ancestor's author if they opted in — unless the reply author is the
+    // same person (self-reply guard). We resolve the ancestor so multi-level
+    // threads still notify the original commenter, not an intermediate author.
+    if (!wasApproved && willApprove && row.parentCommentId) {
+      void (async () => {
+        try {
+          let ancestor = await db.query.commentsTable.findFirst({
+            where: eq(commentsTable.id, row.parentCommentId!),
+          });
+          while (ancestor?.parentCommentId) {
+            const next = await db.query.commentsTable.findFirst({
+              where: eq(commentsTable.id, ancestor.parentCommentId),
+            });
+            if (!next) break;
+            ancestor = next;
+          }
+          if (
+            ancestor &&
+            ancestor.notifyOnReply &&
+            ancestor.authorEmail &&
+            ancestor.authorEmail.trim() !== "" &&
+            ancestor.authorEmail.toLowerCase() !== row.authorEmail.toLowerCase()
+          ) {
+            const post = await db.query.postsTable.findFirst({
+              where: eq(postsTable.id, row.postId),
+            });
+            if (!post) return;
+            await sendCommentReplyEmail({
+              to: ancestor.authorEmail,
+              parentCommenterName: ancestor.authorName,
+              replyAuthorName: row.authorName,
+              postTitle: post.title,
+              postSlug: post.slug,
+              parentCommentId: ancestor.id,
+              replyCommentId: row.id,
+              replyBodyText: row.bodyText,
+            });
+          }
+        } catch (err) {
+          logger.warn({ err }, "comment reply notification failed");
         }
       })();
     }

@@ -18,8 +18,8 @@ import crypto from "node:crypto";
 import { serializePosts } from "../lib/postSerializer";
 import { audit } from "../lib/audit";
 import { verifyTurnstile } from "../lib/turnstile";
-import { sendCommentReplyEmail } from "../lib/email";
 import { logger } from "../lib/logger";
+import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
 
 const router: IRouter = Router();
 
@@ -317,46 +317,86 @@ router.post("/insights/:slug/comments", dailyLimiter, minuteLimiter, async (req,
     .returning({ id: commentsTable.id, status: commentsTable.status });
   await audit({ action: "comment.submit", entity: "comment", entityId: row.id });
 
-  // #53: only send reply notifications for replies that are already approved.
-  // We resolve the top-level ancestor (matching the UI's one-level
-  // threading) so double-depth replies still notify the original author.
-  if (parsed.data.parentCommentId && row.status === "approved") {
-    void (async () => {
-      try {
-        let ancestor = await db.query.commentsTable.findFirst({
-          where: eq(commentsTable.id, parsed.data.parentCommentId!),
-        });
-        while (ancestor?.parentCommentId) {
-          const next = await db.query.commentsTable.findFirst({
-            where: eq(commentsTable.id, ancestor.parentCommentId),
-          });
-          if (!next) break;
-          ancestor = next;
-        }
-        if (
-          ancestor &&
-          ancestor.notifyOnReply &&
-          ancestor.authorEmail &&
-          ancestor.authorEmail.trim() !== "" &&
-          ancestor.authorEmail.toLowerCase() !== parsed.data.authorEmail.toLowerCase()
-        ) {
-          await sendCommentReplyEmail({
-            to: ancestor.authorEmail,
-            parentCommenterName: ancestor.authorName,
-            replyAuthorName: parsed.data.authorName,
-            postTitle: post.title,
-            postSlug: post.slug,
-            replyCommentId: row.id,
-            replyBodyText: parsed.data.bodyText,
-          });
-        }
-      } catch (err) {
-        logger.warn({ err }, "comment reply notification failed");
-      }
-    })();
-  }
+  // #53: reply notification path. Replies are always inserted as "pending"
+  // so row.status is never "approved" here. The authoritative notification
+  // send happens in the moderation route (POST /cms/comments/:id/moderate)
+  // when the reply is first approved — see routes/cms/comments.ts.
 
   res.status(202).json({ id: row.id, status: row.status });
+});
+
+// #53: one-click unsubscribe. Decodes a signed token and clears the relevant
+// notification flag. Returns a user-friendly HTML page so visitors landing
+// via email client don't see a blank screen or raw JSON.
+router.get("/comments/unsubscribe", async (req, res) => {
+  const token = typeof req.query.token === "string" ? req.query.token : null;
+  const payload = verifyUnsubscribeToken(token);
+
+  const htmlPage = (heading: string, body: string) => `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${heading} — The Synozur Alliance</title>
+  <style>
+    body{margin:0;padding:0;background:#0b0b1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#e8e8f0;}
+    .card{background:#16162a;border:1px solid #2a2a45;border-radius:12px;max-width:480px;width:90%;padding:40px 36px;text-align:center;}
+    h1{font-size:20px;font-weight:600;margin:0 0 12px;color:#fff;}
+    p{font-size:15px;line-height:1.6;margin:0 0 24px;color:#b0b0cc;}
+    a{color:#810FFB;text-decoration:none;font-weight:500;}
+    a:hover{text-decoration:underline;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${heading}</h1>
+    <p>${body}</p>
+    <a href="/">Return to The Synozur Alliance</a>
+  </div>
+</body>
+</html>`;
+
+  if (!payload) {
+    res.status(400).send(
+      htmlPage(
+        "Invalid unsubscribe link",
+        "This link is invalid or has been modified. If you want to stop receiving notifications, please contact us.",
+      ),
+    );
+    return;
+  }
+
+  const comment = await db.query.commentsTable.findFirst({
+    where: eq(commentsTable.id, payload.commentId),
+  });
+
+  if (!comment) {
+    res.status(404).send(
+      htmlPage(
+        "Comment not found",
+        "We couldn't find the comment associated with this link. It may have been removed.",
+      ),
+    );
+    return;
+  }
+
+  const updateField =
+    payload.type === "approval"
+      ? { notifyOnApproval: false }
+      : { notifyOnReply: false };
+
+  await db
+    .update(commentsTable)
+    .set(updateField)
+    .where(eq(commentsTable.id, payload.commentId));
+
+  const label = payload.type === "approval" ? "approval notifications" : "reply notifications";
+  res.send(
+    htmlPage(
+      "You've been unsubscribed",
+      `You will no longer receive ${label} for this comment. Thank you for reading.`,
+    ),
+  );
 });
 
 // Lightweight view tracker. Public endpoint; rate-limited per IP.

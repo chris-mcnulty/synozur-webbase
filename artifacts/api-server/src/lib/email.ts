@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { signUnsubscribeToken } from "./unsubscribeToken";
 
 const RESEND_API_KEY = process.env["RESEND_API_KEY"] ?? "";
 const EMAIL_FROM =
@@ -210,6 +211,8 @@ export async function sendCommentApprovedEmail(args: {
   bodyText: string;
 }): Promise<SendEmailResult> {
   const url = commentPostUrl(args.postSlug, args.commentId);
+  const unsubToken = signUnsubscribeToken(args.commentId, "approval");
+  const unsubUrl = `${SITE_URL.replace(/\/$/, "")}/api/comments/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
   const greeting =
     args.commenterName && args.commenterName.trim().length > 0
       ? `Hi ${escapeHtml(args.commenterName.trim())},`
@@ -225,6 +228,7 @@ export async function sendCommentApprovedEmail(args: {
         <a href="${escapeHtml(url)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">View your comment →</a>
       </p>
       <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+      <p style="margin:16px 0 0;font-size:12px;color:#9999aa;">Don't want approval emails? <a href="${escapeHtml(unsubUrl)}" style="color:#9999aa;">Unsubscribe</a></p>
     `,
   });
   const text = [
@@ -239,6 +243,8 @@ export async function sendCommentApprovedEmail(args: {
     `View it here: ${url}`,
     "",
     "— The Synozur Alliance",
+    "",
+    `Don't want approval emails? Unsubscribe: ${unsubUrl}`,
   ].join("\n");
   return sendEmail({
     to: args.to,
@@ -254,10 +260,13 @@ export async function sendCommentReplyEmail(args: {
   replyAuthorName: string;
   postTitle: string;
   postSlug: string;
+  parentCommentId: string;
   replyCommentId: string;
   replyBodyText: string;
 }): Promise<SendEmailResult> {
   const url = commentPostUrl(args.postSlug, args.replyCommentId);
+  const unsubToken = signUnsubscribeToken(args.parentCommentId, "reply");
+  const unsubUrl = `${SITE_URL.replace(/\/$/, "")}/api/comments/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
   const greeting =
     args.parentCommenterName && args.parentCommenterName.trim().length > 0
       ? `Hi ${escapeHtml(args.parentCommenterName.trim())},`
@@ -273,6 +282,7 @@ export async function sendCommentReplyEmail(args: {
         <a href="${escapeHtml(url)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">Read the reply →</a>
       </p>
       <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+      <p style="margin:16px 0 0;font-size:12px;color:#9999aa;">Don't want reply emails? <a href="${escapeHtml(unsubUrl)}" style="color:#9999aa;">Unsubscribe</a></p>
     `,
   });
   const text = [
@@ -287,6 +297,8 @@ export async function sendCommentReplyEmail(args: {
     `Read it here: ${url}`,
     "",
     "— The Synozur Alliance",
+    "",
+    `Don't want reply emails? Unsubscribe: ${unsubUrl}`,
   ].join("\n");
   return sendEmail({
     to: args.to,
