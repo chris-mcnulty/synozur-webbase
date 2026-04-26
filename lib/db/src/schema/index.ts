@@ -29,3 +29,4 @@ export * from "./aboutContent";
 export * from "./faq";
 export * from "./contentParentPages";
 export * from "./hubspotSync";
+export * from "./cwvSamples";

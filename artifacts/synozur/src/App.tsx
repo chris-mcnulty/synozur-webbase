@@ -81,6 +81,7 @@ import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminSiteHealth from "@/pages/admin/site-config/health";
 import AdminActiveSessions from "@/pages/admin/account/sessions";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingTraffic from "@/pages/admin/marketing/traffic";
@@ -312,6 +313,7 @@ function AdminRoutes() {
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
+        <Route path="/site-config/health" component={AdminSiteHealth} />
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>

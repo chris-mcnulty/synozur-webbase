@@ -1630,6 +1630,97 @@ export interface PostAnalytics {
 }
 
 /**
+ * One of the five Core Web Vitals metric names emitted by web-vitals.
+ */
+export type CwvMetricName = (typeof CwvMetricName)[keyof typeof CwvMetricName];
+
+export const CwvMetricName = {
+  LCP: "LCP",
+  INP: "INP",
+  CLS: "CLS",
+  FCP: "FCP",
+  TTFB: "TTFB",
+} as const;
+
+/**
+ * web-vitals' three-bucket rating for a metric value.
+ */
+export type CwvRating = (typeof CwvRating)[keyof typeof CwvRating];
+
+export const CwvRating = {
+  good: "good",
+  "needs-improvement": "needs-improvement",
+  poor: "poor",
+} as const;
+
+export interface CwvSampleInput {
+  /**
+   * The visitor's pathname at sample time (no host, no query).
+   * @minLength 1
+   * @maxLength 256
+   */
+  route: string;
+  metric: CwvMetricName;
+  /**
+   * Metric value (milliseconds for time-based metrics, unitless for CLS).
+   * @minimum 0
+   */
+  value: number;
+  rating: CwvRating;
+  /** @nullable */
+  navigationType?: string | null;
+  /** @nullable */
+  metricId?: string | null;
+}
+
+export interface SiteHealthCwvRow {
+  route: string;
+  metric: CwvMetricName;
+  sampleCount: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface SiteHealthAltCoverage {
+  totalImageMedia: number;
+  /** Rows whose alt text matches the deterministic "Image: …" placeholder pattern. */
+  placeholderCount: number;
+  reviewedCount: number;
+  /** reviewedCount / totalImageMedia. 0 when total is 0. */
+  coverageRatio: number;
+}
+
+export interface SiteHealthRedirectRow {
+  id: string;
+  sourcePath: string;
+  targetPath: string;
+  statusCode: number;
+  active: boolean;
+  hitCount: number;
+  /** @nullable */
+  lastHitAt?: string | null;
+}
+
+export interface SiteHealthRedirects {
+  totalActive: number;
+  /** Sum of `hit_count` across all active redirects. */
+  totalHits: number;
+  /** Up to 10 most-hit active redirects. */
+  top: SiteHealthRedirectRow[];
+  /** Redirects whose target is itself the source of another redirect (one-hop chain detection). */
+  chains: SiteHealthRedirectRow[];
+}
+
+export interface SiteHealthSnapshot {
+  generatedAt: string;
+  windowDays: number;
+  cwv: SiteHealthCwvRow[];
+  altText: SiteHealthAltCoverage;
+  redirects: SiteHealthRedirects;
+}
+
+/**
  * Unauthorized
  */
 export type UnauthorizedResponse = ErrorEnvelope;
@@ -1820,4 +1911,13 @@ export type ExportAdminFormSubmissionsParams = {
 export type RetryFailedAdminFormSubmissionsParams = {
   formType?: string;
   search?: string;
+};
+
+export type CmsGetSiteHealthParams = {
+  /**
+   * How many days of CWV samples to summarize. Default 7.
+   * @minimum 1
+   * @maximum 90
+   */
+  windowDays?: number;
 };

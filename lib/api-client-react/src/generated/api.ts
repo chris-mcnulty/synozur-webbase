@@ -32,6 +32,7 @@ import type {
   Capability,
   CapabilityItemsResponse,
   Category,
+  CmsGetSiteHealthParams,
   CmsListCollateralParams,
   CmsUser,
   CollateralItem,
@@ -45,6 +46,7 @@ import type {
   CreateAssetCategoryBody,
   CreatePostBody,
   CurrentUser,
+  CwvSampleInput,
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
@@ -91,6 +93,7 @@ import type {
   ServiceItemsResponse,
   ServiceListResponse,
   SetCmsUserRolesBody,
+  SiteHealthSnapshot,
   SiteSettings,
   SiteSettingsInput,
   Solution,
@@ -8780,3 +8783,189 @@ export const useSubmitStart = <
 > => {
   return useMutation(getSubmitStartMutationOptions(options));
 };
+
+/**
+ * Unauthenticated. Each call records one metric (LCP/INP/CLS/FCP/TTFB) for one route, as fired by the `web-vitals` SDK. The server caps the user-agent string and rejects malformed payloads.
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const getReportCwvSampleUrl = () => {
+  return `/api/metrics/cwv`;
+};
+
+export const reportCwvSample = async (
+  cwvSampleInput: CwvSampleInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getReportCwvSampleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(cwvSampleInput),
+  });
+};
+
+export const getReportCwvSampleMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    TError,
+    { data: BodyType<CwvSampleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportCwvSample>>,
+  TError,
+  { data: BodyType<CwvSampleInput> },
+  TContext
+> => {
+  const mutationKey = ["reportCwvSample"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    { data: BodyType<CwvSampleInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reportCwvSample(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportCwvSampleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportCwvSample>>
+>;
+export type ReportCwvSampleMutationBody = BodyType<CwvSampleInput>;
+export type ReportCwvSampleMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const useReportCwvSample = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    TError,
+    { data: BodyType<CwvSampleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reportCwvSample>>,
+  TError,
+  { data: BodyType<CwvSampleInput> },
+  TContext
+> => {
+  return useMutation(getReportCwvSampleMutationOptions(options));
+};
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+export const getCmsGetSiteHealthUrl = (params?: CmsGetSiteHealthParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/site-health?${stringifiedParams}`
+    : `/api/cms/site-health`;
+};
+
+export const cmsGetSiteHealth = async (
+  params?: CmsGetSiteHealthParams,
+  options?: RequestInit,
+): Promise<SiteHealthSnapshot> => {
+  return customFetch<SiteHealthSnapshot>(getCmsGetSiteHealthUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsGetSiteHealthQueryKey = (
+  params?: CmsGetSiteHealthParams,
+) => {
+  return [`/api/cms/site-health`, ...(params ? [params] : [])] as const;
+};
+
+export const getCmsGetSiteHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsGetSiteHealthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsGetSiteHealthQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsGetSiteHealth>>
+  > = ({ signal }) => cmsGetSiteHealth(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsGetSiteHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsGetSiteHealth>>
+>;
+export type CmsGetSiteHealthQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+
+export function useCmsGetSiteHealth<
+  TData = Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsGetSiteHealthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsGetSiteHealthQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

@@ -93,6 +93,7 @@
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",
     "@uppy/react": "^5.2.0",
-    "@workspace/object-storage-web": "workspace:*"
+    "@workspace/object-storage-web": "workspace:*",
+    "web-vitals": "^5.2.0"
   }
 }

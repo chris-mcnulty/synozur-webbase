@@ -3164,3 +3164,114 @@ export const SubmitStartResponse = zod.object({
   ok: zod.boolean(),
   id: zod.number(),
 });
+
+/**
+ * Unauthenticated. Each call records one metric (LCP/INP/CLS/FCP/TTFB) for one route, as fired by the `web-vitals` SDK. The server caps the user-agent string and rejects malformed payloads.
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const reportCwvSampleBodyRouteMax = 256;
+
+export const reportCwvSampleBodyValueMin = 0;
+
+export const ReportCwvSampleBody = zod.object({
+  route: zod
+    .string()
+    .min(1)
+    .max(reportCwvSampleBodyRouteMax)
+    .describe("The visitor's pathname at sample time (no host, no query)."),
+  metric: zod
+    .enum(["LCP", "INP", "CLS", "FCP", "TTFB"])
+    .describe(
+      "One of the five Core Web Vitals metric names emitted by web-vitals.",
+    ),
+  value: zod
+    .number()
+    .min(reportCwvSampleBodyValueMin)
+    .describe(
+      "Metric value (milliseconds for time-based metrics, unitless for CLS).",
+    ),
+  rating: zod
+    .enum(["good", "needs-improvement", "poor"])
+    .describe("web-vitals' three-bucket rating for a metric value."),
+  navigationType: zod.string().nullish(),
+  metricId: zod.string().nullish(),
+});
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+export const cmsGetSiteHealthQueryWindowDaysMax = 90;
+
+export const CmsGetSiteHealthQueryParams = zod.object({
+  windowDays: zod.coerce
+    .number()
+    .min(1)
+    .max(cmsGetSiteHealthQueryWindowDaysMax)
+    .optional()
+    .describe("How many days of CWV samples to summarize. Default 7."),
+});
+
+export const CmsGetSiteHealthResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  windowDays: zod.number(),
+  cwv: zod.array(
+    zod.object({
+      route: zod.string(),
+      metric: zod
+        .enum(["LCP", "INP", "CLS", "FCP", "TTFB"])
+        .describe(
+          "One of the five Core Web Vitals metric names emitted by web-vitals.",
+        ),
+      sampleCount: zod.number(),
+      p50: zod.number(),
+      p75: zod.number(),
+      p90: zod.number(),
+    }),
+  ),
+  altText: zod.object({
+    totalImageMedia: zod.number(),
+    placeholderCount: zod
+      .number()
+      .describe(
+        'Rows whose alt text matches the deterministic \"Image: …\" placeholder pattern.',
+      ),
+    reviewedCount: zod.number(),
+    coverageRatio: zod
+      .number()
+      .describe("reviewedCount \/ totalImageMedia. 0 when total is 0."),
+  }),
+  redirects: zod.object({
+    totalActive: zod.number(),
+    totalHits: zod
+      .number()
+      .describe("Sum of `hit_count` across all active redirects."),
+    top: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          sourcePath: zod.string(),
+          targetPath: zod.string(),
+          statusCode: zod.number(),
+          active: zod.boolean(),
+          hitCount: zod.number(),
+          lastHitAt: zod.coerce.date().nullish(),
+        }),
+      )
+      .describe("Up to 10 most-hit active redirects."),
+    chains: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          sourcePath: zod.string(),
+          targetPath: zod.string(),
+          statusCode: zod.number(),
+          active: zod.boolean(),
+          hitCount: zod.number(),
+          lastHitAt: zod.coerce.date().nullish(),
+        }),
+      )
+      .describe(
+        "Redirects whose target is itself the source of another redirect (one-hop chain detection).",
+      ),
+  }),
+});
