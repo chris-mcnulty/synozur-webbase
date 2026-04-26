@@ -29,6 +29,7 @@ export * from "./models";
 export * from "./aboutContent";
 export * from "./faq";
 export * from "./contentParentPages";
+export * from "./bookings";
 export * from "./hubspotSync";
 export * from "./cwvSamples";
 export * from "./publishBlocks";

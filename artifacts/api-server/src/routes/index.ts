@@ -42,6 +42,7 @@ import entraMappingsRouter from "./entraMappings";
 import hubspotAdminRouter from "./hubspotAdmin";
 import clientOrgsRouter from "./clientOrgs";
 import securityLogRouter from "./cms/securityLog";
+import bookingsRouter from "./bookings";
 
 const router: IRouter = Router();
 
@@ -88,5 +89,6 @@ router.use(entraMappingsRouter);
 router.use(hubspotAdminRouter);
 router.use(clientOrgsRouter);
 router.use(securityLogRouter);
+router.use(bookingsRouter);
 
 export default router;

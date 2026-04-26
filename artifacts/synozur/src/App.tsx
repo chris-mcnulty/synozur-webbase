@@ -31,6 +31,8 @@ import PolarisEpisodeDetail from "@/pages/polaris-episode-detail";
 import Contact from "@/pages/contact";
 import Join from "@/pages/join";
 import Start from "@/pages/start";
+import StartBrief from "@/pages/start-brief";
+import StartDetail from "@/pages/start-detail";
 import Events from "@/pages/events";
 import EventDetail from "@/pages/event-detail";
 import Privacy from "@/pages/privacy";
@@ -63,6 +65,8 @@ import AdminTeamList from "@/pages/admin/people/team-list";
 import TeamForm from "@/pages/admin/people/team-form";
 import AdminEventsList from "@/pages/admin/people/events-list";
 import EventForm from "@/pages/admin/people/event-form";
+import AdminBookingsList from "@/pages/admin/people/bookings-list";
+import BookingForm from "@/pages/admin/people/booking-form";
 import AssetsLibrary from "@/pages/admin/library/assets";
 import AdminCollateralList from "@/pages/admin/library/collateral-list";
 import CollateralEdit from "@/pages/admin/library/collateral-edit";
@@ -304,6 +308,13 @@ function AdminRoutes() {
         <Route path="/people/events/:id">
           {(params) => <EventForm id={params.id} />}
         </Route>
+        <Route path="/people/bookings" component={AdminBookingsList} />
+        <Route path="/people/bookings/new">
+          <BookingForm />
+        </Route>
+        <Route path="/people/bookings/:id">
+          {(params) => <BookingForm id={params.id} />}
+        </Route>
 
         {/* People redirects */}
         <Route path="/team-members"><Redirect to="/people/team-members" /></Route>
@@ -403,6 +414,10 @@ function Router() {
             <Route path="/contact" component={Contact} />
             <Route path="/join" component={Join} />
             <Route path="/start" component={Start} />
+            <Route path="/start/brief" component={StartBrief} />
+            <Route path="/start/:slug">
+              {(params) => <StartDetail slug={params.slug} />}
+            </Route>
             <Route path="/events" component={Events} />
             <Route path="/events/:slug" component={EventDetail} />
             <Route path="/privacy" component={Privacy} />
