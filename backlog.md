@@ -1,18 +1,9 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 24 tasks pending · 95 merged · 30 cancelled
+> 23 tasks pending · 96 merged · 30 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
-
----
-
-## Services & Solutions Admin
-
-### #57 · Verify the new services pages with automated browser tests
-**Depends on:** #40 (services pages refactor)
-
-The services hierarchy is the most commercially critical part of the site. This task writes Playwright end-to-end tests covering: home → Services nav → services overview page → service detail → solution detail, verifying content renders and links resolve. Tests run in CI so regressions are caught before merge.
 
 ---
 
@@ -233,7 +224,6 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #57 | Playwright tests for services pages | QA | #40 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
