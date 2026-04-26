@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { initCwvReporting } from "@/lib/cwv-reporter";
 
 const CONSENT_KEY = "synozur.cookieConsent.v1";
 
@@ -90,9 +91,16 @@ export function Analytics() {
     if (isLoading || !settings) return;
     if (!requireConsent) {
       loadMarketingTags(settings);
+      // #142 Phase B — Real-user CWV reporting follows the same gate as
+      // marketing tags so European visitors who decline consent don't
+      // emit telemetry. `initCwvReporting()` is idempotent.
+      initCwvReporting();
       return;
     }
-    if (consent === "granted") loadMarketingTags(settings);
+    if (consent === "granted") {
+      loadMarketingTags(settings);
+      initCwvReporting();
+    }
   }, [isLoading, settings, requireConsent, consent]);
 
   if (isLoading || !settings) return null;

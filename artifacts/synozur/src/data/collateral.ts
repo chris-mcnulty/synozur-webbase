@@ -27,6 +27,27 @@ export type Pillar =
   | "experiences"
   | "gtm";
 
+/**
+ * #122 — Companion files attached to a library item.
+ *
+ * `mediaId` set ⇒ media-backed (uploaded asset); `externalUrl` set ⇒
+ * off-platform link (GitHub, Figma, vendor CDN). The `url` field is the
+ * resolved URL the client renders — server picks `media.publicUrl` or the
+ * external URL automatically.
+ */
+export interface CollateralResource {
+  id: string;
+  collateralId: string;
+  mediaId: string | null;
+  externalUrl: string | null;
+  label: string;
+  mimeType: string | null;
+  sortOrder: number;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Collateral {
   id: string;
   slug: string;
@@ -44,7 +65,17 @@ export interface Collateral {
   featured: boolean;
   featuredRank?: number;
   videoUrl?: string;
+  /**
+   * Mirror of the first `resources` row, kept for back-compat with carousel
+   * cards that need a single primary CTA without loading the full resources
+   * array. Server-derived; do not write directly.
+   */
   downloadUrl?: string;
+  /**
+   * Companion files (slides, transcript, code repo, etc.). Populated only by
+   * the by-slug endpoint — list endpoints omit this for payload size.
+   */
+  resources?: CollateralResource[];
 }
 
 export const TYPE_LABELS: Record<CollateralType, string> = {

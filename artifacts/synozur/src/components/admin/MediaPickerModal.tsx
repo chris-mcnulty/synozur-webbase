@@ -127,13 +127,22 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                 const id = slashIdx >= 0 ? objectName.slice(slashIdx + 1) : objectName;
                 const storageKey = `/objects/uploads/${id}`;
                 const publicUrl = `/api/storage${storageKey}`;
+                // #142 Phase A — altText is required at the API. Derive a
+                // non-empty placeholder from the file name (extension stripped)
+                // so the upload succeeds; the asset library surfaces a "needs
+                // review" badge for placeholder-shaped values.
+                const fileName = String(f.name ?? "");
+                const placeholderAlt = fileName.replace(/\.[^./\\]+$/, "").trim();
                 await register.mutateAsync({
                   data: {
                     storageKey,
                     publicUrl,
                     mime: String(f.type ?? "application/octet-stream"),
                     byteSize: Number(f.size ?? 0),
-                    altText: String(f.name ?? null),
+                    altText: placeholderAlt
+                      ? `Image: ${placeholderAlt}`
+                      : "Image: untitled",
+                    originalName: fileName || undefined,
                   },
                 });
               }

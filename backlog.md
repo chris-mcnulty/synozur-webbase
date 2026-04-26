@@ -1,23 +1,9 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 25 tasks pending · 97 merged · 29 cancelled
+> 21 tasks pending · 98 merged · 30 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
-
----
-
-## Services & Solutions Admin
-
-### #57 · Verify the new services pages with automated browser tests
-**Depends on:** #40 (services pages refactor)
-
-The services hierarchy is the most commercially critical part of the site. This task writes Playwright end-to-end tests covering: home → Services nav → services overview page → service detail → solution detail, verifying content renders and links resolve. Tests run in CI so regressions are caught before merge.
-
-### #62 · Bulk import services and solutions from a spreadsheet
-**Depends on:** #39 (services hierarchy admin UI)
-
-Currently the services and solutions data can only be updated row-by-row through the admin edit form or by re-running the seed script. This task adds a CSV/XLSX upload endpoint (`POST /api/admin/services/import` and `/solutions/import`) and a drag-and-drop import UI in the admin, with a column-mapping step and a dry-run preview before commit. Useful for quarterly content refreshes.
 
 ---
 
@@ -37,11 +23,6 @@ The "Featured items" reorder card is currently inline at the top of `artifacts/s
 **Depends on:** #69 (library live content) — merged
 
 The admin collateral table in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` uses static `<TableHead>` cells (lines 729–756) — editors cannot reorder by title, type, service, solution, pillar, featured rank, or last-updated. The backend `GET /cms/collateral` in `artifacts/api-server/src/routes/collateral.ts` (lines 212–224) has a hard-coded `ORDER BY featured DESC, featuredRank ASC NULLS LAST, publishedAt DESC, title ASC` and the `ListQuery` schema (lines 13–26) accepts no sort param. This task adds a `sort` query param (e.g. `sort=title:asc` or `sort=updatedAt:desc`) validated against an allow-list of sortable columns, threads it through the generated API client, and makes each `<TableHead>` clickable with an arrow indicator showing the current direction. Clicking cycles asc → desc → default. The same pattern should be reusable by the sibling videos / white-papers / workshops admin lists in follow-up work.
-
-### #122 · Multiple resource attachments on library items (slides + transcript + code + …)
-**Depends on:** #63 (asset categories beyond people/north-star) — merged
-
-Webinars, workshops, and white papers typically ship with more than one companion file — slides, transcript, Q&A log, code repo link, follow-up deck — but the only attachment slot today is a single `downloadUrl` text column on `collateral` (see `lib/db/src/schema/collateral.ts` and the "Download URL" input in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx`). Editors work around it by concatenating URLs into the body HTML, which breaks the public library detail page's tidy "Download" CTA. This task adds a `collateral_resources` table with `(id, collateralId, assetId, externalUrl, label, mimeType, sortOrder, createdAt)` — asset-backed rows link to the unified `assets` table for uploaded files; externalUrl rows cover off-platform links (GitHub, Figma, external CDNs). Admin edit form gains a "Resources" list editor with drag-to-reorder and inline label; public library detail page (`artifacts/synozur/src/pages/library-detail.tsx`) renders a Resources section when rows exist, falling back to the legacy `downloadUrl` when empty. Keep `downloadUrl` on the schema for now as a read-only mirror of the first resource; deprecate in a follow-up.
 
 ### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
 **Depends on:** — (infrastructure foundation)
@@ -209,41 +190,10 @@ Out of scope: right-to-left languages (separate pass), region-specific content (
 
 ---
 
-## Quality & Compliance
-
-### #142 · Accessibility & Core Web Vitals compliance dashboard
-**Depends on:** — (additive); pairs with #57 (Playwright tests are the natural place to wire axe-core)
-
-Enterprise procurement (especially public-sector and EU) increasingly requires VPATs and WCAG 2.2 AA conformance, and Core Web Vitals (CWV) directly affect search rank and perceived quality. The site is in reasonable shape today but there's no continuous signal — accessibility regressions and performance regressions only surface when someone notices visually. This task institutes **continuous quality measurement** with three layers:
-- **Pre-merge.** Add Lighthouse CI to the existing CI pipeline running against a representative set of routes (home, insights index, an insight detail, a service detail, an application detail, contact). Performance, accessibility, best-practices, and SEO scores all fail the build below configurable thresholds. Add `@axe-core/playwright` into the Playwright suite from #57 so accessibility violations on critical user paths are caught at PR time.
-- **Authoring time.** Hook the existing image-upload flow (`assets` + library admin) to require non-empty `alt` text on `<img>` uploads marked `decorative=false`, with admin-side preview of the alt text in context. Heading-order linting on rich-text editors (a `published` post can't have an H4 before any H3). FAQ + collateral admin gain inline a11y warnings (color-contrast on hero overlays, link-text quality).
-- **Run-time.** Integrate `web-vitals` reporting from real visitors to a new `cwv_samples` table via `/api/metrics/cwv`, sampled and aggregated by route. Admin dashboard at `/admin/site/health` shows: WCAG conformance status per template (from the latest CI axe run), CWV percentiles per top route, alt-text coverage, broken-link count, redirect chain health (uses the existing `redirects` table), and trend lines.
-- **Gate.** Critical (severity ≥ "serious") axe violations or LCP > 4s p75 on a public template flip a flag that prevents `published` state on artifacts of that template until cleared, surfacing the issue as a CMS validation error to the editor. Override available with audit trail.
-
-Out of scope: VPAT generation (separate effort with legal), automated remediation (suggestions only), continuous synthetic monitoring beyond Lighthouse CI. Follow-up: publish the public site's accessibility statement page and link from the footer.
-
----
-
-## Admin Security & UX
-
-### #143 · Audit trail for admin site-settings changes
-**Depends on:** — (additive); pairs with #125 (admin-controlled idle timeout, merged)
-
-The admin Site Settings panel now controls security-critical values — session idle timeout, and eventually more session, auth, and content-governance parameters — but there is no record of who changed what and when. This task adds an **audit trail** specifically for site-settings mutations: a new `site_settings_audit` table (`id`, `changedBy` FK to users, `changedAt`, `field` text, `oldValue jsonb`, `newValue jsonb`, `ipAddress`, `userAgent`) populated on every successful PATCH to `/api/admin/site-settings`. Admin UI under `/admin/site/settings` gains a collapsible "Recent changes" log beneath the form showing the last 20 entries (who, when, what field, old → new value). Sensitive values (any field whose name contains `secret`, `token`, `key`, or `password`) are redacted to `[redacted]` in both the stored values and the UI. The same audit pattern should be reused by future admin-controlled security settings (OAuth client secrets, email provider keys, etc.) — design the table and service layer generically enough that a second call site is trivial. Out of scope for this task: audit trails on CMS content mutations (separate task), user-facing notification of changed security settings (follow-up once the audit log is established).
-
-### #144 · Idle sign-out warning that reflects the admin-configured timeout
-**Depends on:** #125 (admin-controlled idle timeout, merged) and #143 (audit trail, for context) — can ship independently of #143
-
-The browser-side idle-warning modal (`useIdleTimeout` hook in `artifacts/synozur/src/hooks/`) currently hard-codes a 4-hour threshold and fires its "you'll be signed out soon" warning at a fixed offset before that. Now that admins can set the idle timeout via Site Settings (#125), the hard-coded value can silently produce misleading warnings — an admin who tightens the timeout to 1 hour will still see a "4h" countdown, and a user genuinely active on a short-timeout deployment gets no warning before being ejected. This task wires the browser hook to the server's **effective** idle timeout: on session bootstrap `GET /api/auth/me` (or a dedicated `/api/session/config` endpoint if preferred) returns the effective timeout value; the hook reads this and sets both the inactivity detection window and the warning lead time proportionally (e.g. warn at 90 % of the timeout, minimum 60 s notice). UI copy in the warning modal becomes dynamic ("You'll be signed out in X minutes due to inactivity") rather than a fixed string. The hook should gracefully fall back to 4 h if the endpoint is unavailable so an API hiccup doesn't break the auth flow. Out of scope: per-user timeout overrides (admin-set value applies to all users until a future per-role timeout feature is added).
-
----
-
 ## Summary Table
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #57 | Playwright tests for services pages | QA | #40 |
-| #62 | Bulk CSV import for services & solutions | Services admin | #39 |
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #108 | FAQ schema onto the shared artifact pattern | Heterogeneous CMS | #107 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
@@ -251,9 +201,10 @@ The browser-side idle-warning modal (`useIdleTimeout` hook in `artifacts/synozur
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
 | #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
 | #121 | Sortable columns on the collateral library admin list | Library | #69 |
-| #122 | Multiple resource attachments on library items | Library | #63 |
 | #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
+| #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
+| #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
 | #132 | SendGrid integration for marketing email and deliverability redundancy | Marketing & Lifecycle | — |
 | #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
 | #134 | "Ask Synozur" RAG-powered Q&A across editorial content | Public Site UX | — |
@@ -264,6 +215,3 @@ The browser-side idle-warning modal (`useIdleTimeout` hook in `artifacts/synozur
 | #139 | Internationalization foundation (English + one launch locale) | Public Site UX | — |
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
 | #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
-| #142 | Accessibility & Core Web Vitals compliance dashboard | Quality & Compliance | — |
-| #143 | Audit trail for admin site-settings changes | Admin Security & UX | — |
-| #144 | Idle sign-out warning that reflects the admin-configured timeout | Admin Security & UX | #125 |

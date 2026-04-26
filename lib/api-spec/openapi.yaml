@@ -45,6 +45,12 @@ tags:
     description: Admin endpoints for managing collateral library items.
   - name: CMS Analytics
     description: Aggregate analytics for posts and dashboard.
+  - name: Metrics
+    description: Public real-user performance telemetry.
+  - name: SiteHealth
+    description: Admin site health (Core Web Vitals, alt-text coverage, redirects).
+  - name: PublishBlocks
+    description: Quality blocks surfaced on edit pages (warn-mode v0).
 paths:
   /healthz:
     get:
@@ -1221,6 +1227,129 @@ paths:
       responses:
         '204':
           description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources:
+    get:
+      operationId: cmsListCollateralResources
+      tags:
+        - CmsCollateral
+      summary: List companion resources attached to a collateral item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resources for the collateral item, sorted by sortOrder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResourcesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: cmsCreateCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCollateralResourceBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources/{resourceId}:
+    patch:
+      operationId: cmsUpdateCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: resourceId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollateralResourceBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralResource'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: cmsDeleteCollateralResource
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: resourceId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/resources/reorder:
+    post:
+      operationId: cmsReorderCollateralResources
+      tags:
+        - CmsCollateral
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollateralResourceReorderBody'
+      responses:
+        '204':
+          description: Reordered
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
   /cms/services:
@@ -2408,6 +2537,156 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /metrics/cwv:
+    post:
+      tags:
+        - Metrics
+      operationId: reportCwvSample
+      summary: Report a single Core Web Vitals sample from a public visitor
+      description: >-
+        Unauthenticated. Each call records one metric (LCP/INP/CLS/FCP/TTFB)
+        for one route, as fired by the `web-vitals` SDK. The server caps
+        the user-agent string and rejects malformed payloads.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CwvSampleInput'
+      responses:
+        '204':
+          description: Sample recorded
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /cms/publish-blocks:
+    get:
+      tags:
+        - PublishBlocks
+      operationId: cmsListPublishBlocks
+      summary: List active (or all) publish-state quality blocks
+      parameters:
+        - in: query
+          name: artifactKind
+          schema:
+            type: string
+        - in: query
+          name: artifactId
+          schema:
+            type: string
+        - in: query
+          name: includeResolved
+          description: When true, include rows that have been resolved.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Block list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/collateral/{id}/publish-blocks:
+    get:
+      tags:
+        - PublishBlocks
+      operationId: cmsListCollateralPublishBlocks
+      summary: List active publish blocks for a collateral row (direct + route-level)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/publish-blocks/scan:
+    post:
+      tags:
+        - PublishBlocks
+      operationId: cmsScanPublishBlocks
+      summary: Recompute publish blocks from current signals
+      responses:
+        '200':
+          description: Scan summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockScanResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/publish-blocks/{id}:
+    delete:
+      tags:
+        - PublishBlocks
+      operationId: cmsResolvePublishBlock
+      summary: Resolve a block with a mandatory note (override audit trail)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishBlockResolveBody'
+      responses:
+        '200':
+          description: Block resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlock'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cms/site-health:
+    get:
+      tags:
+        - SiteHealth
+      operationId: cmsGetSiteHealth
+      summary: Aggregated site-health snapshot for the admin dashboard
+      parameters:
+        - in: query
+          name: windowDays
+          description: How many days of CWV samples to summarize. Default 7.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+      responses:
+        '200':
+          description: Site health snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteHealthSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
   responses:
     Unauthorized:
@@ -2597,6 +2876,7 @@ components:
         - id
         - storageKey
         - publicUrl
+        - altText
         - createdAt
       properties:
         id:
@@ -2619,8 +2899,12 @@ components:
           type: integer
           nullable: true
         altText:
+          description: >-
+            Required. Backfilled to a deterministic placeholder
+            (`Image: <name>`) for legacy rows; the admin asset library
+            surfaces a "needs review" badge for placeholder values.
           type: string
-          nullable: true
+          minLength: 1
         originalName:
           type: string
           nullable: true
@@ -2658,6 +2942,7 @@ components:
       required:
         - storageKey
         - publicUrl
+        - altText
       properties:
         storageKey:
           type: string
@@ -2678,8 +2963,13 @@ components:
           type: integer
           nullable: true
         altText:
+          description: >-
+            Required. Describe the image so screen readers and
+            accessibility audits have meaningful content. Pre-fill from
+            the file name at upload time and prompt the editor to
+            improve before publish.
           type: string
-          nullable: true
+          minLength: 1
         originalName:
           type: string
           nullable: true
@@ -2691,8 +2981,11 @@ components:
       type: object
       properties:
         altText:
+          description: >-
+            When provided must be a non-empty string. Omit to leave
+            the existing alt text unchanged.
           type: string
-          nullable: true
+          minLength: 1
         mime:
           type: string
           nullable: true
@@ -5040,12 +5333,132 @@ components:
           type:
             - string
             - 'null'
+        resources:
+          description: >-
+            Companion files attached to this item (slides, transcript,
+            code repo link, follow-up deck). Empty when no resources are
+            attached; consumers should fall back to `downloadUrl` in that
+            case until the legacy field is dropped.
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralResource'
         active:
           type: boolean
         createdAt:
           type: string
         updatedAt:
           type: string
+    CollateralResource:
+      type: object
+      required:
+        - id
+        - collateralId
+        - label
+        - sortOrder
+        - url
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        collateralId:
+          type: string
+          format: uuid
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+        url:
+          description: >-
+            Resolved URL the client can render directly. For media-backed
+            rows this is the media's publicUrl; for external rows it's the
+            externalUrl as supplied.
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CollateralResourcesResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralResource'
+    CreateCollateralResourceBody:
+      type: object
+      required:
+        - label
+      properties:
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+          minLength: 1
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+    UpdateCollateralResourceBody:
+      type: object
+      properties:
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+          minLength: 1
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+    CollateralResourceReorderBody:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          description: Resource ids in their new order. All must belong to the path collateral id.
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
     CollateralItemsResponse:
       type: object
       required:
@@ -5501,3 +5914,248 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AnalyticsReferrer'
+    CwvMetricName:
+      description: One of the five Core Web Vitals metric names emitted by web-vitals.
+      type: string
+      enum:
+        - LCP
+        - INP
+        - CLS
+        - FCP
+        - TTFB
+    CwvRating:
+      description: web-vitals' three-bucket rating for a metric value.
+      type: string
+      enum:
+        - good
+        - needs-improvement
+        - poor
+    CwvSampleInput:
+      type: object
+      required:
+        - route
+        - metric
+        - value
+        - rating
+      properties:
+        route:
+          description: The visitor's pathname at sample time (no host, no query).
+          type: string
+          minLength: 1
+          maxLength: 256
+        metric:
+          $ref: '#/components/schemas/CwvMetricName'
+        value:
+          description: Metric value (milliseconds for time-based metrics, unitless for CLS).
+          type: number
+          minimum: 0
+        rating:
+          $ref: '#/components/schemas/CwvRating'
+        navigationType:
+          type:
+            - string
+            - 'null'
+        metricId:
+          type:
+            - string
+            - 'null'
+    SiteHealthCwvRow:
+      type: object
+      required:
+        - route
+        - metric
+        - sampleCount
+        - p50
+        - p75
+        - p90
+      properties:
+        route:
+          type: string
+        metric:
+          $ref: '#/components/schemas/CwvMetricName'
+        sampleCount:
+          type: integer
+        p50:
+          type: number
+        p75:
+          type: number
+        p90:
+          type: number
+    SiteHealthAltCoverage:
+      type: object
+      required:
+        - totalImageMedia
+        - placeholderCount
+        - reviewedCount
+        - coverageRatio
+      properties:
+        totalImageMedia:
+          type: integer
+        placeholderCount:
+          description: >-
+            Rows whose alt text matches the deterministic "Image: …"
+            placeholder pattern.
+          type: integer
+        reviewedCount:
+          type: integer
+        coverageRatio:
+          description: reviewedCount / totalImageMedia. 0 when total is 0.
+          type: number
+    SiteHealthRedirectRow:
+      type: object
+      required:
+        - id
+        - sourcePath
+        - targetPath
+        - statusCode
+        - active
+        - hitCount
+      properties:
+        id:
+          type: string
+        sourcePath:
+          type: string
+        targetPath:
+          type: string
+        statusCode:
+          type: integer
+        active:
+          type: boolean
+        hitCount:
+          type: integer
+        lastHitAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    SiteHealthRedirects:
+      type: object
+      required:
+        - totalActive
+        - totalHits
+        - top
+        - chains
+      properties:
+        totalActive:
+          type: integer
+        totalHits:
+          description: Sum of `hit_count` across all active redirects.
+          type: integer
+        top:
+          description: Up to 10 most-hit active redirects.
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteHealthRedirectRow'
+        chains:
+          description: Redirects whose target is itself the source of another redirect (one-hop chain detection).
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteHealthRedirectRow'
+    SiteHealthSnapshot:
+      type: object
+      required:
+        - generatedAt
+        - windowDays
+        - cwv
+        - altText
+        - redirects
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        windowDays:
+          type: integer
+        cwv:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteHealthCwvRow'
+        altText:
+          $ref: '#/components/schemas/SiteHealthAltCoverage'
+        redirects:
+          $ref: '#/components/schemas/SiteHealthRedirects'
+    PublishBlock:
+      type: object
+      required:
+        - id
+        - artifactKind
+        - sourceRule
+        - severity
+        - reason
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        artifactKind:
+          description: >-
+            'collateral' | 'route' | 'media' | 'site' (free-form so new
+            rules can name new kinds without a schema migration).
+          type: string
+        artifactId:
+          type:
+            - string
+            - 'null'
+        sourceRule:
+          description: Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.
+          type: string
+        severity:
+          description: '`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.'
+          type: string
+        reason:
+          type: string
+        evidence:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        resolvedBy:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        resolutionNote:
+          type:
+            - string
+            - 'null'
+    PublishBlockListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishBlock'
+    PublishBlockScanResult:
+      type: object
+      required:
+        - inserted
+        - retained
+        - autoResolved
+        - total
+      properties:
+        inserted:
+          type: integer
+        retained:
+          type: integer
+        autoResolved:
+          type: integer
+        total:
+          type: integer
+    PublishBlockResolveBody:
+      type: object
+      required:
+        - resolutionNote
+      properties:
+        resolutionNote:
+          type: string
+          minLength: 1
+          maxLength: 1000

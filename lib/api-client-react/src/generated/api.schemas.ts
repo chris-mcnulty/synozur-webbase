@@ -99,7 +99,11 @@ export interface MediaItem {
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
-  altText?: string | null;
+  /**
+   * Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a "needs review" badge for placeholder values.
+   * @minLength 1
+   */
+  altText: string;
   originalName?: string | null;
   categoryId?: string | null;
   uploadedBy?: string | null;
@@ -122,13 +126,21 @@ export interface RegisterMediaBody {
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
-  altText?: string | null;
+  /**
+   * Required. Describe the image so screen readers and accessibility audits have meaningful content. Pre-fill from the file name at upload time and prompt the editor to improve before publish.
+   * @minLength 1
+   */
+  altText: string;
   originalName?: string | null;
   categoryId?: string | null;
 }
 
 export interface UpdateMediaBody {
-  altText?: string | null;
+  /**
+   * When provided must be a non-empty string. Omit to leave the existing alt text unchanged.
+   * @minLength 1
+   */
+  altText?: string;
   mime?: string | null;
   width?: number | null;
   height?: number | null;
@@ -1376,6 +1388,23 @@ export const CollateralPillar = {
   gtm: "gtm",
 } as const;
 
+export interface CollateralResource {
+  id: string;
+  collateralId: string;
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  label: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder: number;
+  /** Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied. */
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CollateralItem {
   id: string;
   slug: string;
@@ -1397,9 +1426,47 @@ export interface CollateralItem {
   videoUrl?: string | null;
   /** @nullable */
   downloadUrl?: string | null;
+  /** Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped. */
+  resources?: CollateralResource[];
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CollateralResourcesResponse {
+  items: CollateralResource[];
+}
+
+export interface CreateCollateralResourceBody {
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  /** @minLength 1 */
+  label: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateCollateralResourceBody {
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  /** @minLength 1 */
+  label?: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder?: number;
+}
+
+export interface CollateralResourceReorderBody {
+  /**
+   * Resource ids in their new order. All must belong to the path collateral id.
+   * @minItems 1
+   */
+  ids: string[];
 }
 
 export interface CollateralItemsResponse {
@@ -1614,6 +1681,143 @@ export interface PostAnalytics {
 }
 
 /**
+ * One of the five Core Web Vitals metric names emitted by web-vitals.
+ */
+export type CwvMetricName = (typeof CwvMetricName)[keyof typeof CwvMetricName];
+
+export const CwvMetricName = {
+  LCP: "LCP",
+  INP: "INP",
+  CLS: "CLS",
+  FCP: "FCP",
+  TTFB: "TTFB",
+} as const;
+
+/**
+ * web-vitals' three-bucket rating for a metric value.
+ */
+export type CwvRating = (typeof CwvRating)[keyof typeof CwvRating];
+
+export const CwvRating = {
+  good: "good",
+  "needs-improvement": "needs-improvement",
+  poor: "poor",
+} as const;
+
+export interface CwvSampleInput {
+  /**
+   * The visitor's pathname at sample time (no host, no query).
+   * @minLength 1
+   * @maxLength 256
+   */
+  route: string;
+  metric: CwvMetricName;
+  /**
+   * Metric value (milliseconds for time-based metrics, unitless for CLS).
+   * @minimum 0
+   */
+  value: number;
+  rating: CwvRating;
+  /** @nullable */
+  navigationType?: string | null;
+  /** @nullable */
+  metricId?: string | null;
+}
+
+export interface SiteHealthCwvRow {
+  route: string;
+  metric: CwvMetricName;
+  sampleCount: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface SiteHealthAltCoverage {
+  totalImageMedia: number;
+  /** Rows whose alt text matches the deterministic "Image: …" placeholder pattern. */
+  placeholderCount: number;
+  reviewedCount: number;
+  /** reviewedCount / totalImageMedia. 0 when total is 0. */
+  coverageRatio: number;
+}
+
+export interface SiteHealthRedirectRow {
+  id: string;
+  sourcePath: string;
+  targetPath: string;
+  statusCode: number;
+  active: boolean;
+  hitCount: number;
+  /** @nullable */
+  lastHitAt?: string | null;
+}
+
+export interface SiteHealthRedirects {
+  totalActive: number;
+  /** Sum of `hit_count` across all active redirects. */
+  totalHits: number;
+  /** Up to 10 most-hit active redirects. */
+  top: SiteHealthRedirectRow[];
+  /** Redirects whose target is itself the source of another redirect (one-hop chain detection). */
+  chains: SiteHealthRedirectRow[];
+}
+
+export interface SiteHealthSnapshot {
+  generatedAt: string;
+  windowDays: number;
+  cwv: SiteHealthCwvRow[];
+  altText: SiteHealthAltCoverage;
+  redirects: SiteHealthRedirects;
+}
+
+/**
+ * @nullable
+ */
+export type PublishBlockEvidence = { [key: string]: unknown } | null;
+
+export interface PublishBlock {
+  id: string;
+  /** 'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration). */
+  artifactKind: string;
+  /** @nullable */
+  artifactId?: string | null;
+  /** Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`. */
+  sourceRule: string;
+  /** `warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up. */
+  severity: string;
+  reason: string;
+  /** @nullable */
+  evidence?: PublishBlockEvidence;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+  /** @nullable */
+  resolvedBy?: string | null;
+  /** @nullable */
+  resolutionNote?: string | null;
+}
+
+export interface PublishBlockListResponse {
+  items: PublishBlock[];
+}
+
+export interface PublishBlockScanResult {
+  inserted: number;
+  retained: number;
+  autoResolved: number;
+  total: number;
+}
+
+export interface PublishBlockResolveBody {
+  /**
+   * @minLength 1
+   * @maxLength 1000
+   */
+  resolutionNote: string;
+}
+
+/**
  * Unauthorized
  */
 export type UnauthorizedResponse = ErrorEnvelope;
@@ -1804,4 +2008,22 @@ export type ExportAdminFormSubmissionsParams = {
 export type RetryFailedAdminFormSubmissionsParams = {
   formType?: string;
   search?: string;
+};
+
+export type CmsListPublishBlocksParams = {
+  artifactKind?: string;
+  artifactId?: string;
+  /**
+   * When true, include rows that have been resolved.
+   */
+  includeResolved?: boolean;
+};
+
+export type CmsGetSiteHealthParams = {
+  /**
+   * How many days of CWV samples to summarize. Default 7.
+   * @minimum 1
+   * @maximum 90
+   */
+  windowDays?: number;
 };

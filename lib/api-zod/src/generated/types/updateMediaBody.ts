@@ -7,7 +7,11 @@
  */
 
 export interface UpdateMediaBody {
-  altText?: string | null;
+  /**
+   * When provided must be a non-empty string. Omit to leave the existing alt text unchanged.
+   * @minLength 1
+   */
+  altText?: string;
   mime?: string | null;
   width?: number | null;
   height?: number | null;

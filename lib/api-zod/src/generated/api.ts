@@ -636,7 +636,12 @@ export const ListCmsMediaResponse = zod.object({
       width: zod.number().nullish(),
       height: zod.number().nullish(),
       byteSize: zod.number().nullish(),
-      altText: zod.string().nullish(),
+      altText: zod
+        .string()
+        .min(1)
+        .describe(
+          'Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a \"needs review\" badge for placeholder values.',
+        ),
       originalName: zod.string().nullish(),
       categoryId: zod.string().uuid().nullish(),
       uploadedBy: zod.string().uuid().nullish(),
@@ -659,7 +664,12 @@ export const RegisterCmsMediaBody = zod.object({
   width: zod.number().nullish(),
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .describe(
+      "Required. Describe the image so screen readers and accessibility audits have meaningful content. Pre-fill from the file name at upload time and prompt the editor to improve before publish.",
+    ),
   originalName: zod.string().nullish(),
   categoryId: zod.string().uuid().nullish(),
 });
@@ -672,7 +682,13 @@ export const UpdateCmsMediaParams = zod.object({
 });
 
 export const UpdateCmsMediaBody = zod.object({
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "When provided must be a non-empty string. Omit to leave the existing alt text unchanged.",
+    ),
   mime: zod.string().nullish(),
   width: zod.number().nullish(),
   height: zod.number().nullish(),
@@ -688,7 +704,12 @@ export const UpdateCmsMediaResponse = zod.object({
   width: zod.number().nullish(),
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .describe(
+      'Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a \"needs review\" badge for placeholder values.',
+    ),
   originalName: zod.string().nullish(),
   categoryId: zod.string().uuid().nullish(),
   uploadedBy: zod.string().uuid().nullish(),
@@ -1691,6 +1712,29 @@ export const CmsListCollateralResponse = zod.object({
       featuredRank: zod.number().nullish(),
       videoUrl: zod.string().nullish(),
       downloadUrl: zod.string().nullish(),
+      resources: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            collateralId: zod.string().uuid(),
+            mediaId: zod.string().uuid().nullish(),
+            externalUrl: zod.string().nullish(),
+            label: zod.string(),
+            mimeType: zod.string().nullish(),
+            sortOrder: zod.number(),
+            url: zod
+              .string()
+              .describe(
+                "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+              ),
+            createdAt: zod.coerce.date(),
+            updatedAt: zod.coerce.date(),
+          }),
+        )
+        .optional()
+        .describe(
+          "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+        ),
       active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -1766,6 +1810,29 @@ export const CmsGetCollateralResponse = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        collateralId: zod.string().uuid(),
+        mediaId: zod.string().uuid().nullish(),
+        externalUrl: zod.string().nullish(),
+        label: zod.string(),
+        mimeType: zod.string().nullish(),
+        sortOrder: zod.number(),
+        url: zod
+          .string()
+          .describe(
+            "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+          ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+    ),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1839,6 +1906,29 @@ export const CmsUpdateCollateralResponse = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        collateralId: zod.string().uuid(),
+        mediaId: zod.string().uuid().nullish(),
+        externalUrl: zod.string().nullish(),
+        label: zod.string(),
+        mimeType: zod.string().nullish(),
+        sortOrder: zod.number(),
+        url: zod
+          .string()
+          .describe(
+            "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+          ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+    ),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1846,6 +1936,94 @@ export const CmsUpdateCollateralResponse = zod.object({
 
 export const CmsDeleteCollateralParams = zod.object({
   id: zod.coerce.string(),
+});
+
+/**
+ * @summary List companion resources attached to a collateral item
+ */
+export const CmsListCollateralResourcesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListCollateralResourcesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      collateralId: zod.string().uuid(),
+      mediaId: zod.string().uuid().nullish(),
+      externalUrl: zod.string().nullish(),
+      label: zod.string(),
+      mimeType: zod.string().nullish(),
+      sortOrder: zod.number(),
+      url: zod
+        .string()
+        .describe(
+          "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+        ),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+export const CmsCreateCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsCreateCollateralResourceBody = zod.object({
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string().min(1),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const CmsUpdateCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+  resourceId: zod.coerce.string(),
+});
+
+export const CmsUpdateCollateralResourceBody = zod.object({
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string().min(1).optional(),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const CmsUpdateCollateralResourceResponse = zod.object({
+  id: zod.string().uuid(),
+  collateralId: zod.string().uuid(),
+  mediaId: zod.string().uuid().nullish(),
+  externalUrl: zod.string().nullish(),
+  label: zod.string(),
+  mimeType: zod.string().nullish(),
+  sortOrder: zod.number(),
+  url: zod
+    .string()
+    .describe(
+      "Resolved URL the client can render directly. For media-backed rows this is the media's publicUrl; for external rows it's the externalUrl as supplied.",
+    ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const CmsDeleteCollateralResourceParams = zod.object({
+  id: zod.coerce.string(),
+  resourceId: zod.coerce.string(),
+});
+
+export const CmsReorderCollateralResourcesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsReorderCollateralResourcesBody = zod.object({
+  ids: zod
+    .array(zod.string().uuid())
+    .min(1)
+    .describe(
+      "Resource ids in their new order. All must belong to the path collateral id.",
+    ),
 });
 
 export const CmsListServicesResponse = zod.object({
@@ -3047,4 +3225,246 @@ export const SubmitStartBody = zod.object({
 export const SubmitStartResponse = zod.object({
   ok: zod.boolean(),
   id: zod.number(),
+});
+
+/**
+ * Unauthenticated. Each call records one metric (LCP/INP/CLS/FCP/TTFB) for one route, as fired by the `web-vitals` SDK. The server caps the user-agent string and rejects malformed payloads.
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const reportCwvSampleBodyRouteMax = 256;
+
+export const reportCwvSampleBodyValueMin = 0;
+
+export const ReportCwvSampleBody = zod.object({
+  route: zod
+    .string()
+    .min(1)
+    .max(reportCwvSampleBodyRouteMax)
+    .describe("The visitor's pathname at sample time (no host, no query)."),
+  metric: zod
+    .enum(["LCP", "INP", "CLS", "FCP", "TTFB"])
+    .describe(
+      "One of the five Core Web Vitals metric names emitted by web-vitals.",
+    ),
+  value: zod
+    .number()
+    .min(reportCwvSampleBodyValueMin)
+    .describe(
+      "Metric value (milliseconds for time-based metrics, unitless for CLS).",
+    ),
+  rating: zod
+    .enum(["good", "needs-improvement", "poor"])
+    .describe("web-vitals' three-bucket rating for a metric value."),
+  navigationType: zod.string().nullish(),
+  metricId: zod.string().nullish(),
+});
+
+/**
+ * @summary List active (or all) publish-state quality blocks
+ */
+export const CmsListPublishBlocksQueryParams = zod.object({
+  artifactKind: zod.coerce.string().optional(),
+  artifactId: zod.coerce.string().optional(),
+  includeResolved: zod.coerce
+    .boolean()
+    .optional()
+    .describe("When true, include rows that have been resolved."),
+});
+
+export const CmsListPublishBlocksResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      artifactKind: zod
+        .string()
+        .describe(
+          "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+        ),
+      artifactId: zod.string().nullish(),
+      sourceRule: zod
+        .string()
+        .describe(
+          "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+        ),
+      severity: zod
+        .string()
+        .describe(
+          "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+        ),
+      reason: zod.string(),
+      evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+      resolvedAt: zod.coerce.date().nullish(),
+      resolvedBy: zod.string().uuid().nullish(),
+      resolutionNote: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary List active publish blocks for a collateral row (direct + route-level)
+ */
+export const CmsListCollateralPublishBlocksParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListCollateralPublishBlocksResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      artifactKind: zod
+        .string()
+        .describe(
+          "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+        ),
+      artifactId: zod.string().nullish(),
+      sourceRule: zod
+        .string()
+        .describe(
+          "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+        ),
+      severity: zod
+        .string()
+        .describe(
+          "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+        ),
+      reason: zod.string(),
+      evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+      resolvedAt: zod.coerce.date().nullish(),
+      resolvedBy: zod.string().uuid().nullish(),
+      resolutionNote: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Recompute publish blocks from current signals
+ */
+export const CmsScanPublishBlocksResponse = zod.object({
+  inserted: zod.number(),
+  retained: zod.number(),
+  autoResolved: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Resolve a block with a mandatory note (override audit trail)
+ */
+export const CmsResolvePublishBlockParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const cmsResolvePublishBlockBodyResolutionNoteMax = 1000;
+
+export const CmsResolvePublishBlockBody = zod.object({
+  resolutionNote: zod
+    .string()
+    .min(1)
+    .max(cmsResolvePublishBlockBodyResolutionNoteMax),
+});
+
+export const CmsResolvePublishBlockResponse = zod.object({
+  id: zod.string().uuid(),
+  artifactKind: zod
+    .string()
+    .describe(
+      "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+    ),
+  artifactId: zod.string().nullish(),
+  sourceRule: zod
+    .string()
+    .describe(
+      "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+    ),
+  severity: zod
+    .string()
+    .describe(
+      "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+    ),
+  reason: zod.string(),
+  evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+  createdAt: zod.coerce.date(),
+  resolvedAt: zod.coerce.date().nullish(),
+  resolvedBy: zod.string().uuid().nullish(),
+  resolutionNote: zod.string().nullish(),
+});
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+export const cmsGetSiteHealthQueryWindowDaysMax = 90;
+
+export const CmsGetSiteHealthQueryParams = zod.object({
+  windowDays: zod.coerce
+    .number()
+    .min(1)
+    .max(cmsGetSiteHealthQueryWindowDaysMax)
+    .optional()
+    .describe("How many days of CWV samples to summarize. Default 7."),
+});
+
+export const CmsGetSiteHealthResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  windowDays: zod.number(),
+  cwv: zod.array(
+    zod.object({
+      route: zod.string(),
+      metric: zod
+        .enum(["LCP", "INP", "CLS", "FCP", "TTFB"])
+        .describe(
+          "One of the five Core Web Vitals metric names emitted by web-vitals.",
+        ),
+      sampleCount: zod.number(),
+      p50: zod.number(),
+      p75: zod.number(),
+      p90: zod.number(),
+    }),
+  ),
+  altText: zod.object({
+    totalImageMedia: zod.number(),
+    placeholderCount: zod
+      .number()
+      .describe(
+        'Rows whose alt text matches the deterministic \"Image: …\" placeholder pattern.',
+      ),
+    reviewedCount: zod.number(),
+    coverageRatio: zod
+      .number()
+      .describe("reviewedCount \/ totalImageMedia. 0 when total is 0."),
+  }),
+  redirects: zod.object({
+    totalActive: zod.number(),
+    totalHits: zod
+      .number()
+      .describe("Sum of `hit_count` across all active redirects."),
+    top: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          sourcePath: zod.string(),
+          targetPath: zod.string(),
+          statusCode: zod.number(),
+          active: zod.boolean(),
+          hitCount: zod.number(),
+          lastHitAt: zod.coerce.date().nullish(),
+        }),
+      )
+      .describe("Up to 10 most-hit active redirects."),
+    chains: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          sourcePath: zod.string(),
+          targetPath: zod.string(),
+          statusCode: zod.number(),
+          active: zod.boolean(),
+          hitCount: zod.number(),
+          lastHitAt: zod.coerce.date().nullish(),
+        }),
+      )
+      .describe(
+        "Redirects whose target is itself the source of another redirect (one-hop chain detection).",
+      ),
+  }),
 });

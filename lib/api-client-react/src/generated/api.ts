@@ -32,16 +32,23 @@ import type {
   Capability,
   CapabilityItemsResponse,
   Category,
+  CmsGetSiteHealthParams,
   CmsListCollateralParams,
+  CmsListPublishBlocksParams,
   CmsUser,
   CollateralItem,
   CollateralItemsResponse,
+  CollateralResource,
+  CollateralResourceReorderBody,
+  CollateralResourcesResponse,
   Comment,
   CommentListResponse,
   ContactFormInput,
   CreateAssetCategoryBody,
+  CreateCollateralResourceBody,
   CreatePostBody,
   CurrentUser,
+  CwvSampleInput,
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
@@ -77,6 +84,10 @@ import type {
   PublicSiteSettings,
   PublicTeamMember,
   PublicTeamMemberDetail,
+  PublishBlock,
+  PublishBlockListResponse,
+  PublishBlockResolveBody,
+  PublishBlockScanResult,
   RegisterMediaBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -88,6 +99,7 @@ import type {
   ServiceItemsResponse,
   ServiceListResponse,
   SetCmsUserRolesBody,
+  SiteHealthSnapshot,
   SiteSettings,
   SiteSettingsInput,
   Solution,
@@ -104,6 +116,7 @@ import type {
   UnauthorizedResponse,
   UpdateAssetBody,
   UpdateAssetCategoryBody,
+  UpdateCollateralResourceBody,
   UpdateMediaBody,
   UpdatePostBody,
   UpsertCapabilityBody,
@@ -4177,6 +4190,462 @@ export const useCmsDeleteCollateral = <
   TContext
 > => {
   return useMutation(getCmsDeleteCollateralMutationOptions(options));
+};
+
+/**
+ * @summary List companion resources attached to a collateral item
+ */
+export const getCmsListCollateralResourcesUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/resources`;
+};
+
+export const cmsListCollateralResources = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CollateralResourcesResponse> => {
+  return customFetch<CollateralResourcesResponse>(
+    getCmsListCollateralResourcesUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListCollateralResourcesQueryKey = (id: string) => {
+  return [`/api/cms/collateral/${id}/resources`] as const;
+};
+
+export const getCmsListCollateralResourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListCollateralResources>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralResources>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListCollateralResourcesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListCollateralResources>>
+  > = ({ signal }) =>
+    cmsListCollateralResources(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateralResources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListCollateralResourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListCollateralResources>>
+>;
+export type CmsListCollateralResourcesQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary List companion resources attached to a collateral item
+ */
+
+export function useCmsListCollateralResources<
+  TData = Awaited<ReturnType<typeof cmsListCollateralResources>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralResources>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListCollateralResourcesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCmsCreateCollateralResourceUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/resources`;
+};
+
+export const cmsCreateCollateralResource = async (
+  id: string,
+  createCollateralResourceBody: CreateCollateralResourceBody,
+  options?: RequestInit,
+): Promise<CollateralResource> => {
+  return customFetch<CollateralResource>(
+    getCmsCreateCollateralResourceUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createCollateralResourceBody),
+    },
+  );
+};
+
+export const getCmsCreateCollateralResourceMutationOptions = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
+    TError,
+    { id: string; data: BodyType<CreateCollateralResourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
+  TError,
+  { id: string; data: BodyType<CreateCollateralResourceBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsCreateCollateralResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
+    { id: string; data: BodyType<CreateCollateralResourceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsCreateCollateralResource(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsCreateCollateralResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsCreateCollateralResource>>
+>;
+export type CmsCreateCollateralResourceMutationBody =
+  BodyType<CreateCollateralResourceBody>;
+export type CmsCreateCollateralResourceMutationError = ErrorType<
+  BadRequestResponse | NotFoundResponse
+>;
+
+export const useCmsCreateCollateralResource = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
+    TError,
+    { id: string; data: BodyType<CreateCollateralResourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
+  TError,
+  { id: string; data: BodyType<CreateCollateralResourceBody> },
+  TContext
+> => {
+  return useMutation(getCmsCreateCollateralResourceMutationOptions(options));
+};
+
+export const getCmsUpdateCollateralResourceUrl = (
+  id: string,
+  resourceId: string,
+) => {
+  return `/api/cms/collateral/${id}/resources/${resourceId}`;
+};
+
+export const cmsUpdateCollateralResource = async (
+  id: string,
+  resourceId: string,
+  updateCollateralResourceBody: UpdateCollateralResourceBody,
+  options?: RequestInit,
+): Promise<CollateralResource> => {
+  return customFetch<CollateralResource>(
+    getCmsUpdateCollateralResourceUrl(id, resourceId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateCollateralResourceBody),
+    },
+  );
+};
+
+export const getCmsUpdateCollateralResourceMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCollateralResource>>,
+    TError,
+    {
+      id: string;
+      resourceId: string;
+      data: BodyType<UpdateCollateralResourceBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsUpdateCollateralResource>>,
+  TError,
+  {
+    id: string;
+    resourceId: string;
+    data: BodyType<UpdateCollateralResourceBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["cmsUpdateCollateralResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsUpdateCollateralResource>>,
+    {
+      id: string;
+      resourceId: string;
+      data: BodyType<UpdateCollateralResourceBody>;
+    }
+  > = (props) => {
+    const { id, resourceId, data } = props ?? {};
+
+    return cmsUpdateCollateralResource(id, resourceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsUpdateCollateralResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsUpdateCollateralResource>>
+>;
+export type CmsUpdateCollateralResourceMutationBody =
+  BodyType<UpdateCollateralResourceBody>;
+export type CmsUpdateCollateralResourceMutationError =
+  ErrorType<NotFoundResponse>;
+
+export const useCmsUpdateCollateralResource = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsUpdateCollateralResource>>,
+    TError,
+    {
+      id: string;
+      resourceId: string;
+      data: BodyType<UpdateCollateralResourceBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsUpdateCollateralResource>>,
+  TError,
+  {
+    id: string;
+    resourceId: string;
+    data: BodyType<UpdateCollateralResourceBody>;
+  },
+  TContext
+> => {
+  return useMutation(getCmsUpdateCollateralResourceMutationOptions(options));
+};
+
+export const getCmsDeleteCollateralResourceUrl = (
+  id: string,
+  resourceId: string,
+) => {
+  return `/api/cms/collateral/${id}/resources/${resourceId}`;
+};
+
+export const cmsDeleteCollateralResource = async (
+  id: string,
+  resourceId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsDeleteCollateralResourceUrl(id, resourceId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCmsDeleteCollateralResourceMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCollateralResource>>,
+    TError,
+    { id: string; resourceId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsDeleteCollateralResource>>,
+  TError,
+  { id: string; resourceId: string },
+  TContext
+> => {
+  const mutationKey = ["cmsDeleteCollateralResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsDeleteCollateralResource>>,
+    { id: string; resourceId: string }
+  > = (props) => {
+    const { id, resourceId } = props ?? {};
+
+    return cmsDeleteCollateralResource(id, resourceId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsDeleteCollateralResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsDeleteCollateralResource>>
+>;
+
+export type CmsDeleteCollateralResourceMutationError =
+  ErrorType<NotFoundResponse>;
+
+export const useCmsDeleteCollateralResource = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsDeleteCollateralResource>>,
+    TError,
+    { id: string; resourceId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsDeleteCollateralResource>>,
+  TError,
+  { id: string; resourceId: string },
+  TContext
+> => {
+  return useMutation(getCmsDeleteCollateralResourceMutationOptions(options));
+};
+
+export const getCmsReorderCollateralResourcesUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/resources/reorder`;
+};
+
+export const cmsReorderCollateralResources = async (
+  id: string,
+  collateralResourceReorderBody: CollateralResourceReorderBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCmsReorderCollateralResourcesUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(collateralResourceReorderBody),
+  });
+};
+
+export const getCmsReorderCollateralResourcesMutationOptions = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReorderCollateralResources>>,
+    TError,
+    { id: string; data: BodyType<CollateralResourceReorderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsReorderCollateralResources>>,
+  TError,
+  { id: string; data: BodyType<CollateralResourceReorderBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsReorderCollateralResources"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsReorderCollateralResources>>,
+    { id: string; data: BodyType<CollateralResourceReorderBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsReorderCollateralResources(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsReorderCollateralResourcesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsReorderCollateralResources>>
+>;
+export type CmsReorderCollateralResourcesMutationBody =
+  BodyType<CollateralResourceReorderBody>;
+export type CmsReorderCollateralResourcesMutationError = ErrorType<
+  BadRequestResponse | NotFoundResponse
+>;
+
+export const useCmsReorderCollateralResources = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReorderCollateralResources>>,
+    TError,
+    { id: string; data: BodyType<CollateralResourceReorderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsReorderCollateralResources>>,
+  TError,
+  { id: string; data: BodyType<CollateralResourceReorderBody> },
+  TContext
+> => {
+  return useMutation(getCmsReorderCollateralResourcesMutationOptions(options));
 };
 
 export const getCmsListServicesUrl = () => {
@@ -8320,3 +8789,564 @@ export const useSubmitStart = <
 > => {
   return useMutation(getSubmitStartMutationOptions(options));
 };
+
+/**
+ * Unauthenticated. Each call records one metric (LCP/INP/CLS/FCP/TTFB) for one route, as fired by the `web-vitals` SDK. The server caps the user-agent string and rejects malformed payloads.
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const getReportCwvSampleUrl = () => {
+  return `/api/metrics/cwv`;
+};
+
+export const reportCwvSample = async (
+  cwvSampleInput: CwvSampleInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getReportCwvSampleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(cwvSampleInput),
+  });
+};
+
+export const getReportCwvSampleMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    TError,
+    { data: BodyType<CwvSampleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportCwvSample>>,
+  TError,
+  { data: BodyType<CwvSampleInput> },
+  TContext
+> => {
+  const mutationKey = ["reportCwvSample"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    { data: BodyType<CwvSampleInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reportCwvSample(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportCwvSampleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportCwvSample>>
+>;
+export type ReportCwvSampleMutationBody = BodyType<CwvSampleInput>;
+export type ReportCwvSampleMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Report a single Core Web Vitals sample from a public visitor
+ */
+export const useReportCwvSample = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportCwvSample>>,
+    TError,
+    { data: BodyType<CwvSampleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reportCwvSample>>,
+  TError,
+  { data: BodyType<CwvSampleInput> },
+  TContext
+> => {
+  return useMutation(getReportCwvSampleMutationOptions(options));
+};
+
+/**
+ * @summary List active (or all) publish-state quality blocks
+ */
+export const getCmsListPublishBlocksUrl = (
+  params?: CmsListPublishBlocksParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/publish-blocks?${stringifiedParams}`
+    : `/api/cms/publish-blocks`;
+};
+
+export const cmsListPublishBlocks = async (
+  params?: CmsListPublishBlocksParams,
+  options?: RequestInit,
+): Promise<PublishBlockListResponse> => {
+  return customFetch<PublishBlockListResponse>(
+    getCmsListPublishBlocksUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListPublishBlocksQueryKey = (
+  params?: CmsListPublishBlocksParams,
+) => {
+  return [`/api/cms/publish-blocks`, ...(params ? [params] : [])] as const;
+};
+
+export const getCmsListPublishBlocksQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListPublishBlocks>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsListPublishBlocksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListPublishBlocks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListPublishBlocksQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListPublishBlocks>>
+  > = ({ signal }) =>
+    cmsListPublishBlocks(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListPublishBlocks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListPublishBlocksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListPublishBlocks>>
+>;
+export type CmsListPublishBlocksQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List active (or all) publish-state quality blocks
+ */
+
+export function useCmsListPublishBlocks<
+  TData = Awaited<ReturnType<typeof cmsListPublishBlocks>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsListPublishBlocksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListPublishBlocks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListPublishBlocksQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List active publish blocks for a collateral row (direct + route-level)
+ */
+export const getCmsListCollateralPublishBlocksUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/publish-blocks`;
+};
+
+export const cmsListCollateralPublishBlocks = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PublishBlockListResponse> => {
+  return customFetch<PublishBlockListResponse>(
+    getCmsListCollateralPublishBlocksUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListCollateralPublishBlocksQueryKey = (id: string) => {
+  return [`/api/cms/collateral/${id}/publish-blocks`] as const;
+};
+
+export const getCmsListCollateralPublishBlocksQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListCollateralPublishBlocksQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>
+  > = ({ signal }) =>
+    cmsListCollateralPublishBlocks(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListCollateralPublishBlocksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>
+>;
+export type CmsListCollateralPublishBlocksQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List active publish blocks for a collateral row (direct + route-level)
+ */
+
+export function useCmsListCollateralPublishBlocks<
+  TData = Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralPublishBlocks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListCollateralPublishBlocksQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Recompute publish blocks from current signals
+ */
+export const getCmsScanPublishBlocksUrl = () => {
+  return `/api/cms/publish-blocks/scan`;
+};
+
+export const cmsScanPublishBlocks = async (
+  options?: RequestInit,
+): Promise<PublishBlockScanResult> => {
+  return customFetch<PublishBlockScanResult>(getCmsScanPublishBlocksUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCmsScanPublishBlocksMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsScanPublishBlocks>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsScanPublishBlocks>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["cmsScanPublishBlocks"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsScanPublishBlocks>>,
+    void
+  > = () => {
+    return cmsScanPublishBlocks(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsScanPublishBlocksMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsScanPublishBlocks>>
+>;
+
+export type CmsScanPublishBlocksMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Recompute publish blocks from current signals
+ */
+export const useCmsScanPublishBlocks = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsScanPublishBlocks>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsScanPublishBlocks>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCmsScanPublishBlocksMutationOptions(options));
+};
+
+/**
+ * @summary Resolve a block with a mandatory note (override audit trail)
+ */
+export const getCmsResolvePublishBlockUrl = (id: string) => {
+  return `/api/cms/publish-blocks/${id}`;
+};
+
+export const cmsResolvePublishBlock = async (
+  id: string,
+  publishBlockResolveBody: PublishBlockResolveBody,
+  options?: RequestInit,
+): Promise<PublishBlock> => {
+  return customFetch<PublishBlock>(getCmsResolvePublishBlockUrl(id), {
+    ...options,
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(publishBlockResolveBody),
+  });
+};
+
+export const getCmsResolvePublishBlockMutationOptions = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsResolvePublishBlock>>,
+    TError,
+    { id: string; data: BodyType<PublishBlockResolveBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsResolvePublishBlock>>,
+  TError,
+  { id: string; data: BodyType<PublishBlockResolveBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsResolvePublishBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsResolvePublishBlock>>,
+    { id: string; data: BodyType<PublishBlockResolveBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsResolvePublishBlock(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsResolvePublishBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsResolvePublishBlock>>
+>;
+export type CmsResolvePublishBlockMutationBody =
+  BodyType<PublishBlockResolveBody>;
+export type CmsResolvePublishBlockMutationError = ErrorType<
+  BadRequestResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Resolve a block with a mandatory note (override audit trail)
+ */
+export const useCmsResolvePublishBlock = <
+  TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsResolvePublishBlock>>,
+    TError,
+    { id: string; data: BodyType<PublishBlockResolveBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsResolvePublishBlock>>,
+  TError,
+  { id: string; data: BodyType<PublishBlockResolveBody> },
+  TContext
+> => {
+  return useMutation(getCmsResolvePublishBlockMutationOptions(options));
+};
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+export const getCmsGetSiteHealthUrl = (params?: CmsGetSiteHealthParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/site-health?${stringifiedParams}`
+    : `/api/cms/site-health`;
+};
+
+export const cmsGetSiteHealth = async (
+  params?: CmsGetSiteHealthParams,
+  options?: RequestInit,
+): Promise<SiteHealthSnapshot> => {
+  return customFetch<SiteHealthSnapshot>(getCmsGetSiteHealthUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCmsGetSiteHealthQueryKey = (
+  params?: CmsGetSiteHealthParams,
+) => {
+  return [`/api/cms/site-health`, ...(params ? [params] : [])] as const;
+};
+
+export const getCmsGetSiteHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsGetSiteHealthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsGetSiteHealthQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsGetSiteHealth>>
+  > = ({ signal }) => cmsGetSiteHealth(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsGetSiteHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsGetSiteHealth>>
+>;
+export type CmsGetSiteHealthQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Aggregated site-health snapshot for the admin dashboard
+ */
+
+export function useCmsGetSiteHealth<
+  TData = Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  params?: CmsGetSiteHealthParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsGetSiteHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsGetSiteHealthQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
