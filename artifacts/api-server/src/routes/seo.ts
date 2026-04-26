@@ -13,6 +13,8 @@ import {
   caseStudiesTable,
   modelsTable,
   siteSettingsTable,
+  faqCategoriesTable,
+  faqItemsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
@@ -106,6 +108,8 @@ async function collectEntries(): Promise<Entry[]> {
     applications,
     caseStudies,
     models,
+    faqCategories,
+    faqItems,
   ] = await Promise.all([
     db
       .select({ slug: postsTable.slug, updatedAt: postsTable.updatedAt, publishedAt: postsTable.publishedAt })
@@ -204,6 +208,25 @@ async function collectEntries(): Promise<Entry[]> {
           sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
         ),
       ),
+    // FAQ deep links — one URL per published item under a published category.
+    // Drives per-question indexing so each Q&A can rank on its own keywords
+    // and show up as a distinct SERP / AIO citation.
+    db
+      .select({
+        id: faqCategoriesTable.id,
+        slug: faqCategoriesTable.slug,
+        updatedAt: faqCategoriesTable.updatedAt,
+      })
+      .from(faqCategoriesTable)
+      .where(eq(faqCategoriesTable.status, "published")),
+    db
+      .select({
+        categoryId: faqItemsTable.categoryId,
+        slug: faqItemsTable.slug,
+        updatedAt: faqItemsTable.updatedAt,
+      })
+      .from(faqItemsTable)
+      .where(eq(faqItemsTable.status, "published")),
   ]);
 
   for (const p of posts) {
@@ -241,6 +264,20 @@ async function collectEntries(): Promise<Entry[]> {
   for (const c of caseStudies)
     entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
   for (const m of models) entries.push(toEntry(`/models/${m.slug}`, m.updatedAt));
+
+  // FAQ category landing pages and per-item deep links. Items only emit when
+  // their parent category is also published — otherwise the page would 404.
+  const faqCategoryById = new Map(
+    faqCategories.map((c) => [c.id, c] as const),
+  );
+  for (const c of faqCategories) {
+    entries.push(toEntry(`/faq/${c.slug}`, c.updatedAt));
+  }
+  for (const it of faqItems) {
+    const cat = faqCategoryById.get(it.categoryId);
+    if (!cat) continue;
+    entries.push(toEntry(`/faq/${cat.slug}/${it.slug}`, it.updatedAt));
+  }
 
   // De-duplicate and absolutize.
   const seen = new Set<string>();
@@ -388,7 +425,8 @@ function renderLlmsTxt(): string {
     "## Notes",
     "",
     "- Robots policy: see /robots.txt. Admin and auth paths are disallowed.",
-    "- Anchors on /faq follow `#category-slug/question-slug` and are stable.",
+    "- Each FAQ question has a stable canonical URL: `/faq/<category-slug>/<question-slug>`.",
+    "- Each FAQ category has its own landing page: `/faq/<category-slug>`.",
     "",
   ].join("\n");
 }

@@ -388,6 +388,8 @@ function Router() {
             <Route path="/items" component={Items} />
             <Route path="/items/:slug" component={ItemDetail} />
             <Route path="/faq" component={Faq} />
+            <Route path="/faq/:category" component={Faq} />
+            <Route path="/faq/:category/:item" component={Faq} />
             <Route path="/team" component={Team} />
             <Route path="/team/:slug" component={TeamDetail} />
             <Route path="/partners" component={Partners} />

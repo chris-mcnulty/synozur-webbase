@@ -172,7 +172,9 @@ router.get("/faq/jsonld.json", async (_req, res) => {
     items.map((it) => ({
       "@type": "Question",
       name: it.question,
-      "@id": `${origin}/faq#${category.slug}/${it.slug}`,
+      // Per-question canonical URL — same shape as the sitemap entry so
+      // search engines and AIO crawlers resolve each Q&A to a distinct page.
+      "@id": `${origin}/faq/${category.slug}/${it.slug}`,
       acceptedAnswer: {
         "@type": "Answer",
         text: stripHtml(it.answerHtml) || it.question,
