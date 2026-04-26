@@ -1,5 +1,12 @@
 #!/bin/bash
 set -e
+
+# Self-heal Replit task-agent git plumbing on every post-merge tick:
+# prunes dead subrepl-* remotes, clears stale index.lock, installs a
+# pre-push hook that re-runs the same cleanup. Never fails the merge.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/git-hygiene.sh" || true
+
 pnpm install --frozen-lockfile
 pnpm --filter db push
 
