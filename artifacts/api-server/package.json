@@ -14,6 +14,7 @@
     "seed:case-studies": "tsx src/scripts/seedCaseStudies.ts",
     "seed:applications": "tsx src/scripts/seedApplications.ts",
     "seed:about-content": "tsx src/scripts/seedAboutContent.ts",
+    "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
   },
