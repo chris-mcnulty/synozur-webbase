@@ -308,6 +308,7 @@ export default function Home() {
                 src={`${BASE_PATH_HOME}/images/sa-logo-horizontal-white.png`}
                 alt="The Synozur Alliance"
                 className="h-28 md:h-32 w-auto mb-10"
+                style={{ mixBlendMode: "screen" }}
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
                 The <span className="nebula-text">Transformation</span> Company
