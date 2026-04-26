@@ -485,10 +485,16 @@ async function auditWorkshops(): Promise<{
       seoTitle: r.seo?.title ?? null,
       seoDescription: r.seo?.description ?? null,
       ogImage: null,
-      fallbackImage: r.heroImage,
+      fallbackImage: null,
       descriptionSources: [r.shortDescription, r.heroSubhead],
     });
-    if (f) findings.push(f);
+    if (f) {
+      // Workshops have no ogImage column; heroImage serves as the implicit OG
+      // image (same as posts). Drop the ogImage check to avoid unresolvable
+      // findings that applyAutofill can't persist.
+      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -742,7 +748,7 @@ export async function applyAutofill(
         if (!existing) break;
         const seo = existing.seo ?? { title: "", description: "" };
         const next = { ...seo };
-        const guards = [eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt))];
+        const guards = [eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)];
         let changed = false;
         if (patch.seoTitle && !(seo.title ?? "").trim()) {
           next.title = patch.seoTitle;
