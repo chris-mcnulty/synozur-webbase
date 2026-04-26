@@ -57,6 +57,10 @@ router.get("/cms/media", requireAuth, async (req, res) => {
   res.json({ items, page, pageSize, total: totalRow[0]?.c ?? 0 });
 });
 
+// #142 Phase A — `altText` is required and non-empty. The `media` table
+// enforces NOT NULL at the DB; the upload UI pre-fills from the file's
+// `originalName` and surfaces a "needs review" badge for placeholder
+// values so editors are prompted to write real copy.
 const RegisterBody = z.object({
   storageKey: z.string().min(1),
   publicUrl: z.string().min(1),
@@ -64,7 +68,7 @@ const RegisterBody = z.object({
   width: z.number().int().nullish(),
   height: z.number().int().nullish(),
   byteSize: z.number().int().nullish(),
-  altText: z.string().nullish(),
+  altText: z.string().trim().min(1, "Alt text is required"),
   originalName: z.string().nullish(),
   categoryId: z.string().uuid().nullish(),
 });
@@ -97,7 +101,7 @@ router.post(
         width: parsed.data.width ?? null,
         height: parsed.data.height ?? null,
         byteSize: parsed.data.byteSize ?? null,
-        altText: parsed.data.altText ?? null,
+        altText: parsed.data.altText,
         originalName: parsed.data.originalName ?? null,
         categoryId: parsed.data.categoryId ?? null,
         uploadedBy: req.authedUser!.id,
@@ -108,7 +112,9 @@ router.post(
 );
 
 const UpdateBody = z.object({
-  altText: z.string().nullish(),
+  // When supplied, `altText` must be a non-empty string. Omit to leave the
+  // existing value unchanged; null is rejected (alt text is NOT NULL).
+  altText: z.string().trim().min(1).optional(),
   mime: z.string().nullish(),
   width: z.number().int().nullish(),
   height: z.number().int().nullish(),
@@ -136,7 +142,7 @@ router.patch(
       }
     }
     const updates: Partial<typeof mediaTable.$inferInsert> = {};
-    if (parsed.data.altText !== undefined) updates.altText = parsed.data.altText ?? null;
+    if (parsed.data.altText !== undefined) updates.altText = parsed.data.altText;
     if (parsed.data.mime !== undefined) updates.mime = parsed.data.mime ?? null;
     if (parsed.data.width !== undefined) updates.width = parsed.data.width ?? null;
     if (parsed.data.height !== undefined) updates.height = parsed.data.height ?? null;

@@ -636,7 +636,12 @@ export const ListCmsMediaResponse = zod.object({
       width: zod.number().nullish(),
       height: zod.number().nullish(),
       byteSize: zod.number().nullish(),
-      altText: zod.string().nullish(),
+      altText: zod
+        .string()
+        .min(1)
+        .describe(
+          'Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a \"needs review\" badge for placeholder values.',
+        ),
       originalName: zod.string().nullish(),
       categoryId: zod.string().uuid().nullish(),
       uploadedBy: zod.string().uuid().nullish(),
@@ -659,7 +664,12 @@ export const RegisterCmsMediaBody = zod.object({
   width: zod.number().nullish(),
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .describe(
+      "Required. Describe the image so screen readers and accessibility audits have meaningful content. Pre-fill from the file name at upload time and prompt the editor to improve before publish.",
+    ),
   originalName: zod.string().nullish(),
   categoryId: zod.string().uuid().nullish(),
 });
@@ -672,7 +682,13 @@ export const UpdateCmsMediaParams = zod.object({
 });
 
 export const UpdateCmsMediaBody = zod.object({
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "When provided must be a non-empty string. Omit to leave the existing alt text unchanged.",
+    ),
   mime: zod.string().nullish(),
   width: zod.number().nullish(),
   height: zod.number().nullish(),
@@ -688,7 +704,12 @@ export const UpdateCmsMediaResponse = zod.object({
   width: zod.number().nullish(),
   height: zod.number().nullish(),
   byteSize: zod.number().nullish(),
-  altText: zod.string().nullish(),
+  altText: zod
+    .string()
+    .min(1)
+    .describe(
+      'Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a \"needs review\" badge for placeholder values.',
+    ),
   originalName: zod.string().nullish(),
   categoryId: zod.string().uuid().nullish(),
   uploadedBy: zod.string().uuid().nullish(),

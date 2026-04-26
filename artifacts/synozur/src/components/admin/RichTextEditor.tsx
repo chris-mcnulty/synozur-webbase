@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -27,6 +27,7 @@ import {
   Undo,
   Redo,
   Braces,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -103,6 +104,54 @@ function parseEmbedCode(raw: string): Record<string, string | null> | null {
 }
 
 // ---------------------------------------------------------------------------
+// Heading-order lint (#142 Phase A)
+//
+// Surfaces a soft warning when the editor's document skips a heading
+// level (e.g. an H2 followed by an H4 with no H3 between). This is a
+// guidance-only signal, not a publish gate — Phase D will introduce the
+// hard gate once editors have a chance to clean their backlog.
+// ---------------------------------------------------------------------------
+
+interface HeadingIssue {
+  message: string;
+  /** 1-based heading occurrence index, used as a stable React key. */
+  occurrence: number;
+}
+
+function findHeadingSkips(editor: Editor): HeadingIssue[] {
+  const issues: HeadingIssue[] = [];
+  const headings: { level: number; text: string }[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "heading") {
+      const level = Number(node.attrs.level ?? 0);
+      if (level > 0) {
+        headings.push({ level, text: node.textContent });
+      }
+    }
+  });
+
+  // Track the deepest level that has been seen so far. A heading at level N
+  // is a "skip" when N - lastLevel > 1, i.e. it dives more than one level
+  // below the previous heading without an intermediate level.
+  let lastLevel = 0;
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i]!;
+    if (lastLevel > 0 && h.level > lastLevel + 1) {
+      issues.push({
+        message: `H${h.level} "${truncate(h.text || "Untitled", 40)}" follows H${lastLevel} — add an intermediate H${lastLevel + 1} or downgrade the heading.`,
+        occurrence: i + 1,
+      });
+    }
+    lastLevel = h.level;
+  }
+  return issues;
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
+}
+
+// ---------------------------------------------------------------------------
 // RichTextEditor public API
 // ---------------------------------------------------------------------------
 
@@ -154,6 +203,9 @@ function ToolbarButton({
 
 export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: Props) {
   const lastValueRef = useRef(value);
+  // Heading-order issues are recomputed on every editor update — bumping
+  // this counter tells the memo below to re-walk the doc.
+  const [docVersion, setDocVersion] = useState(0);
 
   const editor = useEditor({
     extensions: [
@@ -182,6 +234,7 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
       lastValueRef.current = html;
       const markdown = turndown.turndown(html);
       onChange({ html, markdown });
+      setDocVersion((v) => v + 1);
     },
   });
 
@@ -190,8 +243,19 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
     if (value !== lastValueRef.current) {
       lastValueRef.current = value;
       editor.commands.setContent(value || "", { emitUpdate: false });
+      setDocVersion((v) => v + 1);
     }
   }, [value, editor]);
+
+  // Heading-order lint runs against the current editor doc. This is a
+  // soft signal only — we surface it inline and never block the save.
+  const headingIssues = useMemo(
+    () => (editor ? findHeadingSkips(editor) : []),
+    // `docVersion` is the trigger; `editor` identity stays stable across
+    // updates so it isn't a meaningful dep on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editor, docVersion],
+  );
 
   if (!editor) {
     return (
@@ -202,8 +266,40 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
   return (
     <div className="border border-border rounded-md bg-card">
       <Toolbar editor={editor} onUploadImage={onUploadImage} />
+      {headingIssues.length > 0 && (
+        <HeadingOrderWarnings issues={headingIssues} />
+      )}
       <div className="border-t border-border">
         <EditorContent editor={editor} />
+      </div>
+    </div>
+  );
+}
+
+function HeadingOrderWarnings({ issues }: { issues: HeadingIssue[] }) {
+  return (
+    <div
+      className="border-t border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"
+      data-testid="heading-order-warnings"
+    >
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <div className="font-medium">
+            Heading order skips a level
+            {issues.length > 1 ? ` (${issues.length} issues)` : ""}
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {issues.slice(0, 3).map((i) => (
+              <li key={i.occurrence}>· {i.message}</li>
+            ))}
+            {issues.length > 3 && (
+              <li className="text-amber-200/70">
+                · …and {issues.length - 3} more
+              </li>
+            )}
+          </ul>
+        </div>
       </div>
     </div>
   );

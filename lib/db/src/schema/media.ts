@@ -10,7 +10,12 @@ export const mediaTable = pgTable("media", {
   width: integer("width"),
   height: integer("height"),
   byteSize: integer("byte_size"),
-  altText: text("alt_text"),
+  // #142 Phase A — Required at the DB so an editor never lands on a
+  // production page rendering an `<img alt="">`. The placeholder pattern
+  // `Image: <name>` is reserved for the backfill script (see
+  // `backfillMediaAltText.ts`); the authoring UI surfaces a "needs review"
+  // badge for rows still on the placeholder.
+  altText: text("alt_text").notNull(),
   originalName: text("original_name"),
   categoryId: uuid("category_id").references(() => assetCategoriesTable.id, {
     onDelete: "set null",

@@ -94,13 +94,17 @@ export default function MediaLibrary() {
               const id = slashIdx >= 0 ? objectName.slice(slashIdx + 1) : objectName;
               const storageKey = `/objects/uploads/${id}`;
               const publicUrl = `/api/storage${storageKey}`;
+              // #142 Phase A — altText is required and non-empty.
+              const fileName = String(f.name ?? "");
+              const altBase = fileName.replace(/\.[^./\\]+$/, "").trim();
               await register.mutateAsync({
                 data: {
                   storageKey,
                   publicUrl,
                   mime: String(f.type ?? "application/octet-stream"),
                   byteSize: Number(f.size ?? 0),
-                  altText: String(f.name ?? null),
+                  altText: altBase ? `Image: ${altBase}` : "Image: untitled",
+                  originalName: fileName || undefined,
                 },
               });
             }

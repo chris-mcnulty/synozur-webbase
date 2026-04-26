@@ -10,6 +10,7 @@ import {
   Loader2,
   Tags,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,14 @@ function displayName(item: LibraryAssetItem): string {
     item.storageKey.split("/").pop() ??
     "(unnamed)"
   );
+}
+
+// #142 Phase A — Detect placeholder alt text that came from the upload
+// fallback or the backfill script. Editors should rewrite these into real
+// descriptive copy before a published image relies on them for a11y.
+function isPlaceholderAlt(altText: string | null | undefined): boolean {
+  if (!altText) return true;
+  return /^Image:\s/.test(altText.trim());
 }
 
 export default function AssetsLibrary() {
@@ -222,13 +231,20 @@ export default function AssetsLibrary() {
                 const storageKey = `/objects/uploads/${id}`;
                 const publicUrl = `/api/storage${storageKey}`;
                 const originalName = String(f.name ?? "file");
+                // #142 Phase A — altText is required and non-empty. Use a
+                // deterministic placeholder shape so the asset library can
+                // flag rows that still need editorial review.
+                const altBase = originalName.replace(/\.[^./\\]+$/, "").trim();
+                const altText = altBase
+                  ? `Image: ${altBase}`
+                  : "Image: untitled";
                 await register.mutateAsync({
                   data: {
                     storageKey,
                     publicUrl,
                     mime: String(f.type ?? "application/octet-stream"),
                     byteSize: Number(f.size ?? 0),
-                    altText: originalName,
+                    altText,
                     originalName,
                     ...(uploadCategoryId ? { categoryId: uploadCategoryId } : {}),
                   },
@@ -375,15 +391,22 @@ function AssetCard({
   const isImage = (item.mime ?? "").startsWith("image/");
   const [alt, setAlt] = useState(item.altText ?? "");
   const [state, setState] = useState<SaveState>("idle");
+  const altNeedsReview = isImage && isPlaceholderAlt(alt);
 
   const currentCategoryId =
     item.categoryId ?? categories.find((c) => c.slug === item.categorySlug)?.id ?? null;
 
   const handleBlur = async () => {
     if (alt === (item.altText ?? "")) return;
+    // #142 Phase A — alt text is required and non-empty. Revert to the
+    // existing value rather than firing a request the server will reject.
+    if (!alt.trim()) {
+      setAlt(item.altText ?? "");
+      return;
+    }
     setState("saving");
     try {
-      await onSaveAlt(alt);
+      await onSaveAlt(alt.trim());
       setState("saved");
       setTimeout(() => setState((s) => (s === "saved" ? "idle" : s)), 1500);
     } catch {
@@ -419,6 +442,16 @@ function AssetCard({
         >
           {item.source === "asset" ? "legacy" : "media"}
         </Badge>
+        {altNeedsReview && (
+          <Badge
+            variant="outline"
+            className="absolute top-2 right-2 bg-amber-500/15 border-amber-500/40 text-amber-300 backdrop-blur text-[10px] gap-1"
+            title="Alt text is a placeholder. Rewrite it as a meaningful description for screen readers."
+          >
+            <AlertTriangle className="h-3 w-3" />
+            Needs alt text
+          </Badge>
+        )}
       </div>
       <div className="p-2 space-y-1.5">
         <div className="relative">

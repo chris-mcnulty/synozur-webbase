@@ -2720,6 +2720,7 @@ components:
         - id
         - storageKey
         - publicUrl
+        - altText
         - createdAt
       properties:
         id:
@@ -2742,8 +2743,12 @@ components:
           type: integer
           nullable: true
         altText:
+          description: >-
+            Required. Backfilled to a deterministic placeholder
+            (`Image: <name>`) for legacy rows; the admin asset library
+            surfaces a "needs review" badge for placeholder values.
           type: string
-          nullable: true
+          minLength: 1
         originalName:
           type: string
           nullable: true
@@ -2781,6 +2786,7 @@ components:
       required:
         - storageKey
         - publicUrl
+        - altText
       properties:
         storageKey:
           type: string
@@ -2801,8 +2807,13 @@ components:
           type: integer
           nullable: true
         altText:
+          description: >-
+            Required. Describe the image so screen readers and
+            accessibility audits have meaningful content. Pre-fill from
+            the file name at upload time and prompt the editor to
+            improve before publish.
           type: string
-          nullable: true
+          minLength: 1
         originalName:
           type: string
           nullable: true
@@ -2814,8 +2825,11 @@ components:
       type: object
       properties:
         altText:
+          description: >-
+            When provided must be a non-empty string. Omit to leave
+            the existing alt text unchanged.
           type: string
-          nullable: true
+          minLength: 1
         mime:
           type: string
           nullable: true

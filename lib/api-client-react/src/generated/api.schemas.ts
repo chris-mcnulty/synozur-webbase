@@ -99,7 +99,11 @@ export interface MediaItem {
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
-  altText?: string | null;
+  /**
+   * Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a "needs review" badge for placeholder values.
+   * @minLength 1
+   */
+  altText: string;
   originalName?: string | null;
   categoryId?: string | null;
   uploadedBy?: string | null;
@@ -122,13 +126,21 @@ export interface RegisterMediaBody {
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
-  altText?: string | null;
+  /**
+   * Required. Describe the image so screen readers and accessibility audits have meaningful content. Pre-fill from the file name at upload time and prompt the editor to improve before publish.
+   * @minLength 1
+   */
+  altText: string;
   originalName?: string | null;
   categoryId?: string | null;
 }
 
 export interface UpdateMediaBody {
-  altText?: string | null;
+  /**
+   * When provided must be a non-empty string. Omit to leave the existing alt text unchanged.
+   * @minLength 1
+   */
+  altText?: string;
   mime?: string | null;
   width?: number | null;
   height?: number | null;

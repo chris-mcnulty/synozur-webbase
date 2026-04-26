@@ -14,7 +14,11 @@ export interface MediaItem {
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
-  altText?: string | null;
+  /**
+   * Required. Backfilled to a deterministic placeholder (`Image: <name>`) for legacy rows; the admin asset library surfaces a "needs review" badge for placeholder values.
+   * @minLength 1
+   */
+  altText: string;
   originalName?: string | null;
   categoryId?: string | null;
   uploadedBy?: string | null;
