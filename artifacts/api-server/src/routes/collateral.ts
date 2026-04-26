@@ -970,15 +970,13 @@ router.post("/cms/collateral/reorder", ...adminGuard, async (req, res) => {
   }
 
   const updatedAt = new Date();
-  const featuredRankCase = sql<number>`case ${sql.join(
-    ids.map((id, index) => sql`when ${collateralTable.id} = ${id} then ${index + 1}`),
-    sql` `,
-  )} end`;
   await db.transaction(async (tx) => {
-    await tx
-      .update(collateralTable)
-      .set({ featuredRank: featuredRankCase, updatedAt })
-      .where(inArray(collateralTable.id, ids));
+    for (const [index, id] of ids.entries()) {
+      await tx
+        .update(collateralTable)
+        .set({ featuredRank: index + 1, updatedAt })
+        .where(eq(collateralTable.id, id));
+    }
   });
 
   await audit({
