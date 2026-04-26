@@ -1,6 +1,6 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 25, 2026  
+> Last updated: April 26, 2026  
 > 27 tasks pending · 93 merged · 29 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
