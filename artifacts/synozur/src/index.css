@@ -342,6 +342,142 @@ html.theme-aurora .dark {
   --chart-5: 341.49 72% 63%;
 }
 
+/* ── AURORA EFFECTS ────────────────────────────────────────────────────────
+   All utilities below are scoped to html.theme-aurora so they never affect
+   the Cosmic theme. @property and @keyframes must be declared globally.    */
+
+/* Animatable CSS property for the spinning gradient border */
+@property --nebula-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes nebula-border-spin {
+  from { --nebula-angle: 0deg; }
+  to   { --nebula-angle: 360deg; }
+}
+
+@keyframes blob {
+  0%,  100% { transform: translate(0, 0)    scale(1);    }
+  33%        { transform: translate(30px,-20px) scale(1.08); }
+  66%        { transform: translate(-20px,20px) scale(0.94); }
+}
+
+@keyframes nebula-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Blob helpers (used by Aurora background component) */
+html.theme-aurora .animate-blob          { animation: blob 12s ease-in-out infinite; }
+html.theme-aurora .animation-delay-2000  { animation-delay: 2s; }
+html.theme-aurora .animation-delay-4000  { animation-delay: 4s; }
+html.theme-aurora .animate-fade-in-up    { animation: fade-in-up 0.45s ease-out both; }
+
+/* ── Primary button glow halo on hover / focus */
+html.theme-aurora .primary-cta-glow:hover,
+html.theme-aurora .primary-cta-glow:focus-visible {
+  box-shadow: 0 0 16px 2px hsl(268.98 96.72% 52.16% / 0.35);
+  transition: box-shadow 0.2s ease;
+}
+html.theme-aurora .dark .primary-cta-glow:hover,
+html.theme-aurora .dark .primary-cta-glow:focus-visible {
+  box-shadow: 0 0 20px 4px hsl(268.98 92% 64% / 0.4);
+}
+
+/* ── Sidebar active item: left gradient accent bar + violet glow */
+html.theme-aurora .sidebar-active-item {
+  position: relative;
+  box-shadow: 0 0 12px 1px hsl(268.98 96.72% 52.16% / 0.25);
+}
+html.theme-aurora .dark .sidebar-active-item {
+  box-shadow: 0 0 16px 2px hsl(268.98 92% 64% / 0.35);
+}
+html.theme-aurora .sidebar-active-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, hsl(268.98 92% 64%), hsl(314.04 85% 61%));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── Sidebar hover item: outline + glow */
+html.theme-aurora .sidebar-hover-item:hover,
+html.theme-aurora .sidebar-hover-item:focus-visible {
+  box-shadow: 0 0 10px 1px hsl(268.98 96.72% 52.16% / 0.15);
+  outline: 2px solid hsl(268.98 96.72% 52.16% / 0.4);
+  outline-offset: 1px;
+  transition: box-shadow 0.15s ease, outline-color 0.15s ease;
+}
+html.theme-aurora .dark .sidebar-hover-item:hover,
+html.theme-aurora .dark .sidebar-hover-item:focus-visible {
+  box-shadow: 0 0 14px 2px hsl(268.98 92% 64% / 0.25);
+  outline: 2px solid hsl(268.98 92% 64% / 0.4);
+}
+
+/* ── Nebula card: spinning violet→magenta conic border (dark mode only) */
+html.theme-aurora .dark .nebula-card {
+  position: relative;
+  border: none !important;
+  background-clip: padding-box;
+}
+html.theme-aurora .dark .nebula-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--nebula-angle),
+    hsl(268.98 92% 64% / 0.0)  0%,
+    hsl(268.98 92% 64% / 0.6) 20%,
+    hsl(314.04 85% 61% / 0.7) 40%,
+    hsl(268.98 92% 64% / 0.0) 60%,
+    hsl(268.98 92% 64% / 0.6) 80%,
+    hsl(268.98 92% 64% / 0.0) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: nebula-border-spin 8s linear infinite;
+}
+
+/* ── Nebula shimmer (skeleton loading) */
+html.theme-aurora .nebula-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(268 15% 89% / 0.6) 0%,
+    hsl(268.98 60% 70% / 0.3) 40%,
+    hsl(314.04 60% 70% / 0.2) 60%,
+    hsl(268 15% 89% / 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: nebula-shimmer 1.8s ease-in-out infinite;
+}
+html.theme-aurora .dark .nebula-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(268 15% 15% / 0.8) 0%,
+    hsl(268.98 92% 64% / 0.2) 40%,
+    hsl(314.04 85% 61% / 0.18) 65%,
+    hsl(268 15% 15% / 0.8) 100%
+  );
+  background-size: 200% 100%;
+}
+
 .nebula-gradient {
   background: linear-gradient(135deg, hsl(var(--synozur-purple)), hsl(var(--synozur-violet)), hsl(var(--synozur-magenta)), hsl(var(--synozur-blue)));
 }
