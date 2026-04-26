@@ -40,8 +40,9 @@ AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
 // `forceMount` keeps collapsed content in the DOM so search engines and
 // LLM crawlers that don't simulate clicks (or that read raw HTML) still see
-// the answers. Visual collapse is handled by the `data-[state=closed]:hidden`
-// class plus the existing animations.
+// the answers. `data-[state=closed]:hidden` applies `display:none` so the
+// close transition is a snap rather than an animation; the open transition
+// (`animate-accordion-down`) still plays when the user expands an item.
 const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
@@ -49,7 +50,7 @@ const AccordionContent = React.forwardRef<
   <AccordionPrimitive.Content
     ref={ref}
     forceMount
-    className="overflow-hidden text-sm data-[state=closed]:hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    className="overflow-hidden text-sm data-[state=closed]:hidden data-[state=open]:animate-accordion-down"
     {...props}
   >
     <div className={cn("pb-4 pt-0", className)}>{children}</div>

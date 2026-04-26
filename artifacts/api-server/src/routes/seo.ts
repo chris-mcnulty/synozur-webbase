@@ -19,14 +19,9 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
 import { submitUrls } from "../lib/seoSubmit";
+import { siteOrigin } from "../lib/siteOrigin";
 
 const router: IRouter = Router();
-
-const DEFAULT_SITE_URL = "https://www.synozur.com";
-
-function siteOrigin(): string {
-  return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, "");
-}
 
 function xmlEscape(s: string): string {
   return s

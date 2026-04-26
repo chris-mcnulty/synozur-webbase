@@ -14,16 +14,12 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
+import { siteOrigin } from "../lib/siteOrigin";
 
 const router: IRouter = Router();
 
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
 const readGuard = [requireAuth];
-
-const DEFAULT_SITE_URL = "https://www.synozur.com";
-function siteOrigin(): string {
-  return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, "");
-}
 
 function absoluteUrl(url: string | null | undefined, origin: string): string {
   if (!url) return "";

@@ -11,6 +11,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { siteOrigin } from "../lib/siteOrigin";
 
 const router: IRouter = Router();
 
@@ -104,12 +105,6 @@ async function ensureUniqueItemSlug(
 // Public endpoint — returns all published categories with nested published
 // items in one round trip. Ordering: category.displayOrder → item.displayOrder.
 // ---------------------------------------------------------------------------
-
-const DEFAULT_SITE_URL = "https://www.synozur.com";
-
-function siteOrigin(): string {
-  return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, "");
-}
 
 async function loadPublishedFaq() {
   const [categories, items] = await Promise.all([
