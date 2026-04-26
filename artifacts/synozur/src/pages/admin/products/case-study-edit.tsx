@@ -894,7 +894,7 @@ export default function CaseStudyEdit({ id }: Props) {
         open={heroPickerOpen}
         onClose={() => setHeroPickerOpen(false)}
         onSelect={(item: MediaItem) => {
-          set("heroImage", item.url);
+          set("heroImage", mediaUrl(item));
           setHeroPickerOpen(false);
         }}
         filter="image"
@@ -903,7 +903,7 @@ export default function CaseStudyEdit({ id }: Props) {
         open={logoPickerOpen}
         onClose={() => setLogoPickerOpen(false)}
         onSelect={(item: MediaItem) => {
-          set("clientLogo", item.url);
+          set("clientLogo", mediaUrl(item));
           setLogoPickerOpen(false);
         }}
         filter="image"
@@ -912,7 +912,7 @@ export default function CaseStudyEdit({ id }: Props) {
         open={ogPickerOpen}
         onClose={() => setOgPickerOpen(false)}
         onSelect={(item: MediaItem) => {
-          set("ogImage", item.url);
+          set("ogImage", mediaUrl(item));
           setOgPickerOpen(false);
         }}
         filter="image"
