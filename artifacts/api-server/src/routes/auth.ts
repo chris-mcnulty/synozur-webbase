@@ -175,6 +175,22 @@ const resetPasswordRateLimiter = rateLimit({
 });
 
 // ---------------------------------------------------------------------------
+// Rate limiter — POST /api/auth/register (5 requests per 15 min per IP)
+// ---------------------------------------------------------------------------
+const registerRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `register:${ipKeyGenerator(req)}`,
+  handler: (_req: Request, res: Response): void => {
+    res.status(429).json({
+      error: "Too many registration attempts. Please try again in 15 minutes.",
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Rate limiter — POST /api/auth/resend-verification (5 requests per 15 min per IP)
 // ---------------------------------------------------------------------------
 const resendVerificationRateLimiter = rateLimit({
@@ -421,7 +437,7 @@ const RegisterBody = z.object({
   organizationSlug: z.string().max(100).optional(),
 });
 
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", registerRateLimiter, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
