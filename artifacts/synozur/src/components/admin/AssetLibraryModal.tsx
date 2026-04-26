@@ -55,11 +55,18 @@ interface Props {
   onSelect: (asset: Asset) => void;
   selectedId?: number | null;
   /**
-   * Optional category filter preset (slug). When set, the library is locked
+   * Optional category filter lock (slug). When set, the library is locked
    * to that category and new uploads are automatically tagged with it. When
    * omitted, editors can filter and tag uploads using the in-modal dropdown.
    */
   category?: string;
+  /**
+   * Optional default category pre-selection (slug). Unlike `category`, this
+   * does NOT lock the modal — editors can still browse other categories via
+   * the dropdown. The filter is simply pre-set to this value when the modal
+   * opens, saving a click when editors already know the context.
+   */
+  categoryFilter?: string;
   /**
    * Optional asset-kind lock. "image" shows only image assets and restricts
    * uploads to image/*; "document" shows only PDF/Office/ZIP files and
@@ -77,6 +84,7 @@ export function AssetLibraryModal({
   onSelect,
   selectedId,
   category,
+  categoryFilter,
   kind,
 }: Props) {
   const [search, setSearch] = useState("");
@@ -104,8 +112,13 @@ export function AssetLibraryModal({
   }, [search]);
 
   useEffect(() => {
-    if (open) setPicked(selectedId ?? null);
-  }, [open, selectedId]);
+    if (open) {
+      setPicked(selectedId ?? null);
+      if (!category && categoryFilter) {
+        setFilterCategory(categoryFilter);
+      }
+    }
+  }, [open, selectedId, category, categoryFilter]);
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ["assets", debounced, activeCategory ?? null],

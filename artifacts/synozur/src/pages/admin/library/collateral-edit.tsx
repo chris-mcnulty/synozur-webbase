@@ -778,6 +778,7 @@ export default function CollateralEdit({ id }: Props) {
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
+        categoryFilter="case-study"
       />
       <AssetLibraryModal
         open={showDocumentPicker}

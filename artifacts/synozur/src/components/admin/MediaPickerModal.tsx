@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   useListCmsMedia,
   useRegisterCmsMedia,
+  useListAssetCategories,
 } from "@workspace/api-client-react";
 import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
@@ -34,14 +35,25 @@ interface Props {
   onSelect: (media: MediaItem) => void;
   selectedId?: string | null;
   title?: string;
+  /**
+   * Optional default category pre-selection (slug). Pre-filters the media list
+   * to assets in the named category, while still allowing editors to clear the
+   * filter and browse all media via the search box.
+   */
+  categorySlug?: string;
 }
 
-export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = "Media Library" }: Props) {
+export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = "Media Library", categorySlug }: Props) {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string | null>(selectedId ?? null);
 
+  const { data: catsData } = useListAssetCategories({ query: { enabled: open && !!categorySlug } });
+  const categoryId = categorySlug
+    ? (catsData?.items ?? []).find((c) => c.slug === categorySlug)?.id
+    : undefined;
+
   const { data, isLoading, refetch } = useListCmsMedia(
-    { pageSize: 100 },
+    { pageSize: 100, ...(categoryId ? { categoryId } : {}) },
     { query: { enabled: open } as never },
   );
 

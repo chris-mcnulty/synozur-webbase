@@ -694,6 +694,7 @@ export default function ServiceEdit({ id }: Props) {
         onSelect={handleIcon}
         selectedId={form.iconId}
         title="Choose service icon"
+        categorySlug="service-icon"
       />
     </AdminLayout>
   );

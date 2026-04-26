@@ -363,7 +363,7 @@ export default function AdminSiteSettings() {
                 ? data?.homeHeroVideoAssetId ?? null
                 : null
         }
-        category={pickerOpen === "hero" ? "north-star" : pickerOpen === "editorial" ? "people" : undefined}
+        categoryFilter={pickerOpen === "hero" ? "north-star" : pickerOpen === "editorial" ? "people" : undefined}
         kind={pickerOpen === "video" ? "video" : undefined}
       />
     </AdminLayout>
