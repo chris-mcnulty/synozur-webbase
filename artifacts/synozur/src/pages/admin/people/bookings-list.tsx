@@ -55,11 +55,11 @@ export default function AdminBookingsList() {
         { label: "Bookings" },
       ]}
       actions={
-        <Link href="/people/bookings/new">
-          <Button size="sm" data-testid="button-new-booking">
+        <Button asChild size="sm" data-testid="button-new-booking">
+          <Link href="/people/bookings/new">
             <Plus className="h-4 w-4 mr-1.5" /> New Booking
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       }
     >
       <p className="text-sm text-muted-foreground mb-6">
@@ -117,16 +117,17 @@ export default function AdminBookingsList() {
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
-                <Link href={`/people/bookings/${b.id}`}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    data-testid={`button-edit-${b.id}`}
-                  >
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  data-testid={`button-edit-${b.id}`}
+                >
+                  <Link href={`/people/bookings/${b.id}`}>
                     <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

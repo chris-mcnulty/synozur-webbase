@@ -7,7 +7,32 @@ import { requireAdmin } from "../middlewares/requireAdmin";
 const router: IRouter = Router();
 
 const SCOPES = ["general", "offer", "conference"] as const;
-type Scope = (typeof SCOPES)[number];
+
+// Allow-list of Microsoft Bookings hostnames. The embedUrl is rendered into a
+// public <iframe src> and <a href>, so the validator below (a) rejects any
+// scheme other than http(s) — z.string().url() accepts javascript: and data:,
+// which would let an admin store an XSS payload — and (b) restricts the host
+// to the Microsoft surfaces that actually serve Bookings. Extend the list if
+// MS introduces a new host (e.g. a regional cloud).
+const ALLOWED_BOOKING_HOSTS = new Set<string>([
+  "outlook.office.com",
+  "outlook.office365.com",
+  "outlook.live.com",
+  "book.ms",
+]);
+
+const embedUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+      return ALLOWED_BOOKING_HOSTS.has(parsed.hostname.toLowerCase());
+    } catch {
+      return false;
+    }
+  }, "embedUrl must be an https URL on a Microsoft Bookings host (outlook.office.com, outlook.office365.com, outlook.live.com, or book.ms)");
 
 function slugify(text: string): string {
   return text
@@ -59,7 +84,7 @@ const Body = z.object({
   title: z.string().min(1),
   teaser: z.string().nullish(),
   descriptionHtml: z.string().nullish(),
-  embedUrl: z.string().url(),
+  embedUrl: embedUrlSchema,
   scope: z.enum(SCOPES).default("general"),
   startsAt: z.coerce.date().nullish(),
   endsAt: z.coerce.date().nullish(),

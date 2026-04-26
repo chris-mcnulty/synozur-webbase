@@ -165,11 +165,11 @@ export default function Start() {
               business days — no automation, no sales sequences.
             </p>
           </div>
-          <Link href="/start/brief">
-            <Button size="lg" data-testid="link-start-brief">
+          <Button asChild size="lg" data-testid="link-start-brief">
+            <Link href="/start/brief">
               Send a brief <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </section>
       </div>
     </>
