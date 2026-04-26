@@ -1721,6 +1721,52 @@ export interface SiteHealthSnapshot {
 }
 
 /**
+ * @nullable
+ */
+export type PublishBlockEvidence = { [key: string]: unknown } | null;
+
+export interface PublishBlock {
+  id: string;
+  /** 'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration). */
+  artifactKind: string;
+  /** @nullable */
+  artifactId?: string | null;
+  /** Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`. */
+  sourceRule: string;
+  /** `warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up. */
+  severity: string;
+  reason: string;
+  /** @nullable */
+  evidence?: PublishBlockEvidence;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+  /** @nullable */
+  resolvedBy?: string | null;
+  /** @nullable */
+  resolutionNote?: string | null;
+}
+
+export interface PublishBlockListResponse {
+  items: PublishBlock[];
+}
+
+export interface PublishBlockScanResult {
+  inserted: number;
+  retained: number;
+  autoResolved: number;
+  total: number;
+}
+
+export interface PublishBlockResolveBody {
+  /**
+   * @minLength 1
+   * @maxLength 1000
+   */
+  resolutionNote: string;
+}
+
+/**
  * Unauthorized
  */
 export type UnauthorizedResponse = ErrorEnvelope;
@@ -1911,6 +1957,15 @@ export type ExportAdminFormSubmissionsParams = {
 export type RetryFailedAdminFormSubmissionsParams = {
   formType?: string;
   search?: string;
+};
+
+export type CmsListPublishBlocksParams = {
+  artifactKind?: string;
+  artifactId?: string;
+  /**
+   * When true, include rows that have been resolved.
+   */
+  includeResolved?: string;
 };
 
 export type CmsGetSiteHealthParams = {

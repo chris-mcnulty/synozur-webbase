@@ -30,3 +30,4 @@ export * from "./faq";
 export * from "./contentParentPages";
 export * from "./hubspotSync";
 export * from "./cwvSamples";
+export * from "./publishBlocks";

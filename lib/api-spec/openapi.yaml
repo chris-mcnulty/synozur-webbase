@@ -49,6 +49,8 @@ tags:
     description: Public real-user performance telemetry.
   - name: SiteHealth
     description: Admin site health (Core Web Vitals, alt-text coverage, redirects).
+  - name: PublishBlocks
+    description: Quality blocks surfaced on edit pages (warn-mode v0).
 paths:
   /healthz:
     get:
@@ -2560,6 +2562,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /cms/publish-blocks:
+    get:
+      tags:
+        - PublishBlocks
+      operationId: cmsListPublishBlocks
+      summary: List active (or all) publish-state quality blocks
+      parameters:
+        - in: query
+          name: artifactKind
+          schema:
+            type: string
+        - in: query
+          name: artifactId
+          schema:
+            type: string
+        - in: query
+          name: includeResolved
+          description: When true, include rows that have been resolved.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/collateral/{id}/publish-blocks:
+    get:
+      tags:
+        - PublishBlocks
+      operationId: cmsListCollateralPublishBlocks
+      summary: List active publish blocks for a collateral row (direct + route-level)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/publish-blocks/scan:
+    post:
+      tags:
+        - PublishBlocks
+      operationId: cmsScanPublishBlocks
+      summary: Recompute publish blocks from current signals
+      responses:
+        '200':
+          description: Scan summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlockScanResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/publish-blocks/{id}:
+    delete:
+      tags:
+        - PublishBlocks
+      operationId: cmsResolvePublishBlock
+      summary: Resolve a block with a mandatory note (override audit trail)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishBlockResolveBody'
+      responses:
+        '200':
+          description: Block resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishBlock'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /cms/site-health:
     get:
       tags:
@@ -5894,3 +5996,89 @@ components:
           $ref: '#/components/schemas/SiteHealthAltCoverage'
         redirects:
           $ref: '#/components/schemas/SiteHealthRedirects'
+    PublishBlock:
+      type: object
+      required:
+        - id
+        - artifactKind
+        - sourceRule
+        - severity
+        - reason
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        artifactKind:
+          description: >-
+            'collateral' | 'route' | 'media' | 'site' (free-form so new
+            rules can name new kinds without a schema migration).
+          type: string
+        artifactId:
+          type:
+            - string
+            - 'null'
+        sourceRule:
+          description: Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.
+          type: string
+        severity:
+          description: '`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.'
+          type: string
+        reason:
+          type: string
+        evidence:
+          type:
+            - object
+            - 'null'
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        resolvedBy:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        resolutionNote:
+          type:
+            - string
+            - 'null'
+    PublishBlockListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublishBlock'
+    PublishBlockScanResult:
+      type: object
+      required:
+        - inserted
+        - retained
+        - autoResolved
+        - total
+      properties:
+        inserted:
+          type: integer
+        retained:
+          type: integer
+        autoResolved:
+          type: integer
+        total:
+          type: integer
+    PublishBlockResolveBody:
+      type: object
+      required:
+        - resolutionNote
+      properties:
+        resolutionNote:
+          type: string
+          minLength: 1
+          maxLength: 1000

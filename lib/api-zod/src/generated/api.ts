@@ -3198,6 +3198,137 @@ export const ReportCwvSampleBody = zod.object({
 });
 
 /**
+ * @summary List active (or all) publish-state quality blocks
+ */
+export const CmsListPublishBlocksQueryParams = zod.object({
+  artifactKind: zod.coerce.string().optional(),
+  artifactId: zod.coerce.string().optional(),
+  includeResolved: zod.coerce
+    .string()
+    .optional()
+    .describe("When true, include rows that have been resolved."),
+});
+
+export const CmsListPublishBlocksResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      artifactKind: zod
+        .string()
+        .describe(
+          "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+        ),
+      artifactId: zod.string().nullish(),
+      sourceRule: zod
+        .string()
+        .describe(
+          "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+        ),
+      severity: zod
+        .string()
+        .describe(
+          "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+        ),
+      reason: zod.string(),
+      evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+      resolvedAt: zod.coerce.date().nullish(),
+      resolvedBy: zod.string().uuid().nullish(),
+      resolutionNote: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary List active publish blocks for a collateral row (direct + route-level)
+ */
+export const CmsListCollateralPublishBlocksParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListCollateralPublishBlocksResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      artifactKind: zod
+        .string()
+        .describe(
+          "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+        ),
+      artifactId: zod.string().nullish(),
+      sourceRule: zod
+        .string()
+        .describe(
+          "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+        ),
+      severity: zod
+        .string()
+        .describe(
+          "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+        ),
+      reason: zod.string(),
+      evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+      resolvedAt: zod.coerce.date().nullish(),
+      resolvedBy: zod.string().uuid().nullish(),
+      resolutionNote: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Recompute publish blocks from current signals
+ */
+export const CmsScanPublishBlocksResponse = zod.object({
+  inserted: zod.number(),
+  retained: zod.number(),
+  autoResolved: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Resolve a block with a mandatory note (override audit trail)
+ */
+export const CmsResolvePublishBlockParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const cmsResolvePublishBlockBodyResolutionNoteMax = 1000;
+
+export const CmsResolvePublishBlockBody = zod.object({
+  resolutionNote: zod
+    .string()
+    .min(1)
+    .max(cmsResolvePublishBlockBodyResolutionNoteMax),
+});
+
+export const CmsResolvePublishBlockResponse = zod.object({
+  id: zod.string().uuid(),
+  artifactKind: zod
+    .string()
+    .describe(
+      "'collateral' | 'route' | 'media' | 'site' (free-form so new rules can name new kinds without a schema migration).",
+    ),
+  artifactId: zod.string().nullish(),
+  sourceRule: zod
+    .string()
+    .describe(
+      "Stable rule identifier, e.g. `cwv.lcp.p75`, `alt-text.placeholder`.",
+    ),
+  severity: zod
+    .string()
+    .describe(
+      "`warning` in v0 (warn-mode); `block` reserved for hard-mode follow-up.",
+    ),
+  reason: zod.string(),
+  evidence: zod.record(zod.string(), zod.unknown()).nullish(),
+  createdAt: zod.coerce.date(),
+  resolvedAt: zod.coerce.date().nullish(),
+  resolvedBy: zod.string().uuid().nullish(),
+  resolutionNote: zod.string().nullish(),
+});
+
+/**
  * @summary Aggregated site-health snapshot for the admin dashboard
  */
 export const cmsGetSiteHealthQueryWindowDaysMax = 90;

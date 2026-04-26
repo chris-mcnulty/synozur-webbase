@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
@@ -6,8 +7,19 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Loader2,
+  RefreshCw,
+  ShieldAlert,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,11 +35,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useToast } from "@/hooks/use-toast";
 import {
   useCmsGetSiteHealth,
+  useCmsListPublishBlocks,
+  useCmsScanPublishBlocks,
+  useCmsResolvePublishBlock,
+  getCmsListPublishBlocksQueryKey,
   type SiteHealthSnapshot,
   type SiteHealthCwvRow,
+  type PublishBlock,
 } from "@workspace/api-client-react";
 
 // #142 Phase B — Admin site-health dashboard. Three signals:
@@ -144,6 +163,8 @@ function SiteHealthDashboard({ snapshot }: { snapshot: SiteHealthSnapshot }) {
         <CwvTotalsCard rows={snapshot.cwv} windowDays={snapshot.windowDays} />
       </div>
 
+      <PublishBlocksCard />
+
       <CwvTable rows={snapshot.cwv} windowDays={snapshot.windowDays} />
 
       {snapshot.redirects.chains.length > 0 && (
@@ -152,6 +173,179 @@ function SiteHealthDashboard({ snapshot }: { snapshot: SiteHealthSnapshot }) {
 
       <RedirectsTopCard top={snapshot.redirects.top} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Publish blocks (#142 Phase D)
+// ---------------------------------------------------------------------------
+
+function PublishBlocksCard() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const blocksQ = useCmsListPublishBlocks();
+  const blocks: PublishBlock[] = blocksQ.data?.items ?? [];
+
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: getCmsListPublishBlocksQueryKey() });
+
+  const scanMut = useCmsScanPublishBlocks({
+    mutation: {
+      onSuccess: (result) => {
+        invalidate();
+        toast({
+          title: "Scan complete",
+          description: `${result.inserted} new, ${result.retained} retained, ${result.autoResolved} auto-resolved.`,
+        });
+      },
+      onError: (e: Error) =>
+        toast({ title: "Scan failed", description: e.message, variant: "destructive" }),
+    },
+  });
+
+  const resolveMut = useCmsResolvePublishBlock({
+    mutation: {
+      onSuccess: () => {
+        invalidate();
+        toast({ title: "Block resolved" });
+      },
+      onError: (e: Error) =>
+        toast({ title: "Resolve failed", description: e.message, variant: "destructive" }),
+    },
+  });
+
+  const [resolving, setResolving] = useState<PublishBlock | null>(null);
+  const [note, setNote] = useState("");
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
+            Publish blocks ({blocks.length})
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Warn-mode v0 — surfaced on edit pages for editor attention. The
+            publish mutations don't reject on these yet; the hard-reject
+            flip is a follow-up once the inherited backlog is cleared.
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => scanMut.mutate()}
+          disabled={scanMut.isPending}
+          data-testid="button-scan-publish-blocks"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${scanMut.isPending ? "animate-spin" : ""}`} />
+          Run scan
+        </Button>
+      </div>
+      {blocksQ.isLoading ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : blocks.length === 0 ? (
+        <div className="p-6 text-center text-sm text-emerald-300">
+          <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
+          No active publish blocks.
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Rule</TableHead>
+              <TableHead>Artifact</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>First seen</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {blocks.map((b) => (
+              <TableRow key={b.id}>
+                <TableCell className="font-mono text-xs">{b.sourceRule}</TableCell>
+                <TableCell className="font-mono text-xs max-w-[16rem] truncate">
+                  {b.artifactKind}
+                  {b.artifactId ? `:${b.artifactId}` : ""}
+                </TableCell>
+                <TableCell className="text-xs">{b.reason}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(b.createdAt).toLocaleDateString("en-US", {
+                    dateStyle: "medium",
+                  })}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setResolving(b);
+                      setNote("");
+                    }}
+                    data-testid={`button-resolve-block-${b.id}`}
+                  >
+                    Override…
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      <Dialog
+        open={!!resolving}
+        onOpenChange={(open) => !open && setResolving(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override publish block</DialogTitle>
+          </DialogHeader>
+          {resolving && (
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                <span className="font-mono">{resolving.sourceRule}</span> —{" "}
+                {resolving.reason}
+              </div>
+              <div>
+                <Label htmlFor="resolution-note">Resolution note (required)</Label>
+                <Textarea
+                  id="resolution-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={4}
+                  placeholder="Why is it OK to ignore this block? This goes in the audit log."
+                  data-testid="textarea-resolution-note"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setResolving(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!note.trim() || resolveMut.isPending}
+              onClick={() => {
+                if (!resolving) return;
+                resolveMut.mutate(
+                  { id: resolving.id, data: { resolutionNote: note.trim() } },
+                  {
+                    onSuccess: () => {
+                      setResolving(null);
+                      setNote("");
+                    },
+                  },
+                );
+              }}
+              data-testid="button-confirm-resolve-block"
+            >
+              Resolve with note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 

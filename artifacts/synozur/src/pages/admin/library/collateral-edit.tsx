@@ -25,6 +25,7 @@ import {
 } from "@/components/admin/AssetLibraryModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { CollateralResourcesEditor } from "@/components/admin/CollateralResourcesEditor";
+import { PublishBlocksBanner } from "@/components/admin/PublishBlocksBanner";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
@@ -361,6 +362,7 @@ export default function CollateralEdit({ id }: Props) {
           You have read-only access. Only editors and admins can change library items.
         </div>
       )}
+      {id && <PublishBlocksBanner collateralId={id} />}
       {isSynced && (
         <div className="mb-4 rounded-md border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-100 flex items-start gap-3">
           <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
