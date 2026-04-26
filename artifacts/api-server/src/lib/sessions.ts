@@ -19,6 +19,25 @@ const SESSION_TTL_MS = 8 * 60 * 60 * 1000;               // 8 hours of inactivit
 const REMEMBER_ME_TTL_MS = 30 * 24 * 60 * 60 * 1000;     // 30 days of inactivity (remember me)
 const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000;        // 30-day absolute cap
 const ROLLING_RENEW_MS = 30 * 60 * 1000;                 // bump lastSeenAt at most every 30 min
+const IDLE_TIMEOUT_MS = (() => {
+  const raw = process.env["IDLE_TIMEOUT_MS"];
+  const defaultMs = 4 * 60 * 60 * 1000; // 4 hours default
+  if (raw) {
+    const parsed = parseInt(raw, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      // Clamp to at least ROLLING_RENEW_MS so active users are never
+      // falsely expired between lastSeenAt bumps.
+      if (parsed < ROLLING_RENEW_MS) {
+        console.warn(
+          `[sessions] IDLE_TIMEOUT_MS (${parsed}ms) is below ROLLING_RENEW_MS (${ROLLING_RENEW_MS}ms); clamping to ${ROLLING_RENEW_MS}ms to prevent false sign-outs of active users.`
+        );
+        return ROLLING_RENEW_MS;
+      }
+      return parsed;
+    }
+  }
+  return defaultMs;
+})();
 
 function hashSessionId(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -125,6 +144,12 @@ export async function resolveSession(token: string): Promise<ResolvedSession | n
   }
   // Absolute lifetime cap.
   if (now.getTime() - row.createdAt.getTime() > ABSOLUTE_TTL_MS) {
+    await db.delete(sessionsTable).where(eq(sessionsTable.id, id));
+    return null;
+  }
+  // Idle timeout: expire sessions that have had no activity for IDLE_TIMEOUT_MS,
+  // regardless of the rolling expiresAt window.
+  if (now.getTime() - row.lastSeenAt.getTime() > IDLE_TIMEOUT_MS) {
     await db.delete(sessionsTable).where(eq(sessionsTable.id, id));
     return null;
   }
