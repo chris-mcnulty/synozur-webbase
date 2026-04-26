@@ -20,11 +20,12 @@ import { api } from "@/lib/api";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-export function mediaUrl(m: { storageKey: string; publicUrl?: string | null }): string {
+export function mediaUrl(m: { storageKey: string | null; publicUrl?: string | null }): string {
   if (m.publicUrl) {
     if (m.publicUrl.startsWith("http")) return m.publicUrl;
     return `${BASE_PATH}${m.publicUrl}`;
   }
+  if (!m.storageKey) return "";
   if (m.storageKey.startsWith("http")) return m.storageKey;
   return `${BASE_PATH}/api/storage${m.storageKey}`;
 }
