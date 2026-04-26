@@ -1,0 +1,108 @@
+#84 - Seed & Verify 301 Redirects from Wix
+What & Why
+The redirect infrastructure (DB table, Express middleware, admin UI) is already in place. This task seeds three sources of redirect rules and verifies they all resolve correctly:
+
+The exported Wix redirect CSV (96 active rules).
+53 additional rules from sitemap analysis — old Wix routing patterns that don't exist in the new site.
+7 Group 1 rules — old URLs for pages that were on the old site but are not being rebuilt; these get redirected to the nearest equivalent.
+Done looks like
+All 96 CSV rules are seeded and active.
+All 53 sitemap-analysis rules are seeded and active.
+All 7 Group 1 rules are seeded and active.
+No duplicate source paths exist.
+The Express redirect middleware returns HTTP 301 for a representative sample across all three groups (e.g. /contact-us → /contact, /items/2026-ai-report → /library/2026-ai-report, /strategy-solutions/company-os → /solutions/company-os, /event-details/espc25 → /events/espc25, /plans-and-pricing → /contact, /free-consultation → /contact).
+The admin Redirects page lists all entries and toggling active/inactive persists correctly.
+Out of scope
+Redirect analytics or hit-count reporting.
+XML sitemap (separate task).
+Steps
+Finalize seed script — Review and complete seedWixRedirects.ts so it parses the CSV, normalises each source path (lowercase, strip trailing slash), and upserts rows into wix_redirects with statusCode 301. Skip rows with a blank Old URL or New URL.
+Seed sitemap-analysis redirects — Add a second pass that upserts the 53 rules from the sitemap-analysis table below.
+Seed Group 1 redirects — Add a third pass that upserts the 7 Group 1 rules below.
+Run all seeds — Execute against the development database and confirm total row count with no duplicates.
+Spot-check middleware — Curl a sample of old paths from all three groups and confirm 301 responses with correct Location headers.
+Verify admin UI — Confirm all entries appear in the Redirects admin page.
+Group 1 redirect rules
+Pages that existed on the old site but are not being rebuilt — redirected to the nearest equivalent.
+
+Old path	New path
+/plans-and-pricing	/contact
+/microsoft-partners	/partners
+/ai	/solutions/ai-strategy-and-design
+/free-consultation	/contact
+/express	/contact
+/microsoft-partner-gtm-strategy-review	/solutions/microsoft-partner-development
+/service-page/microsoft-partner-gtm-strategy-review	/solutions/microsoft-partner-development
+Sitemap-analysis redirect rules
+Flat solution pages → /solutions/:slug
+Old path	New path
+/brand-messaging	/solutions/brand-and-messaging
+/communications	/solutions/communication-strategies
+/design	/solutions/design-strategies
+/roadmaps	/solutions/strategic-roadmaps
+/employee-effectiveness	/solutions/employee-effectiveness
+/employee-strategies	/solutions/employee-strategies
+/fractional-leadership	/solutions/fractional-leadership
+/delivery-project-management	/solutions/delivery-management
+/gtm-strategy	/solutions/gtm-strategy-and-execution
+/company-operating-system	/solutions/company-os
+/ai-training	/solutions/ai-strategy-and-design
+/strategy-solutions/ routing layer → /solutions/
+Old path	New path
+/strategy-solutions/company-os	/solutions/company-os
+/strategy-solutions/ai-strategy-and-design	/solutions/ai-strategy-and-design
+/strategy-solutions/gtm-strategy-and-execution	/solutions/gtm-strategy-and-execution
+/strategy-solutions/brand-and-messaging	/solutions/brand-and-messaging
+/strategy-solutions/ux-design	/solutions/design-strategies
+/strategy-solutions/communication-strategies	/solutions/communication-strategies
+/strategy-solutions/employee-strategies	/solutions/employee-strategies
+/strategy-solutions/employee-experience	/solutions/employee-effectiveness
+/strategy-solutions/strategic-roadmaps	/solutions/strategic-roadmaps
+/strategy-solutions/delivery-management	/solutions/delivery-management
+/strategy-solutions/fractional-leadership	/solutions/fractional-leadership
+/strategy-solutions/microsoft-partner-development-	/solutions/microsoft-partner-development
+/service-offerings/ routing layer → /services/
+Old path	New path
+/service-offerings/experiences	/services/experiences
+/service-offerings/technology-transformation	/services/technology-transformation
+/service-offerings/gtm-transformation	/services/go-to-market-transformation
+/service-offerings/strategic-transformation	/services/strategic-transformation
+/items/ (Wix library) → /library/
+Old path	New path
+/items/2026-ai-report	/library/2026-ai-report
+/items/upgrading-your-company-operating-system-2026	/library/upgrading-your-company-operating-system-2026
+/items/care-raft-prompting-industry-examples	/library/care-raft-prompting-industry-examples
+/items/leading-ai-playbooks-and-strategic-analysis	/library/leading-ai-playbooks-and-strategic-analysis
+/items/navigating-ai-stratosphere	/library/navigating-ai-stratosphere
+/items/succeeding-with-copilot	/library/succeeding-with-copilot
+/items/company-operating-system-paper	/library/company-operating-system-paper
+Event pages
+Old path	New path
+/event-list	/events
+/event-details/partner-vibe	/events/partner-vibe
+/event-details/m365-community-conference-2026	/events/m365-community-conference-2026
+/event-details/transforming-the-digital-workplace-strategies-for-engagement-and-success	/events/transforming-the-digital-workplace-strategies-for-engagement-and-success
+/event-details/fy26-forward-microsoft-partner-success-strategies	/events/fy26-forward-microsoft-partner-success-strategies
+/event-details/vancouver-ai-summit	/events/vancouver-ai-summit
+/event-details/espc25	/events/espc25
+/event-details/mastering-your-ai-rollout-success-strategies	/events/mastering-your-ai-rollout-success-strategies
+/event-details/microsoft-tribal-cio-summit-2026	/events/microsoft-tribal-cio-summit-2026
+/event-details/techcon-365-dallas	/events/techcon-365-dallas
+/event-details/strategy-now-with-ai-building-your-company-operating-system-for-2026-success	/events/strategy-now-with-ai-building-your-company-operating-system-for-2026-success
+Booking / service-page entries
+Old path	New path
+/service-page/ai-strategy-session	/contact
+/service-page/strategy-consultation	/contact
+/service-page/north-star-workshop	/workshops/company-operating-system-bootcamp-two-day-leadership-workshop
+/service-page/fractional-cxo	/solutions/fractional-leadership
+Miscellaneous
+Old path	New path
+/tools-and-tips	/library
+/join	/start
+Relevant files
+artifacts/api-server/src/scripts/seedWixRedirects.ts
+artifacts/api-server/src/lib/wixRedirects.ts
+artifacts/api-server/src/routes/wixRedirects.ts
+artifacts/api-server/src/app.ts
+artifacts/synozur/src/pages/admin/site-config/redirects.tsx
+attached_assets/URL_Redirects_Export_1777239544495.csv
