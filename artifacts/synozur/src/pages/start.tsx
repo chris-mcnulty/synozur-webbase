@@ -1,258 +1,177 @@
-import { Meta } from "@/lib/meta";
-import { motion } from "framer-motion";
-import { useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { ArrowRight, Check } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { ArrowRight, CalendarDays, Megaphone, Mic, PenLine, Sparkles } from "lucide-react";
+import { api, type BookingDto } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { api } from "@/lib/api";
-import {
-  Turnstile,
-  TURNSTILE_SITE_KEY,
-  isBotCheckError,
-  type TurnstileHandle,
-} from "@/components/turnstile";
-import { BotCheckCallout } from "@/components/bot-check-callout";
+import { Meta } from "@/lib/meta";
+import { useParentPage } from "@/lib/parent-page";
 
-const schema = z.object({
-  name: z.string().min(2, "Your name, please"),
-  company: z.string().min(2, "Your company, please"),
-  email: z.string().email("A valid email, please"),
-  role: z.string().min(2, "Your role, please"),
-  pillar: z.enum([
-    "Strategic Transformation",
-    "Technology Transformation",
-    "Experiences",
-    "Go-to-Market Transformation",
-    "Not sure yet",
-  ]),
-  timeline: z.enum(["Immediate", "This quarter", "Next quarter", "Exploring"]),
-  budget: z.enum(["< $250k", "$250k – $1M", "$1M – $5M", "$5M+", "Not yet defined"]),
-  brief: z.string().min(20, "A short brief helps us route this to the right partner"),
-  website: z.string().optional(),
-});
+const PARENT_PAGE_DEFAULTS = {
+  heroEyebrow: "Get Started",
+  heroHeadline: "Book time, or send a brief.",
+  heroSubhead:
+    "Pick a Bookings calendar that fits — a general intro, an offer-specific slot, or a conference window. Prefer to write it out? Send a brief instead.",
+  seoTitle: "Get Started",
+  seoDescription:
+    "Book time with The Synozur Alliance — general intros, offer-specific calendars, and conference windows.",
+};
 
-type FormData = z.infer<typeof schema>;
+const SCOPE_META: Record<
+  string,
+  { label: string; icon: typeof Sparkles }
+> = {
+  general: { label: "Always available", icon: Sparkles },
+  offer: { label: "Offer", icon: Megaphone },
+  conference: { label: "Conference", icon: Mic },
+};
 
-const pillars: FormData["pillar"][] = [
-  "Strategic Transformation",
-  "Technology Transformation",
-  "Experiences",
-  "Go-to-Market Transformation",
-  "Not sure yet",
-];
-const timelines: FormData["timeline"][] = ["Immediate", "This quarter", "Next quarter", "Exploring"];
-const budgets: FormData["budget"][] = ["< $250k", "$250k – $1M", "$1M – $5M", "$5M+", "Not yet defined"];
+function formatRange(b: BookingDto): string | null {
+  if (!b.startsAt && !b.endsAt) return null;
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  if (b.startsAt && b.endsAt) return `${fmt(b.startsAt)} – ${fmt(b.endsAt)}`;
+  if (b.startsAt) return `Opens ${fmt(b.startsAt)}`;
+  if (b.endsAt) return `Through ${fmt(b.endsAt)}`;
+  return null;
+}
+
+function BookingCard({ booking }: { booking: BookingDto }) {
+  const meta = SCOPE_META[booking.scope] ?? SCOPE_META.general;
+  const Icon = meta.icon;
+  const range = formatRange(booking);
+  return (
+    <Link
+      href={`/start/${booking.slug}`}
+      className="group flex flex-col rounded-2xl border border-border bg-card p-6 hover-elevate transition-colors"
+      data-testid={`booking-card-${booking.slug}`}
+    >
+      <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-4">
+        <Icon className="h-3.5 w-3.5" />
+        <span>{meta.label}</span>
+        {range && <span className="text-muted-foreground normal-case tracking-normal">· {range}</span>}
+      </div>
+      <h3 className="text-2xl font-semibold mb-2 group-hover:text-primary transition-colors">
+        {booking.title}
+      </h3>
+      {booking.teaser && (
+        <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+          {booking.teaser}
+        </p>
+      )}
+      <div className="mt-auto inline-flex items-center gap-2 text-sm font-medium text-primary">
+        Book time <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+}
 
 export default function Start() {
-  const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [botCheckFailed, setBotCheckFailed] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileRef = useRef<TurnstileHandle>(null);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { pillar: "Not sure yet", timeline: "Exploring", budget: "Not yet defined" },
+  const copy = useParentPage("start", PARENT_PAGE_DEFAULTS);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["public-bookings"],
+    queryFn: () => api.listBookings(),
   });
 
-  const onSubmit = async (data: FormData) => {
-    setSubmitError(null);
-    setBotCheckFailed(false);
-    if (TURNSTILE_SITE_KEY && !turnstileToken) {
-      setSubmitError("Please complete the bot check before sending.");
-      return;
-    }
-    try {
-      await api.submitStart({
-        name: data.name,
-        role: data.role,
-        company: data.company,
-        email: data.email,
-        pillar: data.pillar,
-        timeline: data.timeline,
-        budget: data.budget,
-        brief: data.brief,
-        website: data.website ?? null,
-        turnstileToken,
-      });
-      setSubmitted(true);
-    } catch (err) {
-      if (isBotCheckError(err)) {
-        setBotCheckFailed(true);
-        setTurnstileToken(null);
-        turnstileRef.current?.reset();
-        return;
-      }
-      setSubmitError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again or email hello@synozur.com.",
-      );
-    }
-  };
+  const bookings = data?.items ?? [];
+  const general = bookings.filter((b) => b.scope === "general");
+  const featured = bookings.filter((b) => b.scope !== "general");
 
   return (
-    <div className="w-full">
-      <Meta
-        title="Get Started"
-        description="Tell us where you are headed. A partner will read your intake personally and respond within two business days."
-      />
+    <>
+      <Meta title={copy.seoTitle} description={copy.seoDescription} />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-30" />
-        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Get Started
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-28 md:py-32">
+        <div className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4 inline-flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            {copy.heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            Tell us where you are headed.
+            {copy.heroHeadline}
           </h1>
-          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-2xl">
-            A few questions so the right partner reads your note. No automation, no
-            sales sequences — a real reply within two business days.
+          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
+            {copy.heroSubhead}
           </p>
         </div>
       </section>
 
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl">
-          {submitted ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-2xl border border-primary/40 bg-card p-12 text-center"
-            >
-              <div className="absolute inset-0 nebula-gradient opacity-15" />
-              <div className="relative">
-                <div className="mx-auto h-16 w-16 rounded-full bg-primary/15 text-primary flex items-center justify-center mb-6">
-                  <Check className="h-8 w-8" />
-                </div>
-                <h2 className="text-3xl font-bold mb-4">We have your brief.</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  A partner will read it personally and reply within two business
-                  days. Thank you for thinking of Synozur.
-                </p>
-              </div>
-            </motion.div>
-          ) : (
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="rounded-2xl border border-border/60 bg-card p-8 md:p-10 space-y-10"
-            >
-              <fieldset className="space-y-6">
-                <legend className="text-xs uppercase tracking-widest text-primary mb-4">
-                  About you
-                </legend>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" {...register("name")} />
-                    {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Input id="role" {...register("role")} />
-                    {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
-                    <Input id="company" {...register("company")} />
-                    {errors.company && <p className="text-sm text-destructive">{errors.company.message}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Work email</Label>
-                    <Input id="email" type="email" {...register("email")} />
-                    {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-                  </div>
-                </div>
-              </fieldset>
+      <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+        {isLoading && (
+          <div className="text-muted-foreground">Loading bookings…</div>
+        )}
+        {error && (
+          <div className="text-destructive">
+            Failed to load bookings. Please try again or send a brief instead.
+          </div>
+        )}
 
-              <fieldset className="space-y-4">
-                <legend className="text-xs uppercase tracking-widest text-primary mb-2">
-                  The work
-                </legend>
-                <div className="space-y-2">
-                  <Label htmlFor="pillar">Closest service pillar</Label>
-                  <select
-                    id="pillar"
-                    {...register("pillar")}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {pillars.map((p) => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
+        {!isLoading && !error && (
+          <>
+            {general.length > 0 && (
+              <section className="mb-12" data-testid="bookings-general-section">
+                <h2 className="text-2xl font-semibold text-foreground mb-6 pb-2 border-b border-border">
+                  Always available
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {general.map((b) => (
+                    <BookingCard key={b.id} booking={b} />
+                  ))}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="timeline">Timeline</Label>
-                    <select
-                      id="timeline"
-                      {...register("timeline")}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      {timelines.map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="budget">Investment range</Label>
-                    <select
-                      id="budget"
-                      {...register("budget")}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      {budgets.map((b) => (
-                        <option key={b}>{b}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="brief">Brief</Label>
-                  <Textarea
-                    id="brief"
-                    rows={7}
-                    placeholder="The situation, what good looks like in twelve months, and where you have tried things that have not landed."
-                    {...register("brief")}
-                  />
-                  {errors.brief && <p className="text-sm text-destructive">{errors.brief.message}</p>}
-                </div>
-              </fieldset>
+              </section>
+            )}
 
-              <input
-                type="text"
-                tabIndex={-1}
-                autoComplete="off"
-                aria-hidden="true"
-                className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
-                {...register("website")}
-              />
-              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
-              {botCheckFailed && <BotCheckCallout />}
-              {submitError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {submitError}
-                </p>
-              )}
-              <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
-                {isSubmitting ? "Sending..." : (
-                  <>Send brief <ArrowRight className="ml-2 h-4 w-4" /></>
-                )}
-              </Button>
-            </form>
-          )}
-        </div>
-      </section>
-    </div>
+            {featured.length > 0 && (
+              <section className="mb-12" data-testid="bookings-featured-section">
+                <h2 className="text-2xl font-semibold text-foreground mb-6 pb-2 border-b border-border">
+                  Offers and conferences
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {featured.map((b) => (
+                    <BookingCard key={b.id} booking={b} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {bookings.length === 0 && (
+              <p className="text-muted-foreground">
+                No booking calendars are open right now. Send a brief and a partner
+                will follow up directly.
+              </p>
+            )}
+          </>
+        )}
+
+        <section
+          className="mt-12 rounded-2xl border border-border/60 bg-card p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+          data-testid="start-brief-callout"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-widest text-primary mb-2 inline-flex items-center gap-2">
+              <PenLine className="h-3.5 w-3.5" />
+              Prefer to write
+            </p>
+            <h3 className="text-xl md:text-2xl font-semibold mb-1">
+              Send a brief instead.
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-xl">
+              A partner will read your note personally and respond within two
+              business days — no automation, no sales sequences.
+            </p>
+          </div>
+          <Link href="/start/brief">
+            <Button size="lg" data-testid="link-start-brief">
+              Send a brief <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </section>
+      </div>
+    </>
   );
 }

@@ -29,6 +29,7 @@ const SLUGS = [
   "library",
   "items",
   "webinars",
+  "start",
 ];
 
 async function main() {

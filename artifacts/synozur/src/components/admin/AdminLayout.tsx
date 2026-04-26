@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Users,
   CalendarDays,
+  CalendarClock,
   UserSquare2,
   Inbox,
   LogOut,
@@ -123,6 +124,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/people/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
       { href: "/people/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
+      { href: "/people/bookings", label: "Bookings", icon: CalendarClock, capability: "site.manage", testId: "nav-admin-bookings" },
     ],
   },
   {

@@ -1021,6 +1021,29 @@ export const api = {
       url(`/cms/content-parent-pages/${encodeURIComponent(id)}`),
       { method: "PATCH", body: JSON.stringify(body) },
     ),
+  // Bookings — Microsoft Bookings embeds shown on /start.
+  listBookings: () =>
+    jsonFetch<{ items: BookingDto[] }>(url("/bookings")),
+  getBooking: (slug: string) =>
+    jsonFetch<BookingDto>(url(`/bookings/${encodeURIComponent(slug)}`)),
+  adminListBookings: () =>
+    jsonFetch<{ items: BookingDto[] }>(url("/admin/bookings")),
+  adminGetBooking: (id: string) =>
+    jsonFetch<BookingDto>(url(`/admin/bookings/${encodeURIComponent(id)}`)),
+  createBooking: (body: BookingInput) =>
+    jsonFetch<BookingDto>(url("/admin/bookings"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateBooking: (id: string, body: BookingPatchInput) =>
+    jsonFetch<BookingDto>(url(`/admin/bookings/${encodeURIComponent(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteBooking: (id: string) =>
+    jsonFetch<void>(url(`/admin/bookings/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
 };
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
@@ -1427,6 +1450,45 @@ export interface ContentParentPageDto {
 export type ContentParentPagePatchInput = Partial<
   Omit<ContentParentPageDto, "id" | "slug" | "createdAt" | "updatedAt">
 >;
+
+// Bookings — Microsoft Bookings embed entries surfaced on /start.
+export const BOOKING_SCOPES = ["general", "offer", "conference"] as const;
+export type BookingScope = (typeof BOOKING_SCOPES)[number];
+
+export interface BookingDto {
+  id: string;
+  slug: string;
+  title: string;
+  teaser: string | null;
+  descriptionHtml: string | null;
+  embedUrl: string;
+  scope: BookingScope | string;
+  startsAt: string | null;
+  endsAt: string | null;
+  displayOrder: number;
+  active: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingInput {
+  slug?: string | null;
+  title: string;
+  teaser?: string | null;
+  descriptionHtml?: string | null;
+  embedUrl: string;
+  scope?: BookingScope;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  displayOrder?: number;
+  active?: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+}
+
+export type BookingPatchInput = Partial<BookingInput>;
 
 export interface PolarisEpisodeInput {
   slug?: string | null;
