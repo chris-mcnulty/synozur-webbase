@@ -34,7 +34,7 @@ import { fetchFeatured, type Collateral } from "@/data/collateral";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
-import { workshops } from "@/data/workshops";
+import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 
 function FromTheFeedCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -207,6 +207,11 @@ export default function Home() {
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
+  const { data: workshopsData } = useQuery({
+    queryKey: ["public-workshops"],
+    queryFn: () => workshopsApi.listPublic(),
+  });
+  const workshops: WorkshopDto[] = (workshopsData?.items ?? []).slice(0, 4);
   const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
   const editorial = resolveImageUrl(settings?.homeEditorialImageUrl, DEFAULT_EDITORIAL);
   const customVideoSrc = settings?.homeHeroVideoUrl
