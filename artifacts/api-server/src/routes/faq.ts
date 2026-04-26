@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import {
   db,
   faqCategoriesTable,
   faqItemsTable,
+  ARTIFACT_STATUSES,
   type FaqCategory,
   type FaqItem,
 } from "@workspace/db";
@@ -19,10 +20,28 @@ const adminGuard = [requireAuth, requireRole("admin", "editor")];
 const readGuard = [requireAuth, requireRole("admin", "editor")];
 
 // ---------------------------------------------------------------------------
-// Serialization
+// Visibility filter — #108: matches `isArtifactPubliclyVisible` from
+// `_artifactBase.ts` but expressed in SQL so it can run inside a `where`
+// clause. Identical to the pattern used by applications/case-studies/etc.
+// ---------------------------------------------------------------------------
+function visibleClauses<T extends typeof faqCategoriesTable | typeof faqItemsTable>(
+  t: T,
+) {
+  return [
+    eq(t.active, true),
+    eq(t.status, "published" as const),
+    sql`${t.deletedAt} is null`,
+    sql`(${t.publishedAt} is null or ${t.publishedAt} <= now())`,
+    sql`(${t.unpublishedAt} is null or ${t.unpublishedAt} > now())`,
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Serialization — keeps the public/admin JSON shape stable across the #108
+// schema migration. New lifecycle fields are exposed only on admin endpoints.
 // ---------------------------------------------------------------------------
 
-function serializeCategory(c: FaqCategory) {
+function serializePublicCategory(c: FaqCategory) {
   return {
     id: c.id,
     slug: c.slug,
@@ -35,7 +54,7 @@ function serializeCategory(c: FaqCategory) {
   };
 }
 
-function serializeItem(i: FaqItem) {
+function serializePublicItem(i: FaqItem) {
   return {
     id: i.id,
     categoryId: i.categoryId,
@@ -49,6 +68,33 @@ function serializeItem(i: FaqItem) {
     seoDescription: i.seoDescription,
     createdAt: i.createdAt,
     updatedAt: i.updatedAt,
+  };
+}
+
+function serializeAdminCategory(c: FaqCategory) {
+  return {
+    ...serializePublicCategory(c),
+    title: c.title,
+    publishedAt: c.publishedAt,
+    unpublishedAt: c.unpublishedAt,
+    featured: c.featured,
+    featuredRank: c.featuredRank,
+    active: c.active,
+    sourceId: c.sourceId,
+    deletedAt: c.deletedAt,
+  };
+}
+
+function serializeAdminItem(i: FaqItem) {
+  return {
+    ...serializePublicItem(i),
+    title: i.title,
+    unpublishedAt: i.unpublishedAt,
+    featured: i.featured,
+    featuredRank: i.featuredRank,
+    active: i.active,
+    sourceId: i.sourceId,
+    deletedAt: i.deletedAt,
   };
 }
 
@@ -101,9 +147,15 @@ async function ensureUniqueItemSlug(
   }
 }
 
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // ---------------------------------------------------------------------------
-// Public endpoint — returns all published categories with nested published
-// items in one round trip. Ordering: category.displayOrder → item.displayOrder.
+// Public endpoint — returns all visible categories with nested visible items
+// in one round trip. Ordering: category.displayOrder → item.displayOrder.
 // ---------------------------------------------------------------------------
 
 async function loadPublishedFaq() {
@@ -111,7 +163,7 @@ async function loadPublishedFaq() {
     db
       .select()
       .from(faqCategoriesTable)
-      .where(eq(faqCategoriesTable.status, "published"))
+      .where(and(...visibleClauses(faqCategoriesTable)))
       .orderBy(
         asc(faqCategoriesTable.displayOrder),
         asc(faqCategoriesTable.createdAt),
@@ -119,7 +171,7 @@ async function loadPublishedFaq() {
     db
       .select()
       .from(faqItemsTable)
-      .where(eq(faqItemsTable.status, "published"))
+      .where(and(...visibleClauses(faqItemsTable)))
       .orderBy(asc(faqItemsTable.displayOrder), asc(faqItemsTable.createdAt)),
   ]);
   const byCategory = new Map<string, FaqItem[]>();
@@ -142,8 +194,8 @@ router.get("/faq", async (_req, res) => {
   res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
   res.json({
     categories: grouped.map(({ category, items }) => ({
-      ...serializeCategory(category),
-      items: items.map(serializeItem),
+      ...serializePublicCategory(category),
+      items: items.map(serializePublicItem),
     })),
   });
 });
@@ -194,7 +246,12 @@ const CategoryBody = z.object({
   name: z.string().min(1),
   description: z.string().nullish(),
   displayOrder: z.number().int().optional(),
-  status: z.enum(["draft", "published"]).optional(),
+  status: z.enum(ARTIFACT_STATUSES).optional(),
+  publishedAt: z.string().nullish(),
+  unpublishedAt: z.string().nullish(),
+  featured: z.boolean().optional(),
+  featuredRank: z.number().int().nullish(),
+  active: z.boolean().optional(),
 });
 const CategoryPatch = CategoryBody.partial();
 
@@ -202,8 +259,9 @@ router.get("/cms/faq/categories", ...readGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(faqCategoriesTable)
+    .where(sql`${faqCategoriesTable.deletedAt} is null`)
     .orderBy(asc(faqCategoriesTable.displayOrder), asc(faqCategoriesTable.createdAt));
-  res.json({ items: rows.map(serializeCategory) });
+  res.json({ items: rows.map(serializeAdminCategory) });
 });
 
 router.post("/cms/faq/categories", ...adminGuard, async (req, res) => {
@@ -214,14 +272,26 @@ router.post("/cms/faq/categories", ...adminGuard, async (req, res) => {
   }
   const d = parsed.data;
   const slug = await ensureUniqueCategorySlug(d.slug || d.name);
+  const status = d.status ?? "published";
   const [row] = await db
     .insert(faqCategoriesTable)
     .values({
       slug,
+      // `title` mirrors the domain-facing display field (`name`) so generic
+      // artifact tooling has something useful to read.
+      title: d.name,
       name: d.name,
       description: d.description ?? null,
       displayOrder: d.displayOrder ?? 0,
-      status: d.status ?? "published",
+      status,
+      // Default published_at to "now" when created in a published state so
+      // the visibility filter immediately exposes the row.
+      publishedAt:
+        parseDate(d.publishedAt) ?? (status === "published" ? new Date() : null),
+      unpublishedAt: parseDate(d.unpublishedAt),
+      featured: d.featured ?? false,
+      featuredRank: d.featuredRank ?? null,
+      active: d.active ?? true,
     })
     .returning();
   await audit({
@@ -230,7 +300,7 @@ router.post("/cms/faq/categories", ...adminGuard, async (req, res) => {
     entity: "faq_category",
     entityId: row.id,
   });
-  res.status(201).json(serializeCategory(row));
+  res.status(201).json(serializeAdminCategory(row));
 });
 
 router.patch("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
@@ -238,7 +308,7 @@ router.patch("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
   const existing = await db.query.faqCategoriesTable.findFirst({
     where: eq(faqCategoriesTable.id, id),
   });
-  if (!existing) {
+  if (!existing || existing.deletedAt) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -252,8 +322,24 @@ router.patch("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
   if (d.slug !== undefined && d.slug !== null) {
     updates.slug = await ensureUniqueCategorySlug(d.slug, id);
   }
-  for (const k of ["name", "description", "displayOrder", "status"] as const) {
+  if (d.name !== undefined) {
+    updates.name = d.name;
+    updates.title = d.name;
+  }
+  for (const k of ["description", "displayOrder", "status", "featured", "active"] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
+  }
+  if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
+  if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
+  if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  // First publish — stamp publishedAt so the visibility filter exposes the row.
+  if (
+    d.status === "published" &&
+    existing.status !== "published" &&
+    existing.publishedAt === null &&
+    d.publishedAt === undefined
+  ) {
+    updates.publishedAt = new Date();
   }
   const [updated] = await db
     .update(faqCategoriesTable)
@@ -266,13 +352,37 @@ router.patch("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
     entity: "faq_category",
     entityId: id,
   });
-  res.json(serializeCategory(updated));
+  res.json(serializeAdminCategory(updated));
 });
 
 router.delete("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
   const id = String(req.params.id);
-  // Items are removed via ON DELETE CASCADE on the FK.
-  await db.delete(faqCategoriesTable).where(eq(faqCategoriesTable.id, id));
+  const existing = await db.query.faqCategoriesTable.findFirst({
+    where: eq(faqCategoriesTable.id, id),
+  });
+  if (!existing || existing.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const now = new Date();
+  // Soft delete — matches the pattern every other artifact uses. Items
+  // remain in the DB but are excluded from the visibility filter via
+  // `deletedAt`. Items inside the category cascade-delete via the FK, so
+  // we soft-delete each one explicitly so they don't reappear if the
+  // category is later restored.
+  await db
+    .update(faqItemsTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(
+      and(
+        eq(faqItemsTable.categoryId, id),
+        sql`${faqItemsTable.deletedAt} is null`,
+      ),
+    );
+  await db
+    .update(faqCategoriesTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(faqCategoriesTable.id, id));
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_category.delete",
@@ -317,8 +427,12 @@ const ItemBody = z.object({
   question: z.string().min(1),
   answerHtml: z.string().optional(),
   displayOrder: z.number().int().optional(),
-  status: z.enum(["draft", "published"]).optional(),
-  publishedAt: z.string().datetime().nullish(),
+  status: z.enum(ARTIFACT_STATUSES).optional(),
+  publishedAt: z.string().nullish(),
+  unpublishedAt: z.string().nullish(),
+  featured: z.boolean().optional(),
+  featuredRank: z.number().int().nullish(),
+  active: z.boolean().optional(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
 });
@@ -327,10 +441,18 @@ const ItemPatch = ItemBody.partial();
 router.get("/cms/faq/items", ...readGuard, async (req, res) => {
   const categoryId =
     typeof req.query.categoryId === "string" ? req.query.categoryId : null;
-  const base = db.select().from(faqItemsTable);
-  const rows = await (categoryId ? base.where(eq(faqItemsTable.categoryId, categoryId)) : base)
+  const where = categoryId
+    ? and(
+        eq(faqItemsTable.categoryId, categoryId),
+        sql`${faqItemsTable.deletedAt} is null`,
+      )
+    : sql`${faqItemsTable.deletedAt} is null`;
+  const rows = await db
+    .select()
+    .from(faqItemsTable)
+    .where(where)
     .orderBy(asc(faqItemsTable.displayOrder), asc(faqItemsTable.createdAt));
-  res.json({ items: rows.map(serializeItem) });
+  res.json({ items: rows.map(serializeAdminItem) });
 });
 
 router.post("/cms/faq/items", ...adminGuard, async (req, res) => {
@@ -341,16 +463,23 @@ router.post("/cms/faq/items", ...adminGuard, async (req, res) => {
   }
   const d = parsed.data;
   const slug = await ensureUniqueItemSlug(d.categoryId, d.slug || d.question);
+  const status = d.status ?? "published";
   const [row] = await db
     .insert(faqItemsTable)
     .values({
       categoryId: d.categoryId,
       slug,
+      title: d.question,
       question: d.question,
       answerHtml: d.answerHtml ?? "",
       displayOrder: d.displayOrder ?? 0,
-      status: d.status ?? "published",
-      publishedAt: d.publishedAt ? new Date(d.publishedAt) : null,
+      status,
+      publishedAt:
+        parseDate(d.publishedAt) ?? (status === "published" ? new Date() : null),
+      unpublishedAt: parseDate(d.unpublishedAt),
+      featured: d.featured ?? false,
+      featuredRank: d.featuredRank ?? null,
+      active: d.active ?? true,
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
     })
@@ -361,7 +490,7 @@ router.post("/cms/faq/items", ...adminGuard, async (req, res) => {
     entity: "faq_item",
     entityId: row.id,
   });
-  res.status(201).json(serializeItem(row));
+  res.status(201).json(serializeAdminItem(row));
 });
 
 router.patch("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
@@ -369,7 +498,7 @@ router.patch("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
   const existing = await db.query.faqItemsTable.findFirst({
     where: eq(faqItemsTable.id, id),
   });
-  if (!existing) {
+  if (!existing || existing.deletedAt) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -385,18 +514,31 @@ router.patch("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
     updates.slug = await ensureUniqueItemSlug(nextCategoryId, d.slug, id);
   }
   if (d.categoryId !== undefined) updates.categoryId = d.categoryId;
+  if (d.question !== undefined) {
+    updates.question = d.question;
+    updates.title = d.question;
+  }
   for (const k of [
-    "question",
     "answerHtml",
     "displayOrder",
     "status",
+    "featured",
+    "active",
     "seoTitle",
     "seoDescription",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
-  if (d.publishedAt !== undefined) {
-    updates.publishedAt = d.publishedAt ? new Date(d.publishedAt) : null;
+  if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
+  if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
+  if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  if (
+    d.status === "published" &&
+    existing.status !== "published" &&
+    existing.publishedAt === null &&
+    d.publishedAt === undefined
+  ) {
+    updates.publishedAt = new Date();
   }
   const [updated] = await db
     .update(faqItemsTable)
@@ -409,12 +551,23 @@ router.patch("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
     entity: "faq_item",
     entityId: id,
   });
-  res.json(serializeItem(updated));
+  res.json(serializeAdminItem(updated));
 });
 
 router.delete("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
   const id = String(req.params.id);
-  await db.delete(faqItemsTable).where(eq(faqItemsTable.id, id));
+  const existing = await db.query.faqItemsTable.findFirst({
+    where: eq(faqItemsTable.id, id),
+  });
+  if (!existing || existing.deletedAt) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const now = new Date();
+  await db
+    .update(faqItemsTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(faqItemsTable.id, id));
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_item.delete",
@@ -446,7 +599,12 @@ router.post("/cms/faq/items/reorder", ...adminGuard, async (req, res) => {
   const existing = await db
     .select({ id: faqItemsTable.id })
     .from(faqItemsTable)
-    .where(eq(faqItemsTable.categoryId, categoryId));
+    .where(
+      and(
+        eq(faqItemsTable.categoryId, categoryId),
+        sql`${faqItemsTable.deletedAt} is null`,
+      ),
+    );
   const existingIds = new Set(existing.map((r) => r.id));
   const unknownIds = ids.filter((id) => !existingIds.has(id));
   if (unknownIds.length > 0) {

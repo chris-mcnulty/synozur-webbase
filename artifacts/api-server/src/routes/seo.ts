@@ -207,9 +207,10 @@ async function collectEntries(): Promise<Entry[]> {
           eq(workshopsTable.active, true),
         ),
       ),
-    // FAQ deep links — one URL per published item under a published category.
+    // FAQ deep links — one URL per visible item under a visible category.
     // Drives per-question indexing so each Q&A can rank on its own keywords
-    // and show up as a distinct SERP / AIO citation.
+    // and show up as a distinct SERP / AIO citation. #108: now uses the
+    // shared artifact visibility filter (active + deletedAt + publish window).
     db
       .select({
         id: faqCategoriesTable.id,
@@ -217,7 +218,15 @@ async function collectEntries(): Promise<Entry[]> {
         updatedAt: faqCategoriesTable.updatedAt,
       })
       .from(faqCategoriesTable)
-      .where(eq(faqCategoriesTable.status, "published")),
+      .where(
+        and(
+          eq(faqCategoriesTable.active, true),
+          eq(faqCategoriesTable.status, "published"),
+          isNull(faqCategoriesTable.deletedAt),
+          sql`(${faqCategoriesTable.publishedAt} is null or ${faqCategoriesTable.publishedAt} <= now())`,
+          sql`(${faqCategoriesTable.unpublishedAt} is null or ${faqCategoriesTable.unpublishedAt} > now())`,
+        ),
+      ),
     db
       .select({
         categoryId: faqItemsTable.categoryId,
@@ -225,7 +234,15 @@ async function collectEntries(): Promise<Entry[]> {
         updatedAt: faqItemsTable.updatedAt,
       })
       .from(faqItemsTable)
-      .where(eq(faqItemsTable.status, "published")),
+      .where(
+        and(
+          eq(faqItemsTable.active, true),
+          eq(faqItemsTable.status, "published"),
+          isNull(faqItemsTable.deletedAt),
+          sql`(${faqItemsTable.publishedAt} is null or ${faqItemsTable.publishedAt} <= now())`,
+          sql`(${faqItemsTable.unpublishedAt} is null or ${faqItemsTable.unpublishedAt} > now())`,
+        ),
+      ),
   ]);
 
   for (const p of posts) {
