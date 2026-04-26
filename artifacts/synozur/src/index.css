@@ -243,108 +243,110 @@
 }
 
 /* ── AURORA THEME ──────────────────────────────────────────────────────────
-   Aurora borealis palette: deep teal darks, bright teal primary, violet accent.
+   Deep indigo night with violet primary and hot-pink / magenta accents.
+   Matches the Constellation (SCDP) dark-purple palette.
    Applied when <html class="theme-aurora"> is set by the ThemeProvider.
    Both light and dark modes are overridden.                                  */
 
 html.theme-aurora {
-  /* Aurora brand tokens */
-  --aurora-teal:    174 78% 38%;
-  --aurora-cyan:    186 82% 46%;
-  --aurora-green:   158 68% 40%;
-  --aurora-violet:  269 97% 52%;
-  --aurora-magenta: 290 70% 52%;
+  /* Aurora palette tokens — violet + magenta, no teal */
+  --aurora-violet:  269 97% 52%;   /* #810FFB brand violet */
+  --aurora-magenta: 320 80% 50%;   /* hot pink / magenta accent */
+  --aurora-pink:    300 65% 58%;   /* mid pink for charts */
+  --aurora-indigo:  250 72% 58%;   /* blue-violet for charts */
+  --aurora-grape:   285 68% 48%;   /* deep grape for charts */
 
   /* Light mode overrides */
-  --background: 174 22% 97%;
-  --foreground: 192 40% 10%;
-  --border:     174 18% 88%;
-  --input:      174 18% 88%;
-  --ring:       var(--aurora-teal);
+  --background: 270 28% 98%;
+  --foreground: 270 40% 10%;
+  --border:     270 20% 88%;
+  --input:      270 20% 88%;
+  --ring:       var(--aurora-violet);
 
   --card:             0 0% 100%;
-  --card-foreground:  192 40% 10%;
-  --card-border:      174 18% 88%;
+  --card-foreground:  270 40% 10%;
+  --card-border:      270 20% 88%;
 
   --popover:            0 0% 100%;
-  --popover-foreground: 192 40% 10%;
-  --popover-border:     174 18% 88%;
+  --popover-foreground: 270 40% 10%;
+  --popover-border:     270 20% 88%;
 
-  --primary:            var(--aurora-teal);
+  --primary:            var(--aurora-violet);
   --primary-foreground: 0 0% 100%;
 
-  --secondary:            var(--aurora-violet);
+  --secondary:            var(--aurora-magenta);
   --secondary-foreground: 0 0% 100%;
 
-  --muted:            174 14% 92%;
-  --muted-foreground: 192 14% 42%;
+  --muted:            270 18% 93%;
+  --muted-foreground: 270 12% 42%;
 
-  --accent:            174 14% 92%;
-  --accent-foreground: 192 40% 10%;
+  --accent:            270 18% 93%;
+  --accent-foreground: 270 40% 10%;
 
   --destructive:            0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
   --sidebar:            0 0% 100%;
-  --sidebar-foreground: 192 40% 10%;
-  --sidebar-border:     174 18% 88%;
-  --sidebar-primary:    var(--aurora-teal);
+  --sidebar-foreground: 270 40% 10%;
+  --sidebar-border:     270 20% 88%;
+  --sidebar-primary:    var(--aurora-violet);
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:     174 14% 92%;
-  --sidebar-accent-foreground: 192 40% 10%;
-  --sidebar-ring:       var(--aurora-teal);
+  --sidebar-accent:     270 18% 93%;
+  --sidebar-accent-foreground: 270 40% 10%;
+  --sidebar-ring:       var(--aurora-violet);
 
-  --chart-1: var(--aurora-teal);
-  --chart-2: var(--aurora-cyan);
-  --chart-3: var(--aurora-green);
-  --chart-4: var(--aurora-violet);
-  --chart-5: var(--aurora-magenta);
+  --chart-1: var(--aurora-violet);
+  --chart-2: var(--aurora-magenta);
+  --chart-3: var(--aurora-pink);
+  --chart-4: var(--aurora-indigo);
+  --chart-5: var(--aurora-grape);
 }
 
 html.theme-aurora .dark {
-  --background: 192 42% 6%;
-  --foreground: 174 20% 95%;
-  --border:     192 28% 16%;
-  --input:      192 28% 16%;
-  --ring:       var(--aurora-teal);
+  /* Deep warm-indigo backgrounds — hue 268-272, more purple than Cosmic's 240 */
+  --background: 270 42% 6.5%;
+  --foreground: 270 20% 97%;
+  --border:     270 32% 17%;
+  --input:      270 32% 17%;
+  --ring:       var(--aurora-violet);
 
-  --card:             192 38% 9%;
-  --card-foreground:  174 20% 95%;
-  --card-border:      192 28% 16%;
+  --card:             270 36% 9.5%;
+  --card-foreground:  270 20% 97%;
+  --card-border:      270 32% 17%;
 
-  --popover:            192 38% 9%;
-  --popover-foreground: 174 20% 95%;
-  --popover-border:     192 28% 16%;
+  --popover:            270 36% 9.5%;
+  --popover-foreground: 270 20% 97%;
+  --popover-border:     270 32% 17%;
 
-  --primary:            var(--aurora-teal);
+  --primary:            var(--aurora-violet);
   --primary-foreground: 0 0% 100%;
 
-  --secondary:            var(--aurora-violet);
+  --secondary:            var(--aurora-magenta);
   --secondary-foreground: 0 0% 100%;
 
-  --muted:            192 26% 12%;
-  --muted-foreground: 174 18% 68%;
+  --muted:            270 28% 13%;
+  --muted-foreground: 270 18% 68%;
 
-  --accent:            192 26% 12%;
-  --accent-foreground: 174 20% 95%;
+  --accent:            270 28% 13%;
+  --accent-foreground: 270 20% 97%;
 
   --destructive:            0 62% 30%;
-  --destructive-foreground: 174 20% 95%;
+  --destructive-foreground: 270 20% 97%;
 
-  --sidebar:            192 42% 6%;
-  --sidebar-foreground: 174 20% 95%;
-  --sidebar-border:     192 28% 16%;
-  --sidebar-primary:    var(--aurora-teal);
+  --sidebar:            270 45% 5.5%;
+  --sidebar-foreground: 270 20% 97%;
+  --sidebar-border:     270 32% 17%;
+  --sidebar-primary:    var(--aurora-violet);
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:     192 26% 12%;
-  --sidebar-accent-foreground: 174 20% 95%;
-  --sidebar-ring:       var(--aurora-teal);
+  --sidebar-accent:     270 28% 13%;
+  --sidebar-accent-foreground: 270 20% 97%;
+  --sidebar-ring:       var(--aurora-violet);
 
-  --chart-1: var(--aurora-teal);
-  --chart-2: var(--aurora-cyan);
-  --chart-3: var(--aurora-green);
-  --chart-4: var(--aurora-violet);
-  --chart-5: var(--aurora-magenta);
+  --chart-1: var(--aurora-violet);
+  --chart-2: var(--aurora-magenta);
+  --chart-3: var(--aurora-pink);
+  --chart-4: var(--aurora-indigo);
+  --chart-5: var(--aurora-grape);
 }
 
 .nebula-gradient {

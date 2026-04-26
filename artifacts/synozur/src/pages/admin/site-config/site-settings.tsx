@@ -124,11 +124,11 @@ export default function AdminSiteSettings() {
                 const description =
                   slug === "cosmic"
                     ? "Deep indigo night sky · Violet #810FFB primary"
-                    : "Aurora borealis · Teal primary · Violet accent";
+                    : "Warm indigo · Violet primary · Hot-pink magenta accent";
                 const swatches =
                   slug === "cosmic"
                     ? ["#810FFB", "#5E2DA0", "#CC1E8A", "#2563EB"]
-                    : ["#0D9488", "#0891B2", "#22C55E", "#810FFB"];
+                    : ["#810FFB", "#CC1E8A", "#C84FC8", "#6C5CE7"];
                 return (
                   <button
                     key={slug}
