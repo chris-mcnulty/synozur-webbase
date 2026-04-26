@@ -307,6 +307,11 @@ export default function AdminNotFoundLogs() {
                             variant="ghost"
                             size="sm"
                             title={r.resolved ? "Mark unresolved" : "Mark resolved"}
+                            aria-label={
+                              r.resolved
+                                ? `Mark ${r.path} unresolved`
+                                : `Mark ${r.path} resolved`
+                            }
                             onClick={() =>
                               patchMut.mutate({
                                 id: r.id,
@@ -319,6 +324,8 @@ export default function AdminNotFoundLogs() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            title="Delete log entry"
+                            aria-label={`Delete log entry for ${r.path}`}
                             onClick={() => {
                               if (!confirm(`Delete log entry for ${r.path}?`)) return;
                               deleteMut.mutate(r.id);

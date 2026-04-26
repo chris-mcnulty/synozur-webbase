@@ -16,7 +16,6 @@ import {
 
 const router: IRouter = Router();
 
-const readGuard = [requireAuth];
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
 
 function serialize(row: NotFoundLog) {
@@ -41,7 +40,7 @@ const ListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
-router.get("/cms/not-found-logs", ...readGuard, async (req, res) => {
+router.get("/cms/not-found-logs", ...adminGuard, async (req, res) => {
   const parsed = ListQuery.safeParse(req.query ?? {});
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
@@ -163,23 +162,27 @@ router.post(
         .json({ error: "A redirect for this source path already exists" });
       return;
     }
-    const [redirect] = await db
-      .insert(wixRedirectsTable)
-      .values({
-        sourcePath,
-        targetPath: parsed.data.targetPath,
-        statusCode: parsed.data.statusCode ?? 301,
-        active: true,
-        notes: parsed.data.notes ?? null,
-      })
-      .returning();
+    const { redirect, updatedLog } = await db.transaction(async (tx) => {
+      const [insertedRedirect] = await tx
+        .insert(wixRedirectsTable)
+        .values({
+          sourcePath,
+          targetPath: parsed.data.targetPath,
+          statusCode: parsed.data.statusCode ?? 301,
+          active: true,
+          notes: parsed.data.notes ?? null,
+        })
+        .returning();
+      const [updated] = await tx
+        .update(notFoundLogsTable)
+        .set({ resolved: true })
+        .where(eq(notFoundLogsTable.id, id))
+        .returning();
+      return { redirect: insertedRedirect, updatedLog: updated };
+    });
+    // Cache invalidation must happen after the transaction commits, otherwise
+    // a concurrent request could re-warm the cache from the pre-commit state.
     invalidateRedirectCache();
-
-    const [updatedLog] = await db
-      .update(notFoundLogsTable)
-      .set({ resolved: true })
-      .where(eq(notFoundLogsTable.id, id))
-      .returning();
 
     await audit({
       actorId: req.authedUser!.id,

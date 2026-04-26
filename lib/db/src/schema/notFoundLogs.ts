@@ -44,8 +44,14 @@ export const notFoundLogsTable = pgTable(
   },
   (t) => [
     uniqueIndex("not_found_logs_normalized_path_key").on(t.normalizedPath),
-    index("not_found_logs_resolved_idx").on(t.resolved, t.lastSeenAt),
-    index("not_found_logs_hit_count_idx").on(t.hitCount),
+    // Matches the dominant admin query: filter by `resolved`, then sort by
+    // `hit_count` and `last_seen_at` (both DESC). Postgres can scan a B-tree
+    // composite index backwards to satisfy the DESC ordering without a sort.
+    index("not_found_logs_resolved_hit_count_last_seen_idx").on(
+      t.resolved,
+      t.hitCount,
+      t.lastSeenAt,
+    ),
   ],
 );
 
