@@ -75,6 +75,7 @@ import WorkshopEdit from "@/pages/admin/library/workshop-edit";
 import AdminPolarisEpisodesList from "@/pages/admin/library/polaris-episodes-list";
 import PolarisEpisodeEdit from "@/pages/admin/library/polaris-episode-edit";
 import AdminCaseStudiesList from "@/pages/admin/products/case-studies-list";
+import CaseStudyEdit from "@/pages/admin/products/case-study-edit";
 import AdminApplicationsList from "@/pages/admin/products/applications-list";
 import ApplicationEdit from "@/pages/admin/products/application-edit";
 import AdminModelsList from "@/pages/admin/products/models-list";
@@ -166,6 +167,12 @@ function AdminRoutes() {
           {(params) => <SolutionCapabilitiesPage id={params.id} />}
         </Route>
         <Route path="/products/case-studies" component={AdminCaseStudiesList} />
+        <Route path="/products/case-studies/new">
+          <CaseStudyEdit />
+        </Route>
+        <Route path="/products/case-studies/:id/edit">
+          {(params) => <CaseStudyEdit id={params.id} />}
+        </Route>
         <Route path="/products/applications" component={AdminApplicationsList} />
         <Route path="/products/models" component={AdminModelsList} />
         <Route path="/products/models/new">

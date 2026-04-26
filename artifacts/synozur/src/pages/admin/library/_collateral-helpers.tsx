@@ -57,7 +57,7 @@ export function editorPathForSource(sourceId: string | null | undefined): string
     case "white_paper":
       return `/library/white-papers/${id}/edit`;
     case "case_study":
-      return `/products/case-studies`;
+      return `/products/case-studies/${id}/edit`;
     case "model":
       return `/products/models/${id}/edit`;
     case "video":

@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Star } from "lucide-react";
+import { Pencil, Trash2, Star, Eye, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -85,6 +85,15 @@ export default function AdminCaseStudiesList() {
     <AdminLayout
       title="Case Studies"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Case Studies" }]}
+      actions={
+        canWrite ? (
+          <Link href="/products/case-studies/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-1" /> New case study
+            </Button>
+          </Link>
+        ) : undefined
+      }
     >
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
@@ -164,15 +173,30 @@ export default function AdminCaseStudiesList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      <Link href={`/case-studies/${c.slug}`}>
+                      <Link href={`/products/case-studies/${c.id}/edit`}>
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="View on public site"
+                          title="Edit case study"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
+                      {c.status === "published" && c.active && (
+                        <a
+                          href={`/case-studies/${c.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View on public site"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      )}
                       {canWrite && (
                         <Button
                           variant="ghost"
