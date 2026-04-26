@@ -203,7 +203,7 @@ export default function CaseStudies() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.05 }}
-                  className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
+                  className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors nebula-card"
                 >
                   <Link href={`/case-studies/${s.slug}`} className="block">
                     <div className="relative aspect-[4/3] overflow-hidden">

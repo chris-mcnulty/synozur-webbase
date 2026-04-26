@@ -121,7 +121,7 @@ function PostCard({ post, index }: { post: PublicPost; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04 }}
-      className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
+      className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors nebula-card"
     >
       <Link href={`/insights/${post.slug}`} className="block">
         <div className="relative aspect-[16/9] overflow-hidden bg-card">
@@ -166,7 +166,7 @@ function FeaturedCard({ post }: { post: PublicPost }) {
   return (
     <Link
       href={`/insights/${post.slug}`}
-      className="group block rounded-3xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors mb-12"
+      className="group block rounded-3xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors mb-12 nebula-card"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2">
         <div className="relative aspect-[16/9] lg:aspect-auto bg-card overflow-hidden">

@@ -128,7 +128,7 @@ function DefaultOverview() {
                   >
                     <Link
                       href={`/services/${p.slug}`}
-                      className="group block rounded-2xl border border-border/60 bg-card p-8 md:p-12 hover:border-primary/40 hover:bg-card/80 transition-all"
+                      className="group block rounded-2xl border border-border/60 bg-card p-8 md:p-12 hover:border-primary/40 hover:bg-card/80 transition-all nebula-card"
                     >
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-1">
@@ -303,7 +303,7 @@ function PillarOverview({ slug }: { slug: string }) {
                 >
                   <Link
                     href={`/solutions/${s.slug}`}
-                    className="group flex flex-col h-full rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 transition-colors"
+                    className="group flex flex-col h-full rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 transition-colors nebula-card"
                   >
                     <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
                       {s.iconUrl ? (
