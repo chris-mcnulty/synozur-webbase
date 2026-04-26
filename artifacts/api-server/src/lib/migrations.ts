@@ -272,6 +272,58 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS site_theme text NOT NULL DEFAULT 'cosmic';
     `);
 
+    // 15. workshops — PR 51: DB-backed workshops replacing static data file.
+    //     Stores all content as JSONB blobs; FKs to services/solutions for
+    //     the "related workshops" rail. active+deletedAt govern visibility
+    //     (no status/publishedAt parity yet — see backlog).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS workshops (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug text NOT NULL,
+        title text NOT NULL,
+        category text NOT NULL DEFAULT '',
+        short_description text NOT NULL DEFAULT '',
+        hero_headline text NOT NULL DEFAULT '',
+        hero_subhead text NOT NULL DEFAULT '',
+        hero_image text NOT NULL DEFAULT '',
+        hero_trust_bullets jsonb NOT NULL DEFAULT '[]',
+        primary_cta jsonb NOT NULL DEFAULT '{"label":"","href":""}',
+        secondary_cta jsonb,
+        delivery_format text NOT NULL DEFAULT '',
+        duration text NOT NULL DEFAULT '',
+        who_its_for jsonb NOT NULL DEFAULT '[]',
+        ideal_participants jsonb NOT NULL DEFAULT '[]',
+        prerequisites jsonb NOT NULL DEFAULT '[]',
+        pain jsonb NOT NULL DEFAULT '{"header":"","lead":"","tiles":[]}',
+        scope jsonb NOT NULL DEFAULT '{"header":"","summary":"","bullets":[],"included":[]}',
+        process jsonb NOT NULL DEFAULT '{"header":"","steps":[]}',
+        deliverables jsonb NOT NULL DEFAULT '{"header":"","core":[],"executive":[],"enablement":[],"addOns":[]}',
+        price jsonb NOT NULL DEFAULT '{"label":"","display":"","timeline":"","whatIsIncluded":[]}',
+        diagnostic jsonb,
+        competitive_intel jsonb,
+        tooling_note text,
+        outcomes jsonb NOT NULL DEFAULT '{"header":"","bullets":[]}',
+        before_example text NOT NULL DEFAULT '',
+        after_example text NOT NULL DEFAULT '',
+        sample_deliverables jsonb NOT NULL DEFAULT '{"header":"","thumbs":[]}',
+        faq jsonb NOT NULL DEFAULT '{"header":"","items":[]}',
+        seo jsonb NOT NULL DEFAULT '{"title":"","description":""}',
+        display_order integer,
+        source_id text,
+        service_id uuid REFERENCES services(id) ON DELETE SET NULL,
+        solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        deleted_at timestamptz
+      );
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS workshops_slug_key ON workshops (slug);`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS workshops_source_id_key ON workshops (source_id) WHERE source_id IS NOT NULL;`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS workshops_display_order_idx ON workshops (display_order);`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS workshops_service_idx ON workshops (service_id);`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS workshops_solution_idx ON workshops (solution_id);`);
+
     // 14. faq_categories + faq_items — PR 49: DB-backed FAQ with per-question
     //     deep-link URLs for SEO / LLM-crawler indexing.
     await db.execute(sql`
