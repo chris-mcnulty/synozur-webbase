@@ -272,6 +272,80 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS site_theme text NOT NULL DEFAULT 'cosmic';
     `);
 
+    // 14. faq_categories + faq_items — PR 49: DB-backed FAQ with per-question
+    //     deep-link URLs for SEO / LLM-crawler indexing.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS faq_categories (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug text NOT NULL,
+        name text NOT NULL,
+        description text,
+        display_order integer NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'published',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS faq_categories_slug_key ON faq_categories (slug);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS faq_categories_display_order_idx ON faq_categories (display_order);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS faq_items (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        category_id uuid NOT NULL REFERENCES faq_categories(id) ON DELETE CASCADE,
+        slug text NOT NULL,
+        question text NOT NULL,
+        answer_html text NOT NULL DEFAULT '',
+        display_order integer NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'published',
+        published_at timestamptz,
+        seo_title text,
+        seo_description text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS faq_items_category_slug_key ON faq_items (category_id, slug);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS faq_items_category_idx ON faq_items (category_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS faq_items_display_order_idx ON faq_items (display_order);
+    `);
+
+    // 13. not_found_logs — PR 50: aggregate 404 hits so admins can map them
+    //     to Wix redirects. One row per normalized path; hit_count / last_seen_at
+    //     are bumped on repeat visits.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS not_found_logs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        normalized_path text NOT NULL,
+        path text NOT NULL,
+        hit_count integer NOT NULL DEFAULT 1,
+        last_referrer text,
+        last_user_agent text,
+        resolved boolean NOT NULL DEFAULT false,
+        notes text,
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS not_found_logs_normalized_path_key
+        ON not_found_logs (normalized_path);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS not_found_logs_resolved_hit_count_last_seen_idx
+        ON not_found_logs (resolved, hit_count DESC, last_seen_at DESC);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
