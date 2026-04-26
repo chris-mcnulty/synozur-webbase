@@ -120,3 +120,68 @@ Follow-up items, in recommended order:
     surface.
 
 Owner/tracking: file a ticket referencing this section once #45 lands.
+
+---
+
+## Quality gates: warn-mode → hard-mode (follow-up to #142)
+
+Context: the April 2026 quality-gates work shipped four phases of #142 in
+warn-mode — `media.alt_text` is required, the `RichTextEditor`
+surfaces heading-order issues, real-user CWV samples land in
+`cwv_samples`, the admin Site Health dashboard renders the aggregate
+view, and `publish_blocks` rows surface inline on the collateral edit
+page. None of this rejects a publish mutation today; the team needs
+time to clear the inherited backlog before the gate becomes a hard
+stop.
+
+Follow-up items, in recommended order:
+
+1. **Surface `<PublishBlocksBanner>` on the remaining artifact edit
+   pages** — posts, videos, white papers, workshops, case studies,
+   models, polaris episodes, applications. Same component as the
+   collateral edit page; each page just needs to pass its `id` and
+   the `cmsListPublishBlocks` filter that matches its `artifactKind`
+   convention. Keep the route-level join (CWV blocks keyed on the
+   row's canonical URL) so a `/library/foo` LCP regression surfaces
+   on the article that publishes there.
+
+2. **Run the publish-block scan on a daily cron** rather than only
+   on admin demand. A small worker in `artifacts/api-server/src/lib/`
+   that calls `scanPublishBlocks()` once a day is enough; reuse the
+   existing scheduler scaffold from `lib/scheduler.ts`. Surface the
+   last-run-at on the Site Health page header.
+
+3. **Flip `severity` to `block` for CWV rules whose p75 exceeds
+   threshold for ≥ 14 days.** Add a `firstSeenAt` derivative to the
+   scan (or use the existing `created_at` on the row) and bump the
+   severity automatically when the underlying signal has been bad
+   long enough that "still warming up data" is no longer a credible
+   excuse. Alt-text rules can flip to `block` immediately — there's
+   no warmup story for those.
+
+4. **Add the hard-reject route guards.** When a `severity = 'block'`
+   row exists for the artifact (or its route), the publish mutation
+   in the matching admin route returns a structured 422 with the
+   block list, and the admin form surfaces it inline as a validation
+   error rather than a soft warning. The override path
+   (`DELETE /cms/publish-blocks/:id` + audit-logged note) stays the
+   same.
+
+5. **Wire `@axe-core/playwright` results into the database.** Today
+   axe runs only at CI time and fails the build, but the `serious`+
+   violation set never lands in `publish_blocks`. Either teach
+   `scanPublishBlocks` to read from a CI-uploaded artifact, or post
+   the failing rules to a new `POST /cms/quality/axe-report`
+   endpoint at the end of the Playwright run. Pairs naturally with
+   the e2e-in-CI plumbing in #142 Phase C.
+
+6. **Drop the legacy `collateral.download_url` column** once every
+   collateral consumer reads from `collateral_resources` (#122
+   shipped the migration but kept the column as a read-only mirror
+   for back-compat). Remove the mirror writeback in
+   `routes/collateralResources.ts:refreshDownloadUrlMirror` at the
+   same time.
+
+Owner/tracking: file a ticket referencing this section once warn-mode
+metrics on the dev environment are clean (or once the team decides
+the residual warnings are accepted).

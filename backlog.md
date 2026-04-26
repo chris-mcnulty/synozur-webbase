@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: April 26, 2026  
-> 23 tasks pending · 96 merged · 30 cancelled
+> 21 tasks pending · 98 merged · 30 cancelled
 
 Tasks are grouped by theme. Each entry includes the task reference, a plain-English description of what needs to be built, and which earlier work it depends on.
 
@@ -23,11 +23,6 @@ The "Featured items" reorder card is currently inline at the top of `artifacts/s
 **Depends on:** #69 (library live content) — merged
 
 The admin collateral table in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` uses static `<TableHead>` cells (lines 729–756) — editors cannot reorder by title, type, service, solution, pillar, featured rank, or last-updated. The backend `GET /cms/collateral` in `artifacts/api-server/src/routes/collateral.ts` (lines 212–224) has a hard-coded `ORDER BY featured DESC, featuredRank ASC NULLS LAST, publishedAt DESC, title ASC` and the `ListQuery` schema (lines 13–26) accepts no sort param. This task adds a `sort` query param (e.g. `sort=title:asc` or `sort=updatedAt:desc`) validated against an allow-list of sortable columns, threads it through the generated API client, and makes each `<TableHead>` clickable with an arrow indicator showing the current direction. Clicking cycles asc → desc → default. The same pattern should be reusable by the sibling videos / white-papers / workshops admin lists in follow-up work.
-
-### #122 · Multiple resource attachments on library items (slides + transcript + code + …)
-**Depends on:** #63 (asset categories beyond people/north-star) — merged
-
-Webinars, workshops, and white papers typically ship with more than one companion file — slides, transcript, Q&A log, code repo link, follow-up deck — but the only attachment slot today is a single `downloadUrl` text column on `collateral` (see `lib/db/src/schema/collateral.ts` and the "Download URL" input in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx`). Editors work around it by concatenating URLs into the body HTML, which breaks the public library detail page's tidy "Download" CTA. This task adds a `collateral_resources` table with `(id, collateralId, assetId, externalUrl, label, mimeType, sortOrder, createdAt)` — asset-backed rows link to the unified `assets` table for uploaded files; externalUrl rows cover off-platform links (GitHub, Figma, external CDNs). Admin edit form gains a "Resources" list editor with drag-to-reorder and inline label; public library detail page (`artifacts/synozur/src/pages/library-detail.tsx`) renders a Resources section when rows exist, falling back to the legacy `downloadUrl` when empty. Keep `downloadUrl` on the schema for now as a read-only mirror of the first resource; deprecate in a follow-up.
 
 ### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
 **Depends on:** — (infrastructure foundation)
@@ -205,21 +200,6 @@ Out of scope: right-to-left languages (separate pass), region-specific content (
 
 ---
 
-## Quality & Compliance
-
-### #142 · Accessibility & Core Web Vitals compliance dashboard
-**Depends on:** — (additive); pairs with #57 (Playwright tests are the natural place to wire axe-core)
-
-Enterprise procurement (especially public-sector and EU) increasingly requires VPATs and WCAG 2.2 AA conformance, and Core Web Vitals (CWV) directly affect search rank and perceived quality. The site is in reasonable shape today but there's no continuous signal — accessibility regressions and performance regressions only surface when someone notices visually. This task institutes **continuous quality measurement** with three layers:
-- **Pre-merge.** Add Lighthouse CI to the existing CI pipeline running against a representative set of routes (home, insights index, an insight detail, a service detail, an application detail, contact). Performance, accessibility, best-practices, and SEO scores all fail the build below configurable thresholds. Add `@axe-core/playwright` into the Playwright suite from #57 so accessibility violations on critical user paths are caught at PR time.
-- **Authoring time.** Hook the existing image-upload flow (`assets` + library admin) to require non-empty `alt` text on `<img>` uploads marked `decorative=false`, with admin-side preview of the alt text in context. Heading-order linting on rich-text editors (a `published` post can't have an H4 before any H3). FAQ + collateral admin gain inline a11y warnings (color-contrast on hero overlays, link-text quality).
-- **Run-time.** Integrate `web-vitals` reporting from real visitors to a new `cwv_samples` table via `/api/metrics/cwv`, sampled and aggregated by route. Admin dashboard at `/admin/site/health` shows: WCAG conformance status per template (from the latest CI axe run), CWV percentiles per top route, alt-text coverage, broken-link count, redirect chain health (uses the existing `redirects` table), and trend lines.
-- **Gate.** Critical (severity ≥ "serious") axe violations or LCP > 4s p75 on a public template flip a flag that prevents `published` state on artifacts of that template until cleared, surfacing the issue as a CMS validation error to the editor. Override available with audit trail.
-
-Out of scope: VPAT generation (separate effort with legal), automated remediation (suggestions only), continuous synthetic monitoring beyond Lighthouse CI. Follow-up: publish the public site's accessibility statement page and link from the footer.
-
----
-
 ## Summary Table
 
 | # | Title | Area | Depends On |
@@ -231,7 +211,6 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 | #111 | Move role → capability map into the database | Admin Access & People | #110 |
 | #120 | Carousel manager as its own admin tab (thumbnail + type views) | Library | #118 |
 | #121 | Sortable columns on the collateral library admin list | Library | #69 |
-| #122 | Multiple resource attachments on library items | Library | #63 |
 | #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
@@ -246,4 +225,3 @@ Out of scope: VPAT generation (separate effort with legal), automated remediatio
 | #139 | Internationalization foundation (English + one launch locale) | Public Site UX | — |
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
 | #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
-| #142 | Accessibility & Core Web Vitals compliance dashboard | Quality & Compliance | — |
