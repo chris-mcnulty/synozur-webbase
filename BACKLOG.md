@@ -185,3 +185,45 @@ Follow-up items, in recommended order:
 Owner/tracking: file a ticket referencing this section once warn-mode
 metrics on the dev environment are clean (or once the team decides
 the residual warnings are accepted).
+
+---
+
+## Workshops schema parity (follow-up to #95)
+
+Context: #95 moved workshops from a static TS data file into the
+`workshops` table and wired the table into the public pages, the
+sitemap, and the SEO audit. The audit integration works but had to
+special-case workshops because the table stores SEO copy in a
+`seo` JSONB (`{ title, description }`) rather than the flat
+`seo_title` / `seo_description` / `og_image` columns the other
+artifact tables use, and lifecycle is just `active` + `deletedAt`
+rather than the `status` / `published_at` / `unpublished_at` triple.
+
+Follow-up items, in recommended order:
+
+1. **Flatten the `seo` JSONB into `seo_title` / `seo_description` /
+   `og_image` columns** on `workshops`, with a migration that splits
+   existing rows. Drop the JSONB after the backfill verifies. This
+   removes the bespoke read-modify-write branch in
+   `lib/seoAudit.ts:applyAutofill` (the `case "workshop"` block) and
+   lets workshops use the same flat-column update path as the other
+   kinds.
+
+2. **Add `status` / `published_at` / `unpublished_at` to `workshops`**
+   so the publish/unpublish gating used by services / solutions /
+   applications / case studies / models works for workshops too.
+   Backfill `status = 'published'` for `active = true` rows. Update
+   `routes/workshops.ts` and `lib/seoAudit.ts:auditWorkshops` to use
+   the same predicate the sitemap uses for the other artifact kinds.
+
+3. **Retire `artifacts/api-server/src/scripts/data/workshops.json`**
+   once the production DB is the canonical source — the JSON is a
+   one-shot bootstrap fixture today and tends to drift from
+   admin-edited rows. Replace with a `pnpm db:dump-seed workshops`
+   helper (mirrors what already works for collateral) so fresh dev
+   environments hydrate from a live snapshot instead of a manually
+   maintained file.
+
+Owner/tracking: file a ticket referencing this section once #95 is
+deployed to production and the residual workshop count has been
+verified.

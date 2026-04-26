@@ -1,13 +1,16 @@
 /**
- * Seed the workshops table from the static content file in the synozur app.
+ * Seed the workshops table from the bundled JSON fixture.
  *
  * Usage:
  *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedWorkshops.ts
  *
- * Idempotent: upserts by slug.
+ * Idempotent: upserts by slug. The fixture in `data/workshops.json` is the
+ * bootstrap snapshot — once the DB has been seeded, ongoing edits flow
+ * through the admin UI and the JSON file is no longer authoritative.
  */
+import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { pathToFileURL, fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, workshopsTable, servicesTable } from "@workspace/db";
 
@@ -64,14 +67,10 @@ type StaticWorkshop = {
   seo: { title: string; description: string };
 };
 
-async function loadWorkshops(): Promise<StaticWorkshop[]> {
+function loadWorkshops(): StaticWorkshop[] {
   const here = dirname(fileURLToPath(import.meta.url));
-  // artifacts/api-server/src/scripts → artifacts/synozur/src/data/workshops.ts
-  const filePath = resolve(here, "../../../synozur/src/data/workshops.ts");
-  const mod = (await import(pathToFileURL(filePath).href)) as {
-    workshops: StaticWorkshop[];
-  };
-  return mod.workshops;
+  const filePath = resolve(here, "data/workshops.json");
+  return JSON.parse(readFileSync(filePath, "utf8")) as StaticWorkshop[];
 }
 
 function asValues(w: StaticWorkshop, displayOrder: number) {
@@ -152,7 +151,7 @@ async function loadServiceSlugToId(): Promise<Map<string, string>> {
 }
 
 async function main(): Promise<void> {
-  const workshops = await loadWorkshops();
+  const workshops = loadWorkshops();
   const serviceSlugToId = await loadServiceSlugToId();
   let created = 0;
   let updated = 0;

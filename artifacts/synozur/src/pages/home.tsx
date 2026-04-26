@@ -34,7 +34,8 @@ import { fetchFeatured, type Collateral } from "@/data/collateral";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
-import { workshops } from "@/data/workshops";
+import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function FromTheFeedCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -207,6 +208,16 @@ export default function Home() {
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
+  const {
+    data: workshopsData,
+    isLoading: workshopsLoading,
+    isError: workshopsError,
+  } = useQuery({
+    queryKey: ["public-workshops"],
+    queryFn: () => workshopsApi.listPublic(),
+  });
+  const workshops: WorkshopDto[] = (workshopsData?.items ?? []).slice(0, 4);
+  const hasWorkshopsTeaserFallback = workshopsLoading || workshopsError;
   const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
   const editorial = resolveImageUrl(settings?.homeEditorialImageUrl, DEFAULT_EDITORIAL);
   const customVideoSrc = settings?.homeHeroVideoUrl
@@ -464,7 +475,23 @@ export default function Home() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {workshops.map((workshop, i) => (
+            {hasWorkshopsTeaserFallback ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden">
+                  <Skeleton className="aspect-[16/9] w-full rounded-none" />
+                  <div className="flex flex-col flex-1 p-6 gap-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-5/6" />
+                    <div className="mt-2 flex gap-3">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              workshops.map((workshop, i) => (
               <motion.div
                 key={workshop.slug}
                 initial={{ opacity: 0, y: 20 }}
@@ -504,7 +531,8 @@ export default function Home() {
                   </div>
                 </Link>
               </motion.div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </section>

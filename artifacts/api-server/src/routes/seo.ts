@@ -12,6 +12,7 @@ import {
   applicationsTable,
   caseStudiesTable,
   modelsTable,
+  workshopsTable,
   siteSettingsTable,
   faqCategoriesTable,
   faqItemsTable,
@@ -41,9 +42,8 @@ interface Entry {
 
 /**
  * Static marketing routes that don't live in the database. Applications
- * (#103) and case studies (#102) now live in their own DB tables, so the
- * sitemap pulls them via Drizzle below — no more duplicated slug lists.
- * Workshop slugs still come from the static data file (#95).
+ * (#103), case studies (#102), and workshops (#95) now live in their own
+ * DB tables, so the sitemap pulls them via Drizzle below.
  */
 const STATIC_ROUTES: Entry[] = [
   { loc: "/", changefreq: "weekly", priority: 1.0 },
@@ -69,14 +69,6 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/terms", changefreq: "yearly", priority: 0.3 },
 ];
 
-// Slugs sourced from artifacts/synozur/src/data/workshops.ts
-const WORKSHOP_SLUGS = [
-  "ai-academy-immersive-ai-leadership-day",
-  "m365-academy-microsoft-365-transformation-day",
-  "company-operating-system-bootcamp-two-day",
-  "go-to-market-proxy-pitch-assessment",
-];
-
 function toEntry(path: string, lastmod: Date | string | null | undefined): Entry {
   let iso: string | null = null;
   if (lastmod) {
@@ -91,7 +83,6 @@ async function collectEntries(): Promise<Entry[]> {
   const entries: Entry[] = [];
 
   for (const r of STATIC_ROUTES) entries.push(r);
-  for (const slug of WORKSHOP_SLUGS) entries.push({ loc: `/workshops/${slug}` });
 
   const [
     posts,
@@ -103,6 +94,7 @@ async function collectEntries(): Promise<Entry[]> {
     applications,
     caseStudies,
     models,
+    workshops,
     faqCategories,
     faqItems,
   ] = await Promise.all([
@@ -203,6 +195,18 @@ async function collectEntries(): Promise<Entry[]> {
           sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
         ),
       ),
+    db
+      .select({
+        slug: workshopsTable.slug,
+        updatedAt: workshopsTable.updatedAt,
+      })
+      .from(workshopsTable)
+      .where(
+        and(
+          isNull(workshopsTable.deletedAt),
+          eq(workshopsTable.active, true),
+        ),
+      ),
     // FAQ deep links — one URL per published item under a published category.
     // Drives per-question indexing so each Q&A can rank on its own keywords
     // and show up as a distinct SERP / AIO citation.
@@ -259,6 +263,7 @@ async function collectEntries(): Promise<Entry[]> {
   for (const c of caseStudies)
     entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
   for (const m of models) entries.push(toEntry(`/models/${m.slug}`, m.updatedAt));
+  for (const w of workshops) entries.push(toEntry(`/workshops/${w.slug}`, w.updatedAt));
 
   // FAQ category landing pages and per-item deep links. Items only emit when
   // their parent category is also published — otherwise the page would 404.

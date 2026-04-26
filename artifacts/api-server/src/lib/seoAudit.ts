@@ -7,6 +7,7 @@ import {
   applicationsTable,
   caseStudiesTable,
   modelsTable,
+  workshopsTable,
   mediaTable,
 } from "@workspace/db";
 
@@ -20,7 +21,8 @@ export type ArtifactKind =
   | "solution"
   | "application"
   | "case-study"
-  | "model";
+  | "model"
+  | "workshop";
 
 export interface AuditFinding {
   kind: ArtifactKind;
@@ -452,15 +454,62 @@ async function auditModels(): Promise<{
   return { total: rows.length, findings };
 }
 
+async function auditWorkshops(): Promise<{
+  total: number;
+  findings: AuditFinding[];
+}> {
+  // Workshops store SEO copy in a `seo` JSONB ({ title, description }) and
+  // have no top-level ogImage — heroImage is the fallback. Lifecycle is just
+  // active+deletedAt today (no status/publishedAt parity yet — see backlog).
+  const rows = await db
+    .select({
+      id: workshopsTable.id,
+      slug: workshopsTable.slug,
+      title: workshopsTable.title,
+      shortDescription: workshopsTable.shortDescription,
+      heroSubhead: workshopsTable.heroSubhead,
+      heroImage: workshopsTable.heroImage,
+      seo: workshopsTable.seo,
+    })
+    .from(workshopsTable)
+    .where(and(isNull(workshopsTable.deletedAt), eq(workshopsTable.active, true)));
+
+  const findings: AuditFinding[] = [];
+  for (const r of rows) {
+    const f = buildFinding({
+      kind: "workshop",
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      path: `/workshops/${r.slug}`,
+      seoTitle: r.seo?.title ?? null,
+      seoDescription: r.seo?.description ?? null,
+      ogImage: null,
+      fallbackImage: null,
+      descriptionSources: [r.shortDescription, r.heroSubhead],
+    });
+    if (f) {
+      // Workshops have no ogImage column; heroImage serves as the implicit OG
+      // image (same as posts). Drop the ogImage check to avoid unresolvable
+      // findings that applyAutofill can't persist.
+      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      if (f.missing.length) findings.push(f);
+    }
+  }
+  return { total: rows.length, findings };
+}
+
 export async function runAudit(): Promise<AuditReport> {
-  const [posts, services, solutions, applications, caseStudies, models] = await Promise.all([
-    auditPosts(),
-    auditServices(),
-    auditSolutions(),
-    auditApplications(),
-    auditCaseStudies(),
-    auditModels(),
-  ]);
+  const [posts, services, solutions, applications, caseStudies, models, workshops] =
+    await Promise.all([
+      auditPosts(),
+      auditServices(),
+      auditSolutions(),
+      auditApplications(),
+      auditCaseStudies(),
+      auditModels(),
+      auditWorkshops(),
+    ]);
 
   const findings = [
     ...posts.findings,
@@ -469,6 +518,7 @@ export async function runAudit(): Promise<AuditReport> {
     ...applications.findings,
     ...caseStudies.findings,
     ...models.findings,
+    ...workshops.findings,
   ];
 
   return {
@@ -480,6 +530,7 @@ export async function runAudit(): Promise<AuditReport> {
       application: { total: applications.total, missing: applications.findings.length },
       "case-study": { total: caseStudies.total, missing: caseStudies.findings.length },
       model: { total: models.total, missing: models.findings.length },
+      workshop: { total: workshops.total, missing: workshops.findings.length },
     },
     findings,
   };
@@ -500,6 +551,7 @@ export async function applyAutofill(
     application: 0,
     "case-study": 0,
     model: 0,
+    workshop: 0,
   };
 
   for (const f of findings) {
@@ -681,6 +733,44 @@ export async function applyAutofill(
             .where(and(...guards))
             .returning({ id: modelsTable.id });
           if (rows.length > 0) touched.model += 1;
+        }
+        break;
+      }
+      case "workshop": {
+        // Workshops keep SEO copy in a JSONB column, so we read-modify-write
+        // the `seo` object instead of patching flat columns. Only fill blanks
+        // — never overwrite a non-empty editor value.
+        if (!patch.seoTitle && !patch.seoDescription) break;
+        const existing = await db.query.workshopsTable.findFirst({
+          where: and(eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)),
+          columns: { seo: true },
+        });
+        if (!existing) break;
+        const seo = existing.seo ?? { title: "", description: "" };
+        const next = { ...seo };
+        const guards = [eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)];
+        let changed = false;
+        if (patch.seoTitle && !(seo.title ?? "").trim()) {
+          next.title = patch.seoTitle;
+          guards.push(
+            sql`(((${workshopsTable.seo} ->> 'title') is null) or trim(${workshopsTable.seo} ->> 'title') = '')`,
+          );
+          changed = true;
+        }
+        if (patch.seoDescription && !(seo.description ?? "").trim()) {
+          next.description = patch.seoDescription;
+          guards.push(
+            sql`(((${workshopsTable.seo} ->> 'description') is null) or trim(${workshopsTable.seo} ->> 'description') = '')`,
+          );
+          changed = true;
+        }
+        if (changed) {
+          const rows = await db
+            .update(workshopsTable)
+            .set({ seo: next, updatedAt: new Date() })
+            .where(and(...guards))
+            .returning({ id: workshopsTable.id });
+          if (rows.length > 0) touched.workshop += 1;
         }
         break;
       }

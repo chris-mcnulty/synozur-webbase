@@ -34,10 +34,12 @@ const KIND_LABEL: Record<SeoArtifactKind, string> = {
   application: "Applications",
   "case-study": "Case studies",
   model: "Models",
+  workshop: "Workshops",
 };
 
-// Applications + case studies don't have dedicated /:id/edit routes today —
-// they edit from the list view — so we link to the list for those.
+// Applications and case studies don't have dedicated /:id/edit routes today,
+// so we link those to their list views. Workshops do have a dedicated edit
+// route and should deep-link to it.
 function editorHref(kind: SeoArtifactKind, id: string): string {
   switch (kind) {
     case "insight":
@@ -52,6 +54,8 @@ function editorHref(kind: SeoArtifactKind, id: string): string {
       return `/products/applications`;
     case "case-study":
       return `/products/case-studies`;
+    case "workshop":
+      return `/library/workshops/${id}/edit`;
   }
 }
 
@@ -87,6 +91,7 @@ function groupFindings(findings: SeoAuditFinding[]): Record<SeoArtifactKind, Seo
     application: [],
     "case-study": [],
     model: [],
+    workshop: [],
   };
   for (const f of findings) empty[f.kind].push(f);
   return empty;
