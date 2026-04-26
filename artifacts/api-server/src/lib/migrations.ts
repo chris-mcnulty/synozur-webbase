@@ -420,27 +420,39 @@ export async function runMigrations(): Promise<void> {
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `);
-    for (const table of ["faq_categories", "faq_items"] as const) {
-      // 16a. New artifact-lifecycle columns. NOT NULL columns with non-null
-      //      defaults are safe to add against an existing table.
-      //      `published_at` already exists on faq_items (from #107) but not
-      //      on faq_categories — IF NOT EXISTS makes the same statement
-      //      safe for both. `og_image` from `artifactSeo` is intentionally
-      //      omitted: the FAQ schema only spreads identity/lifecycle/
-      //      timestamps, so adding the column would create dead weight
-      //      with no Drizzle field or DTO surfacing it.
-      await db.execute(sql.raw(`
-        ALTER TABLE ${table}
-          ADD COLUMN IF NOT EXISTS title text,
-          ADD COLUMN IF NOT EXISTS published_at timestamptz,
-          ADD COLUMN IF NOT EXISTS unpublished_at timestamptz,
-          ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false,
-          ADD COLUMN IF NOT EXISTS featured_rank integer,
-          ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true,
-          ADD COLUMN IF NOT EXISTS source_id text,
-          ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
-      `));
-    }
+    // 16a. New artifact-lifecycle columns. NOT NULL columns with non-null
+    //      defaults are safe to add against an existing table.
+    //      `published_at` already exists on faq_items (from #107) but not
+    //      on faq_categories — IF NOT EXISTS makes the same statement
+    //      safe for both. `og_image` from `artifactSeo` is intentionally
+    //      omitted: the FAQ schema only spreads identity/lifecycle/
+    //      timestamps, so adding the column would create dead weight
+    //      with no Drizzle field or DTO surfacing it.
+    //      Note: written as two explicit calls rather than a sql.raw() loop
+    //      because sql.raw() inside a for-loop is silently dropped by Drizzle
+    //      on this runtime.
+    await db.execute(sql`
+      ALTER TABLE faq_categories
+        ADD COLUMN IF NOT EXISTS title text,
+        ADD COLUMN IF NOT EXISTS published_at timestamptz,
+        ADD COLUMN IF NOT EXISTS unpublished_at timestamptz,
+        ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS featured_rank integer,
+        ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS source_id text,
+        ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+    `);
+    await db.execute(sql`
+      ALTER TABLE faq_items
+        ADD COLUMN IF NOT EXISTS title text,
+        ADD COLUMN IF NOT EXISTS published_at timestamptz,
+        ADD COLUMN IF NOT EXISTS unpublished_at timestamptz,
+        ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS featured_rank integer,
+        ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS source_id text,
+        ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+    `);
 
     // 16b. Backfill `title` from the existing display field. Categories
     //      use `name`, items use `question`.
@@ -476,26 +488,43 @@ export async function runMigrations(): Promise<void> {
     //      ('draft' / 'published') are valid enum members so the USING
     //      cast preserves them. Drop the old text default first because
     //      Postgres rejects the type change otherwise.
-    for (const table of ["faq_categories", "faq_items"] as const) {
-      await db.execute(sql.raw(`
-        DO $$
-        BEGIN
-          IF EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = '${table}'
-              AND column_name = 'status'
-              AND data_type = 'text'
-          ) THEN
-            ALTER TABLE ${table} ALTER COLUMN status DROP DEFAULT;
-            ALTER TABLE ${table}
-              ALTER COLUMN status TYPE artifact_status
-              USING status::artifact_status;
-            ALTER TABLE ${table}
-              ALTER COLUMN status SET DEFAULT 'draft';
-          END IF;
-        END $$;
-      `));
-    }
+    //      Written as two explicit calls — see note on sql.raw() above.
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'faq_categories'
+            AND column_name = 'status'
+            AND data_type = 'text'
+        ) THEN
+          ALTER TABLE faq_categories ALTER COLUMN status DROP DEFAULT;
+          ALTER TABLE faq_categories
+            ALTER COLUMN status TYPE artifact_status
+            USING status::artifact_status;
+          ALTER TABLE faq_categories
+            ALTER COLUMN status SET DEFAULT 'draft';
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'faq_items'
+            AND column_name = 'status'
+            AND data_type = 'text'
+        ) THEN
+          ALTER TABLE faq_items ALTER COLUMN status DROP DEFAULT;
+          ALTER TABLE faq_items
+            ALTER COLUMN status TYPE artifact_status
+            USING status::artifact_status;
+          ALTER TABLE faq_items
+            ALTER COLUMN status SET DEFAULT 'draft';
+        END IF;
+      END $$;
+    `);
 
     // 16e. Add the published_at index that the artifact pattern uses for
     //      sorting / filtering by publish window.
