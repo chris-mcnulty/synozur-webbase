@@ -115,10 +115,9 @@ const ReorderBody = z.object({
 });
 
 // `downloadUrl` is mirrored to the first-by-sortOrder media-or-external URL.
-// Editors still see a read-only "Download URL" field on the collateral form
-// (until the column is dropped in a follow-up); keeping the mirror in sync
-// here means the legacy public detail fallback keeps working without a
-// secondary write path.
+// The collateral editor now manages links through the Resources editor, but
+// we still keep this legacy mirror in sync so public detail fallback behavior
+// continues to work without introducing a separate write path.
 async function refreshDownloadUrlMirror(collateralId: string) {
   const first = await db
     .select({
