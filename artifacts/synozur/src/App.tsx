@@ -86,6 +86,7 @@ import MarketingTraffic from "@/pages/admin/marketing/traffic";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import Library from "@/pages/library";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
@@ -407,6 +408,7 @@ function App() {
             <Router />
           </WouterRouter>
           <Toaster />
+          <IdleWarningDialog />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
