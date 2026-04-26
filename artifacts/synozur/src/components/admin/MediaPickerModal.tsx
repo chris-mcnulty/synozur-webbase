@@ -73,7 +73,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
     debounceRef.current = setTimeout(() => setDebouncedSearch(value), 350);
   };
 
-  const { data: catsData } = useListAssetCategories({ query: { enabled: open } as never });
+  const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
   const categories = catsData?.items ?? [];
 
   const initialCategoryId = categorySlug
@@ -141,7 +141,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
               <SelectContent>
                 <SelectItem value="__all__">All categories</SelectItem>
                 {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
