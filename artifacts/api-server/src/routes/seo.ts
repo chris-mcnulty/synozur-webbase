@@ -351,6 +351,7 @@ function renderRobots(): string {
     "Disallow: /sign-up",
     "",
     `Sitemap: ${origin}/sitemap.xml`,
+    `# LLM/AIO crawler guide: ${origin}/llms.txt`,
     "",
   ].join("\n");
 }
@@ -361,8 +362,46 @@ function handleRobots(_req: import("express").Request, res: import("express").Re
   res.send(renderRobots());
 }
 
+/**
+ * /llms.txt — the emerging convention for telling LLM/AIO crawlers where the
+ * canonical, machine-readable sources of truth live. Format follows the
+ * llmstxt.org proposal: a top-level H1 with the site name, a short summary,
+ * then markdown link sections grouped by topic. Keep it short — agents that
+ * support it fetch this once and use the links to navigate.
+ */
+function renderLlmsTxt(): string {
+  const origin = siteOrigin();
+  return [
+    "# The Synozur Alliance",
+    "",
+    "> Strategy, AI, and Microsoft 365 advisory. This file points crawlers and",
+    "> AI agents at the canonical, structured sources for our public content.",
+    "",
+    "## Primary",
+    "",
+    `- [Sitemap](${origin}/sitemap.xml): every public URL with last-modified dates.`,
+    `- [FAQ (HTML)](${origin}/faq): frequently asked questions with deep-link anchors.`,
+    `- [FAQ (JSON-LD)](${origin}/api/faq/jsonld.json): schema.org FAQPage, ready to ingest.`,
+    `- [FAQ (JSON)](${origin}/api/faq): raw categories and items.`,
+    `- [Insights RSS](${origin}/api/insights/rss.xml): blog feed.`,
+    "",
+    "## Notes",
+    "",
+    "- Robots policy: see /robots.txt. Admin and auth paths are disallowed.",
+    "- Anchors on /faq follow `#category-slug/question-slug` and are stable.",
+    "",
+  ].join("\n");
+}
+
+function handleLlmsTxt(_req: import("express").Request, res: import("express").Response) {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(renderLlmsTxt());
+}
+
 router.get("/sitemap.xml", handleSitemap);
 router.get("/robots.txt", handleRobots);
+router.get("/llms.txt", handleLlmsTxt);
 
 // ─── SEO audit & submission — admin/editor only ───────────────────────────
 
@@ -461,4 +500,4 @@ router.post("/seo/submit", adminGuard, async (req, res): Promise<void> => {
 });
 
 export default router;
-export { handleSitemap, handleRobots };
+export { handleSitemap, handleRobots, handleLlmsTxt };

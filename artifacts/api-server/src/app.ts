@@ -7,7 +7,7 @@ import { logger } from "./lib/logger";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { attachUserIfPresent } from "./middlewares/auth";
-import { handleRobots, handleSitemap } from "./routes/seo";
+import { handleLlmsTxt, handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
 import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 
@@ -55,6 +55,7 @@ app.use(trafficCrawlerMiddleware());
 // Site-root SEO artifacts. Also available under /api/* via the router below.
 app.get("/sitemap.xml", handleSitemap);
 app.get("/robots.txt", handleRobots);
+app.get("/llms.txt", handleLlmsTxt);
 
 // IndexNow key-validation file. Served at /<key>.txt so search engines can
 // verify ownership before accepting bulk submissions. We check the path via

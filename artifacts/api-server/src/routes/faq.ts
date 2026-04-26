@@ -105,7 +105,13 @@ async function ensureUniqueItemSlug(
 // items in one round trip. Ordering: category.displayOrder → item.displayOrder.
 // ---------------------------------------------------------------------------
 
-router.get("/faq", async (_req, res) => {
+const DEFAULT_SITE_URL = "https://www.synozur.com";
+
+function siteOrigin(): string {
+  return (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, "");
+}
+
+async function loadPublishedFaq() {
   const [categories, items] = await Promise.all([
     db
       .select()
@@ -127,11 +133,58 @@ router.get("/faq", async (_req, res) => {
     list.push(it);
     byCategory.set(it.categoryId, list);
   }
+  return categories.map((c) => ({
+    category: c,
+    items: byCategory.get(c.id) ?? [],
+  }));
+}
+
+router.get("/faq", async (_req, res) => {
+  const grouped = await loadPublishedFaq();
+  // Public read; safe to cache at the edge for a few minutes. Editors who
+  // republish will see staleness no worse than `max-age` while CDNs revalidate
+  // in the background per `stale-while-revalidate`.
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
   res.json({
-    categories: categories.map((c) => ({
-      ...serializeCategory(c),
-      items: (byCategory.get(c.id) ?? []).map(serializeItem),
+    categories: grouped.map(({ category, items }) => ({
+      ...serializeCategory(category),
+      items: items.map(serializeItem),
     })),
+  });
+});
+
+// FAQPage JSON-LD as a standalone document. Crawlers and LLM agents can fetch
+// this directly (e.g. linked from /llms.txt) instead of executing the SPA.
+// Same shape as the inline `<script type="application/ld+json">` injected by
+// the FAQ page in the React app.
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+router.get("/faq/jsonld.json", async (_req, res) => {
+  const grouped = await loadPublishedFaq();
+  const origin = siteOrigin();
+  const mainEntity = grouped.flatMap(({ category, items }) =>
+    items.map((it) => ({
+      "@type": "Question",
+      name: it.question,
+      "@id": `${origin}/faq#${category.slug}/${it.slug}`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: stripHtml(it.answerHtml) || it.question,
+      },
+    })),
+  );
+  res.setHeader("Content-Type", "application/ld+json; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+  res.json({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity,
   });
 });
 
