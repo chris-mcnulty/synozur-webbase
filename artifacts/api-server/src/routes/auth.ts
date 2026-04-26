@@ -110,6 +110,60 @@ async function findActiveClientOrgByTenant(
   return org ?? null;
 }
 
+// Returns ANY org (active or pending) matching the given Entra tenant ID.
+async function findAnyOrgByTenant(
+  tenantId: string,
+): Promise<typeof clientOrganizationsTable.$inferSelect | null> {
+  const org = await db.query.clientOrganizationsTable.findFirst({
+    where: eq(clientOrganizationsTable.entraTenantId, tenantId),
+  });
+  return org ?? null;
+}
+
+// Auto-create a pending (isActive=false) client org for a first-time Entra
+// tenant. The org name is derived from the user's email domain. Slug conflicts
+// are resolved by appending a numeric suffix.
+async function autoCreatePendingOrg(identity: {
+  email: string | null;
+  entraTenantId: string | null;
+}): Promise<typeof clientOrganizationsTable.$inferSelect> {
+  const domain = identity.email?.split("@")[1]?.toLowerCase() ?? "unknown";
+  const baseName = domain.replace(/\.[^.]+$/, ""); // strip TLD
+  const displayName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+  const baseSlug = domain.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  // Ensure slug uniqueness.
+  let slug = baseSlug;
+  let suffix = 1;
+  while (true) {
+    const existing = await db.query.clientOrganizationsTable.findFirst({
+      where: eq(clientOrganizationsTable.slug, slug),
+    });
+    if (!existing) break;
+    suffix++;
+    slug = `${baseSlug}-${suffix}`;
+  }
+
+  const [org] = await db
+    .insert(clientOrganizationsTable)
+    .values({
+      name: displayName,
+      slug,
+      entraTenantId: identity.entraTenantId,
+      approvedEmailDomains: [domain],
+      isActive: false,
+      autoCreated: true,
+      notes: `Auto-created on first Entra sign-in from ${domain}. Pending Synozur approval.`,
+    })
+    .returning();
+
+  logger.info(
+    { orgId: org!.id, slug, domain, entraTenantId: identity.entraTenantId },
+    "Auto-created pending client org for unknown Entra tenant",
+  );
+  return org!;
+}
+
 // Returns the clientOrganization that approves the given email domain, or null.
 async function findActiveClientOrgByEmailDomain(
   email: string,

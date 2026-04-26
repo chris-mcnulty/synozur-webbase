@@ -37,6 +37,10 @@ export const clientOrganizationsTable = pgTable(
       onDelete: "set null",
     }),
     notes: text("notes"),
+    // Set to true when this org was created automatically during an unknown
+    // Entra tenant's first sign-in. Used to distinguish "pending approval"
+    // (autoCreated + !isActive) from "deliberately deactivated" (!isActive).
+    autoCreated: boolean("auto_created").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
