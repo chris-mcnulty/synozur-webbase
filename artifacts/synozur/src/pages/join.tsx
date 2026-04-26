@@ -1,6 +1,7 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
+import { Link } from "wouter";
 import { Check, Rss, BookOpen, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -143,10 +144,13 @@ export default function Join() {
                     <Check className="h-8 w-8" />
                   </div>
                   <h2 className="text-3xl font-bold mb-4">You're in.</h2>
-                  <p className="text-muted-foreground max-w-md mx-auto">
+                  <p className="text-muted-foreground max-w-md mx-auto mb-8">
                     Welcome to The Feed. You'll hear from us with the next
                     edition — no spam, unsubscribe anytime.
                   </p>
+                  <Button asChild>
+                    <Link href="/insights">Browse The Feed</Link>
+                  </Button>
                 </div>
               </motion.div>
             ) : (
