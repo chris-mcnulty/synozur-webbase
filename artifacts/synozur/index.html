@@ -10,6 +10,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Pre-hydration: apply the user's saved theme to <html> BEFORE React mounts
+      // so the body background never flashes light during route transitions or
+      // initial paint. Mirrors the logic in src/context/theme.tsx.
+      (function () {
+        try {
+          var stored = localStorage.getItem("synozur-theme");
+          var theme = stored === "light" ? "light" : "dark";
+          if (theme === "dark") document.documentElement.classList.add("dark");
+        } catch (_) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

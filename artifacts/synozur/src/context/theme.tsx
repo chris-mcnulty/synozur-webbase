@@ -60,6 +60,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [siteTheme]);
 
+  // Mirror the user's dark/light preference onto <html> so the body bg stays
+  // continuous across route swaps (admin <-> public). Without this, the
+  // dark class lives only on per-route wrapper divs and the body briefly
+  // shows its light bg between unmount and remount, causing a white flash.
+  useEffect(() => {
+    const html = document.documentElement;
+    if (theme === "dark") {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+  }, [theme]);
+
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, siteTheme }}>
       {children}
