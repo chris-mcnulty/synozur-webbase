@@ -22,6 +22,40 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [resendStatus, setResendStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "sent" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  async function handleResend() {
+    if (resendStatus.kind === "sending") return;
+    setResendStatus({ kind: "sending" });
+    try {
+      const res = await fetch(`${BASE_PATH}/api/auth/resend-verification`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        setResendStatus({ kind: "sent" });
+        return;
+      }
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      setResendStatus({
+        kind: "error",
+        message:
+          json.error ??
+          (res.status === 429
+            ? "Too many verification email requests. Please try again in 15 minutes."
+            : "Could not resend the verification email. Please try again."),
+      });
+    } catch {
+      setResendStatus({ kind: "error", message: "Network error. Please try again." });
+    }
+  }
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
@@ -98,19 +132,21 @@ export default function SignUpPage() {
             Didn&apos;t receive the email?{" "}
             <button
               type="button"
-              className="underline hover:no-underline"
-              onClick={() => {
-                void fetch(`${BASE_PATH}/api/auth/resend-verification`, {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email }),
-                });
-              }}
+              className="underline hover:no-underline disabled:opacity-50 disabled:no-underline"
+              onClick={() => void handleResend()}
+              disabled={resendStatus.kind === "sending"}
             >
-              Resend it
+              {resendStatus.kind === "sending" ? "Resending…" : "Resend it"}
             </button>
           </p>
+          {resendStatus.kind === "sent" && (
+            <p className="mt-2 text-xs text-primary">
+              Verification email sent. Please check your inbox.
+            </p>
+          )}
+          {resendStatus.kind === "error" && (
+            <p className="mt-2 text-xs text-destructive">{resendStatus.message}</p>
+          )}
         </div>
       </div>
     );
