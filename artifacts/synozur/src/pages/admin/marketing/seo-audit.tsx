@@ -37,9 +37,9 @@ const KIND_LABEL: Record<SeoArtifactKind, string> = {
   workshop: "Workshops",
 };
 
-// Applications, case studies, and workshops don't have dedicated /:id/edit
-// routes today — they edit from the list view — so we link to the list for
-// those.
+// Applications and case studies don't have dedicated /:id/edit routes today,
+// so we link those to their list views. Workshops do have a dedicated edit
+// route and should deep-link to it.
 function editorHref(kind: SeoArtifactKind, id: string): string {
   switch (kind) {
     case "insight":
