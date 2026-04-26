@@ -7,6 +7,7 @@ import {
   trafficSessionsTable,
   trafficPageviewsTable,
   trafficEventsTable,
+  notFoundLogsTable,
 } from "@workspace/db";
 import {
   classifyPageType,
@@ -19,6 +20,7 @@ import {
   sessionKey,
   todayBucket,
 } from "../lib/traffic";
+import { normalizePath as normalizeRedirectPath } from "../lib/wixRedirects";
 
 const router: IRouter = Router();
 
@@ -49,6 +51,11 @@ const EventBody = z.object({
   properties: z.record(z.unknown()).optional().nullable(),
 });
 
+const NotFoundBody = z.object({
+  path: z.string().min(1).max(2048),
+  referrer: z.string().max(2048).optional().nullable(),
+});
+
 function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
   const xff = Array.isArray(req.headers["x-forwarded-for"])
     ? (req.headers["x-forwarded-for"] as string[])[0]
@@ -74,6 +81,17 @@ const eventLimiter = rateLimit({
   standardHeaders: false,
   legacyHeaders: false,
   keyGenerator: (req) => `t:e:${ipKey(req)}`,
+  handler: (_req, res) => {
+    res.status(202).json({ ok: true });
+  },
+});
+
+const notFoundLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `t:nf:${ipKey(req)}`,
   handler: (_req, res) => {
     res.status(202).json({ ok: true });
   },
@@ -242,6 +260,63 @@ router.post("/traffic/event", eventLimiter, async (req, res) => {
     res.status(202).json({ ok: true });
   } catch (err) {
     req.log.warn({ err }, "traffic.event failed");
+    res.status(202).json({ ok: true });
+  }
+});
+
+/**
+ * Records a 404 hit so admins can later map frequently-missed paths to a
+ * Wix redirect. Beacon-friendly: always returns 202 even on validation
+ * errors so the SPA never has to handle a failure path.
+ */
+router.post("/traffic/not-found", notFoundLimiter, async (req, res) => {
+  const parsed = NotFoundBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(202).json({ ok: true });
+    return;
+  }
+
+  try {
+    const pathname = normalizePath(parsed.data.path);
+    if (!pathname || shouldSkipTrafficPath(pathname)) {
+      res.status(202).json({ ok: true });
+      return;
+    }
+    // Don't log /api/* — those are handled by the API server, not the SPA.
+    if (pathname.startsWith("/api/") || pathname === "/api") {
+      res.status(202).json({ ok: true });
+      return;
+    }
+
+    const normalized = normalizeRedirectPath(pathname);
+    const referrer = parsed.data.referrer?.slice(0, 2048) ?? null;
+    const ua =
+      ((req.headers["user-agent"] as string | undefined) ?? "").slice(0, 1024) ||
+      null;
+
+    await db
+      .insert(notFoundLogsTable)
+      .values({
+        normalizedPath: normalized,
+        path: pathname,
+        hitCount: 1,
+        lastReferrer: referrer,
+        lastUserAgent: ua,
+      })
+      .onConflictDoUpdate({
+        target: notFoundLogsTable.normalizedPath,
+        set: {
+          path: pathname,
+          hitCount: sql`${notFoundLogsTable.hitCount} + 1`,
+          lastSeenAt: new Date(),
+          lastReferrer: referrer,
+          lastUserAgent: ua,
+        },
+      });
+
+    res.status(202).json({ ok: true });
+  } catch (err) {
+    req.log.warn({ err }, "traffic.notFound failed");
     res.status(202).json({ ok: true });
   }
 });

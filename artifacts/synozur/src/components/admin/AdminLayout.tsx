@@ -163,6 +163,7 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
+      { href: "/site-config/not-found-logs", label: "404 Log", icon: FileSearch, capability: "site.manage", testId: "nav-admin-not-found-logs" },
       { href: "/site-config/health", label: "Health", icon: Activity, capability: "site.manage", testId: "nav-admin-site-health" },
     ],
   },
