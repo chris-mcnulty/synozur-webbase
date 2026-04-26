@@ -140,7 +140,7 @@ export default function SignUpPage() {
             </button>
           </p>
           {resendStatus.kind === "sent" && (
-            <p className="mt-2 text-xs text-primary">
+            <p className="mt-2 text-xs text-primary" role="status" aria-live="polite">
               Verification email sent. Please check your inbox.
             </p>
           )}
