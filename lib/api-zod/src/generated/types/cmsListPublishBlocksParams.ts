@@ -12,5 +12,5 @@ export type CmsListPublishBlocksParams = {
   /**
    * When true, include rows that have been resolved.
    */
-  includeResolved?: string;
+  includeResolved?: boolean;
 };

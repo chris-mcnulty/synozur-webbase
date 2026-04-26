@@ -35,11 +35,12 @@ const ListQuery = z.object({
   artifactId: z.string().min(1).optional(),
   // When true, include rows that have been resolved (recently or
   // ever). Default false — the admin UI mostly cares about active
-  // signals.
+  // signals. Coerce so both `?includeResolved=true` (from generated
+  // clients) and the absence of the param work.
   includeResolved: z
-    .string()
+    .union([z.boolean(), z.string()])
     .optional()
-    .transform((v) => v === "true"),
+    .transform((v) => v === true || v === "true"),
 });
 
 router.get("/cms/publish-blocks", ...adminGuard, async (req, res) => {

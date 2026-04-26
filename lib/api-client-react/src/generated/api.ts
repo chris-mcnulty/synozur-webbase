@@ -45,6 +45,7 @@ import type {
   CommentListResponse,
   ContactFormInput,
   CreateAssetCategoryBody,
+  CreateCollateralResourceBody,
   CreatePostBody,
   CurrentUser,
   CwvSampleInput,
@@ -115,12 +116,12 @@ import type {
   UnauthorizedResponse,
   UpdateAssetBody,
   UpdateAssetCategoryBody,
+  UpdateCollateralResourceBody,
   UpdateMediaBody,
   UpdatePostBody,
   UpsertCapabilityBody,
   UpsertCategoryBody,
   UpsertCollateralBody,
-  UpsertCollateralResourceBody,
   UpsertMethodologyBody,
   UpsertServiceBody,
   UpsertSolutionBody,
@@ -4289,7 +4290,7 @@ export const getCmsCreateCollateralResourceUrl = (id: string) => {
 
 export const cmsCreateCollateralResource = async (
   id: string,
-  upsertCollateralResourceBody: UpsertCollateralResourceBody,
+  createCollateralResourceBody: CreateCollateralResourceBody,
   options?: RequestInit,
 ): Promise<CollateralResource> => {
   return customFetch<CollateralResource>(
@@ -4298,7 +4299,7 @@ export const cmsCreateCollateralResource = async (
       ...options,
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(upsertCollateralResourceBody),
+      body: JSON.stringify(createCollateralResourceBody),
     },
   );
 };
@@ -4310,14 +4311,14 @@ export const getCmsCreateCollateralResourceMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
     TError,
-    { id: string; data: BodyType<UpsertCollateralResourceBody> },
+    { id: string; data: BodyType<CreateCollateralResourceBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
   TError,
-  { id: string; data: BodyType<UpsertCollateralResourceBody> },
+  { id: string; data: BodyType<CreateCollateralResourceBody> },
   TContext
 > => {
   const mutationKey = ["cmsCreateCollateralResource"];
@@ -4331,7 +4332,7 @@ export const getCmsCreateCollateralResourceMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
-    { id: string; data: BodyType<UpsertCollateralResourceBody> }
+    { id: string; data: BodyType<CreateCollateralResourceBody> }
   > = (props) => {
     const { id, data } = props ?? {};
 
@@ -4345,7 +4346,7 @@ export type CmsCreateCollateralResourceMutationResult = NonNullable<
   Awaited<ReturnType<typeof cmsCreateCollateralResource>>
 >;
 export type CmsCreateCollateralResourceMutationBody =
-  BodyType<UpsertCollateralResourceBody>;
+  BodyType<CreateCollateralResourceBody>;
 export type CmsCreateCollateralResourceMutationError = ErrorType<
   BadRequestResponse | NotFoundResponse
 >;
@@ -4357,14 +4358,14 @@ export const useCmsCreateCollateralResource = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
     TError,
-    { id: string; data: BodyType<UpsertCollateralResourceBody> },
+    { id: string; data: BodyType<CreateCollateralResourceBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof cmsCreateCollateralResource>>,
   TError,
-  { id: string; data: BodyType<UpsertCollateralResourceBody> },
+  { id: string; data: BodyType<CreateCollateralResourceBody> },
   TContext
 > => {
   return useMutation(getCmsCreateCollateralResourceMutationOptions(options));
@@ -4380,7 +4381,7 @@ export const getCmsUpdateCollateralResourceUrl = (
 export const cmsUpdateCollateralResource = async (
   id: string,
   resourceId: string,
-  upsertCollateralResourceBody: UpsertCollateralResourceBody,
+  updateCollateralResourceBody: UpdateCollateralResourceBody,
   options?: RequestInit,
 ): Promise<CollateralResource> => {
   return customFetch<CollateralResource>(
@@ -4389,7 +4390,7 @@ export const cmsUpdateCollateralResource = async (
       ...options,
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(upsertCollateralResourceBody),
+      body: JSON.stringify(updateCollateralResourceBody),
     },
   );
 };
@@ -4404,7 +4405,7 @@ export const getCmsUpdateCollateralResourceMutationOptions = <
     {
       id: string;
       resourceId: string;
-      data: BodyType<UpsertCollateralResourceBody>;
+      data: BodyType<UpdateCollateralResourceBody>;
     },
     TContext
   >;
@@ -4415,7 +4416,7 @@ export const getCmsUpdateCollateralResourceMutationOptions = <
   {
     id: string;
     resourceId: string;
-    data: BodyType<UpsertCollateralResourceBody>;
+    data: BodyType<UpdateCollateralResourceBody>;
   },
   TContext
 > => {
@@ -4433,7 +4434,7 @@ export const getCmsUpdateCollateralResourceMutationOptions = <
     {
       id: string;
       resourceId: string;
-      data: BodyType<UpsertCollateralResourceBody>;
+      data: BodyType<UpdateCollateralResourceBody>;
     }
   > = (props) => {
     const { id, resourceId, data } = props ?? {};
@@ -4448,7 +4449,7 @@ export type CmsUpdateCollateralResourceMutationResult = NonNullable<
   Awaited<ReturnType<typeof cmsUpdateCollateralResource>>
 >;
 export type CmsUpdateCollateralResourceMutationBody =
-  BodyType<UpsertCollateralResourceBody>;
+  BodyType<UpdateCollateralResourceBody>;
 export type CmsUpdateCollateralResourceMutationError =
   ErrorType<NotFoundResponse>;
 
@@ -4462,7 +4463,7 @@ export const useCmsUpdateCollateralResource = <
     {
       id: string;
       resourceId: string;
-      data: BodyType<UpsertCollateralResourceBody>;
+      data: BodyType<UpdateCollateralResourceBody>;
     },
     TContext
   >;
@@ -4473,7 +4474,7 @@ export const useCmsUpdateCollateralResource = <
   {
     id: string;
     resourceId: string;
-    data: BodyType<UpsertCollateralResourceBody>;
+    data: BodyType<UpdateCollateralResourceBody>;
   },
   TContext
 > => {

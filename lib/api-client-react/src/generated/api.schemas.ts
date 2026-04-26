@@ -1399,11 +1399,24 @@ export interface CollateralResourcesResponse {
   items: CollateralResource[];
 }
 
-export interface UpsertCollateralResourceBody {
+export interface CreateCollateralResourceBody {
   /** @nullable */
   mediaId?: string | null;
   /** @nullable */
   externalUrl?: string | null;
+  /** @minLength 1 */
+  label: string;
+  /** @nullable */
+  mimeType?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateCollateralResourceBody {
+  /** @nullable */
+  mediaId?: string | null;
+  /** @nullable */
+  externalUrl?: string | null;
+  /** @minLength 1 */
   label?: string;
   /** @nullable */
   mimeType?: string | null;
@@ -1965,7 +1978,7 @@ export type CmsListPublishBlocksParams = {
   /**
    * When true, include rows that have been resolved.
    */
-  includeResolved?: string;
+  includeResolved?: boolean;
 };
 
 export type CmsGetSiteHealthParams = {

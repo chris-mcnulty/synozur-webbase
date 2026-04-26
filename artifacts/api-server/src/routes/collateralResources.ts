@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, asc, eq, isNull, inArray } from "drizzle-orm";
+import { and, asc, eq, isNull, inArray, sql } from "drizzle-orm";
 import {
   db,
   collateralTable,
@@ -72,6 +72,9 @@ export async function loadSerializedResourcesForCollateral(collateralId: string)
 // Validation
 // ---------------------------------------------------------------------------
 
+// XOR-on-create: a brand-new row must specify exactly one of mediaId
+// or externalUrl. The DB CHECK (`<>`) enforces the same invariant on
+// every row, including post-PATCH state.
 const CreateBody = z
   .object({
     mediaId: z.string().uuid().nullish(),
@@ -80,8 +83,8 @@ const CreateBody = z
     mimeType: z.string().nullish(),
     sortOrder: z.number().int().optional(),
   })
-  .refine((v) => !!v.mediaId || !!v.externalUrl, {
-    message: "Provide either mediaId or externalUrl",
+  .refine((v) => !!v.mediaId !== !!v.externalUrl, {
+    message: "Provide exactly one of mediaId or externalUrl",
   });
 
 const PatchBody = z
@@ -169,16 +172,18 @@ router.post("/cms/collateral/:id/resources", ...adminGuard, async (req, res) => 
   }
   const d = parsed.data;
 
-  // Default sortOrder to "after the current last row" when the client omits it.
+  // Default sortOrder to "after the current last row" when the client
+  // omits it. Use a single MAX aggregate so this stays O(1) regardless
+  // of how many resources the artifact already has.
   let sortOrder = d.sortOrder;
   if (sortOrder === undefined) {
-    const last = await db
-      .select({ max: collateralResourcesTable.sortOrder })
+    const [{ highest }] = await db
+      .select({
+        highest: sql<number>`coalesce(max(${collateralResourcesTable.sortOrder}), 0)::int`,
+      })
       .from(collateralResourcesTable)
-      .where(eq(collateralResourcesTable.collateralId, id))
-      .orderBy(asc(collateralResourcesTable.sortOrder));
-    const highest = last.reduce((max, r) => Math.max(max, r.max), 0);
-    sortOrder = highest + 10;
+      .where(eq(collateralResourcesTable.collateralId, id));
+    sortOrder = (highest ?? 0) + 10;
   }
 
   const [row] = await db
@@ -243,17 +248,19 @@ router.patch(
     if (d.mimeType !== undefined) updates.mimeType = d.mimeType;
     if (d.sortOrder !== undefined) updates.sortOrder = d.sortOrder;
 
-    // Enforce target invariant on the merged shape — the DB CHECK would
-    // catch this anyway, but a clearer 400 is friendlier for the admin UI.
+    // Enforce target invariant on the merged shape — the DB CHECK
+    // (XOR) would catch this anyway, but a clearer 400 is friendlier
+    // for the admin UI than a constraint-violation error.
     const nextMediaId = "mediaId" in updates ? (updates.mediaId as string | null) : existing.mediaId;
     const nextExternalUrl =
       "externalUrl" in updates
         ? (updates.externalUrl as string | null)
         : existing.externalUrl;
-    if (!nextMediaId && !nextExternalUrl) {
-      res
-        .status(400)
-        .json({ error: "Either mediaId or externalUrl must remain set" });
+    if (!!nextMediaId === !!nextExternalUrl) {
+      res.status(400).json({
+        error:
+          "Exactly one of mediaId or externalUrl must remain set after the update",
+      });
       return;
     }
 

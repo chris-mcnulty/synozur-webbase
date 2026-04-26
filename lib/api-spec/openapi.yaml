@@ -1265,7 +1265,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpsertCollateralResourceBody'
+              $ref: '#/components/schemas/CreateCollateralResourceBody'
       responses:
         '201':
           description: Created
@@ -1298,7 +1298,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpsertCollateralResourceBody'
+              $ref: '#/components/schemas/UpdateCollateralResourceBody'
       responses:
         '200':
           description: Updated
@@ -2581,7 +2581,7 @@ paths:
           name: includeResolved
           description: When true, include rows that have been resolved.
           schema:
-            type: string
+            type: boolean
       responses:
         '200':
           description: Block list
@@ -5350,7 +5350,30 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollateralResource'
-    UpsertCollateralResourceBody:
+    CreateCollateralResourceBody:
+      type: object
+      required:
+        - label
+      properties:
+        mediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        externalUrl:
+          type:
+            - string
+            - 'null'
+        label:
+          type: string
+          minLength: 1
+        mimeType:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+    UpdateCollateralResourceBody:
       type: object
       properties:
         mediaId:
@@ -5364,6 +5387,7 @@ components:
             - 'null'
         label:
           type: string
+          minLength: 1
         mimeType:
           type:
             - string

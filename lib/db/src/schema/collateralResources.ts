@@ -19,7 +19,9 @@ import { mediaTable } from "./media";
 //
 // Each row is either media-backed (`mediaId` set, links to the unified
 // `media` table) or external (`externalUrl` set, points at GitHub, Figma,
-// an external CDN, etc.). The CHECK below enforces exactly-one-of.
+// an external CDN, etc.). The CHECK below enforces exactly-one-of (XOR)
+// so a row can't be ambiguously "both" — that would create a coin-flip
+// at render time over which URL the public page should use.
 //
 // `collateral.downloadUrl` is retained for now as a read-only mirror of
 // the first-by-sortOrder resource; it will be dropped in a follow-up
@@ -45,7 +47,7 @@ export const collateralResourcesTable = pgTable(
     index("collateral_resources_collateral_idx").on(t.collateralId, t.sortOrder),
     check(
       "collateral_resources_target_present",
-      sql`${t.mediaId} is not null or ${t.externalUrl} is not null`,
+      sql`(${t.mediaId} is not null) <> (${t.externalUrl} is not null)`,
     ),
   ],
 );

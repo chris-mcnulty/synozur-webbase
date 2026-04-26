@@ -1919,7 +1919,7 @@ export const CmsCreateCollateralResourceParams = zod.object({
 export const CmsCreateCollateralResourceBody = zod.object({
   mediaId: zod.string().uuid().nullish(),
   externalUrl: zod.string().nullish(),
-  label: zod.string().optional(),
+  label: zod.string().min(1),
   mimeType: zod.string().nullish(),
   sortOrder: zod.number().optional(),
 });
@@ -1932,7 +1932,7 @@ export const CmsUpdateCollateralResourceParams = zod.object({
 export const CmsUpdateCollateralResourceBody = zod.object({
   mediaId: zod.string().uuid().nullish(),
   externalUrl: zod.string().nullish(),
-  label: zod.string().optional(),
+  label: zod.string().min(1).optional(),
   mimeType: zod.string().nullish(),
   sortOrder: zod.number().optional(),
 });
@@ -3204,7 +3204,7 @@ export const CmsListPublishBlocksQueryParams = zod.object({
   artifactKind: zod.coerce.string().optional(),
   artifactId: zod.coerce.string().optional(),
   includeResolved: zod.coerce
-    .string()
+    .boolean()
     .optional()
     .describe("When true, include rows that have been resolved."),
 });

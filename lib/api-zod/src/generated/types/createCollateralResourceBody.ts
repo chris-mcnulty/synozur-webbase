@@ -6,12 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpsertCollateralResourceBody {
+export interface CreateCollateralResourceBody {
   /** @nullable */
   mediaId?: string | null;
   /** @nullable */
   externalUrl?: string | null;
-  label?: string;
+  /** @minLength 1 */
+  label: string;
   /** @nullable */
   mimeType?: string | null;
   sortOrder?: number;
