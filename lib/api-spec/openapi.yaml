@@ -2728,6 +2728,9 @@ components:
           type: string
         sortOrder:
           type: integer
+        count:
+          type: integer
+          description: Total number of assets assigned to this category
         createdAt:
           type: string
           format: date-time
@@ -3670,6 +3673,31 @@ components:
             - 'null'
           minimum: 1800000
           maximum: 2592000000
+        spamLinkThreshold:
+          description: >
+            Maximum number of links allowed in a contact form submission before
+            it is flagged as spam. Null disables link-count filtering.
+          type:
+            - integer
+            - 'null'
+        spamKeywords:
+          description: >
+            List of keywords that trigger spam flagging when found in a
+            submission. Null or empty disables keyword filtering.
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+        spamDomainBlocklist:
+          description: >
+            List of email or link domains that are always flagged as spam.
+            Null or empty disables domain filtering.
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
         updatedAt:
           type: string
           format: date-time
@@ -3808,6 +3836,31 @@ components:
             - 'null'
           minimum: 1800000
           maximum: 2592000000
+        spamLinkThreshold:
+          description: >
+            Maximum number of links allowed in a contact form submission before
+            it is flagged as spam. Null disables link-count filtering.
+          type:
+            - integer
+            - 'null'
+        spamKeywords:
+          description: >
+            List of keywords that trigger spam flagging when found in a
+            submission. Null or empty disables keyword filtering.
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+        spamDomainBlocklist:
+          description: >
+            List of email or link domains that are always flagged as spam.
+            Null or empty disables domain filtering.
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
     AdminUser:
       type: object
       required:

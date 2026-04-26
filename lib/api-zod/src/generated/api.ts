@@ -1181,9 +1181,24 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
     ),
-  spamLinkThreshold: zod.number().int().min(1).nullish(),
-  spamKeywords: zod.array(zod.string()).nullish(),
-  spamDomainBlocklist: zod.array(zod.string()).nullish(),
+  spamLinkThreshold: zod
+    .number()
+    .nullish()
+    .describe(
+      "Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.\n",
+    ),
+  spamKeywords: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of keywords that trigger spam flagging when found in a submission. Null or empty disables keyword filtering.\n",
+    ),
+  spamDomainBlocklist: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of email or link domains that are always flagged as spam. Null or empty disables domain filtering.\n",
+    ),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1241,9 +1256,24 @@ export const UpdateAdminSiteSettingsBody = zod.object({
     .describe(
       "Session idle timeout in milliseconds. Pass null to fall back to the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective value is clamped to at least 30 minutes server-side.\n",
     ),
-  spamLinkThreshold: zod.number().int().min(1).nullish(),
-  spamKeywords: zod.array(zod.string()).nullish(),
-  spamDomainBlocklist: zod.array(zod.string()).nullish(),
+  spamLinkThreshold: zod
+    .number()
+    .nullish()
+    .describe(
+      "Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.\n",
+    ),
+  spamKeywords: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of keywords that trigger spam flagging when found in a submission. Null or empty disables keyword filtering.\n",
+    ),
+  spamDomainBlocklist: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of email or link domains that are always flagged as spam. Null or empty disables domain filtering.\n",
+    ),
 });
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
@@ -1308,9 +1338,24 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
     ),
-  spamLinkThreshold: zod.number().int().min(1).nullish(),
-  spamKeywords: zod.array(zod.string()).nullish(),
-  spamDomainBlocklist: zod.array(zod.string()).nullish(),
+  spamLinkThreshold: zod
+    .number()
+    .nullish()
+    .describe(
+      "Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.\n",
+    ),
+  spamKeywords: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of keywords that trigger spam flagging when found in a submission. Null or empty disables keyword filtering.\n",
+    ),
+  spamDomainBlocklist: zod
+    .array(zod.string())
+    .nullish()
+    .describe(
+      "List of email or link domains that are always flagged as spam. Null or empty disables domain filtering.\n",
+    ),
   updatedAt: zod.coerce.date(),
 });
 
@@ -2309,6 +2354,10 @@ export const ListAssetCategoriesResponse = zod.object({
       slug: zod.string(),
       label: zod.string(),
       sortOrder: zod.number(),
+      count: zod
+        .number()
+        .optional()
+        .describe("Total number of assets assigned to this category"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -2359,6 +2408,10 @@ export const UpdateAssetCategoryResponse = zod.object({
   slug: zod.string(),
   label: zod.string(),
   sortOrder: zod.number(),
+  count: zod
+    .number()
+    .optional()
+    .describe("Total number of assets assigned to this category"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

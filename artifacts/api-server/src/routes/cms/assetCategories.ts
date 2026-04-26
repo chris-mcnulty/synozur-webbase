@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { asc, eq } from "drizzle-orm";
-import { db, assetCategoriesTable } from "@workspace/db";
+import { asc, count, eq } from "drizzle-orm";
+import { db, assetCategoriesTable, assetsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 
 const router: IRouter = Router();
@@ -32,11 +32,25 @@ const UpdateBody = z.object({
 });
 
 router.get("/cms/asset-categories", requireAuth, async (_req, res) => {
-  const rows = await db
-    .select()
-    .from(assetCategoriesTable)
-    .orderBy(asc(assetCategoriesTable.sortOrder), asc(assetCategoriesTable.label));
-  res.json({ items: rows });
+  const [rows, assetCounts] = await Promise.all([
+    db
+      .select()
+      .from(assetCategoriesTable)
+      .orderBy(asc(assetCategoriesTable.sortOrder), asc(assetCategoriesTable.label)),
+    db
+      .select({ categoryId: assetsTable.categoryId, n: count() })
+      .from(assetsTable)
+      .groupBy(assetsTable.categoryId),
+  ]);
+
+  const countById = new Map<string, number>();
+  for (const { categoryId, n } of assetCounts) {
+    if (!categoryId) continue;
+    countById.set(categoryId, Number(n));
+  }
+
+  const items = rows.map((r) => ({ ...r, count: countById.get(r.id) ?? 0 }));
+  res.json({ items });
 });
 
 router.post(

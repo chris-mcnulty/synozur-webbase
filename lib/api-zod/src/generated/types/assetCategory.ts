@@ -11,6 +11,8 @@ export interface AssetCategory {
   slug: string;
   label: string;
   sortOrder: number;
+  /** Total number of assets assigned to this category */
+  count?: number;
   createdAt: Date;
   updatedAt: Date;
 }

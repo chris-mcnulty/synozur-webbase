@@ -79,4 +79,22 @@ export interface SiteSettingsInput {
    * @nullable
    */
   idleTimeoutMs?: number | null;
+  /**
+   * Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.
+
+   * @nullable
+   */
+  spamLinkThreshold?: number | null;
+  /**
+   * List of keywords that trigger spam flagging when found in a submission. Null or empty disables keyword filtering.
+
+   * @nullable
+   */
+  spamKeywords?: string[] | null;
+  /**
+   * List of email or link domains that are always flagged as spam. Null or empty disables domain filtering.
+
+   * @nullable
+   */
+  spamDomainBlocklist?: string[] | null;
 }

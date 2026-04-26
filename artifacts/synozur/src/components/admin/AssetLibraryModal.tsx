@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import type { Asset } from "@workspace/api-zod/types";
-import { useListAssetCategories } from "@workspace/api-client-react";
+import { useListAssetCategories, getListAssetCategoriesQueryKey } from "@workspace/api-client-react";
 import {
   type AssetKind,
   assetKindOf,
@@ -128,13 +128,17 @@ export function AssetLibraryModal({
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.deleteAsset(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["assets"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assets"] });
+      qc.invalidateQueries({ queryKey: getListAssetCategoriesQueryKey() });
+    },
   });
 
   const createAsset = useMutation({
     mutationFn: api.createAsset,
     onSuccess: (asset) => {
       qc.invalidateQueries({ queryKey: ["assets"] });
+      qc.invalidateQueries({ queryKey: getListAssetCategoriesQueryKey() });
       setPicked(asset.id);
     },
   });
@@ -247,11 +251,19 @@ export function AssetLibraryModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.slug}>
-                    {c.label}
-                  </SelectItem>
-                ))}
+                {categories.map((c) => {
+                  const itemCount = c.count ?? 0;
+                  return (
+                    <SelectItem
+                      key={c.id}
+                      value={c.slug}
+                      className={itemCount === 0 ? "text-muted-foreground" : ""}
+                    >
+                      {c.label}{" "}
+                      <span className="text-muted-foreground">({itemCount})</span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           )}
