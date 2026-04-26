@@ -39,6 +39,10 @@ Key features include:
 - **Insights Crawler**: A standalone, build-time crawler (`tools/insights-crawler`) mirrors the public Wix-hosted blog into a typed JSON dataset for database ingestion. It's idempotent and outputs discovered posts, sorted posts with local image paths, resized images, and a report.
 - **HubSpot Integration**: Successful form submissions are enqueued and processed by an in-process worker to upsert Contacts and emit custom timeline events in HubSpot. This ensures resilience against HubSpot outages and includes retry mechanisms. Token resolution uses Replit Connections or a static environment variable. Supports GDPR erasure and first-touch attribution.
 
+# Reference Repositories
+
+- **SCDP (Constellation)**: https://github.com/chris-mcnulty/synozur-scdp — the Synozur internal project management platform. Use this as the design and colour reference for the Aurora theme and any admin UI work.
+
 # External Dependencies
 
 - **Database**: PostgreSQL (via Drizzle ORM)
