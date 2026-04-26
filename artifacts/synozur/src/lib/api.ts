@@ -1356,8 +1356,12 @@ export interface PartnerDescriptionDto {
 // FAQ (#107, #108). #108 brought the schema onto the shared artifact pattern,
 // so `status` is now the four-state ArtifactStatus enum and the admin
 // endpoints surface the full lifecycle (publish window, featured, active).
-// The narrow legacy `FaqStatus` alias is kept for the admin form which only
-// flips between draft and published — `ArtifactStatus` is a strict superset.
+// `FaqStatus` is now an alias for `ArtifactStatus` — the admin UI's
+// draft↔published toggle only writes the two original values, but the
+// type intentionally permits the full enum so anything that already
+// holds a `'scheduled'` or `'archived'` row (e.g. via the API) keeps
+// type-checking. Future UI work can lean on the wider type without
+// another migration.
 export type FaqStatus = ArtifactStatus;
 
 export interface FaqCategoryDto {

@@ -423,15 +423,21 @@ export async function runMigrations(): Promise<void> {
     for (const table of ["faq_categories", "faq_items"] as const) {
       // 16a. New artifact-lifecycle columns. NOT NULL columns with non-null
       //      defaults are safe to add against an existing table.
+      //      `published_at` already exists on faq_items (from #107) but not
+      //      on faq_categories — IF NOT EXISTS makes the same statement
+      //      safe for both. `og_image` from `artifactSeo` is intentionally
+      //      omitted: the FAQ schema only spreads identity/lifecycle/
+      //      timestamps, so adding the column would create dead weight
+      //      with no Drizzle field or DTO surfacing it.
       await db.execute(sql.raw(`
         ALTER TABLE ${table}
           ADD COLUMN IF NOT EXISTS title text,
+          ADD COLUMN IF NOT EXISTS published_at timestamptz,
           ADD COLUMN IF NOT EXISTS unpublished_at timestamptz,
           ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false,
           ADD COLUMN IF NOT EXISTS featured_rank integer,
           ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true,
           ADD COLUMN IF NOT EXISTS source_id text,
-          ADD COLUMN IF NOT EXISTS og_image text,
           ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
       `));
     }

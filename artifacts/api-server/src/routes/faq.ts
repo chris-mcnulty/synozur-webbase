@@ -367,9 +367,12 @@ router.delete("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
   const now = new Date();
   // Soft delete — matches the pattern every other artifact uses. Items
   // remain in the DB but are excluded from the visibility filter via
-  // `deletedAt`. Items inside the category cascade-delete via the FK, so
-  // we soft-delete each one explicitly so they don't reappear if the
-  // category is later restored.
+  // `deletedAt`. The `ON DELETE CASCADE` on the items FK only fires on
+  // a hard delete, which we no longer do, so each item is soft-deleted
+  // explicitly here. That also means a future "restore category"
+  // workflow can choose whether to restore items individually instead
+  // of resurrecting everything that was attached when the category was
+  // removed.
   await db
     .update(faqItemsTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
