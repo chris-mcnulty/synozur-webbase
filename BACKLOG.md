@@ -10,20 +10,14 @@ editors that still reference the legacy asset picker.
 
 Follow-up items, in recommended order:
 
-1. **Migrate 15 admin editors from `AssetLibraryModal` (integer asset IDs) to a
-   unified `MediaPickerModal` that reads from `/cms/media` (UUID media IDs).**
-   Current callers:
-   - `pages/admin/site-config/site-settings.tsx`
-   - `pages/admin/marketing/seo.tsx`
-   - `pages/admin/library/collateral-edit.tsx`
-   - `pages/admin/library/video-edit.tsx`
-   - `pages/admin/library/white-paper-edit.tsx`
-   - `pages/admin/library/workshop-edit.tsx`
-   - `pages/admin/people/event-form.tsx`
-   Each caller persists an `*AssetId` integer FK. Migrating requires adding a
-   new `*MediaId` UUID column alongside, backfilling via `assets.storage_key`
-   lookup against `media.storage_key`, and updating serializers/public read
-   APIs in lockstep.
+1. ~~**Migrate 15 admin editors from `AssetLibraryModal` (integer asset IDs) to a
+   unified `MediaPickerModal` that reads from `/cms/media` (UUID media IDs).**~~
+   **Shipped in PR #55** — all seven listed admin editors
+   (`site-settings.tsx`, `seo.tsx`, `collateral-edit.tsx`, `video-edit.tsx`,
+   `white-paper-edit.tsx`, `workshop-edit.tsx`, `people/event-form.tsx`) now
+   import `MediaPickerModal` and persist `*MediaId` UUID columns. Legacy
+   `AssetLibraryModal` is no longer imported by admin pages; remaining
+   callers are scripts/backfills referenced in step 3 below.
 
 2. **Change `events.image_asset_id` (integer) to `events.image_media_id`
    (uuid).** No FK constraint exists today on `image_asset_id`; the migration

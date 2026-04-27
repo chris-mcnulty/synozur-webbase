@@ -34,12 +34,12 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module: DB tables for `job_postings` (title, slug, department, location, employment type, status, hero copy, responsibilities, requirements, compensation range, posted/closes timestamps) and `job_applications` (name, email, resume object-storage ref, cover letter, status `new|reviewing|interviewing|offer|hired|rejected|withdrawn`, applicant-supplied fields, timeline of status changes). Admin pages under `pages/admin/people/careers/` for list + edit of postings and a triage view of applications. Public pages at `/careers` and `/careers/:slug` with an apply form that uploads resumes through the existing Object Storage flow. Introduces an `hr` role and an `hr.manage` capability; the existing Careers admin items on the sidebar are gated on `hr.manage`. Transactional email confirmations reuse the Resend integration.
 
 ### #128 · Act as an OAuth 2.0 / OIDC provider for other Synozur web apps
-**Depends on:** #110 (audience-class model) or can ship in parallel
+**Depends on:** — (audience-class model #110 already shipped)
 
 This app owns the canonical `usersTable` plus the role/capability model; other Synozur web apps (current and future — customer portal, internal tools, partner dashboards) should not re-implement user management or rewire Entra separately. This task turns the api-server into an OAuth 2.0 authorization server with OIDC on top, so downstream apps redirect users here to sign in, receive ID + access + refresh tokens, and read user metadata via a `/oauth/userinfo` endpoint. Scope: new tables `oauth_clients` (`id`, `clientId`, `clientSecretHash`, `name`, `redirectUris jsonb`, `allowedScopes jsonb`, `allowedGrantTypes jsonb`, `createdBy`, timestamps) and `oauth_authorizations` (for authorization-code + refresh-token persistence); endpoints `GET /oauth/authorize`, `POST /oauth/token`, `GET /oauth/userinfo`, `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json`; a consent screen that shows the requesting app name + requested scopes; admin UI under `/admin/access/oauth-clients` to register / rotate credentials for downstream apps. Use RS256 with a rotating key pair stored in site settings (or a KMS once available). Scopes mirror the capability model so a consuming app can request only `profile content.read` without getting full admin. Authentication into the consent screen reuses whatever sign-in mechanism the user has (Clerk or Entra via #126) — this task just adds the token-issuing surface on top. Follow-up: publish a `@synozur/auth-sdk` helper package so downstream apps integrate in a handful of lines.
 
 ### #135 · Galaxy client portal — v0
-**Depends on:** #110 (audience classes — specifically `customer`), #111 (DB-backed capability map), #128 (OAuth provider); strongly pairs with #127 (SPE storage for client deliverables)
+**Depends on:** #128 (OAuth provider); strongly pairs with #127 (SPE storage for client deliverables). Audience-class model (#110) and DB-backed capability map (#111) already shipped.
 
 The long-planned Galaxy client portal has been a roadmap concept for some time but has no shipped surface. This task lands a **thin v0** that gives existing clients a single authenticated home for their engagement with Synozur — turning the OAuth-provider work in #128 from infrastructure into a real product. Scope (deliberately small):
 - New workspace `artifacts/galaxy` (Vite + React 19, reuses `lib/api-client-react`, the shared theming layer from #130, and the cross-app switcher from #129).
@@ -52,7 +52,7 @@ The long-planned Galaxy client portal has been a roadmap concept for some time b
 This v0 is intentionally small enough to ship inside a quarter and concrete enough that #128's tokens get a real consumer beyond Constellation.
 
 ### #141 · Partner & co-marketing portal
-**Depends on:** #110 (audience class `partner`), #111 (DB capability map), #128 (OAuth) — and reuses the workspace pattern from #135 (Galaxy)
+**Depends on:** #128 (OAuth) — and reuses the workspace pattern from #135 (Galaxy). Audience-class model (#110) and DB capability map (#111) already shipped.
 
 `/partners` today is a logo wall plus contact CTA. This task promotes it to a logged-in **partner portal** for channel and alliance partners (Microsoft, technology ISVs, regional SIs), so the relationship has a working surface beyond email threads. Scope:
 - New audience class `partner` (per #110) with capabilities `partner.dashboard`, `partner.collateral.read`, `partner.deal.register`, `partner.lead.submit`, `partner.mdf.request`.
@@ -148,7 +148,7 @@ The site has the **Polaris** brand (a podcast about transformation and the epony
 Out of scope: voice mode, multi-language responses (#139 follow-up), agentic actions beyond the three tools above. Follow-up: integrate the assessment (#136) so Polaris can steer relevant visitors into the assessment flow.
 
 ### #139 · Internationalization foundation (English baseline + one launch locale)
-**Depends on:** — (architecture); pairs with #110 (some audience classes will skew geographically), #130 (theme assets may need locale variants)
+**Depends on:** — (architecture); pairs with #130 (theme assets may need locale variants)
 
 Every public string and every editorial CMS field on the site is English-only today. Enterprise procurement in EU and APAC stalls on this even when the buying team speaks English. This task lays the **i18n foundation** without trying to translate the entire corpus on day one:
 - **Code-side i18n.** Adopt FormatJS (`react-intl`) inside `artifacts/synozur` with a build-time message-extraction step. Every string in the codebase moves to a `messages` catalog keyed by namespace; `en` is the baseline. Locale-routed URLs (`/de/insights/...`, `/ja/applications/constellation`) with a transparent default for `en` to avoid breaking existing links.
@@ -168,16 +168,16 @@ Out of scope: right-to-left languages (separate pass), region-specific content (
 | #68 | Auto-trim old post revisions | CMS | #48 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #127 | Migrate asset storage from GCS to SharePoint Embedded | Library / Infra | — |
-| #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
+| #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | — |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
-| #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
+| #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128 |
 | #132 | SendGrid integration for marketing email and deliverability redundancy | Marketing & Lifecycle | — |
 | #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
 | #134 | "Ask Synozur" RAG-powered Q&A across editorial content | Public Site UX | — |
-| #135 | Galaxy client portal — v0 | Admin Access & People | #110, #111, #128 |
+| #135 | Galaxy client portal — v0 | Admin Access & People | #128 |
 | #136 | Interactive maturity assessment replacing static service-pillar pages | Public Site UX | — |
 | #137 | Polaris AI concierge — site-wide chat assistant | Public Site UX | #134 |
 | #138 | Programmatic case-study drafts from Constellation outcomes | Content Library | #128 |
 | #139 | Internationalization foundation (English + one launch locale) | Public Site UX | — |
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
-| #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
+| #141 | Partner & co-marketing portal | Admin Access & People | #128 |
