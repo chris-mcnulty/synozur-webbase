@@ -116,8 +116,6 @@ interface FormState {
   tagIds: string[];
   bookingId: string;
   active: boolean;
-  acceleratorsHtml: string;
-  faqHtml: string;
 }
 
 const EMPTY: FormState = {
@@ -153,8 +151,6 @@ const EMPTY: FormState = {
   tagIds: [],
   bookingId: "",
   active: true,
-  acceleratorsHtml: "",
-  faqHtml: "",
 };
 
 function fromSolution(s: Solution): FormState {
@@ -191,8 +187,6 @@ function fromSolution(s: Solution): FormState {
     tagIds: (s.tags ?? []).map((t) => t.id),
     bookingId: s.bookingId ?? "",
     active: s.active,
-    acceleratorsHtml: s.acceleratorsHtml ?? "",
-    faqHtml: s.faqHtml ?? "",
   };
 }
 
@@ -229,8 +223,6 @@ function toBody(f: FormState): UpsertSolutionBody {
     tagIds: f.tagIds,
     bookingId: f.bookingId || null,
     active: f.active,
-    acceleratorsHtml: f.acceleratorsHtml || null,
-    faqHtml: f.faqHtml || null,
   };
 }
 
@@ -630,7 +622,7 @@ export default function SolutionEdit({ id }: Props) {
                 to hide the section on the public page.
               </p>
             </div>
-            <div>
+            <div data-testid="editor-solution-accelerators">
               <RichTextEditor
                 value={form.acceleratorsHtml}
                 onChange={({ html }) => update({ acceleratorsHtml: html })}
@@ -648,7 +640,7 @@ export default function SolutionEdit({ id }: Props) {
                 section on the public page.
               </p>
             </div>
-            <div>
+            <div data-testid="editor-solution-faq">
               <RichTextEditor
                 value={form.faqHtml}
                 onChange={({ html }) => update({ faqHtml: html })}
@@ -700,37 +692,6 @@ export default function SolutionEdit({ id }: Props) {
             </div>
           </Card>
 
-          <Card className="p-4 space-y-3">
-            <div>
-              <Label className="text-sm font-medium">Accelerators</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                HTML content for the Accelerators / Zenith callout section on this solution page.
-              </p>
-            </div>
-            <div data-testid="editor-solution-accelerators">
-              <RichTextEditor
-                value={form.acceleratorsHtml}
-                onChange={({ html }) => update({ acceleratorsHtml: html })}
-                onUploadImage={uploadAndRegisterImage}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-4 space-y-3">
-            <div>
-              <Label className="text-sm font-medium">FAQ</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                HTML content for the FAQ section on this solution page.
-              </p>
-            </div>
-            <div data-testid="editor-solution-faq">
-              <RichTextEditor
-                value={form.faqHtml}
-                onChange={({ html }) => update({ faqHtml: html })}
-                onUploadImage={uploadAndRegisterImage}
-              />
-            </div>
-          </Card>
         </div>
 
         <aside className="space-y-4">

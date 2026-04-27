@@ -19,9 +19,12 @@ run = "pnpm --filter @workspace/synozur run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/synozur", "run", "build" ]
+publicDir = "artifacts/synozur/dist/public"
+serve = "static"
 
-[services.production.run]
-args = ["node", "artifacts/synozur/server.mjs"]
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
 
 [services.env]
 PORT = "20131"

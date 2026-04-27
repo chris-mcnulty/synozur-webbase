@@ -390,8 +390,6 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       pillar: d.pillar ?? null,
       active: d.active ?? true,
       bookingId: d.bookingId ?? null,
-      acceleratorsHtml: d.acceleratorsHtml ?? null,
-      faqHtml: d.faqHtml ?? null,
     })
     .returning();
   if (d.tagIds) {
