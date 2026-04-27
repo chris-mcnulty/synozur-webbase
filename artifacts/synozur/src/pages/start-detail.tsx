@@ -63,14 +63,24 @@ export default function StartDetail({ slug }: Props) {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
-        {description && (
+      {description && (
+        <div className="container mx-auto px-4 pt-12 md:pt-16 max-w-5xl">
           <div
-            className="prose prose-invert max-w-3xl mb-10"
+            className="prose prose-invert max-w-3xl"
             dangerouslySetInnerHTML={{ __html: description }}
           />
-        )}
+        </div>
+      )}
 
+      {/*
+        Microsoft Bookings is served from a cross-origin host, so its internal
+        fonts and colors cannot be restyled from this page (browser sandbox).
+        The widest impact we can have is giving it more horizontal room so the
+        embedded UI lays its time-slot options out in multiple columns instead
+        of a single tall stack. We break out of the narrower text container
+        here and use a wider wrapper on lg+ breakpoints.
+      */}
+      <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl 2xl:max-w-screen-2xl">
         <div
           className="rounded-2xl border border-border bg-card overflow-hidden"
           data-testid="booking-embed"
@@ -79,7 +89,7 @@ export default function StartDetail({ slug }: Props) {
             src={booking.embedUrl}
             title={booking.title}
             width="100%"
-            height="900"
+            height="1100"
             scrolling="yes"
             style={{ border: 0, display: "block" }}
             allow="clipboard-write"
