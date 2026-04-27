@@ -14,6 +14,7 @@ import {
   artifactTimestamps,
 } from "./_artifactBase";
 import { servicesTable, solutionsTable } from "./services";
+import { bookingsTable } from "./bookings";
 
 // Applications (#103). Moves the 143-line static TS file at
 // `artifacts/synozur/src/data/applications.ts` into a DB table built on
@@ -48,6 +49,9 @@ export const applicationsTable = pgTable(
       onDelete: "set null",
     }),
     solutionId: uuid("solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
+    bookingId: uuid("booking_id").references(() => bookingsTable.id, {
       onDelete: "set null",
     }),
     ...artifactLifecycle,

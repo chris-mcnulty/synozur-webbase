@@ -714,6 +714,28 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS home_hero_video_media_id    uuid;
     `);
 
+    // 21. Linked bookings on content pages — optional FK from services,
+    //     solutions, workshops, and applications to a booking row. When set,
+    //     the public detail page renders a discreet BookingCard that links
+    //     directly to /start/:slug instead of requiring the visitor to
+    //     navigate to the /start index first.
+    await db.execute(sql`
+      ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE workshops
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE applications
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

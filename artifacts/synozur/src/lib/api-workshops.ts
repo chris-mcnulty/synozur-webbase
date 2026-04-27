@@ -1,3 +1,5 @@
+import type { LinkedBookingDto } from "./api";
+
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 function url(path: string): string {
@@ -91,6 +93,10 @@ export interface WorkshopDto {
   faq: { header: string; items: WorkshopFAQItem[] };
   seo: { title: string; description: string };
   displayOrder: number | null;
+  serviceId: string | null;
+  solutionId: string | null;
+  bookingId: string | null;
+  booking?: LinkedBookingDto | null;
   sourceId: string | null;
   active: boolean;
   createdAt: string;
@@ -99,7 +105,7 @@ export interface WorkshopDto {
 
 export type WorkshopInput = Omit<
   WorkshopDto,
-  "id" | "sourceId" | "createdAt" | "updatedAt"
+  "id" | "sourceId" | "booking" | "createdAt" | "updatedAt"
 > & { slug?: string | null };
 
 export const workshopsApi = {
@@ -158,6 +164,9 @@ export function emptyWorkshopInput(): WorkshopInput {
     faq: { header: "FAQ", items: [] },
     seo: { title: "", description: "" },
     displayOrder: null,
+    serviceId: null,
+    solutionId: null,
+    bookingId: null,
     active: true,
   };
 }
