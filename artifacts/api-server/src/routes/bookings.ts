@@ -326,6 +326,13 @@ async function loadBookingForNative(
   if (!row.msBusinessId) {
     return { ok: false, status: 409, message: "This booking is not configured for native rendering." };
   }
+  // Strip trailing slashes/spaces so a value copy-pasted from a Bookings URL
+  // (which often ends with a trailing slash) doesn't produce a malformed
+  // Graph path after encodeURIComponent encodes the slash as %2F.
+  const businessId = row.msBusinessId.trim().replace(/\/+$/, "");
+  if (!businessId) {
+    return { ok: false, status: 409, message: "This booking is not configured for native rendering." };
+  }
   if (!isGraphBookingsConfigured()) {
     return {
       ok: false,
@@ -333,7 +340,7 @@ async function loadBookingForNative(
       message: "Bookings provider is not configured on the server.",
     };
   }
-  return { ok: true, businessId: row.msBusinessId, defaultServiceId: row.msDefaultServiceId };
+  return { ok: true, businessId, defaultServiceId: row.msDefaultServiceId };
 }
 
 router.get("/bookings/:slug/services", async (req, res): Promise<void> => {
