@@ -748,6 +748,14 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
     `);
 
+    // 23. White papers: document_media_id — UUID FK to the media table so
+    //     uploaded PDF documents can be tracked in the media library alongside
+    //     the legacy document_asset_id / document_url fields.
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS document_media_id uuid REFERENCES media(id) ON DELETE SET NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
