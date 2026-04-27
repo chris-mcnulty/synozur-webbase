@@ -15,6 +15,9 @@
     "seed:applications": "tsx src/scripts/seedApplications.ts",
     "seed:about-content": "tsx src/scripts/seedAboutContent.ts",
     "seed:solution-enrichments": "tsx src/scripts/seedSolutionEnrichments.ts",
+    "seed:bookings": "tsx src/scripts/seedBookings.ts",
+    "seed:m365-solution": "tsx src/scripts/seedM365Solution.ts",
+    "seed:m365": "tsx src/scripts/seedM365Full.ts",
     "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
