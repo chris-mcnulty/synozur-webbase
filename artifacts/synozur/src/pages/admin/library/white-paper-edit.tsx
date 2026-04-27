@@ -628,56 +628,6 @@ export default function WhitePaperEdit({ id }: Props) {
 
           <Card className="p-4 space-y-4">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
-              Related content
-            </h3>
-            <div>
-              <Label className="text-sm font-medium">Related service</Label>
-              <Select
-                value={form.serviceId || "__none__"}
-                onValueChange={(v) =>
-                  update({ serviceId: v === "__none__" ? "" : v, solutionId: "" })
-                }
-                disabled={!canWrite}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {allServices.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {form.serviceId && availableSolutions.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium">Related solution</Label>
-                <Select
-                  value={form.solutionId || "__none__"}
-                  onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
-                  disabled={!canWrite}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {availableSolutions.map((sol) => (
-                      <SelectItem key={sol.id} value={sol.id}>
-                        {sol.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
               SEO &amp; publishing
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -863,6 +813,56 @@ export default function WhitePaperEdit({ id }: Props) {
               )}
             </Card>
           )}
+
+          <Card className="p-4 space-y-4">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Related content
+            </h3>
+            <div>
+              <Label className="text-sm font-medium">Related service</Label>
+              <Select
+                value={form.serviceId || "__none__"}
+                onValueChange={(v) =>
+                  update({ serviceId: v === "__none__" ? "" : v, solutionId: "" })
+                }
+                disabled={!canWrite}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {allServices.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.serviceId && availableSolutions.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">Related solution</Label>
+                <Select
+                  value={form.solutionId || "__none__"}
+                  onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
+                  disabled={!canWrite}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {availableSolutions.map((sol) => (
+                      <SelectItem key={sol.id} value={sol.id}>
+                        {sol.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </Card>
 
           {!isNew && itemQ.data && (
             <Card className="p-4 space-y-2 text-xs text-muted-foreground">
