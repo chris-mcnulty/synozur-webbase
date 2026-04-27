@@ -101,16 +101,15 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileHandle>(null);
 
-  // Date strip — 14 days starting today, anchored to midnight UTC. Slots are
-  // filtered into each day using the visitor's tz so the rendered groupings
-  // match what they see on the buttons.
+  // Date strip — 14 days starting today, anchored to the visitor's local
+  // midnight so button labels and timezone-aware slot filtering stay aligned.
   const dateStrip = useMemo(() => {
     const days: Date[] = [];
     const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
     for (let i = 0; i < DATE_STRIP_DAYS; i++) {
       const d = new Date(today);
-      d.setUTCDate(today.getUTCDate() + i);
+      d.setDate(today.getDate() + i);
       days.push(d);
     }
     return days;
