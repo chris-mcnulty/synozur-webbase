@@ -11,6 +11,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { mediaTable } from "./media";
+import { servicesTable, solutionsTable } from "./services";
 
 export const WHITE_PAPER_DOC_TYPES = ["whitepaper", "ebook", "report", "guide"] as const;
 export type WhitePaperDocType = (typeof WHITE_PAPER_DOC_TYPES)[number];
@@ -48,6 +49,12 @@ export const whitePapersTable = pgTable(
     // column over `documentAssetId`. Backfilled via `scripts/backfillMediaIds.ts`
     // by matching `assets.storage_key` against `media.storage_key`.
     documentMediaId: uuid("document_media_id").references(() => mediaTable.id, {
+      onDelete: "set null",
+    }),
+    serviceId: uuid("service_id").references(() => servicesTable.id, {
+      onDelete: "set null",
+    }),
+    solutionId: uuid("solution_id").references(() => solutionsTable.id, {
       onDelete: "set null",
     }),
     externalUrl: text("external_url"),

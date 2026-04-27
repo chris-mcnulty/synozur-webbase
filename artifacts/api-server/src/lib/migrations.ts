@@ -756,6 +756,18 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS document_media_id uuid REFERENCES media(id) ON DELETE SET NULL;
     `);
 
+    // 24. White papers: service_id + solution_id — associate a document with a
+    //     service and optionally one of that service's solutions (mirrors the
+    //     same FK pair added to polaris_episodes in step 22).
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES services(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

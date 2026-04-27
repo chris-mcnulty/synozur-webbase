@@ -414,6 +414,8 @@ export interface WhitePaperDto {
   documentAssetId: number | null;
   documentMediaId: string | null;
   documentAsset: WhitePaperDocumentAsset | null;
+  serviceId: string | null;
+  solutionId: string | null;
   externalUrl: string | null;
   pageCount: number | null;
   status: WhitePaperStatus;
@@ -444,6 +446,8 @@ export interface WhitePaperInput {
   documentUrl?: string | null;
   documentAssetId?: number | null;
   documentMediaId?: string | null;
+  serviceId?: string | null;
+  solutionId?: string | null;
   externalUrl?: string | null;
   pageCount?: number | null;
   status?: WhitePaperStatus;
