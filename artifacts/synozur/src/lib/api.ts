@@ -1167,6 +1167,8 @@ export interface PolarisEpisodeDto {
   seoTitle: string | null;
   seoDescription: string | null;
   ogImage: string | null;
+  serviceId: string | null;
+  solutionId: string | null;
   active: boolean;
   sourceId: string | null;
   createdAt: string;
@@ -1650,4 +1652,6 @@ export interface PolarisEpisodeInput {
   ogImage?: string | null;
   active?: boolean;
   sourceId?: string | null;
+  serviceId?: string | null;
+  solutionId?: string | null;
 }

@@ -70,6 +70,11 @@ Out of scope: a full PRM (partner-relationship management) replacement, commissi
 
 ## Marketing & Lifecycle
 
+### #86 · Fix OG tags for social link previews
+**Depends on:** —
+
+When the site URL is shared on LinkedIn, Slack, or similar platforms, no title, image, or description appears. The OG tag logic exists in the React app but runs via JavaScript — social crawlers never see it. The fix is to embed default OG tags in the static HTML shell and add a crawler-detection middleware on the API server that injects page-specific title, description, and image for known social bots. Includes a dynamic sitemap endpoint and a Sitemap: directive in robots.txt.
+
 ### #132 · SendGrid integration for marketing email and deliverability redundancy
 **Depends on:** — (can ship independently); pairs with #131 (HubSpot lead capture)
 

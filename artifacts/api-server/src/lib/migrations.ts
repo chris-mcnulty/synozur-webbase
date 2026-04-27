@@ -736,6 +736,18 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
     `);
 
+    // 22. Service / solution tagging for Polaris podcast episodes — lets
+    //     editors associate an episode with the service or solution it covers
+    //     so episode detail pages can cross-link to the relevant offer.
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES services(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
