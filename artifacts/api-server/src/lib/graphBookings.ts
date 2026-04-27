@@ -191,6 +191,25 @@ function dateTimeToUtcIso(dt: { dateTime?: string; timeZone?: string } | undefin
   return hasZ ? dt.dateTime : `${dt.dateTime}Z`;
 }
 
+export async function listBusinesses(): Promise<
+  | { ok: true; businesses: { id: string; displayName: string; email: string | null }[] }
+  | { ok: false; status: number; message: string }
+> {
+  const result = await graphFetch(`/solutions/bookingBusinesses`);
+  if (!result.ok) return result;
+  const j = result.json as {
+    value?: { id?: string; displayName?: string; email?: string | null }[];
+  };
+  return {
+    ok: true,
+    businesses: (j.value ?? []).map((b) => ({
+      id: b.id ?? "",
+      displayName: b.displayName ?? "",
+      email: b.email ?? null,
+    })),
+  };
+}
+
 export async function getBusiness(
   businessId: string,
 ): Promise<{ ok: true; business: GraphBookingBusinessSummary } | { ok: false; status: number; message: string }> {
