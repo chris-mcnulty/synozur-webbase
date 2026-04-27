@@ -1158,10 +1158,13 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .enum(["cosmic", "aurora"])
     .default(getAdminSiteSettingsResponseSiteThemeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
+  homeHeroVideoMediaId: zod.string().uuid().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
+  homeEditorialImageMediaId: zod.string().uuid().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
@@ -1173,6 +1176,7 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .max(getAdminSiteSettingsResponseSeoDefaultDescriptionMax)
     .nullish(),
   seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoDefaultOgImageMediaId: zod.string().uuid().nullish(),
   seoDefaultOgImageUrl: zod.string().nullish(),
   seoTwitterHandle: zod.string().nullish(),
   seoTwitterCardType: zod.string().nullish(),
@@ -1182,6 +1186,7 @@ export const GetAdminSiteSettingsResponse = zod.object({
   orgName: zod.string().nullish(),
   orgLegalName: zod.string().nullish(),
   orgLogoAssetId: zod.number().nullish(),
+  orgLogoMediaId: zod.string().uuid().nullish(),
   orgLogoUrl: zod.string().nullish(),
   orgStreetAddress: zod.string().nullish(),
   orgAddressLocality: zod.string().nullish(),
@@ -1238,8 +1243,11 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   homeHeroBackgroundType: zod.enum(["image", "video"]).optional(),
   siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
+  homeHeroVideoMediaId: zod.string().uuid().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
+  homeEditorialImageMediaId: zod.string().uuid().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
     .string()
@@ -1250,6 +1258,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
     .max(updateAdminSiteSettingsBodySeoDefaultDescriptionMax)
     .nullish(),
   seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoDefaultOgImageMediaId: zod.string().uuid().nullish(),
   seoTwitterHandle: zod.string().nullish(),
   seoTwitterCardType: zod.string().nullish(),
   seoLinkedinCompanyUrl: zod.string().nullish(),
@@ -1258,6 +1267,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   orgName: zod.string().nullish(),
   orgLegalName: zod.string().nullish(),
   orgLogoAssetId: zod.number().nullish(),
+  orgLogoMediaId: zod.string().uuid().nullish(),
   orgStreetAddress: zod.string().nullish(),
   orgAddressLocality: zod.string().nullish(),
   orgAddressRegion: zod.string().nullish(),
@@ -1315,10 +1325,13 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .enum(["cosmic", "aurora"])
     .default(updateAdminSiteSettingsResponseSiteThemeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
+  homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
+  homeHeroVideoMediaId: zod.string().uuid().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
+  homeEditorialImageMediaId: zod.string().uuid().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
@@ -1330,6 +1343,7 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .max(updateAdminSiteSettingsResponseSeoDefaultDescriptionMax)
     .nullish(),
   seoDefaultOgImageAssetId: zod.number().nullish(),
+  seoDefaultOgImageMediaId: zod.string().uuid().nullish(),
   seoDefaultOgImageUrl: zod.string().nullish(),
   seoTwitterHandle: zod.string().nullish(),
   seoTwitterCardType: zod.string().nullish(),
@@ -1339,6 +1353,7 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   orgName: zod.string().nullish(),
   orgLegalName: zod.string().nullish(),
   orgLogoAssetId: zod.number().nullish(),
+  orgLogoMediaId: zod.string().uuid().nullish(),
   orgLogoUrl: zod.string().nullish(),
   orgStreetAddress: zod.string().nullish(),
   orgAddressLocality: zod.string().nullish(),
@@ -2752,6 +2767,7 @@ export const ListAdminEventsResponseItem = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  imageMediaId: zod.string().uuid().nullish(),
   imageUrl: zod.string().nullish(),
   recordingVideoId: zod.string().nullish(),
   recordingVideoSlug: zod.string().nullish(),
@@ -2780,6 +2796,7 @@ export const CreateEventBody = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  imageMediaId: zod.string().uuid().nullish(),
   recordingVideoId: zod.string().nullish(),
 });
 
@@ -2802,6 +2819,7 @@ export const GetAdminEventResponse = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  imageMediaId: zod.string().uuid().nullish(),
   imageUrl: zod.string().nullish(),
   recordingVideoId: zod.string().nullish(),
   recordingVideoSlug: zod.string().nullish(),
@@ -2829,6 +2847,7 @@ export const UpdateEventBody = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  imageMediaId: zod.string().uuid().nullish(),
   recordingVideoId: zod.string().nullish(),
 });
 
@@ -2847,6 +2866,7 @@ export const UpdateEventResponse = zod.object({
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
   imageAssetId: zod.number().nullish(),
+  imageMediaId: zod.string().uuid().nullish(),
   imageUrl: zod.string().nullish(),
   recordingVideoId: zod.string().nullish(),
   recordingVideoSlug: zod.string().nullish(),

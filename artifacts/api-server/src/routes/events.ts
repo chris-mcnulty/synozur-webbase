@@ -6,9 +6,11 @@ import {
   db,
   eventsTable,
   assetsTable,
+  mediaTable,
   videosTable,
   type Event,
   type Asset,
+  type Media,
   type Video,
 } from "@workspace/db";
 import {
@@ -68,10 +70,33 @@ function imageUrlFor(asset: Asset | undefined | null): string | null {
   return `/api/storage${asset.storageKey}`;
 }
 
+function mediaUrlFor(media: Media | undefined | null): string | null {
+  if (!media) return null;
+  return media.publicUrl || `/api/storage${media.storageKey}`;
+}
+
 interface EnrichedEvent {
   event: Event;
   imageUrl: string | null;
   recordingVideo: Pick<Video, "id" | "slug" | "title" | "videoUrl"> | null;
+}
+
+// Resolve the event hero image URL. New writes from the editor populate
+// `imageMediaId` (UUID, FK to `media`); legacy rows still carry only the
+// integer `imageAssetId`. Prefer the media-backed URL when present.
+function resolveEventImageUrl(
+  event: Event,
+  mediaById: Map<string, Media>,
+  assetsById: Map<number, Asset>,
+): string | null {
+  if (event.imageMediaId) {
+    const m = mediaById.get(event.imageMediaId);
+    if (m) return mediaUrlFor(m);
+  }
+  if (event.imageAssetId) {
+    return imageUrlFor(assetsById.get(event.imageAssetId) ?? null);
+  }
+  return null;
 }
 
 async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
@@ -80,6 +105,12 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
         .select()
         .from(assetsTable)
         .where(eq(assetsTable.id, event.imageAssetId))
+    : [];
+  const [media] = event.imageMediaId
+    ? await db
+        .select()
+        .from(mediaTable)
+        .where(eq(mediaTable.id, event.imageMediaId))
     : [];
   const now = new Date();
   const [video] = event.recordingVideoId
@@ -102,9 +133,11 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
           ),
         )
     : [];
+  const assetsById = new Map(asset ? [[asset.id, asset]] : []);
+  const mediaById = new Map(media ? [[media.id, media]] : []);
   return {
     event,
-    imageUrl: imageUrlFor(asset),
+    imageUrl: resolveEventImageUrl(event, mediaById, assetsById),
     recordingVideo: video ?? null,
   };
 }
@@ -113,11 +146,17 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
   const assetIds = Array.from(
     new Set(events.map((e) => e.imageAssetId).filter((v): v is number => v != null)),
   );
+  const mediaIds = Array.from(
+    new Set(events.map((e) => e.imageMediaId).filter((v): v is string => v != null)),
+  );
   const videoIds = Array.from(
     new Set(events.map((e) => e.recordingVideoId).filter((v): v is string => v != null)),
   );
   const assets = assetIds.length
     ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
+    : [];
+  const mediaRows = mediaIds.length
+    ? await db.select().from(mediaTable).where(inArray(mediaTable.id, mediaIds))
     : [];
   const now = new Date();
   const videos = videoIds.length
@@ -141,10 +180,11 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
         )
     : [];
   const assetsById = new Map(assets.map((a) => [a.id, a]));
+  const mediaById = new Map(mediaRows.map((m) => [m.id, m]));
   const videosById = new Map(videos.map((v) => [v.id, v]));
   return events.map((event) => ({
     event,
-    imageUrl: imageUrlFor(event.imageAssetId ? assetsById.get(event.imageAssetId) : null),
+    imageUrl: resolveEventImageUrl(event, mediaById, assetsById),
     recordingVideo: event.recordingVideoId
       ? videosById.get(event.recordingVideoId) ?? null
       : null,
@@ -190,6 +230,7 @@ function adminShape(enriched: EnrichedEvent) {
     featured: event.featured,
     featuredRank: event.featuredRank,
     imageAssetId: event.imageAssetId,
+    imageMediaId: event.imageMediaId,
     imageUrl,
     recordingVideoId: recordingVideo?.id ?? null,
     recordingVideoSlug: recordingVideo?.slug ?? null,
@@ -270,6 +311,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
+      imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
     })
     .returning();
@@ -319,6 +361,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       featured: parsed.data.featured ?? false,
       featuredRank: parsed.data.featuredRank ?? null,
       imageAssetId: parsed.data.imageAssetId ?? null,
+      imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
     })
     .where(eq(eventsTable.id, params.data.id))

@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray } from "drizzle-orm";
-import { db, siteSettingsTable, assetsTable, type SiteSettings, type Asset } from "@workspace/db";
+import {
+  db,
+  siteSettingsTable,
+  assetsTable,
+  mediaTable,
+  type SiteSettings,
+  type Asset,
+  type Media,
+} from "@workspace/db";
 import {
   GetPublicSiteSettingsResponse,
   GetAdminSiteSettingsResponse,
@@ -38,6 +46,11 @@ function imageUrlFor(asset: Asset | undefined): string | null {
   return `/api/storage${asset.storageKey}`;
 }
 
+function mediaUrlFor(media: Media | undefined): string | null {
+  if (!media) return null;
+  return media.publicUrl || `/api/storage${media.storageKey}`;
+}
+
 type ResolvedImageUrls = {
   homeHeroImageUrl: string | null;
   homeHeroVideoUrl: string | null;
@@ -46,36 +59,64 @@ type ResolvedImageUrls = {
   orgLogoUrl: string | null;
 };
 
+// Resolve display URLs for each picker slot. New writes flow through the
+// `*MediaId` UUID columns, but the legacy `*AssetId` integer columns are
+// still populated until BACKLOG.md §1 item 3 drops the assets table — so
+// each slot prefers media when present and falls back to the asset.
 async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUrls> {
-  const ids = [
+  const assetIds = [
     settings.homeHeroImageAssetId,
     settings.homeHeroVideoAssetId,
     settings.homeEditorialImageAssetId,
     settings.seoDefaultOgImageAssetId,
     settings.orgLogoAssetId,
   ].filter((id): id is number => typeof id === "number");
-  if (ids.length === 0) {
-    return {
-      homeHeroImageUrl: null,
-      homeHeroVideoUrl: null,
-      homeEditorialImageUrl: null,
-      seoDefaultOgImageUrl: null,
-      orgLogoUrl: null,
-    };
-  }
-  const rows = await db
-    .select()
-    .from(assetsTable)
-    .where(inArray(assetsTable.id, ids));
-  const byId = new Map(rows.map((a) => [a.id, a]));
-  const urlFor = (id: number | null) =>
-    imageUrlFor(id !== null ? byId.get(id) : undefined);
+  const mediaIds = [
+    settings.homeHeroImageMediaId,
+    settings.homeHeroVideoMediaId,
+    settings.homeEditorialImageMediaId,
+    settings.seoDefaultOgImageMediaId,
+    settings.orgLogoMediaId,
+  ].filter((id): id is string => typeof id === "string");
+
+  const [assetRows, mediaRows] = await Promise.all([
+    assetIds.length
+      ? db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
+      : Promise.resolve([]),
+    mediaIds.length
+      ? db.select().from(mediaTable).where(inArray(mediaTable.id, mediaIds))
+      : Promise.resolve([]),
+  ]);
+  const assetsById = new Map(assetRows.map((a) => [a.id, a]));
+  const mediaById = new Map(mediaRows.map((m) => [m.id, m]));
+
+  const urlFor = (mediaId: string | null, assetId: number | null) => {
+    const m = mediaId !== null ? mediaById.get(mediaId) : undefined;
+    if (m) return mediaUrlFor(m);
+    return imageUrlFor(assetId !== null ? assetsById.get(assetId) : undefined);
+  };
+
   return {
-    homeHeroImageUrl: urlFor(settings.homeHeroImageAssetId),
-    homeHeroVideoUrl: urlFor(settings.homeHeroVideoAssetId ?? null),
-    homeEditorialImageUrl: urlFor(settings.homeEditorialImageAssetId),
-    seoDefaultOgImageUrl: urlFor(settings.seoDefaultOgImageAssetId),
-    orgLogoUrl: urlFor(settings.orgLogoAssetId),
+    homeHeroImageUrl: urlFor(
+      settings.homeHeroImageMediaId ?? null,
+      settings.homeHeroImageAssetId,
+    ),
+    homeHeroVideoUrl: urlFor(
+      settings.homeHeroVideoMediaId ?? null,
+      settings.homeHeroVideoAssetId ?? null,
+    ),
+    homeEditorialImageUrl: urlFor(
+      settings.homeEditorialImageMediaId ?? null,
+      settings.homeEditorialImageAssetId,
+    ),
+    seoDefaultOgImageUrl: urlFor(
+      settings.seoDefaultOgImageMediaId ?? null,
+      settings.seoDefaultOgImageAssetId,
+    ),
+    orgLogoUrl: urlFor(
+      settings.orgLogoMediaId ?? null,
+      settings.orgLogoAssetId,
+    ),
   };
 }
 
@@ -85,15 +126,19 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
     siteTheme: settings.siteTheme ?? "cosmic",
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
+    homeHeroImageMediaId: settings.homeHeroImageMediaId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
     homeHeroVideoAssetId: settings.homeHeroVideoAssetId,
+    homeHeroVideoMediaId: settings.homeHeroVideoMediaId,
     homeHeroVideoUrl: urls.homeHeroVideoUrl,
     homeEditorialImageAssetId: settings.homeEditorialImageAssetId,
+    homeEditorialImageMediaId: settings.homeEditorialImageMediaId,
     homeEditorialImageUrl: urls.homeEditorialImageUrl,
     polarisFeedUrl: settings.polarisFeedUrl,
     seoDefaultTitleTemplate: settings.seoDefaultTitleTemplate,
     seoDefaultDescription: settings.seoDefaultDescription,
     seoDefaultOgImageAssetId: settings.seoDefaultOgImageAssetId,
+    seoDefaultOgImageMediaId: settings.seoDefaultOgImageMediaId,
     seoDefaultOgImageUrl: urls.seoDefaultOgImageUrl,
     seoTwitterHandle: settings.seoTwitterHandle,
     seoTwitterCardType: settings.seoTwitterCardType,
@@ -103,6 +148,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     orgName: settings.orgName,
     orgLegalName: settings.orgLegalName,
     orgLogoAssetId: settings.orgLogoAssetId,
+    orgLogoMediaId: settings.orgLogoMediaId,
     orgLogoUrl: urls.orgLogoUrl,
     orgStreetAddress: settings.orgStreetAddress,
     orgAddressLocality: settings.orgAddressLocality,
@@ -194,11 +240,20 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   if ("homeHeroImageAssetId" in input) {
     updates.homeHeroImageAssetId = input.homeHeroImageAssetId ?? null;
   }
+  if ("homeHeroImageMediaId" in input) {
+    updates.homeHeroImageMediaId = input.homeHeroImageMediaId ?? null;
+  }
   if ("homeHeroVideoAssetId" in input) {
     updates.homeHeroVideoAssetId = input.homeHeroVideoAssetId ?? null;
   }
+  if ("homeHeroVideoMediaId" in input) {
+    updates.homeHeroVideoMediaId = input.homeHeroVideoMediaId ?? null;
+  }
   if ("homeEditorialImageAssetId" in input) {
     updates.homeEditorialImageAssetId = input.homeEditorialImageAssetId ?? null;
+  }
+  if ("homeEditorialImageMediaId" in input) {
+    updates.homeEditorialImageMediaId = input.homeEditorialImageMediaId ?? null;
   }
   if ("polarisFeedUrl" in input) {
     updates.polarisFeedUrl = trimOrNull(input.polarisFeedUrl);
@@ -212,6 +267,9 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   if ("seoDefaultOgImageAssetId" in input) {
     updates.seoDefaultOgImageAssetId = input.seoDefaultOgImageAssetId ?? null;
+  }
+  if ("seoDefaultOgImageMediaId" in input) {
+    updates.seoDefaultOgImageMediaId = input.seoDefaultOgImageMediaId ?? null;
   }
 
   if ("seoTwitterHandle" in input) {
@@ -239,6 +297,9 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   if ("orgLogoAssetId" in input) {
     updates.orgLogoAssetId = input.orgLogoAssetId ?? null;
+  }
+  if ("orgLogoMediaId" in input) {
+    updates.orgLogoMediaId = input.orgLogoMediaId ?? null;
   }
   if ("orgStreetAddress" in input) {
     updates.orgStreetAddress = trimOrNull(input.orgStreetAddress);

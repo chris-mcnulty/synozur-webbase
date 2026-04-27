@@ -28,6 +28,8 @@ export interface AdminEvent {
   /** @nullable */
   imageAssetId?: number | null;
   /** @nullable */
+  imageMediaId?: string | null;
+  /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
   recordingVideoId?: string | null;

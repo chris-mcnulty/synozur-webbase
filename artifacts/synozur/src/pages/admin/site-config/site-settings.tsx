@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { api, type AdminSiteSettings, type UpdateSiteSettingsBody } from "@/lib/api";
-import { AssetLibraryModal } from "@/components/admin/AssetLibraryModal";
-import type { Asset } from "@workspace/api-zod/types";
+import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
+import type { MediaItem } from "@workspace/api-client-react";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO = `${BASE_PATH}/images/hero-bg.png`;
@@ -112,8 +112,11 @@ export default function AdminSiteSettings() {
     homeHeroBackgroundType: currentHeroBgType,
     siteTheme: currentTheme,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
+    homeHeroImageMediaId: data?.homeHeroImageMediaId ?? null,
     homeHeroVideoAssetId: data?.homeHeroVideoAssetId ?? null,
+    homeHeroVideoMediaId: data?.homeHeroVideoMediaId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
+    homeEditorialImageMediaId: data?.homeEditorialImageMediaId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
     idleTimeoutMs: data?.idleTimeoutMs ?? null,
     spamLinkThreshold: data?.spamLinkThreshold ?? null,
@@ -122,24 +125,46 @@ export default function AdminSiteSettings() {
     ...overrides,
   });
 
-  const handlePickAsset = (asset: Asset) => {
+  // New writes target the `*MediaId` UUID columns and clear the legacy
+  // integer `*AssetId` columns so the server's URL resolver consults the
+  // unified media table on read; legacy rows that haven't been re-picked
+  // continue to render via the asset fallback in `resolveImageUrls`.
+  const handlePickMedia = (m: MediaItem) => {
     if (pickerOpen === "hero") {
-      updateMutation.mutate(buildPayload({ homeHeroImageAssetId: asset.id }));
+      updateMutation.mutate(
+        buildPayload({ homeHeroImageAssetId: null, homeHeroImageMediaId: m.id }),
+      );
     } else if (pickerOpen === "editorial") {
-      updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: asset.id }));
+      updateMutation.mutate(
+        buildPayload({
+          homeEditorialImageAssetId: null,
+          homeEditorialImageMediaId: m.id,
+        }),
+      );
     } else if (pickerOpen === "video") {
-      updateMutation.mutate(buildPayload({ homeHeroVideoAssetId: asset.id }));
+      updateMutation.mutate(
+        buildPayload({ homeHeroVideoAssetId: null, homeHeroVideoMediaId: m.id }),
+      );
     }
     setPickerOpen(null);
   };
 
   const handleReset = (which: "hero" | "editorial" | "video") => {
     if (which === "hero") {
-      updateMutation.mutate(buildPayload({ homeHeroImageAssetId: null }));
+      updateMutation.mutate(
+        buildPayload({ homeHeroImageAssetId: null, homeHeroImageMediaId: null }),
+      );
     } else if (which === "editorial") {
-      updateMutation.mutate(buildPayload({ homeEditorialImageAssetId: null }));
+      updateMutation.mutate(
+        buildPayload({
+          homeEditorialImageAssetId: null,
+          homeEditorialImageMediaId: null,
+        }),
+      );
     } else {
-      updateMutation.mutate(buildPayload({ homeHeroVideoAssetId: null }));
+      updateMutation.mutate(
+        buildPayload({ homeHeroVideoAssetId: null, homeHeroVideoMediaId: null }),
+      );
     }
   };
 
@@ -577,21 +602,26 @@ export default function AdminSiteSettings() {
         </div>
       )}
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={pickerOpen !== null}
         onClose={() => setPickerOpen(null)}
-        onSelect={handlePickAsset}
+        onSelect={handlePickMedia}
         selectedId={
           pickerOpen === "hero"
-            ? data?.homeHeroImageAssetId ?? null
+            ? data?.homeHeroImageMediaId ?? null
             : pickerOpen === "editorial"
-              ? data?.homeEditorialImageAssetId ?? null
+              ? data?.homeEditorialImageMediaId ?? null
               : pickerOpen === "video"
-                ? data?.homeHeroVideoAssetId ?? null
+                ? data?.homeHeroVideoMediaId ?? null
                 : null
         }
-        categoryFilter={pickerOpen === "hero" ? "north-star" : pickerOpen === "editorial" ? "people" : undefined}
-        kind={pickerOpen === "video" ? "video" : undefined}
+        categorySlug={
+          pickerOpen === "hero"
+            ? "north-star"
+            : pickerOpen === "editorial"
+              ? "people"
+              : undefined
+        }
       />
     </AdminLayout>
   );
