@@ -71,23 +71,6 @@ const BLURB_HTML = [
     "<strong>Measurement isn\u2019t translated into action.</strong> Adoption Score and usage analytics are available, but few teams have a process for turning data into prioritized improvements.",
     "<strong>Copilot accelerates the consequences of messy content.</strong> AI surfaces what\u2019s already there\u2014including outdated, mis-labeled, or over-shared files. Without a clean information architecture, Copilot can undermine trust rather than build it.",
   ]),
-  h3("Frequently asked questions"),
-  p("<strong>How long does a typical engagement take?</strong>"),
-  p(
-    "A standard adoption and governance engagement runs seven weeks from kickoff to closeout. Scope can be compressed for organizations with existing governance documentation or expanded for multi-tenant or enterprise-scale environments.",
-  ),
-  p("<strong>Do we need Copilot licenses to get value from this engagement?</strong>"),
-  p(
-    "No. Most of the value\u2014better adoption, cleaner information architecture, governance baselines\u2014is independent of Copilot. If you have Copilot or are planning to deploy it, we layer in readiness and policy-alignment work on top of the core engagement.",
-  ),
-  p("<strong>What does success look like after the engagement?</strong>"),
-  p(
-    "You leave with an executive-ready roadmap, documented governance policies, a measurement baseline, and enablement materials your team can operate without ongoing consultant support. Most clients see measurable improvement in Adoption Score within 60\u201390 days of implementation.",
-  ),
-  p("<strong>Will Synozur implement the changes, or just advise?</strong>"),
-  p(
-    "We do both, depending on the engagement option you choose. Our advisory track delivers the roadmap and hands off to your IT team. Our implementation track stays alongside you through the pilot and initial rollout. See the engagement options below.",
-  ),
 ].join("\n");
 
 const SECONDARY_TITLE = "Outcomes you can expect";
@@ -114,13 +97,6 @@ const OUR_APPROACH_TEXT_HTML = [
     "<strong>Pilot (Weeks 4\u20136)</strong> \u2014 Validate the design with a representative pilot group, deliver hands-on enablement sessions, refine based on feedback, confirm measurement baseline.",
     "<strong>Closeout (Week 7)</strong> \u2014 Finalize roadmap with phased priorities, hand off all deliverables, document ownership and success metrics, conduct knowledge-transfer session with IT and change leads.",
   ]),
-  h3("Accelerators: Zenith"),
-  p(
-    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center. It provides a unified view of your entire M365 tenant, evaluates workspace health against governance policies, scores each workspace for Copilot readiness, and surfaces the highest-priority remediation actions.",
-  ),
-  p(
-    "Clients who add Zenith to their adoption engagement get continuous visibility after the project closes\u2014so the governance baseline you build doesn\u2019t drift. Zenith integrates with Microsoft Entra ID for tenant-isolated authentication and writes governance decisions back into SharePoint so Microsoft Purview can enforce policies natively.",
-  ),
   h3("Engagement options"),
   p("<strong>Advisory Track (7 weeks)</strong>"),
   p(
@@ -133,6 +109,34 @@ const OUR_APPROACH_TEXT_HTML = [
   p("<strong>Governance Baseline Sprint (3 weeks)</strong>"),
   p(
     "A focused sprint targeting one high-priority governance gap\u2014external sharing controls, workspace provisioning, sensitivity label rollout, or Copilot readiness assessment. Delivers a targeted policy recommendation and implementation guide. Best for organizations already in flight who need to address a specific risk.",
+  ),
+].join("\n");
+
+const ACCELERATORS_HTML = [
+  p(
+    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center. It provides a unified view of your entire M365 tenant, evaluates workspace health against governance policies, scores each workspace for Copilot readiness, and surfaces the highest-priority remediation actions.",
+  ),
+  p(
+    "Clients who add Zenith to their adoption engagement get continuous visibility after the project closes\u2014so the governance baseline you build doesn\u2019t drift. Zenith integrates with Microsoft Entra ID for tenant-isolated authentication and writes governance decisions back into SharePoint so Microsoft Purview can enforce policies natively.",
+  ),
+].join("\n");
+
+const FAQ_HTML = [
+  p("<strong>How long does a typical engagement take?</strong>"),
+  p(
+    "A standard adoption and governance engagement runs seven weeks from kickoff to closeout. Scope can be compressed for organizations with existing governance documentation or expanded for multi-tenant or enterprise-scale environments.",
+  ),
+  p("<strong>Do we need Copilot licenses to get value from this engagement?</strong>"),
+  p(
+    "No. Most of the value\u2014better adoption, cleaner information architecture, governance baselines\u2014is independent of Copilot. If you have Copilot or are planning to deploy it, we layer in readiness and policy-alignment work on top of the core engagement.",
+  ),
+  p("<strong>What does success look like after the engagement?</strong>"),
+  p(
+    "You leave with an executive-ready roadmap, documented governance policies, a measurement baseline, and enablement materials your team can operate without ongoing consultant support. Most clients see measurable improvement in Adoption Score within 60\u201390 days of implementation.",
+  ),
+  p("<strong>Will Synozur implement the changes, or just advise?</strong>"),
+  p(
+    "We do both, depending on the engagement option you choose. Our advisory track delivers the roadmap and hands off to your IT team. Our implementation track stays alongside you through the pilot and initial rollout. See the engagement options below.",
   ),
 ].join("\n");
 
@@ -260,6 +264,8 @@ async function main() {
       secondaryTextHtml: SECONDARY_TEXT_HTML,
       ourApproachTitle: OUR_APPROACH_TITLE,
       ourApproachTextHtml: OUR_APPROACH_TEXT_HTML,
+      acceleratorsHtml: ACCELERATORS_HTML,
+      faqHtml: FAQ_HTML,
       createdAt: NOW,
       updatedAt: NOW,
     })
@@ -282,6 +288,8 @@ async function main() {
         secondaryTextHtml: SECONDARY_TEXT_HTML,
         ourApproachTitle: OUR_APPROACH_TITLE,
         ourApproachTextHtml: OUR_APPROACH_TEXT_HTML,
+        acceleratorsHtml: ACCELERATORS_HTML,
+        faqHtml: FAQ_HTML,
         publishedAt: NOW,
         unpublishedAt: null,
         updatedAt: NOW,

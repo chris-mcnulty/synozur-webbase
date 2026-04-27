@@ -88,6 +88,8 @@ export const solutionsTable = pgTable(
     ourApproachTextHtml: text("our_approach_text_html"),
     blurbHtml: text("blurb_html"),
     blurbCopy: text("blurb_copy"),
+    acceleratorsHtml: text("accelerators_html"),
+    faqHtml: text("faq_html"),
     heroTextColor: text("hero_text_color"),
     tagsText: text("tags_text"),
     blogCategory: text("blog_category"),

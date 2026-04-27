@@ -1,7 +1,7 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight, ExternalLink, Layers, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
@@ -270,6 +270,40 @@ export default function SolutionDetail() {
         </section>
       ) : null}
 
+      {sol?.acceleratorsHtml ? (
+        <section className="relative overflow-hidden py-20 bg-[#0B0B1A]">
+          <div className="absolute inset-0 nebula-gradient opacity-20" />
+          <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-9 w-9 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0">
+                <Zap className="h-5 w-5" />
+              </div>
+              <p className="text-sm uppercase tracking-widest text-primary font-semibold">
+                Accelerators
+              </p>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Zenith — M365 Governance Command Center
+            </h2>
+            <div className="mb-8">
+              <RichText
+                html={sol.acceleratorsHtml}
+                invert
+                className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
+              />
+            </div>
+            <a
+              href="https://zenith.synozur.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-primary/60 bg-primary/10 px-6 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              Explore Zenith <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </section>
+      ) : null}
+
       {sol?.capabilities && sol.capabilities.length > 0 ? (
         <section className="py-24 bg-card border-y border-border">
           <div className="container mx-auto px-4">
@@ -300,6 +334,27 @@ export default function SolutionDetail() {
                   <RichText html={c.bodyHtml} className="prose-sm prose-p:text-muted-foreground" />
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {sol?.faqHtml ? (
+        <section className="py-24 bg-background">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="max-w-2xl mb-10">
+              <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                FAQ
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold">
+                Frequently asked questions
+              </h2>
+            </div>
+            <div className="divide-y divide-border">
+              <RichText
+                html={sol.faqHtml}
+                className="prose-lg [&_p:has(strong:only-child)]:font-semibold [&_p:has(strong:only-child)]:text-lg [&_p:has(strong:only-child)]:text-foreground [&_p:has(strong:only-child)]:mt-8 [&_p:has(strong:only-child)]:mb-2 [&_p:has(strong:only-child)]:pt-6 [&_p:has(strong:only-child)]:border-t [&_p:has(strong:only-child)]:border-border first:[&_p:has(strong:only-child)]:mt-0 first:[&_p:has(strong:only-child)]:pt-0 first:[&_p:has(strong:only-child)]:border-t-0"
+              />
             </div>
           </div>
         </section>

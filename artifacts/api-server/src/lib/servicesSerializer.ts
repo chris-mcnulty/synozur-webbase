@@ -133,6 +133,8 @@ function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[], booking: Link
     ourApproachTextHtml: s.ourApproachTextHtml,
     blurbHtml: s.blurbHtml,
     blurbCopy: s.blurbCopy,
+    acceleratorsHtml: s.acceleratorsHtml,
+    faqHtml: s.faqHtml,
     heroTextColor: s.heroTextColor,
     tagsText: s.tagsText,
     blogCategory: s.blogCategory,
