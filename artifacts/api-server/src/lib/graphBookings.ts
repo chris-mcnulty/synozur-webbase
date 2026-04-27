@@ -2,8 +2,8 @@ import { logger } from "./logger";
 
 // Microsoft Graph Bookings client (app-only / client-credentials).
 //
-// Powers the "native" rendering mode for /start/{slug}: the api-server calls
-// Graph on the visitor's behalf so we can render an on-brand React flow
+// Powers the "integrated" rendering mode for /start/{slug}: the api-server
+// calls Graph on the visitor's behalf so we can render an on-brand React flow
 // instead of Microsoft's iframe. Graph endpoints used:
 //
 //   GET  /solutions/bookingBusinesses/{id}                — business config
@@ -11,13 +11,13 @@ import { logger } from "./logger";
 //   POST /solutions/bookingBusinesses/{id}/getStaffAvailability
 //   POST /solutions/bookingBusinesses/{id}/appointments   — create appointment
 //
-// Credentials are read from MS_BOOKINGS_* env vars and fall back to the
-// existing ENTRA_* app registration. The app registration must hold the
-// `Bookings.ReadWrite.All` application permission with admin consent.
+// Credentials come from the existing ENTRA_* env vars — no separate
+// MS_BOOKINGS_* variables are needed. The Entra app registration must hold
+// the `Bookings.ReadWrite.All` application permission with admin consent.
 //
-// Token cache is per-tenant (matching entra.ts) so a separate Bookings tenant
-// doesn't evict other Graph tokens. The cache lives in-process; a multi-node
-// deployment will fetch one token per node which is fine for these volumes.
+// Token cache is per-tenant (matching entra.ts). The cache lives in-process;
+// a multi-node deployment will fetch one token per node, which is fine for
+// these volumes.
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
@@ -29,20 +29,15 @@ interface AppTokenCache {
 const appTokenCacheByTenant = new Map<string, AppTokenCache>();
 
 function bookingsTenantId(): string | null {
-  return process.env["MS_BOOKINGS_TENANT_ID"] ?? process.env["ENTRA_TENANT_ID"] ?? null;
+  return process.env["ENTRA_TENANT_ID"] ?? null;
 }
 
 function bookingsClientId(): string | null {
-  return process.env["MS_BOOKINGS_CLIENT_ID"] ?? process.env["ENTRA_APP_CLIENT_ID"] ?? null;
+  return process.env["ENTRA_APP_CLIENT_ID"] ?? null;
 }
 
 function bookingsClientSecret(): string | null {
-  return (
-    process.env["MS_BOOKINGS_CLIENT_SECRET"] ??
-    process.env["ENTRA_CLIENT_SECRET"] ??
-    process.env["ENTRA_APP_CLIENT_SECRET"] ??
-    null
-  );
+  return process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"] ?? null;
 }
 
 export function isGraphBookingsConfigured(): boolean {
@@ -194,6 +189,25 @@ function dateTimeToUtcIso(dt: { dateTime?: string; timeZone?: string } | undefin
   if (!dt?.dateTime) return null;
   const hasZ = dt.dateTime.endsWith("Z");
   return hasZ ? dt.dateTime : `${dt.dateTime}Z`;
+}
+
+export async function listBusinesses(): Promise<
+  | { ok: true; businesses: { id: string; displayName: string; email: string | null }[] }
+  | { ok: false; status: number; message: string }
+> {
+  const result = await graphFetch(`/solutions/bookingBusinesses`);
+  if (!result.ok) return result;
+  const j = result.json as {
+    value?: { id?: string; displayName?: string; email?: string | null }[];
+  };
+  return {
+    ok: true,
+    businesses: (j.value ?? []).map((b) => ({
+      id: b.id ?? "",
+      displayName: b.displayName ?? "",
+      email: b.email ?? null,
+    })),
+  };
 }
 
 export async function getBusiness(

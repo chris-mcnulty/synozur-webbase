@@ -6,6 +6,7 @@ import { db, bookingsTable, siteSettingsTable, type Booking } from "@workspace/d
 import { requireAdmin } from "../middlewares/requireAdmin";
 import {
   isGraphBookingsConfigured,
+  listBusinesses,
   getBusiness,
   listServices,
   getStaffAvailability,
@@ -281,6 +282,22 @@ router.delete("/admin/bookings/:id", requireAdmin, async (req, res): Promise<voi
 });
 
 // ---------------------------------------------------------------------------
+// Admin — Graph diagnostic: list all Bookings businesses visible to the app.
+// Useful for verifying that the correct msBusinessId values are stored.
+router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Promise<void> => {
+  if (!isGraphBookingsConfigured()) {
+    res.status(503).json({ error: "Graph credentials not configured (ENTRA_* env vars missing)." });
+    return;
+  }
+  const result = await listBusinesses();
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.message });
+    return;
+  }
+  res.json({ businesses: result.businesses });
+});
+
+// ---------------------------------------------------------------------------
 // Public — Microsoft Graph "native" mode.
 //
 // These endpoints are gated on three things:
@@ -326,6 +343,13 @@ async function loadBookingForNative(
   if (!row.msBusinessId) {
     return { ok: false, status: 409, message: "This booking is not configured for native rendering." };
   }
+  // Strip trailing slashes/spaces so a value copy-pasted from a Bookings URL
+  // (which often ends with a trailing slash) doesn't produce a malformed
+  // Graph path after encodeURIComponent encodes the slash as %2F.
+  const businessId = row.msBusinessId.trim().replace(/\/+$/, "");
+  if (!businessId) {
+    return { ok: false, status: 409, message: "This booking is not configured for native rendering." };
+  }
   if (!isGraphBookingsConfigured()) {
     return {
       ok: false,
@@ -333,7 +357,7 @@ async function loadBookingForNative(
       message: "Bookings provider is not configured on the server.",
     };
   }
-  return { ok: true, businessId: row.msBusinessId, defaultServiceId: row.msDefaultServiceId };
+  return { ok: true, businessId, defaultServiceId: row.msDefaultServiceId };
 }
 
 router.get("/bookings/:slug/services", async (req, res): Promise<void> => {
