@@ -6,6 +6,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
+import { socialBotRendererMiddleware } from "./middlewares/socialBotRenderer";
 import { attachUserIfPresent } from "./middlewares/auth";
 import { handleLlmsTxt, handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
@@ -45,6 +46,12 @@ app.use(attachUserIfPresent);
 // Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
 // 301 to their new home without ever reaching the SPA shell. Skips /api/*.
 app.use(wixRedirectMiddleware());
+
+// Social-bot OG renderer — intercepts link-preview crawlers (LinkedIn, Slack,
+// Twitter/X, Facebook, Discord, etc.) and returns a minimal HTML document with
+// page-specific OG + Twitter Card tags looked up from the DB. Real browsers and
+// search crawlers pass straight through unchanged.
+app.use(socialBotRendererMiddleware());
 
 // Traffic crawler logging — records pageviews for identified bot UAs hitting
 // HTML routes (humans are tracked separately via the client beacon). Runs

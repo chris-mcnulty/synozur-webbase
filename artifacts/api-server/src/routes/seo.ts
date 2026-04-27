@@ -21,6 +21,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
 import { submitUrls } from "../lib/seoSubmit";
 import { siteOrigin } from "../lib/siteOrigin";
+import { resolveOgData, renderOgHtml } from "../lib/ogResolver";
 
 const router: IRouter = Router();
 
@@ -457,6 +458,34 @@ function handleLlmsTxt(_req: import("express").Request, res: import("express").R
 router.get("/sitemap.xml", handleSitemap);
 router.get("/robots.txt", handleRobots);
 router.get("/llms.txt", handleLlmsTxt);
+
+/**
+ * GET /api/og?path=/insights/my-post
+ *
+ * Public endpoint used by the SPA's production server to retrieve OG HTML
+ * for social-bot requests.  Takes a front-end pathname via `?path=`, resolves
+ * DB data, and returns a minimal HTML document with correct OG + Twitter Card
+ * meta tags.  Social bots hitting the SPA server directly are proxied here so
+ * the OG tags are computed server-side without JS execution.
+ *
+ * No authentication required — the response contains only public content.
+ * Short Cache-Control mirrors the socialBotRenderer middleware (5 min).
+ */
+router.get("/og", async (req, res): Promise<void> => {
+  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
+  // Normalise: must start with /, strip query/fragment from the path itself.
+  const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
+  try {
+    const og = await resolveOgData(pathname);
+    const html = renderOgHtml(og);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.send(html);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
 
 // ─── SEO audit & submission — admin/editor only ───────────────────────────
 
