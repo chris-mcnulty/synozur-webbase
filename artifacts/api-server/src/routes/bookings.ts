@@ -443,7 +443,7 @@ const AppointmentBody = z.object({
   customerTimeZone: z.string().trim().min(1).max(80),
   turnstileToken: z.string().nullish(),
   // Honeypot — clients leave this empty; bots fill it.
-  website: z.string().max(0).optional(),
+  website: z.string().trim().optional(),
 });
 
 const appointmentLimiter = rateLimit({
