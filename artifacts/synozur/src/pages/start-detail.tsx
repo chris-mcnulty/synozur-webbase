@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { Meta } from "@/lib/meta";
 import { sanitizeHtml } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
+import StartDetailNative from "@/pages/start-detail-native";
 
 interface Props {
   slug: string;
@@ -15,6 +16,15 @@ export default function StartDetail({ slug }: Props) {
     queryKey: ["public-booking", slug],
     queryFn: () => api.getBooking(slug),
     retry: false,
+  });
+
+  // Site-level rendering mode. The native flow is only used when (a) the
+  // global mode is "native" AND (b) this booking row has an msBusinessId.
+  // Rows without that fall back to the iframe even in native mode so legacy
+  // calendars keep working through a global migration.
+  const { data: siteSettings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
   });
 
   if (isLoading) {
@@ -30,6 +40,8 @@ export default function StartDetail({ slug }: Props) {
   }
 
   const description = booking.descriptionHtml ? sanitizeHtml(booking.descriptionHtml) : null;
+  const useNative =
+    siteSettings?.bookingsRenderMode === "native" && Boolean(booking.msBusinessId);
 
   return (
     <>
@@ -73,41 +85,50 @@ export default function StartDetail({ slug }: Props) {
       )}
 
       {/*
-        Microsoft Bookings is served from a cross-origin host, so its internal
-        fonts and colors cannot be restyled from this page (browser sandbox).
-        The widest impact we can have is giving it more horizontal room so the
-        embedded UI lays its time-slot options out in multiple columns instead
-        of a single tall stack. We break out of the narrower text container
-        here and use a wider wrapper on lg+ breakpoints.
+        Two render paths share this page:
+          - Native: a custom React flow against Microsoft Graph. Fully on-brand,
+            multi-column slot grid, theme-aware. Requires server-side
+            MS_BOOKINGS_* credentials and a populated msBusinessId on the row.
+          - Iframe: Microsoft's hosted Bookings page. Cross-origin so its
+            internal fonts and colors cannot be restyled from this page; the
+            widest impact we can have is giving it more horizontal room so its
+            internal UI lays its time-slot options out in multiple columns
+            instead of stacking them.
       */}
       <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl 2xl:max-w-screen-2xl">
-        <div
-          className="rounded-2xl border border-border bg-card overflow-hidden"
-          data-testid="booking-embed"
-        >
-          <iframe
-            src={booking.embedUrl}
-            title={booking.title}
-            width="100%"
-            height="1100"
-            scrolling="yes"
-            style={{ border: 0, display: "block" }}
-            allow="clipboard-write"
-          />
-        </div>
+        {useNative ? (
+          <StartDetailNative slug={slug} bookingTitle={booking.title} />
+        ) : (
+          <>
+            <div
+              className="rounded-2xl border border-border bg-card overflow-hidden"
+              data-testid="booking-embed"
+            >
+              <iframe
+                src={booking.embedUrl}
+                title={booking.title}
+                width="100%"
+                height="1100"
+                scrolling="yes"
+                style={{ border: 0, display: "block" }}
+                allow="clipboard-write"
+              />
+            </div>
 
-        <p className="mt-6 text-xs text-muted-foreground">
-          Calendar provided by Microsoft Bookings. Having trouble?{" "}
-          <a
-            href={booking.embedUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="underline hover:text-foreground"
-          >
-            Open in a new tab
-          </a>
-          .
-        </p>
+            <p className="mt-6 text-xs text-muted-foreground">
+              Calendar provided by Microsoft Bookings. Having trouble?{" "}
+              <a
+                href={booking.embedUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline hover:text-foreground"
+              >
+                Open in a new tab
+              </a>
+              .
+            </p>
+          </>
+        )}
       </div>
     </>
   );

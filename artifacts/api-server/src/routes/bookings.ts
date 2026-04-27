@@ -1,10 +1,35 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { z } from "zod";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { and, asc, eq, or, sql } from "drizzle-orm";
-import { db, bookingsTable, type Booking } from "@workspace/db";
+import { db, bookingsTable, siteSettingsTable, type Booking } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import {
+  isGraphBookingsConfigured,
+  getBusiness,
+  listServices,
+  getStaffAvailability,
+  createAppointment,
+} from "../lib/graphBookings";
+import { verifyTurnstile } from "../lib/turnstile";
 
 const router: IRouter = Router();
+
+function clientIp(req: Request): string | null {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.length > 0) {
+    return fwd.split(",")[0]!.trim();
+  }
+  return req.ip ?? null;
+}
+
+function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
+  const xff = Array.isArray(req.headers["x-forwarded-for"])
+    ? (req.headers["x-forwarded-for"] as string[])[0]
+    : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+  const ip = xff || req.ip || "0.0.0.0";
+  return ipKeyGenerator(ip);
+}
 
 const SCOPES = ["general", "offer", "conference"] as const;
 
@@ -74,6 +99,8 @@ function serialize(b: Booking) {
     active: b.active,
     seoTitle: b.seoTitle,
     seoDescription: b.seoDescription,
+    msBusinessId: b.msBusinessId,
+    msDefaultServiceId: b.msDefaultServiceId,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   };
@@ -92,6 +119,12 @@ const Body = z.object({
   active: z.boolean().optional(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
+  // Native (Graph) integration. msBusinessId is the GUID portion of the
+  // Microsoft Graph /solutions/bookingBusinesses/{id} resource. When the
+  // site-level mode is "native" and this is set, the public /start/{slug}
+  // page renders an on-brand React flow against Graph instead of the iframe.
+  msBusinessId: z.string().trim().min(1).max(200).nullish(),
+  msDefaultServiceId: z.string().trim().min(1).max(200).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -181,6 +214,8 @@ router.post("/admin/bookings", requireAdmin, async (req, res): Promise<void> => 
       active: parsed.data.active ?? true,
       seoTitle: parsed.data.seoTitle ?? null,
       seoDescription: parsed.data.seoDescription ?? null,
+      msBusinessId: parsed.data.msBusinessId ?? null,
+      msDefaultServiceId: parsed.data.msDefaultServiceId ?? null,
     })
     .returning();
   res.status(201).json(serialize(row));
@@ -213,6 +248,8 @@ router.patch("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void
   if (d.active !== undefined) updates.active = d.active;
   if (d.seoTitle !== undefined) updates.seoTitle = d.seoTitle ?? null;
   if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
+  if (d.msBusinessId !== undefined) updates.msBusinessId = d.msBusinessId ?? null;
+  if (d.msDefaultServiceId !== undefined) updates.msDefaultServiceId = d.msDefaultServiceId ?? null;
 
   if (d.slug !== undefined && d.slug !== null) {
     const slugBase = d.slug.trim() || slugify(d.title ?? existing.title);
@@ -241,5 +278,222 @@ router.delete("/admin/bookings/:id", requireAdmin, async (req, res): Promise<voi
   }
   res.sendStatus(204);
 });
+
+// ---------------------------------------------------------------------------
+// Public — Microsoft Graph "native" mode.
+//
+// These endpoints are gated on three things:
+//   1. The site-level `bookingsRenderMode` is "native".
+//   2. The booking row has `msBusinessId` populated.
+//   3. The Graph credentials env vars are present (otherwise we 503 with a
+//      message the visitor can act on by reloading after ops fix it).
+//
+// We resolve the booking row by slug for every request (rather than trusting
+// a businessId from the client) so the surface area for a misconfigured row
+// to leak information about other Bookings calendars is zero.
+// ---------------------------------------------------------------------------
+
+const SETTINGS_ID = 1;
+
+async function loadBookingForNative(
+  slug: string,
+): Promise<
+  | { ok: true; businessId: string; defaultServiceId: string | null }
+  | { ok: false; status: number; message: string }
+> {
+  const [settings] = await db
+    .select({ mode: siteSettingsTable.bookingsRenderMode })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, SETTINGS_ID));
+  if ((settings?.mode ?? "iframe") !== "native") {
+    return { ok: false, status: 404, message: "Native bookings are not enabled." };
+  }
+  const [row] = await db
+    .select({
+      active: bookingsTable.active,
+      startsAt: bookingsTable.startsAt,
+      endsAt: bookingsTable.endsAt,
+      msBusinessId: bookingsTable.msBusinessId,
+      msDefaultServiceId: bookingsTable.msDefaultServiceId,
+    })
+    .from(bookingsTable)
+    .where(eq(bookingsTable.slug, slug));
+  if (!row || !row.active) return { ok: false, status: 404, message: "Booking not found." };
+  const now = new Date();
+  if (row.startsAt && row.startsAt > now) return { ok: false, status: 404, message: "Booking not found." };
+  if (row.endsAt && row.endsAt <= now) return { ok: false, status: 404, message: "Booking not found." };
+  if (!row.msBusinessId) {
+    return { ok: false, status: 409, message: "This booking is not configured for native rendering." };
+  }
+  if (!isGraphBookingsConfigured()) {
+    return {
+      ok: false,
+      status: 503,
+      message: "Bookings provider is not configured on the server.",
+    };
+  }
+  return { ok: true, businessId: row.msBusinessId, defaultServiceId: row.msDefaultServiceId };
+}
+
+router.get("/bookings/:slug/services", async (req, res): Promise<void> => {
+  const slug = String(req.params.slug);
+  const ctx = await loadBookingForNative(slug);
+  if (!ctx.ok) {
+    res.status(ctx.status).json({ error: ctx.message });
+    return;
+  }
+  const [businessResult, servicesResult] = await Promise.all([
+    getBusiness(ctx.businessId),
+    listServices(ctx.businessId),
+  ]);
+  if (!businessResult.ok) {
+    res.status(businessResult.status).json({ error: businessResult.message });
+    return;
+  }
+  if (!servicesResult.ok) {
+    res.status(servicesResult.status).json({ error: servicesResult.message });
+    return;
+  }
+  res.set("Cache-Control", "public, max-age=60");
+  res.json({
+    business: {
+      displayName: businessResult.business.displayName,
+      defaultTimeZone: businessResult.business.defaultTimeZone,
+    },
+    defaultServiceId: ctx.defaultServiceId,
+    services: servicesResult.services.map((s) => ({
+      id: s.id,
+      displayName: s.displayName,
+      description: s.description,
+      defaultDurationMinutes: s.defaultDurationMinutes,
+      defaultPriceType: s.defaultPriceType,
+      defaultPrice: s.defaultPrice,
+    })),
+  });
+});
+
+const AvailabilityQuery = z.object({
+  serviceId: z.string().min(1),
+  // ISO-8601 instants. Must be ≤ 14 days apart to keep Graph happy and our
+  // payloads bounded.
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+});
+
+const availabilityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `bk:av:${ipKey(req)}`,
+});
+
+router.get(
+  "/bookings/:slug/availability",
+  availabilityLimiter,
+  async (req, res): Promise<void> => {
+    const slug = String(req.params.slug);
+    const parsed = AvailabilityQuery.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const startMs = Date.parse(parsed.data.start);
+    const endMs = Date.parse(parsed.data.end);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      res.status(400).json({ error: "Invalid date range." });
+      return;
+    }
+    if (endMs - startMs > 14 * 24 * 60 * 60 * 1000) {
+      res.status(400).json({ error: "Range too wide (max 14 days)." });
+      return;
+    }
+    const ctx = await loadBookingForNative(slug);
+    if (!ctx.ok) {
+      res.status(ctx.status).json({ error: ctx.message });
+      return;
+    }
+    const result = await getStaffAvailability({
+      businessId: ctx.businessId,
+      serviceId: parsed.data.serviceId,
+      startUtc: parsed.data.start,
+      endUtc: parsed.data.end,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.message });
+      return;
+    }
+    res.json({
+      slots: result.slots.map((s) => ({ startUtc: s.startUtc, endUtc: s.endUtc })),
+    });
+  },
+);
+
+const AppointmentBody = z.object({
+  serviceId: z.string().min(1),
+  startUtc: z.string().datetime(),
+  endUtc: z.string().datetime(),
+  customer: z.object({
+    name: z.string().trim().min(2).max(200),
+    email: z.string().trim().email().max(320),
+    phone: z.string().trim().max(50).nullish(),
+    notes: z.string().trim().max(2000).nullish(),
+  }),
+  customerTimeZone: z.string().trim().min(1).max(80),
+  turnstileToken: z.string().nullish(),
+  // Honeypot — clients leave this empty; bots fill it.
+  website: z.string().max(0).optional(),
+});
+
+const appointmentLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `bk:ap:${ipKey(req)}`,
+});
+
+router.post(
+  "/bookings/:slug/appointments",
+  appointmentLimiter,
+  async (req, res): Promise<void> => {
+    const slug = String(req.params.slug);
+    const parsed = AppointmentBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const ip = clientIp(req);
+    if (!(await verifyTurnstile(parsed.data.turnstileToken, ip))) {
+      res.status(400).json({
+        error: "Bot check failed. Please reload and try again.",
+        code: "bot_check_failed",
+      });
+      return;
+    }
+    const ctx = await loadBookingForNative(slug);
+    if (!ctx.ok) {
+      res.status(ctx.status).json({ error: ctx.message });
+      return;
+    }
+    const result = await createAppointment(ctx.businessId, {
+      serviceId: parsed.data.serviceId,
+      startUtc: parsed.data.startUtc,
+      endUtc: parsed.data.endUtc,
+      customer: {
+        name: parsed.data.customer.name,
+        email: parsed.data.customer.email,
+        phone: parsed.data.customer.phone ?? null,
+        notes: parsed.data.customer.notes ?? null,
+      },
+      customerTimeZone: parsed.data.customerTimeZone,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.message });
+      return;
+    }
+    res.status(201).json({ ok: true });
+  },
+);
 
 export default router;

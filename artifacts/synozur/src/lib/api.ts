@@ -104,10 +104,13 @@ export interface AdminSession {
   isCurrent: boolean;
 }
 
+export type BookingsRenderMode = "iframe" | "native";
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  bookingsRenderMode?: BookingsRenderMode | null;
   homeHeroImageUrl?: string | null;
   homeEditorialImageUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
@@ -135,6 +138,7 @@ export interface AdminSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  bookingsRenderMode?: BookingsRenderMode | null;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;
   homeHeroImageUrl?: string | null;
@@ -466,6 +470,7 @@ export interface UpdateSiteSettingsBody {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  bookingsRenderMode?: BookingsRenderMode;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;
   homeHeroVideoAssetId?: number | null;
@@ -1059,6 +1064,31 @@ export const api = {
     jsonFetch<void>(url(`/admin/bookings/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  // Native (Microsoft Graph) booking flow. Only meaningful when the site
+  // setting `bookingsRenderMode` is "native" and the booking row has an
+  // msBusinessId — otherwise these endpoints respond 404/409.
+  listNativeBookingServices: (slug: string) =>
+    jsonFetch<NativeBookingServicesResponse>(
+      url(`/bookings/${encodeURIComponent(slug)}/services`),
+    ),
+  listNativeBookingAvailability: (
+    slug: string,
+    args: { serviceId: string; startUtc: string; endUtc: string },
+  ) => {
+    const qs = new URLSearchParams({
+      serviceId: args.serviceId,
+      start: args.startUtc,
+      end: args.endUtc,
+    });
+    return jsonFetch<{ slots: NativeBookingSlot[] }>(
+      url(`/bookings/${encodeURIComponent(slug)}/availability?${qs.toString()}`),
+    );
+  },
+  createNativeBookingAppointment: (slug: string, body: NativeBookingAppointmentInput) =>
+    jsonFetch<{ ok: true }>(url(`/bookings/${encodeURIComponent(slug)}/appointments`), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
@@ -1520,6 +1550,8 @@ export interface BookingDto {
   active: boolean;
   seoTitle: string | null;
   seoDescription: string | null;
+  msBusinessId: string | null;
+  msDefaultServiceId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1537,9 +1569,47 @@ export interface BookingInput {
   active?: boolean;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  msBusinessId?: string | null;
+  msDefaultServiceId?: string | null;
 }
 
 export type BookingPatchInput = Partial<BookingInput>;
+
+// Native (Microsoft Graph) booking flow.
+export interface NativeBookingService {
+  id: string;
+  displayName: string;
+  description: string | null;
+  defaultDurationMinutes: number | null;
+  defaultPriceType: string | null;
+  defaultPrice: number | null;
+}
+
+export interface NativeBookingServicesResponse {
+  business: { displayName: string; defaultTimeZone: string | null };
+  defaultServiceId: string | null;
+  services: NativeBookingService[];
+}
+
+export interface NativeBookingSlot {
+  startUtc: string;
+  endUtc: string;
+}
+
+export interface NativeBookingAppointmentInput {
+  serviceId: string;
+  startUtc: string;
+  endUtc: string;
+  customer: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    notes?: string | null;
+  };
+  customerTimeZone: string;
+  turnstileToken: string | null;
+  website?: string;
+}
 
 export interface PolarisEpisodeInput {
   slug?: string | null;

@@ -3718,6 +3718,15 @@ components:
           type: string
           enum: [cosmic, aurora]
           default: cosmic
+        bookingsRenderMode:
+          description: >
+            Global rendering mode for /start booking pages. "iframe" embeds
+            Microsoft's hosted Bookings page; "native" renders an on-brand
+            React flow against Microsoft Graph (requires MS_BOOKINGS_*
+            credentials and a populated msBusinessId on the booking).
+          type: string
+          enum: [iframe, native]
+          default: iframe
         homeHeroImageUrl:
           type:
             - string
@@ -3822,6 +3831,12 @@ components:
           type: string
           enum: [cosmic, aurora]
           default: cosmic
+        bookingsRenderMode:
+          description: >
+            Global rendering mode for /start booking pages. See PublicSiteSettings.
+          type: string
+          enum: [iframe, native]
+          default: iframe
         homeHeroImageAssetId:
           type:
             - integer
@@ -4031,6 +4046,9 @@ components:
         siteTheme:
           type: string
           enum: [cosmic, aurora]
+        bookingsRenderMode:
+          type: string
+          enum: [iframe, native]
         homeHeroImageAssetId:
           type:
             - integer

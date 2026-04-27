@@ -1104,6 +1104,7 @@ export const SubmitInsightCommentBody = zod.object({
  */
 export const getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getPublicSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getPublicSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1113,6 +1114,9 @@ export const GetPublicSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getPublicSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(getPublicSiteSettingsResponseBookingsRenderModeDefault),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
@@ -1142,6 +1146,7 @@ export const GetPublicSiteSettingsResponse = zod.object({
  */
 export const getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1157,6 +1162,9 @@ export const GetAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getAdminSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(getAdminSiteSettingsResponseBookingsRenderModeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
@@ -1242,6 +1250,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod.enum(["image", "video"]).optional(),
   siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
+  bookingsRenderMode: zod.enum(["iframe", "native"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
@@ -1309,6 +1318,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const updateAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1324,6 +1334,9 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(updateAdminSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
