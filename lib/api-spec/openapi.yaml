@@ -4920,6 +4920,14 @@ components:
             - string
             - 'null'
           enum: [strategic, technology, experiences, gtm, null]
+        acceleratorsHtml:
+          type:
+            - string
+            - 'null'
+        faqHtml:
+          type:
+            - string
+            - 'null'
         tags:
           type: array
           items:
@@ -5307,6 +5315,14 @@ components:
             format: uuid
         active:
           type: boolean
+        acceleratorsHtml:
+          type:
+            - string
+            - 'null'
+        faqHtml:
+          type:
+            - string
+            - 'null'
 
     UpsertMethodologyBody:
       type: object

@@ -768,6 +768,16 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
     `);
 
+    // 25. Solutions: accelerators_html + faq_html — rich-text HTML fields for
+    //     the Accelerators / Zenith callout section and the FAQ section on each
+    //     solution detail page. Editors can now manage this content directly
+    //     from the admin without running a seed script.
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS accelerators_html text,
+        ADD COLUMN IF NOT EXISTS faq_html text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

@@ -178,6 +178,8 @@ const SolutionBody = z.object({
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
   bookingId: z.string().uuid().nullish(),
+  acceleratorsHtml: z.string().nullish(),
+  faqHtml: z.string().nullish(),
 });
 const SolutionPatch = SolutionBody.partial();
 
@@ -386,6 +388,8 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       pillar: d.pillar ?? null,
       active: d.active ?? true,
       bookingId: d.bookingId ?? null,
+      acceleratorsHtml: d.acceleratorsHtml ?? null,
+      faqHtml: d.faqHtml ?? null,
     })
     .returning();
   if (d.tagIds) {
@@ -423,7 +427,7 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "ourApproachTitle", "ourApproachTextHtml", "blurbHtml", "blurbCopy",
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
     "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
-    "status", "pillar", "active",
+    "status", "pillar", "active", "acceleratorsHtml", "faqHtml",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
@@ -708,6 +712,8 @@ const SOLUTION_RESTORABLE_FIELDS = [
   "seoTitle",
   "seoDescription",
   "pillar",
+  "acceleratorsHtml",
+  "faqHtml",
 ] as const;
 
 router.get("/cms/services/:id/revisions", ...readGuard, async (req, res) => {
