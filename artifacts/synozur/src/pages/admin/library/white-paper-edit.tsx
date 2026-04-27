@@ -816,6 +816,7 @@ export default function WhitePaperEdit({ id }: Props) {
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
         title="Pick hero image"
+        kind="image"
       />
       <MediaPickerModal
         open={showDocumentPicker}
@@ -823,6 +824,7 @@ export default function WhitePaperEdit({ id }: Props) {
         onSelect={handleDocument}
         selectedId={form.documentMediaId}
         title="Pick document"
+        kind="document"
       />
     </AdminLayout>
   );

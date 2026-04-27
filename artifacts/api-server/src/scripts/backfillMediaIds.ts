@@ -100,13 +100,19 @@ async function backfillWhitePapersDocument(): Promise<{
   return { updated, skipped: rows.length - updated };
 }
 
-// site_settings is a single-row table; backfill all five `*MediaId` slots in
-// one update so a row with multiple legacy pointers only re-reads once.
+// `site_settings` is intentionally a single-row table keyed at id=1 (see
+// `loadOrCreateSettings()` in routes/siteSettings.ts). Scope the lookup so
+// the script never touches a stray test/seed row.
+const SITE_SETTINGS_ROW_ID = 1;
+
 async function backfillSiteSettingsMedia(): Promise<{
   updated: number;
   skipped: number;
 }> {
-  const [row] = await db.select().from(siteSettingsTable);
+  const [row] = await db
+    .select()
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, SITE_SETTINGS_ROW_ID));
   if (!row) return { updated: 0, skipped: 0 };
   const assetIds = [
     row.homeHeroImageAssetId,
@@ -173,7 +179,7 @@ async function backfillSiteSettingsMedia(): Promise<{
     await db
       .update(siteSettingsTable)
       .set(updates)
-      .where(eq(siteSettingsTable.id, row.id));
+      .where(eq(siteSettingsTable.id, SITE_SETTINGS_ROW_ID));
   }
   return { updated: touched, skipped: assetIds.length - touched };
 }

@@ -671,6 +671,7 @@ export default function VideoEdit({ id }: Props) {
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
+        kind="image"
       />
     </AdminLayout>
   );

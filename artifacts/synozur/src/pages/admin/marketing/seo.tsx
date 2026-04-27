@@ -796,6 +796,7 @@ export default function MarketingSeo() {
               ? data?.orgLogoMediaId ?? null
               : null
         }
+        kind="image"
       />
     </AdminLayout>
   );

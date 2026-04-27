@@ -225,6 +225,32 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   await loadOrCreateSettings();
   const input = parsed.data;
+
+  // Validate any non-null *MediaId references up front. The columns FK to
+  // `media`, so an unknown UUID would surface as a 500 from the constraint
+  // — turn it into a 400 with a clear message instead.
+  const mediaIdsToCheck = [
+    input.homeHeroImageMediaId,
+    input.homeHeroVideoMediaId,
+    input.homeEditorialImageMediaId,
+    input.seoDefaultOgImageMediaId,
+    input.orgLogoMediaId,
+  ].filter((v): v is string => typeof v === "string" && v.length > 0);
+  if (mediaIdsToCheck.length > 0) {
+    const found = await db
+      .select({ id: mediaTable.id })
+      .from(mediaTable)
+      .where(inArray(mediaTable.id, mediaIdsToCheck));
+    const foundSet = new Set(found.map((r) => r.id));
+    const missing = mediaIdsToCheck.filter((id) => !foundSet.has(id));
+    if (missing.length > 0) {
+      res.status(400).json({
+        error: "Unknown media id(s)",
+        missing,
+      });
+      return;
+    }
+  }
   const updates: Partial<typeof siteSettingsTable.$inferInsert> = {
     requireCookieConsent: input.requireCookieConsent,
   };

@@ -49,6 +49,26 @@ function slugify(text: string): string {
     .slice(0, 80);
 }
 
+// Verify a media UUID exists and points at an image. Returns an error
+// message string when the reference is invalid, null when it passes. We
+// validate up front so an unknown UUID surfaces as a 400 with a clear
+// message instead of an opaque 500 from the FK constraint.
+async function validateImageMediaId(
+  imageMediaId: string | null | undefined,
+): Promise<string | null> {
+  if (!imageMediaId) return null;
+  if (!isValidUuid(imageMediaId)) return "imageMediaId must be a valid UUID";
+  const [row] = await db
+    .select({ mime: mediaTable.mime })
+    .from(mediaTable)
+    .where(eq(mediaTable.id, imageMediaId));
+  if (!row) return "imageMediaId references a non-existent media row";
+  if (row.mime && !row.mime.startsWith("image/")) {
+    return `Media MIME type '${row.mime}' is not an image`;
+  }
+  return null;
+}
+
 async function ensureUniqueSlug(base: string, ignoreId?: number): Promise<string> {
   const seed = base || `event-${Date.now()}`;
   let candidate = seed;
@@ -100,39 +120,45 @@ function resolveEventImageUrl(
 }
 
 async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
-  const [asset] = event.imageAssetId
-    ? await db
-        .select()
-        .from(assetsTable)
-        .where(eq(assetsTable.id, event.imageAssetId))
-    : [];
-  const [media] = event.imageMediaId
-    ? await db
-        .select()
-        .from(mediaTable)
-        .where(eq(mediaTable.id, event.imageMediaId))
-    : [];
   const now = new Date();
-  const [video] = event.recordingVideoId
-    ? await db
-        .select({
-          id: videosTable.id,
-          slug: videosTable.slug,
-          title: videosTable.title,
-          videoUrl: videosTable.videoUrl,
-        })
-        .from(videosTable)
-        .where(
-          and(
-            eq(videosTable.id, event.recordingVideoId),
-            eq(videosTable.active, true),
-            eq(videosTable.status, "published"),
-            sql`${videosTable.deletedAt} is null`,
-            sql`${videosTable.publishedAt} <= ${now}`,
-            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
-          ),
-        )
-    : [];
+  // Fan out the three lookups; they're independent.
+  const [assetRows, mediaRows, videoRows] = await Promise.all([
+    event.imageAssetId
+      ? db
+          .select()
+          .from(assetsTable)
+          .where(eq(assetsTable.id, event.imageAssetId))
+      : Promise.resolve([]),
+    event.imageMediaId
+      ? db
+          .select()
+          .from(mediaTable)
+          .where(eq(mediaTable.id, event.imageMediaId))
+      : Promise.resolve([]),
+    event.recordingVideoId
+      ? db
+          .select({
+            id: videosTable.id,
+            slug: videosTable.slug,
+            title: videosTable.title,
+            videoUrl: videosTable.videoUrl,
+          })
+          .from(videosTable)
+          .where(
+            and(
+              eq(videosTable.id, event.recordingVideoId),
+              eq(videosTable.active, true),
+              eq(videosTable.status, "published"),
+              sql`${videosTable.deletedAt} is null`,
+              sql`${videosTable.publishedAt} <= ${now}`,
+              sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
+  const [asset] = assetRows;
+  const [media] = mediaRows;
+  const [video] = videoRows;
   const assetsById = new Map(asset ? [[asset.id, asset]] : []);
   const mediaById = new Map(media ? [[media.id, media]] : []);
   return {
@@ -152,33 +178,37 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
   const videoIds = Array.from(
     new Set(events.map((e) => e.recordingVideoId).filter((v): v is string => v != null)),
   );
-  const assets = assetIds.length
-    ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
-    : [];
-  const mediaRows = mediaIds.length
-    ? await db.select().from(mediaTable).where(inArray(mediaTable.id, mediaIds))
-    : [];
   const now = new Date();
-  const videos = videoIds.length
-    ? await db
-        .select({
-          id: videosTable.id,
-          slug: videosTable.slug,
-          title: videosTable.title,
-          videoUrl: videosTable.videoUrl,
-        })
-        .from(videosTable)
-        .where(
-          and(
-            inArray(videosTable.id, videoIds),
-            eq(videosTable.active, true),
-            eq(videosTable.status, "published"),
-            sql`${videosTable.deletedAt} is null`,
-            sql`${videosTable.publishedAt} <= ${now}`,
-            sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
-          ),
-        )
-    : [];
+  // The three lookups are independent — fan them out so endpoint latency
+  // is bound by the slowest query rather than their sum.
+  const [assets, mediaRows, videos] = await Promise.all([
+    assetIds.length
+      ? db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
+      : Promise.resolve([]),
+    mediaIds.length
+      ? db.select().from(mediaTable).where(inArray(mediaTable.id, mediaIds))
+      : Promise.resolve([]),
+    videoIds.length
+      ? db
+          .select({
+            id: videosTable.id,
+            slug: videosTable.slug,
+            title: videosTable.title,
+            videoUrl: videosTable.videoUrl,
+          })
+          .from(videosTable)
+          .where(
+            and(
+              inArray(videosTable.id, videoIds),
+              eq(videosTable.active, true),
+              eq(videosTable.status, "published"),
+              sql`${videosTable.deletedAt} is null`,
+              sql`${videosTable.publishedAt} <= ${now}`,
+              sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
   const assetsById = new Map(assets.map((a) => [a.id, a]));
   const mediaById = new Map(mediaRows.map((m) => [m.id, m]));
   const videosById = new Map(videos.map((v) => [v.id, v]));
@@ -293,6 +323,11 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
     return;
   }
+  const imageMediaError = await validateImageMediaId(parsed.data.imageMediaId);
+  if (imageMediaError) {
+    res.status(400).json({ error: imageMediaError });
+    return;
+  }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
   const slug = await ensureUniqueSlug(slugBase);
   const [event] = await db
@@ -341,6 +376,11 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
   const recordingVideoId = parsed.data.recordingVideoId ?? null;
   if (recordingVideoId != null && !isValidUuid(recordingVideoId)) {
     res.status(400).json({ error: "recordingVideoId must be a valid UUID" });
+    return;
+  }
+  const imageMediaError = await validateImageMediaId(parsed.data.imageMediaId);
+  if (imageMediaError) {
+    res.status(400).json({ error: imageMediaError });
     return;
   }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);

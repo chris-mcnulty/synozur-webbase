@@ -470,6 +470,7 @@ export default function EventForm({ id }: Props) {
         onSelect={handleSelectMedia}
         selectedId={libraryMode === "location" ? null : form.imageMediaId ?? null}
         categorySlug={libraryMode === "location" ? "location" : undefined}
+        kind="image"
       />
       </div>
     </AdminLayout>

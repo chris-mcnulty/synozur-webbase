@@ -765,6 +765,7 @@ export default function CollateralEdit({ id }: Props) {
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
         categorySlug="case-study"
+        kind="image"
       />
     </AdminLayout>
   );

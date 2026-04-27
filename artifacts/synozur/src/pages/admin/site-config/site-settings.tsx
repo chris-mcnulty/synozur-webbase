@@ -622,6 +622,7 @@ export default function AdminSiteSettings() {
               ? "people"
               : undefined
         }
+        kind={pickerOpen === "video" ? "video" : "image"}
       />
     </AdminLayout>
   );

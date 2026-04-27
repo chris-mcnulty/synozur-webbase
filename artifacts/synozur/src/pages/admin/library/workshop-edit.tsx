@@ -949,6 +949,7 @@ export default function WorkshopEdit({ id }: Props) {
           update("heroImage", mediaUrl(m));
           setShowHeroPicker(false);
         }}
+        kind="image"
       />
     </AdminLayout>
   );
