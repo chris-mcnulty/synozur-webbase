@@ -1,10 +1,12 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   db,
   usersTable,
   rolesTable,
   userRoles,
+  capabilitiesTable,
+  roleCapabilities,
   type RoleName,
   ROLE_NAMES,
 } from "@workspace/db";
@@ -25,6 +27,10 @@ export type AuthedUser = {
   avatarUrl: string | null;
   bio: string | null;
   roles: RoleName[];
+  // #111 — server-hydrated effective capabilities (union across the user's
+  // roles, via the role_capabilities join). The SPA reads this directly
+  // instead of recomputing from a static map.
+  effectiveCapabilities: string[];
 };
 
 export async function loadUserById(userId: string): Promise<AuthedUser | null> {
@@ -33,10 +39,20 @@ export async function loadUserById(userId: string): Promise<AuthedUser | null> {
   });
   if (!userRow) return null;
   const roleRows = await db
-    .select({ name: rolesTable.name })
+    .select({ id: rolesTable.id, name: rolesTable.name })
     .from(userRoles)
     .innerJoin(rolesTable, eq(userRoles.roleId, rolesTable.id))
     .where(eq(userRoles.userId, userId));
+  const roleIds = roleRows.map((r) => r.id);
+  let effectiveCapabilities: string[] = [];
+  if (roleIds.length > 0) {
+    const capRows = await db
+      .selectDistinct({ name: capabilitiesTable.name })
+      .from(roleCapabilities)
+      .innerJoin(capabilitiesTable, eq(roleCapabilities.capabilityId, capabilitiesTable.id))
+      .where(inArray(roleCapabilities.roleId, roleIds));
+    effectiveCapabilities = capRows.map((r) => r.name).sort();
+  }
   return {
     id: userRow.id,
     externalSubject: userRow.externalSubject,
@@ -48,6 +64,7 @@ export async function loadUserById(userId: string): Promise<AuthedUser | null> {
     roles: roleRows
       .map((r) => r.name)
       .filter((n): n is RoleName => ROLE_NAMES.includes(n as RoleName)),
+    effectiveCapabilities,
   };
 }
 
@@ -110,4 +127,26 @@ export function requireRole(...allowed: RoleName[]): RequestHandler {
 
 export function hasRole(user: AuthedUser | undefined, ...allowed: RoleName[]): boolean {
   return !!user && user.roles.some((r) => allowed.includes(r));
+}
+
+// #111 — capability-based gate. Prefer this over requireRole() in new code:
+// it survives role renames and lets admins re-grant a capability to a
+// different audience class without code changes.
+export function requireCapability(...needed: string[]): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.authedUser;
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (!needed.some((cap) => user.effectiveCapabilities.includes(cap))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  };
+}
+
+export function hasCapability(user: AuthedUser | undefined, ...needed: string[]): boolean {
+  return !!user && needed.some((cap) => user.effectiveCapabilities.includes(cap));
 }

@@ -9,6 +9,9 @@ export type AuthedUser = {
   avatarUrl: string | null;
   bio: string | null;
   roles: RoleName[];
+  // #111 — server-hydrated effective capabilities; mirror of the shape in
+  // middlewares/auth.ts.
+  effectiveCapabilities: string[];
 };
 
 export interface SessionContext {
