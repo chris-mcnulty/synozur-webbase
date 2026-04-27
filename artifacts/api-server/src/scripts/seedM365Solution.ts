@@ -2,7 +2,13 @@
  * Idempotent seed — inserts the "Microsoft 365 Adoption, Strategy & Optimization"
  * solution under the Technology Transformation parent service.
  *
- * Run: pnpm --filter api-server exec tsx src/scripts/seedM365Solution.ts
+ * Run order (important): seedBookings.ts must run before this script so the
+ * "m365-strategy-adoption-workshop" booking row exists when we look it up.
+ * If this script runs first it will warn and set bookingId to null; re-run
+ * after seedBookings.ts to wire the booking.
+ *
+ *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedBookings.ts
+ *   pnpm --filter api-server exec tsx src/scripts/seedM365Solution.ts
  *
  * Safe to re-run:
  * - The solution row conflicts on the unique slug index and uses onConflictDoUpdate
@@ -15,6 +21,7 @@ import { eq } from "drizzle-orm";
 import {
   db,
   pool,
+  bookingsTable,
   servicesTable,
   solutionsTable,
   solutionCapabilitiesTable,
@@ -205,6 +212,21 @@ async function main() {
   }
   console.log(`Found parent service: ${parent.title} (${parent.id})`);
 
+  // 1b. Look up the M365 workshop booking (seeded by seedBookings.ts).
+  //     Without it the CTA button has no destination; warn but don't abort
+  //     so the rest of the solution data is still refreshed.
+  const booking = await db.query.bookingsTable.findFirst({
+    where: eq(bookingsTable.slug, "m365-strategy-adoption-workshop"),
+  });
+  if (booking) {
+    console.log(`Found M365 booking: ${booking.title} (${booking.id})`);
+  } else {
+    console.warn(
+      'Booking "m365-strategy-adoption-workshop" not found. ' +
+        "Run seedBookings.ts first to create it. bookingId will be left null.",
+    );
+  }
+
   // 2. Upsert solution.
   //
   // The task specification asks for onConflictDoNothing; this seed intentionally
@@ -231,6 +253,7 @@ async function main() {
       seoDescription:
         "Turn Microsoft 365 into measurable outcomes with a practical adoption program, governance baseline, and continuous optimization\u2014built for Copilot readiness and modern work.",
       buttonText: "Book an M365 Strategy & Adoption Workshop",
+      bookingId: booking?.id ?? null,
       heroTextHtml: HERO_TEXT_HTML,
       blurbHtml: BLURB_HTML,
       secondaryTitle: SECONDARY_TITLE,
@@ -252,6 +275,7 @@ async function main() {
         seoDescription:
           "Turn Microsoft 365 into measurable outcomes with a practical adoption program, governance baseline, and continuous optimization\u2014built for Copilot readiness and modern work.",
         buttonText: "Book an M365 Strategy & Adoption Workshop",
+        bookingId: booking?.id ?? null,
         heroTextHtml: HERO_TEXT_HTML,
         blurbHtml: BLURB_HTML,
         secondaryTitle: SECONDARY_TITLE,
