@@ -16,9 +16,15 @@ export interface SiteSettingsInput {
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
+  homeHeroImageMediaId?: string | null;
+  /** @nullable */
   homeHeroVideoAssetId?: number | null;
   /** @nullable */
+  homeHeroVideoMediaId?: string | null;
+  /** @nullable */
   homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageMediaId?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
   /**
@@ -33,6 +39,8 @@ export interface SiteSettingsInput {
   seoDefaultDescription?: string | null;
   /** @nullable */
   seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoDefaultOgImageMediaId?: string | null;
   /** @nullable */
   seoTwitterHandle?: string | null;
   /** @nullable */
@@ -49,6 +57,8 @@ export interface SiteSettingsInput {
   orgLegalName?: string | null;
   /** @nullable */
   orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgLogoMediaId?: string | null;
   /** @nullable */
   orgStreetAddress?: string | null;
   /** @nullable */

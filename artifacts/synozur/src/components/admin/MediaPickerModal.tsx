@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { Search, Upload, Check } from "lucide-react";
 import {
@@ -24,8 +24,25 @@ import {
 } from "@workspace/api-client-react";
 import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
+import {
+  type AssetKind,
+  isDocumentMime,
+  isImageMime,
+  isVideoMime,
+  IMAGE_ACCEPT_TYPES,
+  DOCUMENT_ACCEPT_TYPES,
+  VIDEO_ACCEPT_TYPES,
+} from "@/lib/asset-kind";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+// Per-kind upload caps. Mirrors AssetLibraryModal so that swapping pickers
+// doesn't regress upload limits — videos in particular need a much larger
+// cap than images. Keep in sync with the legacy modal until it's removed.
+const IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+const DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 500 * 1024 * 1024;
+const DEFAULT_MAX_BYTES = IMAGE_MAX_BYTES;
 
 // Accepts either a plain URL string or a media item object so callers can
 // pass either form.heroImage (string) or a MediaItem from the picker.
@@ -58,9 +75,15 @@ interface Props {
    * filter and browse all media via the search box.
    */
   categorySlug?: string;
+  /**
+   * Optional MIME-kind filter. When set, the grid only shows media matching
+   * the kind and the uploader restricts accepted MIME types + raises the
+   * per-file size cap accordingly. Leaving it unset accepts any media.
+   */
+  kind?: AssetKind;
 }
 
-export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = "Media Library", categorySlug }: Props) {
+export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = "Media Library", categorySlug, kind }: Props) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("__all__");
@@ -114,7 +137,34 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
     }
   }, [open, selectedId]);
 
-  const items = data?.items ?? [];
+  const allItems = data?.items ?? [];
+  const items = useMemo(() => {
+    if (!kind) return allItems;
+    return allItems.filter((m) => {
+      const mime = m.mime ?? "";
+      if (kind === "image") return isImageMime(mime);
+      if (kind === "document") return isDocumentMime(mime);
+      if (kind === "video") return isVideoMime(mime);
+      return true;
+    });
+  }, [allItems, kind]);
+
+  const uploadAcceptTypes =
+    kind === "document"
+      ? DOCUMENT_ACCEPT_TYPES
+      : kind === "video"
+        ? VIDEO_ACCEPT_TYPES
+        : kind === "image"
+          ? IMAGE_ACCEPT_TYPES
+          : undefined;
+  const uploadMaxBytes =
+    kind === "document"
+      ? DOCUMENT_MAX_BYTES
+      : kind === "video"
+        ? VIDEO_MAX_BYTES
+        : kind === "image"
+          ? IMAGE_MAX_BYTES
+          : DEFAULT_MAX_BYTES;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -148,7 +198,8 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
           )}
           <ObjectUploader
             maxNumberOfFiles={5}
-            maxFileSize={10 * 1024 * 1024}
+            maxFileSize={uploadMaxBytes}
+            allowedFileTypes={uploadAcceptTypes}
             buttonClassName="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
             onGetUploadParameters={async (file) => {
               const { uploadURL } = await api.requestUploadUrl({

@@ -1,10 +1,24 @@
-import { pgTable, integer, boolean, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, integer, boolean, text, timestamp, jsonb, uuid } from "drizzle-orm/pg-core";
+import { mediaTable } from "./media";
 
+// Parallel `*MediaId` UUID columns sit alongside the legacy `*AssetId`
+// integer FKs. The asset-library migration (BACKLOG.md §1) populates the new
+// columns from the editor while leaving the integer ones in place; route
+// serializers prefer the media-backed URL when present and fall back to
+// the legacy asset lookup so older rows keep rendering until backfilled.
 export const siteSettingsTable = pgTable("site_settings", {
   id: integer("id").primaryKey().default(1),
   requireCookieConsent: boolean("require_cookie_consent").notNull().default(false),
   homeHeroImageAssetId: integer("home_hero_image_asset_id"),
+  homeHeroImageMediaId: uuid("home_hero_image_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
   homeEditorialImageAssetId: integer("home_editorial_image_asset_id"),
+  homeEditorialImageMediaId: uuid("home_editorial_image_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
   // Libsyn RSS feed URL for the Polaris podcast. Admin-configurable source for
   // the "Import from Libsyn" flow on the Polaris episodes admin page.
   polarisFeedUrl: text("polaris_feed_url"),
@@ -13,6 +27,10 @@ export const siteSettingsTable = pgTable("site_settings", {
   seoDefaultTitleTemplate: text("seo_default_title_template"),
   seoDefaultDescription: text("seo_default_description"),
   seoDefaultOgImageAssetId: integer("seo_default_og_image_asset_id"),
+  seoDefaultOgImageMediaId: uuid("seo_default_og_image_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
 
   // Social
   seoTwitterHandle: text("seo_twitter_handle"),
@@ -27,6 +45,9 @@ export const siteSettingsTable = pgTable("site_settings", {
   orgName: text("org_name"),
   orgLegalName: text("org_legal_name"),
   orgLogoAssetId: integer("org_logo_asset_id"),
+  orgLogoMediaId: uuid("org_logo_media_id").references(() => mediaTable.id, {
+    onDelete: "set null",
+  }),
   orgStreetAddress: text("org_street_address"),
   orgAddressLocality: text("org_address_locality"),
   orgAddressRegion: text("org_address_region"),
@@ -63,6 +84,10 @@ export const siteSettingsTable = pgTable("site_settings", {
   // asset's storage URL instead of the bundled /videos/hero-bg.mov.
   // Null means "use the bundled default".
   homeHeroVideoAssetId: integer("home_hero_video_asset_id"),
+  homeHeroVideoMediaId: uuid("home_hero_video_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
 
   // Site theme: "cosmic" (default) or "aurora". Controls which CSS token set
   // is applied site-wide. Chosen by an admin in Site Settings.

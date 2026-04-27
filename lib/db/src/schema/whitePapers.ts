@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { mediaTable } from "./media";
 
 export const WHITE_PAPER_DOC_TYPES = ["whitepaper", "ebook", "report", "guide"] as const;
 export type WhitePaperDocType = (typeof WHITE_PAPER_DOC_TYPES)[number];
@@ -43,6 +44,12 @@ export const whitePapersTable = pgTable(
     pillar: text("pillar"),
     documentUrl: text("document_url"),
     documentAssetId: integer("document_asset_id"),
+    // Parallel UUID FK to the unified `media` table. New writes prefer this
+    // column over `documentAssetId`. Backfilled via `scripts/backfillMediaIds.ts`
+    // by matching `assets.storage_key` against `media.storage_key`.
+    documentMediaId: uuid("document_media_id").references(() => mediaTable.id, {
+      onDelete: "set null",
+    }),
     externalUrl: text("external_url"),
     pageCount: integer("page_count"),
     status: whitePaperStatusEnum("status").notNull().default("draft"),

@@ -25,12 +25,9 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
-import {
-  AssetLibraryModal,
-  assetUrl,
-} from "@/components/admin/AssetLibraryModal";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import type { Asset } from "@workspace/api-zod/types";
+import type { MediaItem } from "@workspace/api-client-react";
 import {
   api,
   WHITE_PAPER_DOC_TYPES,
@@ -89,6 +86,7 @@ interface FormState {
   pillar: string;
   documentUrl: string;
   documentAssetId: number | null;
+  documentMediaId: string | null;
   documentAsset: WhitePaperDocumentAsset | null;
   externalUrl: string;
   pageCount: string;
@@ -116,6 +114,7 @@ const EMPTY: FormState = {
   pillar: "",
   documentUrl: "",
   documentAssetId: null,
+  documentMediaId: null,
   documentAsset: null,
   externalUrl: "",
   pageCount: "",
@@ -155,6 +154,7 @@ function fromItem(item: WhitePaperDto): FormState {
     pillar: item.pillar ?? "",
     documentUrl: rawExternalDocumentUrl,
     documentAssetId: item.documentAssetId,
+    documentMediaId: item.documentMediaId,
     documentAsset: item.documentAsset,
     externalUrl: item.externalUrl ?? "",
     pageCount: item.pageCount == null ? "" : String(item.pageCount),
@@ -188,6 +188,7 @@ function toBody(f: FormState): WhitePaperInput {
     pillar: f.pillar || null,
     documentUrl: f.documentUrl || null,
     documentAssetId: f.documentAssetId,
+    documentMediaId: f.documentMediaId,
     externalUrl: f.externalUrl || null,
     pageCount: f.pageCount === "" ? null : Number(f.pageCount),
     status: f.status,
@@ -287,20 +288,25 @@ export default function WhitePaperEdit({ id }: Props) {
     else createMut.mutate(body);
   };
 
-  const handleHero = (asset: Asset) => {
-    update({ heroImage: assetUrl(asset) });
+  const handleHero = (m: MediaItem) => {
+    update({ heroImage: mediaUrl(m) });
     setShowHeroPicker(false);
   };
 
-  const handleDocument = (asset: Asset) => {
+  const handleDocument = (m: MediaItem) => {
+    // Store the new UUID in `documentMediaId` and clear the legacy integer
+    // `documentAssetId` so the server consults the unified media table on
+    // read. The local `documentAsset` shape is reused to drive the existing
+    // file-card UI; the `id: -1` sentinel signals a media-backed row.
     update({
-      documentAssetId: asset.id,
+      documentAssetId: null,
+      documentMediaId: m.id,
       documentAsset: {
-        id: asset.id,
-        originalName: asset.originalName,
-        mimeType: asset.mimeType,
-        size: asset.size,
-        storageKey: asset.storageKey,
+        id: -1,
+        originalName: m.originalName ?? m.altText ?? m.storageKey,
+        mimeType: m.mime ?? "application/octet-stream",
+        size: m.byteSize ?? 0,
+        storageKey: m.storageKey,
       },
       documentUrl: "",
     });
@@ -472,7 +478,7 @@ export default function WhitePaperEdit({ id }: Props) {
             </h3>
             <div className="space-y-2">
               <Label>Uploaded Document</Label>
-              {form.documentAssetId && !form.documentAsset ? (
+              {(form.documentAssetId || form.documentMediaId) && !form.documentAsset ? (
                 <div
                   className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3"
                   data-testid="white-paper-document-broken"
@@ -490,7 +496,13 @@ export default function WhitePaperEdit({ id }: Props) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => update({ documentAssetId: null, documentAsset: null })}
+                      onClick={() =>
+                        update({
+                          documentAssetId: null,
+                          documentMediaId: null,
+                          documentAsset: null,
+                        })
+                      }
                       data-testid="button-clear-broken-white-paper-document"
                     >
                       <X className="h-4 w-4 mr-1" /> Clear
@@ -526,7 +538,13 @@ export default function WhitePaperEdit({ id }: Props) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => update({ documentAssetId: null, documentAsset: null })}
+                        onClick={() =>
+                        update({
+                          documentAssetId: null,
+                          documentMediaId: null,
+                          documentAsset: null,
+                        })
+                      }
                         data-testid="button-remove-white-paper-document"
                       >
                         <X className="h-4 w-4 mr-1" /> Remove
@@ -793,17 +811,19 @@ export default function WhitePaperEdit({ id }: Props) {
         </aside>
       </div>
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
+        title="Pick hero image"
         kind="image"
       />
-      <AssetLibraryModal
+      <MediaPickerModal
         open={showDocumentPicker}
         onClose={() => setShowDocumentPicker(false)}
         onSelect={handleDocument}
-        selectedId={form.documentAssetId}
+        selectedId={form.documentMediaId}
+        title="Pick document"
         kind="document"
       />
     </AdminLayout>

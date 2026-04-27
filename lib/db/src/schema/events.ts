@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, integer, boolean, uuid } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { assetCategoriesTable } from "./assetCategories";
+import { mediaTable } from "./media";
 
 export const assetsTable = pgTable("assets", {
   id: serial("id").primaryKey(),
@@ -41,6 +42,13 @@ export const eventsTable = pgTable("events", {
   featured: boolean("featured").notNull().default(false),
   featuredRank: integer("featured_rank"),
   imageAssetId: integer("image_asset_id"),
+  // Parallel UUID FK to the unified `media` table. New writes from the
+  // editor populate this column; the legacy integer `imageAssetId` stays in
+  // place until BACKLOG.md §1 item 2 drops it. Backfilled by
+  // `scripts/backfillMediaIds.ts` via the assets→media storage_key map.
+  imageMediaId: uuid("image_media_id").references(() => mediaTable.id, {
+    onDelete: "set null",
+  }),
   recordingVideoId: uuid("recording_video_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })

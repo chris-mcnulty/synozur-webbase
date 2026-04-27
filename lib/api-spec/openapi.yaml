@@ -3826,6 +3826,11 @@ components:
           type:
             - integer
             - 'null'
+        homeHeroImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         homeHeroImageUrl:
           type:
             - string
@@ -3834,6 +3839,11 @@ components:
           type:
             - integer
             - 'null'
+        homeHeroVideoMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         homeHeroVideoUrl:
           type:
             - string
@@ -3842,6 +3852,11 @@ components:
           type:
             - integer
             - 'null'
+        homeEditorialImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         homeEditorialImageUrl:
           type:
             - string
@@ -3864,6 +3879,11 @@ components:
           type:
             - integer
             - 'null'
+        seoDefaultOgImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         seoDefaultOgImageUrl:
           type:
             - string
@@ -3900,6 +3920,11 @@ components:
           type:
             - integer
             - 'null'
+        orgLogoMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         orgLogoUrl:
           type:
             - string
@@ -4010,14 +4035,29 @@ components:
           type:
             - integer
             - 'null'
+        homeHeroImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         homeHeroVideoAssetId:
           type:
             - integer
             - 'null'
+        homeHeroVideoMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         homeEditorialImageAssetId:
           type:
             - integer
             - 'null'
+        homeEditorialImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         polarisFeedUrl:
           type:
             - string
@@ -4036,6 +4076,11 @@ components:
           type:
             - integer
             - 'null'
+        seoDefaultOgImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         seoTwitterHandle:
           type:
             - string
@@ -4068,6 +4113,11 @@ components:
           type:
             - integer
             - 'null'
+        orgLogoMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         orgStreetAddress:
           type:
             - string
@@ -4364,6 +4414,11 @@ components:
           type:
             - integer
             - 'null'
+        imageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         imageUrl:
           type:
             - string
@@ -4609,6 +4664,11 @@ components:
           type:
             - integer
             - 'null'
+        imageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         recordingVideoId:
           type:
             - string

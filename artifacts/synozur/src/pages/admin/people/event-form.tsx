@@ -15,14 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import { AssetLibraryModal } from "@/components/admin/AssetLibraryModal";
-import type { Asset, EventInput } from "@workspace/api-zod/types";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
+import type { MediaItem } from "@workspace/api-client-react";
+import type { EventInput } from "@workspace/api-zod/types";
 
 interface Props {
   id?: string;
 }
-
-const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 function toLocalInput(iso: string | Date): string {
   const d = new Date(iso);
@@ -50,6 +49,7 @@ export default function EventForm({ id }: Props) {
     featured: false,
     featuredRank: null,
     imageAssetId: null,
+    imageMediaId: null,
     recordingVideoId: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -79,6 +79,7 @@ export default function EventForm({ id }: Props) {
         featured: existing.featured ?? false,
         featuredRank: existing.featuredRank ?? null,
         imageAssetId: existing.imageAssetId,
+        imageMediaId: existing.imageMediaId ?? null,
         recordingVideoId: existing.recordingVideoId ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
@@ -143,9 +144,12 @@ export default function EventForm({ id }: Props) {
     );
   }
 
-  const handleSelectAsset = (asset: Asset) => {
-    setForm((f) => ({ ...f, imageAssetId: asset.id }));
-    setImagePreview(`${BASE_PATH}/api/storage${asset.storageKey}`);
+  // New writes flow through `imageMediaId` (UUID, FK to `media`); the legacy
+  // integer `imageAssetId` is cleared so the server's URL resolver consults
+  // the unified media table on read instead of the legacy assets table.
+  const handleSelectMedia = (m: MediaItem) => {
+    setForm((f) => ({ ...f, imageAssetId: null, imageMediaId: m.id }));
+    setImagePreview(mediaUrl(m));
   };
 
   return (
@@ -410,7 +414,7 @@ export default function EventForm({ id }: Props) {
                   type="button"
                   variant="ghost"
                   onClick={() => {
-                    setForm({ ...form, imageAssetId: null });
+                    setForm({ ...form, imageAssetId: null, imageMediaId: null });
                     setImagePreview(null);
                   }}
                   data-testid="button-remove-image"
@@ -460,12 +464,13 @@ export default function EventForm({ id }: Props) {
         )}
       </form>
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={libraryMode !== null}
         onClose={() => setLibraryMode(null)}
-        onSelect={handleSelectAsset}
-        selectedId={libraryMode === "location" ? null : form.imageAssetId}
-        category={libraryMode === "location" ? "location" : undefined}
+        onSelect={handleSelectMedia}
+        selectedId={libraryMode === "location" ? null : form.imageMediaId ?? null}
+        categorySlug={libraryMode === "location" ? "location" : undefined}
+        kind="image"
       />
       </div>
     </AdminLayout>

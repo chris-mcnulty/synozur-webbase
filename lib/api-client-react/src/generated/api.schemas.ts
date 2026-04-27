@@ -536,13 +536,19 @@ export interface SiteSettings {
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
+  homeHeroImageMediaId?: string | null;
+  /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */
   homeHeroVideoAssetId?: number | null;
   /** @nullable */
+  homeHeroVideoMediaId?: string | null;
+  /** @nullable */
   homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageMediaId?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
   /** @nullable */
@@ -559,6 +565,8 @@ export interface SiteSettings {
   seoDefaultDescription?: string | null;
   /** @nullable */
   seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoDefaultOgImageMediaId?: string | null;
   /** @nullable */
   seoDefaultOgImageUrl?: string | null;
   /** @nullable */
@@ -577,6 +585,8 @@ export interface SiteSettings {
   orgLegalName?: string | null;
   /** @nullable */
   orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgLogoMediaId?: string | null;
   /** @nullable */
   orgLogoUrl?: string | null;
   /** @nullable */
@@ -660,9 +670,15 @@ export interface SiteSettingsInput {
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
+  homeHeroImageMediaId?: string | null;
+  /** @nullable */
   homeHeroVideoAssetId?: number | null;
   /** @nullable */
+  homeHeroVideoMediaId?: string | null;
+  /** @nullable */
   homeEditorialImageAssetId?: number | null;
+  /** @nullable */
+  homeEditorialImageMediaId?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
   /**
@@ -677,6 +693,8 @@ export interface SiteSettingsInput {
   seoDefaultDescription?: string | null;
   /** @nullable */
   seoDefaultOgImageAssetId?: number | null;
+  /** @nullable */
+  seoDefaultOgImageMediaId?: string | null;
   /** @nullable */
   seoTwitterHandle?: string | null;
   /** @nullable */
@@ -693,6 +711,8 @@ export interface SiteSettingsInput {
   orgLegalName?: string | null;
   /** @nullable */
   orgLogoAssetId?: number | null;
+  /** @nullable */
+  orgLogoMediaId?: string | null;
   /** @nullable */
   orgStreetAddress?: string | null;
   /** @nullable */
@@ -837,6 +857,8 @@ export interface AdminEvent {
   featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
+  /** @nullable */
+  imageMediaId?: string | null;
   /** @nullable */
   imageUrl?: string | null;
   /** @nullable */
@@ -1005,6 +1027,8 @@ export interface EventInput {
   featuredRank?: number | null;
   /** @nullable */
   imageAssetId?: number | null;
+  /** @nullable */
+  imageMediaId?: string | null;
   /** @nullable */
   recordingVideoId?: string | null;
 }

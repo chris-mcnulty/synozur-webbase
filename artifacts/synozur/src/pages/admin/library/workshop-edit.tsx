@@ -9,12 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useAdminAccess } from "@/components/admin/AdminGate";
-import {
-  AssetLibraryModal,
-  assetUrl,
-} from "@/components/admin/AssetLibraryModal";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import type { Asset } from "@workspace/api-zod/types";
+import type { MediaItem } from "@workspace/api-client-react";
 import {
   emptyWorkshopInput,
   workshopsApi,
@@ -945,13 +942,14 @@ export default function WorkshopEdit({ id }: Props) {
         </div>
       </form>
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
-        onSelect={(asset: Asset) => {
-          update("heroImage", assetUrl(asset));
+        onSelect={(m: MediaItem) => {
+          update("heroImage", mediaUrl(m));
           setShowHeroPicker(false);
         }}
+        kind="image"
       />
     </AdminLayout>
   );

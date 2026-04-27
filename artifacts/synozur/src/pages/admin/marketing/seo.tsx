@@ -25,9 +25,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { AssetLibraryModal } from "@/components/admin/AssetLibraryModal";
+import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
 import { api, type AdminSiteSettings, type UpdateSiteSettingsBody } from "@/lib/api";
-import type { Asset } from "@workspace/api-zod/types";
+import type { MediaItem } from "@workspace/api-client-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -257,11 +257,14 @@ export default function MarketingSeo() {
     return {
       requireCookieConsent: data.requireCookieConsent,
       homeHeroImageAssetId: data.homeHeroImageAssetId ?? null,
+      homeHeroImageMediaId: data.homeHeroImageMediaId ?? null,
       homeEditorialImageAssetId: data.homeEditorialImageAssetId ?? null,
+      homeEditorialImageMediaId: data.homeEditorialImageMediaId ?? null,
       polarisFeedUrl: data.polarisFeedUrl ?? null,
       seoDefaultTitleTemplate: titleTemplate.trim() || null,
       seoDefaultDescription: description.trim() || null,
       seoDefaultOgImageAssetId: data.seoDefaultOgImageAssetId ?? null,
+      seoDefaultOgImageMediaId: data.seoDefaultOgImageMediaId ?? null,
       seoTwitterHandle: twitterHandle.trim() || null,
       seoTwitterCardType: twitterCard || null,
       seoLinkedinCompanyUrl: linkedinCompanyUrl.trim() || null,
@@ -270,6 +273,7 @@ export default function MarketingSeo() {
       orgName: orgName.trim() || null,
       orgLegalName: orgLegalName.trim() || null,
       orgLogoAssetId: data.orgLogoAssetId ?? null,
+      orgLogoMediaId: data.orgLogoMediaId ?? null,
       orgStreetAddress: orgStreet.trim() || null,
       orgAddressLocality: orgLocality.trim() || null,
       orgAddressRegion: orgRegion.trim() || null,
@@ -287,20 +291,37 @@ export default function MarketingSeo() {
 
   const handleSave = () => updateMutation.mutate(buildPayload());
 
-  const handlePickAsset = (asset: Asset) => {
+  // New writes target the `*MediaId` UUID columns; the legacy integer
+  // `*AssetId` columns are cleared so the server's URL resolver consults
+  // the unified media table on read.
+  const handlePickMedia = (m: MediaItem) => {
     if (pickerOpen === "og-image") {
-      updateMutation.mutate(buildPayload({ seoDefaultOgImageAssetId: asset.id }));
+      updateMutation.mutate(
+        buildPayload({
+          seoDefaultOgImageAssetId: null,
+          seoDefaultOgImageMediaId: m.id,
+        }),
+      );
     } else if (pickerOpen === "org-logo") {
-      updateMutation.mutate(buildPayload({ orgLogoAssetId: asset.id }));
+      updateMutation.mutate(
+        buildPayload({ orgLogoAssetId: null, orgLogoMediaId: m.id }),
+      );
     }
     setPickerOpen(null);
   };
 
   const handleResetAsset = (slot: PickerSlot) => {
     if (slot === "og-image") {
-      updateMutation.mutate(buildPayload({ seoDefaultOgImageAssetId: null }));
+      updateMutation.mutate(
+        buildPayload({
+          seoDefaultOgImageAssetId: null,
+          seoDefaultOgImageMediaId: null,
+        }),
+      );
     } else {
-      updateMutation.mutate(buildPayload({ orgLogoAssetId: null }));
+      updateMutation.mutate(
+        buildPayload({ orgLogoAssetId: null, orgLogoMediaId: null }),
+      );
     }
   };
 
@@ -366,7 +387,10 @@ export default function MarketingSeo() {
               label="Default OG image"
               helper="Fallback Open Graph / Twitter card image for pages that don't set one."
               previewUrl={data.seoDefaultOgImageUrl ?? null}
-              isOverridden={data.seoDefaultOgImageAssetId != null}
+              isOverridden={
+                data.seoDefaultOgImageMediaId != null ||
+                data.seoDefaultOgImageAssetId != null
+              }
               testIdPrefix="seo-og-image"
               onPick={() => setPickerOpen("og-image")}
               onReset={() => handleResetAsset("og-image")}
@@ -594,7 +618,9 @@ export default function MarketingSeo() {
               label="Organization logo"
               helper="SVG or PNG logo used in the JSON-LD and OG markup."
               previewUrl={data.orgLogoUrl ?? null}
-              isOverridden={data.orgLogoAssetId != null}
+              isOverridden={
+                data.orgLogoMediaId != null || data.orgLogoAssetId != null
+              }
               testIdPrefix="org-logo"
               onPick={() => setPickerOpen("org-logo")}
               onReset={() => handleResetAsset("org-logo")}
@@ -759,17 +785,18 @@ export default function MarketingSeo() {
         </div>
       )}
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={pickerOpen !== null}
         onClose={() => setPickerOpen(null)}
-        onSelect={handlePickAsset}
+        onSelect={handlePickMedia}
         selectedId={
           pickerOpen === "og-image"
-            ? data?.seoDefaultOgImageAssetId ?? null
+            ? data?.seoDefaultOgImageMediaId ?? null
             : pickerOpen === "org-logo"
-              ? data?.orgLogoAssetId ?? null
+              ? data?.orgLogoMediaId ?? null
               : null
         }
+        kind="image"
       />
     </AdminLayout>
   );

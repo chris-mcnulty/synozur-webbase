@@ -19,17 +19,14 @@ import {
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
-import {
-  AssetLibraryModal,
-  assetUrl,
-} from "@/components/admin/AssetLibraryModal";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { CollateralResourcesEditor } from "@/components/admin/CollateralResourcesEditor";
 import { PublishBlocksBanner } from "@/components/admin/PublishBlocksBanner";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
-import type { Asset } from "@workspace/api-zod/types";
+import type { MediaItem } from "@workspace/api-client-react";
 import {
   useCmsListCollateral,
   useCmsCreateCollateral,
@@ -330,8 +327,8 @@ export default function CollateralEdit({ id }: Props) {
     }
   };
 
-  const handleHero = (asset: Asset) => {
-    update({ heroImage: assetUrl(asset) });
+  const handleHero = (m: MediaItem) => {
+    update({ heroImage: mediaUrl(m) });
     setShowHeroPicker(false);
   };
 
@@ -763,11 +760,12 @@ export default function CollateralEdit({ id }: Props) {
         </aside>
       </div>
 
-      <AssetLibraryModal
+      <MediaPickerModal
         open={showHeroPicker}
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
-        categoryFilter="case-study"
+        categorySlug="case-study"
+        kind="image"
       />
     </AdminLayout>
   );

@@ -29,5 +29,7 @@ export interface EventInput {
   /** @nullable */
   imageAssetId?: number | null;
   /** @nullable */
+  imageMediaId?: string | null;
+  /** @nullable */
   recordingVideoId?: string | null;
 }

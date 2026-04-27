@@ -5,10 +5,12 @@ import {
   db,
   whitePapersTable,
   assetsTable,
+  mediaTable,
   WHITE_PAPER_DOC_TYPES,
   WHITE_PAPER_STATUSES,
   type WhitePaper,
   type Asset,
+  type Media,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -43,6 +45,10 @@ function assetStorageUrl(asset: Asset): string {
   return `/api/storage${asset.storageKey}`;
 }
 
+function mediaStorageUrl(media: Media): string {
+  return media.publicUrl || `/api/storage${media.storageKey}`;
+}
+
 const ALLOWED_DOCUMENT_MIME_PATTERNS: readonly RegExp[] = [
   /^application\/pdf$/,
   /^application\/msword$/,
@@ -66,10 +72,30 @@ function serializeDocumentAsset(asset: Asset) {
   };
 }
 
-function serialize(w: WhitePaper, documentAsset: Asset | null = null) {
-  const resolvedDocumentUrl = documentAsset
-    ? assetStorageUrl(documentAsset)
-    : w.documentUrl;
+// New uploads through MediaPickerModal store a `documentMediaId` UUID; the
+// editor surfaces the file using this serializer instead of the legacy asset
+// shape so the existing `documentAsset` UI keeps working without a special
+// case for media-backed uploads.
+function serializeDocumentMedia(media: Media) {
+  return {
+    id: -1,
+    originalName: media.originalName ?? media.altText ?? media.storageKey,
+    mimeType: media.mime ?? "application/octet-stream",
+    size: media.byteSize ?? 0,
+    storageKey: media.storageKey,
+  };
+}
+
+function serialize(
+  w: WhitePaper,
+  documentAsset: Asset | null = null,
+  documentMedia: Media | null = null,
+) {
+  const resolvedDocumentUrl = documentMedia
+    ? mediaStorageUrl(documentMedia)
+    : documentAsset
+      ? assetStorageUrl(documentAsset)
+      : w.documentUrl;
   return {
     id: w.id,
     slug: w.slug,
@@ -84,7 +110,12 @@ function serialize(w: WhitePaper, documentAsset: Asset | null = null) {
     pillar: w.pillar,
     documentUrl: resolvedDocumentUrl,
     documentAssetId: w.documentAssetId,
-    documentAsset: documentAsset ? serializeDocumentAsset(documentAsset) : null,
+    documentMediaId: w.documentMediaId,
+    documentAsset: documentMedia
+      ? serializeDocumentMedia(documentMedia)
+      : documentAsset
+        ? serializeDocumentAsset(documentAsset)
+        : null,
     externalUrl: w.externalUrl,
     pageCount: w.pageCount,
     status: w.status,
@@ -113,6 +144,17 @@ async function loadDocumentAsset(
   return asset ?? null;
 }
 
+async function loadDocumentMedia(
+  documentMediaId: string | null | undefined,
+): Promise<Media | null> {
+  if (!documentMediaId) return null;
+  const [media] = await db
+    .select()
+    .from(mediaTable)
+    .where(eq(mediaTable.id, documentMediaId));
+  return media ?? null;
+}
+
 async function loadDocumentAssetsByIds(
   rows: WhitePaper[],
 ): Promise<Map<number, Asset>> {
@@ -122,6 +164,17 @@ async function loadDocumentAssetsByIds(
   if (!ids.length) return new Map();
   const assets = await db.select().from(assetsTable).where(inArray(assetsTable.id, ids));
   return new Map(assets.map((a) => [a.id, a]));
+}
+
+async function loadDocumentMediaByIds(
+  rows: WhitePaper[],
+): Promise<Map<string, Media>> {
+  const ids = Array.from(
+    new Set(rows.map((r) => r.documentMediaId).filter((v): v is string => v != null)),
+  );
+  if (!ids.length) return new Map();
+  const mediaRows = await db.select().from(mediaTable).where(inArray(mediaTable.id, ids));
+  return new Map(mediaRows.map((m) => [m.id, m]));
 }
 
 // ----- Public ------------------------------------------------------------
@@ -177,13 +230,20 @@ router.get("/white-papers", async (req, res) => {
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
-  const assetsById = await loadDocumentAssetsByIds(rows);
+  const [assetsById, mediaById] = await Promise.all([
+    loadDocumentAssetsByIds(rows),
+    loadDocumentMediaByIds(rows),
+  ]);
   res.json({
     total: countRow?.count ?? 0,
     page,
     pageSize,
     items: rows.map((r) =>
-      serialize(r, r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null),
+      serialize(
+        r,
+        r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null,
+        r.documentMediaId ? mediaById.get(r.documentMediaId) ?? null : null,
+      ),
     ),
   });
 });
@@ -205,8 +265,11 @@ router.get("/white-papers/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const documentAsset = await loadDocumentAsset(row.documentAssetId);
-  res.json(serialize(row, documentAsset));
+  const [documentAsset, documentMedia] = await Promise.all([
+    loadDocumentAsset(row.documentAssetId),
+    loadDocumentMedia(row.documentMediaId),
+  ]);
+  res.json(serialize(row, documentAsset, documentMedia));
 });
 
 // ----- Admin -------------------------------------------------------------
@@ -224,6 +287,7 @@ const WhitePaperBody = z.object({
   pillar: z.string().nullish(),
   documentUrl: z.string().nullish(),
   documentAssetId: z.number().int().nullish(),
+  documentMediaId: z.string().uuid().nullish(),
   externalUrl: z.string().nullish(),
   pageCount: z.number().int().nullish(),
   status: z.enum(WHITE_PAPER_STATUSES).optional(),
@@ -251,10 +315,17 @@ router.get("/cms/white-papers", ...readGuard, async (_req, res) => {
     .from(whitePapersTable)
     .where(sql`${whitePapersTable.deletedAt} IS NULL`)
     .orderBy(desc(whitePapersTable.publishedAt), desc(whitePapersTable.createdAt));
-  const assetsById = await loadDocumentAssetsByIds(rows);
+  const [assetsById, mediaById] = await Promise.all([
+    loadDocumentAssetsByIds(rows),
+    loadDocumentMediaByIds(rows),
+  ]);
   res.json({
     items: rows.map((r) =>
-      serialize(r, r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null),
+      serialize(
+        r,
+        r.documentAssetId ? assetsById.get(r.documentAssetId) ?? null : null,
+        r.documentMediaId ? mediaById.get(r.documentMediaId) ?? null : null,
+      ),
     ),
   });
 });
@@ -268,8 +339,11 @@ router.get("/cms/white-papers/:id", ...readGuard, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const documentAsset = await loadDocumentAsset(row.documentAssetId);
-  res.json(serialize(row, documentAsset));
+  const [documentAsset, documentMedia] = await Promise.all([
+    loadDocumentAsset(row.documentAssetId),
+    loadDocumentMedia(row.documentMediaId),
+  ]);
+  res.json(serialize(row, documentAsset, documentMedia));
 });
 
 router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
@@ -293,6 +367,22 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       return;
     }
   }
+  if (d.documentMediaId != null) {
+    const [docMedia] = await db
+      .select()
+      .from(mediaTable)
+      .where(eq(mediaTable.id, d.documentMediaId));
+    if (!docMedia) {
+      res.status(400).json({ error: "documentMediaId references a non-existent media row" });
+      return;
+    }
+    if (docMedia.mime && !isAllowedDocumentMime(docMedia.mime)) {
+      res.status(400).json({
+        error: `Media MIME type '${docMedia.mime}' is not an allowed document type`,
+      });
+      return;
+    }
+  }
   const slug = await ensureUniqueWhitePaperSlug(d.slug || d.title);
   const [row] = await db
     .insert(whitePapersTable)
@@ -309,6 +399,7 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       pillar: d.pillar ?? null,
       documentUrl: d.documentUrl ?? null,
       documentAssetId: d.documentAssetId ?? null,
+      documentMediaId: d.documentMediaId ?? null,
       externalUrl: d.externalUrl ?? null,
       pageCount: d.pageCount ?? null,
       status: d.status ?? "draft",
@@ -337,8 +428,11 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper create",
     );
   }
-  const documentAsset = await loadDocumentAsset(row.documentAssetId);
-  res.status(201).json(serialize(row, documentAsset));
+  const [documentAsset, documentMedia] = await Promise.all([
+    loadDocumentAsset(row.documentAssetId),
+    loadDocumentMedia(row.documentMediaId),
+  ]);
+  res.status(201).json(serialize(row, documentAsset, documentMedia));
 });
 
 router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
@@ -370,6 +464,22 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
       return;
     }
   }
+  if (d.documentMediaId != null) {
+    const [docMedia] = await db
+      .select()
+      .from(mediaTable)
+      .where(eq(mediaTable.id, d.documentMediaId));
+    if (!docMedia) {
+      res.status(400).json({ error: "documentMediaId references a non-existent media row" });
+      return;
+    }
+    if (docMedia.mime && !isAllowedDocumentMime(docMedia.mime)) {
+      res.status(400).json({
+        error: `Media MIME type '${docMedia.mime}' is not an allowed document type`,
+      });
+      return;
+    }
+  }
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (d.slug !== undefined && d.slug !== null) {
     updates.slug = await ensureUniqueWhitePaperSlug(d.slug, id);
@@ -386,6 +496,7 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
     "pillar",
     "documentUrl",
     "documentAssetId",
+    "documentMediaId",
     "externalUrl",
     "pageCount",
     "status",
@@ -421,8 +532,11 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper update",
     );
   }
-  const documentAsset = await loadDocumentAsset(updated.documentAssetId);
-  res.json(serialize(updated, documentAsset));
+  const [documentAsset, documentMedia] = await Promise.all([
+    loadDocumentAsset(updated.documentAssetId),
+    loadDocumentMedia(updated.documentMediaId),
+  ]);
+  res.json(serialize(updated, documentAsset, documentMedia));
 });
 
 router.delete("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
