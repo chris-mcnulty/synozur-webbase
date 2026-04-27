@@ -10,6 +10,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { servicesTable, solutionsTable } from "./services";
+import { bookingsTable } from "./bookings";
 
 export type WorkshopCTA = { label: string; href: string };
 export type WorkshopPain = { header: string; lead: string; tiles: string[] };
@@ -121,6 +122,9 @@ export const workshopsTable = pgTable(
       onDelete: "set null",
     }),
     solutionId: uuid("solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
+    bookingId: uuid("booking_id").references(() => bookingsTable.id, {
       onDelete: "set null",
     }),
     active: boolean("active").notNull().default(true),

@@ -1296,6 +1296,8 @@ export interface UpsertServiceBody {
   unpublishedAt?: string | null;
   tagIds?: string[];
   active?: boolean;
+  /** @nullable */
+  bookingId?: string | null;
 }
 
 export type UpsertSolutionBodyStatus =
@@ -1375,6 +1377,8 @@ export interface UpsertSolutionBody {
   pillar?: UpsertSolutionBodyPillar;
   tagIds?: string[];
   active?: boolean;
+  /** @nullable */
+  bookingId?: string | null;
 }
 
 export interface UpsertMethodologyBody {

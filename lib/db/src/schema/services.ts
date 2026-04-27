@@ -14,6 +14,7 @@ import { relations } from "drizzle-orm";
 import { mediaTable } from "./media";
 import { usersTable } from "./users";
 import { artifactStatusEnum, collateralPillarEnum } from "./_artifactBase";
+import { bookingsTable } from "./bookings";
 
 export const servicesTable = pgTable(
   "services",
@@ -42,6 +43,9 @@ export const servicesTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
+    bookingId: uuid("booking_id").references(() => bookingsTable.id, {
+      onDelete: "set null",
+    }),
     // #56: publish/draft lifecycle. Default matches the shared artifact
     // pattern (`draft`). Migration must backfill existing rows to
     // `published` so the live services pages don't silently disappear —
@@ -93,6 +97,9 @@ export const solutionsTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     sourceId: text("source_id"),
+    bookingId: uuid("booking_id").references(() => bookingsTable.id, {
+      onDelete: "set null",
+    }),
     // #56: publish/draft lifecycle + pillar assignment. Default matches
     // the shared artifact pattern (`draft`); existing rows are backfilled
     // to `published` by migration. Pillar reuses `collateral_pillar` so

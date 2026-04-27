@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, X, Image as ImageIcon, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import {
   uploadAndRegisterImage,
 } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api, type BookingDto } from "@/lib/api";
 import { RevisionsPanel } from "@/components/admin/RevisionsPanel";
 import {
   useCmsListServices,
@@ -112,6 +112,7 @@ interface FormState {
   unpublishedAt: string;
   pillar: CollateralPillar | null;
   tagIds: string[];
+  bookingId: string;
   active: boolean;
 }
 
@@ -144,6 +145,7 @@ const EMPTY: FormState = {
   unpublishedAt: "",
   pillar: null,
   tagIds: [],
+  bookingId: "",
   active: true,
 };
 
@@ -177,6 +179,7 @@ function fromSolution(s: Solution): FormState {
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
     pillar: s.pillar ?? null,
     tagIds: (s.tags ?? []).map((t) => t.id),
+    bookingId: (s as unknown as { bookingId?: string | null }).bookingId ?? "",
     active: s.active,
   };
 }
@@ -210,6 +213,7 @@ function toBody(f: FormState): UpsertSolutionBody {
     unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
     pillar: f.pillar,
     tagIds: f.tagIds,
+    bookingId: f.bookingId || null,
     active: f.active,
   };
 }
@@ -229,6 +233,8 @@ export default function SolutionEdit({ id }: Props) {
   const existing = id ? solutions.find((s) => s.id === id) ?? null : null;
   const tagsQ = useListCmsTags();
   const allTags = (tagsQ.data ?? []) as { id: string; slug: string; name: string }[];
+  const bookingsQ = useQuery({ queryKey: ["admin-bookings"], queryFn: () => api.adminListBookings() });
+  const allBookings: BookingDto[] = bookingsQ.data?.items ?? [];
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -752,6 +758,30 @@ export default function SolutionEdit({ id }: Props) {
                 })}
               </div>
             )}
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <Label className="text-sm font-medium">Booking</Label>
+            <p className="text-xs text-muted-foreground">
+              Optionally attach a Bookings card shown on this page.
+            </p>
+            <Select
+              value={form.bookingId || "__none__"}
+              onValueChange={(v) => update({ bookingId: v === "__none__" ? "" : v })}
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-solution-booking">
+                <SelectValue placeholder="No booking" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No booking</SelectItem>
+                {allBookings.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Card>
 
           <Card className="p-4 space-y-3">

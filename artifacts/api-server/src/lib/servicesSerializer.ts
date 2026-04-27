@@ -14,6 +14,7 @@ import {
   type SolutionCapability,
   type TaxonomyEntityType,
 } from "@workspace/db";
+import { loadLinkedBooking, type LinkedBookingDto } from "./bookingUtils";
 
 type IconRef = { id: string; publicUrl: string } | null;
 type TagRef = { id: string; slug: string; name: string };
@@ -80,7 +81,7 @@ async function loadIcons(ids: (string | null)[]): Promise<Map<string, { id: stri
   return new Map(rows.map((r) => [r.id, r]));
 }
 
-function shapeService(s: Service, icon: IconRef, tags: TagRef[]) {
+function shapeService(s: Service, icon: IconRef, tags: TagRef[], booking: LinkedBookingDto | null = null) {
   return {
     id: s.id,
     slug: s.slug,
@@ -102,6 +103,8 @@ function shapeService(s: Service, icon: IconRef, tags: TagRef[]) {
     seoTitle: s.seoTitle,
     seoDescription: s.seoDescription,
     sourceId: s.sourceId,
+    bookingId: s.bookingId ?? null,
+    booking,
     status: s.status,
     publishedAt: s.publishedAt ? s.publishedAt.toISOString() : null,
     unpublishedAt: s.unpublishedAt ? s.unpublishedAt.toISOString() : null,
@@ -112,7 +115,7 @@ function shapeService(s: Service, icon: IconRef, tags: TagRef[]) {
   };
 }
 
-function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[]) {
+function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[], booking: LinkedBookingDto | null = null) {
   return {
     id: s.id,
     slug: s.slug,
@@ -139,6 +142,8 @@ function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[]) {
     seoTitle: s.seoTitle,
     seoDescription: s.seoDescription,
     sourceId: s.sourceId,
+    bookingId: s.bookingId ?? null,
+    booking,
     status: s.status,
     publishedAt: s.publishedAt ? s.publishedAt.toISOString() : null,
     unpublishedAt: s.unpublishedAt ? s.unpublishedAt.toISOString() : null,
@@ -375,15 +380,17 @@ export async function getServiceWithMethodologies(
     .where(eq(serviceMethodologiesTable.serviceId, service.id))
     .orderBy(asc(serviceMethodologiesTable.displayOrder), asc(serviceMethodologiesTable.title));
   const visible = methodologies.filter((m) => !m.hidden);
-  const [icons, tags] = await Promise.all([
+  const [icons, tags, booking] = await Promise.all([
     loadIcons([service.iconId, ...visible.map((m) => m.iconId)]),
     loadTags("service", [service.id]),
+    loadLinkedBooking(service.bookingId ?? null),
   ]);
   return {
     ...shapeService(
       service,
       service.iconId ? icons.get(service.iconId) ?? null : null,
       tags.get(service.id) ?? [],
+      booking,
     ),
     methodologies: visible.map((m) =>
       shapeMethodology(m, m.iconId ? icons.get(m.iconId) ?? null : null),
@@ -416,7 +423,7 @@ export async function getSolutionWithCapabilities(
         where: eq(servicesTable.id, solution.parentServiceId),
       })
     : null;
-  const [icons, solutionTags, parentTags] = await Promise.all([
+  const [icons, solutionTags, parentTags, booking] = await Promise.all([
     loadIcons([
       solution.iconId,
       parentService?.iconId ?? null,
@@ -424,12 +431,14 @@ export async function getSolutionWithCapabilities(
     ]),
     loadTags("solution", [solution.id]),
     parentService ? loadTags("service", [parentService.id]) : Promise.resolve(new Map()),
+    loadLinkedBooking(solution.bookingId ?? null),
   ]);
   return {
     ...shapeSolution(
       solution,
       solution.iconId ? icons.get(solution.iconId) ?? null : null,
       solutionTags.get(solution.id) ?? [],
+      booking,
     ),
     parentService:
       parentService &&

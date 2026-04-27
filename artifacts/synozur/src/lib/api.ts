@@ -182,6 +182,18 @@ export interface AdminSiteSettings {
   updatedAt: string;
 }
 
+export interface LinkedBookingDto {
+  id: string;
+  slug: string;
+  title: string;
+  teaser: string | null;
+  scope: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  msBusinessId: string | null;
+  msDefaultServiceId: string | null;
+}
+
 export interface ServiceDto {
   id: string;
   slug: string;
@@ -202,6 +214,8 @@ export interface ServiceDto {
   blogCategory: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  bookingId: string | null;
+  booking?: LinkedBookingDto | null;
   active: boolean;
 }
 
@@ -226,6 +240,8 @@ export interface SolutionDto {
   tagsText: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  bookingId: string | null;
+  booking?: LinkedBookingDto | null;
   active: boolean;
 }
 
@@ -1275,6 +1291,8 @@ export interface ApplicationDto {
   showInNav: boolean;
   serviceId: string | null;
   solutionId: string | null;
+  bookingId: string | null;
+  booking?: LinkedBookingDto | null;
   status: ArtifactStatus;
   publishedAt: string | null;
   unpublishedAt: string | null;
@@ -1305,6 +1323,7 @@ export interface ApplicationInput {
   showInNav?: boolean;
   serviceId?: string | null;
   solutionId?: string | null;
+  bookingId?: string | null;
   status?: ArtifactStatus;
   publishedAt?: string | null;
   unpublishedAt?: string | null;

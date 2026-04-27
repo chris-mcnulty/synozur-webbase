@@ -14,6 +14,7 @@ import {
   upsertCollateralFromApplication,
   softDeleteCollateralForApplication,
 } from "../lib/syncCollateral";
+import { loadLinkedBooking, type LinkedBookingDto } from "../lib/bookingUtils";
 
 const router: IRouter = Router();
 
@@ -41,7 +42,7 @@ async function ensureUniqueApplicationSlug(
   }
 }
 
-function serialize(a: Application) {
+function serialize(a: Application, booking: LinkedBookingDto | null = null) {
   return {
     id: a.id,
     slug: a.slug,
@@ -59,6 +60,8 @@ function serialize(a: Application) {
     showInNav: a.showInNav,
     serviceId: a.serviceId,
     solutionId: a.solutionId,
+    bookingId: a.bookingId ?? null,
+    booking,
     status: a.status,
     publishedAt: a.publishedAt,
     unpublishedAt: a.unpublishedAt,
@@ -120,7 +123,8 @@ router.get("/applications/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serialize(row));
+  const booking = await loadLinkedBooking(row.bookingId ?? null);
+  res.json(serialize(row, booking));
 });
 
 // ----- Admin -------------------------------------------------------------
@@ -144,6 +148,7 @@ const ApplicationBody = z.object({
   showInNav: z.boolean().optional(),
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
+  bookingId: z.string().uuid().nullish(),
   status: z.enum(ARTIFACT_STATUSES).optional(),
   publishedAt: z.string().nullish(),
   unpublishedAt: z.string().nullish(),
@@ -216,6 +221,7 @@ router.post("/cms/applications", ...adminGuard, async (req, res) => {
       showInNav: d.showInNav !== false,
       serviceId: d.serviceId ?? null,
       solutionId: d.solutionId ?? null,
+      bookingId: d.bookingId ?? null,
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
@@ -283,6 +289,7 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
   }
   if (d.serviceId !== undefined) updates.serviceId = d.serviceId ?? null;
   if (d.solutionId !== undefined) updates.solutionId = d.solutionId ?? null;
+  if (d.bookingId !== undefined) updates.bookingId = d.bookingId ?? null;
   if (d.description !== undefined) updates.descriptionParagraphs = d.description;
   if (d.showInNav !== undefined) {
     updates.showInNav = d.showInNav;

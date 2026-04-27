@@ -18,6 +18,7 @@ import {
   type WorkshopDto,
   type WorkshopInput,
 } from "@/lib/api-workshops";
+import { api, type BookingDto } from "@/lib/api";
 
 interface Props {
   id?: string;
@@ -178,9 +179,15 @@ export default function WorkshopEdit({ id }: Props) {
       faq: w.faq,
       seo: w.seo,
       displayOrder: w.displayOrder,
+      serviceId: w.serviceId ?? null,
+      solutionId: w.solutionId ?? null,
+      bookingId: w.bookingId ?? null,
       active: w.active,
     });
   }, [existingQ.data]);
+
+  const bookingsQ = useQuery({ queryKey: ["admin-bookings"], queryFn: () => api.adminListBookings() });
+  const allBookings: BookingDto[] = bookingsQ.data?.items ?? [];
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -909,6 +916,27 @@ export default function WorkshopEdit({ id }: Props) {
                 update("seo", { ...form.seo, description: e.target.value })
               }
             />
+          </Field>
+        </Section>
+
+        <Section
+          title="Booking"
+          description="Optionally attach a Bookings card shown on the public workshop page."
+        >
+          <Field label="Booking calendar">
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.bookingId ?? ""}
+              onChange={(e) => update("bookingId", e.target.value || null)}
+              disabled={!access?.isEditorOrAbove}
+            >
+              <option value="">No booking</option>
+              {allBookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title}
+                </option>
+              ))}
+            </select>
           </Field>
         </Section>
 
