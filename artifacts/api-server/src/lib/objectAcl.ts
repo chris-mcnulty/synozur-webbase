@@ -1,6 +1,6 @@
-import { File } from "@google-cloud/storage";
-
-const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
+// Pure ACL types + policy evaluation. Backend-specific persistence (writing
+// the policy onto a GCS object's custom metadata, an SPE DriveItem field,
+// etc.) lives in the storage backends under `./storage/`.
 
 // Can be flexibly defined according to the use case.
 //
@@ -29,7 +29,6 @@ export interface ObjectAclRule {
   permission: ObjectPermission;
 }
 
-// Stored as object custom metadata under "custom:aclPolicy" (JSON string).
 export interface ObjectAclPolicy {
   owner: string;
   visibility: "public" | "private";
@@ -67,49 +66,21 @@ function createObjectAccessGroup(
   }
 }
 
-export async function setObjectAclPolicy(
-  objectFile: File,
-  aclPolicy: ObjectAclPolicy,
-): Promise<void> {
-  const [exists] = await objectFile.exists();
-  if (!exists) {
-    throw new Error(`Object not found: ${objectFile.name}`);
-  }
-
-  await objectFile.setMetadata({
-    metadata: {
-      [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
-    },
-  });
-}
-
-export async function getObjectAclPolicy(
-  objectFile: File,
-): Promise<ObjectAclPolicy | null> {
-  const [metadata] = await objectFile.getMetadata();
-  const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
-  if (!aclPolicy) {
-    return null;
-  }
-  return JSON.parse(aclPolicy as string);
-}
-
-export async function canAccessObject({
+export async function canAccessByPolicy({
   userId,
-  objectFile,
+  policy,
   requestedPermission,
 }: {
   userId?: string;
-  objectFile: File;
+  policy: ObjectAclPolicy | null;
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
-  const aclPolicy = await getObjectAclPolicy(objectFile);
-  if (!aclPolicy) {
+  if (!policy) {
     return false;
   }
 
   if (
-    aclPolicy.visibility === "public" &&
+    policy.visibility === "public" &&
     requestedPermission === ObjectPermission.READ
   ) {
     return true;
@@ -119,11 +90,11 @@ export async function canAccessObject({
     return false;
   }
 
-  if (aclPolicy.owner === userId) {
+  if (policy.owner === userId) {
     return true;
   }
 
-  for (const rule of aclPolicy.aclRules || []) {
+  for (const rule of policy.aclRules || []) {
     const accessGroup = createObjectAccessGroup(rule.group);
     if (
       (await accessGroup.hasMember(userId)) &&

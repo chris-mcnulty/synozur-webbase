@@ -195,8 +195,8 @@ router.delete(
     // Hard delete from storage too (best effort).
     try {
       if (row.storageKey.startsWith("/objects/")) {
-        const file = await objectStorageService.getObjectEntityFile(row.storageKey);
-        await file.delete({ ignoreNotFound: true });
+        const ref = await objectStorageService.getObjectEntityFile(row.storageKey);
+        await objectStorageService.deleteObject(ref);
       }
     } catch (err) {
       req.log.warn({ err, mediaId: row.id }, "Failed to delete object from storage");
