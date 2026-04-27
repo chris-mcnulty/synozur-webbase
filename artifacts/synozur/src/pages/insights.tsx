@@ -423,6 +423,12 @@ export default function Insights() {
             New essays, models, and Polaris episodes — delivered to your inbox.
           </p>
           <InsightsSubscribeForm />
+          <p className="text-sm text-muted-foreground mt-8">
+            Ready to work with us?{" "}
+            <Link href="/join" className="text-primary hover:underline font-medium">
+              Join the Alliance <ArrowRight className="inline h-3.5 w-3.5 -mt-0.5" />
+            </Link>
+          </p>
         </div>
       </section>
     </div>
