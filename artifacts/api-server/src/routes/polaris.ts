@@ -583,6 +583,8 @@ router.post(
       featured: episode.featured,
       featuredRank: episode.featuredRank ?? null,
       sourceId: `polaris_episode:${id}`,
+      serviceId: episode.serviceId ?? null,
+      solutionId: episode.solutionId ?? null,
       updatedAt: new Date(),
     };
 
@@ -629,8 +631,6 @@ router.post(
           pillar: null,
           videoUrl: null,
           downloadUrl: null,
-          serviceId: null,
-          solutionId: null,
         })
         .returning();
       row = created;

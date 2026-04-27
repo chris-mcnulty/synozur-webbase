@@ -312,6 +312,7 @@ export default function SolutionDetail() {
           fallback={
             sol.parentService ? { serviceId: sol.parentService.id } : undefined
           }
+          fallbackExcludeSolutionItems
         />
       ) : null}
 
