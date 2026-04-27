@@ -1086,6 +1086,8 @@ export interface Service {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -1171,6 +1173,8 @@ export interface Solution {
   unpublishedAt?: string | null;
   /** @nullable */
   pillar?: SolutionPillar;
+  /** @nullable */
+  bookingId?: string | null;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;

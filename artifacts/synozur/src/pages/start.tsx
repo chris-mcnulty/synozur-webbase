@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, PenLine } from "lucide-react";
+import { Link } from "wouter";
+import { ArrowRight, CalendarDays, PenLine } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";

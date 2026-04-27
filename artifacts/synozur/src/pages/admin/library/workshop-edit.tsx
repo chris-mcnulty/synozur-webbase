@@ -188,6 +188,14 @@ export default function WorkshopEdit({ id }: Props) {
 
   const bookingsQ = useQuery({ queryKey: ["admin-bookings"], queryFn: () => api.adminListBookings() });
   const allBookings: BookingDto[] = bookingsQ.data?.items ?? [];
+  const selectableBookings: BookingDto[] = allBookings.filter((b) => {
+    if (b.id === form.bookingId) return true;
+    if (!b.active) return false;
+    if (b.endsAt && new Date(b.endsAt) <= new Date()) return false;
+    return true;
+  });
+  const isStaleSelection = (b: BookingDto): boolean =>
+    !b.active || (!!b.endsAt && new Date(b.endsAt) <= new Date());
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -931,9 +939,10 @@ export default function WorkshopEdit({ id }: Props) {
               disabled={!access?.isEditorOrAbove}
             >
               <option value="">No booking</option>
-              {allBookings.map((b) => (
+              {selectableBookings.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.title}
+                  {isStaleSelection(b) ? " (inactive)" : ""}
                 </option>
               ))}
             </select>

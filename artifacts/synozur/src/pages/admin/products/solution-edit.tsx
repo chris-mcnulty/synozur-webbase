@@ -179,7 +179,7 @@ function fromSolution(s: Solution): FormState {
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
     pillar: s.pillar ?? null,
     tagIds: (s.tags ?? []).map((t) => t.id),
-    bookingId: (s as unknown as { bookingId?: string | null }).bookingId ?? "",
+    bookingId: s.bookingId ?? "",
     active: s.active,
   };
 }
@@ -240,6 +240,15 @@ export default function SolutionEdit({ id }: Props) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const selectableBookings: BookingDto[] = allBookings.filter((b) => {
+    if (b.id === form.bookingId) return true;
+    if (!b.active) return false;
+    if (b.endsAt && new Date(b.endsAt) <= new Date()) return false;
+    return true;
+  });
+  const isStaleSelection = (b: BookingDto): boolean =>
+    !b.active || (!!b.endsAt && new Date(b.endsAt) <= new Date());
 
   useEffect(() => {
     if (existing && !loaded) {
@@ -775,9 +784,10 @@ export default function SolutionEdit({ id }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">No booking</SelectItem>
-                {allBookings.map((b) => (
+                {selectableBookings.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.title}
+                    {isStaleSelection(b) ? " (inactive)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

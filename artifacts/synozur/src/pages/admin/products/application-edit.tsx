@@ -196,6 +196,15 @@ export default function ApplicationEdit({ id }: Props) {
   const selectedService = allServices.find((s) => s.id === form.serviceId) ?? null;
   const availableSolutions = selectedService?.solutions ?? [];
 
+  const selectableBookings: BookingDto[] = allBookings.filter((b) => {
+    if (b.id === form.bookingId) return true;
+    if (!b.active) return false;
+    if (b.endsAt && new Date(b.endsAt) <= new Date()) return false;
+    return true;
+  });
+  const isStaleSelection = (b: BookingDto): boolean =>
+    !b.active || (!!b.endsAt && new Date(b.endsAt) <= new Date());
+
   useEffect(() => {
     if (existing && !loaded) {
       setForm(fromDto(existing));
@@ -798,9 +807,10 @@ export default function ApplicationEdit({ id }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">No booking</SelectItem>
-                {allBookings.map((b) => (
+                {selectableBookings.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.title}
+                    {isStaleSelection(b) ? " (inactive)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
