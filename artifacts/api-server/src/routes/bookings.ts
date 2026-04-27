@@ -442,7 +442,10 @@ const AppointmentBody = z.object({
   }),
   customerTimeZone: z.string().trim().min(1).max(80),
   turnstileToken: z.string().nullish(),
-  // Honeypot — clients leave this empty; bots fill it.
+  // Honeypot — clients leave this empty; bots fill it. Validated as a
+  // plain optional string and checked at runtime so a non-empty value
+  // short-circuits to the same success shape a real submit would produce
+  // (matching the silent-accept pattern in routes/forms.ts).
   website: z.string().trim().optional(),
 });
 
@@ -462,6 +465,12 @@ router.post(
     const parsed = AppointmentBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    // Honeypot: if the hidden `website` field arrived populated, return the
+    // same shape a real success would so a bot can't tell it was filtered.
+    if (parsed.data.website && parsed.data.website.length > 0) {
+      res.status(201).json({ ok: true });
       return;
     }
     const ip = clientIp(req);

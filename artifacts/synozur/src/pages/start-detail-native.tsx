@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,9 +89,15 @@ type ContactFormData = z.infer<typeof contactSchema>;
 export default function StartDetailNative({ slug, bookingTitle }: Props) {
   const tz = useMemo(() => detectTimeZone(), []);
 
-  // Visitor's selections.
+  // Visitor's selections. selectedDateIso is initialized lazily to today's
+  // local midnight so it matches the dateStrip buttons (also local midnight)
+  // and the sameDayInTz slot filtering.
   const [serviceId, setServiceId] = useState<string | null>(null);
-  const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
+  const [selectedDateIso, setSelectedDateIso] = useState<string>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.toISOString();
+  });
   const [selectedSlot, setSelectedSlot] = useState<{ startUtc: string; endUtc: string } | null>(null);
 
   // Confirmation + bot-check state.
@@ -115,11 +121,6 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
     return days;
   }, []);
 
-  // Initialize selected date to today on first render.
-  if (selectedDateIso === null && dateStrip.length > 0) {
-    setSelectedDateIso(dateStrip[0]!.toISOString());
-  }
-
   // 1. Services + business metadata.
   const servicesQuery = useQuery({
     queryKey: ["native-bookings", slug, "services"],
@@ -128,22 +129,21 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
   });
 
   // Auto-pick service: prefer the booking's default; else the only service;
-  // else stay null until the visitor chooses.
-  if (
-    serviceId === null &&
-    servicesQuery.data &&
-    servicesQuery.data.services.length > 0
-  ) {
+  // else stay null until the visitor chooses. Runs in an effect (not during
+  // render) so React 18 strict-mode doesn't warn about updates during render.
+  useEffect(() => {
+    if (serviceId !== null) return;
+    if (!servicesQuery.data) return;
+    const services = servicesQuery.data.services;
+    if (services.length === 0) return;
     const def = servicesQuery.data.defaultServiceId;
-    const match = def
-      ? servicesQuery.data.services.find((s) => s.id === def)
-      : null;
+    const match = def ? services.find((s) => s.id === def) : null;
     if (match) {
       setServiceId(match.id);
-    } else if (servicesQuery.data.services.length === 1) {
-      setServiceId(servicesQuery.data.services[0]!.id);
+    } else if (services.length === 1) {
+      setServiceId(services[0]!.id);
     }
-  }
+  }, [servicesQuery.data, serviceId]);
 
   // 2. Availability — fetch for the full strip in one round trip; we filter
   // client-side per day. Caching is by (slug, serviceId) so flipping dates

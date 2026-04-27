@@ -24,11 +24,13 @@ export const bookingsTable = pgTable(
     descriptionHtml: text("description_html"),
     embedUrl: text("embed_url").notNull(),
     scope: text("scope").notNull().default("general"),
-    // Microsoft Graph "Bookings business" identifier (e.g. the GUID portion
-    // of /solutions/bookingBusinesses/{id}). When set AND the site-level
-    // `bookingsRenderMode` is "native", the on-brand React flow renders
-    // against Graph instead of the iframe. Optional — when null the booking
-    // always falls back to the iframe regardless of site mode.
+    // Microsoft Graph "Bookings business" identifier — the {id} path segment
+    // in /solutions/bookingBusinesses/{id}. This is an arbitrary string,
+    // most commonly an email-style alias like
+    // "MyCalendar@tenant.onmicrosoft.com" but sometimes a GUID. When set AND
+    // the site-level `bookingsRenderMode` is "native", the on-brand React
+    // flow renders against Graph instead of the iframe. Optional — when null
+    // the booking always falls back to the iframe regardless of site mode.
     msBusinessId: text("ms_business_id"),
     // Optional default service id pre-selected in the native flow when the
     // business exposes more than one service. Null lets the visitor pick.
