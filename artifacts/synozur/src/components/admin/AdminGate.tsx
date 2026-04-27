@@ -4,10 +4,17 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import type { CurrentUser } from "@workspace/api-client-react";
-import { computeCapabilities, type Capability } from "@/lib/capabilities";
+import { capabilitiesFromServer, computeCapabilities, type Capability } from "@/lib/capabilities";
 import { useAuth } from "@/context/auth";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+// Server hands the SPA `effectiveCapabilities` on /api/auth/me as of #111.
+// The generated CurrentUser type doesn't include the field yet (orval
+// regen is a separate step), so we extend it locally.
+type CurrentUserWithCapabilities = CurrentUser & {
+  effectiveCapabilities?: readonly string[];
+};
 
 export type AdminAccess = {
   signedInEmail: string | null;
@@ -34,13 +41,13 @@ export function useAdminAccess(): {
     retry: false,
   });
 
-  const { data: cmsUser, isLoading: cmsLoading } = useQuery<CurrentUser | null>({
+  const { data: cmsUser, isLoading: cmsLoading } = useQuery<CurrentUserWithCapabilities | null>({
     queryKey: ["cms-me"],
     queryFn: async () => {
       try {
         const res = await fetch(`${BASE_PATH}/api/auth/me`, { credentials: "include" });
         if (!res.ok) return null;
-        return (await res.json()) as CurrentUser;
+        return (await res.json()) as CurrentUserWithCapabilities;
       } catch {
         return null;
       }
@@ -55,11 +62,18 @@ export function useAdminAccess(): {
     return { access: null, isLoading: true, signedIn: true };
   }
 
-  const roles = cmsUser?.roles ?? [];
-  const isAdmin = roles.includes("admin");
+  // Widen to string[] — the generated `RoleName` enum is still on the legacy 4,
+  // but the server sends back any of the 11 names from ROLE_NAMES.
+  const roles: readonly string[] = cmsUser?.roles ?? [];
+  const isAdmin = roles.includes("admin") || roles.includes("site_admin");
   const isEditorOrAbove = isAdmin || roles.includes("editor");
   const isAllowListed = !!adminMe?.authorized;
-  const capabilities = computeCapabilities(roles, isAllowListed);
+  // Prefer the server-hydrated capability set (#111). Fall back to the
+  // legacy client-side computation for old deploys that don't return the
+  // field yet, so the SPA stays functional through a rolling deploy.
+  const capabilities = cmsUser?.effectiveCapabilities
+    ? capabilitiesFromServer(cmsUser.effectiveCapabilities, isAllowListed)
+    : computeCapabilities(roles, isAllowListed);
   const access: AdminAccess = {
     signedInEmail: adminMe?.email ?? cmsUser?.email ?? user?.email ?? null,
     cmsUser: cmsUser ?? null,

@@ -6,12 +6,28 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   useListCmsUsers,
   useSetCmsUserRoles,
-  RoleName,
   type CmsUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
-const ALL_ROLES = [RoleName.admin, RoleName.editor, RoleName.author, RoleName.contributor] as const;
+// #110 — surface all eleven assignable roles. The generated `RoleName`
+// enum from api-zod is still on the legacy 4; rather than block on a
+// codegen pass, source the canonical list locally. The server validates
+// against the same list via z.enum(ROLE_NAMES).
+const ALL_ROLES = [
+  "site_admin",
+  "admin",
+  "editor",
+  "content_author",
+  "author",
+  "contributor",
+  "hr",
+  "internal",
+  "customer",
+  "client",
+  "registered",
+] as const;
+type AssignableRole = (typeof ALL_ROLES)[number];
 
 export default function UsersAndRoles() {
   const { toast } = useToast();
@@ -39,7 +55,20 @@ export default function UsersAndRoles() {
       ) : (
         <div className="space-y-3">
           {(data ?? []).map((u: CmsUser) => (
-            <UserRow key={u.id} user={u} onSave={(roles) => set.mutate({ id: u.id, data: { roles } })} pending={set.isPending} />
+            <UserRow
+              key={u.id}
+              user={u}
+              onSave={(roles) =>
+                set.mutate({
+                  id: u.id,
+                  // The generated body type still wants the legacy RoleName enum,
+                  // so widen via a deliberate cast at the boundary. Server-side
+                  // z.enum(ROLE_NAMES) is the actual authority.
+                  data: { roles: roles as unknown as CmsUser["roles"] },
+                })
+              }
+              pending={set.isPending}
+            />
           ))}
         </div>
       )}
@@ -53,7 +82,7 @@ function UserRow({
   pending,
 }: {
   user: CmsUser;
-  onSave: (roles: typeof ALL_ROLES[number][]) => void;
+  onSave: (roles: AssignableRole[]) => void;
   pending: boolean;
 }) {
   const [roles, setRoles] = useState<Set<string>>(new Set(user.roles));
@@ -66,7 +95,7 @@ function UserRow({
         <div className="font-medium">{user.displayName ?? user.email ?? user.externalSubject ?? user.id}</div>
         <div className="text-xs text-muted-foreground">{user.email}</div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {ALL_ROLES.map((r) => {
           const active = roles.has(r);
           return (
@@ -96,7 +125,7 @@ function UserRow({
       <Button
         size="sm"
         disabled={!dirty || pending}
-        onClick={() => onSave(Array.from(roles) as typeof ALL_ROLES[number][])}
+        onClick={() => onSave(Array.from(roles) as AssignableRole[])}
         data-testid={`save-roles-${user.id}`}
       >
         {pending ? "Saving…" : "Save"}

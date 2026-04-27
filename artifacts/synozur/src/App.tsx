@@ -54,6 +54,7 @@ import UsersAndRoles from "@/pages/admin/access/users";
 import EntraMappingsPage from "@/pages/admin/access/entra";
 import OrganizationsPage from "@/pages/admin/access/organizations";
 import SecurityLogPage from "@/pages/admin/access/security-log";
+import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
 import AdminServicesList from "@/pages/admin/products/services-list";
 import ServiceEdit from "@/pages/admin/products/service-edit";
@@ -352,6 +353,7 @@ function AdminRoutes() {
         <Route path="/access/entra" component={EntraMappingsPage} />
         <Route path="/access/organizations" component={OrganizationsPage} />
         <Route path="/access/security-log" component={SecurityLogPage} />
+        <Route path="/access/capabilities" component={CapabilitiesPage} />
         <Route path="/users"><Redirect to="/access/users" /></Route>
 
         {/* Marketing integrations */}

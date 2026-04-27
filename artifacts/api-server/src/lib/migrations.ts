@@ -563,6 +563,109 @@ export async function runMigrations(): Promise<void> {
       CREATE UNIQUE INDEX IF NOT EXISTS bookings_slug_key ON bookings (slug);
     `);
 
+    // 18. #110 + #111 — seven audience classes + DB-backed capability map.
+    //
+    // 18a. Ensure every role in ROLE_NAMES exists. The legacy 5 (admin,
+    //      editor, author, contributor, client) are preserved unchanged;
+    //      the new 6 (site_admin, content_author, hr, internal, customer,
+    //      registered) are added on first deploy.
+    await db.execute(sql`
+      INSERT INTO roles (name, description)
+      VALUES
+        ('site_admin', 'Audience class: full site administrator (alias of legacy admin)'),
+        ('content_author', 'Audience class: editorial author with publish'),
+        ('hr', 'Audience class: HR / careers (#109)'),
+        ('internal', 'Audience class: Synozur internal staff'),
+        ('customer', 'Audience class: client-org portal user (#135)'),
+        ('registered', 'Audience class: self-service signed-in user')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+
+    // 18b. capabilities table — canonical capability names.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS capabilities (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        description text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS capabilities_name_key ON capabilities (name);
+    `);
+
+    // 18c. role_capabilities join table.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS role_capabilities (
+        role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        capability_id uuid NOT NULL REFERENCES capabilities(id) ON DELETE CASCADE,
+        granted_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (role_id, capability_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS role_capabilities_capability_idx
+        ON role_capabilities (capability_id);
+    `);
+
+    // 18d. Seed canonical capabilities. Mirrors CAPABILITY_NAMES /
+    //      CAPABILITY_DESCRIPTIONS in lib/db/src/schema/capabilityMap.ts —
+    //      keep the two in sync when adding a new capability. Idempotent
+    //      via ON CONFLICT.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('content.view',     'View admin content (posts, library, taxonomy).'),
+        ('content.author',   'Create and edit draft content.'),
+        ('content.publish',  'Publish, unpublish, and schedule content.'),
+        ('content.moderate', 'Moderate comments and review marketing surfaces.'),
+        ('users.manage',     'Manage users, roles, and access mappings.'),
+        ('site.manage',      'Manage site-wide settings, redirects, and integrations.')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+
+    // 18e. Seed default role → capability grants. Using a single SELECT-INSERT
+    //      so adding a new role/capability above doesn't require a separate
+    //      mapping insert here. Mirrors DEFAULT_ROLE_CAPABILITIES in
+    //      schema/capabilityMap.ts. Existing rows are preserved (admin edits
+    //      survive reseed).
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',          'content.view'),
+          ('admin',          'content.author'),
+          ('admin',          'content.publish'),
+          ('admin',          'content.moderate'),
+          ('admin',          'users.manage'),
+          ('admin',          'site.manage'),
+          ('editor',         'content.view'),
+          ('editor',         'content.author'),
+          ('editor',         'content.publish'),
+          ('editor',         'content.moderate'),
+          ('author',         'content.view'),
+          ('author',         'content.author'),
+          ('contributor',    'content.view'),
+          ('contributor',    'content.author'),
+          ('site_admin',     'content.view'),
+          ('site_admin',     'content.author'),
+          ('site_admin',     'content.publish'),
+          ('site_admin',     'content.moderate'),
+          ('site_admin',     'users.manage'),
+          ('site_admin',     'site.manage'),
+          ('content_author', 'content.view'),
+          ('content_author', 'content.author'),
+          ('content_author', 'content.publish'),
+          ('hr',             'content.view'),
+          ('hr',             'users.manage'),
+          ('internal',       'content.view')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

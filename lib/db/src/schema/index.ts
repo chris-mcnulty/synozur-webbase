@@ -4,6 +4,7 @@ export * from "./events";
 export * from "./formSubmissions";
 export * from "./users";
 export * from "./roles";
+export * from "./capabilityMap";
 export * from "./media";
 export * from "./assetCategories";
 export * from "./posts";

@@ -14,7 +14,22 @@ import {
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-type RoleName = "admin" | "editor" | "author" | "contributor";
+// #110 — seven audience classes alongside the legacy CMS roles. Kept as a
+// string union here (rather than imported from @workspace/db) because the
+// auth context is consumed by both admin and public routes — the latter
+// doesn't otherwise pull the schema package in.
+type RoleName =
+  | "admin"
+  | "editor"
+  | "author"
+  | "contributor"
+  | "client"
+  | "site_admin"
+  | "content_author"
+  | "hr"
+  | "internal"
+  | "customer"
+  | "registered";
 
 export interface AuthedUser {
   id: string;
@@ -25,6 +40,9 @@ export interface AuthedUser {
   avatarUrl: string | null;
   bio: string | null;
   roles: RoleName[];
+  // #111 — server-supplied effective capabilities. Optional so old server
+  // responses still type-check during a rolling deploy.
+  effectiveCapabilities?: readonly string[];
 }
 
 export interface AuthState {
