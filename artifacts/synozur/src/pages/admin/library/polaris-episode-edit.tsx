@@ -640,7 +640,7 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                       data-testid="btn-collateral-sync"
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      {syncCollateralMut.isPending ? "Syncing…" : "Sync latest changes"}
+                      {syncCollateralMut.isPending ? "Syncing…" : "Sync to library"}
                     </Button>
                     <Button
                       type="button"
