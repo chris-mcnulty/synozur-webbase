@@ -122,9 +122,9 @@ export const siteSettingsTable = pgTable("site_settings", {
   // Bookings rendering mode. "iframe" (default) renders Microsoft's hosted
   // Bookings page in an iframe — zero-config but cross-origin so the inner
   // styling can't be themed. "native" calls Microsoft Graph from the
-  // api-server and renders a custom on-brand flow. Native requires
-  // MS_BOOKINGS_TENANT_ID / *_CLIENT_ID / *_CLIENT_SECRET env vars and a
-  // populated `bookings.ms_business_id` column; rows missing that config
+  // api-server and renders a custom on-brand flow. Integrated mode uses the
+  // existing ENTRA_* env vars (no separate MS_BOOKINGS_* vars required) and
+  // a populated `bookings.ms_business_id` column; rows missing that config
   // fall back to iframe per-row even when the global mode is "native".
   bookingsRenderMode: text("bookings_render_mode").notNull().default("iframe"),
 

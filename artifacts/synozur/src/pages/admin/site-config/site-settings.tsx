@@ -255,20 +255,20 @@ export default function AdminSiteSettings() {
               <p className="text-sm text-muted-foreground max-w-xl">
                 How <code>/start</code> booking pages render. <strong>Iframe</strong> embeds
                 Microsoft's hosted page (zero config; cross-origin so it can't be themed).
-                <strong> Native</strong> calls Microsoft Graph from the api-server and
-                renders an on-brand React flow — requires the <code>MS_BOOKINGS_*</code>{" "}
+                <strong> Integrated</strong> calls Microsoft Graph from the api-server and
+                renders an on-brand React flow — requires the <code>ENTRA_*</code>{" "}
                 env vars and a populated Bookings business id on each booking. Bookings
-                without a business id fall back to the iframe even in native mode.
+                without a business id fall back to the iframe even in integrated mode.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               {(["iframe", "native"] as const).map((mode) => {
                 const active = currentBookingsMode === mode;
-                const label = mode === "iframe" ? "Iframe (default)" : "Native (Graph)";
+                const label = mode === "iframe" ? "Iframe (default)" : "Integrated (Graph)";
                 const description =
                   mode === "iframe"
                     ? "Microsoft-hosted page embedded as-is. No backend setup."
-                    : "On-brand React flow against Microsoft Graph. Requires Bookings.ReadWrite.All.";
+                    : "On-brand React flow against Microsoft Graph. Uses ENTRA_* credentials.";
                 return (
                   <button
                     key={mode}
