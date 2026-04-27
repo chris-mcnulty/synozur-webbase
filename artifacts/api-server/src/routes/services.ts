@@ -171,6 +171,8 @@ const SolutionBody = z.object({
   buttonUrl: z.string().nullish(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
+  acceleratorsHtml: z.string().nullish(),
+  faqHtml: z.string().nullish(),
   status: z.enum(ARTIFACT_STATUSES).optional(),
   publishedAt: z.string().nullish(),
   unpublishedAt: z.string().nullish(),
@@ -178,8 +180,6 @@ const SolutionBody = z.object({
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
   bookingId: z.string().uuid().nullish(),
-  acceleratorsHtml: z.string().nullish(),
-  faqHtml: z.string().nullish(),
 });
 const SolutionPatch = SolutionBody.partial();
 
@@ -382,6 +382,8 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       buttonUrl: d.buttonUrl ?? null,
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
+      acceleratorsHtml: d.acceleratorsHtml ?? null,
+      faqHtml: d.faqHtml ?? null,
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
@@ -427,7 +429,8 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "ourApproachTitle", "ourApproachTextHtml", "blurbHtml", "blurbCopy",
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
     "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
-    "status", "pillar", "active", "acceleratorsHtml", "faqHtml",
+    "acceleratorsHtml", "faqHtml",
+    "status", "pillar", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }

@@ -107,6 +107,8 @@ interface FormState {
   primaryBlogCategoryFilter: string;
   seoTitle: string;
   seoDescription: string;
+  acceleratorsHtml: string;
+  faqHtml: string;
   status: ArtifactStatus;
   publishedAt: string;
   unpublishedAt: string;
@@ -142,6 +144,8 @@ const EMPTY: FormState = {
   primaryBlogCategoryFilter: "",
   seoTitle: "",
   seoDescription: "",
+  acceleratorsHtml: "",
+  faqHtml: "",
   status: "published",
   publishedAt: "",
   unpublishedAt: "",
@@ -178,6 +182,8 @@ function fromSolution(s: Solution): FormState {
     primaryBlogCategoryFilter: s.primaryBlogCategoryFilter ?? "",
     seoTitle: s.seoTitle ?? "",
     seoDescription: s.seoDescription ?? "",
+    acceleratorsHtml: s.acceleratorsHtml ?? "",
+    faqHtml: s.faqHtml ?? "",
     status: (s.status ?? "draft") as ArtifactStatus,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
@@ -214,6 +220,8 @@ function toBody(f: FormState): UpsertSolutionBody {
     primaryBlogCategoryFilter: f.primaryBlogCategoryFilter || null,
     seoTitle: f.seoTitle || null,
     seoDescription: f.seoDescription || null,
+    acceleratorsHtml: f.acceleratorsHtml || null,
+    faqHtml: f.faqHtml || null,
     status: f.status,
     publishedAt: fromDatetimeLocal(f.publishedAt),
     unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
@@ -611,6 +619,42 @@ export default function SolutionEdit({ id }: Props) {
                   disabled={!canWrite}
                 />
               </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Accelerators / Zenith</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Rich-text content for the Zenith callout section. Leave empty
+                to hide the section on the public page.
+              </p>
+            </div>
+            <div>
+              <RichTextEditor
+                value={form.acceleratorsHtml}
+                onChange={({ html }) => update({ acceleratorsHtml: html })}
+                onUploadImage={uploadAndRegisterImage}
+                data-testid="rte-solution-accelerators"
+              />
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">FAQ</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Rich-text content for the FAQ section. Leave empty to hide the
+                section on the public page.
+              </p>
+            </div>
+            <div>
+              <RichTextEditor
+                value={form.faqHtml}
+                onChange={({ html }) => update({ faqHtml: html })}
+                onUploadImage={uploadAndRegisterImage}
+                data-testid="rte-solution-faq"
+              />
             </div>
           </Card>
 

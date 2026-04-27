@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
+
+ */
 export type PublicSiteSettingsBookingsRenderMode =
   (typeof PublicSiteSettingsBookingsRenderMode)[keyof typeof PublicSiteSettingsBookingsRenderMode];
 

@@ -14,7 +14,8 @@ export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   siteTheme?: SiteSettingsSiteTheme;
-  /** Global rendering mode for /start booking pages. See PublicSiteSettings. */
+  /** Global rendering mode for /start booking pages. See PublicSiteSettings.
+   */
   bookingsRenderMode?: SiteSettingsBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;

@@ -458,10 +458,25 @@ export const PublicSiteSettingsSiteTheme = {
   aurora: "aurora",
 } as const;
 
+/**
+ * Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
+
+ */
+export type PublicSiteSettingsBookingsRenderMode =
+  (typeof PublicSiteSettingsBookingsRenderMode)[keyof typeof PublicSiteSettingsBookingsRenderMode];
+
+export const PublicSiteSettingsBookingsRenderMode = {
+  iframe: "iframe",
+  native: "native",
+} as const;
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   siteTheme?: PublicSiteSettingsSiteTheme;
+  /** Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
+   */
+  bookingsRenderMode?: PublicSiteSettingsBookingsRenderMode;
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */
@@ -525,6 +540,18 @@ export const SiteSettingsSiteTheme = {
 } as const;
 
 /**
+ * Global rendering mode for /start booking pages. See PublicSiteSettings.
+
+ */
+export type SiteSettingsBookingsRenderMode =
+  (typeof SiteSettingsBookingsRenderMode)[keyof typeof SiteSettingsBookingsRenderMode];
+
+export const SiteSettingsBookingsRenderMode = {
+  iframe: "iframe",
+  native: "native",
+} as const;
+
+/**
  * @nullable
  */
 export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
@@ -533,6 +560,9 @@ export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   siteTheme?: SiteSettingsSiteTheme;
+  /** Global rendering mode for /start booking pages. See PublicSiteSettings.
+   */
+  bookingsRenderMode?: SiteSettingsBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -656,6 +686,14 @@ export const SiteSettingsInputSiteTheme = {
   aurora: "aurora",
 } as const;
 
+export type SiteSettingsInputBookingsRenderMode =
+  (typeof SiteSettingsInputBookingsRenderMode)[keyof typeof SiteSettingsInputBookingsRenderMode];
+
+export const SiteSettingsInputBookingsRenderMode = {
+  iframe: "iframe",
+  native: "native",
+} as const;
+
 /**
  * @nullable
  */
@@ -667,6 +705,7 @@ export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   siteTheme?: SiteSettingsInputSiteTheme;
+  bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -1086,8 +1125,6 @@ export interface Service {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  /** @nullable */
-  bookingId?: string | null;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -1164,6 +1201,12 @@ export interface Solution {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  /** @nullable */
+  acceleratorsHtml?: string | null;
+  /** @nullable */
+  faqHtml?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   /** @nullable */
   sourceId?: string | null;
   status?: SolutionStatus;
@@ -1304,8 +1347,6 @@ export interface UpsertServiceBody {
   unpublishedAt?: string | null;
   tagIds?: string[];
   active?: boolean;
-  /** @nullable */
-  bookingId?: string | null;
 }
 
 export type UpsertSolutionBodyStatus =
@@ -1376,6 +1417,12 @@ export interface UpsertSolutionBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  /** @nullable */
+  acceleratorsHtml?: string | null;
+  /** @nullable */
+  faqHtml?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   status?: UpsertSolutionBodyStatus;
   /** @nullable */
   publishedAt?: string | null;

@@ -238,6 +238,8 @@ export interface SolutionDto {
   tagsText: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  acceleratorsHtml: string | null;
+  faqHtml: string | null;
   bookingId: string | null;
   booking?: LinkedBookingDto | null;
   active: boolean;

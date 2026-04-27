@@ -1116,7 +1116,10 @@ export const GetPublicSiteSettingsResponse = zod.object({
     .default(getPublicSiteSettingsResponseSiteThemeDefault),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
-    .default(getPublicSiteSettingsResponseBookingsRenderModeDefault),
+    .default(getPublicSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      'Global rendering mode for \/start booking pages. \"iframe\" embeds Microsoft\'s hosted Bookings page; \"native\" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_\* credentials and a populated msBusinessId on the booking).\n',
+    ),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
@@ -1164,7 +1167,10 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .default(getAdminSiteSettingsResponseSiteThemeDefault),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
-    .default(getAdminSiteSettingsResponseBookingsRenderModeDefault),
+    .default(getAdminSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
@@ -1336,7 +1342,10 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .default(updateAdminSiteSettingsResponseSiteThemeDefault),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
-    .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault),
+    .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
@@ -1479,6 +1488,9 @@ export const ListServicesResponse = zod.object({
               buttonUrl: zod.string().nullish(),
               seoTitle: zod.string().nullish(),
               seoDescription: zod.string().nullish(),
+              acceleratorsHtml: zod.string().nullish(),
+              faqHtml: zod.string().nullish(),
+              bookingId: zod.string().uuid().nullish(),
               sourceId: zod.string().nullish(),
               status: zod
                 .enum(["draft", "scheduled", "published", "archived"])
@@ -1607,6 +1619,9 @@ export const GetSolutionResponse = zod
     buttonUrl: zod.string().nullish(),
     seoTitle: zod.string().nullish(),
     seoDescription: zod.string().nullish(),
+    acceleratorsHtml: zod.string().nullish(),
+    faqHtml: zod.string().nullish(),
+    bookingId: zod.string().uuid().nullish(),
     sourceId: zod.string().nullish(),
     status: zod
       .enum(["draft", "scheduled", "published", "archived"])
@@ -2222,6 +2237,9 @@ export const CmsListSolutionsResponse = zod.object({
       buttonUrl: zod.string().nullish(),
       seoTitle: zod.string().nullish(),
       seoDescription: zod.string().nullish(),
+      acceleratorsHtml: zod.string().nullish(),
+      faqHtml: zod.string().nullish(),
+      bookingId: zod.string().uuid().nullish(),
       sourceId: zod.string().nullish(),
       status: zod
         .enum(["draft", "scheduled", "published", "archived"])
@@ -2275,6 +2293,9 @@ export const CmsCreateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -2318,6 +2339,9 @@ export const CmsUpdateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -2360,6 +2384,9 @@ export const CmsUpdateSolutionResponse = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   sourceId: zod.string().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),

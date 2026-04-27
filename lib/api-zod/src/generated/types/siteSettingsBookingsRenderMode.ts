@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Global rendering mode for /start booking pages. See PublicSiteSettings.
+
+ */
 export type SiteSettingsBookingsRenderMode =
   (typeof SiteSettingsBookingsRenderMode)[keyof typeof SiteSettingsBookingsRenderMode];
 

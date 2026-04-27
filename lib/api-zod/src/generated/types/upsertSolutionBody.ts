@@ -52,6 +52,12 @@ export interface UpsertSolutionBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  /** @nullable */
+  acceleratorsHtml?: string | null;
+  /** @nullable */
+  faqHtml?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   status?: UpsertSolutionBodyStatus;
   /** @nullable */
   publishedAt?: string | null;
