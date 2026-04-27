@@ -177,6 +177,8 @@ export default function CapabilitiesPage() {
                     return (
                       <button
                         key={cap.id}
+                        type="button"
+                        aria-pressed={active}
                         onClick={() => toggle(role.name, cap.name)}
                         title={cap.description ?? cap.name}
                         className={`text-xs px-2.5 py-1 rounded-full border ${active ? "border-primary text-primary" : "border-border text-muted-foreground"}`}

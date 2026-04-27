@@ -81,7 +81,7 @@ router.put(
     }
     const body = SetRoleCapabilitiesBody.safeParse(req.body);
     if (!body.success) {
-      res.status(400).json({ error: "Invalid body" });
+      res.status(400).json({ error: "Invalid body", details: body.error.flatten() });
       return;
     }
     const role = await db.query.rolesTable.findFirst({
@@ -100,13 +100,17 @@ router.put(
       : [];
     const wantedIds = wantedCaps.map((c) => c.id);
 
-    await db.delete(roleCapabilities).where(eq(roleCapabilities.roleId, role.id));
-    if (wantedIds.length) {
-      await db
-        .insert(roleCapabilities)
-        .values(wantedIds.map((capabilityId) => ({ roleId: role.id, capabilityId })))
-        .onConflictDoNothing();
-    }
+    // Atomic swap: a crash between DELETE and INSERT would otherwise leave
+    // the role with zero grants and lock admins out of users.manage.
+    await db.transaction(async (tx) => {
+      await tx.delete(roleCapabilities).where(eq(roleCapabilities.roleId, role.id));
+      if (wantedIds.length) {
+        await tx
+          .insert(roleCapabilities)
+          .values(wantedIds.map((capabilityId) => ({ roleId: role.id, capabilityId })))
+          .onConflictDoNothing();
+      }
+    });
 
     await audit({
       actorId: req.authedUser!.id,

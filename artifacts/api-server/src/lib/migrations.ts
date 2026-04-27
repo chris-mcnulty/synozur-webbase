@@ -565,19 +565,25 @@ export async function runMigrations(): Promise<void> {
 
     // 18. #110 + #111 — seven audience classes + DB-backed capability map.
     //
-    // 18a. Ensure every role in ROLE_NAMES exists. The legacy 5 (admin,
-    //      editor, author, contributor, client) are preserved unchanged;
-    //      the new 6 (site_admin, content_author, hr, internal, customer,
-    //      registered) are added on first deploy.
+    // 18a. Ensure every role in ROLE_NAMES exists. Includes both the legacy
+    //      five (admin/editor/author/contributor/client) and the new audience
+    //      classes — the legacy rows already exist on production but inserting
+    //      them here keeps the migration self-contained for fresh databases
+    //      so step 18e's JOIN-based grant seed always finds a row to match.
     await db.execute(sql`
       INSERT INTO roles (name, description)
       VALUES
-        ('site_admin', 'Audience class: full site administrator (alias of legacy admin)'),
+        ('admin',          'Legacy: full CMS admin'),
+        ('editor',         'Legacy: editor with publish + moderate'),
+        ('author',         'Legacy: author (draft only)'),
+        ('contributor',    'Legacy: contributor (draft only)'),
+        ('client',         'Legacy: portal access for approved client members'),
+        ('site_admin',     'Audience class: full site administrator (alias of legacy admin)'),
         ('content_author', 'Audience class: editorial author with publish'),
-        ('hr', 'Audience class: HR / careers (#109)'),
-        ('internal', 'Audience class: Synozur internal staff'),
-        ('customer', 'Audience class: client-org portal user (#135)'),
-        ('registered', 'Audience class: self-service signed-in user')
+        ('hr',             'Audience class: HR / careers (#109)'),
+        ('internal',       'Audience class: Synozur internal staff'),
+        ('customer',       'Audience class: client-org portal user (#135)'),
+        ('registered',     'Audience class: self-service signed-in user')
       ON CONFLICT (name) DO NOTHING;
     `);
 

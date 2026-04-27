@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { db, pool } from "./index";
 import {
   rolesTable,
@@ -54,10 +53,6 @@ async function main() {
   console.log("Seed complete: roles + capabilities + default category ensured.");
   await pool.end();
 }
-
-// Suppress unused-import warning for the back-compat helper while the
-// migration loop above is the actual consumer.
-void eq;
 
 main().catch((err) => {
   console.error(err);
