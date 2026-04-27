@@ -672,6 +672,26 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // 19. Bookings native (Graph) integration.
+    //
+    // 19a. site_settings.bookings_render_mode — global toggle between
+    //      "iframe" (default, Microsoft-hosted page in an iframe) and
+    //      "native" (custom on-brand React flow backed by Microsoft Graph).
+    //      Defaulting to "iframe" preserves existing behavior on upgrade.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS bookings_render_mode text NOT NULL DEFAULT 'iframe';
+    `);
+
+    // 19b. bookings.{ms_business_id, ms_default_service_id} — per-row Graph
+    //      configuration. Both nullable; rows missing ms_business_id always
+    //      render via iframe even when the site mode is "native".
+    await db.execute(sql`
+      ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS ms_business_id text,
+        ADD COLUMN IF NOT EXISTS ms_default_service_id text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

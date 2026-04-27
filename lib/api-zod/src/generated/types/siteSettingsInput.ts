@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SiteSettingsInputBookingsRenderMode } from "./siteSettingsInputBookingsRenderMode";
 import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
 import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
 import type { SiteSettingsInputSiteTheme } from "./siteSettingsInputSiteTheme";
@@ -13,6 +14,7 @@ export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   siteTheme?: SiteSettingsInputSiteTheme;
+  bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

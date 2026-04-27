@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicSiteSettingsBookingsRenderMode } from "./publicSiteSettingsBookingsRenderMode";
 import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
 import type { PublicSiteSettingsSiteTheme } from "./publicSiteSettingsSiteTheme";
 
@@ -12,6 +13,10 @@ export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   siteTheme?: PublicSiteSettingsSiteTheme;
+  /**
+   * Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
+   */
+  bookingsRenderMode?: PublicSiteSettingsBookingsRenderMode;
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */

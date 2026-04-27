@@ -125,6 +125,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     requireCookieConsent: settings.requireCookieConsent,
     homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
     siteTheme: settings.siteTheme ?? "cosmic",
+    bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageMediaId: settings.homeHeroImageMediaId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
@@ -185,6 +186,7 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       requireCookieConsent: settings.requireCookieConsent,
       homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
       siteTheme: settings.siteTheme ?? "cosmic",
+      bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeHeroVideoUrl: urls.homeHeroVideoUrl,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
@@ -261,6 +263,10 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
 
   if ("siteTheme" in input && input.siteTheme) {
     updates.siteTheme = input.siteTheme;
+  }
+
+  if ("bookingsRenderMode" in input && input.bookingsRenderMode) {
+    updates.bookingsRenderMode = input.bookingsRenderMode;
   }
 
   if ("homeHeroImageAssetId" in input) {
