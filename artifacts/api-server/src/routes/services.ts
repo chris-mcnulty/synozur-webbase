@@ -144,6 +144,7 @@ const ServiceBody = z.object({
   unpublishedAt: z.string().nullish(),
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
+  bookingId: z.string().uuid().nullish(),
 });
 const ServicePatch = ServiceBody.partial();
 
@@ -176,6 +177,7 @@ const SolutionBody = z.object({
   pillar: z.enum(COLLATERAL_PILLARS).nullish(),
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
+  bookingId: z.string().uuid().nullish(),
 });
 const SolutionPatch = SolutionBody.partial();
 
@@ -246,6 +248,7 @@ router.post("/cms/services", ...adminGuard, async (req, res) => {
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
       active: d.active ?? true,
+      bookingId: d.bookingId ?? null,
     })
     .returning();
   if (d.tagIds) {
@@ -287,6 +290,7 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  if (d.bookingId !== undefined) updates.bookingId = d.bookingId ?? null;
   // #61: snapshot prior state before overwriting — both ops in one transaction
   // so a failed update cannot leave an orphan revision row.
   const [updated] = await db.transaction(async (tx) => {
@@ -381,6 +385,7 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       unpublishedAt: parseDate(d.unpublishedAt),
       pillar: d.pillar ?? null,
       active: d.active ?? true,
+      bookingId: d.bookingId ?? null,
     })
     .returning();
   if (d.tagIds) {
@@ -424,6 +429,7 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  if (d.bookingId !== undefined) updates.bookingId = d.bookingId ?? null;
   // #61: snapshot prior state before overwriting — both ops in one transaction
   // so a failed update cannot leave an orphan revision row.
   const [updated] = await db.transaction(async (tx) => {

@@ -9,6 +9,7 @@ import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
+import { BookingCard } from "@/components/BookingCard";
 
 function stripHtml(html: string | null | undefined): string {
   if (!html) return "";
@@ -313,6 +314,14 @@ export default function SolutionDetail() {
           }
         />
       ) : null}
+
+      {sol?.booking && (
+        <section className="py-16 border-t border-border">
+          <div className="container mx-auto px-4 max-w-2xl">
+            <BookingCard booking={sol.booking} />
+          </div>
+        </section>
+      )}
 
       <section className="relative overflow-hidden bg-background border-t border-border py-24">
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">

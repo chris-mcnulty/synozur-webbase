@@ -5,6 +5,7 @@ import { db, workshopsTable, type Workshop } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { loadLinkedBooking, type LinkedBookingDto } from "../lib/bookingUtils";
 
 const router: IRouter = Router();
 
@@ -131,6 +132,7 @@ const WorkshopBody = z.object({
   active: z.boolean().optional(),
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
+  bookingId: z.string().uuid().nullish(),
 });
 type WorkshopBodyT = z.infer<typeof WorkshopBody>;
 const WorkshopPatch = WorkshopBody.partial().extend({
@@ -151,7 +153,7 @@ const WorkshopPatch = WorkshopBody.partial().extend({
 
 // ---- Serializer --------------------------------------------------------
 
-function shape(w: Workshop) {
+function shape(w: Workshop, booking: LinkedBookingDto | null = null) {
   return {
     id: w.id,
     slug: w.slug,
@@ -187,6 +189,8 @@ function shape(w: Workshop) {
     sourceId: w.sourceId,
     serviceId: w.serviceId,
     solutionId: w.solutionId,
+    bookingId: w.bookingId ?? null,
+    booking,
     active: w.active,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
@@ -245,6 +249,7 @@ function valuesFromBody(d: WorkshopBodyT, slug: string) {
     displayOrder: d.displayOrder ?? null,
     serviceId: d.serviceId ?? null,
     solutionId: d.solutionId ?? null,
+    bookingId: d.bookingId ?? null,
     active: d.active ?? true,
   };
 }
@@ -281,7 +286,8 @@ router.get("/workshops/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(shape(row));
+  const booking = await loadLinkedBooking(row.bookingId ?? null);
+  res.json(shape(row, booking));
 });
 
 // ---- Admin -------------------------------------------------------------
@@ -308,7 +314,7 @@ router.get("/cms/workshops/:id", ...readGuard, async (req, res) => {
     return;
   }
   res.json(shape(row));
-});
+}); // booking not needed in admin view — form selector loads it separately
 
 router.post("/cms/workshops", ...adminGuard, async (req, res) => {
   const parsed = WorkshopBody.safeParse(req.body);
@@ -372,6 +378,7 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     "toolingNote",
     "serviceId",
     "solutionId",
+    "bookingId",
   ] as const) {
     if (k in d) updates[k] = d[k] ?? null;
   }

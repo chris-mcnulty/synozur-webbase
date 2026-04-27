@@ -16,6 +16,7 @@ import {
 import { workshopsApi, WorkshopsApiError, type WorkshopCTA as CTA } from "@/lib/api-workshops";
 import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
+import { BookingCard } from "@/components/BookingCard";
 
 function isExternal(href: string) {
   return /^(https?:|mailto:|tel:)/i.test(href);
@@ -522,6 +523,14 @@ export default function WorkshopDetail() {
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+
+      {w.booking && (
+        <section className="py-16 border-t border-border">
+          <div className="container mx-auto px-4 max-w-2xl">
+            <BookingCard booking={w.booking} />
           </div>
         </section>
       )}

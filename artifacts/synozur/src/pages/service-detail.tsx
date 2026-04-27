@@ -9,6 +9,7 @@ import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
+import { BookingCard } from "@/components/BookingCard";
 
 // The former string-matching map that paired service slugs with
 // workshop categories is gone (#105). The "related workshops" rail now
@@ -436,6 +437,14 @@ export default function ServiceDetail() {
         serviceId={service?.id ?? null}
         serviceTitle={service?.title ?? null}
       />
+
+      {service?.booking && (
+        <section className="py-16 border-t border-border">
+          <div className="container mx-auto px-4 max-w-2xl">
+            <BookingCard booking={service.booking} />
+          </div>
+        </section>
+      )}
 
       <section className="relative overflow-hidden bg-card border-t border-border py-24">
         <div className="absolute inset-0 nebula-gradient opacity-10" />

@@ -5,6 +5,7 @@ import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { api, type ApplicationDto } from "@/lib/api";
+import { BookingCard } from "@/components/BookingCard";
 import {
   getApplicationBySlug as getStaticApplicationBySlug,
   getActiveApplications,
@@ -29,6 +30,7 @@ function staticAsDto(
     screenshot: s.screenshot,
     userGuideUrl: null,
     showInNav: true,
+    bookingId: null,
     status: "published",
     publishedAt: null,
     unpublishedAt: null,
@@ -200,6 +202,14 @@ export default function ApplicationDetail() {
           )}
         </div>
       </section>
+
+      {app.booking && (
+        <section className="py-16 bg-background border-t border-border">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <BookingCard booking={app.booking} />
+          </div>
+        </section>
+      )}
 
       {others.length > 0 && (
         <section className="py-20 bg-card border-t border-border">
