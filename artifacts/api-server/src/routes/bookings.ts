@@ -119,9 +119,10 @@ const Body = z.object({
   active: z.boolean().optional(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
-  // Native (Graph) integration. msBusinessId is the GUID portion of the
-  // Microsoft Graph /solutions/bookingBusinesses/{id} resource. When the
-  // site-level mode is "native" and this is set, the public /start/{slug}
+  // Native (Graph) integration. msBusinessId is the identifier from the
+  // Microsoft Graph /solutions/bookingBusinesses/{id} resource. This may be
+  // a non-GUID string (for example, the business email address / UPN). When
+  // the site-level mode is "native" and this is set, the public /start/{slug}
   // page renders an on-brand React flow against Graph instead of the iframe.
   msBusinessId: z.string().trim().min(1).max(200).nullish(),
   msDefaultServiceId: z.string().trim().min(1).max(200).nullish(),
