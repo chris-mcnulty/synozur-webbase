@@ -692,6 +692,28 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS ms_default_service_id text;
     `);
 
+    // 20. site_settings: *_media_id UUID columns — PR55 asset-library migration.
+    //
+    // PR55 added parallel UUID FK columns alongside the legacy integer *_asset_id
+    // columns so the media picker can write to the unified media table while old
+    // rows keep resolving through the legacy asset fallback. These columns were
+    // added to the Drizzle schema but the migration step was missing, causing
+    // every site-settings read to 500 with "column does not exist".
+    //
+    // All five columns are nullable; a null value means "use the legacy asset
+    // column (if any) or the built-in default". FK enforcement is omitted here
+    // to keep the ALTER idempotent — the route layer validates UUIDs before
+    // writing them (PR55 review: siteSettings PATCH rejects unknown UUIDs with
+    // a 400).
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_hero_image_media_id    uuid,
+        ADD COLUMN IF NOT EXISTS home_editorial_image_media_id uuid,
+        ADD COLUMN IF NOT EXISTS seo_default_og_image_media_id uuid,
+        ADD COLUMN IF NOT EXISTS org_logo_media_id           uuid,
+        ADD COLUMN IF NOT EXISTS home_hero_video_media_id    uuid;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
