@@ -9,8 +9,6 @@ export type LinkedBookingDto = {
   scope: string;
   startsAt: string | null;
   endsAt: string | null;
-  msBusinessId: string | null;
-  msDefaultServiceId: string | null;
 };
 
 function serializeLinkedBooking(row: typeof bookingsTable.$inferSelect): LinkedBookingDto {
@@ -22,8 +20,6 @@ function serializeLinkedBooking(row: typeof bookingsTable.$inferSelect): LinkedB
     scope: row.scope,
     startsAt: row.startsAt ? row.startsAt.toISOString() : null,
     endsAt: row.endsAt ? row.endsAt.toISOString() : null,
-    msBusinessId: row.msBusinessId ?? null,
-    msDefaultServiceId: row.msDefaultServiceId ?? null,
   };
 }
 

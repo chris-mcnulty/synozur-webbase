@@ -190,8 +190,6 @@ export interface LinkedBookingDto {
   scope: string;
   startsAt: string | null;
   endsAt: string | null;
-  msBusinessId: string | null;
-  msDefaultServiceId: string | null;
 }
 
 export interface ServiceDto {
