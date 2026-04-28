@@ -62,7 +62,10 @@ export const trafficSessionsTable = pgTable(
     index("traffic_sessions_country_idx").on(t.country),
     index("traffic_sessions_source_idx").on(t.trafficSource),
     index("traffic_sessions_source_system_idx").on(t.sourceSystem, t.firstSeenAt),
-    uniqueIndex("traffic_sessions_legacy_session_key_key").on(t.legacySessionKey),
+    uniqueIndex("traffic_sessions_source_system_legacy_session_key_key").on(
+      t.sourceSystem,
+      t.legacySessionKey,
+    ),
   ],
 );
 
