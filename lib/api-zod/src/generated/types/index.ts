@@ -69,6 +69,8 @@ export * from "./listAssetsParams";
 export * from "./listCmsCommentsParams";
 export * from "./listCmsMediaParams";
 export * from "./listCmsPostsParams";
+export * from "./listCmsPostsSortBy";
+export * from "./listCmsPostsSortDir";
 export * from "./listInsightsParams";
 export * from "./listLibraryAssetsParams";
 export * from "./listLibraryAssetsSource";

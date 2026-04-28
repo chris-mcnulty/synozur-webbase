@@ -36,6 +36,9 @@ export const listCmsPostsQueryPageDefault = 1;
 export const listCmsPostsQueryPageSizeDefault = 20;
 export const listCmsPostsQueryPageSizeMax = 100;
 
+export const listCmsPostsQuerySortByDefault = `publishedAt`;
+export const listCmsPostsQuerySortDirDefault = `desc`;
+
 export const ListCmsPostsQueryParams = zod.object({
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   authorId: zod.coerce.string().uuid().optional(),
@@ -46,6 +49,10 @@ export const ListCmsPostsQueryParams = zod.object({
     .min(1)
     .max(listCmsPostsQueryPageSizeMax)
     .default(listCmsPostsQueryPageSizeDefault),
+  sortBy: zod
+    .enum(["title", "author", "publishedAt", "updatedAt"])
+    .default(listCmsPostsQuerySortByDefault),
+  sortDir: zod.enum(["asc", "desc"]).default(listCmsPostsQuerySortDirDefault),
 });
 
 export const ListCmsPostsResponse = zod.object({

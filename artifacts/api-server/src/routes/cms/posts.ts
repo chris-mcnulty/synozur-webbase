@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike, or, sql, isNull, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql, isNull, inArray } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -28,6 +28,8 @@ const ListQuery = z.object({
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  sortBy: z.enum(["title", "author", "publishedAt", "updatedAt"]).default("publishedAt"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
 
 const CreateBody = z.object({
@@ -135,7 +137,7 @@ router.get("/cms/posts", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
     return;
   }
-  const { status, authorId, search, page, pageSize } = parsed.data;
+  const { status, authorId, search, page, pageSize, sortBy, sortDir } = parsed.data;
   const filters = [isNull(postsTable.deletedAt)];
   if (status) filters.push(eq(postsTable.status, status));
   if (authorId) filters.push(eq(postsTable.authorId, authorId));
@@ -152,12 +154,37 @@ router.get("/cms/posts", requireAuth, async (req, res) => {
 
   const where = and(...filters);
   const offset = (page - 1) * pageSize;
+  const dir = sortDir === "asc" ? "ASC" : "DESC";
+
+  const orderClauses = (() => {
+    switch (sortBy) {
+      case "title":
+        return sortDir === "asc"
+          ? [asc(postsTable.title)]
+          : [desc(postsTable.title)];
+      case "author":
+        return [
+          sql`(SELECT display_name FROM users WHERE id = ${postsTable.authorId}) ${sql.raw(dir)} NULLS LAST`,
+        ];
+      case "updatedAt":
+        return sortDir === "asc"
+          ? [asc(postsTable.updatedAt)]
+          : [desc(postsTable.updatedAt)];
+      case "publishedAt":
+      default:
+        return [
+          sql`${postsTable.publishedAt} ${sql.raw(dir)} NULLS LAST`,
+          desc(postsTable.updatedAt),
+        ];
+    }
+  })();
+
   const [items, totalRow] = await Promise.all([
     db
       .select()
       .from(postsTable)
       .where(where)
-      .orderBy(sql`${postsTable.publishedAt} DESC NULLS LAST`, desc(postsTable.updatedAt))
+      .orderBy(...orderClauses)
       .limit(pageSize)
       .offset(offset),
     db.select({ c: sql<number>`count(*)::int` }).from(postsTable).where(where),

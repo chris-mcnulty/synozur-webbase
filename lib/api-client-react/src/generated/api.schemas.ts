@@ -1216,12 +1216,6 @@ export interface Solution {
   unpublishedAt?: string | null;
   /** @nullable */
   pillar?: SolutionPillar;
-  /** @nullable */
-  bookingId?: string | null;
-  /** @nullable */
-  acceleratorsHtml?: string | null;
-  /** @nullable */
-  faqHtml?: string | null;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -1432,12 +1426,6 @@ export interface UpsertSolutionBody {
   pillar?: UpsertSolutionBodyPillar;
   tagIds?: string[];
   active?: boolean;
-  /** @nullable */
-  bookingId?: string | null;
-  /** @nullable */
-  acceleratorsHtml?: string | null;
-  /** @nullable */
-  faqHtml?: string | null;
 }
 
 export interface UpsertMethodologyBody {
@@ -1937,7 +1925,27 @@ export type ListCmsPostsParams = {
    * @maximum 100
    */
   pageSize?: number;
+  sortBy?: ListCmsPostsSortBy;
+  sortDir?: ListCmsPostsSortDir;
 };
+
+export type ListCmsPostsSortBy =
+  (typeof ListCmsPostsSortBy)[keyof typeof ListCmsPostsSortBy];
+
+export const ListCmsPostsSortBy = {
+  title: "title",
+  author: "author",
+  publishedAt: "publishedAt",
+  updatedAt: "updatedAt",
+} as const;
+
+export type ListCmsPostsSortDir =
+  (typeof ListCmsPostsSortDir)[keyof typeof ListCmsPostsSortDir];
+
+export const ListCmsPostsSortDir = {
+  asc: "asc",
+  desc: "desc",
+} as const;
 
 export type ScheduleCmsPostBody = {
   scheduledFor: string;

@@ -113,6 +113,18 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [title, author, publishedAt, updatedAt]
+            default: publishedAt
+        - in: query
+          name: sortDir
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
       responses:
         '200':
           description: Page of posts
@@ -4933,14 +4945,6 @@ components:
             - string
             - 'null'
           enum: [strategic, technology, experiences, gtm, null]
-        acceleratorsHtml:
-          type:
-            - string
-            - 'null'
-        faqHtml:
-          type:
-            - string
-            - 'null'
         tags:
           type: array
           items:
@@ -5341,14 +5345,6 @@ components:
             format: uuid
         active:
           type: boolean
-        acceleratorsHtml:
-          type:
-            - string
-            - 'null'
-        faqHtml:
-          type:
-            - string
-            - 'null'
 
     UpsertMethodologyBody:
       type: object

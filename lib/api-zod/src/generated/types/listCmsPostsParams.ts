@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListCmsPostsSortBy } from "./listCmsPostsSortBy";
+import type { ListCmsPostsSortDir } from "./listCmsPostsSortDir";
 import type { PostStatus } from "./postStatus";
 
 export type ListCmsPostsParams = {
@@ -20,4 +22,6 @@ export type ListCmsPostsParams = {
    * @maximum 100
    */
   pageSize?: number;
+  sortBy?: ListCmsPostsSortBy;
+  sortDir?: ListCmsPostsSortDir;
 };

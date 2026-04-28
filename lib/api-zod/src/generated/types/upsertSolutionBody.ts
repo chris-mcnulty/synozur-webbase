@@ -67,8 +67,4 @@ export interface UpsertSolutionBody {
   pillar?: UpsertSolutionBodyPillar;
   tagIds?: string[];
   active?: boolean;
-  /** @nullable */
-  acceleratorsHtml?: string | null;
-  /** @nullable */
-  faqHtml?: string | null;
 }
