@@ -19,6 +19,7 @@
 // caller that constructs a ref from a legacy `/objects/<uuid>` path
 // will fail at fetch time with a clear "no spe_file_id" error.
 
+import { randomUUID } from "crypto";
 import type { ObjectAclPolicy } from "../objectAcl";
 import type {
   AssetObjectRef,
@@ -27,11 +28,6 @@ import type {
 } from "./types";
 import { ObjectNotFoundError } from "./types";
 import { speFileStorage } from "./spe/fileStorage";
-
-const NOT_SUPPORTED_PRESIGNED =
-  "SharePoint Embedded does not expose presigned upload URLs. " +
-  "Use the server-proxied uploadObject() flow (or the corresponding " +
-  "api-server route, once wired in Phase 3).";
 
 const NOT_SUPPORTED_PUBLIC_PATHS =
   "SharePoint Embedded has no equivalent of PUBLIC_OBJECT_SEARCH_PATHS. " +
@@ -104,8 +100,16 @@ export class SpeAssetStorageBackend implements AssetStorageBackend {
     return new Response(upstream.body, { status: upstream.status, headers });
   }
 
-  getObjectEntityUploadURL(): Promise<string> {
-    throw new Error(NOT_SUPPORTED_PRESIGNED);
+  // SPE has no presigned-URL equivalent of GCS. We return a URL that
+  // points back at our own api-server's `PUT /storage/uploads/spe-direct/:token`
+  // route — the client uploads the file there as if it were a presigned
+  // URL, the route streams the bytes through to SharePoint, and the
+  // resulting drive-item id is stashed in the spe upload cache keyed by
+  // the same token so that the subsequent `POST /cms/media` can populate
+  // `spe_file_id` on the new media row.
+  async getObjectEntityUploadURL(): Promise<string> {
+    const token = randomUUID();
+    return `/api/storage/uploads/spe-direct/${token}`;
   }
 
   async getObjectEntityFile(objectPath: string): Promise<AssetObjectRef> {

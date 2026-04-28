@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import express, { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import sharp from "sharp";
 import { eq } from "drizzle-orm";
@@ -9,9 +9,16 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
+import { stashSpeUpload } from "../lib/storage/spe/uploadCache";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+// Hard ceiling on bytes the server will accept in a single direct-upload PUT.
+// 100 MB is enough for the largest assets the marketing site has uploaded
+// historically (videos / PDFs). Larger ceilings risk dragging the api-server
+// process around when many uploads run concurrently.
+const DIRECT_UPLOAD_LIMIT = "100mb";
 
 // Upper bound to prevent sharp from being used as a resize-bomb amplifier.
 const MAX_THUMBNAIL_WIDTH = 2048;
@@ -137,6 +144,83 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
 });
+
+/**
+ * PUT /storage/uploads/spe-direct/:token
+ *
+ * #127 Phase 3-C — server-proxied upload for the SharePoint Embedded
+ * backend. SPE has no presigned-URL equivalent, so the SPE backend's
+ * `getObjectEntityUploadURL()` returns a relative URL that points here
+ * instead of back at SharePoint. The client PUTs the file body in
+ * exactly the same shape it would have used for a GCS presigned URL;
+ * we stream the bytes through to SPE and stash the resulting drive-item
+ * id in an in-memory cache keyed by `:token` so the subsequent
+ * `POST /cms/media` can populate `spe_file_id` on the new media row.
+ *
+ * Auth: same boundary as the existing `request-url` route — no per-route
+ * gating today; admin auth is enforced at the `POST /cms/media` step.
+ *
+ * Body: raw bytes of the file. Content-Type header carries the mime.
+ * Optional `?name=<original-filename>` for SharePoint metadata stamping.
+ */
+router.put(
+  "/storage/uploads/spe-direct/:token",
+  express.raw({ limit: DIRECT_UPLOAD_LIMIT, type: "*/*" }),
+  async (req: Request, res: Response) => {
+    const token = String(req.params.token ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(token)) {
+      res.status(400).json({ error: "Invalid token" });
+      return;
+    }
+    const body = req.body as Buffer | undefined;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: "Empty body" });
+      return;
+    }
+    const contentType = req.get("content-type") ?? "application/octet-stream";
+    const queryName = req.query.name;
+    const filename =
+      typeof queryName === "string" && queryName.length > 0 ? queryName : token;
+
+    try {
+      const ref = await objectStorageService.uploadObject({
+        body,
+        contentType,
+        filename,
+        documentType: "media",
+        ownerId: token,
+      });
+      if (!ref.speFileId) {
+        // The active backend isn't SPE — refuse rather than silently
+        // produce a GCS object via this route. Forces operators to
+        // resolve the misconfiguration before bytes go anywhere
+        // unexpected.
+        res.status(409).json({
+          error:
+            "spe-direct route invoked while STORAGE_BACKEND is not 'spe'; refusing to write GCS bytes through this path",
+        });
+        return;
+      }
+      stashSpeUpload(token, {
+        speFileId: ref.speFileId,
+        speContainerId: ref.speContainerId,
+        contentType,
+        size: body.length,
+        originalName: typeof queryName === "string" ? queryName : undefined,
+      });
+      res.status(200).json({
+        ok: true,
+        token,
+        speFileId: ref.speFileId,
+        speContainerId: ref.speContainerId ?? null,
+        size: body.length,
+      });
+    } catch (err) {
+      req.log.error({ err, token }, "SPE direct upload failed");
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
 
 /**
  * GET /storage/public-objects/*
