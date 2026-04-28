@@ -796,9 +796,11 @@ export async function runMigrations(): Promise<void> {
         ON traffic_sessions (source_system, first_seen_at);
     `);
     await db.execute(sql`
+      DROP INDEX IF EXISTS traffic_sessions_legacy_session_key_key;
+    `);
+    await db.execute(sql`
       CREATE UNIQUE INDEX IF NOT EXISTS traffic_sessions_legacy_session_key_key
-        ON traffic_sessions (legacy_session_key)
-        WHERE legacy_session_key IS NOT NULL;
+        ON traffic_sessions (legacy_session_key);
     `);
 
     await db.execute(sql`
