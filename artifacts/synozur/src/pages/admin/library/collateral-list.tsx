@@ -278,7 +278,10 @@ export default function AdminCollateralList() {
       if (tab !== "all") {
         const matches =
           i.type === tab ||
-          (tab === "white_paper" && i.type === "ebook");
+          (tab === "white_paper" && i.type === "ebook") ||
+          // "training" tab also shows synced workshop items (same concept,
+          // two type values coexist while we migrate).
+          (tab === "training" && i.type === "workshop");
         if (!matches) return false;
       }
       if (activeFilter === "active" && !i.active) return false;
@@ -570,7 +573,8 @@ export default function AdminCollateralList() {
                 : items.filter(
                     (i) =>
                       i.type === value ||
-                      (value === "white_paper" && i.type === "ebook"),
+                      (value === "white_paper" && i.type === "ebook") ||
+                      (value === "training" && i.type === "workshop"),
                   ).length;
             return (
               <TabsTrigger key={value} value={value} data-testid={`tab-${value}`}>

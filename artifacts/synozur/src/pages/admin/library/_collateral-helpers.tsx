@@ -18,9 +18,14 @@ export const COLLATERAL_TYPE_TABS: { value: string; label: string }[] = [
   { value: "ebook", label: "eBook" },
 ];
 
-export const COLLATERAL_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  COLLATERAL_TYPE_TABS.filter((t) => t.value !== "all").map((t) => [t.value, t.label]),
-);
+export const COLLATERAL_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(
+    COLLATERAL_TYPE_TABS.filter((t) => t.value !== "all").map((t) => [t.value, t.label]),
+  ),
+  // "workshop" is a DB type value written by the workshop sync; the tab uses
+  // value "training" so this entry won't be generated automatically.
+  workshop: "Workshop",
+};
 
 // Append or override `w=128` for a 2x-dense 64px tile; URL-hosted images
 // that ignore the query still work unchanged.
@@ -68,6 +73,8 @@ export function editorPathForSource(sourceId: string | null | undefined): string
       return `/library/polaris-episodes/${id}/edit`;
     case "event":
       return `/people/events/${id}`;
+    case "workshop":
+      return `/library/workshops/${id}`;
     default:
       return null;
   }
