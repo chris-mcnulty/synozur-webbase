@@ -1216,12 +1216,6 @@ export interface Solution {
   unpublishedAt?: string | null;
   /** @nullable */
   pillar?: SolutionPillar;
-  /** @nullable */
-  bookingId?: string | null;
-  /** @nullable */
-  acceleratorsHtml?: string | null;
-  /** @nullable */
-  faqHtml?: string | null;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -1432,12 +1426,6 @@ export interface UpsertSolutionBody {
   pillar?: UpsertSolutionBodyPillar;
   tagIds?: string[];
   active?: boolean;
-  /** @nullable */
-  bookingId?: string | null;
-  /** @nullable */
-  acceleratorsHtml?: string | null;
-  /** @nullable */
-  faqHtml?: string | null;
 }
 
 export interface UpsertMethodologyBody {
