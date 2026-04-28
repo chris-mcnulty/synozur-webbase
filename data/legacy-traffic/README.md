@@ -48,6 +48,10 @@ dropped.
 
 ## Privacy
 
-These exports are aggregate counts only — no PII, no IPs, no user agents.
-They are safe to commit if small, but prefer keeping raw exports out of the
-repo and pointing the importer at a local path if a file exceeds a few MB.
+Prefer aggregate daily exports like the Wix Analytics examples above. However,
+some raw exports consumed by the legacy importer may also include per-request
+or per-visit fields such as IP address and geo/location columns. Treat any file
+with IPs, geo data, user-level identifiers, or user agents as sensitive input:
+keep it local only, do not commit it to this repo, and point the importer at a
+local path when processing it. Only sanitized aggregate exports with those
+fields removed should be considered for commit.
