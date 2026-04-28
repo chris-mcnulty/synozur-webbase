@@ -19,6 +19,7 @@
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.1.4",
     "@google-cloud/storage": "^7.19.0",
     "@replit/connectors-sdk": "^0.4.0",
     "@workspace/api-zod": "workspace:*",

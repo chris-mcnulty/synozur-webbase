@@ -2,7 +2,11 @@ import { Storage, File } from "@google-cloud/storage";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
 import type { ObjectAclPolicy } from "../objectAcl";
-import type { AssetObjectRef, AssetStorageBackend } from "./types";
+import type {
+  AssetObjectRef,
+  AssetStorageBackend,
+  UploadObjectOptions,
+} from "./types";
 import { ObjectNotFoundError } from "./types";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
@@ -195,6 +199,24 @@ export class GcsAssetStorageBackend implements AssetStorageBackend {
   async deleteObject(ref: AssetObjectRef): Promise<void> {
     const { file } = asGcsRef(ref);
     await file.delete({ ignoreNotFound: true });
+  }
+
+  async uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
+    // Build the same `/objects/<uuid>` storageKey shape that the
+    // presigned-URL upload path produces, so downstream serializers
+    // don't have to care which path the bytes arrived through.
+    const objectId = randomUUID();
+    const privateObjectDir = this.getPrivateObjectDir();
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    await file.save(opts.body, {
+      contentType: opts.contentType,
+      metadata: { contentType: opts.contentType },
+      resumable: opts.body.length > 5 * 1024 * 1024,
+    });
+    const storageKey = `/objects/${objectId}`;
+    return makeRef(file, storageKey);
   }
 }
 

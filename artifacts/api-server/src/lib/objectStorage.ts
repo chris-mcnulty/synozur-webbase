@@ -14,7 +14,11 @@ import {
   ObjectPermission,
   canAccessByPolicy,
 } from "./objectAcl";
-import type { AssetObjectRef, AssetStorageBackend } from "./storage/types";
+import type {
+  AssetObjectRef,
+  AssetStorageBackend,
+  UploadObjectOptions,
+} from "./storage/types";
 import { ObjectNotFoundError } from "./storage/types";
 import { GcsAssetStorageBackend, objectStorageClient } from "./storage/gcsBackend";
 import { SpeAssetStorageBackend } from "./storage/speBackend";
@@ -70,6 +74,10 @@ export class ObjectStorageService {
 
   deleteObject(ref: AssetObjectRef): Promise<void> {
     return this.backend.deleteObject(ref);
+  }
+
+  uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
+    return this.backend.uploadObject(opts);
   }
 
   async trySetObjectEntityAclPolicy(
