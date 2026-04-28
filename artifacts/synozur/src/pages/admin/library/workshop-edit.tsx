@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, RefreshCw, Trash2, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Plus, RefreshCw, Save, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -265,13 +267,14 @@ export default function WorkshopEdit({ id }: Props) {
       </button>
 
       <form
-        className="space-y-6 max-w-4xl"
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
           saveMut.mutate();
         }}
       >
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="space-y-6 min-w-0">
         <Section title="Basics">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Title *">
@@ -317,15 +320,6 @@ export default function WorkshopEdit({ id }: Props) {
               onChange={(e) => update("shortDescription", e.target.value)}
             />
           </Field>
-          <div className="flex items-center gap-2">
-            <input
-              id="active"
-              type="checkbox"
-              checked={form.active}
-              onChange={(e) => update("active", e.target.checked)}
-            />
-            <Label htmlFor="active">Active (visible on public site)</Label>
-          </div>
         </Section>
 
         <Section title="Hero">
@@ -949,14 +943,26 @@ export default function WorkshopEdit({ id }: Props) {
             />
           </Field>
         </Section>
+        </div>{/* end left column */}
 
-        <Section
-          title="Service &amp; Solution"
-          description="Tag this workshop to a service and/or solution so it appears in filtered collateral rails."
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <aside className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Active</Label>
+              <Switch
+                checked={form.active}
+                onCheckedChange={(v) => update("active", v)}
+                disabled={!access?.isEditorOrAbove}
+              />
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Related content
+            </h3>
             <div>
-              <Label htmlFor="serviceId">Service</Label>
+              <Label className="text-sm font-medium">Related service</Label>
               <Select
                 value={form.serviceId ?? "__none__"}
                 onValueChange={(v) =>
@@ -964,7 +970,7 @@ export default function WorkshopEdit({ id }: Props) {
                 }
                 disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
               >
-                <SelectTrigger id="serviceId">
+                <SelectTrigger>
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
@@ -977,46 +983,46 @@ export default function WorkshopEdit({ id }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="solutionId">Solution</Label>
-              <Select
-                value={form.solutionId ?? "__none__"}
-                onValueChange={(v) =>
-                  update("solutionId", v === "__none__" ? null : v)
-                }
-                disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
-              >
-                <SelectTrigger id="solutionId">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {(form.serviceId
-                    ? solutionsForSelectedService
-                    : services.flatMap((s) => s.solutions)
-                  ).map((sol) => (
-                    <SelectItem key={sol.id} value={sol.id}>
-                      {sol.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </Section>
+            {(form.serviceId ? solutionsForSelectedService : services.flatMap((s) => s.solutions)).length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">Related solution</Label>
+                <Select
+                  value={form.solutionId ?? "__none__"}
+                  onValueChange={(v) =>
+                    update("solutionId", v === "__none__" ? null : v)
+                  }
+                  disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {(form.serviceId
+                      ? solutionsForSelectedService
+                      : services.flatMap((s) => s.solutions)
+                    ).map((sol) => (
+                      <SelectItem key={sol.id} value={sol.id}>
+                        {sol.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </Card>
 
-        <Section
-          title="Booking"
-          description="Optionally attach a Bookings card shown on the public workshop page."
-        >
-          <Field label="Booking calendar">
+          <Card className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Booking
+            </h3>
             <select
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={form.bookingId ?? ""}
               onChange={(e) => update("bookingId", e.target.value || null)}
               disabled={!access?.isEditorOrAbove}
             >
-              <option value="">No booking</option>
+              <option value="">No booking attached</option>
               {selectableBookings.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.title}
@@ -1024,49 +1030,76 @@ export default function WorkshopEdit({ id }: Props) {
                 </option>
               ))}
             </select>
-          </Field>
-        </Section>
+          </Card>
 
-        {!isNew && (
-          <Section title="Taxonomy">
-            <TaxonomyPicker
-              entityType="workshop"
-              entityId={id ?? null}
-              canWrite={!!access?.isEditorOrAbove}
-            />
-          </Section>
-        )}
-
-        {error && (
-          <div className="text-destructive text-sm" data-testid="text-form-error">
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 pt-2 flex-wrap">
-          <Button type="submit" disabled={saveMut.isPending} data-testid="button-save">
-            {saveMut.isPending ? "Saving…" : isNew ? "Create workshop" : "Save changes"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/library/workshops")}
-          >
-            Cancel
-          </Button>
           {!isNew && (
+            <Card className="p-4">
+              <TaxonomyPicker
+                entityType="workshop"
+                entityId={id ?? null}
+                canWrite={!!access?.isEditorOrAbove}
+              />
+            </Card>
+          )}
+
+          {!isNew && (
+            <Card className="p-4 space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => syncMut.mutate()}
+                disabled={syncMut.isPending || !access?.isEditorOrAbove}
+                className="w-full justify-start"
+                data-testid="button-sync-workshop-collateral"
+                title="Push this workshop into the collateral library so it appears in filtered rails"
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
+                {syncMut.isPending ? "Syncing…" : "Sync to library"}
+              </Button>
+            </Card>
+          )}
+
+          {error && (
+            <div className="text-destructive text-sm" data-testid="text-form-error">
+              {error}
+            </div>
+          )}
+
+          <Card className="p-4 space-y-2">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={saveMut.isPending || !access?.isEditorOrAbove}
+              data-testid="button-save"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {saveMut.isPending ? "Saving…" : isNew ? "Create workshop" : "Save changes"}
+            </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={syncMut.isPending}
-              onClick={() => syncMut.mutate()}
-              title="Push this workshop into the collateral library so it appears in filtered rails and the Library admin view"
+              className="w-full"
+              onClick={() => navigate("/library/workshops")}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncMut.isPending ? "animate-spin" : ""}`} />
-              {syncMut.isPending ? "Syncing…" : "Sync to library"}
+              Cancel
             </Button>
+          </Card>
+
+          {!isNew && existingQ.data && (
+            <Card className="p-4 space-y-2 text-xs text-muted-foreground">
+              <div>
+                Updated{" "}
+                {new Date(existingQ.data.updatedAt).toLocaleString("en-US", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </div>
+              <div className="font-mono break-all">{existingQ.data.id}</div>
+            </Card>
           )}
-        </div>
+        </aside>
+        </div>{/* end grid */}
       </form>
 
       <MediaPickerModal
