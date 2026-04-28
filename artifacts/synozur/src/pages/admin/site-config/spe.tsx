@@ -25,6 +25,12 @@ interface SpeStatus {
   activeBackend: string;
 }
 
+interface MigrationStatus {
+  totalMedia: number;
+  migratedToSpe: number;
+  awaitingMigration: number;
+}
+
 function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   return fetch(`${base}/api${path}`, {
@@ -129,6 +135,7 @@ function ContainerSlot({
 export default function SpeAdminPage() {
   const { toast } = useToast();
   const [status, setStatus] = useState<SpeStatus | null>(null);
+  const [migration, setMigration] = useState<MigrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [containerTypeDraft, setContainerTypeDraft] = useState("");
@@ -136,8 +143,14 @@ export default function SpeAdminPage() {
   async function refresh() {
     setLoading(true);
     try {
-      const data = await apiFetch<SpeStatus>("/admin/integrations/spe/status");
-      setStatus(data);
+      const [statusData, migrationData] = await Promise.all([
+        apiFetch<SpeStatus>("/admin/integrations/spe/status"),
+        apiFetch<MigrationStatus>("/admin/integrations/spe/migration-status").catch(
+          () => null,
+        ),
+      ]);
+      setStatus(statusData);
+      setMigration(migrationData);
     } catch (e) {
       toast({
         title: "Load failed",
@@ -152,6 +165,20 @@ export default function SpeAdminPage() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  // Poll the migration counts every 10s — cheap query, lets the panel
+  // tick during a CLI run without the operator having to reload.
+  useEffect(() => {
+    if (!status?.credentialsConfigured) return;
+    const tick = setInterval(() => {
+      apiFetch<MigrationStatus>("/admin/integrations/spe/migration-status")
+        .then(setMigration)
+        .catch(() => {
+          /* keep last value */
+        });
+    }, 10_000);
+    return () => clearInterval(tick);
+  }, [status?.credentialsConfigured]);
 
   useEffect(() => {
     if (status) setContainerTypeDraft(status.containerTypeId ?? "");
@@ -387,15 +414,71 @@ export default function SpeAdminPage() {
             </div>
           </Card>
 
-          {/* Phase 3 placeholder — migration status */}
-          <Card className="p-6 space-y-2 opacity-70">
-            <div className="text-lg font-semibold">Migration (Phase 3)</div>
-            <p className="text-sm text-muted-foreground">
-              The GCS → SPE migration script and its progress counters land
-              with Phase 3 (additive overlay on the <code>media</code> table).
-              Provisioning the container is the prerequisite; the rest of this
-              page lights up once that ships.
-            </p>
+          {/* Migration status — drives the GCS → SPE cutover. */}
+          <Card className="p-6 space-y-4">
+            <div>
+              <div className="text-lg font-semibold">Migration (GCS → SPE)</div>
+              <p className="text-sm text-muted-foreground">
+                Migration is run from the CLI, not this page. Counts below
+                refresh every 10s during a run. The GCS bytes are kept as
+                the rollback safety net — clearing
+                <code className="mx-1">media.spe_file_id</code>
+                reverts a row back to GCS without touching either backend.
+              </p>
+            </div>
+
+            {migration ? (
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <div className="text-3xl font-semibold tabular-nums">
+                    {migration.totalMedia.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total media rows
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-semibold tabular-nums">
+                    {migration.migratedToSpe.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Migrated to SPE
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-semibold tabular-nums">
+                    {migration.awaitingMigration.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Awaiting migration
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Counts unavailable.
+              </div>
+            )}
+
+            <div className="border-t border-border pt-4 space-y-2">
+              <div className="text-sm font-medium">Run the migration</div>
+              <pre className="rounded bg-muted px-3 py-2 text-xs overflow-x-auto">
+                {`# Dry-run first (no SPE or DB writes):
+pnpm --filter @workspace/api-server migrate:gcs-to-spe -- --dry-run
+
+# Migrate 10 rows as a smoke test:
+pnpm --filter @workspace/api-server migrate:gcs-to-spe -- --limit 10
+
+# Full run (resumable — re-running picks up where it left off):
+pnpm --filter @workspace/api-server migrate:gcs-to-spe`}
+              </pre>
+              <p className="text-xs text-muted-foreground">
+                The script is idempotent and additive: it only touches rows
+                where <code>spe_file_id IS NULL</code>, never deletes from
+                GCS, and never rewrites <code>storage_key</code>. Crash mid-run
+                is safe — re-invoke and it picks up.
+              </p>
+            </div>
           </Card>
         </>
       )}

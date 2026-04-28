@@ -12,9 +12,9 @@
 //   PATCH /admin/integrations/spe/settings          { speStorageEnabled?, speContainerTypeId? }
 
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, isNull, count } from "drizzle-orm";
 import { z } from "zod";
-import { db, siteSettingsTable } from "@workspace/db";
+import { db, siteSettingsTable, mediaTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { audit } from "../lib/audit";
 import { readSpeGraphConfigFromEnv, SpeGraphClient } from "../lib/storage/spe/graphClient";
@@ -234,6 +234,32 @@ router.patch(
       diff: updates,
     });
     res.json({ ok: true, updated: updates });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /admin/integrations/spe/migration-status
+// Aggregate counts for the admin UI's Migration panel. Cheap — three
+// indexed counts; safe to poll at human-scale intervals (every ~10s
+// during a migration run). The actual migrate work runs as a CLI
+// script; this endpoint just shows where it's gotten to.
+// ---------------------------------------------------------------------------
+router.get(
+  "/admin/integrations/spe/migration-status",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const [totalRow] = await db.select({ n: count() }).from(mediaTable);
+    const [pendingRow] = await db
+      .select({ n: count() })
+      .from(mediaTable)
+      .where(isNull(mediaTable.speFileId));
+    const total = totalRow?.n ?? 0;
+    const pending = pendingRow?.n ?? 0;
+    res.json({
+      totalMedia: total,
+      migratedToSpe: total - pending,
+      awaitingMigration: pending,
+    });
   },
 );
 
