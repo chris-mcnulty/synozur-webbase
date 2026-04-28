@@ -335,7 +335,14 @@ export default function AdminDashboard() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate" title={row.path}>
-                            {row.path}
+                            <a
+                              href={row.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {row.path}
+                            </a>
                           </div>
                           {row.title && (
                             <div className="text-xs text-muted-foreground truncate">{row.title}</div>
