@@ -16,8 +16,10 @@ Examples:
 - `wix_pages_2026-01-01_2026-04-28.csv` — per-page breakdown.
 - `wix_final_2026-05-01_2026-MM-DD.csv` — the final export taken at cutover.
 
-Use `_final_` in the filename for the cutover export so the importer can mark
-the batch as superseding any overlapping dates from earlier batches.
+Use `_final_` in the filename for the cutover export as a naming convention,
+but note that the importer only marks a batch as final when invoked with the
+`--final` flag. For the cutover export, include `--final` so the batch
+supersedes any overlapping dates from earlier batches.
 
 ## Expected shape (Wix Analytics)
 
