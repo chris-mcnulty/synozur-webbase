@@ -66,6 +66,8 @@ function serialize(e: PolarisEpisode) {
     durationSeconds: e.durationSeconds,
     transcriptHtml: e.transcriptHtml,
     artworkUrl: e.artworkUrl,
+    serviceId: e.serviceId ?? null,
+    solutionId: e.solutionId ?? null,
     status: e.status,
     publishedAt: e.publishedAt,
     unpublishedAt: e.unpublishedAt,
@@ -257,6 +259,8 @@ const EpisodeBody = z.object({
   ogImage: z.string().nullish(),
   active: z.boolean().optional(),
   sourceId: z.string().nullish(),
+  serviceId: z.string().uuid().nullish(),
+  solutionId: z.string().uuid().nullish(),
 });
 const EpisodePatch = EpisodeBody.partial();
 
@@ -319,6 +323,8 @@ router.post("/cms/polaris/episodes", ...adminGuard, async (req, res) => {
       ogImage: d.ogImage ?? null,
       active: d.active ?? true,
       sourceId: d.sourceId ?? null,
+      serviceId: d.serviceId ?? null,
+      solutionId: d.solutionId ?? null,
     })
     .returning();
   await audit({
@@ -368,6 +374,8 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     "ogImage",
     "active",
     "sourceId",
+    "serviceId",
+    "solutionId",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
@@ -575,6 +583,8 @@ router.post(
       featured: episode.featured,
       featuredRank: episode.featuredRank ?? null,
       sourceId: `polaris_episode:${id}`,
+      serviceId: episode.serviceId ?? null,
+      solutionId: episode.solutionId ?? null,
       updatedAt: new Date(),
     };
 
@@ -621,8 +631,6 @@ router.post(
           pillar: null,
           videoUrl: null,
           downloadUrl: null,
-          serviceId: null,
-          solutionId: null,
         })
         .returning();
       row = created;

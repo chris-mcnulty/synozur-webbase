@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowRight, CalendarDays, Megaphone, Mic, PenLine, Sparkles } from "lucide-react";
-import { api, type BookingDto } from "@/lib/api";
+import { ArrowRight, CalendarDays, PenLine } from "lucide-react";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
+import { BookingCard } from "@/components/BookingCard";
 
 const PARENT_PAGE_DEFAULTS = {
   heroEyebrow: "Get Started",
@@ -15,59 +16,6 @@ const PARENT_PAGE_DEFAULTS = {
   seoDescription:
     "Book time with The Synozur Alliance — general intros, offer-specific calendars, and conference windows.",
 };
-
-const SCOPE_META: Record<
-  string,
-  { label: string; icon: typeof Sparkles }
-> = {
-  general: { label: "Always available", icon: Sparkles },
-  offer: { label: "Offer", icon: Megaphone },
-  conference: { label: "Conference", icon: Mic },
-};
-
-function formatRange(b: BookingDto): string | null {
-  if (!b.startsAt && !b.endsAt) return null;
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  if (b.startsAt && b.endsAt) return `${fmt(b.startsAt)} – ${fmt(b.endsAt)}`;
-  if (b.startsAt) return `Opens ${fmt(b.startsAt)}`;
-  if (b.endsAt) return `Through ${fmt(b.endsAt)}`;
-  return null;
-}
-
-function BookingCard({ booking }: { booking: BookingDto }) {
-  const meta = SCOPE_META[booking.scope] ?? SCOPE_META.general;
-  const Icon = meta.icon;
-  const range = formatRange(booking);
-  return (
-    <Link
-      href={`/start/${booking.slug}`}
-      className="group flex flex-col rounded-2xl border border-border bg-card p-6 hover-elevate transition-colors"
-      data-testid={`booking-card-${booking.slug}`}
-    >
-      <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-4">
-        <Icon className="h-3.5 w-3.5" />
-        <span>{meta.label}</span>
-        {range && <span className="text-muted-foreground normal-case tracking-normal">· {range}</span>}
-      </div>
-      <h3 className="text-2xl font-semibold mb-2 group-hover:text-primary transition-colors">
-        {booking.title}
-      </h3>
-      {booking.teaser && (
-        <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-          {booking.teaser}
-        </p>
-      )}
-      <div className="mt-auto inline-flex items-center gap-2 text-sm font-medium text-primary">
-        Book time <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-      </div>
-    </Link>
-  );
-}
 
 export default function Start() {
   const copy = useParentPage("start", PARENT_PAGE_DEFAULTS);

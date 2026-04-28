@@ -37,6 +37,7 @@ import {
   type WhitePaperDocType,
   type WhitePaperStatus,
   type WhitePaperDocumentAsset,
+  type ServiceWithSolutions,
 } from "@/lib/api";
 import { fileExtensionLabel, formatBytes } from "@/lib/asset-kind";
 
@@ -93,6 +94,8 @@ interface FormState {
   status: WhitePaperStatus;
   publishedAt: string;
   unpublishedAt: string;
+  serviceId: string;
+  solutionId: string;
   featured: boolean;
   featuredRank: string;
   seoTitle: string;
@@ -121,6 +124,8 @@ const EMPTY: FormState = {
   status: "draft",
   publishedAt: "",
   unpublishedAt: "",
+  serviceId: "",
+  solutionId: "",
   featured: false,
   featuredRank: "",
   seoTitle: "",
@@ -161,6 +166,8 @@ function fromItem(item: WhitePaperDto): FormState {
     status: item.status,
     publishedAt: toDateInput(item.publishedAt),
     unpublishedAt: toDateInput(item.unpublishedAt),
+    serviceId: item.serviceId ?? "",
+    solutionId: item.solutionId ?? "",
     featured: item.featured,
     featuredRank: item.featuredRank == null ? "" : String(item.featuredRank),
     seoTitle: item.seoTitle ?? "",
@@ -189,6 +196,8 @@ function toBody(f: FormState): WhitePaperInput {
     documentUrl: f.documentUrl || null,
     documentAssetId: f.documentAssetId,
     documentMediaId: f.documentMediaId,
+    serviceId: f.serviceId || null,
+    solutionId: f.solutionId || null,
     externalUrl: f.externalUrl || null,
     pageCount: f.pageCount === "" ? null : Number(f.pageCount),
     status: f.status,
@@ -220,9 +229,18 @@ export default function WhitePaperEdit({ id }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
+
   const [showDocumentPicker, setShowDocumentPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const allServices: ServiceWithSolutions[] = servicesQ.data?.items ?? [];
+  const selectedService = allServices.find((s) => s.id === form.serviceId) ?? null;
+  const availableSolutions = selectedService?.solutions ?? [];
 
   useEffect(() => {
     if (itemQ.data && !loaded) {
@@ -795,6 +813,56 @@ export default function WhitePaperEdit({ id }: Props) {
               )}
             </Card>
           )}
+
+          <Card className="p-4 space-y-4">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Related content
+            </h3>
+            <div>
+              <Label className="text-sm font-medium">Related service</Label>
+              <Select
+                value={form.serviceId || "__none__"}
+                onValueChange={(v) =>
+                  update({ serviceId: v === "__none__" ? "" : v, solutionId: "" })
+                }
+                disabled={!canWrite}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {allServices.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.serviceId && availableSolutions.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">Related solution</Label>
+                <Select
+                  value={form.solutionId || "__none__"}
+                  onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
+                  disabled={!canWrite}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {availableSolutions.map((sol) => (
+                      <SelectItem key={sol.id} value={sol.id}>
+                        {sol.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </Card>
 
           {!isNew && itemQ.data && (
             <Card className="p-4 space-y-2 text-xs text-muted-foreground">

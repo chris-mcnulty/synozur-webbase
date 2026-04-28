@@ -672,6 +672,222 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // 19. Bookings native (Graph) integration.
+    //
+    // 19a. site_settings.bookings_render_mode — global toggle between
+    //      "iframe" (default, Microsoft-hosted page in an iframe) and
+    //      "native" (custom on-brand React flow backed by Microsoft Graph).
+    //      Defaulting to "iframe" preserves existing behavior on upgrade.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS bookings_render_mode text NOT NULL DEFAULT 'iframe';
+    `);
+
+    // 19b. bookings.{ms_business_id, ms_default_service_id} — per-row Graph
+    //      configuration. Both nullable; rows missing ms_business_id always
+    //      render via iframe even when the site mode is "native".
+    await db.execute(sql`
+      ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS ms_business_id text,
+        ADD COLUMN IF NOT EXISTS ms_default_service_id text;
+    `);
+
+    // 20. site_settings: *_media_id UUID columns — PR55 asset-library migration.
+    //
+    // PR55 added parallel UUID FK columns alongside the legacy integer *_asset_id
+    // columns so the media picker can write to the unified media table while old
+    // rows keep resolving through the legacy asset fallback. These columns were
+    // added to the Drizzle schema but the migration step was missing, causing
+    // every site-settings read to 500 with "column does not exist".
+    //
+    // All five columns are nullable; a null value means "use the legacy asset
+    // column (if any) or the built-in default". FK enforcement is omitted here
+    // to keep the ALTER idempotent — the route layer validates UUIDs before
+    // writing them (PR55 review: siteSettings PATCH rejects unknown UUIDs with
+    // a 400).
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_hero_image_media_id    uuid,
+        ADD COLUMN IF NOT EXISTS home_editorial_image_media_id uuid,
+        ADD COLUMN IF NOT EXISTS seo_default_og_image_media_id uuid,
+        ADD COLUMN IF NOT EXISTS org_logo_media_id           uuid,
+        ADD COLUMN IF NOT EXISTS home_hero_video_media_id    uuid;
+    `);
+
+    // 21. Linked bookings on content pages — optional FK from services,
+    //     solutions, workshops, and applications to a booking row. When set,
+    //     the public detail page renders a discreet BookingCard that links
+    //     directly to /start/:slug instead of requiring the visitor to
+    //     navigate to the /start index first.
+    await db.execute(sql`
+      ALTER TABLE services
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE workshops
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE applications
+        ADD COLUMN IF NOT EXISTS booking_id uuid REFERENCES bookings(id) ON DELETE SET NULL;
+    `);
+
+    // 22. Service / solution tagging for Polaris podcast episodes — lets
+    //     editors associate an episode with the service or solution it covers
+    //     so episode detail pages can cross-link to the relevant offer.
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES services(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+
+    // 23. White papers: document_media_id — UUID FK to the media table so
+    //     uploaded PDF documents can be tracked in the media library alongside
+    //     the legacy document_asset_id / document_url fields.
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS document_media_id uuid REFERENCES media(id) ON DELETE SET NULL;
+    `);
+
+    // 24. White papers: service_id + solution_id — associate a document with a
+    //     service and optionally one of that service's solutions (mirrors the
+    //     same FK pair added to polaris_episodes in step 22).
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES services(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE white_papers
+        ADD COLUMN IF NOT EXISTS solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+
+    // 25. Solutions: accelerators_html + faq_html — rich-text HTML fields for
+    //     the Accelerators / Zenith callout section and the FAQ section on each
+    //     solution detail page. Editors can now manage this content directly
+    //     from the admin without running a seed script.
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS accelerators_html text,
+        ADD COLUMN IF NOT EXISTS faq_html text;
+    `);
+
+    // 26. Collateral type enum: add 'workshop' value so workshops can be synced
+    //     into the library (collateral table) the same way videos, case studies,
+    //     and events are.
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE collateral_type ADD VALUE IF NOT EXISTS 'workshop';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    // 27. Legacy traffic ingestion — PR58. Adds provenance columns to the live
+    //     traffic_* tables so bulk-imported Wix Analytics rows live alongside
+    //     native first-party tracking and YTD reporting reads from one place.
+    //     Also creates the import-batch and unmapped-path triage tables.
+    //
+    //     Defaults preserve existing rows as `source_system = 'native'` so
+    //     reporting is unaffected until a legacy import actually runs.
+    await db.execute(sql`
+      ALTER TABLE traffic_sessions
+        ADD COLUMN IF NOT EXISTS source_system text NOT NULL DEFAULT 'native',
+        ADD COLUMN IF NOT EXISTS import_batch_id uuid,
+        ADD COLUMN IF NOT EXISTS legacy_session_key text;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_sessions_source_system_idx
+        ON traffic_sessions (source_system, first_seen_at);
+    `);
+    // Composite unique index on (source_system, legacy_session_key) so a
+    // second legacy source (e.g. ga4) can't collide with wix keys, and so
+    // ON CONFLICT inference works without a partial-index predicate. Drops
+    // any earlier index name a prior deploy may have created (the original
+    // partial single-column index, or an interim short-named composite).
+    await db.execute(sql`DROP INDEX IF EXISTS traffic_sessions_legacy_session_key_key;`);
+    await db.execute(sql`DROP INDEX IF EXISTS traffic_sessions_source_legacy_key_key;`);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS traffic_sessions_source_system_legacy_session_key_key
+        ON traffic_sessions (source_system, legacy_session_key);
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE traffic_pageviews
+        ADD COLUMN IF NOT EXISTS source_system text NOT NULL DEFAULT 'native',
+        ADD COLUMN IF NOT EXISTS import_batch_id uuid,
+        ADD COLUMN IF NOT EXISTS pageview_count integer NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS resolved_path text;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_pageviews_source_system_idx
+        ON traffic_pageviews (source_system, viewed_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_pageviews_resolved_path_idx
+        ON traffic_pageviews (resolved_path, viewed_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_traffic_batches (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_system text NOT NULL,
+        source_file text NOT NULL,
+        source_file_sha256 text NOT NULL,
+        range_from timestamptz,
+        range_to timestamptz,
+        row_count integer NOT NULL DEFAULT 0,
+        sessions_inserted integer NOT NULL DEFAULT 0,
+        pageviews_inserted integer NOT NULL DEFAULT 0,
+        unmapped_count integer NOT NULL DEFAULT 0,
+        is_final boolean NOT NULL DEFAULT false,
+        notes text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS legacy_traffic_batches_file_sha_key
+        ON legacy_traffic_batches (source_system, source_file_sha256);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_batches_created_at_idx
+        ON legacy_traffic_batches (created_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_traffic_unmapped (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_system text NOT NULL,
+        source_path text NOT NULL,
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        occurrences integer NOT NULL DEFAULT 1,
+        pageviews integer NOT NULL DEFAULT 0,
+        sample_page_type text,
+        notes text,
+        resolved_at timestamptz,
+        resolved_to_path text,
+        sample jsonb
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS legacy_traffic_unmapped_source_key
+        ON legacy_traffic_unmapped (source_system, source_path);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_unmapped_last_seen_idx
+        ON legacy_traffic_unmapped (last_seen_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_unmapped_resolved_idx
+        ON legacy_traffic_unmapped (resolved_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

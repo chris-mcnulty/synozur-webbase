@@ -113,6 +113,18 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [title, author, publishedAt, updatedAt]
+            default: publishedAt
+        - in: query
+          name: sortDir
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
       responses:
         '200':
           description: Page of posts
@@ -3718,6 +3730,15 @@ components:
           type: string
           enum: [cosmic, aurora]
           default: cosmic
+        bookingsRenderMode:
+          description: >
+            Global rendering mode for /start booking pages. "iframe" embeds
+            Microsoft's hosted Bookings page; "native" renders an on-brand
+            React flow against Microsoft Graph (requires MS_BOOKINGS_*
+            credentials and a populated msBusinessId on the booking).
+          type: string
+          enum: [iframe, native]
+          default: iframe
         homeHeroImageUrl:
           type:
             - string
@@ -3822,6 +3843,12 @@ components:
           type: string
           enum: [cosmic, aurora]
           default: cosmic
+        bookingsRenderMode:
+          description: >
+            Global rendering mode for /start booking pages. See PublicSiteSettings.
+          type: string
+          enum: [iframe, native]
+          default: iframe
         homeHeroImageAssetId:
           type:
             - integer
@@ -4031,6 +4058,9 @@ components:
         siteTheme:
           type: string
           enum: [cosmic, aurora]
+        bookingsRenderMode:
+          type: string
+          enum: [iframe, native]
         homeHeroImageAssetId:
           type:
             - integer
@@ -4882,6 +4912,19 @@ components:
           type:
             - string
             - 'null'
+        acceleratorsHtml:
+          type:
+            - string
+            - 'null'
+        faqHtml:
+          type:
+            - string
+            - 'null'
+        bookingId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         sourceId:
           type:
             - string
@@ -5266,6 +5309,19 @@ components:
           type:
             - string
             - 'null'
+        acceleratorsHtml:
+          type:
+            - string
+            - 'null'
+        faqHtml:
+          type:
+            - string
+            - 'null'
+        bookingId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         status:
           type: string
           enum: [draft, scheduled, published, archived]

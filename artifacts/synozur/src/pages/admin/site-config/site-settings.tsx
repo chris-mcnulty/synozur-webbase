@@ -34,6 +34,7 @@ export default function AdminSiteSettings() {
   const [spamDomainInput, setSpamDomainInput] = useState("");
   type SiteTheme = "cosmic" | "aurora";
   type HeroBackgroundType = "image" | "video";
+  type BookingsMode = "iframe" | "native";
 
   useEffect(() => {
     if (data && requireConsent === null) {
@@ -107,10 +108,14 @@ export default function AdminSiteSettings() {
   const currentHeroBgType: HeroBackgroundType =
     (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) === "video" ? "video" : "image";
 
+  const currentBookingsMode: BookingsMode =
+    (data?.bookingsRenderMode as BookingsMode | null | undefined) === "native" ? "native" : "iframe";
+
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
     requireCookieConsent: current,
     homeHeroBackgroundType: currentHeroBgType,
     siteTheme: currentTheme,
+    bookingsRenderMode: currentBookingsMode,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
     homeHeroImageMediaId: data?.homeHeroImageMediaId ?? null,
     homeHeroVideoAssetId: data?.homeHeroVideoAssetId ?? null,
@@ -238,6 +243,56 @@ export default function AdminSiteSettings() {
                         />
                       ))}
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Bookings render mode</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                How <code>/start</code> booking pages render. <strong>Iframe</strong> embeds
+                Microsoft's hosted page (zero config; cross-origin so it can't be themed).
+                <strong> Integrated</strong> calls Microsoft Graph from the api-server and
+                renders an on-brand React flow — requires the <code>ENTRA_*</code>{" "}
+                env vars and a populated Bookings business id on each booking. Bookings
+                without a business id fall back to the iframe even in integrated mode.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(["iframe", "native"] as const).map((mode) => {
+                const active = currentBookingsMode === mode;
+                const label = mode === "iframe" ? "Iframe (default)" : "Integrated (Graph)";
+                const description =
+                  mode === "iframe"
+                    ? "Microsoft-hosted page embedded as-is. No backend setup."
+                    : "On-brand React flow against Microsoft Graph. Uses ENTRA_* credentials.";
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={updateMutation.isPending}
+                    data-testid={`bookings-mode-${mode}`}
+                    onClick={() =>
+                      updateMutation.mutate(buildPayload({ bookingsRenderMode: mode }))
+                    }
+                    className={`flex-1 text-left rounded-lg border-2 p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                      active
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">{label}</span>
+                      {active && (
+                        <span className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{description}</p>
                   </button>
                 );
               })}

@@ -49,6 +49,8 @@ export default function BookingForm({ id }: Props) {
     active: true,
     seoTitle: null,
     seoDescription: null,
+    msBusinessId: null,
+    msDefaultServiceId: null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +75,8 @@ export default function BookingForm({ id }: Props) {
         active: existing.active,
         seoTitle: existing.seoTitle,
         seoDescription: existing.seoDescription,
+        msBusinessId: existing.msBusinessId,
+        msDefaultServiceId: existing.msDefaultServiceId,
       });
     }
   }, [existing]);
@@ -272,6 +276,52 @@ export default function BookingForm({ id }: Props) {
               </div>
             </div>
           </div>
+
+          <fieldset className="rounded-md border border-border p-4 space-y-4">
+            <legend className="px-1 text-xs uppercase tracking-widest text-muted-foreground">
+              Native (Microsoft Graph) — optional
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              When the site-level <em>Bookings render mode</em> is set to{" "}
+              <strong>native</strong>, bookings with a Microsoft Graph business
+              id render an on-brand React flow instead of the iframe. Leave
+              both blank to always render this booking via the iframe (even in
+              native mode).
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="msBusinessId">Bookings business id</Label>
+                <Input
+                  id="msBusinessId"
+                  placeholder="e.g. NorthStar@contoso.onmicrosoft.com or a GUID"
+                  value={form.msBusinessId ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, msBusinessId: e.target.value || null })
+                  }
+                  data-testid="input-msBusinessId"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The path segment after{" "}
+                  <code>/solutions/bookingBusinesses/</code> in Microsoft Graph.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="msDefaultServiceId">Default service id (optional)</Label>
+                <Input
+                  id="msDefaultServiceId"
+                  placeholder="Pre-select a service when the business has more than one"
+                  value={form.msDefaultServiceId ?? ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      msDefaultServiceId: e.target.value || null,
+                    })
+                  }
+                  data-testid="input-msDefaultServiceId"
+                />
+              </div>
+            </div>
+          </fieldset>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

@@ -32,6 +32,7 @@ export interface TrafficFilters {
   browser?: string;
   source?: "direct" | "organic" | "ai" | "referral" | "social" | "paid" | "internal";
   includeBots?: "true" | "false" | "only";
+  limit?: number;
 }
 
 export function buildQuery(filters: TrafficFilters): string {

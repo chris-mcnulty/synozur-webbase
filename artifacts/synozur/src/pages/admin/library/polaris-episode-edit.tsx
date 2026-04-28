@@ -25,6 +25,7 @@ import {
   type PolarisEpisodeDto,
   type PolarisEpisodeInput,
   type ArtifactStatus,
+  type ServiceWithSolutions,
 } from "@/lib/api";
 import { BookOpen, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 
@@ -70,6 +71,8 @@ interface FormState {
   seoDescription: string;
   ogImage: string;
   active: boolean;
+  serviceId: string;
+  solutionId: string;
 }
 
 const EMPTY: FormState = {
@@ -93,6 +96,8 @@ const EMPTY: FormState = {
   seoDescription: "",
   ogImage: "",
   active: true,
+  serviceId: "",
+  solutionId: "",
 };
 
 function toDateInput(iso: string | null | undefined): string {
@@ -124,6 +129,8 @@ function fromItem(item: PolarisEpisodeDto): FormState {
     seoDescription: item.seoDescription ?? "",
     ogImage: item.ogImage ?? "",
     active: item.active,
+    serviceId: item.serviceId ?? "",
+    solutionId: item.solutionId ?? "",
   };
 }
 
@@ -149,6 +156,8 @@ function toBody(f: FormState): PolarisEpisodeInput {
     seoDescription: f.seoDescription || null,
     ogImage: f.ogImage || null,
     active: f.active,
+    serviceId: f.serviceId || null,
+    solutionId: f.solutionId || null,
   };
 }
 
@@ -191,6 +200,14 @@ export default function PolarisEpisodeEdit({ id }: Props) {
     qc.invalidateQueries({ queryKey: ["admin-polaris-episode", id] });
     qc.invalidateQueries({ queryKey: ["polaris-episodes"] });
   };
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const allServices: ServiceWithSolutions[] = servicesQ.data?.items ?? [];
+  const selectedService = allServices.find((s) => s.id === form.serviceId) ?? null;
+  const availableSolutions = selectedService?.solutions ?? [];
 
   const collateralLinkQ = useQuery({
     queryKey: ["polaris-collateral-link", id],
@@ -532,6 +549,53 @@ export default function PolarisEpisodeEdit({ id }: Props) {
             />
           </Card>
 
+          <Card className="p-4 space-y-3">
+            <Label className="text-sm font-medium">Related service</Label>
+            <Select
+              value={form.serviceId || "__none__"}
+              onValueChange={(v) => {
+                const next = v === "__none__" ? "" : v;
+                update({ serviceId: next, solutionId: "" });
+              }}
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-polaris-service">
+                <SelectValue placeholder="No service" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No service</SelectItem>
+                {allServices.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {availableSolutions.length > 0 && (
+              <>
+                <Label className="text-sm font-medium">Related solution</Label>
+                <Select
+                  value={form.solutionId || "__none__"}
+                  onValueChange={(v) => update({ solutionId: v === "__none__" ? "" : v })}
+                  disabled={!canWrite}
+                >
+                  <SelectTrigger data-testid="select-polaris-solution">
+                    <SelectValue placeholder="No solution" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No solution</SelectItem>
+                    {availableSolutions.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+          </Card>
+
           {!isNew && (
             <Card className="p-4">
               <TaxonomyPicker
@@ -576,7 +640,7 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                       data-testid="btn-collateral-sync"
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      {syncCollateralMut.isPending ? "Syncing…" : "Sync latest changes"}
+                      {syncCollateralMut.isPending ? "Syncing…" : "Sync to library"}
                     </Button>
                     <Button
                       type="button"

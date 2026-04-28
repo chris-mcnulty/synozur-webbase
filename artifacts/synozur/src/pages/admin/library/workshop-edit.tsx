@@ -1,11 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Plus, RefreshCw, Save, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -18,6 +27,7 @@ import {
   type WorkshopDto,
   type WorkshopInput,
 } from "@/lib/api-workshops";
+import { api, type BookingDto } from "@/lib/api";
 
 interface Props {
   id?: string;
@@ -178,9 +188,39 @@ export default function WorkshopEdit({ id }: Props) {
       faq: w.faq,
       seo: w.seo,
       displayOrder: w.displayOrder,
+      serviceId: w.serviceId ?? null,
+      solutionId: w.solutionId ?? null,
+      bookingId: w.bookingId ?? null,
       active: w.active,
     });
   }, [existingQ.data]);
+
+  const bookingsQ = useQuery({ queryKey: ["admin-bookings"], queryFn: () => api.adminListBookings() });
+  const allBookings: BookingDto[] = bookingsQ.data?.items ?? [];
+  const selectableBookings: BookingDto[] = allBookings.filter((b) => {
+    if (b.id === form.bookingId) return true;
+    if (!b.active) return false;
+    if (b.endsAt && new Date(b.endsAt) <= new Date()) return false;
+    return true;
+  });
+  const isStaleSelection = (b: BookingDto): boolean =>
+    !b.active || (!!b.endsAt && new Date(b.endsAt) <= new Date());
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const services = servicesQ.data?.items ?? [];
+  const solutionsForSelectedService = useMemo(
+    () => services.find((s) => s.id === form.serviceId)?.solutions ?? [],
+    [services, form.serviceId],
+  );
+
+  const syncMut = useMutation({
+    mutationFn: () => workshopsApi.syncToCollateral(id!),
+    onSuccess: () => toast({ title: "Synced to collateral library" }),
+    onError: (e: Error) => toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
+  });
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -227,13 +267,14 @@ export default function WorkshopEdit({ id }: Props) {
       </button>
 
       <form
-        className="space-y-6 max-w-4xl"
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
           saveMut.mutate();
         }}
       >
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="space-y-6 min-w-0">
         <Section title="Basics">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Title *">
@@ -279,15 +320,6 @@ export default function WorkshopEdit({ id }: Props) {
               onChange={(e) => update("shortDescription", e.target.value)}
             />
           </Field>
-          <div className="flex items-center gap-2">
-            <input
-              id="active"
-              type="checkbox"
-              checked={form.active}
-              onChange={(e) => update("active", e.target.checked)}
-            />
-            <Label htmlFor="active">Active (visible on public site)</Label>
-          </div>
         </Section>
 
         <Section title="Hero">
@@ -911,35 +943,163 @@ export default function WorkshopEdit({ id }: Props) {
             />
           </Field>
         </Section>
+        </div>{/* end left column */}
 
-        {!isNew && (
-          <Section title="Taxonomy">
-            <TaxonomyPicker
-              entityType="workshop"
-              entityId={id ?? null}
-              canWrite={!!access?.isEditorOrAbove}
-            />
-          </Section>
-        )}
+        <aside className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Active</Label>
+              <Switch
+                checked={form.active}
+                onCheckedChange={(v) => update("active", v)}
+                disabled={!access?.isEditorOrAbove}
+              />
+            </div>
+          </Card>
 
-        {error && (
-          <div className="text-destructive text-sm" data-testid="text-form-error">
-            {error}
-          </div>
-        )}
+          <Card className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Related content
+            </h3>
+            <div>
+              <Label className="text-sm font-medium">Related service</Label>
+              <Select
+                value={form.serviceId ?? "__none__"}
+                onValueChange={(v) =>
+                  update("serviceId", v === "__none__" ? null : v)
+                }
+                disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {(form.serviceId ? solutionsForSelectedService : services.flatMap((s) => s.solutions)).length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">Related solution</Label>
+                <Select
+                  value={form.solutionId ?? "__none__"}
+                  onValueChange={(v) =>
+                    update("solutionId", v === "__none__" ? null : v)
+                  }
+                  disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {(form.serviceId
+                      ? solutionsForSelectedService
+                      : services.flatMap((s) => s.solutions)
+                    ).map((sol) => (
+                      <SelectItem key={sol.id} value={sol.id}>
+                        {sol.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </Card>
 
-        <div className="flex items-center gap-3 pt-2">
-          <Button type="submit" disabled={saveMut.isPending} data-testid="button-save">
-            {saveMut.isPending ? "Saving…" : isNew ? "Create workshop" : "Save changes"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/library/workshops")}
-          >
-            Cancel
-          </Button>
-        </div>
+          <Card className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Booking
+            </h3>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.bookingId ?? ""}
+              onChange={(e) => update("bookingId", e.target.value || null)}
+              disabled={!access?.isEditorOrAbove}
+            >
+              <option value="">No booking attached</option>
+              {selectableBookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title}
+                  {isStaleSelection(b) ? " (inactive)" : ""}
+                </option>
+              ))}
+            </select>
+          </Card>
+
+          {!isNew && (
+            <Card className="p-4">
+              <TaxonomyPicker
+                entityType="workshop"
+                entityId={id ?? null}
+                canWrite={!!access?.isEditorOrAbove}
+              />
+            </Card>
+          )}
+
+          {!isNew && (
+            <Card className="p-4 space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => syncMut.mutate()}
+                disabled={syncMut.isPending || !access?.isEditorOrAbove}
+                className="w-full justify-start"
+                data-testid="button-sync-workshop-collateral"
+                title="Push this workshop into the collateral library so it appears in filtered rails"
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${syncMut.isPending ? "animate-spin" : ""}`} />
+                {syncMut.isPending ? "Syncing…" : "Sync to library"}
+              </Button>
+            </Card>
+          )}
+
+          {error && (
+            <div className="text-destructive text-sm" data-testid="text-form-error">
+              {error}
+            </div>
+          )}
+
+          <Card className="p-4 space-y-2">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={saveMut.isPending || !access?.isEditorOrAbove}
+              data-testid="button-save"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {saveMut.isPending ? "Saving…" : isNew ? "Create workshop" : "Save changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/library/workshops")}
+            >
+              Cancel
+            </Button>
+          </Card>
+
+          {!isNew && existingQ.data && (
+            <Card className="p-4 space-y-2 text-xs text-muted-foreground">
+              <div>
+                Updated{" "}
+                {new Date(existingQ.data.updatedAt).toLocaleString("en-US", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </div>
+              <div className="font-mono break-all">{existingQ.data.id}</div>
+            </Card>
+          )}
+        </aside>
+        </div>{/* end grid */}
       </form>
 
       <MediaPickerModal

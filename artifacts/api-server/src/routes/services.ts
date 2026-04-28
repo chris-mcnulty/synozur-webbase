@@ -144,6 +144,7 @@ const ServiceBody = z.object({
   unpublishedAt: z.string().nullish(),
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
+  bookingId: z.string().uuid().nullish(),
 });
 const ServicePatch = ServiceBody.partial();
 
@@ -170,12 +171,15 @@ const SolutionBody = z.object({
   buttonUrl: z.string().nullish(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
+  acceleratorsHtml: z.string().nullish(),
+  faqHtml: z.string().nullish(),
   status: z.enum(ARTIFACT_STATUSES).optional(),
   publishedAt: z.string().nullish(),
   unpublishedAt: z.string().nullish(),
   pillar: z.enum(COLLATERAL_PILLARS).nullish(),
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
+  bookingId: z.string().uuid().nullish(),
 });
 const SolutionPatch = SolutionBody.partial();
 
@@ -246,6 +250,7 @@ router.post("/cms/services", ...adminGuard, async (req, res) => {
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
       active: d.active ?? true,
+      bookingId: d.bookingId ?? null,
     })
     .returning();
   if (d.tagIds) {
@@ -287,6 +292,7 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  if (d.bookingId !== undefined) updates.bookingId = d.bookingId ?? null;
   // #61: snapshot prior state before overwriting — both ops in one transaction
   // so a failed update cannot leave an orphan revision row.
   const [updated] = await db.transaction(async (tx) => {
@@ -376,11 +382,14 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       buttonUrl: d.buttonUrl ?? null,
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
+      acceleratorsHtml: d.acceleratorsHtml ?? null,
+      faqHtml: d.faqHtml ?? null,
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
       pillar: d.pillar ?? null,
       active: d.active ?? true,
+      bookingId: d.bookingId ?? null,
     })
     .returning();
   if (d.tagIds) {
@@ -418,12 +427,14 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "ourApproachTitle", "ourApproachTextHtml", "blurbHtml", "blurbCopy",
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
     "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
+    "acceleratorsHtml", "faqHtml",
     "status", "pillar", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
   if (d.publishedAt !== undefined) updates.publishedAt = parseDate(d.publishedAt);
   if (d.unpublishedAt !== undefined) updates.unpublishedAt = parseDate(d.unpublishedAt);
+  if (d.bookingId !== undefined) updates.bookingId = d.bookingId ?? null;
   // #61: snapshot prior state before overwriting — both ops in one transaction
   // so a failed update cannot leave an orphan revision row.
   const [updated] = await db.transaction(async (tx) => {
@@ -702,6 +713,8 @@ const SOLUTION_RESTORABLE_FIELDS = [
   "seoTitle",
   "seoDescription",
   "pillar",
+  "acceleratorsHtml",
+  "faqHtml",
 ] as const;
 
 router.get("/cms/services/:id/revisions", ...readGuard, async (req, res) => {

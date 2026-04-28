@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   index,
+  uniqueIndex,
   jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -44,12 +45,31 @@ export const trafficSessionsTable = pgTable(
     isBot: boolean("is_bot").notNull().default(false),
     botCategory: text("bot_category"), // ai | search | social | other
     botName: text("bot_name"),
+
+    // Provenance. `native` is the live first-party tracker; `wix` (and any
+    // future legacy source) is bulk-imported from an analytics export. The
+    // column lets reporting filter to a single source while letting YTD
+    // dashboards include everything by default.
+    sourceSystem: text("source_system").notNull().default("native"),
+    importBatchId: uuid("import_batch_id"),
+    // Stable per-row key for legacy imports so re-running the same export is
+    // idempotent. Populated only when sourceSystem != 'native'.
+    legacySessionKey: text("legacy_session_key"),
   },
   (t) => [
     index("traffic_sessions_first_seen_idx").on(t.firstSeenAt),
     index("traffic_sessions_is_bot_idx").on(t.isBot, t.firstSeenAt),
     index("traffic_sessions_country_idx").on(t.country),
     index("traffic_sessions_source_idx").on(t.trafficSource),
+    index("traffic_sessions_source_system_idx").on(t.sourceSystem, t.firstSeenAt),
+    // Composite uniqueness on (sourceSystem, legacySessionKey) so future
+    // legacy sources (e.g. a second analytics export) can't collide with
+    // existing keys; live native rows have legacy_session_key = NULL and
+    // are excluded by Postgres null-distinctness semantics.
+    uniqueIndex("traffic_sessions_source_system_legacy_session_key_key").on(
+      t.sourceSystem,
+      t.legacySessionKey,
+    ),
   ],
 );
 
@@ -72,12 +92,27 @@ export const trafficPageviewsTable = pgTable(
     // Populated lazily by a client beacon on unload. Nullable.
     timeOnPageMs: integer("time_on_page_ms"),
     scrollDepthPct: integer("scroll_depth_pct"),
+
+    // See trafficSessionsTable.sourceSystem. A pageview row mirrors its
+    // session's provenance, denormalized so reporting queries don't need to
+    // join the sessions table just to filter by source.
+    sourceSystem: text("source_system").notNull().default("native"),
+    importBatchId: uuid("import_batch_id"),
+    // For legacy imports each Wix detail row already aggregates multiple
+    // pageviews of the same path within a session. Storing the count rather
+    // than expanding to N rows keeps the table size bounded.
+    pageviewCount: integer("pageview_count").notNull().default(1),
+    // Resolved new-platform path (after wix_redirects). Nullable when the
+    // legacy path doesn't map cleanly; reporting can fall back to `path`.
+    resolvedPath: text("resolved_path"),
   },
   (t) => [
     index("traffic_pageviews_session_idx").on(t.sessionId),
     index("traffic_pageviews_viewed_at_idx").on(t.viewedAt),
     index("traffic_pageviews_path_viewed_at_idx").on(t.path, t.viewedAt),
     index("traffic_pageviews_page_type_idx").on(t.pageType, t.viewedAt),
+    index("traffic_pageviews_source_system_idx").on(t.sourceSystem, t.viewedAt),
+    index("traffic_pageviews_resolved_path_idx").on(t.resolvedPath, t.viewedAt),
   ],
 );
 

@@ -104,6 +104,12 @@ export interface ListOptions {
   serviceId?: string;
   /** Foreign key filter — matches `collateral.solution_id`. */
   solutionId?: string;
+  /**
+   * When true, only returns rows where `solution_id` is NULL.
+   * Used by the parent-service fallback on solution pages so sibling-solution
+   * items don't bleed through.
+   */
+  solutionIdIsNull?: boolean;
   /** Case-insensitive substring match against tags. */
   topic?: string;
   /** Case-insensitive substring match against title, subtitle, description, and tags. */
@@ -142,6 +148,7 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
     pillar = [],
     serviceId,
     solutionId,
+    solutionIdIsNull,
     topic,
     q,
     featured,
@@ -154,6 +161,7 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
   if (pillar.length) params.set("pillar", pillar.join(","));
   if (serviceId) params.set("serviceId", serviceId);
   if (solutionId) params.set("solutionId", solutionId);
+  if (solutionIdIsNull) params.set("solutionIdIsNull", "true");
   if (topic && topic.trim()) params.set("topic", topic.trim());
   if (q && q.trim()) params.set("q", q.trim());
   if (featured) params.set("featured", "true");

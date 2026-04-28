@@ -20,12 +20,16 @@ import {
   useDeleteCmsPost,
   useArchiveCmsPost,
   useGetCmsBatchViews,
+  ListCmsPostsSortBy,
+  ListCmsPostsSortDir,
   type Post,
   type PostStatus,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
 type TabValue = "published" | "draft" | "scheduled" | "archived";
+type ApiSortBy = "title" | "author" | "publishedAt" | "updatedAt";
+type SortDir = "asc" | "desc";
 
 const TAB_LABELS: { value: TabValue; label: string }[] = [
   { value: "published", label: "Published" },
@@ -53,7 +57,10 @@ function formatDate(d?: string | null): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-type SortDir = "asc" | "desc";
+function SortIcon({ field, active, dir }: { field: string; active: boolean; dir: SortDir }) {
+  if (!active) return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />;
+  return dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+}
 
 export default function AdminPostsList() {
   const { toast } = useToast();
@@ -64,6 +71,9 @@ export default function AdminPostsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const [sortBy, setSortBy] = useState<ApiSortBy>("publishedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewsSort, setViewsSort] = useState<SortDir | null>(null);
 
   const { data: postsData, isLoading, refetch } = useListCmsPosts(
@@ -72,6 +82,8 @@ export default function AdminPostsList() {
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       page,
       pageSize: 20,
+      sortBy: sortBy as typeof ListCmsPostsSortBy[keyof typeof ListCmsPostsSortBy],
+      sortDir: sortDir as typeof ListCmsPostsSortDir[keyof typeof ListCmsPostsSortDir],
     },
     { query: { enabled: !!access?.hasCmsRole } as never },
   );
@@ -124,6 +136,21 @@ export default function AdminPostsList() {
     });
   }, [rawItems, viewsMap, viewsSort]);
 
+  const handleApiSort = (field: ApiSortBy) => {
+    setViewsSort(null);
+    if (sortBy === field) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+    setPage(1);
+  };
+
+  const handleViewsSort = () => {
+    setViewsSort((prev) => (prev === "desc" ? "asc" : "desc"));
+  };
+
   const toggleAll = () => {
     if (selected.size === items.length) setSelected(new Set());
     else setSelected(new Set(items.map((p) => p.id)));
@@ -157,7 +184,11 @@ export default function AdminPostsList() {
     setPage(1);
     setSelected(new Set());
     setViewsSort(null);
+    setSortBy("publishedAt");
+    setSortDir("desc");
   };
+
+  const colCount = tab === "published" ? 8 : 7;
 
   return (
     <AdminLayout
@@ -226,15 +257,51 @@ export default function AdminPostsList() {
                     aria-label="Select all"
                   />
                 </TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Author</TableHead>
+                <TableHead
+                  className="cursor-pointer select-none"
+                  onClick={() => handleApiSort("title")}
+                  data-testid="th-title"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Title
+                    <SortIcon field="title" active={sortBy === "title" && viewsSort === null} dir={sortDir} />
+                  </span>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer select-none"
+                  onClick={() => handleApiSort("author")}
+                  data-testid="th-author"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Author
+                    <SortIcon field="author" active={sortBy === "author" && viewsSort === null} dir={sortDir} />
+                  </span>
+                </TableHead>
                 <TableHead>Categories</TableHead>
-                <TableHead>Published</TableHead>
-                <TableHead>Updated</TableHead>
+                <TableHead
+                  className="cursor-pointer select-none whitespace-nowrap"
+                  onClick={() => handleApiSort("publishedAt")}
+                  data-testid="th-published"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Published
+                    <SortIcon field="publishedAt" active={sortBy === "publishedAt" && viewsSort === null} dir={sortDir} />
+                  </span>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer select-none whitespace-nowrap"
+                  onClick={() => handleApiSort("updatedAt")}
+                  data-testid="th-updated"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Updated
+                    <SortIcon field="updatedAt" active={sortBy === "updatedAt" && viewsSort === null} dir={sortDir} />
+                  </span>
+                </TableHead>
                 {tab === "published" && (
                   <TableHead
                     className="cursor-pointer select-none whitespace-nowrap"
-                    onClick={() => setViewsSort((prev) => (prev === "desc" ? "asc" : "desc"))}
+                    onClick={handleViewsSort}
                     data-testid="th-views"
                   >
                     <span className="inline-flex items-center gap-1">
@@ -255,13 +322,13 @@ export default function AdminPostsList() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={tab === "published" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={colCount} className="text-center text-muted-foreground py-8">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={tab === "published" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={colCount} className="text-center text-muted-foreground py-8">
                     No {tab} posts.
                   </TableCell>
                 </TableRow>

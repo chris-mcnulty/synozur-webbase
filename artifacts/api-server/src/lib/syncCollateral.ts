@@ -8,6 +8,7 @@ import {
   postTags,
   categoriesTable,
   tagsTable,
+  workshopsTable,
   type Event,
   type Post,
   type Video,
@@ -15,6 +16,7 @@ import {
   type CaseStudy,
   type Application,
   type Model,
+  type Workshop,
   type CollateralPillar,
 } from "@workspace/db";
 import { canonicalUrlForCollateral } from "@workspace/api-zod";
@@ -47,6 +49,7 @@ const WHITE_PAPER_SOURCE_PREFIX = "white_paper:";
 const CASE_STUDY_SOURCE_PREFIX = "case_study:";
 const APPLICATION_SOURCE_PREFIX = "application:";
 const MODEL_SOURCE_PREFIX = "model:";
+const WORKSHOP_SOURCE_PREFIX = "workshop:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
@@ -74,6 +77,10 @@ export function applicationSourceId(applicationId: string): string {
 
 export function modelSourceId(modelId: string): string {
   return `${MODEL_SOURCE_PREFIX}${modelId}`;
+}
+
+export function workshopSourceId(workshopId: string): string {
+  return `${WORKSHOP_SOURCE_PREFIX}${workshopId}`;
 }
 
 async function ensureUniqueCollateralSlug(base: string, excludeId?: string): Promise<string> {
@@ -596,6 +603,67 @@ export async function upsertCollateralFromModel(model: Model): Promise<void> {
 
 export async function softDeleteCollateralForModel(modelId: string): Promise<void> {
   const sourceId = modelSourceId(modelId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
+}
+
+// Workshops appear in the library as collateral type="workshop" so they can
+// be discovered alongside other content and filtered by service/solution.
+export async function upsertCollateralFromWorkshop(
+  workshop: Workshop,
+): Promise<void> {
+  const sourceId = workshopSourceId(workshop.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const isActive = workshop.active && !workshop.deletedAt;
+  const now = new Date();
+
+  const syncedFields = {
+    type: "workshop" as const,
+    title: workshop.title,
+    subtitle: workshop.category || null,
+    description: workshop.shortDescription ?? "",
+    heroImage: workshop.heroImage ?? "",
+    tags: [] as string[],
+    url: canonicalUrlForCollateral("workshop", workshop.slug),
+    external: false,
+    publishedAt: null,
+    featured: false,
+    featuredRank: null,
+    serviceId: workshop.serviceId,
+    solutionId: workshop.solutionId,
+    active: isActive,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({
+        ...syncedFields,
+        deletedAt: isActive ? null : existing.deletedAt,
+      })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(workshop.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForWorkshop(
+  workshopId: string,
+): Promise<void> {
+  const sourceId = workshopSourceId(workshopId);
   const now = new Date();
   await db
     .update(collateralTable)

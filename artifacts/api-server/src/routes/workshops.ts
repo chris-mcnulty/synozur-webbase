@@ -5,6 +5,11 @@ import { db, workshopsTable, type Workshop } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { loadLinkedBooking, type LinkedBookingDto } from "../lib/bookingUtils";
+import {
+  upsertCollateralFromWorkshop,
+  softDeleteCollateralForWorkshop,
+} from "../lib/syncCollateral";
 
 const router: IRouter = Router();
 
@@ -131,6 +136,7 @@ const WorkshopBody = z.object({
   active: z.boolean().optional(),
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
+  bookingId: z.string().uuid().nullish(),
 });
 type WorkshopBodyT = z.infer<typeof WorkshopBody>;
 const WorkshopPatch = WorkshopBody.partial().extend({
@@ -151,7 +157,7 @@ const WorkshopPatch = WorkshopBody.partial().extend({
 
 // ---- Serializer --------------------------------------------------------
 
-function shape(w: Workshop) {
+function shape(w: Workshop, booking: LinkedBookingDto | null = null) {
   return {
     id: w.id,
     slug: w.slug,
@@ -187,6 +193,8 @@ function shape(w: Workshop) {
     sourceId: w.sourceId,
     serviceId: w.serviceId,
     solutionId: w.solutionId,
+    bookingId: w.bookingId ?? null,
+    booking,
     active: w.active,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
@@ -245,6 +253,7 @@ function valuesFromBody(d: WorkshopBodyT, slug: string) {
     displayOrder: d.displayOrder ?? null,
     serviceId: d.serviceId ?? null,
     solutionId: d.solutionId ?? null,
+    bookingId: d.bookingId ?? null,
     active: d.active ?? true,
   };
 }
@@ -281,7 +290,8 @@ router.get("/workshops/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(shape(row));
+  const booking = await loadLinkedBooking(row.bookingId ?? null);
+  res.json(shape(row, booking));
 });
 
 // ---- Admin -------------------------------------------------------------
@@ -308,7 +318,7 @@ router.get("/cms/workshops/:id", ...readGuard, async (req, res) => {
     return;
   }
   res.json(shape(row));
-});
+}); // booking not needed in admin view — form selector loads it separately
 
 router.post("/cms/workshops", ...adminGuard, async (req, res) => {
   const parsed = WorkshopBody.safeParse(req.body);
@@ -328,6 +338,11 @@ router.post("/cms/workshops", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: row.id,
   });
+  try {
+    await upsertCollateralFromWorkshop(row);
+  } catch (err) {
+    req.log.error({ err, workshopId: row.id }, "Failed to sync collateral after workshop create");
+  }
   res.status(201).json(shape(row));
 });
 
@@ -372,6 +387,7 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     "toolingNote",
     "serviceId",
     "solutionId",
+    "bookingId",
   ] as const) {
     if (k in d) updates[k] = d[k] ?? null;
   }
@@ -386,6 +402,11 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: id,
   });
+  try {
+    await upsertCollateralFromWorkshop(updated);
+  } catch (err) {
+    req.log.error({ err, workshopId: id }, "Failed to sync collateral after workshop update");
+  }
   res.json(shape(updated));
 });
 
@@ -408,7 +429,25 @@ router.delete("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: id,
   });
+  try {
+    await softDeleteCollateralForWorkshop(id);
+  } catch (err) {
+    req.log.error({ err, workshopId: id }, "Failed to soft-delete collateral after workshop delete");
+  }
   res.status(204).end();
+});
+
+router.post("/cms/workshops/:id/sync-to-collateral", ...adminGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const row = await db.query.workshopsTable.findFirst({
+    where: eq(workshopsTable.id, id),
+  });
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await upsertCollateralFromWorkshop(row);
+  res.json({ ok: true });
 });
 
 export default router;

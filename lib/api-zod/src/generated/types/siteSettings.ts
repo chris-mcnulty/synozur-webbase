@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SiteSettingsBookingsRenderMode } from "./siteSettingsBookingsRenderMode";
 import type { SiteSettingsHomeHeroBackgroundType } from "./siteSettingsHomeHeroBackgroundType";
 import type { SiteSettingsSitemapSectionFlags } from "./siteSettingsSitemapSectionFlags";
 import type { SiteSettingsSiteTheme } from "./siteSettingsSiteTheme";
@@ -13,6 +14,9 @@ export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   siteTheme?: SiteSettingsSiteTheme;
+  /** Global rendering mode for /start booking pages. See PublicSiteSettings.
+   */
+  bookingsRenderMode?: SiteSettingsBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

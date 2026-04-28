@@ -1,0 +1,12 @@
+# Raw analytics exports may contain IP addresses and city/postal codes.
+# They are imported into the DB (with IPs hashed) by the legacy-traffic-import
+# tool and should not be committed to the repo.
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.json
+
+# Whitelist tracked metadata files in this folder.
+!README.md
+!.gitkeep

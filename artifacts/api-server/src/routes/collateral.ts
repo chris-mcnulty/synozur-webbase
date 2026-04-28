@@ -70,6 +70,10 @@ const ListQuery = z.object({
   q: z.string().optional(),
   serviceId: z.string().uuid().optional(),
   solutionId: z.string().uuid().optional(),
+  solutionIdIsNull: z
+    .string()
+    .optional()
+    .transform((v) => v === "true"),
   featured: z
     .string()
     .optional()
@@ -162,7 +166,7 @@ router.get("/collateral", async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { type, pillar, topic, q, serviceId, solutionId, featured, page, pageSize } = parsed.data;
+  const { type, pillar, topic, q, serviceId, solutionId, solutionIdIsNull, featured, page, pageSize } = parsed.data;
 
   const types = type
     ? (type
@@ -184,6 +188,7 @@ router.get("/collateral", async (req, res) => {
   if (featured) filters.push(eq(collateralTable.featured, true));
   if (serviceId) filters.push(eq(collateralTable.serviceId, serviceId));
   if (solutionId) filters.push(eq(collateralTable.solutionId, solutionId));
+  if (solutionIdIsNull) filters.push(isNull(collateralTable.solutionId));
   if (topic && topic.trim()) {
     const needle = `%${topic.trim().toLowerCase()}%`;
     filters.push(

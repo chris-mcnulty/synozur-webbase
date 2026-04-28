@@ -146,6 +146,11 @@ export default function AdminDashboard() {
     queryFn: () => trafficApi.timeseries(trafficFilters),
     enabled: trafficEnabled,
   });
+  const trafficPages = useQuery({
+    queryKey: ["dashboard-traffic-pages", trafficFilters],
+    queryFn: () => trafficApi.pages({ ...trafficFilters, limit: 10 }),
+    enabled: trafficEnabled,
+  });
 
   const seriesData = (analytics.data?.series ?? []).map((d) => ({
     day: new Date(d.day + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
@@ -299,6 +304,72 @@ export default function AdminDashboard() {
                       />
                     </AreaChart>
                   </ResponsiveContainer>
+                )}
+              </Card>
+
+              {/* Top pages widget */}
+              <Card className="p-5 mb-4" data-testid="card-top-pages">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <h2 className="font-semibold text-sm">Top pages ({rangeDays}d)</h2>
+                  </div>
+                  <Link href="/marketing/traffic">
+                    <a className="text-xs text-primary hover:underline" data-testid="link-top-pages-details">
+                      Full breakdown
+                    </a>
+                  </Link>
+                </div>
+                {trafficPages.isLoading ? (
+                  <div className="text-sm text-muted-foreground py-6 text-center">Loading…</div>
+                ) : (trafficPages.data?.items.length ?? 0) === 0 ? (
+                  <div className="text-sm text-muted-foreground py-6 text-center">
+                    No page traffic recorded yet in this window.
+                  </div>
+                ) : (
+                  <ol className="divide-y divide-border">
+                    {trafficPages.data?.items.slice(0, 10).map((row, idx) => (
+                      <li key={row.path} className="py-2.5 flex items-center gap-3">
+                        <span className="text-xs font-mono text-muted-foreground w-4 shrink-0">
+                          {idx + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate" title={row.path}>
+                            <a
+                              href={row.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {row.path}
+                            </a>
+                          </div>
+                          {row.title && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              <a
+                                href={row.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                              >
+                                {row.title}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MousePointerClick className="h-3 w-3" />
+                            {row.pageviews.toLocaleString()}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            {row.sessions.toLocaleString()}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                 )}
               </Card>
             </>

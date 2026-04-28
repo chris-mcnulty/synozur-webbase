@@ -57,6 +57,12 @@ export interface Solution {
   /** @nullable */
   seoDescription?: string | null;
   /** @nullable */
+  acceleratorsHtml?: string | null;
+  /** @nullable */
+  faqHtml?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
+  /** @nullable */
   sourceId?: string | null;
   status?: SolutionStatus;
   /** @nullable */

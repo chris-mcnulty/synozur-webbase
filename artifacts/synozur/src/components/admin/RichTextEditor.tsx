@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
+import type { MediaItem } from "@workspace/api-client-react";
 
 const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
@@ -163,7 +165,8 @@ export interface RichTextEditorChange {
 interface Props {
   value: string;
   onChange: (change: RichTextEditorChange) => void;
-  onUploadImage: () => Promise<string | null>;
+  /** @deprecated The editor now handles image insertion internally via the media picker. */
+  onUploadImage?: () => Promise<string | null>;
   placeholder?: string;
 }
 
@@ -201,11 +204,14 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: Props) {
+export function RichTextEditor({ value, onChange, placeholder }: Props) {
   const lastValueRef = useRef(value);
   // Heading-order issues are recomputed on every editor update — bumping
   // this counter tells the memo below to re-walk the doc.
   const [docVersion, setDocVersion] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Resolve callback stored so the toolbar can await the user's selection
+  const resolvePickerRef = useRef<((url: string | null) => void) | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -257,6 +263,27 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
     [editor, docVersion],
   );
 
+  /** Opens the media picker and resolves with the chosen URL (or null). */
+  const openImagePicker = (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      resolvePickerRef.current = resolve;
+      setPickerOpen(true);
+    });
+  };
+
+  const handlePickerSelect = (m: MediaItem) => {
+    const url = mediaUrl(m);
+    resolvePickerRef.current?.(url);
+    resolvePickerRef.current = null;
+    setPickerOpen(false);
+  };
+
+  const handlePickerClose = () => {
+    resolvePickerRef.current?.(null);
+    resolvePickerRef.current = null;
+    setPickerOpen(false);
+  };
+
   if (!editor) {
     return (
       <div className="border border-border rounded-md min-h-[450px] bg-card" />
@@ -265,13 +292,20 @@ export function RichTextEditor({ value, onChange, onUploadImage, placeholder }: 
 
   return (
     <div className="border border-border rounded-md bg-card">
-      <Toolbar editor={editor} onUploadImage={onUploadImage} />
+      <Toolbar editor={editor} onOpenImagePicker={openImagePicker} />
       {headingIssues.length > 0 && (
         <HeadingOrderWarnings issues={headingIssues} />
       )}
       <div className="border-t border-border">
         <EditorContent editor={editor} />
       </div>
+      <MediaPickerModal
+        open={pickerOpen}
+        onClose={handlePickerClose}
+        onSelect={handlePickerSelect}
+        title="Insert image"
+        kind="image"
+      />
     </div>
   );
 }
@@ -311,10 +345,10 @@ function HeadingOrderWarnings({ issues }: { issues: HeadingIssue[] }) {
 
 function Toolbar({
   editor,
-  onUploadImage,
+  onOpenImagePicker,
 }: {
   editor: Editor;
-  onUploadImage: () => Promise<string | null>;
+  onOpenImagePicker: () => Promise<string | null>;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
@@ -349,7 +383,7 @@ function Toolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5">
+    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-card border-b border-border rounded-t-md">
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive("bold")}
@@ -427,7 +461,7 @@ function Toolbar({
       </ToolbarButton>
       <ToolbarButton
         onClick={async () => {
-          const url = await onUploadImage();
+          const url = await onOpenImagePicker();
           if (url) editor.chain().focus().setImage({ src: url }).run();
         }}
         label="Insert image"

@@ -137,3 +137,110 @@ member of that group regardless of the mapping table — useful for bootstrap.
 - Hourly GC purges expired rows and abandoned auth-pending state.
 - `pruneExpiredSessions()` and `destroyAllSessionsForUser(userId)` are
   available for ops scripts.
+
+## Microsoft Bookings (native mode)
+
+`/start/{slug}` pages have two render paths controlled by the site-level
+`bookingsRenderMode` setting at `/admin/site-config/site-settings`:
+
+- **`iframe`** (default): embeds Microsoft's hosted Bookings page. Zero
+  configuration; cross-origin so the iframe contents cannot be themed.
+- **`native`**: the api-server calls Microsoft Graph and the public site
+  renders an on-brand React flow (service picker → date strip → multi-column
+  slot grid → contact form → confirmation). Requires the env vars below
+  **and** a populated `msBusinessId` on the booking row (admin form:
+  `/admin/people/bookings/{id}`). Bookings without `msBusinessId` fall back
+  to the iframe even when the global mode is `native`.
+
+### Env
+
+The native flow reuses the **existing Synozur Entra app registration** by
+default — set nothing new and it picks up `ENTRA_TENANT_ID`,
+`ENTRA_APP_CLIENT_ID`, and `ENTRA_CLIENT_SECRET` automatically. The
+`MS_BOOKINGS_*` vars are escape hatches for the case where Bookings lives
+in a different tenant or you want to scope a separate app registration to
+just the Bookings permission.
+
+| Variable | Default source | Notes |
+| --- | --- | --- |
+| `MS_BOOKINGS_TENANT_ID` | `ENTRA_TENANT_ID` | Tenant that owns the Bookings business. |
+| `MS_BOOKINGS_CLIENT_ID` | `ENTRA_APP_CLIENT_ID` | App registration client id. |
+| `MS_BOOKINGS_CLIENT_SECRET` | `ENTRA_CLIENT_SECRET` / `ENTRA_APP_CLIENT_SECRET` | App registration secret. |
+| `TURNSTILE_SECRET_KEY` | — | Anti-spam on the appointment-create endpoint (recommended). |
+
+### Graph application permission
+
+The existing Synozur Entra app already holds `GroupMember.Read.All` for
+the OIDC group-reconciliation flow. Native bookings adds one more:
+
+1. Azure portal → **App registrations** → the Synozur app → **API
+   permissions** → *Add a permission* → Microsoft Graph → **Application
+   permissions** → `Bookings.ReadWrite.All` (or the narrower pair
+   `Bookings.Read.All` + `BookingsAppointment.ReadWrite.All`).
+2. Click **Grant admin consent for &lt;tenant&gt;** at the top of the
+   permissions list. Without this, tokens issue successfully but every
+   Graph call comes back 403 and the public page shows
+   "Bookings provider rejected our credentials."
+3. The Bookings calendar's owning mailbox must live in the **same
+   tenant** as the app registration. Cross-tenant access via client
+   credentials is not supported.
+
+### Per-booking config
+
+Each row in `bookings` carries two optional Graph fields, set on the
+admin form at `/admin/people/bookings/{id}`:
+
+- `msBusinessId` (**required for native**) — Microsoft Graph's identifier
+  for one Bookings calendar. Format is usually
+  `<emailAlias>@<tenant>.onmicrosoft.com` (or the tenant's primary
+  domain), e.g. `NorthStarWorkshop@synozur.onmicrosoft.com`. Sometimes
+  shown as a GUID.
+
+  **Three ways to find it:**
+  1. **Bookings admin UI** — at `https://outlook.office.com/bookings`,
+     open the calendar, then go to *Business information* → the email
+     address shown there is the `id`.
+  2. **Graph Explorer** —
+     [aka.ms/ge](https://developer.microsoft.com/graph/graph-explorer),
+     sign in as a tenant admin, and run
+     `GET https://graph.microsoft.com/v1.0/solutions/bookingBusinesses`.
+     Each entry's `id` field is the value you want; `displayName` is the
+     friendly name.
+  3. **Existing embedUrl** — for share URLs of the form
+     `https://outlook.office365.com/owa/calendar/{id}/bookings/`, the
+     path segment between `/calendar/` and `/bookings/` is the id (URL-
+     decode it first if it contains `%40` — that's the `@`). The newer
+     `book.ms/b/{slug}` format does **not** expose the Graph id, so use
+     option 1 or 2 in that case.
+
+- `msDefaultServiceId` (optional) — pre-selects a service when the
+  business exposes more than one. When null, the visitor picks (or the
+  only service is auto-selected).
+
+  **To find it:** with `msBusinessId` set, run
+  `GET https://graph.microsoft.com/v1.0/solutions/bookingBusinesses/{msBusinessId}/services`
+  in Graph Explorer. Each `value[]` entry has an `id` and a
+  `displayName`. Or just leave it blank — the visitor will see a service
+  picker.
+
+### Endpoints used
+
+The wrapper at `artifacts/api-server/src/lib/graphBookings.ts` calls:
+
+- `GET  /solutions/bookingBusinesses/{id}` — business display name + tz
+- `GET  /solutions/bookingBusinesses/{id}/services` — bookable services
+- `GET  /solutions/bookingBusinesses/{id}/services/{id}` — staff list + duration
+- `POST /solutions/bookingBusinesses/{id}/getStaffAvailability` — open windows
+- `POST /solutions/bookingBusinesses/{id}/appointments` — create appointment
+
+Confirmation emails, calendar invites, reminders, and reschedule/cancel links
+are still generated by Bookings — the native flow only handles the booking
+itself.
+
+### Rate limits
+
+The public Graph endpoints under `/api/bookings/{slug}/...` are rate-limited
+per IP:
+
+- `availability`: 30 / minute
+- `appointments`: 10 / hour

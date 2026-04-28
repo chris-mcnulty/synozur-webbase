@@ -246,6 +246,17 @@ export default function CollateralEdit({ id }: Props) {
     (existing as unknown as { sourceId?: string | null } | null)?.sourceId ?? null;
   const isSynced = !!sourceId;
   const sourceEditorPath = editorPathForSource(sourceId);
+
+  // When this collateral row is a synced mirror with a known dedicated editor
+  // (e.g. a workshop, white paper, model), redirect there immediately so there
+  // is only one edit form. The generic collateral editor is only used for
+  // standalone rows (no sourceId) or synced types without a dedicated editor.
+  useEffect(() => {
+    if (sourceEditorPath) {
+      navigate(sourceEditorPath, { replace: true });
+    }
+  }, [sourceEditorPath, navigate]);
+
   // On a synced row, only curation fields (featured, featuredRank, active,
   // service/solution) are writable. Content fields are read-only here and
   // edited at the source.

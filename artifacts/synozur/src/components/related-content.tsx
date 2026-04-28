@@ -41,6 +41,12 @@ export type RelatedContentProps = Scope & {
    * brand-new solution with no direct collateral still shows something.
    */
   fallback?: Scope;
+  /**
+   * When true, the fallback fetch will include `solutionIdIsNull=true` so that
+   * items explicitly tagged to a sibling solution are excluded from the
+   * parent-service rollup.
+   */
+  fallbackExcludeSolutionItems?: boolean;
 };
 
 function dedupeByType(items: Collateral[]): CollateralType[] {
@@ -50,7 +56,7 @@ function dedupeByType(items: Collateral[]): CollateralType[] {
 }
 
 export function RelatedContent(props: RelatedContentProps) {
-  const { title, eyebrow = "Related content", fallback } = props;
+  const { title, eyebrow = "Related content", fallback, fallbackExcludeSolutionItems } = props;
   const serviceId = "serviceId" in props ? props.serviceId : undefined;
   const solutionId = "solutionId" in props ? props.solutionId : undefined;
   const fallbackServiceId =
@@ -73,6 +79,7 @@ export function RelatedContent(props: RelatedContentProps) {
       solutionId ?? null,
       fallbackServiceId ?? null,
       fallbackSolutionId ?? null,
+      fallbackExcludeSolutionItems ?? false,
     ],
     queryFn: async () => {
       if (!scopeKey) return { items: [] as Collateral[] };
@@ -85,6 +92,7 @@ export function RelatedContent(props: RelatedContentProps) {
       const fallbackResult = await fetchLibrary({
         serviceId: fallbackServiceId,
         solutionId: fallbackSolutionId,
+        solutionIdIsNull: fallbackExcludeSolutionItems,
         pageSize: PAGE_SIZE,
       });
       return { items: fallbackResult.items };

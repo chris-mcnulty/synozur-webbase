@@ -30,6 +30,14 @@ const Filters = z.object({
     .enum(["true", "false", "only"])
     .optional()
     .default("false"),
+  // Source system filter. 'all' is the default and covers both native (live)
+  // and any legacy bulk imports (e.g. Wix). 'native' restricts to the new
+  // platform's first-party tracker; 'legacy' restricts to imported data.
+  // Concrete legacy values like 'wix' are also accepted.
+  sourceSystem: z
+    .union([z.enum(["all", "native", "legacy"]), z.string().min(1).max(32)])
+    .optional()
+    .default("all"),
 });
 
 type ParsedFilters = z.infer<typeof Filters>;
@@ -52,6 +60,32 @@ function resolveWindow(f: ParsedFilters): Window {
   return { from, to };
 }
 
+function applySourceSystemPageview(f: ParsedFilters, where: SQL[]): void {
+  if (f.sourceSystem === "all") return;
+  if (f.sourceSystem === "native") {
+    where.push(eq(trafficPageviewsTable.sourceSystem, "native"));
+    return;
+  }
+  if (f.sourceSystem === "legacy") {
+    where.push(sql`${trafficPageviewsTable.sourceSystem} <> 'native'`);
+    return;
+  }
+  where.push(eq(trafficPageviewsTable.sourceSystem, f.sourceSystem));
+}
+
+function applySourceSystemSession(f: ParsedFilters, where: SQL[]): void {
+  if (f.sourceSystem === "all") return;
+  if (f.sourceSystem === "native") {
+    where.push(eq(trafficSessionsTable.sourceSystem, "native"));
+    return;
+  }
+  if (f.sourceSystem === "legacy") {
+    where.push(sql`${trafficSessionsTable.sourceSystem} <> 'native'`);
+    return;
+  }
+  where.push(eq(trafficSessionsTable.sourceSystem, f.sourceSystem));
+}
+
 /** Build the WHERE clause for joined pageview+session queries. */
 function pageviewFilters(f: ParsedFilters, window: Window): SQL[] {
   const where: SQL[] = [
@@ -66,6 +100,7 @@ function pageviewFilters(f: ParsedFilters, window: Window): SQL[] {
   if (f.source) where.push(eq(trafficSessionsTable.trafficSource, f.source));
   if (f.includeBots === "false") where.push(eq(trafficSessionsTable.isBot, false));
   if (f.includeBots === "only") where.push(eq(trafficSessionsTable.isBot, true));
+  applySourceSystemPageview(f, where);
   return where;
 }
 
@@ -81,6 +116,7 @@ function sessionFilters(f: ParsedFilters, window: Window): SQL[] {
   if (f.source) where.push(eq(trafficSessionsTable.trafficSource, f.source));
   if (f.includeBots === "false") where.push(eq(trafficSessionsTable.isBot, false));
   if (f.includeBots === "only") where.push(eq(trafficSessionsTable.isBot, true));
+  applySourceSystemSession(f, where);
   return where;
 }
 
@@ -102,7 +138,10 @@ router.get("/cms/traffic/overview", ...adminOnly, async (req, res) => {
 
   const [pvTotalsRow] = await db
     .select({
-      pageviews: sql<number>`count(*)::int`,
+      // Use sum(pageviewCount) so legacy-imported rows (which carry an
+      // aggregated count > 1 per row) and native rows (always count = 1)
+      // both report correct pageview totals.
+      pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
       sessions: countDistinct(trafficPageviewsTable.sessionId),
     })
     .from(trafficPageviewsTable)
@@ -145,7 +184,7 @@ router.get("/cms/traffic/timeseries", ...adminOnly, async (req, res) => {
   const rows = await db
     .select({
       day: sql<string>`to_char(date_trunc('day', ${trafficPageviewsTable.viewedAt}), 'YYYY-MM-DD')`,
-      pageviews: sql<number>`count(*)::int`,
+      pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
       sessions: countDistinct(trafficPageviewsTable.sessionId),
     })
     .from(trafficPageviewsTable)
@@ -174,7 +213,7 @@ router.get("/cms/traffic/pages", ...adminOnly, async (req, res) => {
       path: trafficPageviewsTable.path,
       pageType: trafficPageviewsTable.pageType,
       title: sql<string | null>`max(${trafficPageviewsTable.title})`,
-      pageviews: sql<number>`count(*)::int`,
+      pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
       sessions: countDistinct(trafficPageviewsTable.sessionId),
       avgTimeOnPageMs: sql<number | null>`avg(${trafficPageviewsTable.timeOnPageMs})::int`,
     })
@@ -185,7 +224,7 @@ router.get("/cms/traffic/pages", ...adminOnly, async (req, res) => {
     )
     .where(and(...pvWhere))
     .groupBy(trafficPageviewsTable.path, trafficPageviewsTable.pageType)
-    .orderBy(desc(sql`count(*)`))
+    .orderBy(desc(sql`sum(${trafficPageviewsTable.pageviewCount})`))
     .limit(50);
 
   res.json({ items: rows });
@@ -445,7 +484,7 @@ router.get("/cms/analytics/overview.csv", ...adminOnly, async (req, res) => {
   const rows = await db
     .select({
       day: sql<string>`to_char(date_trunc('day', ${trafficPageviewsTable.viewedAt}), 'YYYY-MM-DD')`,
-      pageviews: sql<number>`count(*)::int`,
+      pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
       sessions: countDistinct(trafficPageviewsTable.sessionId),
     })
     .from(trafficPageviewsTable)

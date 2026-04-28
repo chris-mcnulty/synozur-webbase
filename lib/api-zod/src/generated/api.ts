@@ -36,6 +36,9 @@ export const listCmsPostsQueryPageDefault = 1;
 export const listCmsPostsQueryPageSizeDefault = 20;
 export const listCmsPostsQueryPageSizeMax = 100;
 
+export const listCmsPostsQuerySortByDefault = `publishedAt`;
+export const listCmsPostsQuerySortDirDefault = `desc`;
+
 export const ListCmsPostsQueryParams = zod.object({
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   authorId: zod.coerce.string().uuid().optional(),
@@ -46,6 +49,10 @@ export const ListCmsPostsQueryParams = zod.object({
     .min(1)
     .max(listCmsPostsQueryPageSizeMax)
     .default(listCmsPostsQueryPageSizeDefault),
+  sortBy: zod
+    .enum(["title", "author", "publishedAt", "updatedAt"])
+    .default(listCmsPostsQuerySortByDefault),
+  sortDir: zod.enum(["asc", "desc"]).default(listCmsPostsQuerySortDirDefault),
 });
 
 export const ListCmsPostsResponse = zod.object({
@@ -1104,6 +1111,7 @@ export const SubmitInsightCommentBody = zod.object({
  */
 export const getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getPublicSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getPublicSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1113,6 +1121,12 @@ export const GetPublicSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getPublicSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(getPublicSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      'Global rendering mode for \/start booking pages. \"iframe\" embeds Microsoft\'s hosted Bookings page; \"native\" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_\* credentials and a populated msBusinessId on the booking).\n',
+    ),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
@@ -1142,6 +1156,7 @@ export const GetPublicSiteSettingsResponse = zod.object({
  */
 export const getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1157,6 +1172,12 @@ export const GetAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getAdminSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(getAdminSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
@@ -1242,6 +1263,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod.enum(["image", "video"]).optional(),
   siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
+  bookingsRenderMode: zod.enum(["iframe", "native"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
@@ -1309,6 +1331,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const updateAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1324,6 +1347,12 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(updateAdminSiteSettingsResponseSiteThemeDefault),
+  bookingsRenderMode: zod
+    .enum(["iframe", "native"])
+    .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault)
+    .describe(
+      "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroImageUrl: zod.string().nullish(),
@@ -1466,6 +1495,9 @@ export const ListServicesResponse = zod.object({
               buttonUrl: zod.string().nullish(),
               seoTitle: zod.string().nullish(),
               seoDescription: zod.string().nullish(),
+              acceleratorsHtml: zod.string().nullish(),
+              faqHtml: zod.string().nullish(),
+              bookingId: zod.string().uuid().nullish(),
               sourceId: zod.string().nullish(),
               status: zod
                 .enum(["draft", "scheduled", "published", "archived"])
@@ -1594,6 +1626,9 @@ export const GetSolutionResponse = zod
     buttonUrl: zod.string().nullish(),
     seoTitle: zod.string().nullish(),
     seoDescription: zod.string().nullish(),
+    acceleratorsHtml: zod.string().nullish(),
+    faqHtml: zod.string().nullish(),
+    bookingId: zod.string().uuid().nullish(),
     sourceId: zod.string().nullish(),
     status: zod
       .enum(["draft", "scheduled", "published", "archived"])
@@ -2209,6 +2244,9 @@ export const CmsListSolutionsResponse = zod.object({
       buttonUrl: zod.string().nullish(),
       seoTitle: zod.string().nullish(),
       seoDescription: zod.string().nullish(),
+      acceleratorsHtml: zod.string().nullish(),
+      faqHtml: zod.string().nullish(),
+      bookingId: zod.string().uuid().nullish(),
       sourceId: zod.string().nullish(),
       status: zod
         .enum(["draft", "scheduled", "published", "archived"])
@@ -2262,6 +2300,9 @@ export const CmsCreateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -2305,6 +2346,9 @@ export const CmsUpdateSolutionBody = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -2347,6 +2391,9 @@ export const CmsUpdateSolutionResponse = zod.object({
   buttonUrl: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  acceleratorsHtml: zod.string().nullish(),
+  faqHtml: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   sourceId: zod.string().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
