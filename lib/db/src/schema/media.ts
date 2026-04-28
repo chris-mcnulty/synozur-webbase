@@ -27,6 +27,17 @@ export const mediaTable = pgTable(
     uploadedBy: uuid("uploaded_by").references(() => usersTable.id, {
       onDelete: "set null",
     }),
+    // #127 Phase 3 — additive SPE overlay. `storage_key` always points
+    // to the original GCS object and is NEVER rewritten or deleted by
+    // the migration; that's our rollback safety net. After a row is
+    // migrated, `spe_file_id` is the SharePoint drive item id and
+    // `spe_container_id` is the container that holds it. Read-path
+    // resolution is "spe_file_id first, fall back to storage_key" so
+    // unsetting spe_file_id reverts the row to GCS instantly without
+    // touching SPE or GCS bytes. The bucket can only be decommissioned
+    // after the GCS overlap soak (≥30 days post-cutover) per BACKLOG.
+    speFileId: text("spe_file_id"),
+    speContainerId: text("spe_container_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
