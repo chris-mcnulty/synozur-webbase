@@ -42,6 +42,7 @@ import {
   FileSearch,
   ShieldCheck,
   Settings,
+  Cloud,
   Menu,
   X,
   KeyRound,
@@ -168,6 +169,7 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
       { href: "/site-config/not-found-logs", label: "404 Log", icon: FileSearch, capability: "site.manage", testId: "nav-admin-not-found-logs" },
       { href: "/site-config/health", label: "Health", icon: Activity, capability: "site.manage", testId: "nav-admin-site-health" },
+      { href: "/integrations/spe", label: "SharePoint Embedded", icon: Cloud, capability: "site.manage", testId: "nav-admin-spe" },
     ],
   },
   {
