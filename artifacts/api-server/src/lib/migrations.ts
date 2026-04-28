@@ -795,12 +795,16 @@ export async function runMigrations(): Promise<void> {
       CREATE INDEX IF NOT EXISTS traffic_sessions_source_system_idx
         ON traffic_sessions (source_system, first_seen_at);
     `);
+    // Composite unique index on (source_system, legacy_session_key) so a
+    // second legacy source (e.g. ga4) can't collide with wix keys, and so
+    // ON CONFLICT inference works without a partial-index predicate. Drops
+    // any earlier index name a prior deploy may have created (the original
+    // partial single-column index, or an interim short-named composite).
+    await db.execute(sql`DROP INDEX IF EXISTS traffic_sessions_legacy_session_key_key;`);
+    await db.execute(sql`DROP INDEX IF EXISTS traffic_sessions_source_legacy_key_key;`);
     await db.execute(sql`
-      DROP INDEX IF EXISTS traffic_sessions_legacy_session_key_key;
-    `);
-    await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS traffic_sessions_legacy_session_key_key
-        ON traffic_sessions (legacy_session_key);
+      CREATE UNIQUE INDEX IF NOT EXISTS traffic_sessions_source_system_legacy_session_key_key
+        ON traffic_sessions (source_system, legacy_session_key);
     `);
 
     await db.execute(sql`

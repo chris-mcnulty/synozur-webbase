@@ -24,11 +24,25 @@ pnpm --filter @workspace/legacy-traffic-import import \
 
 ## Idempotency
 
-Each session row carries a `legacy_session_key` derived from
-`(date, hour, ip, ua, country, visitor type)`. Re-running the importer with
-the same input file is a no-op for sessions; pageviews are deduped by the
-`(import_batch_id, legacy_session_key, path)` triple. The batch row keys on
-the file's SHA-256, so re-importing the exact same file is also a no-op.
+The importer guarantees idempotency at two levels:
+
+- **Batch / file level**: `legacy_traffic_batches` keys on `(source_system,
+  source_file_sha256)`. Re-importing the exact same file detects the
+  existing batch row and skips the entire write. The whole write phase
+  (batch row + sessions + pageviews + post_views + unmapped) runs inside a
+  single DB transaction, so a crash mid-import rolls back atomically — the
+  batch row only persists when the import completes successfully, and a
+  retry can run cleanly.
+- **Session level**: each session row carries a `legacy_session_key`
+  derived from `(sourceSystem, date, hour, ip, ua, country, visitor type)`,
+  and the DB enforces composite uniqueness on `(source_system,
+  legacy_session_key)`. Re-running an import that touches the same session
+  from a previous batch is a no-op for that session.
+
+Pageview rows are not independently deduplicated — they are tied to the
+batch and roll back with it. If you need to replay a partially-imported
+batch, do so with the same input file: the SHA-256 batch key handles the
+overlap.
 
 ## URL resolution
 

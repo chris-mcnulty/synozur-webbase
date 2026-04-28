@@ -219,7 +219,11 @@ interface PreparedBatch {
   rowCount: number;
 }
 
-function prepareRows(rows: RawRow[], caches: ResolverCaches): PreparedBatch {
+function prepareRows(
+  rows: RawRow[],
+  caches: ResolverCaches,
+  sourceSystem: string,
+): PreparedBatch {
   const sessions = new Map<string, PreparedSession>();
   const pageviews: PreparedPageview[] = [];
   const unmapped = new Map<string, UnmappedAccumulator>();
@@ -244,6 +248,7 @@ function prepareRows(rows: RawRow[], caches: ResolverCaches): PreparedBatch {
 
     const ip = row.ip ?? "0.0.0.0";
     const sessKey = legacySessionKey({
+      sourceSystem,
       date: row.date,
       hour: row.hour,
       ip,
@@ -382,7 +387,12 @@ async function writeBatch(
     };
   }
 
-  const [batchRow] = await db
+  // Wrap the whole write phase in a transaction so a crash or DB error
+  // mid-import rolls back atomically — without this, the batch row could
+  // land before sessions/pageviews and a future re-run with the same file
+  // would be skipped as "already imported" while having no actual data.
+  return await db.transaction(async (tx) => {
+  const [batchRow] = await tx
     .insert(legacyTrafficBatchesTable)
     .values({
       sourceSystem: args.sourceSystem,
@@ -397,14 +407,15 @@ async function writeBatch(
     .returning({ id: legacyTrafficBatchesTable.id });
   const batchId = batchRow!.id;
 
-  // Insert sessions in chunks. ON CONFLICT (legacy_session_key) DO NOTHING
-  // makes a re-run idempotent across batches that touch the same session.
+  // Insert sessions in chunks. ON CONFLICT on the composite
+  // (sourceSystem, legacySessionKey) makes a re-run idempotent across
+  // batches that touch the same session AND across legacy sources.
   const sessKeyToId = new Map<string, string>();
   const SESSION_CHUNK = 500;
   let sessionsInserted = 0;
   for (let i = 0; i < prepared.sessions.length; i += SESSION_CHUNK) {
     const chunk = prepared.sessions.slice(i, i + SESSION_CHUNK);
-    const inserted = await db
+    const inserted = await tx
       .insert(trafficSessionsTable)
       .values(
         chunk.map((s) => ({
@@ -436,7 +447,12 @@ async function writeBatch(
           legacySessionKey: s.legacySessionKey,
         })),
       )
-      .onConflictDoNothing({ target: trafficSessionsTable.legacySessionKey })
+      .onConflictDoNothing({
+        target: [
+          trafficSessionsTable.sourceSystem,
+          trafficSessionsTable.legacySessionKey,
+        ],
+      })
       .returning({
         id: trafficSessionsTable.id,
         legacySessionKey: trafficSessionsTable.legacySessionKey,
@@ -456,7 +472,7 @@ async function writeBatch(
     const LOOKUP_CHUNK = 500;
     for (let i = 0; i < missing.length; i += LOOKUP_CHUNK) {
       const chunk = missing.slice(i, i + LOOKUP_CHUNK);
-      const rows = await db
+      const rows = await tx
         .select({
           id: trafficSessionsTable.id,
           legacySessionKey: trafficSessionsTable.legacySessionKey,
@@ -496,7 +512,7 @@ async function writeBatch(
 
   for (let i = 0; i < pageviewValues.length; i += PAGEVIEW_CHUNK) {
     const chunk = pageviewValues.slice(i, i + PAGEVIEW_CHUNK);
-    const inserted = await db
+    const inserted = await tx
       .insert(trafficPageviewsTable)
       .values(chunk)
       .returning({ id: trafficPageviewsTable.id });
@@ -521,7 +537,7 @@ async function writeBatch(
     const POST_LOOKUP_CHUNK = 200;
     for (let i = 0; i < slugsToFetch.length; i += POST_LOOKUP_CHUNK) {
       const chunk = slugsToFetch.slice(i, i + POST_LOOKUP_CHUNK);
-      const rows = await db
+      const rows = await tx
         .select({ id: postsTable.id, slug: postsTable.slug })
         .from(postsTable)
         .where(inArray(postsTable.slug, chunk));
@@ -550,7 +566,7 @@ async function writeBatch(
   }
   for (let i = 0; i < postViewValues.length; i += POST_VIEW_CHUNK) {
     const chunk = postViewValues.slice(i, i + POST_VIEW_CHUNK);
-    const inserted = await db
+    const inserted = await tx
       .insert(postViewsTable)
       .values(chunk)
       .returning({ id: postViewsTable.id });
@@ -560,7 +576,7 @@ async function writeBatch(
   // Upsert unmapped paths into the triage table.
   let unmappedInserted = 0;
   for (const [path, info] of prepared.unmapped.entries()) {
-    await db
+    await tx
       .insert(legacyTrafficUnmappedTable)
       .values({
         sourceSystem: args.sourceSystem,
@@ -586,7 +602,7 @@ async function writeBatch(
     unmappedInserted += 1;
   }
 
-  await db
+  await tx
     .update(legacyTrafficBatchesTable)
     .set({
       sessionsInserted,
@@ -602,6 +618,7 @@ async function writeBatch(
     postViewsInserted,
     unmappedInserted,
   };
+  });
 }
 
 async function main(): Promise<void> {
@@ -634,7 +651,7 @@ async function main(): Promise<void> {
     `Caches: ${caches.redirects.size} redirects, ${caches.postSlugs.size} post slugs.\n`,
   );
 
-  const prepared = prepareRows(rows, caches);
+  const prepared = prepareRows(rows, caches, args.sourceSystem);
   const sessionCount = prepared.sessions.length;
   const pageviewCount = prepared.pageviews.length;
   const unmappedCount = prepared.unmapped.size;

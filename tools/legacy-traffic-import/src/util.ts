@@ -14,10 +14,14 @@ export function fileSha256(path: string): string {
   return h.digest("hex");
 }
 
-/** Per-row session key. Combining (date, hour, ip, ua, country, visitor type)
- *  is enough to collapse rows that Wix's export emits as separate session
- *  attributions for the same visitor on the same hour. */
+/** Per-row session key. Combining (sourceSystem, date, hour, ip, ua, country,
+ *  visitor type) is enough to collapse rows that Wix's export emits as
+ *  separate session attributions for the same visitor on the same hour.
+ *  sourceSystem is included in the hash payload as a defense-in-depth
+ *  namespace; the DB also enforces composite uniqueness on
+ *  (source_system, legacy_session_key). */
 export function legacySessionKey(parts: {
+  sourceSystem: string;
   date: string;
   hour: number | null;
   ip: string;
@@ -26,6 +30,7 @@ export function legacySessionKey(parts: {
   visitorType: string;
 }): string {
   const payload = [
+    parts.sourceSystem,
     parts.date,
     parts.hour ?? "?",
     parts.ip,

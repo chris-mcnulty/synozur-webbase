@@ -62,6 +62,10 @@ export const trafficSessionsTable = pgTable(
     index("traffic_sessions_country_idx").on(t.country),
     index("traffic_sessions_source_idx").on(t.trafficSource),
     index("traffic_sessions_source_system_idx").on(t.sourceSystem, t.firstSeenAt),
+    // Composite uniqueness on (sourceSystem, legacySessionKey) so future
+    // legacy sources (e.g. a second analytics export) can't collide with
+    // existing keys; live native rows have legacy_session_key = NULL and
+    // are excluded by Postgres null-distinctness semantics.
     uniqueIndex("traffic_sessions_source_system_legacy_session_key_key").on(
       t.sourceSystem,
       t.legacySessionKey,

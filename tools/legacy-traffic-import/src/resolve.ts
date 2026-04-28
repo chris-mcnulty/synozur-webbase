@@ -4,6 +4,13 @@ import { normalizePath } from "./util";
 
 const MAX_REDIRECT_DEPTH = 5;
 
+/** Case-insensitive check — `wix_redirects.target_path` may be stored as
+ *  `HTTPS://...` for external redirects depending on how the export was
+ *  uploaded, so a strict `.startsWith("http")` would mis-classify them. */
+function isExternalUrl(value: string): boolean {
+  return /^https?:/i.test(value);
+}
+
 /**
  * In-memory cache of `wix_redirects` and `posts.slug` so a 3,000-row import
  * doesn't issue 6,000 lookups. Loaded once per importer run.
@@ -67,19 +74,19 @@ export function resolvePath(
     const next = caches.redirects.get(current);
     if (!next) break;
     redirected = true;
-    const normalizedNext = next.startsWith("http")
+    const normalizedNext = isExternalUrl(next)
       ? next // external URL — stop here; we can't resolve further
       : normalizePath(next);
     if (seen.has(normalizedNext)) break; // cycle guard
     current = normalizedNext;
     seen.add(current);
     // External redirects (e.g. /s/foo.pdf → https://...) terminate the chain.
-    if (current.startsWith("http")) break;
+    if (isExternalUrl(current)) break;
   }
 
   // External redirect: keep the original normalized legacy path so reporting
   // can still attribute pageviews, but mark it unresolved on the new site.
-  if (current.startsWith("http")) {
+  if (isExternalUrl(current)) {
     return {
       resolvedPath: null,
       pageType: "external",
