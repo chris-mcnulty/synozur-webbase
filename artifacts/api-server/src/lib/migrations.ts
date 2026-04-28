@@ -888,6 +888,31 @@ export async function runMigrations(): Promise<void> {
         ON legacy_traffic_unmapped (resolved_at);
     `);
 
+    // 28. SharePoint Embedded asset storage backend — PR59 (#127 Phase 2/3).
+    //     Adds two overlay columns to `media` so each row can be read from
+    //     either GCS (storage_key) or SPE (spe_file_id + spe_container_id)
+    //     without rewriting the original storage_key. Also adds the runtime
+    //     config knobs to `site_settings` that the SPE admin page manages.
+    //
+    //     All new columns are nullable (or have safe defaults) so existing
+    //     rows are unaffected until the migration script populates them.
+    await db.execute(sql`
+      ALTER TABLE media
+        ADD COLUMN IF NOT EXISTS spe_file_id text,
+        ADD COLUMN IF NOT EXISTS spe_container_id text;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS media_storage_key_key
+        ON media (storage_key);
+    `);
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS spe_storage_enabled boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS spe_container_type_id text,
+        ADD COLUMN IF NOT EXISTS spe_container_id_dev text,
+        ADD COLUMN IF NOT EXISTS spe_container_id_prod text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
