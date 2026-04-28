@@ -87,6 +87,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("__all__");
+  const [uploadCategoryId, setUploadCategoryId] = useState<string>("__none__");
   const [picked, setPicked] = useState<string | null>(selectedId ?? null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -134,8 +135,18 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
       setSearch("");
       setDebouncedSearch("");
       setCategoryFilter("__all__");
+      setUploadCategoryId("__none__");
     }
   }, [open, selectedId]);
+
+  // Pre-fill upload category from categorySlug once categories are loaded
+  useEffect(() => {
+    if (!open) return;
+    if (categorySlug && categories.length > 0) {
+      const match = categories.find((c) => c.slug === categorySlug);
+      if (match) setUploadCategoryId(match.id);
+    }
+  }, [open, categorySlug, categories]);
 
   const allItems = data?.items ?? [];
   const items = useMemo(() => {
@@ -172,8 +183,8 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name…"
@@ -185,7 +196,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
           </div>
           {categories.length > 0 && (
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-40" data-testid="select-media-category">
+              <SelectTrigger className="w-36" data-testid="select-media-category">
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
@@ -196,6 +207,26 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
               </SelectContent>
             </Select>
           )}
+          <div className="flex items-center gap-2 ml-auto">
+            {categories.length > 0 && (
+              <>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Save to:</span>
+                <Select
+                  value={uploadCategoryId}
+                  onValueChange={setUploadCategoryId}
+                >
+                  <SelectTrigger className="w-36 h-10" data-testid="select-upload-category">
+                    <SelectValue placeholder="No category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No category</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           <ObjectUploader
             maxNumberOfFiles={5}
             maxFileSize={uploadMaxBytes}
@@ -243,6 +274,8 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                       ? `Image: ${placeholderAlt}`
                       : "Image: untitled",
                     originalName: fileName || undefined,
+                    categoryId:
+                      uploadCategoryId !== "__none__" ? uploadCategoryId : undefined,
                   },
                 });
               }
@@ -251,6 +284,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
             <Upload className="h-4 w-4" />
             <span>Upload</span>
           </ObjectUploader>
+          </div>
         </div>
 
         {!isLoading && (
