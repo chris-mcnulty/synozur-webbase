@@ -778,6 +778,100 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS faq_html text;
     `);
 
+    // 26. Legacy traffic ingestion. Adds provenance columns to the live
+    //     traffic_* tables so bulk-imported Wix Analytics rows live alongside
+    //     native first-party tracking and YTD reporting reads from one place.
+    //     Also creates the import-batch and unmapped-path triage tables.
+    //
+    //     Defaults preserve existing rows as `source_system = 'native'` so
+    //     reporting is unaffected until a legacy import actually runs.
+    await db.execute(sql`
+      ALTER TABLE traffic_sessions
+        ADD COLUMN IF NOT EXISTS source_system text NOT NULL DEFAULT 'native',
+        ADD COLUMN IF NOT EXISTS import_batch_id uuid,
+        ADD COLUMN IF NOT EXISTS legacy_session_key text;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_sessions_source_system_idx
+        ON traffic_sessions (source_system, first_seen_at);
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS traffic_sessions_legacy_session_key_key
+        ON traffic_sessions (legacy_session_key)
+        WHERE legacy_session_key IS NOT NULL;
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE traffic_pageviews
+        ADD COLUMN IF NOT EXISTS source_system text NOT NULL DEFAULT 'native',
+        ADD COLUMN IF NOT EXISTS import_batch_id uuid,
+        ADD COLUMN IF NOT EXISTS pageview_count integer NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS resolved_path text;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_pageviews_source_system_idx
+        ON traffic_pageviews (source_system, viewed_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_pageviews_resolved_path_idx
+        ON traffic_pageviews (resolved_path, viewed_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_traffic_batches (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_system text NOT NULL,
+        source_file text NOT NULL,
+        source_file_sha256 text NOT NULL,
+        range_from timestamptz,
+        range_to timestamptz,
+        row_count integer NOT NULL DEFAULT 0,
+        sessions_inserted integer NOT NULL DEFAULT 0,
+        pageviews_inserted integer NOT NULL DEFAULT 0,
+        unmapped_count integer NOT NULL DEFAULT 0,
+        is_final boolean NOT NULL DEFAULT false,
+        notes text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS legacy_traffic_batches_file_sha_key
+        ON legacy_traffic_batches (source_system, source_file_sha256);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_batches_created_at_idx
+        ON legacy_traffic_batches (created_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS legacy_traffic_unmapped (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_system text NOT NULL,
+        source_path text NOT NULL,
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        occurrences integer NOT NULL DEFAULT 1,
+        pageviews integer NOT NULL DEFAULT 0,
+        sample_page_type text,
+        notes text,
+        resolved_at timestamptz,
+        resolved_to_path text,
+        sample jsonb
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS legacy_traffic_unmapped_source_key
+        ON legacy_traffic_unmapped (source_system, source_path);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_unmapped_last_seen_idx
+        ON legacy_traffic_unmapped (last_seen_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS legacy_traffic_unmapped_resolved_idx
+        ON legacy_traffic_unmapped (resolved_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
