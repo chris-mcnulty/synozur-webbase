@@ -487,7 +487,7 @@ export default function PostEditor({ id }: Props) {
             </div>
           </Card>
 
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0">
             <RichTextEditor
               value={form.bodyHtml}
               onChange={({ html, markdown }) => update({ bodyHtml: html, bodyMarkdown: markdown })}
