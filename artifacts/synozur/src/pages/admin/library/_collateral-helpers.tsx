@@ -74,7 +74,7 @@ export function editorPathForSource(sourceId: string | null | undefined): string
     case "event":
       return `/people/events/${id}`;
     case "workshop":
-      return `/library/workshops/${id}`;
+      return `/library/workshops/${id}/edit`;
     default:
       return null;
   }
