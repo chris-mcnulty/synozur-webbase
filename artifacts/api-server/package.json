@@ -19,10 +19,12 @@
     "seed:m365-solution": "tsx src/scripts/seedM365Solution.ts",
     "seed:m365": "tsx src/scripts/seedM365Full.ts",
     "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
+    "migrate:gcs-to-spe": "tsx src/scripts/migrateGcsToSpe.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.1.4",
     "@google-cloud/storage": "^7.19.0",
     "@replit/connectors-sdk": "^0.4.0",
     "@workspace/api-zod": "workspace:*",

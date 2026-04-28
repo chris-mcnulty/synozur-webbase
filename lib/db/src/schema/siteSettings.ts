@@ -109,6 +109,20 @@ export const siteSettingsTable = pgTable("site_settings", {
   entraTenantId: text("entra_tenant_id"),
   entraAdminGroupFallback: text("entra_admin_group_fallback"),
 
+  // #127: SharePoint Embedded asset storage. Auth credentials
+  // (ENTRA_TENANT_ID / ENTRA_APP_CLIENT_ID / ENTRA_APP_CLIENT_SECRET) stay in
+  // env; the runtime config below is admin-managed because container IDs are
+  // produced by the SPE provisioning flow at runtime, not baked at deploy.
+  // `speStorageEnabled` is the master switch the storage backend factory
+  // consults alongside the `STORAGE_BACKEND` env var. `speContainerTypeId` is
+  // the GUID Azure issues when the container type is created in Synozur's
+  // tenant (one-time setup); the dev/prod container IDs are stamped onto this
+  // row when an admin clicks "Create container" in the SPE admin page.
+  speStorageEnabled: boolean("spe_storage_enabled").notNull().default(false),
+  speContainerTypeId: text("spe_container_type_id"),
+  speContainerIdDev: text("spe_container_id_dev"),
+  speContainerIdProd: text("spe_container_id_prod"),
+
   // #54: Spam detection rules. All fields are nullable so new deployments
   // fall back to sensible hard-coded defaults without a migration.
   // spamLinkThreshold: max external links allowed before a comment is

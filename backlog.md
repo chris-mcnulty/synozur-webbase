@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 27, 2026  
-> 36 tracked tasks · 3 strategic roadmap items · 104 merged · 30 cancelled
+> Last updated: April 28, 2026  
+> 35 tracked tasks · 3 strategic roadmap items · 105 merged · 30 cancelled
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record.
 
@@ -48,11 +48,6 @@ Editors can mark collateral items as featured and set a numeric rank to control 
 **Depends on:** #69 (collateral library admin)
 
 Editors filling out collateral fields have to navigate away to the public Library page or home carousel to see how the item renders. This task adds an inline preview panel to the collateral editor that shows a faithful replica of the public card and carousel tile as the editor updates fields, without requiring a page navigation.
-
-### #127 · Migrate asset storage from Google Cloud Storage to SharePoint Embedded
-**Depends on:** — (infrastructure foundation)
-
-Today `artifacts/api-server/src/lib/objectStorage.ts` speaks to Google Cloud Storage through the Replit sidecar (`http://127.0.0.1:1106/token`) — a convenient default on Replit but not where Synozur governs its document lifecycle. All uploaded assets (hero images, carousel tiles, eventual white-paper/webinar PDFs) live in a GCS bucket behind the `/api/storage/{storageKey}` endpoint; ACL state is mirrored in `objectAcl.ts`. This task replaces the GCS backend with SharePoint Embedded (SPE) — a Microsoft Graph-exposed container format that keeps files inside the tenant's own compliance and retention perimeter (DLP, eDiscovery, sensitivity labels) while preserving programmatic access. Introduce an `AssetStorageBackend` abstraction that the existing `ObjectStorageService` delegates to (so routes and the AssetLibraryModal stay unchanged), implement an SPE driver over the Graph API using an app-only token from Entra, and add a one-shot migration script that streams every object from GCS to an SPE container, rewriting `assets.storageKey` rows (and any legacy URL references in `collateral.heroImage`, `white_papers.documentUrl`, `videos.thumbnailUrl`, etc.) as it goes. During the cutover window both drivers run side-by-side behind a `STORAGE_BACKEND=gcs|spe` env flag so we can flip per-environment; decommission the GCS bucket once SPE traffic is verified for ≥30 days.
 
 ### #151 · Show spam comment count badge on the moderation navigation item
 **Depends on:** #54 (Insights comments)
@@ -114,12 +109,12 @@ Signed-in users who work across multiple Synozur applications (this site, Conste
 The site has a single fixed visual theme today. This task adds an admin-controlled mechanism to switch between defined theme presets (for example, Baseline and Aurora) without a code deploy. The active theme is stored in site settings, applied globally via CSS custom properties, and propagated to all registered OAuth client apps through the cross-app theme token so every Synozur surface stays visually consistent.
 
 ### #135 · Galaxy client portal — v0
-**Depends on:** #110 (audience classes — specifically `customer`), #111 (DB-backed capability map), #128 (OAuth provider); strongly pairs with #127 (SPE storage for client deliverables)
+**Depends on:** #110 (audience classes — specifically `customer`), #111 (DB-backed capability map), #128 (OAuth provider). SPE storage backend (#127) already shipped — the client-deliverables document browser plugs straight into the existing SPE container layer.
 
 The long-planned Galaxy client portal has been a roadmap concept for some time but has no shipped surface. This task lands a **thin v0** that gives existing clients a single authenticated home for their engagement with Synozur — turning the OAuth-provider work in #128 from infrastructure into a real product. Scope (deliberately small):
 - New workspace `artifacts/galaxy` (Vite + React 19, reuses `lib/api-client-react`, the shared theming layer from #130, and the cross-app switcher from #129).
 - Authentication via this site's OAuth provider (Galaxy is registered as an `oauth_client` with scopes `profile engagements.read deliverables.read invoices.read`).
-- Three pages on launch: **Home** (greeting, account team contacts pulled from team data, list of active engagements), **Engagement detail** (status pulled live from Constellation via the API client, deliverables list from SPE container per #127, risks/milestones summary), **Documents** (read-only deliverable browser scoped to that client's container).
+- Three pages on launch: **Home** (greeting, account team contacts pulled from team data, list of active engagements), **Engagement detail** (status pulled live from Constellation via the API client, deliverables list from SPE container, risks/milestones summary), **Documents** (read-only deliverable browser scoped to that client's container).
 - Server side: extend api-server with `GET /portal/engagements`, `GET /portal/engagements/:id`, `GET /portal/documents/:id` — all guarded by the `customer` audience class plus a `clientId` claim that scopes results to the user's organization. New tables `client_organizations` (`id`, `name`, `slug`, `accountManagerUserId`, …) and `client_organization_users` (`userId`, `clientId`, `role`) own the client↔user mapping.
 - Admin side: under `/admin/access/clients` (new) account managers create client-org records and invite users via email (Resend, #131/#132 for tracking).
 - Out of scope for v0: invoice payment, ticketing/support inbox, file uploads from the client back to Synozur, SLA dashboards, multi-tenant white-labeling. These are explicit follow-ups once v0 is in customer hands.
@@ -312,7 +307,6 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #110 | Show a video thumbnail preview when a custom hero video is active | Admin Access & People | #106 |
 | #111 | Validate video uploads before they reach object storage | Admin Access & People | #106 |
 | #119 | Add automated browser tests for the full sign-in and sign-out flow | Admin Access & People | #115 |
-| #127 | Migrate asset storage from GCS to SharePoint Embedded | Content Library | — |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
 | #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |

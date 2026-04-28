@@ -192,14 +192,37 @@ router.delete(
       res.status(404).json({ error: "Not found" });
       return;
     }
-    // Hard delete from storage too (best effort).
-    try {
-      if (row.storageKey.startsWith("/objects/")) {
-        const file = await objectStorageService.getObjectEntityFile(row.storageKey);
-        await file.delete({ ignoreNotFound: true });
+    // Hard delete from storage too (best effort). Distinct from the
+    // GCS→SPE migration: this is an admin-initiated row delete, the
+    // user explicitly wants the bytes gone. We delete from whichever
+    // side(s) the row lives on. The migration script itself is strictly
+    // additive and never touches GCS.
+    if (row.speFileId) {
+      try {
+        await objectStorageService.deleteObject({
+          storageKey: row.storageKey,
+          speFileId: row.speFileId,
+          // Target the container that originally stored the item;
+          // protects against active-container rotation in site_settings.
+          speContainerId: row.speContainerId ?? undefined,
+        });
+      } catch (err) {
+        req.log.warn(
+          { err, mediaId: row.id, speFileId: row.speFileId, speContainerId: row.speContainerId },
+          "Failed to delete SPE object on media row delete",
+        );
       }
-    } catch (err) {
-      req.log.warn({ err, mediaId: row.id }, "Failed to delete object from storage");
+    }
+    if (row.storageKey.startsWith("/objects/")) {
+      try {
+        const ref = await objectStorageService.getObjectEntityFile(row.storageKey);
+        await objectStorageService.deleteObject(ref);
+      } catch (err) {
+        req.log.warn(
+          { err, mediaId: row.id, storageKey: row.storageKey },
+          "Failed to delete GCS object on media row delete",
+        );
+      }
     }
     await db.delete(mediaTable).where(eq(mediaTable.id, row.id));
     await audit({

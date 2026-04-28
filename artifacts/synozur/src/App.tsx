@@ -56,6 +56,7 @@ import OrganizationsPage from "@/pages/admin/access/organizations";
 import SecurityLogPage from "@/pages/admin/access/security-log";
 import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
+import SpeAdminPage from "@/pages/admin/site-config/spe";
 import AdminServicesList from "@/pages/admin/products/services-list";
 import ServiceEdit from "@/pages/admin/products/service-edit";
 import ServiceMethodologiesPage from "@/pages/admin/products/service-methodologies";
@@ -358,6 +359,9 @@ function AdminRoutes() {
 
         {/* Marketing integrations */}
         <Route path="/integrations/hubspot" component={HubspotAdminPage} />
+
+        {/* Storage / infra integrations */}
+        <Route path="/integrations/spe" component={SpeAdminPage} />
 
         {/* Account section */}
         <Route path="/account/sessions" component={AdminActiveSessions} />

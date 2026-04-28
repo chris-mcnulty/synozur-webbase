@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import sharp from "sharp";
+import { eq } from "drizzle-orm";
+import { db, mediaTable } from "@workspace/db";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -163,15 +165,52 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * Accepts optional `?w=<width>` to return a WebP thumbnail resized server-side.
+ * Serve object entities. Accepts optional `?w=<width>` to return a WebP
+ * thumbnail resized server-side.
+ *
+ * #127 Phase 3 — read-path overlay. The `media.spe_file_id` column is
+ * the migration's authoritative bit: if set, the row's bytes have been
+ * mirrored to SharePoint Embedded and we read from there; otherwise
+ * (legacy + un-migrated rows) we keep reading from GCS via the
+ * `storage_key` column. The GCS bytes are never deleted by the
+ * migration, so clearing `spe_file_id` rolls a row back to GCS without
+ * touching either backend's data.
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
-    const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+    const storageKey = `/objects/${wildcardPath}`;
+
+    // Single indexed lookup. Cheap. The route used to skip this entirely
+    // and resolve straight against GCS; the cost (one Postgres point read)
+    // buys us SPE/GCS dispatch and crash-safe rollback.
+    const overlay = await db.query.mediaTable.findFirst({
+      where: eq(mediaTable.storageKey, storageKey),
+      columns: { storageKey: true, speFileId: true, speContainerId: true },
+    });
+
+    let response: globalThis.Response;
+    if (overlay?.speFileId) {
+      // Migrated row → read via SPE. The ref shape carries speFileId so
+      // `downloadObject` dispatches to the SPE backend internally; pass
+      // `speContainerId` through so the read targets the container that
+      // physically holds the item (rather than whichever the active env
+      // is currently configured for).
+      response = await objectStorageService.downloadObject(
+        objectStorageService.speRef(
+          overlay.storageKey,
+          overlay.speFileId,
+          overlay.speContainerId ?? undefined,
+        ),
+      );
+    } else {
+      // Un-migrated (or non-media — e.g. legacy `assets` rows reach this
+      // route too and never get the overlay). Resolve the GCS object
+      // directly. This is the original pre-Phase-3 behavior.
+      const objectFile = await objectStorageService.getObjectEntityFile(storageKey);
+      response = await objectStorageService.downloadObject(objectFile);
+    }
 
     // --- Protected route example (uncomment when using replit-auth) ---
     // if (!req.isAuthenticated()) {
@@ -180,7 +219,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     // }
     // const canAccess = await objectStorageService.canAccessObjectEntity({
     //   userId: req.user.id,
-    //   objectFile,
+    //   ref,
     //   requestedPermission: ObjectPermission.READ,
     // });
     // if (!canAccess) {
@@ -188,7 +227,6 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     //   return;
     // }
 
-    const response = await objectStorageService.downloadObject(objectFile);
     streamObjectToResponse(response, res, parseWidth(req));
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {

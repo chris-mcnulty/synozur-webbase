@@ -1,267 +1,163 @@
-import { Storage, File } from "@google-cloud/storage";
-import { Readable } from "stream";
-import { randomUUID } from "crypto";
+// #127 — pluggable asset-storage backends with read-side dispatch.
+//
+// `ObjectStorageService` holds BOTH backends and chooses per-call:
+//
+//   • Writes (uploadObject, getObjectEntityUploadURL) go to the
+//     `active` backend chosen by the STORAGE_BACKEND env var:
+//       STORAGE_BACKEND=gcs  (default) — Replit-sidecar GCS
+//       STORAGE_BACKEND=spe             — SharePoint Embedded
+//
+//   • Reads (downloadObject, deleteObject) route by `AssetObjectRef`
+//     shape: a ref carrying `speFileId` reads/deletes via SPE; a ref
+//     without it reads/deletes via GCS. This is the cutover pattern —
+//     during the migration window both backends are reachable so the
+//     `media.spe_file_id` overlay column resolves to either side per
+//     row, while new uploads always go to whichever backend is active.
+//
+// Phase 3 read-path-fallback invariant: GCS bytes are NEVER deleted by
+// the migration script or any read path. The bucket stays authoritative
+// behind every row's `media.storage_key` until decommissioned manually
+// post-soak. If we ever need to roll a row back from SPE, clearing
+// `media.spe_file_id` is sufficient — the bytes are right where they
+// were.
+
 import {
-  ObjectAclPolicy,
+  type ObjectAclPolicy,
   ObjectPermission,
-  canAccessObject,
-  getObjectAclPolicy,
-  setObjectAclPolicy,
+  canAccessByPolicy,
 } from "./objectAcl";
+import type {
+  AssetObjectRef,
+  AssetStorageBackend,
+  UploadObjectOptions,
+} from "./storage/types";
+import { ObjectNotFoundError } from "./storage/types";
+import { GcsAssetStorageBackend, objectStorageClient } from "./storage/gcsBackend";
+import { SpeAssetStorageBackend } from "./storage/speBackend";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+export { ObjectNotFoundError };
+export type { AssetObjectRef };
+// Re-exported for the legacy `seedHomepageAssets.ts` script which still
+// reaches into the GCS client directly. Will retire alongside the
+// `assets`-table cleanup tracked in BACKLOG.md.
+export { objectStorageClient };
 
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+type ActiveBackendName = "gcs" | "spe";
 
-export class ObjectNotFoundError extends Error {
-  constructor() {
-    super("Object not found");
-    this.name = "ObjectNotFoundError";
-    Object.setPrototypeOf(this, ObjectNotFoundError.prototype);
+function readActiveBackendName(): ActiveBackendName {
+  const choice = (process.env.STORAGE_BACKEND ?? "gcs").trim().toLowerCase();
+  switch (choice) {
+    case "":
+    case "gcs":
+      return "gcs";
+    case "spe":
+      return "spe";
+    default:
+      throw new Error(
+        `Unknown STORAGE_BACKEND='${choice}'. Expected 'gcs' or 'spe'.`,
+      );
   }
 }
 
 export class ObjectStorageService {
-  constructor() {}
+  private readonly gcs: GcsAssetStorageBackend;
+  private readonly spe: SpeAssetStorageBackend;
+  private readonly active: AssetStorageBackend;
 
-  getPublicObjectSearchPaths(): Array<string> {
-    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || "";
-    const paths = Array.from(
-      new Set(
-        pathsStr
-          .split(",")
-          .map((path) => path.trim())
-          .filter((path) => path.length > 0)
-      )
-    );
-    if (paths.length === 0) {
-      throw new Error(
-        "PUBLIC_OBJECT_SEARCH_PATHS not set. Create a bucket in 'Object Storage' " +
-          "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
-      );
-    }
-    return paths;
+  constructor(activeOverride?: ActiveBackendName) {
+    this.gcs = new GcsAssetStorageBackend();
+    this.spe = new SpeAssetStorageBackend();
+    const activeName = activeOverride ?? readActiveBackendName();
+    this.active = activeName === "spe" ? this.spe : this.gcs;
   }
 
-  getPrivateObjectDir(): string {
-    const dir = process.env.PRIVATE_OBJECT_DIR || "";
-    if (!dir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-    return dir;
+  // Read-side dispatch: ref shape decides which backend serves it.
+  // A ref with `speFileId` was minted by a migrated row; everything
+  // else is the legacy GCS shape.
+  private backendForRef(ref: AssetObjectRef): AssetStorageBackend {
+    return ref.speFileId ? this.spe : this.gcs;
   }
 
-  async searchPublicObject(filePath: string): Promise<File | null> {
-    for (const searchPath of this.getPublicObjectSearchPaths()) {
-      const fullPath = `${searchPath}/${filePath}`;
-
-      const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-
-      const [exists] = await file.exists();
-      if (exists) {
-        return file;
-      }
-    }
-
-    return null;
+  // Reads: dispatch by ref shape.
+  downloadObject(ref: AssetObjectRef, cacheTtlSec?: number): Promise<Response> {
+    return this.backendForRef(ref).downloadObject(ref, cacheTtlSec);
   }
 
-  async downloadObject(file: File, cacheTtlSec: number = 3600): Promise<Response> {
-    const [metadata] = await file.getMetadata();
-    const aclPolicy = await getObjectAclPolicy(file);
-    const isPublic = aclPolicy?.visibility === "public";
-
-    const nodeStream = file.createReadStream();
-    const webStream = Readable.toWeb(nodeStream) as ReadableStream;
-
-    const headers: Record<string, string> = {
-      "Content-Type": (metadata.contentType as string) || "application/octet-stream",
-      "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
-    };
-    if (metadata.size) {
-      headers["Content-Length"] = String(metadata.size);
-    }
-
-    return new Response(webStream, { headers });
+  deleteObject(ref: AssetObjectRef): Promise<void> {
+    return this.backendForRef(ref).deleteObject(ref);
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
+  // Writes: go to the active backend.
+  uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
+    return this.active.uploadObject(opts);
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<File> {
-    if (!objectPath.startsWith("/objects/")) {
-      throw new ObjectNotFoundError();
-    }
+  getObjectEntityUploadURL(): Promise<string> {
+    return this.active.getObjectEntityUploadURL();
+  }
 
-    const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) {
-      throw new ObjectNotFoundError();
-    }
+  // Path lookups + normalization are GCS-shaped idioms (`/objects/...`,
+  // `/public-objects/...`, `https://storage.googleapis.com/...`). The
+  // SPE backend has no equivalent and the migration is additive, so
+  // these always route through the GCS backend regardless of which
+  // backend is "active" for writes. Without this dispatch the storage
+  // route's GCS-fallback branch and the public-objects route would
+  // throw whenever STORAGE_BACKEND=spe even though the bytes still
+  // live in the bucket. Once `assets`/legacy public-objects are
+  // retired, these can move to the active backend.
+  searchPublicObject(filePath: string): Promise<AssetObjectRef | null> {
+    return this.gcs.searchPublicObject(filePath);
+  }
 
-    const entityId = parts.slice(1).join("/");
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) {
-      entityDir = `${entityDir}/`;
-    }
-    const objectEntityPath = `${entityDir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const objectFile = bucket.file(objectName);
-    const [exists] = await objectFile.exists();
-    if (!exists) {
-      throw new ObjectNotFoundError();
-    }
-    return objectFile;
+  getObjectEntityFile(objectPath: string): Promise<AssetObjectRef> {
+    return this.gcs.getObjectEntityFile(objectPath);
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
-      return rawPath;
-    }
-
-    const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
-
-    let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) {
-      objectEntityDir = `${objectEntityDir}/`;
-    }
-
-    if (!rawObjectPath.startsWith(objectEntityDir)) {
-      return rawObjectPath;
-    }
-
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
-    return `/objects/${entityId}`;
+    return this.gcs.normalizeObjectEntityPath(rawPath);
   }
 
   async trySetObjectEntityAclPolicy(
     rawPath: string,
-    aclPolicy: ObjectAclPolicy
+    aclPolicy: ObjectAclPolicy,
   ): Promise<string> {
-    const normalizedPath = this.normalizeObjectEntityPath(rawPath);
+    const normalizedPath = this.gcs.normalizeObjectEntityPath(rawPath);
     if (!normalizedPath.startsWith("/")) {
       return normalizedPath;
     }
-
-    const objectFile = await this.getObjectEntityFile(normalizedPath);
-    await setObjectAclPolicy(objectFile, aclPolicy);
+    const ref = await this.gcs.getObjectEntityFile(normalizedPath);
+    await this.gcs.setObjectAclPolicy(ref, aclPolicy);
     return normalizedPath;
   }
 
   async canAccessObjectEntity({
     userId,
-    objectFile,
+    ref,
     requestedPermission,
   }: {
     userId?: string;
-    objectFile: File;
+    ref: AssetObjectRef;
     requestedPermission?: ObjectPermission;
   }): Promise<boolean> {
-    return canAccessObject({
+    const policy = await this.backendForRef(ref).getObjectAclPolicy(ref);
+    return canAccessByPolicy({
       userId,
-      objectFile,
+      policy,
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
-}
 
-function parseObjectPath(path: string): {
-  bucketName: string;
-  objectName: string;
-} {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
+  // Build a ref that points at the SPE side of a migrated media row.
+  // Used by the storage route's overlay-resolution to construct a ref
+  // from the DB columns without needing to re-query. Pass speContainerId
+  // through so reads/deletes target the container that physically holds
+  // the item (recorded on `media.spe_container_id`) — protects against
+  // site_settings rotation invalidating older rows.
+  speRef(
+    storageKey: string,
+    speFileId: string,
+    speContainerId?: string,
+  ): AssetObjectRef {
+    return { storageKey, speFileId, speContainerId };
   }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
-  }
-
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
-
-  return {
-    bucketName,
-    objectName,
-  };
-}
-
-async function signObjectURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
-
-  const { signed_url: signedURL } = (await response.json()) as { signed_url: string };
-  return signedURL;
 }
