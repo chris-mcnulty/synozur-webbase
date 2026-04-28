@@ -6,6 +6,10 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { loadLinkedBooking, type LinkedBookingDto } from "../lib/bookingUtils";
+import {
+  upsertCollateralFromWorkshop,
+  softDeleteCollateralForWorkshop,
+} from "../lib/syncCollateral";
 
 const router: IRouter = Router();
 
@@ -334,6 +338,11 @@ router.post("/cms/workshops", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: row.id,
   });
+  try {
+    await upsertCollateralFromWorkshop(row);
+  } catch (err) {
+    req.log.error({ err, workshopId: row.id }, "Failed to sync collateral after workshop create");
+  }
   res.status(201).json(shape(row));
 });
 
@@ -393,6 +402,11 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: id,
   });
+  try {
+    await upsertCollateralFromWorkshop(updated);
+  } catch (err) {
+    req.log.error({ err, workshopId: id }, "Failed to sync collateral after workshop update");
+  }
   res.json(shape(updated));
 });
 
@@ -415,7 +429,25 @@ router.delete("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     entity: "workshop",
     entityId: id,
   });
+  try {
+    await softDeleteCollateralForWorkshop(id);
+  } catch (err) {
+    req.log.error({ err, workshopId: id }, "Failed to soft-delete collateral after workshop delete");
+  }
   res.status(204).end();
+});
+
+router.post("/cms/workshops/:id/sync-to-collateral", ...adminGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const row = await db.query.workshopsTable.findFirst({
+    where: eq(workshopsTable.id, id),
+  });
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await upsertCollateralFromWorkshop(row);
+  res.json({ ok: true });
 });
 
 export default router;

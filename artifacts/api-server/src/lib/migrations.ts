@@ -778,6 +778,16 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS faq_html text;
     `);
 
+    // 26. Collateral type enum: add 'workshop' value so workshops can be synced
+    //     into the library (collateral table) the same way videos, case studies,
+    //     and events are.
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE collateral_type ADD VALUE IF NOT EXISTS 'workshop';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

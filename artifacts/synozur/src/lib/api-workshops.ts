@@ -130,6 +130,10 @@ export const workshopsApi = {
     jsonFetch<void>(url(`/cms/workshops/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  syncToCollateral: (id: string) =>
+    jsonFetch<{ ok: boolean }>(url(`/cms/workshops/${encodeURIComponent(id)}/sync-to-collateral`), {
+      method: "POST",
+    }),
 };
 
 export function emptyWorkshopInput(): WorkshopInput {

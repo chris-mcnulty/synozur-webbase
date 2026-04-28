@@ -1,11 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Plus, RefreshCw, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -196,6 +203,22 @@ export default function WorkshopEdit({ id }: Props) {
   });
   const isStaleSelection = (b: BookingDto): boolean =>
     !b.active || (!!b.endsAt && new Date(b.endsAt) <= new Date());
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const services = servicesQ.data?.items ?? [];
+  const solutionsForSelectedService = useMemo(
+    () => services.find((s) => s.id === form.serviceId)?.solutions ?? [],
+    [services, form.serviceId],
+  );
+
+  const syncMut = useMutation({
+    mutationFn: () => workshopsApi.syncToCollateral(id!),
+    onSuccess: () => toast({ title: "Synced to collateral library" }),
+    onError: (e: Error) => toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
+  });
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -928,6 +951,61 @@ export default function WorkshopEdit({ id }: Props) {
         </Section>
 
         <Section
+          title="Service &amp; Solution"
+          description="Tag this workshop to a service and/or solution so it appears in filtered collateral rails."
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="serviceId">Service</Label>
+              <Select
+                value={form.serviceId ?? "__none__"}
+                onValueChange={(v) =>
+                  update("serviceId", v === "__none__" ? null : v)
+                }
+                disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
+              >
+                <SelectTrigger id="serviceId">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="solutionId">Solution</Label>
+              <Select
+                value={form.solutionId ?? "__none__"}
+                onValueChange={(v) =>
+                  update("solutionId", v === "__none__" ? null : v)
+                }
+                disabled={!access?.isEditorOrAbove || servicesQ.isLoading}
+              >
+                <SelectTrigger id="solutionId">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {(form.serviceId
+                    ? solutionsForSelectedService
+                    : services.flatMap((s) => s.solutions)
+                  ).map((sol) => (
+                    <SelectItem key={sol.id} value={sol.id}>
+                      {sol.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Section>
+
+        <Section
           title="Booking"
           description="Optionally attach a Bookings card shown on the public workshop page."
         >
@@ -965,7 +1043,7 @@ export default function WorkshopEdit({ id }: Props) {
           </div>
         )}
 
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-3 pt-2 flex-wrap">
           <Button type="submit" disabled={saveMut.isPending} data-testid="button-save">
             {saveMut.isPending ? "Saving…" : isNew ? "Create workshop" : "Save changes"}
           </Button>
@@ -976,6 +1054,18 @@ export default function WorkshopEdit({ id }: Props) {
           >
             Cancel
           </Button>
+          {!isNew && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={syncMut.isPending}
+              onClick={() => syncMut.mutate()}
+              title="Push this workshop into the collateral library so it appears in filtered rails and the Library admin view"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncMut.isPending ? "animate-spin" : ""}`} />
+              {syncMut.isPending ? "Syncing…" : "Sync to library"}
+            </Button>
+          )}
         </div>
       </form>
 
