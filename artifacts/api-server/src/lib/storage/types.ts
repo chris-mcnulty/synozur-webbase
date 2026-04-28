@@ -9,6 +9,10 @@ import type { ObjectAclPolicy } from "../objectAcl";
 export interface AssetObjectRef {
   readonly storageKey: string;
   readonly speFileId?: string;
+  // The container that physically holds the SPE item. Stored on
+  // `media.spe_container_id` so reads/deletes target the original
+  // container even if `site_settings.spe_container_id_*` later rotates.
+  readonly speContainerId?: string;
 }
 
 // Server-side upload — the Orbit pattern. The api-server receives bytes

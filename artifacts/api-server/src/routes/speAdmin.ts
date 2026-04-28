@@ -35,6 +35,12 @@ router.get(
       where: eq(siteSettingsTable.id, SETTINGS_ID),
     });
     const cfg = readSpeGraphConfigFromEnv();
+    // `activeContainerSlot` is the slot the api-server would pick at
+    // request time, derived from NODE_ENV server-side. Saves the React
+    // admin page from having to read process.env (which doesn't exist
+    // in a Vite browser build) to make UI gating decisions.
+    const activeContainerSlot: "dev" | "prod" =
+      process.env["NODE_ENV"] === "production" ? "prod" : "dev";
     res.json({
       credentialsConfigured: cfg !== null,
       tenantId: cfg?.tenantId ?? null,
@@ -43,6 +49,7 @@ router.get(
       containerIdDev: settings?.speContainerIdDev ?? null,
       containerIdProd: settings?.speContainerIdProd ?? null,
       activeBackend: process.env["STORAGE_BACKEND"] ?? "gcs",
+      activeContainerSlot,
     });
   },
 );
@@ -63,7 +70,7 @@ router.post(
   async (req, res): Promise<void> => {
     const parsed = registerBody.safeParse(req.body ?? {});
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid body", issues: parsed.error.issues });
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
       return;
     }
     const settings = await db.query.siteSettingsTable.findFirst({
@@ -129,7 +136,7 @@ router.post(
   async (req, res): Promise<void> => {
     const parsed = createContainerBody.safeParse(req.body ?? {});
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid body", issues: parsed.error.issues });
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
       return;
     }
     const settings = await db.query.siteSettingsTable.findFirst({
@@ -212,7 +219,7 @@ router.patch(
   async (req, res): Promise<void> => {
     const parsed = patchSettingsBody.safeParse(req.body ?? {});
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid body", issues: parsed.error.issues });
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
       return;
     }
     const updates: Partial<typeof siteSettingsTable.$inferInsert> = {};

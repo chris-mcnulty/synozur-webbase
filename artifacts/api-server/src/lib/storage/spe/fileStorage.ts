@@ -138,13 +138,19 @@ export class SpeFileStorage {
     };
   }
 
-  async getFile(itemId: string): Promise<Response> {
-    const containerId = await this.resolveContainerId();
+  // Reads/deletes accept an optional explicit containerId so callers
+  // (the storage route, the cms/media DELETE handler) can target the
+  // container that originally stored the item — recorded on
+  // `media.spe_container_id`. Falls back to the active container when
+  // omitted, which is the right thing for the migration script and
+  // any caller that just wrote a fresh item.
+  async getFile(itemId: string, containerIdOverride?: string): Promise<Response> {
+    const containerId = containerIdOverride ?? (await this.resolveContainerId());
     return this.getGraph().downloadFile(containerId, itemId);
   }
 
-  async deleteFile(itemId: string): Promise<void> {
-    const containerId = await this.resolveContainerId();
+  async deleteFile(itemId: string, containerIdOverride?: string): Promise<void> {
+    const containerId = containerIdOverride ?? (await this.resolveContainerId());
     await this.getGraph().deleteItem(containerId, itemId);
   }
 
@@ -154,8 +160,8 @@ export class SpeFileStorage {
     return this.getGraph().listChildren(containerId, folder);
   }
 
-  async getMetadata(itemId: string): Promise<SpeFileItem> {
-    const containerId = await this.resolveContainerId();
+  async getMetadata(itemId: string, containerIdOverride?: string): Promise<SpeFileItem> {
+    const containerId = containerIdOverride ?? (await this.resolveContainerId());
     return this.getGraph().getItem(containerId, itemId);
   }
 }

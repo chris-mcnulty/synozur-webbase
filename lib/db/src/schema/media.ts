@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, check, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { assetCategoriesTable } from "./assetCategories";
@@ -45,6 +45,13 @@ export const mediaTable = pgTable(
       "media_alt_text_non_empty",
       sql`length(trim(${t.altText})) > 0`,
     ),
+    // #127 Phase 3 — `routes/storage.ts` looks up media rows by
+    // storage_key on every /storage/objects/<...> request to resolve
+    // the GCS-vs-SPE overlay. Unique because storage_key is 1:1 with
+    // a media row (the column is populated by the upload flow with a
+    // freshly-minted /objects/<uuid> path) and the uniqueness is what
+    // makes the lookup a single-row point read.
+    uniqueIndex("media_storage_key_key").on(t.storageKey),
   ],
 );
 

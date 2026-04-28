@@ -23,9 +23,15 @@
 // Env required (same as the api-server itself):
 //   DATABASE_URL, ENTRA_TENANT_ID, ENTRA_APP_CLIENT_ID,
 //   ENTRA_APP_CLIENT_SECRET, PUBLIC_OBJECT_SEARCH_PATHS,
-//   PRIVATE_OBJECT_DIR. site_settings must have a container ID for
-//   the active environment (NODE_ENV→ slot) and speStorageEnabled=true
-//   isn't required (the script targets SPE directly via fileStorage).
+//   PRIVATE_OBJECT_DIR.
+//
+// site_settings prerequisites:
+//   • spe_container_id_dev (or _prod) populated for the active
+//     environment — provision via the SPE admin page.
+//   • spe_storage_enabled = true — `SpeFileStorage.resolveContainerId`
+//     gates on this. Flip it on before running the migration; reads
+//     stay on GCS until rows are actually overlaid, and writes stay on
+//     GCS until you also set STORAGE_BACKEND=spe in env.
 
 import { eq, isNull, count } from "drizzle-orm";
 import { db, mediaTable } from "@workspace/db";

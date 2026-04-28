@@ -46,8 +46,8 @@ const NOT_SUPPORTED_NORMALIZE =
 // path so the existing column types (text storage_key) keep accepting
 // them during the additive-overlay migration window. The read-path in
 // routes/storage.ts will branch on speFileId-presence in Phase 3.
-function speRef(itemId: string): AssetObjectRef {
-  return { storageKey: `/spe/${itemId}`, speFileId: itemId };
+function speRef(itemId: string, containerId?: string): AssetObjectRef {
+  return { storageKey: `/spe/${itemId}`, speFileId: itemId, speContainerId: containerId };
 }
 
 function asSpeFileId(ref: AssetObjectRef): string {
@@ -72,7 +72,11 @@ export class SpeAssetStorageBackend implements AssetStorageBackend {
     const itemId = asSpeFileId(ref);
     let upstream: Response;
     try {
-      upstream = await speFileStorage.getFile(itemId);
+      // If the ref carries the container the row was written to, use
+      // it — protects against site_settings.spe_container_id_* rotation
+      // making old media.spe_file_id values 404 against the wrong
+      // container.
+      upstream = await speFileStorage.getFile(itemId, ref.speContainerId);
     } catch (err) {
       // Surface a clean ObjectNotFoundError so the storage route returns
       // 404 instead of 500 when an SPE item id has been deleted/rotated.
@@ -139,7 +143,7 @@ export class SpeAssetStorageBackend implements AssetStorageBackend {
   }
 
   async deleteObject(ref: AssetObjectRef): Promise<void> {
-    await speFileStorage.deleteFile(asSpeFileId(ref));
+    await speFileStorage.deleteFile(asSpeFileId(ref), ref.speContainerId);
   }
 
   async uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
@@ -151,6 +155,6 @@ export class SpeAssetStorageBackend implements AssetStorageBackend {
       ownerId: opts.ownerId,
       uploadedByUserId: opts.uploadedByUserId,
     });
-    return speRef(stored.itemId);
+    return speRef(stored.itemId, stored.containerId);
   }
 }

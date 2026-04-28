@@ -202,10 +202,13 @@ router.delete(
         await objectStorageService.deleteObject({
           storageKey: row.storageKey,
           speFileId: row.speFileId,
+          // Target the container that originally stored the item;
+          // protects against active-container rotation in site_settings.
+          speContainerId: row.speContainerId ?? undefined,
         });
       } catch (err) {
         req.log.warn(
-          { err, mediaId: row.id, speFileId: row.speFileId },
+          { err, mediaId: row.id, speFileId: row.speFileId, speContainerId: row.speContainerId },
           "Failed to delete SPE object on media row delete",
         );
       }

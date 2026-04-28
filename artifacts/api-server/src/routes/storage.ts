@@ -192,10 +192,17 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
 
     let response: globalThis.Response;
     if (overlay?.speFileId) {
-      // Migrated row → read via SPE. The ref shape carries speFileId, so
-      // `downloadObject` dispatches to the SPE backend internally.
+      // Migrated row → read via SPE. The ref shape carries speFileId so
+      // `downloadObject` dispatches to the SPE backend internally; pass
+      // `speContainerId` through so the read targets the container that
+      // physically holds the item (rather than whichever the active env
+      // is currently configured for).
       response = await objectStorageService.downloadObject(
-        objectStorageService.speRef(overlay.storageKey, overlay.speFileId),
+        objectStorageService.speRef(
+          overlay.storageKey,
+          overlay.speFileId,
+          overlay.speContainerId ?? undefined,
+        ),
       );
     } else {
       // Un-migrated (or non-media — e.g. legacy `assets` rows reach this

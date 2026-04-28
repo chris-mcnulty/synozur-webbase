@@ -23,6 +23,10 @@ interface SpeStatus {
   containerIdDev: string | null;
   containerIdProd: string | null;
   activeBackend: string;
+  // Server-derived from NODE_ENV — tells the page which container slot
+  // is the one this environment will actually use. Authoritative,
+  // because the React build has no `process.env` to consult.
+  activeContainerSlot: "dev" | "prod";
 }
 
 interface MigrationStatus {
@@ -297,7 +301,7 @@ export default function SpeAdminPage() {
                   disabled={
                     saving ||
                     !status.credentialsConfigured ||
-                    (process.env.NODE_ENV === "production"
+                    (status.activeContainerSlot === "prod"
                       ? !status.containerIdProd
                       : !status.containerIdDev)
                   }

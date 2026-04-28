@@ -96,31 +96,37 @@ export class ObjectStorageService {
     return this.active.getObjectEntityUploadURL();
   }
 
-  // Path lookups + normalization are GCS-shaped idioms. They run
-  // against the active backend; the SPE backend throws clearly when
-  // a caller invokes them on the wrong backend.
+  // Path lookups + normalization are GCS-shaped idioms (`/objects/...`,
+  // `/public-objects/...`, `https://storage.googleapis.com/...`). The
+  // SPE backend has no equivalent and the migration is additive, so
+  // these always route through the GCS backend regardless of which
+  // backend is "active" for writes. Without this dispatch the storage
+  // route's GCS-fallback branch and the public-objects route would
+  // throw whenever STORAGE_BACKEND=spe even though the bytes still
+  // live in the bucket. Once `assets`/legacy public-objects are
+  // retired, these can move to the active backend.
   searchPublicObject(filePath: string): Promise<AssetObjectRef | null> {
-    return this.active.searchPublicObject(filePath);
+    return this.gcs.searchPublicObject(filePath);
   }
 
   getObjectEntityFile(objectPath: string): Promise<AssetObjectRef> {
-    return this.active.getObjectEntityFile(objectPath);
+    return this.gcs.getObjectEntityFile(objectPath);
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    return this.active.normalizeObjectEntityPath(rawPath);
+    return this.gcs.normalizeObjectEntityPath(rawPath);
   }
 
   async trySetObjectEntityAclPolicy(
     rawPath: string,
     aclPolicy: ObjectAclPolicy,
   ): Promise<string> {
-    const normalizedPath = this.active.normalizeObjectEntityPath(rawPath);
+    const normalizedPath = this.gcs.normalizeObjectEntityPath(rawPath);
     if (!normalizedPath.startsWith("/")) {
       return normalizedPath;
     }
-    const ref = await this.active.getObjectEntityFile(normalizedPath);
-    await this.active.setObjectAclPolicy(ref, aclPolicy);
+    const ref = await this.gcs.getObjectEntityFile(normalizedPath);
+    await this.gcs.setObjectAclPolicy(ref, aclPolicy);
     return normalizedPath;
   }
 
@@ -143,8 +149,15 @@ export class ObjectStorageService {
 
   // Build a ref that points at the SPE side of a migrated media row.
   // Used by the storage route's overlay-resolution to construct a ref
-  // from the DB columns without needing to re-query.
-  speRef(storageKey: string, speFileId: string): AssetObjectRef {
-    return { storageKey, speFileId };
+  // from the DB columns without needing to re-query. Pass speContainerId
+  // through so reads/deletes target the container that physically holds
+  // the item (recorded on `media.spe_container_id`) — protects against
+  // site_settings rotation invalidating older rows.
+  speRef(
+    storageKey: string,
+    speFileId: string,
+    speContainerId?: string,
+  ): AssetObjectRef {
+    return { storageKey, speFileId, speContainerId };
   }
 }
