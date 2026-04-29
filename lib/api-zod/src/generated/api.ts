@@ -2559,7 +2559,11 @@ export const RequestUploadUrlBody = zod.object({
 });
 
 export const RequestUploadUrlResponse = zod.object({
-  uploadURL: zod.string().url(),
+  uploadURL: zod
+    .string()
+    .describe(
+      "Absolute HTTPS URL (GCS) or server-relative path starting with \/ (SPE direct-upload). Clients must absolutize relative paths using window.location.origin before use.\n",
+    ),
   objectPath: zod.string(),
   metadata: zod
     .object({
