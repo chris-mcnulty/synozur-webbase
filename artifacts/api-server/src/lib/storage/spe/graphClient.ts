@@ -19,7 +19,6 @@
 // resolved by the caller in fileStorage.ts, not here.
 
 import { ConfidentialClientApplication } from "@azure/msal-node";
-import { Readable } from "stream";
 import { logger } from "../../logger";
 
 const GRAPH_V1_URL = "https://graph.microsoft.com/v1.0";
