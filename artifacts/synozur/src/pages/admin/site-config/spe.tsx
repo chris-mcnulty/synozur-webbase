@@ -472,16 +472,22 @@ export default function SpeAdminPage() {
     description: string,
   ) {
     try {
-      const r = await apiFetch<{ containerId: string }>(
+      const r = await apiFetch<{
+        containerId: string;
+        columns: { created: string[]; existed: string[] } | null;
+      }>(
         "/admin/integrations/spe/container",
         {
           method: "POST",
           body: JSON.stringify({ slot, displayName, description: description || undefined }),
         },
       );
+      const colsSummary = r.columns
+        ? ` · ${r.columns.created.length} columns provisioned`
+        : " · column provisioning failed (run manually)";
       toast({
         title: `${slot} container created`,
-        description: r.containerId,
+        description: r.containerId + colsSummary,
       });
       await refresh();
     } catch (e) {
@@ -750,24 +756,61 @@ export default function SpeAdminPage() {
               </div>
             </div>
 
-            {/* Custom columns — informational only. SPE container-backed
-                site collections are isolated from the regular SharePoint
-                tenant; POST /drives/{id}/list/columns returns 403 even with
-                Sites.FullControl.All because those sites sit in a separate
-                permission zone that tenant-wide Sites.* grants don't cover.
-                All file provenance is kept exclusively in the media DB row. */}
-            <div className="border-t pt-4 space-y-1.5">
-              <div className="text-sm font-medium">Custom SharePoint columns</div>
-              <p className="text-xs text-muted-foreground">
-                SPE container sites are isolated from the regular SharePoint
-                tenant — the Graph column-creation endpoint returns{" "}
-                <code>accessDenied</code> even with{" "}
-                <code>Sites.FullControl.All</code>. This is a documented SPE
-                permission boundary; the app doesn't read these columns back,
-                so no functionality is lost. All file provenance (document
-                type, owner, original filename, content type) is stored in the{" "}
-                <code>media</code> database row and is authoritative there.
-              </p>
+            {/* Custom columns — provisioned via the SPE-native
+                /storage/fileStorage/containers/{id}/columns endpoint.
+                New containers have columns auto-provisioned at create time.
+                Use the buttons below to provision (or re-verify) columns on
+                existing containers. Idempotent — safe to run multiple times. */}
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <div className="text-sm font-medium">Custom SharePoint columns</div>
+                <p className="text-xs text-muted-foreground">
+                  Five <code>Synozur*</code> text columns are provisioned on
+                  each container so every uploaded file is stamped with its
+                  document type, owner, original filename, content type, and
+                  uploader. New containers are provisioned automatically.
+                  Use the buttons below to provision existing containers or
+                  to confirm columns are in place.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["dev", "prod"] as const).map((slot) => {
+                  const hasContainer =
+                    slot === "dev" ? !!status.containerIdDev : !!status.containerIdProd;
+                  return (
+                    <Button
+                      key={slot}
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        provisionColumnsBusy ||
+                        !status.credentialsConfigured ||
+                        !hasContainer
+                      }
+                      title={!hasContainer ? `Create a ${slot} container first` : undefined}
+                      onClick={() => provisionColumns(slot)}
+                    >
+                      {provisionColumnsBusy ? "Provisioning…" : `Provision columns (${slot})`}
+                    </Button>
+                  );
+                })}
+              </div>
+              {provisionColumnsResult && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {provisionColumnsResult.created.length > 0 && (
+                    <div>
+                      <span className="text-green-600 dark:text-green-400 font-medium">Created: </span>
+                      {provisionColumnsResult.created.join(", ")}
+                    </div>
+                  )}
+                  {provisionColumnsResult.existed.length > 0 && (
+                    <div>
+                      <span className="font-medium">Already in place: </span>
+                      {provisionColumnsResult.existed.join(", ")}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 

@@ -20,6 +20,7 @@
     "seed:m365": "tsx src/scripts/seedM365Full.ts",
     "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
     "migrate:gcs-to-spe": "tsx src/scripts/migrateGcsToSpe.ts",
+    "provision:spe-columns": "tsx src/scripts/provisionColumnsAll.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
   },
