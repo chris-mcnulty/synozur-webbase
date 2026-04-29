@@ -17,7 +17,11 @@
 // tenant. The Orbit pattern's per-customer registration loop has no
 // equivalent here.
 
-import { SpeGraphClient, SpeGraphRequestError } from "./graphClient";
+import {
+  SpeGraphClient,
+  SpeGraphRequestError,
+  type SpeColumnDefinition,
+} from "./graphClient";
 
 export interface CreatedContainer {
   containerId: string;
@@ -26,36 +30,54 @@ export interface CreatedContainer {
   status: string;
 }
 
-// Custom SharePoint list columns to provision on a new container's document
-// library. Graph will reject writes to these fields until they exist on the
-// list schema; provisioning is idempotent (409 = already present, skip).
+// Custom columns provisioned on a new container so metadata stamping in
+// storeFile() can write to them. Provisioning is idempotent — Graph returns
+// 409 nameAlreadyExists when a column is already on the schema, which we
+// treat as success.
 //
-// NOTE: SPE container sites are isolated from the regular SharePoint tenant.
-// The Graph endpoint POST /drives/{id}/list/columns returns 403 accessDenied
-// even with Sites.FullControl.All because SPE sites sit in a separate
-// permission zone that tenant-wide Sites.* grants do not cover. This is a
-// documented Microsoft permission boundary with no current workaround.
-//
-// All file provenance (documentType, ownerId, originalFileName, contentType)
-// is stored in the media database row and is authoritative there. The
-// SharePoint-side columns are additive audit data only; the app never reads
-// them back. 403 errors from this endpoint are therefore expected on
-// production SPE containers and are returned in `inaccessible` rather than
-// thrown.
-export const SYNOZUR_COLUMNS = [
-  { name: "SynozurDocumentType",    displayName: "Synozur Document Type" },
-  { name: "SynozurOwnerId",         displayName: "Synozur Owner ID" },
-  { name: "SynozurOriginalFileName", displayName: "Synozur Original File Name" },
-  { name: "SynozurContentType",     displayName: "Synozur Content Type" },
-  { name: "SynozurUploadedByUserId", displayName: "Synozur Uploaded By User ID" },
+// These are written via the SPE-specific endpoint
+// `/storage/fileStorage/containers/{id}/columns`. The drive-scoped sibling
+// `/drives/{driveId}/list/columns` returns 403 on SPE container sites — that
+// path was the source of #127's earlier "permission boundary" bug.
+export const SYNOZUR_COLUMNS: readonly SpeColumnDefinition[] = [
+  {
+    name: "SynozurDocumentType",
+    displayName: "Synozur Document Type",
+    columnType: "text",
+    indexed: true,
+    text: { maxLength: 64 },
+  },
+  {
+    name: "SynozurOwnerId",
+    displayName: "Synozur Owner ID",
+    columnType: "text",
+    indexed: true,
+    text: { maxLength: 64 },
+  },
+  {
+    name: "SynozurOriginalFileName",
+    displayName: "Synozur Original File Name",
+    columnType: "text",
+    text: { maxLength: 255 },
+  },
+  {
+    name: "SynozurContentType",
+    displayName: "Synozur Content Type",
+    columnType: "text",
+    text: { maxLength: 128 },
+  },
+  {
+    name: "SynozurUploadedByUserId",
+    displayName: "Synozur Uploaded By User ID",
+    columnType: "text",
+    indexed: true,
+    text: { maxLength: 64 },
+  },
 ] as const;
 
 export interface ProvisionColumnsResult {
   created: string[];
   existed: string[];
-  /** Columns skipped because the SPE container site returned 403 accessDenied
-   *  (documented permission boundary — not an application error). */
-  inaccessible: string[];
 }
 
 export class SpeContainerCreator {
@@ -117,53 +139,41 @@ export class SpeContainerCreator {
     };
   }
 
-  // Provisions the Synozur* custom text columns on an existing container's
-  // SharePoint document library so that metadata stamping in storeFile()
-  // works. Idempotent: 409 Conflict means the column already exists — fine.
+  // Provisions the Synozur* custom columns on a container's schema so that
+  // metadata stamping in storeFile() works. Idempotent: 409 nameAlreadyExists
+  // means the column was already provisioned — treated as success.
   //
   // Must be called after createContainer() for new containers and can be
-  // re-run at any time for containers created before column provisioning
-  // was added (i.e. the dev and prod containers already in production).
-  //
-  // On production SPE containers, Graph returns 403 accessDenied for schema
-  // modification regardless of permission level (SPE permission boundary).
-  // Those columns are collected in `inaccessible` and the call succeeds —
-  // no error is thrown because no functionality depends on these columns.
+  // re-run at any time on existing containers (containers created before
+  // column provisioning was wired up still need this stamp).
   async provisionColumns(containerId: string): Promise<ProvisionColumnsResult> {
-    const driveId = await this.graph.getContainerDriveId(containerId);
+    return this.initializeColumnSchema(containerId, SYNOZUR_COLUMNS);
+  }
+
+  // Generic bulk schema initializer. Idempotent — catches 409
+  // nameAlreadyExists per column and reports it in `existed`. Any other
+  // failure aborts the whole operation (the caller usually wants to know).
+  async initializeColumnSchema(
+    containerId: string,
+    columns: readonly SpeColumnDefinition[],
+  ): Promise<ProvisionColumnsResult> {
     const created: string[] = [];
     const existed: string[] = [];
-    const inaccessible: string[] = [];
-
-    for (const col of SYNOZUR_COLUMNS) {
+    for (const col of columns) {
       try {
-        await this.graph.request<void>(
-          this.graph.v1Url(`/drives/${driveId}/list/columns`),
-          {
-            method: "POST",
-            body: JSON.stringify({
-              name: col.name,
-              displayName: col.displayName,
-              text: {},
-            }),
-            headers: { "Content-Type": "application/json" },
-            skipJsonParse: true,
-          },
-        );
+        await this.graph.createContainerColumn(containerId, col);
         created.push(col.name);
       } catch (err) {
-        if (err instanceof SpeGraphRequestError && err.status === 409) {
+        if (
+          err instanceof SpeGraphRequestError &&
+          (err.status === 409 || err.bodyExcerpt.includes("nameAlreadyExists"))
+        ) {
           existed.push(col.name);
-        } else if (err instanceof SpeGraphRequestError && err.status === 403) {
-          // Documented SPE permission boundary — not an application error.
-          // Provenance lives in the media DB row; these columns are additive only.
-          inaccessible.push(col.name);
-        } else {
-          throw err;
+          continue;
         }
+        throw err;
       }
     }
-
-    return { created, existed, inaccessible };
+    return { created, existed };
   }
 }
