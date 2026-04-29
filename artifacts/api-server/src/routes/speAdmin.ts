@@ -276,7 +276,7 @@ router.post(
       res.status(500).json({ error: (err as Error).message });
       return;
     }
-    let result: { created: string[]; existed: string[] };
+    let result: { created: string[]; existed: string[]; inaccessible: string[] };
     try {
       result = await new SpeContainerCreator(graph).provisionColumns(containerId);
     } catch (err) {
@@ -284,7 +284,15 @@ router.post(
       res.status(502).json({ error: (err as Error).message });
       return;
     }
-    req.log.info({ result, containerId, slot: activeSlot }, "SPE provision-columns complete");
+    const logLevel = result.inaccessible.length > 0 ? "warn" : "info";
+    req.log[logLevel](
+      { result, containerId, slot: activeSlot,
+        ...(result.inaccessible.length > 0 && {
+          note: "inaccessible columns are expected on SPE container sites (documented permission boundary); provenance is in the media DB row",
+        })
+      },
+      "SPE provision-columns complete",
+    );
     await audit({
       actorId: req.authedUser!.id,
       action: "spe.container.provisionColumns",
