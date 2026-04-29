@@ -20,6 +20,7 @@ export const CAPABILITY_NAMES = [
   "content.moderate",
   "users.manage",
   "site.manage",
+  "oauth.manage",
 ] as const;
 
 export type CapabilityName = (typeof CAPABILITY_NAMES)[number];
@@ -31,6 +32,8 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
   "content.moderate": "Moderate comments and review marketing surfaces.",
   "users.manage": "Manage users, roles, and access mappings.",
   "site.manage": "Manage site-wide settings, redirects, and integrations.",
+  "oauth.manage":
+    "Register, rotate, and revoke OAuth client apps that authenticate against this site (#128).",
 };
 
 // Default mapping per role. The legacy roles map to exactly what
@@ -39,13 +42,13 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
 // nothing admin-side (they exist for portal authorization, not the CMS).
 export const DEFAULT_ROLE_CAPABILITIES: Record<RoleName, readonly CapabilityName[]> = {
   // Legacy roles (preserved as-is for back-compat)
-  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage"],
+  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage"],
   editor: ["content.view", "content.author", "content.publish", "content.moderate"],
   author: ["content.view", "content.author"],
   contributor: ["content.view", "content.author"],
   client: [],
   // #110 — audience classes
-  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage"],
+  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage"],
   content_author: ["content.view", "content.author", "content.publish"],
   hr: ["content.view", "users.manage"],
   internal: ["content.view"],

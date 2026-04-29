@@ -6,6 +6,7 @@ import { pruneExpiredSessions } from "./lib/sessions";
 import { pruneExpiredAuthStates } from "./lib/authStateStore";
 import { warnIfMisconfigured } from "./lib/entraOidc";
 import { runMigrations } from "./lib/migrations";
+import { ensureSigningKey } from "./lib/oauthKeys";
 
 const rawPort = process.env["PORT"];
 
@@ -22,6 +23,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 await runMigrations();
+await ensureSigningKey();
 
 const server = app.listen(port, (err) => {
   if (err) {

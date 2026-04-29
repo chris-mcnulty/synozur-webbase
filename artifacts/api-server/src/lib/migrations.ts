@@ -913,6 +913,155 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS spe_container_id_prod text;
     `);
 
+    // 29. #128 — OAuth 2.0 / OIDC provider tables.
+    //
+    // Five tables back the provider surface: client registrations, RS256
+    // signing keys, single-use authorization codes (hashed), opaque refresh
+    // tokens with a rotation chain (hashed), and per-(user, client) consent
+    // records. All credential-shaped values are stored as SHA-256 or bcrypt
+    // hashes; the raw value only exists in the response that returned it.
+    // Private signing keys are AES-256-GCM-encrypted at rest when OAUTH_KEK
+    // is configured (see lib/oauthKeys.ts).
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_clients (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_id text NOT NULL,
+        client_secret_hash text NOT NULL,
+        name text NOT NULL,
+        description text,
+        redirect_uris text[] NOT NULL,
+        allowed_scopes text[] NOT NULL,
+        allowed_grant_types text[] NOT NULL,
+        pkce_required boolean NOT NULL DEFAULT true,
+        is_active boolean NOT NULL DEFAULT true,
+        created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        last_used_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS oauth_clients_client_id_key
+        ON oauth_clients (client_id);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_signing_keys (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        kid text NOT NULL,
+        algorithm text NOT NULL,
+        public_key_pem text NOT NULL,
+        private_key_material text NOT NULL,
+        encryption_method text NOT NULL,
+        is_active boolean NOT NULL DEFAULT true,
+        rotated_at timestamptz,
+        retired_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS oauth_signing_keys_kid_key
+        ON oauth_signing_keys (kid);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_signing_keys_active_idx
+        ON oauth_signing_keys (is_active);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
+        code_hash text PRIMARY KEY,
+        client_id text NOT NULL,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        redirect_uri text NOT NULL,
+        scopes text[] NOT NULL,
+        code_challenge text,
+        code_challenge_method text,
+        nonce text,
+        expires_at timestamptz NOT NULL,
+        consumed_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_auth_codes_user_idx
+        ON oauth_authorization_codes (user_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_auth_codes_expires_idx
+        ON oauth_authorization_codes (expires_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        token_hash text NOT NULL,
+        client_id text NOT NULL,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        scopes text[] NOT NULL,
+        parent_token_id uuid,
+        expires_at timestamptz NOT NULL,
+        revoked_at timestamptz,
+        last_used_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS oauth_refresh_tokens_hash_key
+        ON oauth_refresh_tokens (token_hash);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_refresh_tokens_user_idx
+        ON oauth_refresh_tokens (user_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_refresh_tokens_client_idx
+        ON oauth_refresh_tokens (client_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_refresh_tokens_expires_idx
+        ON oauth_refresh_tokens (expires_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS oauth_consents (
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_id text NOT NULL,
+        scopes_granted text[] NOT NULL,
+        granted_at timestamptz NOT NULL DEFAULT now(),
+        revoked_at timestamptz,
+        PRIMARY KEY (user_id, client_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS oauth_consents_client_idx
+        ON oauth_consents (client_id);
+    `);
+
+    // 29a. Seed the oauth.manage capability and grant it to admin / site_admin
+    //      so the new admin surface is reachable without a second migration.
+    //      Mirrors CAPABILITY_NAMES / DEFAULT_ROLE_CAPABILITIES in
+    //      schema/capabilityMap.ts.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('oauth.manage', 'Register, rotate, and revoke OAuth client apps that authenticate against this site (#128).')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',      'oauth.manage'),
+          ('site_admin', 'oauth.manage')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
