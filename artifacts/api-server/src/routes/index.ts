@@ -45,6 +45,7 @@ import speAdminRouter from "./speAdmin";
 import clientOrgsRouter from "./clientOrgs";
 import securityLogRouter from "./cms/securityLog";
 import bookingsRouter from "./bookings";
+import aiGroundingRouter from "./aiGrounding";
 
 const router: IRouter = Router();
 
@@ -94,5 +95,6 @@ router.use(speAdminRouter);
 router.use(clientOrgsRouter);
 router.use(securityLogRouter);
 router.use(bookingsRouter);
+router.use(aiGroundingRouter);
 
 export default router;
