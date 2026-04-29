@@ -547,6 +547,99 @@ router.get("/cms/polaris/episodes/:id/collateral", ...readGuard, async (req, res
   res.json({ collateral: linked ? serializeCollateralLink(linked) : null });
 });
 
+// POST /cms/polaris/episodes/bulk-sync-collateral — re-syncs ALL non-deleted
+// episodes in one request. For episodes that already have a collateral mirror
+// the record is updated in-place (slug preserved). For episodes without one a
+// new collateral row is created. Returns a summary of what was done.
+router.post(
+  "/cms/polaris/episodes/bulk-sync-collateral",
+  ...adminGuard,
+  async (req, res) => {
+    const episodes = await db.query.polarisEpisodesTable.findMany({
+      where: isNull(polarisEpisodesTable.deletedAt),
+    });
+
+    let created = 0;
+    let updated = 0;
+
+    for (const episode of episodes) {
+      const syncFields = {
+        title: episode.title,
+        description: episode.summary || "",
+        heroImage: episode.artworkUrl || "",
+        url: canonicalUrlForCollateral("podcast", episode.slug),
+        external: false,
+        publishedAt: episode.publishedAt,
+        active: episode.active,
+        featured: episode.featured,
+        featuredRank: episode.featuredRank ?? null,
+        sourceId: `polaris_episode:${episode.id}`,
+        serviceId: episode.serviceId ?? null,
+        solutionId: episode.solutionId ?? null,
+        updatedAt: new Date(),
+      };
+
+      const existing = await db.query.collateralTable.findFirst({
+        where: and(
+          eq(collateralTable.polarisEpisodeId, episode.id),
+          isNull(collateralTable.deletedAt),
+        ),
+      });
+
+      if (existing) {
+        await db
+          .update(collateralTable)
+          .set(syncFields)
+          .where(eq(collateralTable.id, existing.id));
+        await audit({
+          actorId: req.authedUser!.id,
+          action: "polaris_episode.collateral_sync",
+          entity: "collateral",
+          entityId: existing.id,
+          diff: { episodeId: episode.id, bulk: true },
+        });
+        updated++;
+      } else {
+        const base = toSlug(`polaris-${episode.slug}`);
+        let candidate = base;
+        let i = 1;
+        for (;;) {
+          const conflict = await db.query.collateralTable.findFirst({
+            where: eq(collateralTable.slug, candidate),
+          });
+          if (!conflict) break;
+          i++;
+          candidate = `${base}-${i}`;
+        }
+        const [newRow] = await db
+          .insert(collateralTable)
+          .values({
+            slug: candidate,
+            type: "podcast",
+            polarisEpisodeId: episode.id,
+            ...syncFields,
+            tags: [],
+            subtitle: episode.guestName ?? null,
+            pillar: null,
+            videoUrl: null,
+            downloadUrl: null,
+          })
+          .returning();
+        await audit({
+          actorId: req.authedUser!.id,
+          action: "polaris_episode.collateral_add",
+          entity: "collateral",
+          entityId: newRow.id,
+          diff: { episodeId: episode.id, bulk: true },
+        });
+        created++;
+      }
+    }
+
+    res.json({ total: episodes.length, created, updated });
+  },
+);
+
 // POST /cms/polaris/episodes/:id/sync-collateral — creates or re-syncs the
 // linked collateral entry using the episode's current fields. Preserves the
 // slug on update so public URLs don't break. Featured / featuredRank flow

@@ -874,6 +874,11 @@ export const api = {
       url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
       { method: "POST" },
     ),
+  bulkSyncPolarisToCollateral: () =>
+    jsonFetch<{ total: number; created: number; updated: number }>(
+      url("/cms/polaris/episodes/bulk-sync-collateral"),
+      { method: "POST" },
+    ),
   removePolarisCollateralLink: (id: string) =>
     jsonFetch<void>(
       url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),

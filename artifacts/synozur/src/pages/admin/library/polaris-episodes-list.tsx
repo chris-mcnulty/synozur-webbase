@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -56,6 +56,19 @@ export default function AdminPolarisEpisodesList() {
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
+  const bulkSyncMut = useMutation({
+    mutationFn: () => api.bulkSyncPolarisToCollateral(),
+    onSuccess: (data) => {
+      toast({
+        title: "Bulk re-sync complete",
+        description: `${data.updated} updated, ${data.created} created (${data.total} episodes total).`,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-polaris-episodes"] });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Bulk re-sync failed", description: e.message, variant: "destructive" }),
+  });
+
   const onToggleActive = (e: PolarisEpisodeDto, active: boolean) => {
     if (!canWrite) return;
     updateMut.mutate({
@@ -83,6 +96,18 @@ export default function AdminPolarisEpisodesList() {
               data-testid="button-open-libsyn-import"
             >
               <Download className="h-4 w-4 mr-2" /> Import from Libsyn
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirm("Re-sync all Polaris episodes to the library? This will update service and solution tags on every episode's collateral record.")) return;
+                bulkSyncMut.mutate();
+              }}
+              disabled={bulkSyncMut.isPending}
+              data-testid="button-bulk-sync-polaris"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2${bulkSyncMut.isPending ? " animate-spin" : ""}`} />
+              {bulkSyncMut.isPending ? "Syncing…" : "Re-sync all to library"}
             </Button>
             <Link href="/library/polaris-episodes/new">
               <Button data-testid="button-create-polaris-episode">

@@ -18,6 +18,7 @@
     "seed:bookings": "tsx src/scripts/seedBookings.ts",
     "seed:m365-solution": "tsx src/scripts/seedM365Solution.ts",
     "seed:m365": "tsx src/scripts/seedM365Full.ts",
+    "fix:polaris-collateral": "tsx src/scripts/fixPolarisCollateral.ts",
     "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
     "migrate:gcs-to-spe": "tsx src/scripts/migrateGcsToSpe.ts",
     "provision:spe-columns": "tsx src/scripts/provisionColumnsAll.ts",
