@@ -66,7 +66,7 @@ export default function AdminPolarisEpisodesList() {
 
   const onDelete = (e: PolarisEpisodeDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${e.title}"?`)) return;
+    if (!confirm(`Archive "${e.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(e.id);
   };
 
