@@ -211,6 +211,10 @@ function buildPath(
       .replace(GRAPH_FORBIDDEN_RE, "_")
       .replace(/_+/g, "_") // collapse consecutive underscores
       .replace(/^_|_$/g, "") // trim leading/trailing underscores
+      // SharePoint rejects names that end with a period or space.
+      // (A trailing "." after the last word is the most common case from
+      // article titles like "AI in 2026: The Market Is Big. The Gap Is Bigger.")
+      .replace(/[.\s]+$/, "")
       .trim() || "unnamed";
   return `/${documentType}/${prefix}/${ownerId}-${safeName}`;
 }

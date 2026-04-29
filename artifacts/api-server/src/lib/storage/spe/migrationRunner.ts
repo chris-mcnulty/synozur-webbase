@@ -41,6 +41,10 @@ async function streamGcsToBuffer(
   };
 }
 
+type MigrateOneResult =
+  | { ok: true; itemId: string; containerId: string }
+  | { ok: false; reason: string; permanent: boolean };
+
 async function migrateOne(
   gcs: GcsAssetStorageBackend,
   row: {
@@ -51,7 +55,7 @@ async function migrateOne(
     mime: string | null;
   },
   dryRun: boolean,
-): Promise<{ ok: true; itemId: string; containerId: string } | { ok: false; reason: string }> {
+): Promise<MigrateOneResult> {
   if (dryRun) return { ok: true, itemId: "(dry-run)", containerId: "(dry-run)" };
 
   let body: Buffer;
@@ -63,7 +67,7 @@ async function migrateOne(
     // response headers, making the raw response unreliable.
     contentType = row.mime ?? fetched.contentType;
   } catch (err) {
-    return { ok: false, reason: `gcs fetch: ${(err as Error).message}` };
+    return { ok: false, reason: `gcs fetch: ${(err as Error).message}`, permanent: false };
   }
 
   // altText is NOT NULL in schema but may be null in older production rows
@@ -85,7 +89,19 @@ async function migrateOne(
       err instanceof SpeGraphRequestError && err.bodyExcerpt
         ? ` — ${err.bodyExcerpt}`
         : "";
-    return { ok: false, reason: `spe upload: ${(err as Error).message}${graphDetail}` };
+    // 4xx errors (other than 429 rate-limit) are permanent — the request is
+    // structurally invalid and retrying will never succeed. Mark them so the
+    // migration loop skips this row on subsequent pages rather than looping forever.
+    const isPermanent =
+      err instanceof SpeGraphRequestError &&
+      err.status >= 400 &&
+      err.status < 500 &&
+      err.status !== 429;
+    return {
+      ok: false,
+      reason: `spe upload: ${(err as Error).message}${graphDetail}`,
+      permanent: isPermanent,
+    };
   }
 
   try {
@@ -97,6 +113,7 @@ async function migrateOne(
     return {
       ok: false,
       reason: `db update failed AFTER spe upload — orphan in SPE: ${stored.itemId}: ${(err as Error).message}`,
+      permanent: false, // DB error is transient; retrying may succeed
     };
   }
 
@@ -132,6 +149,12 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
   let failed = 0;
   const failures: Array<{ id: string; reason: string }> = [];
 
+  // Rows that permanently failed (4xx from Graph) within this run.
+  // These are skipped on subsequent pages so that a single bad filename
+  // cannot hold the migration in an infinite retry loop. The WHERE clause
+  // still returns them (speFileId IS NULL) but we filter them in-memory.
+  const permanentlyFailed = new Set<string>();
+
   // In dry-run mode rows are never updated, so the WHERE spe_file_id IS NULL
   // filter would return the same page on every iteration — an infinite loop.
   // Use an explicit offset to advance through the result set instead.
@@ -159,7 +182,14 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
 
     if (page.length === 0) break;
 
+    // If every row in this page has already permanently failed in this run,
+    // there's nothing left that can make progress — break to avoid spinning.
+    const actionable = page.filter((r) => !permanentlyFailed.has(r.id));
+    if (actionable.length === 0) break;
+
     for (const row of page) {
+      if (permanentlyFailed.has(row.id)) continue; // already recorded as failure
+
       processed++;
       const result = await migrateOne(gcs, row, opts.dryRun);
       if (result.ok) {
@@ -169,6 +199,7 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
         failed++;
         failures.push({ id: row.id, reason: result.reason });
         opts.onRow?.(row.id, false, result.reason);
+        if (result.permanent) permanentlyFailed.add(row.id);
       }
       if (opts.limit !== null && processed >= opts.limit) break;
     }
