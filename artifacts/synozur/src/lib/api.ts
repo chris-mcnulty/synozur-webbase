@@ -884,6 +884,14 @@ export const api = {
       url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
       { method: "DELETE" },
     ),
+  // Picker for linking a Polaris episode to a related blog post. Returns
+  // posts categorized as "Polaris" or "podcast" (slug or name match).
+  listPolarisLinkablePosts: (q?: string) => {
+    const qs = q && q.trim().length > 0 ? `?q=${encodeURIComponent(q.trim())}` : "";
+    return jsonFetch<{ items: PolarisLinkablePostDto[] }>(
+      url(`/cms/polaris/episodes/post-picker${qs}`),
+    );
+  },
   previewPolarisLibsyn: (feedUrl?: string) => {
     const qs = feedUrl ? `?feedUrl=${encodeURIComponent(feedUrl)}` : "";
     return jsonFetch<{ feedUrl: string; items: PolarisLibsynPreviewItem[] }>(
@@ -1231,6 +1239,24 @@ export interface PolarisCollateralLinkDto {
   updatedAt: string;
 }
 
+export interface PolarisLinkedPostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  heroImageUrl: string | null;
+  publishedAt: string | null;
+}
+
+export interface PolarisLinkablePostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  publishedAt: string | null;
+  status: ArtifactStatus;
+}
+
 export interface PolarisEpisodeDto {
   id: string;
   slug: string;
@@ -1254,6 +1280,8 @@ export interface PolarisEpisodeDto {
   ogImage: string | null;
   serviceId: string | null;
   solutionId: string | null;
+  linkedPostId: string | null;
+  linkedPost: PolarisLinkedPostDto | null;
   active: boolean;
   sourceId: string | null;
   createdAt: string;
@@ -1739,4 +1767,5 @@ export interface PolarisEpisodeInput {
   sourceId?: string | null;
   serviceId?: string | null;
   solutionId?: string | null;
+  linkedPostId?: string | null;
 }

@@ -15,6 +15,7 @@ import {
   artifactTimestamps,
 } from "./_artifactBase";
 import { servicesTable, solutionsTable } from "./services";
+import { postsTable } from "./posts";
 
 // Polaris podcast episodes (#101). Built on the shared #98 artifact-type
 // pattern: identity + lifecycle + SEO + timestamps reused from
@@ -35,6 +36,9 @@ export const polarisEpisodesTable = pgTable(
     artworkUrl: text("artwork_url").notNull().default(""),
     serviceId: uuid("service_id").references(() => servicesTable.id, { onDelete: "set null" }),
     solutionId: uuid("solution_id").references(() => solutionsTable.id, { onDelete: "set null" }),
+    linkedPostId: uuid("linked_post_id").references(() => postsTable.id, {
+      onDelete: "set null",
+    }),
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,

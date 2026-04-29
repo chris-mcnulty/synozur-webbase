@@ -1045,6 +1045,15 @@ export async function runMigrations(): Promise<void> {
         ON messages (conversation_id);
     `);
 
+    // 31. Polaris episode → blog post link. Optional FK so an episode can be
+    //     associated with a related blog post (typically one categorized as
+    //     "Polaris" or "podcast"). When set, the public episode page renders
+    //     the post as a featured card above the show notes.
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS linked_post_id uuid REFERENCES posts(id) ON DELETE SET NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
