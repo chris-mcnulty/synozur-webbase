@@ -352,6 +352,10 @@ export class SpeGraphClient {
   // Stamp arbitrary list-item field metadata onto a DriveItem.
   // Backend code uses this to record provenance (uploadedByUserId,
   // documentType, original filename, etc.) on the SharePoint item.
+  // Works for built-in columns (e.g. Title) that already exist on the
+  // library schema — no column creation is required. Custom column
+  // creation (POST /list/columns) is blocked on SPE containers (403),
+  // but setting values on existing built-in columns is not.
   async setItemFields(
     containerId: string,
     itemId: string,
@@ -363,6 +367,27 @@ export class SpeGraphClient {
       {
         method: "PATCH",
         body: JSON.stringify(fields),
+        headers: { "Content-Type": "application/json" },
+        skipJsonParse: true,
+      },
+    );
+  }
+
+  // Sets DriveItem-level properties (e.g. `description`) directly on the
+  // item — distinct from list-item field columns. The description is a
+  // built-in DriveItem property that requires no column creation, is
+  // indexed by Microsoft Search, and is surfaced to Copilot.
+  async patchItem(
+    containerId: string,
+    itemId: string,
+    patch: Record<string, unknown>,
+  ): Promise<void> {
+    const driveId = await this.getContainerDriveId(containerId);
+    await this.request<void>(
+      `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
         headers: { "Content-Type": "application/json" },
         skipJsonParse: true,
       },
