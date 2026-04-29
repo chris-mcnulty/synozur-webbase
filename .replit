@@ -47,3 +47,6 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAILS = "chris.mcnulty@synozur.com,admin@synozur.com,michelle.caldwell@synozur.com"
+
+[userenv.development]
+STORAGE_BACKEND = "spe"
