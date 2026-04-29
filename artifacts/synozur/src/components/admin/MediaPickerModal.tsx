@@ -238,7 +238,10 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                 size: Number(file.size ?? 0),
                 contentType: String(file.type ?? "application/octet-stream"),
               });
-              return { method: "PUT", url: uploadURL };
+              const absURL = uploadURL.startsWith("/")
+                ? `${window.location.origin}${uploadURL}`
+                : uploadURL;
+              return { method: "PUT", url: absURL };
             }}
             onComplete={async (result) => {
               for (const f of (result.successful ?? []) as unknown as Array<
@@ -382,8 +385,12 @@ export async function uploadAndRegisterImage(): Promise<string | null> {
           size: file.size,
           contentType: file.type || "application/octet-stream",
         });
-        const putRes = await fetch(uploadURL, {
+        const absUploadURL = uploadURL.startsWith("/")
+          ? `${window.location.origin}${uploadURL}`
+          : uploadURL;
+        const putRes = await fetch(absUploadURL, {
           method: "PUT",
+          credentials: "same-origin",
           headers: { "Content-Type": file.type || "application/octet-stream" },
           body: file,
         });
@@ -391,7 +398,7 @@ export async function uploadAndRegisterImage(): Promise<string | null> {
           resolve(null);
           return;
         }
-        const pathOnly = new URL(uploadURL).pathname;
+        const pathOnly = new URL(absUploadURL).pathname;
         const match = pathOnly.match(/\/o\/(.+)$/);
         const objectName = match ? decodeURIComponent(match[1]) : pathOnly;
         const slashIdx = objectName.lastIndexOf("/");

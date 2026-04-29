@@ -298,7 +298,10 @@ export function AssetLibraryModal({
                 size: Number(file.size ?? 0),
                 contentType: String(file.type ?? "application/octet-stream"),
               });
-              return { method: "PUT", url: uploadURL };
+              const absURL = uploadURL.startsWith("/")
+                ? `${window.location.origin}${uploadURL}`
+                : uploadURL;
+              return { method: "PUT", url: absURL };
             }}
             onComplete={async (result) => {
               for (const f of (result.successful ?? []) as unknown as Array<Record<string, unknown>>) {
