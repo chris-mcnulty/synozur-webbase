@@ -648,7 +648,10 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                       variant="ghost"
                       className="w-full text-destructive hover:text-destructive"
                       disabled={!canWrite || removeCollateralMut.isPending}
-                      onClick={() => removeCollateralMut.mutate()}
+                      onClick={() => {
+                        if (!confirm("This will remove the episode from the home carousel and collateral feed. Are you sure?")) return;
+                        removeCollateralMut.mutate();
+                      }}
                       data-testid="btn-collateral-remove"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1.5" />
