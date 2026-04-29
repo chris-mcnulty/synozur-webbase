@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { db, siteSettingsTable } from "@workspace/db";
 import { logger } from "../../logger";
 import { SpeGraphClient, SpeFileItem, readSpeGraphConfigFromEnv } from "./graphClient";
+import { SYNOZUR_COLUMN_MAX_LENGTHS } from "./containerCreator";
 
 const SETTINGS_ID = 1;
 
@@ -227,21 +228,34 @@ function joinPath(base: string, segment: string): string {
 }
 
 function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {
-  // SPE container-backed site collections are isolated from the regular
-  // SharePoint tenant. The Graph endpoint POST /drives/{id}/list/columns
-  // (schema modification) returns 403 accessDenied even with
-  // Sites.FullControl.All, because SPE sites sit in a separate permission
-  // zone that tenant-wide Sites.* grants don't cover.
+  // Synozur* columns must already exist on the container schema — they are
+  // provisioned by SpeContainerCreator.provisionColumns() at container-create
+  // time, and re-runnable from the SPE admin page. setItemFields() falls back
+  // to per-field PATCH if any single column is missing, so a partially
+  // initialized schema doesn't fail the upload.
   //
-  // Until Microsoft exposes a supported path for column provisioning on SPE
-  // container sites, all file provenance is stored exclusively in the
-  // `media` DB row (documentType, ownerId, originalFileName, contentType).
-  // That is the authoritative source; the SharePoint-side columns were
-  // additive audit data only and the app doesn't read them back.
-  //
-  // Pass through caller-supplied extraFields so one-off overrides still work
-  // if the permission landscape changes in future.
-  const out: Record<string, unknown> = {};
+  // Long values (filenames pulled from imported assets, weird MIME-with-params
+  // strings) get truncated to the provisioned column maxLength before stamping
+  // — Graph would otherwise reject the value with a 400, and we'd rather log a
+  // truncated value than drop it entirely. Limits come from SYNOZUR_COLUMNS.
+  const out: Record<string, unknown> = {
+    SynozurDocumentType: clampToColumn("SynozurDocumentType", opts.documentType),
+    SynozurOwnerId: clampToColumn("SynozurOwnerId", opts.ownerId),
+    SynozurOriginalFileName: clampToColumn("SynozurOriginalFileName", opts.filename),
+    SynozurContentType: clampToColumn("SynozurContentType", opts.contentType),
+  };
+  if (opts.uploadedByUserId) {
+    out["SynozurUploadedByUserId"] = clampToColumn(
+      "SynozurUploadedByUserId",
+      opts.uploadedByUserId,
+    );
+  }
   if (opts.extraFields) Object.assign(out, opts.extraFields);
   return out;
+}
+
+function clampToColumn(columnName: string, value: string): string {
+  const max = SYNOZUR_COLUMN_MAX_LENGTHS[columnName];
+  if (max == null || value.length <= max) return value;
+  return value.slice(0, max);
 }

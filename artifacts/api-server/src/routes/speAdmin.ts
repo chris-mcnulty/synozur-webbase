@@ -17,7 +17,11 @@ import { z } from "zod";
 import { db, siteSettingsTable, mediaTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { audit } from "../lib/audit";
-import { readSpeGraphConfigFromEnv, SpeGraphClient } from "../lib/storage/spe/graphClient";
+import {
+  readSpeGraphConfigFromEnv,
+  SpeGraphClient,
+  SpeGraphRequestError,
+} from "../lib/storage/spe/graphClient";
 import { SpeContainerCreator } from "../lib/storage/spe/containerCreator";
 import {
   scanOrphans,
@@ -276,7 +280,7 @@ router.post(
       res.status(500).json({ error: (err as Error).message });
       return;
     }
-    let result: { created: string[]; existed: string[]; inaccessible: string[] };
+    let result: { created: string[]; existed: string[] };
     try {
       result = await new SpeContainerCreator(graph).provisionColumns(containerId);
     } catch (err) {
@@ -284,15 +288,7 @@ router.post(
       res.status(502).json({ error: (err as Error).message });
       return;
     }
-    const logLevel = result.inaccessible.length > 0 ? "warn" : "info";
-    req.log[logLevel](
-      { result, containerId, slot: activeSlot,
-        ...(result.inaccessible.length > 0 && {
-          note: "inaccessible columns are expected on SPE container sites (documented permission boundary); provenance is in the media DB row",
-        })
-      },
-      "SPE provision-columns complete",
-    );
+    req.log.info({ result, containerId, slot: activeSlot }, "SPE provision-columns complete");
     await audit({
       actorId: req.authedUser!.id,
       action: "spe.container.provisionColumns",
@@ -301,6 +297,400 @@ router.post(
       diff: { slot: activeSlot, containerId, ...result },
     });
     res.json({ ok: true, slot: activeSlot, containerId, ...result });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Custom column management — CRUD against
+//   /storage/fileStorage/containers/{containerId}/columns
+//
+// The container is resolved via the slot query/body param ("dev" | "prod"),
+// defaulting to the server's active slot. All endpoints require admin.
+// ---------------------------------------------------------------------------
+const COLUMN_NAME_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+
+// Discriminated union on columnType so each variant only accepts its own
+// type-specific config block. `.strict()` rejects incompatible keys (e.g.
+// passing `choice: {...}` on a `text` column) instead of silently dropping
+// them, which previously masked client bugs because buildColumnRequest()
+// only serializes the block matching `columnType`.
+const columnDefinitionBaseSchema = {
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(
+      COLUMN_NAME_RE,
+      "name must start with a letter and contain only letters, digits, or underscores",
+    ),
+  displayName: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+  required: z.boolean().optional(),
+  indexed: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
+  enforceUniqueValues: z.boolean().optional(),
+} as const;
+
+const textColumnConfigSchema = z
+  .object({
+    allowMultipleLines: z.boolean().optional(),
+    appendChangesToExistingText: z.boolean().optional(),
+    linesForEditing: z.number().int().min(0).max(20).optional(),
+    maxLength: z.number().int().min(1).max(255).optional(),
+  })
+  .strict();
+
+const choiceColumnConfigSchema = z
+  .object({
+    choices: z.array(z.string().min(1)).min(1),
+    allowFillInChoice: z.boolean().optional(),
+    displayAs: z.enum(["dropDownMenu", "radioButtons", "checkboxes"]).optional(),
+  })
+  .strict();
+
+const dateTimeColumnConfigSchema = z
+  .object({
+    displayAs: z.enum(["default", "friendly", "standard"]).optional(),
+    format: z.enum(["dateOnly", "dateTime"]).optional(),
+  })
+  .strict();
+
+const numberColumnConfigSchema = z
+  .object({
+    decimalPlaces: z.number().int().min(0).max(5).optional(),
+    minimum: z.number().optional(),
+    maximum: z.number().optional(),
+  })
+  .strict();
+
+const currencyColumnConfigSchema = z
+  .object({ lcid: z.number().int().min(0).optional() })
+  .strict();
+
+const booleanColumnConfigSchema = z.object({}).strict();
+
+const personOrGroupColumnConfigSchema = z
+  .object({
+    allowMultipleSelection: z.boolean().optional(),
+    chooseFromType: z.enum(["peopleOnly", "peopleAndGroups"]).optional(),
+  })
+  .strict();
+
+const hyperlinkOrPictureColumnConfigSchema = z
+  .object({ isPicture: z.boolean().optional() })
+  .strict();
+
+const columnDefinitionSchema = z.discriminatedUnion("columnType", [
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("text"),
+      text: textColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("choice"),
+      choice: choiceColumnConfigSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("dateTime"),
+      dateTime: dateTimeColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("number"),
+      number: numberColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("currency"),
+      currency: currencyColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("boolean"),
+      boolean: booleanColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("personOrGroup"),
+      personOrGroup: personOrGroupColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("hyperlinkOrPicture"),
+      hyperlinkOrPicture: hyperlinkOrPictureColumnConfigSchema.optional(),
+    })
+    .strict(),
+]);
+
+const columnUpdateSchema = z
+  .object({
+    displayName: z.string().min(1).max(255).optional(),
+    description: z.string().max(1000).optional(),
+    required: z.boolean().optional(),
+    hidden: z.boolean().optional(),
+  })
+  .refine(
+    (v) =>
+      v.displayName !== undefined ||
+      v.description !== undefined ||
+      v.required !== undefined ||
+      v.hidden !== undefined,
+    { message: "Must set at least one of displayName, description, required, hidden" },
+  );
+
+const slotQuerySchema = z.object({ slot: z.enum(["dev", "prod"]).optional() });
+
+function resolveSlotContainer(
+  settings: { speContainerIdDev: string | null; speContainerIdProd: string | null } | null,
+  slot: "dev" | "prod" | undefined,
+): { slot: "dev" | "prod"; containerId: string | null } {
+  const active: "dev" | "prod" =
+    slot ?? (process.env["NODE_ENV"] === "production" ? "prod" : "dev");
+  const containerId =
+    active === "prod" ? settings?.speContainerIdProd ?? null : settings?.speContainerIdDev ?? null;
+  return { slot: active, containerId };
+}
+
+// GET /admin/integrations/spe/columns?slot=dev|prod
+router.get(
+  "/admin/integrations/spe/columns",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = slotQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const { slot, containerId } = resolveSlotContainer(settings ?? null, parsed.data.slot);
+    if (!containerId) {
+      res.status(400).json({ error: `No container configured for slot "${slot}".` });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    try {
+      const columns = await graph.listContainerColumns(containerId);
+      res.json({ ok: true, slot, containerId, columns });
+    } catch (err) {
+      req.log.error({ err, containerId, slot }, "SPE list columns failed");
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// GET /admin/integrations/spe/columns/:colId?slot=dev|prod
+router.get(
+  "/admin/integrations/spe/columns/:colId",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = slotQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const { slot, containerId } = resolveSlotContainer(settings ?? null, parsed.data.slot);
+    if (!containerId) {
+      res.status(400).json({ error: `No container configured for slot "${slot}".` });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    const colId = String(req.params["colId"] ?? "");
+    try {
+      const column = await graph.getContainerColumn(containerId, colId);
+      res.json({ ok: true, slot, containerId, column });
+    } catch (err) {
+      const status = err instanceof SpeGraphRequestError && err.status === 404 ? 404 : 502;
+      req.log.error({ err, containerId, slot, colId }, "SPE get column failed");
+      res.status(status).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// POST /admin/integrations/spe/columns?slot=dev|prod
+//   body: SpeColumnDefinition
+const createColumnQuerySchema = slotQuerySchema;
+router.post(
+  "/admin/integrations/spe/columns",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsedQuery = createColumnQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      res.status(400).json({ error: "Invalid query", details: parsedQuery.error.flatten() });
+      return;
+    }
+    const parsedBody = columnDefinitionSchema.safeParse(req.body ?? {});
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "Invalid column definition", details: parsedBody.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const { slot, containerId } = resolveSlotContainer(settings ?? null, parsedQuery.data.slot);
+    if (!containerId) {
+      res.status(400).json({ error: `No container configured for slot "${slot}".` });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    try {
+      const column = await graph.createContainerColumn(containerId, parsedBody.data);
+      await audit({
+        actorId: req.authedUser!.id,
+        action: "spe.column.create",
+        entity: "spe_container",
+        entityId: containerId,
+        diff: { slot, name: parsedBody.data.name, columnType: parsedBody.data.columnType },
+      });
+      res.status(201).json({ ok: true, slot, containerId, column });
+    } catch (err) {
+      if (
+        err instanceof SpeGraphRequestError &&
+        (err.status === 409 || err.bodyExcerpt.includes("nameAlreadyExists"))
+      ) {
+        res.status(409).json({ error: "A column with this name already exists." });
+        return;
+      }
+      req.log.error({ err, containerId, slot, name: parsedBody.data.name }, "SPE create column failed");
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// PATCH /admin/integrations/spe/columns/:colId?slot=dev|prod
+router.patch(
+  "/admin/integrations/spe/columns/:colId",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsedQuery = slotQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      res.status(400).json({ error: "Invalid query", details: parsedQuery.error.flatten() });
+      return;
+    }
+    const parsedBody = columnUpdateSchema.safeParse(req.body ?? {});
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "Invalid update", details: parsedBody.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const { slot, containerId } = resolveSlotContainer(settings ?? null, parsedQuery.data.slot);
+    if (!containerId) {
+      res.status(400).json({ error: `No container configured for slot "${slot}".` });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    const colId = String(req.params["colId"] ?? "");
+    try {
+      const column = await graph.updateContainerColumn(
+        containerId,
+        colId,
+        parsedBody.data,
+      );
+      await audit({
+        actorId: req.authedUser!.id,
+        action: "spe.column.update",
+        entity: "spe_container",
+        entityId: containerId,
+        diff: { slot, colId, updates: parsedBody.data },
+      });
+      res.json({ ok: true, slot, containerId, column });
+    } catch (err) {
+      const status = err instanceof SpeGraphRequestError && err.status === 404 ? 404 : 502;
+      req.log.error({ err, containerId, slot, colId }, "SPE update column failed");
+      res.status(status).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// DELETE /admin/integrations/spe/columns/:colId?slot=dev|prod
+router.delete(
+  "/admin/integrations/spe/columns/:colId",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = slotQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const { slot, containerId } = resolveSlotContainer(settings ?? null, parsed.data.slot);
+    if (!containerId) {
+      res.status(400).json({ error: `No container configured for slot "${slot}".` });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    const colId = String(req.params["colId"] ?? "");
+    try {
+      await graph.deleteContainerColumn(containerId, colId);
+      await audit({
+        actorId: req.authedUser!.id,
+        action: "spe.column.delete",
+        entity: "spe_container",
+        entityId: containerId,
+        diff: { slot, colId },
+      });
+      res.json({ ok: true, slot, containerId, deleted: colId });
+    } catch (err) {
+      const status = err instanceof SpeGraphRequestError && err.status === 404 ? 404 : 502;
+      req.log.error({ err, containerId, slot, colId }, "SPE delete column failed");
+      res.status(status).json({ error: (err as Error).message });
+    }
   },
 );
 
