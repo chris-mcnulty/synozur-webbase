@@ -164,9 +164,10 @@ router.post(
       res.status(500).json({ error: (err as Error).message });
       return;
     }
+    const creator = new SpeContainerCreator(graph);
     let created;
     try {
-      created = await new SpeContainerCreator(graph).createContainer({
+      created = await creator.createContainer({
         displayName: parsed.data.displayName,
         description: parsed.data.description,
         containerTypeId,
@@ -185,6 +186,16 @@ router.post(
         target: siteSettingsTable.id,
         set: { [slotColumn]: created.containerId },
       });
+    // Provision Synozur* custom columns so metadata stamping works immediately.
+    let columnsResult: { created: string[]; existed: string[] } | null = null;
+    try {
+      columnsResult = await creator.provisionColumns(created.containerId);
+      req.log.info({ columnsResult, containerId: created.containerId }, "SPE columns provisioned");
+    } catch (colErr) {
+      // Not fatal — the container is usable, columns can be provisioned
+      // later via POST /admin/integrations/spe/provision-columns.
+      req.log.warn({ err: colErr, containerId: created.containerId }, "SPE column provisioning failed after container create");
+    }
     await audit({
       actorId: req.authedUser!.id,
       action: "spe.container.create",
@@ -194,6 +205,7 @@ router.post(
         slot: parsed.data.slot,
         containerId: created.containerId,
         displayName: created.displayName,
+        columnsProvisioned: columnsResult?.created ?? [],
       },
     });
     res.json({
@@ -202,7 +214,68 @@ router.post(
       containerId: created.containerId,
       displayName: created.displayName,
       status: created.status,
+      columns: columnsResult,
     });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /admin/integrations/spe/provision-columns
+// Idempotent — provisions (or confirms) the Synozur* custom text columns on
+// a container's document library. Safe to run on already-provisioned
+// containers (409 = already exists, treated as success).
+// Body: { slot?: "dev"|"prod" } — defaults to the server's active slot.
+// ---------------------------------------------------------------------------
+const provisionColumnsBody = z.object({
+  slot: z.enum(["dev", "prod"]).optional(),
+});
+
+router.post(
+  "/admin/integrations/spe/provision-columns",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = provisionColumnsBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const settings = await db.query.siteSettingsTable.findFirst({
+      where: eq(siteSettingsTable.id, SETTINGS_ID),
+    });
+    const activeSlot: "dev" | "prod" =
+      parsed.data.slot ?? (process.env["NODE_ENV"] === "production" ? "prod" : "dev");
+    const containerId =
+      activeSlot === "prod" ? settings?.speContainerIdProd : settings?.speContainerIdDev;
+    if (!containerId) {
+      res.status(400).json({
+        error: `No container configured for slot "${activeSlot}" — create one first.`,
+      });
+      return;
+    }
+    let graph: SpeGraphClient;
+    try {
+      graph = new SpeGraphClient();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+      return;
+    }
+    let result: { created: string[]; existed: string[] };
+    try {
+      result = await new SpeContainerCreator(graph).provisionColumns(containerId);
+    } catch (err) {
+      req.log.error({ err, containerId, slot: activeSlot }, "SPE provision-columns failed");
+      res.status(502).json({ error: (err as Error).message });
+      return;
+    }
+    req.log.info({ result, containerId, slot: activeSlot }, "SPE provision-columns complete");
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "spe.container.provisionColumns",
+      entity: "site_settings",
+      entityId: String(SETTINGS_ID),
+      diff: { slot: activeSlot, containerId, ...result },
+    });
+    res.json({ ok: true, slot: activeSlot, containerId, ...result });
   },
 );
 

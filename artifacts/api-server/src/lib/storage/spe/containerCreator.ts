@@ -17,13 +17,29 @@
 // tenant. The Orbit pattern's per-customer registration loop has no
 // equivalent here.
 
-import { SpeGraphClient } from "./graphClient";
+import { SpeGraphClient, SpeGraphRequestError } from "./graphClient";
 
 export interface CreatedContainer {
   containerId: string;
   displayName: string;
   description?: string;
   status: string;
+}
+
+// Custom SharePoint list columns to provision on a new container's document
+// library. Graph will reject writes to these fields until they exist on the
+// list schema; provisioning is idempotent (409 = already present, skip).
+export const SYNOZUR_COLUMNS = [
+  { name: "SynozurDocumentType",    displayName: "Synozur Document Type" },
+  { name: "SynozurOwnerId",         displayName: "Synozur Owner ID" },
+  { name: "SynozurOriginalFileName", displayName: "Synozur Original File Name" },
+  { name: "SynozurContentType",     displayName: "Synozur Content Type" },
+  { name: "SynozurUploadedByUserId", displayName: "Synozur Uploaded By User ID" },
+] as const;
+
+export interface ProvisionColumnsResult {
+  created: string[];
+  existed: string[];
 }
 
 export class SpeContainerCreator {
@@ -83,5 +99,45 @@ export class SpeContainerCreator {
       description: created.description,
       status: created.status ?? "active",
     };
+  }
+
+  // Provisions the Synozur* custom text columns on an existing container's
+  // SharePoint document library so that metadata stamping in storeFile()
+  // works. Idempotent: 409 Conflict means the column already exists — fine.
+  //
+  // Must be called after createContainer() for new containers and can be
+  // re-run at any time for containers created before column provisioning
+  // was added (i.e. the dev and prod containers already in production).
+  async provisionColumns(containerId: string): Promise<ProvisionColumnsResult> {
+    const driveId = await this.graph.getContainerDriveId(containerId);
+    const created: string[] = [];
+    const existed: string[] = [];
+
+    for (const col of SYNOZUR_COLUMNS) {
+      try {
+        await this.graph.request<void>(
+          this.graph.v1Url(`/drives/${driveId}/list/columns`),
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name: col.name,
+              displayName: col.displayName,
+              text: {},
+            }),
+            headers: { "Content-Type": "application/json" },
+            skipJsonParse: true,
+          },
+        );
+        created.push(col.name);
+      } catch (err) {
+        if (err instanceof SpeGraphRequestError && err.status === 409) {
+          existed.push(col.name);
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return { created, existed };
   }
 }

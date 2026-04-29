@@ -205,6 +205,11 @@ export default function SpeAdminPage() {
   const [roundTripBusy, setRoundTripBusy] = useState(false);
   const [orphans, setOrphans] = useState<OrphanScanResult | null>(null);
   const [orphansBusy, setOrphansBusy] = useState(false);
+  const [provisionColumnsBusy, setProvisionColumnsBusy] = useState(false);
+  const [provisionColumnsResult, setProvisionColumnsResult] = useState<{
+    created: string[];
+    existed: string[];
+  } | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -460,6 +465,38 @@ export default function SpeAdminPage() {
     }
   }
 
+  async function provisionColumns(slot?: "dev" | "prod") {
+    setProvisionColumnsBusy(true);
+    try {
+      const r = await apiFetch<{
+        ok: boolean;
+        slot: string;
+        containerId: string;
+        created: string[];
+        existed: string[];
+      }>("/admin/integrations/spe/provision-columns", {
+        method: "POST",
+        body: JSON.stringify(slot ? { slot } : {}),
+      });
+      setProvisionColumnsResult(r);
+      toast({
+        title: "Columns provisioned",
+        description:
+          r.created.length > 0
+            ? `${r.created.length} created, ${r.existed.length} already existed.`
+            : `All ${r.existed.length} columns already in place.`,
+      });
+    } catch (e) {
+      toast({
+        title: "Column provisioning failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setProvisionColumnsBusy(false);
+    }
+  }
+
   return (
     <AdminLayout
       title="SharePoint Embedded"
@@ -617,6 +654,74 @@ export default function SpeAdminPage() {
                   onCreate={(name, desc) => createContainer("prod", name, desc)}
                 />
               </div>
+            </div>
+
+            {/* Column provisioning — required once per container so that
+                metadata stamping (SynozurDocumentType etc.) works. New
+                containers get this automatically; existing containers need
+                a one-time manual trigger. */}
+            <div className="border-t pt-4 space-y-2">
+              <div className="text-sm font-medium">Custom columns</div>
+              <p className="text-xs text-muted-foreground">
+                Provisions the <code>Synozur*</code> text columns on the active
+                container's document library so that file metadata (document
+                type, owner, original filename, content type) is stamped on
+                upload. New containers are provisioned automatically; run this
+                once for the existing dev and prod containers.
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button
+                  variant="outline"
+                  disabled={
+                    provisionColumnsBusy ||
+                    !status.credentialsConfigured ||
+                    (status.activeContainerSlot === "prod"
+                      ? !status.containerIdProd
+                      : !status.containerIdDev)
+                  }
+                  onClick={() => provisionColumns()}
+                >
+                  {provisionColumnsBusy
+                    ? "Provisioning…"
+                    : `Provision columns (${status.activeContainerSlot})`}
+                </Button>
+                {status.containerIdDev && status.containerIdProd && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={provisionColumnsBusy}
+                      onClick={() => provisionColumns("dev")}
+                    >
+                      dev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={provisionColumnsBusy}
+                      onClick={() => provisionColumns("prod")}
+                    >
+                      prod
+                    </Button>
+                  </>
+                )}
+              </div>
+              {provisionColumnsResult && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div>
+                    Created:{" "}
+                    {provisionColumnsResult.created.length > 0
+                      ? provisionColumnsResult.created.join(", ")
+                      : "none"}
+                  </div>
+                  <div>
+                    Already existed:{" "}
+                    {provisionColumnsResult.existed.length > 0
+                      ? provisionColumnsResult.existed.join(", ")
+                      : "none"}
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
