@@ -237,8 +237,10 @@ export default function Home() {
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
-    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-    const schedule = ric ? ric.bind(window) : (cb: () => void) => setTimeout(cb, 200);
+    // Use a plain setTimeout(0) so the video sources are appended reliably in
+    // both dev (HMR keeps the browser busy, so requestIdleCallback never fires)
+    // and production.
+    const schedule = (cb: () => void) => setTimeout(cb, 0);
     if (!("IntersectionObserver" in window)) {
       schedule(() => setVideoReady(true));
       return;
