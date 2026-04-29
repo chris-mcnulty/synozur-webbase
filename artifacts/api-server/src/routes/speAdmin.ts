@@ -26,6 +26,7 @@ import {
 } from "../lib/storage/spe/orphanCleaner";
 import { runMigration } from "../lib/storage/spe/migrationRunner";
 import { SpeNotEnabledError } from "../lib/storage/spe/fileStorage";
+import { invalidateBackendCache } from "../lib/objectStorage";
 
 const SETTINGS_ID = 1;
 
@@ -42,20 +43,36 @@ router.get(
       where: eq(siteSettingsTable.id, SETTINGS_ID),
     });
     const cfg = readSpeGraphConfigFromEnv();
+    const credentialsConfigured = cfg !== null;
+    const containerIdDev = settings?.speContainerIdDev ?? null;
+    const containerIdProd = settings?.speContainerIdProd ?? null;
     // `activeContainerSlot` is the slot the api-server would pick at
     // request time, derived from NODE_ENV server-side. Saves the React
     // admin page from having to read process.env (which doesn't exist
     // in a Vite browser build) to make UI gating decisions.
     const activeContainerSlot: "dev" | "prod" =
       process.env["NODE_ENV"] === "production" ? "prod" : "dev";
+    // `speReady` means "can SPE operations be performed right now" — both
+    // credentials and the active-slot container must be present. This
+    // replaces the old `speStorageEnabled` DB flag which added a redundant
+    // manual toggle on top of the real prerequisites.
+    const storageBackendDev = (settings?.storageBackendDev ?? "gcs") as "gcs" | "spe";
+    const storageBackendProd = (settings?.storageBackendProd ?? "gcs") as "gcs" | "spe";
+    const speReady =
+      credentialsConfigured &&
+      (activeContainerSlot === "prod" ? !!containerIdProd : !!containerIdDev);
+    const activeBackend =
+      activeContainerSlot === "prod" ? storageBackendProd : storageBackendDev;
     res.json({
-      credentialsConfigured: cfg !== null,
+      credentialsConfigured,
       tenantId: cfg?.tenantId ?? null,
-      enabled: settings?.speStorageEnabled === true,
+      speReady,
       containerTypeId: settings?.speContainerTypeId ?? null,
-      containerIdDev: settings?.speContainerIdDev ?? null,
-      containerIdProd: settings?.speContainerIdProd ?? null,
-      activeBackend: process.env["STORAGE_BACKEND"] ?? "gcs",
+      containerIdDev,
+      containerIdProd,
+      storageBackendDev,
+      storageBackendProd,
+      activeBackend,
       activeContainerSlot,
     });
   },
@@ -281,16 +298,20 @@ router.post(
 
 // ---------------------------------------------------------------------------
 // PATCH /admin/integrations/spe/settings
-// Update the runtime knobs (enable flag, container type id).
+// Update the runtime knobs (backend per slot, container type id).
 // ---------------------------------------------------------------------------
 const patchSettingsBody = z
   .object({
-    speStorageEnabled: z.boolean().optional(),
     speContainerTypeId: z.string().min(1).nullable().optional(),
+    storageBackendDev: z.enum(["gcs", "spe"]).optional(),
+    storageBackendProd: z.enum(["gcs", "spe"]).optional(),
   })
   .refine(
-    (v) => v.speStorageEnabled !== undefined || v.speContainerTypeId !== undefined,
-    { message: "Must set at least one of speStorageEnabled or speContainerTypeId" },
+    (v) =>
+      v.speContainerTypeId !== undefined ||
+      v.storageBackendDev !== undefined ||
+      v.storageBackendProd !== undefined,
+    { message: "Must set at least one field" },
   );
 
 router.patch(
@@ -303,16 +324,22 @@ router.patch(
       return;
     }
     const updates: Partial<typeof siteSettingsTable.$inferInsert> = {};
-    if (parsed.data.speStorageEnabled !== undefined) {
-      updates.speStorageEnabled = parsed.data.speStorageEnabled;
-    }
     if (parsed.data.speContainerTypeId !== undefined) {
       updates.speContainerTypeId = parsed.data.speContainerTypeId ?? null;
+    }
+    if (parsed.data.storageBackendDev !== undefined) {
+      updates.storageBackendDev = parsed.data.storageBackendDev;
+    }
+    if (parsed.data.storageBackendProd !== undefined) {
+      updates.storageBackendProd = parsed.data.storageBackendProd;
     }
     await db
       .insert(siteSettingsTable)
       .values({ id: SETTINGS_ID, ...updates })
       .onConflictDoUpdate({ target: siteSettingsTable.id, set: updates });
+    // Invalidate the in-process backend cache so the change takes effect
+    // within the current process immediately (no restart required).
+    invalidateBackendCache();
     await audit({
       actorId: req.authedUser!.id,
       action: "spe.settings.update",

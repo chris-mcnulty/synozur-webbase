@@ -18,11 +18,16 @@ import { useToast } from "@/hooks/use-toast";
 interface SpeStatus {
   credentialsConfigured: boolean;
   tenantId: string | null;
-  enabled: boolean;
+  /** Credentials configured AND a container ID recorded for this slot. */
+  speReady: boolean;
   containerTypeId: string | null;
   containerIdDev: string | null;
   containerIdProd: string | null;
-  activeBackend: string;
+  /** Per-slot backend choice stored in DB. */
+  storageBackendDev: "gcs" | "spe";
+  storageBackendProd: "gcs" | "spe";
+  /** Resolved backend for the current environment slot. */
+  activeBackend: "gcs" | "spe";
   // Server-derived from NODE_ENV — tells the page which container slot
   // is the one this environment will actually use. Authoritative,
   // because the React build has no `process.env` to consult.
@@ -558,57 +563,89 @@ export default function SpeAdminPage() {
         <>
           {/* Connection / status */}
           <Card className="p-6 mb-6 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <div className="text-lg font-semibold">Connection</div>
-                <div className="text-sm text-muted-foreground space-y-0.5">
-                  <div>
-                    Credentials:{" "}
-                    {status.credentialsConfigured ? (
-                      <Badge>configured</Badge>
-                    ) : (
-                      <Badge variant="destructive">missing</Badge>
-                    )}
-                  </div>
-                  <div>
-                    Tenant: <code>{status.tenantId ?? "—"}</code>
-                  </div>
-                  <div>
-                    Active backend: <code>{status.activeBackend}</code>
-                  </div>
-                </div>
+            <div className="text-lg font-semibold">Connection</div>
+
+            {/* Prerequisites */}
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <span className={status.credentialsConfigured ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.credentialsConfigured ? "✓" : "✗"}
+                </span>
+                <span>Entra credentials</span>
+                {status.tenantId && (
+                  <code className="text-xs text-muted-foreground ml-1">{status.tenantId}</code>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="spe-enabled">Enabled</Label>
-                <Switch
-                  id="spe-enabled"
-                  checked={status.enabled}
-                  disabled={
-                    saving ||
-                    !status.credentialsConfigured ||
-                    (status.activeContainerSlot === "prod"
-                      ? !status.containerIdProd
-                      : !status.containerIdDev)
-                  }
-                  onCheckedChange={(v) =>
-                    patchSettings({ speStorageEnabled: v })
-                  }
-                />
+              <div className="flex items-center gap-1.5">
+                <span className={status.containerIdDev ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.containerIdDev ? "✓" : "✗"}
+                </span>
+                <span>Container (dev)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={status.containerIdProd ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.containerIdProd ? "✓" : "✗"}
+                </span>
+                <span>Container (prod)</span>
               </div>
             </div>
+
             {!status.credentialsConfigured && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                Set <code>ENTRA_TENANT_ID</code>, <code>ENTRA_APP_CLIENT_ID</code>,
-                and <code>ENTRA_APP_CLIENT_SECRET</code> in env, then reload.
+                Set <code>ENTRA_TENANT_ID</code>, <code>ENTRA_APP_CLIENT_ID</code>, and{" "}
+                <code>ENTRA_APP_CLIENT_SECRET</code> as environment secrets, then redeploy.
               </p>
             )}
-            {status.enabled && status.activeBackend !== "spe" && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                <code>speStorageEnabled</code> is on but the active backend is{" "}
-                <code>{status.activeBackend}</code>. Set{" "}
-                <code>STORAGE_BACKEND=spe</code> in env to switch reads/writes to SPE.
+
+            {/* Per-environment backend selector — stored in DB, no deploy needed */}
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Each environment's active backend is stored in the database. Switching takes
+                effect within 30 seconds — no redeploy required. Only switch an environment
+                to SPE once its container is created and the migration is complete.
               </p>
-            )}
+              {(["dev", "prod"] as const).map((slot) => {
+                const backendKey =
+                  slot === "dev" ? "storageBackendDev" : "storageBackendProd";
+                const currentBackend = status[backendKey];
+                const containerReady = slot === "dev" ? !!status.containerIdDev : !!status.containerIdProd;
+                const isActive = status.activeContainerSlot === slot;
+                return (
+                  <div key={slot} className="flex items-center justify-between gap-4">
+                    <div className="text-sm">
+                      <span className="font-medium capitalize">{slot}</span>
+                      {isActive && (
+                        <Badge variant="outline" className="ml-2 text-xs">current env</Badge>
+                      )}
+                      <span className="ml-2 text-muted-foreground">
+                        → <Badge variant={currentBackend === "spe" ? "default" : "secondary"} className="text-xs">
+                          {currentBackend.toUpperCase()}
+                        </Badge>
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={currentBackend === "gcs" ? "default" : "outline"}
+                        disabled={saving || currentBackend === "gcs"}
+                        onClick={() => patchSettings({ [backendKey]: "gcs" })}
+                      >
+                        GCS
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentBackend === "spe" ? "default" : "outline"}
+                        disabled={saving || currentBackend === "spe" || !containerReady || !status.credentialsConfigured}
+                        title={!containerReady ? `Create a ${slot} container first` : undefined}
+                        onClick={() => patchSettings({ [backendKey]: "spe" })}
+                      >
+                        SPE
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
 
           {/* Container type */}

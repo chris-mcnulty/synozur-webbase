@@ -21,6 +21,8 @@
 // `media.spe_file_id` is sufficient — the bytes are right where they
 // were.
 
+import { eq } from "drizzle-orm";
+import { db, siteSettingsTable } from "@workspace/db";
 import {
   type ObjectAclPolicy,
   ObjectPermission,
@@ -42,33 +44,67 @@ export type { AssetObjectRef };
 // `assets`-table cleanup tracked in BACKLOG.md.
 export { objectStorageClient };
 
-type ActiveBackendName = "gcs" | "spe";
+export type ActiveBackendName = "gcs" | "spe";
 
-function readActiveBackendName(): ActiveBackendName {
-  const choice = (process.env.STORAGE_BACKEND ?? "gcs").trim().toLowerCase();
-  switch (choice) {
-    case "":
-    case "gcs":
-      return "gcs";
-    case "spe":
-      return "spe";
-    default:
-      throw new Error(
-        `Unknown STORAGE_BACKEND='${choice}'. Expected 'gcs' or 'spe'.`,
-      );
-  }
+// ---------------------------------------------------------------------------
+// Per-slot backend cache — reads site_settings once every 30 s so the admin
+// can switch dev ↔ prod backends from the UI without a server restart or
+// redeploy. The env var STORAGE_BACKEND acts as a hard override (useful for
+// emergency rollback via deployment secrets without touching the DB).
+// ---------------------------------------------------------------------------
+
+const SETTINGS_ID = 1;
+const BACKEND_CACHE_TTL_MS = 30_000;
+
+type CacheEntry = { value: ActiveBackendName; expiresAt: number };
+const backendCache: Record<"dev" | "prod", CacheEntry | null> = {
+  dev: null,
+  prod: null,
+};
+
+/** Call after a successful PATCH to /settings so the new choice applies immediately. */
+export function invalidateBackendCache(): void {
+  backendCache.dev = null;
+  backendCache.prod = null;
+}
+
+async function resolveActiveBackendName(
+  override?: ActiveBackendName,
+): Promise<ActiveBackendName> {
+  if (override) return override;
+
+  const slot: "dev" | "prod" =
+    process.env["NODE_ENV"] === "production" ? "prod" : "dev";
+
+  const cached = backendCache[slot];
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const settings = await db.query.siteSettingsTable.findFirst({
+    where: eq(siteSettingsTable.id, SETTINGS_ID),
+    columns: { storageBackendDev: true, storageBackendProd: true },
+  });
+  const raw =
+    slot === "prod" ? settings?.storageBackendProd : settings?.storageBackendDev;
+  const value: ActiveBackendName = raw === "spe" ? "spe" : "gcs";
+  backendCache[slot] = { value, expiresAt: Date.now() + BACKEND_CACHE_TTL_MS };
+  return value;
 }
 
 export class ObjectStorageService {
   private readonly gcs: GcsAssetStorageBackend;
   private readonly spe: SpeAssetStorageBackend;
-  private readonly active: AssetStorageBackend;
+  /** Set when constructed with an explicit override; null means use DB cache. */
+  private readonly activeOverride: ActiveBackendName | undefined;
 
   constructor(activeOverride?: ActiveBackendName) {
     this.gcs = new GcsAssetStorageBackend();
     this.spe = new SpeAssetStorageBackend();
-    const activeName = activeOverride ?? readActiveBackendName();
-    this.active = activeName === "spe" ? this.spe : this.gcs;
+    this.activeOverride = activeOverride;
+  }
+
+  private async resolveActive(): Promise<AssetStorageBackend> {
+    const name = await resolveActiveBackendName(this.activeOverride);
+    return name === "spe" ? this.spe : this.gcs;
   }
 
   // Read-side dispatch: ref shape decides which backend serves it.
@@ -87,13 +123,13 @@ export class ObjectStorageService {
     return this.backendForRef(ref).deleteObject(ref);
   }
 
-  // Writes: go to the active backend.
-  uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
-    return this.active.uploadObject(opts);
+  // Writes: go to the active backend (resolved per-request from DB cache).
+  async uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
+    return (await this.resolveActive()).uploadObject(opts);
   }
 
-  getObjectEntityUploadURL(): Promise<string> {
-    return this.active.getObjectEntityUploadURL();
+  async getObjectEntityUploadURL(): Promise<string> {
+    return (await this.resolveActive()).getObjectEntityUploadURL();
   }
 
   // Path lookups + normalization are GCS-shaped idioms (`/objects/...`,

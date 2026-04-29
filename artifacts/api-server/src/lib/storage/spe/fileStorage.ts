@@ -91,9 +91,10 @@ export class SpeFileStorage {
     if (!settings) {
       throw new SpeNotEnabledError("site_settings row not initialised");
     }
-    if (!settings.speStorageEnabled) {
-      throw new SpeNotEnabledError("speStorageEnabled is false in site_settings");
-    }
+    // `speStorageEnabled` is no longer a gate here — credentials being
+    // present and a container ID being set are the real prerequisites.
+    // The single runtime cutover switch is the STORAGE_BACKEND env var
+    // (controlled via deployment secrets, not the admin UI toggle).
     const isProd = process.env["NODE_ENV"] === "production";
     const containerId = isProd
       ? settings.speContainerIdProd
