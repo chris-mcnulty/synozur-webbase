@@ -194,14 +194,24 @@ export class SpeFileStorage {
 // Singleton — the MSAL client and drive-id cache should be process-wide.
 export const speFileStorage = new SpeFileStorage();
 
+// Characters forbidden in SharePoint / SPE file paths:
+// " * : < > ? \ | and also # % (ambiguous after URL encoding) and / (path sep)
+// Wix-imported filenames commonly start with "wix:image://..." — the colon
+// is the most frequent offender; strip everything non-safe in one pass.
+const GRAPH_FORBIDDEN_RE = /[*":<>?/\\|#%]+/g;
+
 function buildPath(
   documentType: SpeDocumentType,
   ownerId: string,
   filename: string,
 ): string {
   const prefix = ownerId.slice(0, 2) || "00";
-  // Strip any path separators a caller may have included accidentally.
-  const safeName = filename.replace(/[\\/]+/g, "_").trim() || "unnamed";
+  const safeName =
+    filename
+      .replace(GRAPH_FORBIDDEN_RE, "_")
+      .replace(/_+/g, "_") // collapse consecutive underscores
+      .replace(/^_|_$/g, "") // trim leading/trailing underscores
+      .trim() || "unnamed";
   return `/${documentType}/${prefix}/${ownerId}-${safeName}`;
 }
 

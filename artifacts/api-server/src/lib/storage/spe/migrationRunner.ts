@@ -6,6 +6,7 @@ import { eq, isNull, count } from "drizzle-orm";
 import { db, mediaTable } from "@workspace/db";
 import { GcsAssetStorageBackend } from "../gcsBackend";
 import { speFileStorage } from "./fileStorage";
+import { SpeGraphRequestError } from "./graphClient";
 
 export interface MigrationOptions {
   dryRun: boolean;
@@ -76,7 +77,13 @@ async function migrateOne(
       ownerId: row.id,
     });
   } catch (err) {
-    return { ok: false, reason: `spe upload: ${(err as Error).message}` };
+    // Include the raw Graph response body when available — it contains the
+    // exact error code/message from Microsoft (e.g. invalidRequest, nameAlreadyExists).
+    const graphDetail =
+      err instanceof SpeGraphRequestError && err.bodyExcerpt
+        ? ` — ${err.bodyExcerpt}`
+        : "";
+    return { ok: false, reason: `spe upload: ${(err as Error).message}${graphDetail}` };
   }
 
   try {
@@ -129,9 +136,11 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
   let dryRunOffset = 0;
 
   while (true) {
-    if (opts.limit !== null && succeeded >= opts.limit) break;
+    // Limit is based on rows *attempted*, not rows that succeeded, so a
+    // smoke test stops at exactly N even when all rows fail.
+    if (opts.limit !== null && processed >= opts.limit) break;
 
-    const remaining = opts.limit !== null ? opts.limit - succeeded : pageSize;
+    const remaining = opts.limit !== null ? opts.limit - processed : pageSize;
     const page = await db
       .select({
         id: mediaTable.id,
@@ -159,7 +168,7 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
         failures.push({ id: row.id, reason: result.reason });
         opts.onRow?.(row.id, false, result.reason);
       }
-      if (opts.limit !== null && succeeded >= opts.limit) break;
+      if (opts.limit !== null && processed >= opts.limit) break;
     }
 
     // Advance the offset after each page in dry-run mode.
