@@ -5,12 +5,22 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowRight,
   Headphones,
   Calendar,
   Clock,
   User,
 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+
+interface LinkedPostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  heroImageUrl: string | null;
+  publishedAt: string | null;
+}
 
 interface PolarisEpisodeDto {
   id: string;
@@ -25,6 +35,7 @@ interface PolarisEpisodeDto {
   durationSeconds: number | null;
   artworkUrl: string;
   publishedAt: string | null;
+  linkedPost: LinkedPostDto | null;
 }
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -207,6 +218,51 @@ export default function PolarisEpisodeDetail() {
           </div>
         </div>
       </section>
+
+      {/* Featured linked blog post — renders only when an editor has linked
+          a related post (typically one categorized as Polaris or podcast). */}
+      {episode.linkedPost && (
+        <section className="bg-background py-14 border-t border-border/60">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <p className="text-sm uppercase tracking-widest text-primary mb-4">
+              Read the post
+            </p>
+            <Link
+              href={`/insights/${episode.linkedPost.slug}`}
+              className="group block rounded-2xl border border-border/70 bg-card hover:border-primary/60 hover:shadow-lg transition-all overflow-hidden"
+              data-testid="polaris-linked-post-card"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-0">
+                {episode.linkedPost.heroImageUrl ? (
+                  <div className="aspect-[4/3] sm:aspect-auto sm:h-full bg-muted overflow-hidden">
+                    <img
+                      src={episode.linkedPost.heroImageUrl}
+                      alt={episode.linkedPost.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-[4/3] sm:aspect-auto sm:h-full bg-gradient-to-br from-primary/20 to-primary/5 hidden sm:block" />
+                )}
+                <div className="p-6 flex flex-col justify-center">
+                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors mb-2 leading-tight">
+                    {episode.linkedPost.title}
+                  </h3>
+                  {episode.linkedPost.excerpt && (
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+                      {episode.linkedPost.excerpt}
+                    </p>
+                  )}
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                    Read the post
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Show notes */}
       {summaryLines.length > 0 && (
