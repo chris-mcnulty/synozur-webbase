@@ -123,6 +123,11 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
   let failed = 0;
   const failures: Array<{ id: string; reason: string }> = [];
 
+  // In dry-run mode rows are never updated, so the WHERE spe_file_id IS NULL
+  // filter would return the same page on every iteration — an infinite loop.
+  // Use an explicit offset to advance through the result set instead.
+  let dryRunOffset = 0;
+
   while (true) {
     if (opts.limit !== null && succeeded >= opts.limit) break;
 
@@ -138,7 +143,8 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
       .from(mediaTable)
       .where(isNull(mediaTable.speFileId))
       .orderBy(mediaTable.createdAt)
-      .limit(Math.min(remaining, pageSize));
+      .limit(Math.min(remaining, pageSize))
+      .offset(opts.dryRun ? dryRunOffset : 0);
 
     if (page.length === 0) break;
 
@@ -155,6 +161,9 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
       }
       if (opts.limit !== null && succeeded >= opts.limit) break;
     }
+
+    // Advance the offset after each page in dry-run mode.
+    if (opts.dryRun) dryRunOffset += page.length;
   }
 
   return { ...counts, processed, succeeded, failed, failures };
