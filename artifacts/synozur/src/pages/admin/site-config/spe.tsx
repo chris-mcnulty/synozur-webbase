@@ -210,6 +210,17 @@ export default function SpeAdminPage() {
     created: string[];
     existed: string[];
   } | null>(null);
+  const [devResetOpts, setDevResetOpts] = useState({
+    resetMigration: true,
+    clearContainerDev: false,
+    clearContainerProd: false,
+  });
+  const [devResetConfirm, setDevResetConfirm] = useState(false);
+  const [devResetBusy, setDevResetBusy] = useState(false);
+  const [devResetResult, setDevResetResult] = useState<{
+    affectedMediaRows?: number;
+    cleared: string[];
+  } | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -462,6 +473,40 @@ export default function SpeAdminPage() {
         description: (e as Error).message,
         variant: "destructive",
       });
+    }
+  }
+
+  async function devReset() {
+    setDevResetBusy(true);
+    setDevResetResult(null);
+    try {
+      const r = await apiFetch<{ ok: boolean; affectedMediaRows?: number; cleared: string[] }>(
+        "/admin/integrations/spe/dev-reset",
+        { method: "POST", body: JSON.stringify(devResetOpts) },
+      );
+      setDevResetResult(r);
+      setDevResetConfirm(false);
+      // Refresh status so the container ID cards update.
+      await refresh();
+      toast({
+        title: "Dev reset complete",
+        description: [
+          devResetOpts.resetMigration
+            ? `${r.affectedMediaRows ?? 0} media rows cleared`
+            : null,
+          r.cleared.length > 0 ? `Container IDs cleared: ${r.cleared.join(", ")}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
+    } catch (e) {
+      toast({
+        title: "Dev reset failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDevResetBusy(false);
     }
   }
 
@@ -1036,6 +1081,160 @@ export default function SpeAdminPage() {
               </div>
             )}
           </Card>
+
+          {/* ----------------------------------------------------------------
+              Dev-only danger zone — server returns 403 in production.
+              Lets you null out spe_file_id pointers and/or wipe container
+              IDs from settings so you can reprovision and re-run clean.
+          ---------------------------------------------------------------- */}
+          {status.activeContainerSlot === "dev" && (
+            <Card className="p-6 mb-6 space-y-4 border-destructive/40">
+              <div>
+                <div className="text-lg font-semibold text-destructive">
+                  Development reset
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Clears SPE state in the database so you can reprovision
+                  containers and re-run the migration from scratch.{" "}
+                  <strong>GCS bytes are never touched</strong> — storage keys
+                  remain valid and serve as the rollback path.{" "}
+                  <strong>SPE files already uploaded become orphans</strong>{" "}
+                  — run the orphan cleaner on the container afterward.
+                  Not available in production.
+                </p>
+              </div>
+
+              {/* Option checkboxes */}
+              <div className="space-y-2 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={devResetOpts.resetMigration}
+                    onChange={(e) =>
+                      setDevResetOpts((o) => ({
+                        ...o,
+                        resetMigration: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    Clear <code>spe_file_id</code> on all media rows
+                    {migration
+                      ? ` (${migration.migratedToSpe} rows currently migrated)`
+                      : ""}
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={devResetOpts.clearContainerDev}
+                    disabled={!status.containerIdDev}
+                    onChange={(e) =>
+                      setDevResetOpts((o) => ({
+                        ...o,
+                        clearContainerDev: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    Clear dev container ID from settings
+                    {status.containerIdDev ? (
+                      <code className="ml-1 text-xs text-muted-foreground">
+                        {status.containerIdDev.slice(0, 16)}…
+                      </code>
+                    ) : (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        (not set)
+                      </span>
+                    )}
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={devResetOpts.clearContainerProd}
+                    disabled={!status.containerIdProd}
+                    onChange={(e) =>
+                      setDevResetOpts((o) => ({
+                        ...o,
+                        clearContainerProd: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    Clear prod container ID from settings
+                    {status.containerIdProd ? (
+                      <code className="ml-1 text-xs text-muted-foreground">
+                        {status.containerIdProd.slice(0, 16)}…
+                      </code>
+                    ) : (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        (not set)
+                      </span>
+                    )}
+                  </span>
+                </label>
+              </div>
+
+              {/* Confirm / execute */}
+              {!devResetConfirm ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={
+                    devResetBusy ||
+                    (!devResetOpts.resetMigration &&
+                      !devResetOpts.clearContainerDev &&
+                      !devResetOpts.clearContainerProd)
+                  }
+                  onClick={() => setDevResetConfirm(true)}
+                >
+                  Reset selected…
+                </Button>
+              ) : (
+                <div className="flex items-center gap-3 rounded border border-destructive/50 bg-destructive/5 px-3 py-2">
+                  <span className="text-sm text-destructive font-medium flex-1">
+                    This cannot be undone. Continue?
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={devResetBusy}
+                    onClick={devReset}
+                  >
+                    {devResetBusy ? "Resetting…" : "Yes, reset"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={devResetBusy}
+                    onClick={() => setDevResetConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {devResetResult && (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {devResetResult.affectedMediaRows !== undefined && (
+                    <div>
+                      Media rows cleared:{" "}
+                      <strong>{devResetResult.affectedMediaRows}</strong>
+                    </div>
+                  )}
+                  {devResetResult.cleared.length > 0 && (
+                    <div>
+                      Container IDs removed: {devResetResult.cleared.join(", ")}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
         </>
       )}
     </AdminLayout>

@@ -571,4 +571,85 @@ router.post(
   },
 );
 
+// ---------------------------------------------------------------------------
+// POST /admin/integrations/spe/dev-reset
+// Development-only destructive reset. Returns 403 in production.
+//
+// Options (at least one required):
+//   resetMigration   — sets spe_file_id = NULL on every media row, making
+//                      all rows look un-migrated so the next migration run
+//                      starts fresh. GCS storage_keys are untouched; bytes
+//                      remain. SPE files already uploaded become orphans in
+//                      the SPE container (use the orphan cleaner to purge).
+//   clearContainerDev  — removes speContainerIdDev from site_settings.
+//   clearContainerProd — removes speContainerIdProd from site_settings.
+//
+// Never exposed to production — guarded both here and by the UI.
+// ---------------------------------------------------------------------------
+const devResetBody = z
+  .object({
+    resetMigration:    z.boolean().optional(),
+    clearContainerDev: z.boolean().optional(),
+    clearContainerProd: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.resetMigration || v.clearContainerDev || v.clearContainerProd,
+    { message: "At least one reset option must be true" },
+  );
+
+router.post(
+  "/admin/integrations/spe/dev-reset",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    if (process.env["NODE_ENV"] === "production") {
+      res.status(403).json({ error: "dev-reset is not available in production" });
+      return;
+    }
+    const parsed = devResetBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { resetMigration, clearContainerDev, clearContainerProd } = parsed.data;
+    const result: { affectedMediaRows?: number; cleared: string[] } = { cleared: [] };
+
+    if (resetMigration) {
+      const updated = await db
+        .update(mediaTable)
+        .set({ speFileId: null, speContainerId: null })
+        .returning({ id: mediaTable.id });
+      result.affectedMediaRows = updated.length;
+      req.log.info(
+        { affectedMediaRows: updated.length },
+        "SPE dev-reset: cleared spe_file_id on all media rows",
+      );
+    }
+
+    if (clearContainerDev) result.cleared.push("containerDev");
+    if (clearContainerProd) result.cleared.push("containerProd");
+
+    if (clearContainerDev || clearContainerProd) {
+      // Build a typed patch with only the requested columns nulled.
+      const patch: Partial<{ speContainerIdDev: null; speContainerIdProd: null }> = {};
+      if (clearContainerDev) patch.speContainerIdDev = null;
+      if (clearContainerProd) patch.speContainerIdProd = null;
+
+      await db
+        .insert(siteSettingsTable)
+        .values({ id: SETTINGS_ID, ...patch })
+        .onConflictDoUpdate({ target: siteSettingsTable.id, set: patch });
+      req.log.info({ cleared: result.cleared }, "SPE dev-reset: cleared container IDs");
+    }
+
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "spe.devReset",
+      entity: "site_settings",
+      entityId: String(SETTINGS_ID),
+      diff: { resetMigration, clearContainerDev, clearContainerProd, ...result },
+    });
+    res.json({ ok: true, ...result });
+  },
+);
+
 export default router;
