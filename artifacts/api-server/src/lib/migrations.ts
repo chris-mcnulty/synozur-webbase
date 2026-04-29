@@ -672,6 +672,38 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // 18f. Retrofit a UNIQUE constraint on role_capabilities(role_id, capability_id).
+    //      The original migration 18c defined PRIMARY KEY (role_id, capability_id) but
+    //      if the table was created before that clause was added, CREATE TABLE IF NOT
+    //      EXISTS is a no-op and the PK is never applied. Without a unique constraint
+    //      the ON CONFLICT DO NOTHING above silently inserts duplicates on every restart.
+    //      This step:
+    //        1. Deduplicates existing rows (keeps the oldest ctid per pair).
+    //        2. Adds the unique constraint exactly once using a DO block guard.
+    await db.execute(sql`
+      DELETE FROM role_capabilities rc
+      WHERE ctid NOT IN (
+        SELECT MIN(ctid)
+        FROM role_capabilities
+        GROUP BY role_id, capability_id
+      );
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON c.conrelid = t.oid
+          WHERE t.relname = 'role_capabilities'
+            AND c.conname = 'role_capabilities_role_id_capability_id_key'
+        ) THEN
+          ALTER TABLE role_capabilities
+            ADD CONSTRAINT role_capabilities_role_id_capability_id_key
+            UNIQUE (role_id, capability_id);
+        END IF;
+      END$$;
+    `);
+
     // 19. Bookings native (Graph) integration.
     //
     // 19a. site_settings.bookings_render_mode — global toggle between
@@ -911,6 +943,23 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS spe_container_type_id text,
         ADD COLUMN IF NOT EXISTS spe_container_id_dev text,
         ADD COLUMN IF NOT EXISTS spe_container_id_prod text;
+    `);
+
+    // 28a. Storage backend selection — replaces the removed STORAGE_BACKEND env
+    //      var. Two independent per-slot columns so dev and prod can be switched
+    //      independently from the SPE admin page without a deploy.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS storage_backend_dev text NOT NULL DEFAULT 'gcs',
+        ADD COLUMN IF NOT EXISTS storage_backend_prod text NOT NULL DEFAULT 'gcs';
+    `);
+
+    // 28b. Durable migration error column — set on permanent Graph 4xx failures
+    //      so the file is excluded from future migration pages and admins can
+    //      identify and retry it from the admin UI without reading ephemeral logs.
+    await db.execute(sql`
+      ALTER TABLE media
+        ADD COLUMN IF NOT EXISTS spe_migrate_error text;
     `);
 
     // 29. AI grounding documents — Vega-pattern grounding store. Standalone
