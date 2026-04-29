@@ -131,18 +131,24 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed.data;
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    // For SPE the active backend returns an api-server route URL
-    // (`/api/storage/uploads/spe-direct/<token>`) that's NOT a valid
-    // storage_key. Map it to the canonical `/objects/uploads/<token>`
-    // shape so seed scripts (and any other caller persisting
-    // `objectPath` directly into a storage_key column) write the same
-    // shape regardless of which backend is active. GCS URLs flow
-    // through the existing GCS normalizer unchanged.
+    // For SPE the active backend returns a relative URL
+    // (`/api/storage/uploads/spe-direct/<token>`). The client needs an
+    // absolute URL it can PUT to directly. Absolutize it using the
+    // request origin — trust proxy is set so req.protocol is correct
+    // (https in production, http in dev) and req.get("host") is the
+    // Replit proxy domain, not localhost.
+    const absoluteUploadURL = uploadURL.startsWith("/")
+      ? `${req.protocol}://${req.get("host")}${uploadURL}`
+      : uploadURL;
+
+    // Map to the canonical `/objects/uploads/<token>` storage_key shape
+    // regardless of which backend is active, so callers persisting
+    // `objectPath` write the same form for GCS and SPE.
     const objectPath = canonicaliseUploadObjectPath(uploadURL);
 
     res.json(
       RequestUploadUrlResponse.parse({
-        uploadURL,
+        uploadURL: absoluteUploadURL,
         objectPath,
         metadata: { name, size, contentType },
       }),
