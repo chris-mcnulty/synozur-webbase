@@ -659,7 +659,7 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                   }
                 />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" side="top" className="max-h-64 overflow-y-auto">
                 <SelectItem value="__none__">No linked post</SelectItem>
                 {linkablePosts.map((p) => (
                   <SelectItem key={p.id} value={p.id}>

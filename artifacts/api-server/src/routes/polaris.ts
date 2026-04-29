@@ -134,7 +134,11 @@ async function loadLinkedPost(
     slug: r.slug,
     title: r.title,
     excerpt: r.excerpt,
-    heroImageUrl: r.heroPublicUrl ?? null,
+    heroImageUrl: r.heroPublicUrl
+      ? r.heroPublicUrl.startsWith("/objects/")
+        ? `/api/storage${r.heroPublicUrl}`
+        : r.heroPublicUrl
+      : null,
     publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
     ...(opts.publicOnly ? {} : { status: r.status }),
   };
