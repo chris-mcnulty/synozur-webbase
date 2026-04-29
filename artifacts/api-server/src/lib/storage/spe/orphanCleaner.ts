@@ -66,7 +66,11 @@ async function loadKnownSpeFileIds(): Promise<Set<string>> {
 
 function isOldEnough(item: SpeFileItem, now: number): boolean {
   const ts = item.createdDateTime ? Date.parse(item.createdDateTime) : NaN;
-  if (Number.isNaN(ts)) return true; // no timestamp → treat as old
+  // Unknown timestamp → treat as NOT old enough. Conservative: if Graph
+  // didn't return createdDateTime we don't actually know the age, so
+  // skip the item from orphan deletion rather than risk wiping a
+  // newly-created or in-flight item with incomplete metadata.
+  if (Number.isNaN(ts)) return false;
   return now - ts > SAFE_AGE_MS;
 }
 

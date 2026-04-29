@@ -10,6 +10,7 @@ import {
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
 import { stashSpeUpload } from "../lib/storage/spe/uploadCache";
+import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -157,19 +158,37 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
  * id in an in-memory cache keyed by `:token` so the subsequent
  * `POST /cms/media` can populate `spe_file_id` on the new media row.
  *
- * Auth: same boundary as the existing `request-url` route — no per-route
- * gating today; admin auth is enforced at the `POST /cms/media` step.
+ * Auth: gated to authenticated CMS roles. The bytes are written using
+ * the api-server's SPE credentials, so unauthenticated callers must not
+ * be able to populate the container (would let anyone create orphans
+ * and burn storage). Same role set the `POST /cms/media` step requires
+ * so the two-step flow has consistent gating.
  *
  * Body: raw bytes of the file. Content-Type header carries the mime.
  * Optional `?name=<original-filename>` for SharePoint metadata stamping.
  */
 router.put(
   "/storage/uploads/spe-direct/:token",
+  requireAuth,
+  requireRole("admin", "editor", "author", "contributor"),
   express.raw({ limit: DIRECT_UPLOAD_LIMIT, type: "*/*" }),
   async (req: Request, res: Response) => {
     const token = String(req.params.token ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(token)) {
       res.status(400).json({ error: "Invalid token" });
+      return;
+    }
+    // C6 fix — pre-check the active backend before reading the body
+    // and uploading it. Without this, when STORAGE_BACKEND=gcs the
+    // route would happily upload to GCS via the active backend and
+    // then 409 because the resulting ref has no speFileId, leaving a
+    // GCS orphan. Bail early instead.
+    const activeBackend = (process.env["STORAGE_BACKEND"] ?? "gcs").trim().toLowerCase();
+    if (activeBackend !== "spe") {
+      res.status(409).json({
+        error:
+          "spe-direct route requires STORAGE_BACKEND=spe; refusing to write bytes through this path under the active backend",
+      });
       return;
     }
     const body = req.body as Buffer | undefined;
@@ -190,14 +209,12 @@ router.put(
         documentType: "media",
         ownerId: token,
       });
+      // Defensive: the pre-check above guarantees active=spe, but if
+      // some future change broke that invariant we'd still rather
+      // surface clearly than stash a half-formed cache entry.
       if (!ref.speFileId) {
-        // The active backend isn't SPE — refuse rather than silently
-        // produce a GCS object via this route. Forces operators to
-        // resolve the misconfiguration before bytes go anywhere
-        // unexpected.
-        res.status(409).json({
-          error:
-            "spe-direct route invoked while STORAGE_BACKEND is not 'spe'; refusing to write GCS bytes through this path",
+        res.status(500).json({
+          error: "uploadObject succeeded but returned no speFileId — active backend / abstraction mismatch",
         });
         return;
       }
