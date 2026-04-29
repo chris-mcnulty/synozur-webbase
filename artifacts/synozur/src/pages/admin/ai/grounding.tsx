@@ -399,6 +399,7 @@ export default function AdminAiGrounding() {
                                 body: { isActive: checked },
                               })
                             }
+                            aria-label={`Toggle Active for ${d.title}`}
                             data-testid={`toggle-active-${d.id}`}
                           />
                         </TableCell>
@@ -411,6 +412,7 @@ export default function AdminAiGrounding() {
                                 body: { conciergeEligible: checked },
                               })
                             }
+                            aria-label={`Toggle Concierge eligibility for ${d.title}`}
                             data-testid={`toggle-concierge-${d.id}`}
                           />
                         </TableCell>
@@ -419,6 +421,8 @@ export default function AdminAiGrounding() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openEdit(d)}
+                            aria-label={`Edit ${d.title}`}
+                            title={`Edit ${d.title}`}
                             data-testid={`button-edit-${d.id}`}
                           >
                             <Pencil className="h-4 w-4" />
@@ -427,6 +431,8 @@ export default function AdminAiGrounding() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(d)}
+                            aria-label={`Delete ${d.title}`}
+                            title={`Delete ${d.title}`}
                             data-testid={`button-delete-${d.id}`}
                           >
                             <Trash2 className="h-4 w-4" />

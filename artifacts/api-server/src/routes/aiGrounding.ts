@@ -1,15 +1,18 @@
 import express, { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import {
   db,
   groundingDocumentsTable,
   GROUNDING_CATEGORIES,
   type GroundingDocument,
-  type GroundingCategory,
 } from "@workspace/db";
 import { requireAuth, requireCapability } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
+import { pdfTextToMarkdown } from "../lib/ai/grounding";
+
+// The router is mounted at `/api` in app.ts, so route paths here are
+// relative to that prefix (e.g. "/ai/grounding-documents" → /api/ai/...).
 
 const router: IRouter = Router();
 
@@ -67,7 +70,7 @@ function serialize(d: GroundingDocument) {
 // CRUD
 // ---------------------------------------------------------------------------
 
-router.get("/api/ai/grounding-documents", ...manageGuard, async (_req, res) => {
+router.get("/ai/grounding-documents", ...manageGuard, async (_req, res) => {
   const rows = await db
     .select()
     .from(groundingDocumentsTable)
@@ -80,7 +83,7 @@ router.get("/api/ai/grounding-documents", ...manageGuard, async (_req, res) => {
 });
 
 router.get(
-  "/api/ai/grounding-documents/:id",
+  "/ai/grounding-documents/:id",
   ...manageGuard,
   async (req, res) => {
     const id = String(req.params.id);
@@ -96,7 +99,7 @@ router.get(
 );
 
 router.post(
-  "/api/ai/grounding-documents",
+  "/ai/grounding-documents",
   ...manageGuard,
   async (req, res) => {
     const parsed = CreateBody.safeParse(req.body);
@@ -134,7 +137,7 @@ router.post(
 );
 
 router.patch(
-  "/api/ai/grounding-documents/:id",
+  "/ai/grounding-documents/:id",
   ...manageGuard,
   async (req, res) => {
     const id = String(req.params.id);
@@ -188,7 +191,7 @@ router.patch(
 );
 
 router.delete(
-  "/api/ai/grounding-documents/:id",
+  "/ai/grounding-documents/:id",
   ...manageGuard,
   async (req, res) => {
     const id = String(req.params.id);
@@ -216,15 +219,13 @@ router.delete(
 // File parsing — admin-only ingestion helpers. PDF and DOCX are parsed on the
 // server (so the browser doesn't bundle pdf-parse / mammoth) and returned as
 // markdown so editors paste structured text into the form rather than a
-// flattened blob. PDFs lose semantic structure during PDF generation, so the
-// PDF path is best-effort: we collapse runs of whitespace into paragraph
-// breaks but make no attempt to reconstruct headings.
+// flattened blob.
 // ---------------------------------------------------------------------------
 
 const PARSE_LIMIT = "20mb";
 
 router.post(
-  "/api/ai/parse-pdf",
+  "/ai/parse-pdf",
   ...manageGuard,
   express.raw({ type: "*/*", limit: PARSE_LIMIT }),
   async (req: Request, res: Response) => {
@@ -248,7 +249,7 @@ router.post(
 );
 
 router.post(
-  "/api/ai/parse-docx",
+  "/ai/parse-docx",
   ...manageGuard,
   express.raw({ type: "*/*", limit: PARSE_LIMIT }),
   async (req: Request, res: Response) => {
@@ -276,83 +277,5 @@ router.post(
     }
   },
 );
-
-// PDFs lose structure on generation, so this is intentionally light: collapse
-// runs of intra-paragraph whitespace, treat blank lines as paragraph breaks,
-// and trim. Editors can post-edit.
-function pdfTextToMarkdown(raw: string): string {
-  const normalized = raw.replace(/\r\n?/g, "\n");
-  const paragraphs = normalized
-    .split(/\n{2,}/)
-    .map((p) => p.replace(/\s+/g, " ").trim())
-    .filter((p) => p.length > 0);
-  return paragraphs.join("\n\n");
-}
-
-// ---------------------------------------------------------------------------
-// buildSystemPrompt — composes the instructional + contextual sections from
-// active grounding docs into a single markdown string. No LLM call here; the
-// LLM connector wired up separately in Replit will consume this string as
-// the `system` parameter on its API calls.
-//
-// `scopeTags` filters by audience class / sector / application: a doc whose
-// scope_tags is null/empty matches everything; a doc with tags only matches
-// when at least one of its tags is in the caller-supplied set.
-//
-// `conciergeOnly=true` excludes docs marked concierge_eligible=false (used
-// by the future Astra concierge surface).
-// ---------------------------------------------------------------------------
-
-const CATEGORY_LABELS: Record<GroundingCategory, string> = {
-  methodology: "Methodology & Framework",
-  best_practices: "Best Practices",
-  terminology: "Key Terminology",
-  examples: "Examples & Templates",
-  about_synozur: "About Synozur",
-  brand_voice: "Brand Voice",
-  audience_personas: "Audience Personas",
-  concierge_persona: "Concierge Persona",
-};
-
-export interface BuildSystemPromptOptions {
-  scopeTags?: readonly string[];
-  conciergeOnly?: boolean;
-}
-
-export async function buildSystemPrompt(
-  options: BuildSystemPromptOptions = {},
-): Promise<string> {
-  const conditions = [eq(groundingDocumentsTable.isActive, true)];
-  if (options.conciergeOnly) {
-    conditions.push(eq(groundingDocumentsTable.conciergeEligible, true));
-  }
-  const rows = await db
-    .select()
-    .from(groundingDocumentsTable)
-    .where(and(...conditions))
-    .orderBy(
-      desc(groundingDocumentsTable.priority),
-      asc(groundingDocumentsTable.category),
-      asc(groundingDocumentsTable.title),
-    );
-
-  const scope = options.scopeTags ?? [];
-  const filtered = rows.filter((d) => {
-    const tags = (d.scopeTags ?? []) as string[];
-    if (tags.length === 0) return true;
-    if (scope.length === 0) return false;
-    return tags.some((t) => scope.includes(t));
-  });
-
-  if (filtered.length === 0) {
-    return "";
-  }
-
-  const sections = filtered.map((d) => {
-    const label = CATEGORY_LABELS[d.category as GroundingCategory] ?? d.category;
-    return `### ${label}: ${d.title}\n${d.content}`;
-  });
-  return sections.join("\n\n");
-}
 
 export default router;
