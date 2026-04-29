@@ -702,72 +702,24 @@ export default function SpeAdminPage() {
               </div>
             </div>
 
-            {/* Column provisioning — required once per container so that
-                metadata stamping (SynozurDocumentType etc.) works. New
-                containers get this automatically; existing containers need
-                a one-time manual trigger. */}
-            <div className="border-t pt-4 space-y-2">
-              <div className="text-sm font-medium">Custom columns</div>
+            {/* Custom columns — informational only. SPE container-backed
+                site collections are isolated from the regular SharePoint
+                tenant; POST /drives/{id}/list/columns returns 403 even with
+                Sites.FullControl.All because those sites sit in a separate
+                permission zone that tenant-wide Sites.* grants don't cover.
+                All file provenance is kept exclusively in the media DB row. */}
+            <div className="border-t pt-4 space-y-1.5">
+              <div className="text-sm font-medium">Custom SharePoint columns</div>
               <p className="text-xs text-muted-foreground">
-                Provisions the <code>Synozur*</code> text columns on the active
-                container's document library so that file metadata (document
-                type, owner, original filename, content type) is stamped on
-                upload. New containers are provisioned automatically; run this
-                once for the existing dev and prod containers.
+                SPE container sites are isolated from the regular SharePoint
+                tenant — the Graph column-creation endpoint returns{" "}
+                <code>accessDenied</code> even with{" "}
+                <code>Sites.FullControl.All</code>. This is a documented SPE
+                permission boundary; the app doesn't read these columns back,
+                so no functionality is lost. All file provenance (document
+                type, owner, original filename, content type) is stored in the{" "}
+                <code>media</code> database row and is authoritative there.
               </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <Button
-                  variant="outline"
-                  disabled={
-                    provisionColumnsBusy ||
-                    !status.credentialsConfigured ||
-                    (status.activeContainerSlot === "prod"
-                      ? !status.containerIdProd
-                      : !status.containerIdDev)
-                  }
-                  onClick={() => provisionColumns()}
-                >
-                  {provisionColumnsBusy
-                    ? "Provisioning…"
-                    : `Provision columns (${status.activeContainerSlot})`}
-                </Button>
-                {status.containerIdDev && status.containerIdProd && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={provisionColumnsBusy}
-                      onClick={() => provisionColumns("dev")}
-                    >
-                      dev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={provisionColumnsBusy}
-                      onClick={() => provisionColumns("prod")}
-                    >
-                      prod
-                    </Button>
-                  </>
-                )}
-              </div>
-              {provisionColumnsResult && (
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <div>
-                    Created:{" "}
-                    {provisionColumnsResult.created.length > 0
-                      ? provisionColumnsResult.created.join(", ")
-                      : "none"}
-                  </div>
-                  <div>
-                    Already existed:{" "}
-                    {provisionColumnsResult.existed.length > 0
-                      ? provisionColumnsResult.existed.join(", ")
-                      : "none"}
-                  </div>
-                </div>
-              )}
             </div>
           </Card>
 

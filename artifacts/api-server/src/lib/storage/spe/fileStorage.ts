@@ -222,18 +222,21 @@ function joinPath(base: string, segment: string): string {
 }
 
 function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {
-  // Synozur* columns are custom text columns provisioned on the container's
-  // SharePoint document library via POST /admin/integrations/spe/provision-columns.
-  // They must exist on the list schema before Graph will accept writes.
-  // For new containers they are created automatically by createContainer();
-  // existing containers must be provisioned manually from the SPE admin page.
-  const out: Record<string, unknown> = {
-    SynozurDocumentType:    opts.documentType,
-    SynozurOwnerId:         opts.ownerId,
-    SynozurOriginalFileName: opts.filename,
-    SynozurContentType:     opts.contentType,
-  };
-  if (opts.uploadedByUserId) out["SynozurUploadedByUserId"] = opts.uploadedByUserId;
+  // SPE container-backed site collections are isolated from the regular
+  // SharePoint tenant. The Graph endpoint POST /drives/{id}/list/columns
+  // (schema modification) returns 403 accessDenied even with
+  // Sites.FullControl.All, because SPE sites sit in a separate permission
+  // zone that tenant-wide Sites.* grants don't cover.
+  //
+  // Until Microsoft exposes a supported path for column provisioning on SPE
+  // container sites, all file provenance is stored exclusively in the
+  // `media` DB row (documentType, ownerId, originalFileName, contentType).
+  // That is the authoritative source; the SharePoint-side columns were
+  // additive audit data only and the app doesn't read them back.
+  //
+  // Pass through caller-supplied extraFields so one-off overrides still work
+  // if the permission landscape changes in future.
+  const out: Record<string, unknown> = {};
   if (opts.extraFields) Object.assign(out, opts.extraFields);
   return out;
 }
