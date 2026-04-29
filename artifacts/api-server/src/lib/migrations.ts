@@ -1023,6 +1023,28 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // 30. conversations + messages tables for the AI concierge / Ask Synozur surface.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id         serial PRIMARY KEY,
+        title      text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS messages (
+        id              serial PRIMARY KEY,
+        conversation_id integer NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        role            text NOT NULL,
+        content         text NOT NULL,
+        created_at      timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS messages_conversation_id_idx
+        ON messages (conversation_id);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
