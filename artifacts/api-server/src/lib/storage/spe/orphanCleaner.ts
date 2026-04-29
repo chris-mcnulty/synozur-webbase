@@ -43,6 +43,10 @@ export interface OrphanScanResult {
   knownInDb: number;
   orphanCount: number;
   orphanBytes: number;
+  // Items not in DB but younger than SAFE_AGE_HOURS (or with no timestamp).
+  // Non-zero here means the scanner found unrecognised files but is holding
+  // off on flagging them; after 2 hours they become eligible orphans.
+  skippedByAge: number;
   // Capped — the route response stays bounded. Cleanup uses `cleanup()`
   // which does its own paged listing, so even huge orphan counts are
   // handle-able.
@@ -108,9 +112,13 @@ export async function scanOrphans(): Promise<OrphanScanResult> {
   const orphans: OrphanItem[] = [];
   let orphanBytes = 0;
   let totalOldEnough = 0;
+  let skippedByAge = 0;
   for (const item of all) {
     if (known.has(item.id)) continue;
-    if (!isOldEnough(item, now)) continue;
+    if (!isOldEnough(item, now)) {
+      skippedByAge++;
+      continue;
+    }
     totalOldEnough++;
     orphanBytes += item.size;
     if (orphans.length < SAMPLE_CAP) {
@@ -124,6 +132,7 @@ export async function scanOrphans(): Promise<OrphanScanResult> {
     knownInDb: known.size,
     orphanCount: totalOldEnough,
     orphanBytes,
+    skippedByAge,
     sample: orphans,
     sampleCapped: totalOldEnough > orphans.length,
   };

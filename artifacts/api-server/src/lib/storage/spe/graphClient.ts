@@ -331,10 +331,15 @@ export class SpeGraphClient {
   ): Promise<SpeFileItem[]> {
     const driveId = await this.getContainerDriveId(containerId);
     const safePath = encodePath(folderPath);
+    // Explicitly select the fields we need so Graph doesn't drop them in
+    // SPE contexts where the default projection may differ from personal/
+    // business OneDrive. Without $select, `createdDateTime` can be absent
+    // which causes the orphan scanner to treat every item as "too young".
+    const select = "$select=id,name,size,webUrl,createdDateTime,lastModifiedDateTime,file,folder";
     let url =
       safePath === "/" || safePath === ""
-        ? `${GRAPH_V1_URL}/drives/${driveId}/root/children?$expand=listItem($expand=fields)`
-        : `${GRAPH_V1_URL}/drives/${driveId}/root:${safePath}:/children?$expand=listItem($expand=fields)`;
+        ? `${GRAPH_V1_URL}/drives/${driveId}/root/children?${select}&$expand=listItem($expand=fields)`
+        : `${GRAPH_V1_URL}/drives/${driveId}/root:${safePath}:/children?${select}&$expand=listItem($expand=fields)`;
     const items: SpeFileItem[] = [];
     while (url) {
       const page = await this.request<{ value: RawDriveItem[]; "@odata.nextLink"?: string }>(url);

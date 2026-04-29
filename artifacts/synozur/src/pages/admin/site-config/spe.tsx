@@ -72,6 +72,7 @@ interface OrphanScanResult {
   knownInDb: number;
   orphanCount: number;
   orphanBytes: number;
+  skippedByAge: number;
   sample: OrphanItem[];
   sampleCapped: boolean;
 }
@@ -871,6 +872,14 @@ export default function SpeAdminPage() {
                     {fmtBytes(orphans.orphanBytes)}
                   </span>
                 </div>
+                {orphans.skippedByAge > 0 && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400">
+                    {orphans.skippedByAge} unrecognised file
+                    {orphans.skippedByAge === 1 ? "" : "s"} skipped — younger
+                    than 2 h or no timestamp from Graph. Re-scan after 2 hours
+                    to include them.
+                  </div>
+                )}
                 {orphans.sample.length > 0 && (
                   <div className="text-xs space-y-0.5 max-h-64 overflow-y-auto">
                     {orphans.sample.map((o) => (
