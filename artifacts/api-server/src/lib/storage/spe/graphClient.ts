@@ -504,7 +504,11 @@ export class SpeGraphClient {
   //
   // Bulk PATCH first; if Graph rejects the batch because at least one
   // column doesn't exist on the schema yet, retry field-by-field so the
-  // recognized fields still land. Unrecognized fields are dropped silently.
+  // recognized fields still land. In the per-field retry, only "column
+  // does not exist on the schema" errors are swallowed — other validation
+  // failures (value too long, wrong type, invalid choice) are logged at
+  // warn level so they surface in observability rather than silently
+  // dropping data.
   async setItemFields(
     containerId: string,
     itemId: string,
@@ -543,8 +547,21 @@ export class SpeGraphClient {
           skipJsonParse: true,
         });
       } catch (err) {
-        if (err instanceof SpeGraphRequestError && (err.status === 400 || err.status === 422)) {
-          logger.debug({ itemId, key }, "SPE field skipped — column not on schema");
+        if (
+          err instanceof SpeGraphRequestError &&
+          (err.status === 400 || err.status === 422)
+        ) {
+          if (isUnknownColumnError(err.bodyExcerpt)) {
+            logger.debug({ itemId, key }, "SPE field skipped — column not on schema");
+            continue;
+          }
+          // Other validation failure — value too long, type mismatch,
+          // invalid choice value, etc. Don't fail the upload (metadata
+          // is best-effort) but log loudly so it surfaces in monitoring.
+          logger.warn(
+            { itemId, key, status: err.status, bodyExcerpt: err.bodyExcerpt },
+            "SPE field PATCH rejected (validation error); value not stamped",
+          );
           continue;
         }
         throw err;
@@ -699,6 +716,27 @@ function basename(path: string): string {
   const trimmed = path.split("?")[0]!;
   const idx = trimmed.lastIndexOf("/");
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+}
+
+// Graph reports a missing list-item field with a few different phrasings
+// depending on the surface (SharePoint REST under the hood, SPE wrapper,
+// older list runtime). Match on phrases that unambiguously mean "this
+// column doesn't exist on the schema" — anything else (value too long,
+// type mismatch, choice not in the allowed set) is a real validation
+// failure and must not be swallowed.
+const UNKNOWN_COLUMN_PATTERNS = [
+  /column ['"`].+?['"`] does not exist/i,
+  /field ['"`].+?['"`] does not exist/i,
+  /does not exist on .* list/i,
+  /property ['"`].+?['"`] does not exist on type/i,
+  /no column with name/i,
+  /column not found/i,
+  /unrecognized field/i,
+  /invalid field name/i,
+];
+
+function isUnknownColumnError(bodyExcerpt: string): boolean {
+  return UNKNOWN_COLUMN_PATTERNS.some((re) => re.test(bodyExcerpt));
 }
 
 function backoffMs(attempt: number): number {

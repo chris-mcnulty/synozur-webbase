@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { db, siteSettingsTable } from "@workspace/db";
 import { logger } from "../../logger";
 import { SpeGraphClient, SpeFileItem, readSpeGraphConfigFromEnv } from "./graphClient";
+import { SYNOZUR_COLUMN_MAX_LENGTHS } from "./containerCreator";
 
 const SETTINGS_ID = 1;
 
@@ -232,13 +233,29 @@ function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {
   // time, and re-runnable from the SPE admin page. setItemFields() falls back
   // to per-field PATCH if any single column is missing, so a partially
   // initialized schema doesn't fail the upload.
+  //
+  // Long values (filenames pulled from imported assets, weird MIME-with-params
+  // strings) get truncated to the provisioned column maxLength before stamping
+  // — Graph would otherwise reject the value with a 400, and we'd rather log a
+  // truncated value than drop it entirely. Limits come from SYNOZUR_COLUMNS.
   const out: Record<string, unknown> = {
-    SynozurDocumentType: opts.documentType,
-    SynozurOwnerId: opts.ownerId,
-    SynozurOriginalFileName: opts.filename,
-    SynozurContentType: opts.contentType,
+    SynozurDocumentType: clampToColumn("SynozurDocumentType", opts.documentType),
+    SynozurOwnerId: clampToColumn("SynozurOwnerId", opts.ownerId),
+    SynozurOriginalFileName: clampToColumn("SynozurOriginalFileName", opts.filename),
+    SynozurContentType: clampToColumn("SynozurContentType", opts.contentType),
   };
-  if (opts.uploadedByUserId) out["SynozurUploadedByUserId"] = opts.uploadedByUserId;
+  if (opts.uploadedByUserId) {
+    out["SynozurUploadedByUserId"] = clampToColumn(
+      "SynozurUploadedByUserId",
+      opts.uploadedByUserId,
+    );
+  }
   if (opts.extraFields) Object.assign(out, opts.extraFields);
   return out;
+}
+
+function clampToColumn(columnName: string, value: string): string {
+  const max = SYNOZUR_COLUMN_MAX_LENGTHS[columnName];
+  if (max == null || value.length <= max) return value;
+  return value.slice(0, max);
 }

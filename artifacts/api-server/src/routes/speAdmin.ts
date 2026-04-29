@@ -309,72 +309,136 @@ router.post(
 // ---------------------------------------------------------------------------
 const COLUMN_NAME_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
-const columnDefinitionSchema = z
+// Discriminated union on columnType so each variant only accepts its own
+// type-specific config block. `.strict()` rejects incompatible keys (e.g.
+// passing `choice: {...}` on a `text` column) instead of silently dropping
+// them, which previously masked client bugs because buildColumnRequest()
+// only serializes the block matching `columnType`.
+const columnDefinitionBaseSchema = {
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(
+      COLUMN_NAME_RE,
+      "name must start with a letter and contain only letters, digits, or underscores",
+    ),
+  displayName: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+  required: z.boolean().optional(),
+  indexed: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
+  enforceUniqueValues: z.boolean().optional(),
+} as const;
+
+const textColumnConfigSchema = z
   .object({
-    name: z
-      .string()
-      .min(1)
-      .max(64)
-      .regex(COLUMN_NAME_RE, "name must start with a letter and contain only letters, digits, or underscores"),
-    displayName: z.string().min(1).max(255),
-    description: z.string().max(1000).optional(),
-    columnType: z.enum([
-      "text",
-      "choice",
-      "dateTime",
-      "number",
-      "currency",
-      "boolean",
-      "personOrGroup",
-      "hyperlinkOrPicture",
-    ]),
-    required: z.boolean().optional(),
-    indexed: z.boolean().optional(),
-    hidden: z.boolean().optional(),
-    readOnly: z.boolean().optional(),
-    enforceUniqueValues: z.boolean().optional(),
-    text: z
-      .object({
-        allowMultipleLines: z.boolean().optional(),
-        appendChangesToExistingText: z.boolean().optional(),
-        linesForEditing: z.number().int().min(0).max(20).optional(),
-        maxLength: z.number().int().min(1).max(255).optional(),
-      })
-      .optional(),
-    choice: z
-      .object({
-        choices: z.array(z.string().min(1)).min(1),
-        allowFillInChoice: z.boolean().optional(),
-        displayAs: z.enum(["dropDownMenu", "radioButtons", "checkboxes"]).optional(),
-      })
-      .optional(),
-    dateTime: z
-      .object({
-        displayAs: z.enum(["default", "friendly", "standard"]).optional(),
-        format: z.enum(["dateOnly", "dateTime"]).optional(),
-      })
-      .optional(),
-    number: z
-      .object({
-        decimalPlaces: z.number().int().min(0).max(5).optional(),
-        minimum: z.number().optional(),
-        maximum: z.number().optional(),
-      })
-      .optional(),
-    currency: z.object({ lcid: z.number().int().min(0).optional() }).optional(),
-    boolean: z.object({}).strict().optional(),
-    personOrGroup: z
-      .object({
-        allowMultipleSelection: z.boolean().optional(),
-        chooseFromType: z.enum(["peopleOnly", "peopleAndGroups"]).optional(),
-      })
-      .optional(),
-    hyperlinkOrPicture: z.object({ isPicture: z.boolean().optional() }).optional(),
+    allowMultipleLines: z.boolean().optional(),
+    appendChangesToExistingText: z.boolean().optional(),
+    linesForEditing: z.number().int().min(0).max(20).optional(),
+    maxLength: z.number().int().min(1).max(255).optional(),
   })
-  .refine(
-    (v) => v.columnType !== "choice" || (v.choice && v.choice.choices.length > 0),
-    { message: "choice columns require choice.choices[]", path: ["choice", "choices"] },
-  );
+  .strict();
+
+const choiceColumnConfigSchema = z
+  .object({
+    choices: z.array(z.string().min(1)).min(1),
+    allowFillInChoice: z.boolean().optional(),
+    displayAs: z.enum(["dropDownMenu", "radioButtons", "checkboxes"]).optional(),
+  })
+  .strict();
+
+const dateTimeColumnConfigSchema = z
+  .object({
+    displayAs: z.enum(["default", "friendly", "standard"]).optional(),
+    format: z.enum(["dateOnly", "dateTime"]).optional(),
+  })
+  .strict();
+
+const numberColumnConfigSchema = z
+  .object({
+    decimalPlaces: z.number().int().min(0).max(5).optional(),
+    minimum: z.number().optional(),
+    maximum: z.number().optional(),
+  })
+  .strict();
+
+const currencyColumnConfigSchema = z
+  .object({ lcid: z.number().int().min(0).optional() })
+  .strict();
+
+const booleanColumnConfigSchema = z.object({}).strict();
+
+const personOrGroupColumnConfigSchema = z
+  .object({
+    allowMultipleSelection: z.boolean().optional(),
+    chooseFromType: z.enum(["peopleOnly", "peopleAndGroups"]).optional(),
+  })
+  .strict();
+
+const hyperlinkOrPictureColumnConfigSchema = z
+  .object({ isPicture: z.boolean().optional() })
+  .strict();
+
+const columnDefinitionSchema = z.discriminatedUnion("columnType", [
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("text"),
+      text: textColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("choice"),
+      choice: choiceColumnConfigSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("dateTime"),
+      dateTime: dateTimeColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("number"),
+      number: numberColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("currency"),
+      currency: currencyColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("boolean"),
+      boolean: booleanColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("personOrGroup"),
+      personOrGroup: personOrGroupColumnConfigSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...columnDefinitionBaseSchema,
+      columnType: z.literal("hyperlinkOrPicture"),
+      hyperlinkOrPicture: hyperlinkOrPictureColumnConfigSchema.optional(),
+    })
+    .strict(),
+]);
 
 const columnUpdateSchema = z
   .object({

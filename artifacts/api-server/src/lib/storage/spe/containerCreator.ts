@@ -75,6 +75,21 @@ export const SYNOZUR_COLUMNS: readonly SpeColumnDefinition[] = [
   },
 ] as const;
 
+// Derived map of column name → provisioned text maxLength so the metadata
+// stamper in fileStorage.ts can truncate before PATCHing rather than relying
+// on Graph to reject (and on the per-field fallback to detect the rejection).
+// Keeping this derived from SYNOZUR_COLUMNS means there's exactly one source
+// of truth for column widths.
+export const SYNOZUR_COLUMN_MAX_LENGTHS: Readonly<Record<string, number>> =
+  Object.freeze(
+    Object.fromEntries(
+      SYNOZUR_COLUMNS.filter(
+        (c): c is SpeColumnDefinition & { text: { maxLength: number } } =>
+          c.columnType === "text" && typeof c.text?.maxLength === "number",
+      ).map((c) => [c.name, c.text.maxLength]),
+    ),
+  );
+
 export interface ProvisionColumnsResult {
   created: string[];
   existed: string[];
