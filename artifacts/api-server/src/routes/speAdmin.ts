@@ -19,6 +19,11 @@ import { requireAdmin } from "../middlewares/requireAdmin";
 import { audit } from "../lib/audit";
 import { readSpeGraphConfigFromEnv, SpeGraphClient } from "../lib/storage/spe/graphClient";
 import { SpeContainerCreator } from "../lib/storage/spe/containerCreator";
+import {
+  scanOrphans,
+  cleanupOrphans,
+  speRoundTripTest,
+} from "../lib/storage/spe/orphanCleaner";
 
 const SETTINGS_ID = 1;
 
@@ -241,6 +246,103 @@ router.patch(
       diff: updates,
     });
     res.json({ ok: true, updated: updates });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /admin/integrations/spe/test-upload
+// Round-trip validation: uploads a synthetic small file, reads it back,
+// verifies bytes, deletes it. Lets an admin sanity-check that
+// credentials, container, and Graph wiring are all working before
+// trusting the cutover with real data. The test artifact is deleted on
+// success; on partial failure (e.g. delete fails) the orphan-cleanup
+// flow picks it up later.
+// ---------------------------------------------------------------------------
+router.post(
+  "/admin/integrations/spe/test-upload",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    let result;
+    try {
+      result = await speRoundTripTest();
+    } catch (err) {
+      req.log.error({ err }, "SPE round-trip test threw");
+      res.status(502).json({ ok: false, error: (err as Error).message });
+      return;
+    }
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "spe.test.roundtrip",
+      entity: "site_settings",
+      entityId: String(SETTINGS_ID),
+      diff: { itemId: result.itemId, ok: result.ok, timings: result.timings },
+    });
+    res.json(result);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /admin/integrations/spe/orphans
+// Compares files in the active SPE container against media.spe_file_id
+// and reports anything that's been in the container >2h with no DB row.
+// ---------------------------------------------------------------------------
+router.get(
+  "/admin/integrations/spe/orphans",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    try {
+      const result = await scanOrphans();
+      res.json(result);
+    } catch (err) {
+      req.log.error({ err }, "SPE orphan scan failed");
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /admin/integrations/spe/orphans/cleanup
+// Deletes orphaned drive items from the active container. Defaults to
+// dry-run; pass `dryRun: false` to actually delete. Optional `itemIds`
+// limits the cleanup to a specific list (lets the admin UI show the
+// sample, then delete just those).
+// ---------------------------------------------------------------------------
+const cleanupBody = z.object({
+  dryRun: z.boolean().default(true),
+  maxDelete: z.number().int().min(1).max(1000).default(100),
+  itemIds: z.array(z.string().min(1)).max(1000).optional(),
+});
+
+router.post(
+  "/admin/integrations/spe/orphans/cleanup",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = cleanupBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    let result;
+    try {
+      result = await cleanupOrphans(parsed.data);
+    } catch (err) {
+      req.log.error({ err }, "SPE orphan cleanup failed");
+      res.status(502).json({ error: (err as Error).message });
+      return;
+    }
+    await audit({
+      actorId: req.authedUser!.id,
+      action: parsed.data.dryRun ? "spe.orphan.cleanup.dryrun" : "spe.orphan.cleanup",
+      entity: "site_settings",
+      entityId: String(SETTINGS_ID),
+      diff: {
+        attempted: result.attempted,
+        deleted: result.deleted,
+        skipped: result.skipped,
+        failures: result.failures.length,
+      },
+    });
+    res.json(result);
   },
 );
 

@@ -19,6 +19,7 @@
 // caller that constructs a ref from a legacy `/objects/<uuid>` path
 // will fail at fetch time with a clear "no spe_file_id" error.
 
+import { randomUUID } from "crypto";
 import type { ObjectAclPolicy } from "../objectAcl";
 import type {
   AssetObjectRef,
@@ -27,11 +28,6 @@ import type {
 } from "./types";
 import { ObjectNotFoundError } from "./types";
 import { speFileStorage } from "./spe/fileStorage";
-
-const NOT_SUPPORTED_PRESIGNED =
-  "SharePoint Embedded does not expose presigned upload URLs. " +
-  "Use the server-proxied uploadObject() flow (or the corresponding " +
-  "api-server route, once wired in Phase 3).";
 
 const NOT_SUPPORTED_PUBLIC_PATHS =
   "SharePoint Embedded has no equivalent of PUBLIC_OBJECT_SEARCH_PATHS. " +
@@ -42,20 +38,21 @@ const NOT_SUPPORTED_NORMALIZE =
   "normalizeObjectEntityPath is GCS-specific (storage.googleapis.com URL " +
   "stripping). SPE refs are identified by drive item id, not URL path.";
 
-// SPE refs carry speFileId; storageKey holds a synthetic /spe/<itemId>
-// path so the existing column types (text storage_key) keep accepting
-// them during the additive-overlay migration window. The read-path in
-// routes/storage.ts will branch on speFileId-presence in Phase 3.
+// SPE refs always carry `speFileId` — that's the SharePoint drive
+// item id the upload route stashed on the way in. `storageKey` is
+// kept as a human-recognisable `/spe/<itemId>` shape for debug
+// readability; nothing parses it.
 function speRef(itemId: string, containerId?: string): AssetObjectRef {
   return { storageKey: `/spe/${itemId}`, speFileId: itemId, speContainerId: containerId };
 }
 
 function asSpeFileId(ref: AssetObjectRef): string {
-  if (ref.speFileId) return ref.speFileId;
-  if (ref.storageKey.startsWith("/spe/")) return ref.storageKey.slice("/spe/".length);
-  throw new Error(
-    `Ref ${JSON.stringify(ref)} has no speFileId — likely a legacy GCS ref reached the SPE backend without migration`,
-  );
+  if (!ref.speFileId) {
+    throw new Error(
+      `Ref ${JSON.stringify(ref)} has no speFileId — only the SPE backend constructs valid SPE refs and they always carry one`,
+    );
+  }
+  return ref.speFileId;
 }
 
 export class SpeAssetStorageBackend implements AssetStorageBackend {
@@ -104,23 +101,26 @@ export class SpeAssetStorageBackend implements AssetStorageBackend {
     return new Response(upstream.body, { status: upstream.status, headers });
   }
 
-  getObjectEntityUploadURL(): Promise<string> {
-    throw new Error(NOT_SUPPORTED_PRESIGNED);
+  // SPE has no presigned-URL equivalent of GCS. We return a URL that
+  // points back at our own api-server's `PUT /storage/uploads/spe-direct/:token`
+  // route — the client uploads the file there as if it were a presigned
+  // URL, the route streams the bytes through to SharePoint, and the
+  // resulting drive-item id is stashed in the spe upload cache keyed by
+  // the same token so that the subsequent `POST /cms/media` can populate
+  // `spe_file_id` on the new media row.
+  async getObjectEntityUploadURL(): Promise<string> {
+    const token = randomUUID();
+    return `/api/storage/uploads/spe-direct/${token}`;
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<AssetObjectRef> {
-    // Accept both /spe/<itemId> (post-migration native) and bare item ids
-    // (internal callers like the migration script).
-    if (objectPath.startsWith("/spe/")) {
-      return speRef(objectPath.slice("/spe/".length));
-    }
-    if (objectPath.startsWith("/objects/")) {
-      // Legacy GCS-shaped path — the SPE backend can't resolve these
-      // until the migration overlay lands. Fail clearly so the caller
-      // knows they hit the wrong backend.
-      throw new ObjectNotFoundError();
-    }
-    return speRef(objectPath);
+  // Path-shaped lookups always go through the GCS backend in
+  // `ObjectStorageService` (see `objectStorage.ts`). This method is
+  // here only to satisfy the AssetStorageBackend interface; nothing
+  // routes into it. Throwing clearly is friendlier than silently
+  // returning a synthetic ref if some future caller reaches it
+  // directly.
+  async getObjectEntityFile(_objectPath: string): Promise<AssetObjectRef> {
+    throw new ObjectNotFoundError();
   }
 
   normalizeObjectEntityPath(_rawPath: string): string {

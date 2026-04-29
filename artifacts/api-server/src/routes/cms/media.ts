@@ -5,6 +5,7 @@ import { db, mediaTable, assetCategoriesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { ObjectStorageService } from "../../lib/objectStorage";
 import { audit } from "../../lib/audit";
+import { consumeSpeUpload } from "../../lib/storage/spe/uploadCache";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -92,19 +93,32 @@ router.post(
         return;
       }
     }
+    // #127 Phase 3-C — pick up the SPE direct-upload bookkeeping if this
+    // row was uploaded via the spe-direct route. The token is the trailing
+    // path segment of `storageKey` (e.g. `/objects/uploads/<token>`); the
+    // upload cache stores the speFileId/speContainerId Microsoft assigned.
+    // Falls through cleanly when the row was uploaded via the GCS path —
+    // `consumeSpeUpload` returns null, columns stay NULL, the read path
+    // resolves to GCS via storage_key.
+    const lastSegment =
+      parsed.data.storageKey.split("/").filter(Boolean).pop() ?? "";
+    const speEntry = lastSegment ? consumeSpeUpload(lastSegment) : null;
+
     const [row] = await db
       .insert(mediaTable)
       .values({
         storageKey: parsed.data.storageKey,
         publicUrl: parsed.data.publicUrl,
-        mime: parsed.data.mime ?? null,
+        mime: parsed.data.mime ?? speEntry?.contentType ?? null,
         width: parsed.data.width ?? null,
         height: parsed.data.height ?? null,
-        byteSize: parsed.data.byteSize ?? null,
+        byteSize: parsed.data.byteSize ?? speEntry?.size ?? null,
         altText: parsed.data.altText,
-        originalName: parsed.data.originalName ?? null,
+        originalName: parsed.data.originalName ?? speEntry?.originalName ?? null,
         categoryId: parsed.data.categoryId ?? null,
         uploadedBy: req.authedUser!.id,
+        speFileId: speEntry?.speFileId ?? null,
+        speContainerId: speEntry?.speContainerId ?? null,
       })
       .returning();
     res.status(201).json(row);

@@ -154,10 +154,35 @@ export class SpeFileStorage {
     await this.getGraph().deleteItem(containerId, itemId);
   }
 
+  // Recursive walk that returns ONLY files (folders are traversed but
+  // not emitted). The previous shallow listing returned the root
+  // container's direct children — folders like `/media` and
+  // `/attachment` rather than the actual files underneath. Orphan
+  // cleanup needs the leaf set, not the folder structure.
   async listFiles(documentType?: SpeDocumentType): Promise<SpeFileItem[]> {
     const containerId = await this.resolveContainerId();
     const folder = documentType ? `/${documentType}` : "/";
-    return this.getGraph().listChildren(containerId, folder);
+    return this.recurseFiles(containerId, folder);
+  }
+
+  private async recurseFiles(
+    containerId: string,
+    folder: string,
+  ): Promise<SpeFileItem[]> {
+    const children = await this.getGraph().listChildren(containerId, folder);
+    const out: SpeFileItem[] = [];
+    for (const child of children) {
+      if (child.kind === "folder") {
+        const sub = await this.recurseFiles(
+          containerId,
+          joinPath(folder, child.name),
+        );
+        out.push(...sub);
+      } else {
+        out.push(child);
+      }
+    }
+    return out;
   }
 
   async getMetadata(itemId: string, containerIdOverride?: string): Promise<SpeFileItem> {
@@ -178,6 +203,12 @@ function buildPath(
   // Strip any path separators a caller may have included accidentally.
   const safeName = filename.replace(/[\\/]+/g, "_").trim() || "unnamed";
   return `/${documentType}/${prefix}/${ownerId}-${safeName}`;
+}
+
+function joinPath(base: string, segment: string): string {
+  const left = base.endsWith("/") ? base.slice(0, -1) : base;
+  const right = segment.startsWith("/") ? segment.slice(1) : segment;
+  return `${left || ""}/${right}`;
 }
 
 function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {

@@ -35,6 +35,49 @@ interface MigrationStatus {
   awaitingMigration: number;
 }
 
+interface RoundTripResult {
+  ok: boolean;
+  containerId: string;
+  itemId: string;
+  uploadedSize: number;
+  readbackSize: number;
+  bytesMatch: boolean;
+  timings: { upload: number; readback: number; delete: number };
+}
+
+interface OrphanItem {
+  id: string;
+  name: string;
+  size: number;
+  contentType: string;
+  ageHours: number | null;
+}
+
+interface OrphanScanResult {
+  containerId: string;
+  totalInContainer: number;
+  knownInDb: number;
+  orphanCount: number;
+  orphanBytes: number;
+  sample: OrphanItem[];
+  sampleCapped: boolean;
+}
+
+interface CleanupResult {
+  containerId: string;
+  attempted: number;
+  deleted: number;
+  skipped: number;
+  failures: Array<{ id: string; reason: string }>;
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
 function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   return fetch(`${base}/api${path}`, {
@@ -143,6 +186,10 @@ export default function SpeAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [containerTypeDraft, setContainerTypeDraft] = useState("");
+  const [roundTrip, setRoundTrip] = useState<RoundTripResult | null>(null);
+  const [roundTripBusy, setRoundTripBusy] = useState(false);
+  const [orphans, setOrphans] = useState<OrphanScanResult | null>(null);
+  const [orphansBusy, setOrphansBusy] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -228,6 +275,89 @@ export default function SpeAdminPage() {
       });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runTestUpload() {
+    setRoundTripBusy(true);
+    setRoundTrip(null);
+    try {
+      const r = await apiFetch<RoundTripResult>(
+        "/admin/integrations/spe/test-upload",
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      setRoundTrip(r);
+      toast({
+        title: r.ok ? "Round-trip succeeded" : "Round-trip incomplete",
+        description: r.ok
+          ? `${r.uploadedSize} bytes ↔ ${r.readbackSize} bytes; bytes ${r.bytesMatch ? "match" : "differ"}`
+          : "Some phase failed — see card below",
+        variant: r.ok ? "default" : "destructive",
+      });
+    } catch (e) {
+      toast({
+        title: "Test upload failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setRoundTripBusy(false);
+    }
+  }
+
+  async function scanOrphans() {
+    setOrphansBusy(true);
+    try {
+      const r = await apiFetch<OrphanScanResult>(
+        "/admin/integrations/spe/orphans",
+      );
+      setOrphans(r);
+      toast({
+        title: "Orphan scan complete",
+        description: `${r.orphanCount} orphans · ${fmtBytes(r.orphanBytes)}`,
+      });
+    } catch (e) {
+      toast({
+        title: "Orphan scan failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setOrphansBusy(false);
+    }
+  }
+
+  async function cleanupOrphans(dryRun: boolean) {
+    if (!dryRun && !confirm("Permanently delete the listed orphan files from the SPE container?")) {
+      return;
+    }
+    setOrphansBusy(true);
+    try {
+      const r = await apiFetch<CleanupResult>(
+        "/admin/integrations/spe/orphans/cleanup",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            dryRun,
+            itemIds: orphans?.sample.map((o) => o.id),
+          }),
+        },
+      );
+      toast({
+        title: dryRun ? "Dry-run complete" : "Cleanup complete",
+        description: `${r.deleted} ${dryRun ? "would be deleted" : "deleted"}, ${r.failures.length} failed`,
+        variant: r.failures.length > 0 ? "destructive" : "default",
+      });
+      // Re-scan to refresh counts after a real delete.
+      if (!dryRun) await scanOrphans();
+    } catch (e) {
+      toast({
+        title: "Cleanup failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setOrphansBusy(false);
     }
   }
 
@@ -416,6 +546,136 @@ export default function SpeAdminPage() {
                 />
               </div>
             </div>
+          </Card>
+
+          {/* Round-trip test — validates auth/container/Graph end-to-end. */}
+          <Card className="p-6 mb-6 space-y-4">
+            <div>
+              <div className="text-lg font-semibold">Round-trip test</div>
+              <p className="text-sm text-muted-foreground">
+                Uploads a synthetic 2 KB file, reads it back to verify
+                the bytes match, then deletes it. Use after provisioning
+                the container to confirm credentials, container access,
+                and Graph wiring before any real data is involved.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={runTestUpload}
+                disabled={
+                  roundTripBusy ||
+                  !status.credentialsConfigured ||
+                  !status.containerTypeId ||
+                  (status.activeContainerSlot === "prod"
+                    ? !status.containerIdProd
+                    : !status.containerIdDev)
+                }
+              >
+                {roundTripBusy ? "Running…" : "Run test upload"}
+              </Button>
+              {roundTrip && (
+                <Badge variant={roundTrip.ok ? "default" : "destructive"}>
+                  {roundTrip.ok ? "passed" : "failed"}
+                </Badge>
+              )}
+            </div>
+            {roundTrip && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Item id: <code>{roundTrip.itemId}</code>
+                </div>
+                <div>
+                  Bytes: {roundTrip.uploadedSize} ↔ {roundTrip.readbackSize}{" "}
+                  · match: {String(roundTrip.bytesMatch)}
+                </div>
+                <div>
+                  Timings: upload {roundTrip.timings.upload} ms · readback{" "}
+                  {roundTrip.timings.readback} ms · delete{" "}
+                  {roundTrip.timings.delete} ms
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Orphan management — needed for delete-recreate testing where
+              the DB is wiped but SPE bytes survive. */}
+          <Card className="p-6 mb-6 space-y-4">
+            <div>
+              <div className="text-lg font-semibold">Orphan management</div>
+              <p className="text-sm text-muted-foreground">
+                Lists drive items in the active SPE container that have no
+                matching <code>media.spe_file_id</code>. Items younger
+                than 2 hours are skipped to avoid racing in-flight uploads.
+                Cleanup defaults to dry-run; explicitly confirm to delete.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                onClick={scanOrphans}
+                disabled={orphansBusy || !status.credentialsConfigured}
+              >
+                {orphansBusy ? "Scanning…" : "Scan for orphans"}
+              </Button>
+              {orphans && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => cleanupOrphans(true)}
+                    disabled={orphansBusy || orphans.orphanCount === 0}
+                  >
+                    Dry-run cleanup
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => cleanupOrphans(false)}
+                    disabled={orphansBusy || orphans.orphanCount === 0}
+                  >
+                    Delete listed
+                  </Button>
+                </>
+              )}
+            </div>
+            {orphans && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="text-sm">
+                  Container: <code>{orphans.containerId}</code> ·{" "}
+                  {orphans.totalInContainer} files in container ·{" "}
+                  {orphans.knownInDb} known in DB
+                </div>
+                <div className="text-2xl font-semibold tabular-nums">
+                  {orphans.orphanCount.toLocaleString()}{" "}
+                  <span className="text-sm text-muted-foreground font-normal">
+                    orphan{orphans.orphanCount === 1 ? "" : "s"} ·{" "}
+                    {fmtBytes(orphans.orphanBytes)}
+                  </span>
+                </div>
+                {orphans.sample.length > 0 && (
+                  <div className="text-xs space-y-0.5 max-h-64 overflow-y-auto">
+                    {orphans.sample.map((o) => (
+                      <div
+                        key={o.id}
+                        className="flex items-center gap-2 border-t border-border py-1"
+                      >
+                        <span className="truncate flex-1">{o.name}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {fmtBytes(o.size)}
+                        </span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {o.ageHours == null ? "—" : `${o.ageHours}h`}
+                        </span>
+                      </div>
+                    ))}
+                    {orphans.sampleCapped && (
+                      <p className="text-muted-foreground pt-1">
+                        … sample capped at {orphans.sample.length}; cleanup
+                        only affects the listed items. Re-scan after each
+                        cleanup pass to clear the rest.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
 
           {/* Migration status — drives the GCS → SPE cutover. */}

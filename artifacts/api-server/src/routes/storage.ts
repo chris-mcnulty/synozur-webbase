@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import express, { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import sharp from "sharp";
 import { eq } from "drizzle-orm";
@@ -9,9 +9,17 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
+import { stashSpeUpload } from "../lib/storage/spe/uploadCache";
+import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+// Hard ceiling on bytes the server will accept in a single direct-upload PUT.
+// 100 MB is enough for the largest assets the marketing site has uploaded
+// historically (videos / PDFs). Larger ceilings risk dragging the api-server
+// process around when many uploads run concurrently.
+const DIRECT_UPLOAD_LIMIT = "100mb";
 
 // Upper bound to prevent sharp from being used as a resize-bomb amplifier.
 const MAX_THUMBNAIL_WIDTH = 2048;
@@ -123,7 +131,14 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed.data;
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    // For SPE the active backend returns an api-server route URL
+    // (`/api/storage/uploads/spe-direct/<token>`) that's NOT a valid
+    // storage_key. Map it to the canonical `/objects/uploads/<token>`
+    // shape so seed scripts (and any other caller persisting
+    // `objectPath` directly into a storage_key column) write the same
+    // shape regardless of which backend is active. GCS URLs flow
+    // through the existing GCS normalizer unchanged.
+    const objectPath = canonicaliseUploadObjectPath(uploadURL);
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -137,6 +152,101 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
 });
+
+/**
+ * PUT /storage/uploads/spe-direct/:token
+ *
+ * #127 Phase 3-C — server-proxied upload for the SharePoint Embedded
+ * backend. SPE has no presigned-URL equivalent, so the SPE backend's
+ * `getObjectEntityUploadURL()` returns a relative URL that points here
+ * instead of back at SharePoint. The client PUTs the file body in
+ * exactly the same shape it would have used for a GCS presigned URL;
+ * this route buffers the raw request body in memory via `express.raw()`
+ * (up to `DIRECT_UPLOAD_LIMIT`), then uploads those buffered bytes to
+ * SPE and stashes the resulting drive-item id in an in-memory cache
+ * keyed by `:token` so the subsequent `POST /cms/media` can populate
+ * `spe_file_id` on the new media row.
+ *
+ * Auth: gated to authenticated CMS roles. The bytes are written using
+ * the api-server's SPE credentials, so unauthenticated callers must not
+ * be able to populate the container (would let anyone create orphans
+ * and burn storage). Same role set the `POST /cms/media` step requires
+ * so the two-step flow has consistent gating.
+ *
+ * Body: raw bytes of the file. Content-Type header carries the mime.
+ * Optional `?name=<original-filename>` for SharePoint metadata stamping.
+ */
+router.put(
+  "/storage/uploads/spe-direct/:token",
+  requireAuth,
+  requireRole("admin", "editor", "author", "contributor"),
+  express.raw({ limit: DIRECT_UPLOAD_LIMIT, type: "*/*" }),
+  async (req: Request, res: Response) => {
+    const token = String(req.params.token ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(token)) {
+      res.status(400).json({ error: "Invalid token" });
+      return;
+    }
+    // C6 fix — pre-check the active backend before reading the body
+    // and uploading it. Without this, when STORAGE_BACKEND=gcs the
+    // route would happily upload to GCS via the active backend and
+    // then 409 because the resulting ref has no speFileId, leaving a
+    // GCS orphan. Bail early instead.
+    const activeBackend = (process.env["STORAGE_BACKEND"] ?? "gcs").trim().toLowerCase();
+    if (activeBackend !== "spe") {
+      res.status(409).json({
+        error:
+          "spe-direct route requires STORAGE_BACKEND=spe; refusing to write bytes through this path under the active backend",
+      });
+      return;
+    }
+    const body = req.body as Buffer | undefined;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: "Empty body" });
+      return;
+    }
+    const contentType = req.get("content-type") ?? "application/octet-stream";
+    const queryName = req.query.name;
+    const filename =
+      typeof queryName === "string" && queryName.length > 0 ? queryName : token;
+
+    try {
+      const ref = await objectStorageService.uploadObject({
+        body,
+        contentType,
+        filename,
+        documentType: "media",
+        ownerId: token,
+      });
+      // Defensive: the pre-check above guarantees active=spe, but if
+      // some future change broke that invariant we'd still rather
+      // surface clearly than stash a half-formed cache entry.
+      if (!ref.speFileId) {
+        res.status(500).json({
+          error: "uploadObject succeeded but returned no speFileId — active backend / abstraction mismatch",
+        });
+        return;
+      }
+      stashSpeUpload(token, {
+        speFileId: ref.speFileId,
+        speContainerId: ref.speContainerId,
+        contentType,
+        size: body.length,
+        originalName: typeof queryName === "string" ? queryName : undefined,
+      });
+      res.status(200).json({
+        ok: true,
+        token,
+        speFileId: ref.speFileId,
+        speContainerId: ref.speContainerId ?? null,
+        size: body.length,
+      });
+    } catch (err) {
+      req.log.error({ err, token }, "SPE direct upload failed");
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
 
 /**
  * GET /storage/public-objects/*
@@ -238,5 +348,17 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to serve object" });
   }
 });
+
+const SPE_DIRECT_PREFIX = "/api/storage/uploads/spe-direct/";
+
+function canonicaliseUploadObjectPath(uploadURL: string): string {
+  if (uploadURL.startsWith(SPE_DIRECT_PREFIX)) {
+    const token = uploadURL.slice(SPE_DIRECT_PREFIX.length);
+    return `/objects/uploads/${token}`;
+  }
+  // GCS URLs (https://storage.googleapis.com/...) and any future shapes
+  // route through the existing GCS normalizer unchanged.
+  return objectStorageService.normalizeObjectEntityPath(uploadURL);
+}
 
 export default router;
