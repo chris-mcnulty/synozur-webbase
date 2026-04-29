@@ -1246,6 +1246,9 @@ export interface PolarisLinkedPostDto {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  // Only present on CMS responses (admin endpoints). Public episode
+  // responses are filtered to published posts and omit this field.
+  status?: ArtifactStatus;
 }
 
 export interface PolarisLinkablePostDto {

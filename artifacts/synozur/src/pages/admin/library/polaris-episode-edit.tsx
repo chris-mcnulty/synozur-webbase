@@ -219,7 +219,19 @@ export default function PolarisEpisodeEdit({ id }: Props) {
     queryFn: () => api.listPolarisLinkablePosts(),
   });
   const linkablePosts: PolarisLinkablePostDto[] = linkablePostsQ.data?.items ?? [];
-  const selectedLinkedPost =
+  // Prefer the picker entry (always carries `status`), but fall back to the
+  // linkedPost embedded on the loaded episode so the preview still renders
+  // when the post is outside the picker scope (e.g. categories changed).
+  // Status is optional in that path — the badge below renders only when the
+  // server actually returned one.
+  const selectedLinkedPost: {
+    id: string;
+    slug: string;
+    title: string;
+    excerpt: string | null;
+    publishedAt: string | null;
+    status?: ArtifactStatus;
+  } | null =
     linkablePosts.find((p) => p.id === form.linkedPostId) ??
     (itemQ.data?.linkedPost && itemQ.data.linkedPost.id === form.linkedPostId
       ? {
@@ -228,7 +240,9 @@ export default function PolarisEpisodeEdit({ id }: Props) {
           title: itemQ.data.linkedPost.title,
           excerpt: itemQ.data.linkedPost.excerpt,
           publishedAt: itemQ.data.linkedPost.publishedAt,
-          status: "published" as ArtifactStatus,
+          ...(itemQ.data.linkedPost.status
+            ? { status: itemQ.data.linkedPost.status }
+            : {}),
         }
       : null);
 
@@ -661,11 +675,12 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-muted-foreground">
                   <span className="font-mono">/insights/{selectedLinkedPost.slug}</span>
-                  {selectedLinkedPost.status !== "published" && (
-                    <span className="rounded bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 text-amber-700 dark:text-amber-300 font-medium">
-                      {selectedLinkedPost.status}
-                    </span>
-                  )}
+                  {selectedLinkedPost.status &&
+                    selectedLinkedPost.status !== "published" && (
+                      <span className="rounded bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 text-amber-700 dark:text-amber-300 font-medium">
+                        {selectedLinkedPost.status}
+                      </span>
+                    )}
                 </div>
                 {canWrite && (
                   <button

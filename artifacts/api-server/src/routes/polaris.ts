@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import {
   db,
   polarisEpisodesTable,
@@ -12,6 +12,7 @@ import {
   mediaTable,
   ARTIFACT_STATUSES,
   type PolarisEpisode,
+  type PostStatus,
 } from "@workspace/db";
 import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
@@ -63,6 +64,10 @@ interface LinkedPostDto {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  // Only set on CMS responses so editors can see if the linked post is a
+  // draft / scheduled / archived. Public responses already filter by
+  // status === "published", so the field is dropped there.
+  status?: PostStatus;
 }
 
 function serialize(e: PolarisEpisode, linkedPost: LinkedPostDto | null = null) {
@@ -131,6 +136,7 @@ async function loadLinkedPost(
     excerpt: r.excerpt,
     heroImageUrl: r.heroPublicUrl ?? null,
     publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+    ...(opts.publicOnly ? {} : { status: r.status }),
   };
 }
 
@@ -335,66 +341,48 @@ router.get("/cms/polaris/episodes", ...readGuard, async (_req, res) => {
 });
 
 // Picker for the episode editor: returns blog posts categorized as
-// "Polaris" or "podcast" (matched on category slug, case-insensitive) so an
-// editor can link an episode to a related write-up. Returns slim items only.
+// "Polaris" or "podcast" (matched on category slug or name,
+// case-insensitively) so an editor can link an episode to a related
+// write-up. Returns slim items only. Single distinct join keeps the work in
+// one query and applies LIMIT before materializing post IDs in the app.
 router.get(
   "/cms/polaris/episodes/post-picker",
   ...readGuard,
   async (req, res) => {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
-    const matchingCategoryIds = await db
-      .select({ id: categoriesTable.id })
-      .from(categoriesTable)
-      .where(
-        or(
-          ilike(categoriesTable.slug, "polaris"),
-          ilike(categoriesTable.slug, "podcast"),
-          ilike(categoriesTable.name, "polaris"),
-          ilike(categoriesTable.name, "podcast"),
-        ),
-      );
-
-    if (matchingCategoryIds.length === 0) {
-      res.json({ items: [] });
-      return;
-    }
-
-    const postIdsRows = await db
-      .selectDistinct({ postId: postCategories.postId })
-      .from(postCategories)
-      .where(
-        inArray(
-          postCategories.categoryId,
-          matchingCategoryIds.map((r) => r.id),
-        ),
-      );
-    const postIds = postIdsRows.map((r) => r.postId);
-
-    if (postIds.length === 0) {
-      res.json({ items: [] });
-      return;
-    }
-
-    const filters = [
-      isNull(postsTable.deletedAt),
-      inArray(postsTable.id, postIds),
-    ];
+    const filters = [isNull(postsTable.deletedAt)];
     if (q.length > 0) {
       filters.push(ilike(postsTable.title, `%${q}%`));
     }
 
     const rows = await db
-      .select({
+      .selectDistinct({
         id: postsTable.id,
         slug: postsTable.slug,
         title: postsTable.title,
         excerpt: postsTable.excerpt,
         publishedAt: postsTable.publishedAt,
+        updatedAt: postsTable.updatedAt,
         status: postsTable.status,
       })
       .from(postsTable)
-      .where(and(...filters))
+      .innerJoin(postCategories, eq(postCategories.postId, postsTable.id))
+      .innerJoin(
+        categoriesTable,
+        eq(categoriesTable.id, postCategories.categoryId),
+      )
+      .where(
+        and(
+          or(
+            ilike(categoriesTable.slug, "polaris"),
+            ilike(categoriesTable.slug, "podcast"),
+            ilike(categoriesTable.name, "polaris"),
+            ilike(categoriesTable.name, "podcast"),
+          ),
+          ...filters,
+        ),
+      )
       .orderBy(
         sql`${postsTable.publishedAt} desc nulls last`,
         desc(postsTable.updatedAt),
