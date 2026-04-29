@@ -35,6 +35,19 @@ interface MigrationStatus {
   awaitingMigration: number;
 }
 
+interface MigrationJob {
+  status: "idle" | "running" | "completed" | "failed";
+  dryRun: boolean;
+  limit: number | null;
+  startedAt: number | null;
+  completedAt: number | null;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  failures: Array<{ id: string; reason: string }>;
+  error: string | null;
+}
+
 interface RoundTripResult {
   ok: boolean;
   containerId: string;
@@ -183,6 +196,8 @@ export default function SpeAdminPage() {
   const { toast } = useToast();
   const [status, setStatus] = useState<SpeStatus | null>(null);
   const [migration, setMigration] = useState<MigrationStatus | null>(null);
+  const [migrationJob, setMigrationJob] = useState<MigrationJob | null>(null);
+  const [migrationBusy, setMigrationBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [containerTypeDraft, setContainerTypeDraft] = useState("");
@@ -217,8 +232,7 @@ export default function SpeAdminPage() {
     void refresh();
   }, []);
 
-  // Poll the migration counts every 10s — cheap query, lets the panel
-  // tick during a CLI run without the operator having to reload.
+  // Poll migration counts every 10s.
   useEffect(() => {
     if (!status?.credentialsConfigured) return;
     const tick = setInterval(() => {
@@ -230,6 +244,64 @@ export default function SpeAdminPage() {
     }, 10_000);
     return () => clearInterval(tick);
   }, [status?.credentialsConfigured]);
+
+  // Poll job state every 3s while a migration is running.
+  useEffect(() => {
+    if (!status?.credentialsConfigured) return;
+    const tick = setInterval(() => {
+      apiFetch<MigrationJob>("/admin/integrations/spe/migration/job")
+        .then((job) => {
+          setMigrationJob(job);
+          // Refresh the counts table whenever the job finishes.
+          if (job.status === "completed" || job.status === "failed") {
+            apiFetch<MigrationStatus>("/admin/integrations/spe/migration-status")
+              .then(setMigration)
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 3_000);
+    return () => clearInterval(tick);
+  }, [status?.credentialsConfigured]);
+
+  async function runMigrationJob(opts: { dryRun: boolean; limit: number | null }) {
+    if (migrationBusy) return;
+    if (
+      !opts.dryRun &&
+      opts.limit === null &&
+      !confirm(
+        "Run the full GCS → SPE migration? This will upload all unmigrated media files to SharePoint Embedded. GCS files are never deleted.",
+      )
+    )
+      return;
+    setMigrationBusy(true);
+    try {
+      const job = await apiFetch<{ ok: boolean; job: MigrationJob }>(
+        "/admin/integrations/spe/migration/run",
+        {
+          method: "POST",
+          body: JSON.stringify(opts),
+        },
+      );
+      setMigrationJob(job.job);
+      toast({
+        title: opts.dryRun
+          ? "Dry run started"
+          : opts.limit
+            ? `Smoke test started (${opts.limit} rows)`
+            : "Full migration started",
+        description: "Progress updates every 3 seconds.",
+      });
+    } catch (e) {
+      toast({
+        title: "Failed to start migration",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setMigrationBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (status) setContainerTypeDraft(status.containerTypeId ?? "");
@@ -683,11 +755,11 @@ export default function SpeAdminPage() {
             <div>
               <div className="text-lg font-semibold">Migration (GCS → SPE)</div>
               <p className="text-sm text-muted-foreground">
-                Migration is run from the CLI, not this page. Counts below
-                refresh every 10s during a run. The GCS bytes are kept as
-                the rollback safety net — clearing
-                <code className="mx-1">media.spe_file_id</code>
-                reverts a row back to GCS without touching either backend.
+                Additive and resumable — only rows where{" "}
+                <code>spe_file_id IS NULL</code> are touched. GCS bytes are
+                kept as the rollback safety net; setting{" "}
+                <code>spe_file_id = NULL</code> on any row reverts it to GCS
+                instantly.
               </p>
             </div>
 
@@ -724,25 +796,140 @@ export default function SpeAdminPage() {
               </div>
             )}
 
-            <div className="border-t border-border pt-4 space-y-2">
-              <div className="text-sm font-medium">Run the migration</div>
-              <pre className="rounded bg-muted px-3 py-2 text-xs overflow-x-auto">
-                {`# Dry-run first (no SPE or DB writes):
-pnpm --filter @workspace/api-server migrate:gcs-to-spe -- --dry-run
-
-# Migrate 10 rows as a smoke test:
-pnpm --filter @workspace/api-server migrate:gcs-to-spe -- --limit 10
-
-# Full run (resumable — re-running picks up where it left off):
-pnpm --filter @workspace/api-server migrate:gcs-to-spe`}
-              </pre>
+            {/* Trigger buttons */}
+            <div className="border-t border-border pt-4 space-y-3">
+              <div className="text-sm font-medium">Run migration</div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={migrationBusy || migrationJob?.status === "running"}
+                  onClick={() => runMigrationJob({ dryRun: true, limit: null })}
+                >
+                  Dry run
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={migrationBusy || migrationJob?.status === "running"}
+                  onClick={() =>
+                    runMigrationJob({ dryRun: false, limit: 10 })
+                  }
+                >
+                  Smoke test (10 rows)
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={
+                    migrationBusy ||
+                    migrationJob?.status === "running" ||
+                    migration?.awaitingMigration === 0
+                  }
+                  onClick={() => runMigrationJob({ dryRun: false, limit: null })}
+                >
+                  Full run
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                The script is idempotent and additive: it only touches rows
-                where <code>spe_file_id IS NULL</code>, never deletes from
-                GCS, and never rewrites <code>storage_key</code>. Crash mid-run
-                is safe — re-invoke and it picks up.
+                Runs in the background — you can navigate away. Progress
+                updates every 3 s. Restarting the server resets job state but
+                does not lose work (re-run picks up where it left off).
               </p>
             </div>
+
+            {/* Live job status */}
+            {migrationJob && migrationJob.status !== "idle" && (
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {migrationJob.status === "running" && (
+                    <span className="inline-block h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+                  )}
+                  {migrationJob.status === "completed" && (
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                  )}
+                  {migrationJob.status === "failed" && (
+                    <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                  )}
+                  {migrationJob.status === "running"
+                    ? "Running…"
+                    : migrationJob.status === "completed"
+                      ? "Completed"
+                      : "Failed"}
+                  {migrationJob.dryRun && (
+                    <Badge variant="secondary" className="text-xs">
+                      dry run
+                    </Badge>
+                  )}
+                  {migrationJob.limit !== null && (
+                    <Badge variant="secondary" className="text-xs">
+                      limit {migrationJob.limit}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <span className="font-semibold tabular-nums">
+                      {migrationJob.processed}
+                    </span>{" "}
+                    <span className="text-muted-foreground text-xs">
+                      processed
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold tabular-nums text-green-600">
+                      {migrationJob.succeeded}
+                    </span>{" "}
+                    <span className="text-muted-foreground text-xs">ok</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold tabular-nums text-red-500">
+                      {migrationJob.failed}
+                    </span>{" "}
+                    <span className="text-muted-foreground text-xs">
+                      failed
+                    </span>
+                  </div>
+                </div>
+
+                {migrationJob.startedAt && (
+                  <div className="text-xs text-muted-foreground">
+                    Started{" "}
+                    {new Date(migrationJob.startedAt).toLocaleTimeString()}
+                    {migrationJob.completedAt &&
+                      ` · took ${(
+                        (migrationJob.completedAt - migrationJob.startedAt) /
+                        1000
+                      ).toFixed(1)}s`}
+                  </div>
+                )}
+
+                {migrationJob.error && (
+                  <div className="rounded bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                    {migrationJob.error}
+                  </div>
+                )}
+
+                {migrationJob.failures.length > 0 && (
+                  <div className="text-xs space-y-0.5 max-h-40 overflow-y-auto border-t border-border pt-2">
+                    <div className="text-muted-foreground mb-1">
+                      Failures ({migrationJob.failures.length}):
+                    </div>
+                    {migrationJob.failures.map((f) => (
+                      <div key={f.id} className="flex gap-2">
+                        <code className="shrink-0 text-muted-foreground">
+                          {f.id.slice(0, 8)}
+                        </code>
+                        <span className="text-destructive truncate">
+                          {f.reason}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </>
       )}

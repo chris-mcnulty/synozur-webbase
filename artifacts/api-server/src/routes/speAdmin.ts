@@ -24,6 +24,8 @@ import {
   cleanupOrphans,
   speRoundTripTest,
 } from "../lib/storage/spe/orphanCleaner";
+import { runMigration } from "../lib/storage/spe/migrationRunner";
+import { SpeNotEnabledError } from "../lib/storage/spe/fileStorage";
 
 const SETTINGS_ID = 1;
 
@@ -350,8 +352,7 @@ router.post(
 // GET /admin/integrations/spe/migration-status
 // Aggregate counts for the admin UI's Migration panel. Cheap — three
 // indexed counts; safe to poll at human-scale intervals (every ~10s
-// during a migration run). The actual migrate work runs as a CLI
-// script; this endpoint just shows where it's gotten to.
+// during a migration run).
 // ---------------------------------------------------------------------------
 router.get(
   "/admin/integrations/spe/migration-status",
@@ -369,6 +370,131 @@ router.get(
       migratedToSpe: total - pending,
       awaitingMigration: pending,
     });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Migration job runner — in-memory state for background execution.
+// Only one job runs at a time. The job state persists until the next
+// run starts (safe to poll; survives HTTP request boundaries because
+// it lives in the module-level closure, not the request lifecycle).
+// ---------------------------------------------------------------------------
+interface MigrationJob {
+  status: "idle" | "running" | "completed" | "failed";
+  dryRun: boolean;
+  limit: number | null;
+  startedAt: number | null;
+  completedAt: number | null;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  failures: Array<{ id: string; reason: string }>;
+  error: string | null;
+}
+
+const migrationJob: MigrationJob = {
+  status: "idle",
+  dryRun: false,
+  limit: null,
+  startedAt: null,
+  completedAt: null,
+  processed: 0,
+  succeeded: 0,
+  failed: 0,
+  failures: [],
+  error: null,
+};
+
+// GET /admin/integrations/spe/migration/job — current job state
+router.get("/admin/integrations/spe/migration/job", requireAdmin, (_req, res) => {
+  res.json(migrationJob);
+});
+
+// POST /admin/integrations/spe/migration/run — start a background migration
+const runMigrationBody = z.object({
+  dryRun: z.boolean().default(false),
+  limit: z.number().int().min(1).nullable().default(null),
+});
+
+router.post(
+  "/admin/integrations/spe/migration/run",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    if (migrationJob.status === "running") {
+      res.json({ ok: true, already: true, job: migrationJob });
+      return;
+    }
+
+    const parsed = runMigrationBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+
+    const { dryRun, limit } = parsed.data;
+
+    Object.assign(migrationJob, {
+      status: "running",
+      dryRun,
+      limit,
+      startedAt: Date.now(),
+      completedAt: null,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      failures: [],
+      error: null,
+    });
+
+    // Fire-and-forget — do NOT await; returns immediately so the HTTP
+    // response is sent while the migration runs in the background.
+    void runMigration({
+      dryRun,
+      limit,
+      onRow: (_id, ok, detail) => {
+        migrationJob.processed++;
+        if (ok) {
+          migrationJob.succeeded++;
+        } else {
+          migrationJob.failed++;
+          // Cap stored failures to avoid unbounded memory growth.
+          if (migrationJob.failures.length < 100) {
+            migrationJob.failures.push({ id: _id, reason: detail });
+          }
+        }
+      },
+    })
+      .then((result) => {
+        Object.assign(migrationJob, {
+          status: result.failed > 0 ? "failed" : "completed",
+          completedAt: Date.now(),
+          processed: result.processed,
+          succeeded: result.succeeded,
+          failed: result.failed,
+          failures: result.failures.slice(0, 100),
+        });
+      })
+      .catch((err: unknown) => {
+        const msg =
+          err instanceof SpeNotEnabledError
+            ? `SPE not configured: ${(err as Error).message}`
+            : (err as Error).message;
+        Object.assign(migrationJob, {
+          status: "failed",
+          completedAt: Date.now(),
+          error: msg,
+        });
+      });
+
+    await audit({
+      actorId: req.authedUser!.id,
+      action: dryRun ? "spe.migration.dryrun" : "spe.migration.run",
+      entity: "site_settings",
+      entityId: String(SETTINGS_ID),
+      diff: { dryRun, limit },
+    });
+
+    res.json({ ok: true, started: true, job: migrationJob });
   },
 );
 
