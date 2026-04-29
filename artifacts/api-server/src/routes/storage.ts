@@ -193,19 +193,6 @@ router.put(
       res.status(400).json({ error: "Invalid token" });
       return;
     }
-    // C6 fix — pre-check the active backend before reading the body
-    // and uploading it. Without this, when STORAGE_BACKEND=gcs the
-    // route would happily upload to GCS via the active backend and
-    // then 409 because the resulting ref has no speFileId, leaving a
-    // GCS orphan. Bail early instead.
-    const activeBackend = (process.env["STORAGE_BACKEND"] ?? "gcs").trim().toLowerCase();
-    if (activeBackend !== "spe") {
-      res.status(409).json({
-        error:
-          "spe-direct route requires STORAGE_BACKEND=spe; refusing to write bytes through this path under the active backend",
-      });
-      return;
-    }
     const body = req.body as Buffer | undefined;
     if (!Buffer.isBuffer(body) || body.length === 0) {
       res.status(400).json({ error: "Empty body" });
