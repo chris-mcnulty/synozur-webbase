@@ -91,6 +91,7 @@ import ApplicationEdit from "@/pages/admin/products/application-edit";
 import AdminModelsList from "@/pages/admin/products/models-list";
 import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
+import AdminAiGrounding from "@/pages/admin/ai/grounding";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
@@ -348,6 +349,9 @@ function AdminRoutes() {
         <Route path="/marketing/traffic" component={MarketingTraffic} />
         <Route path="/marketing/seo" component={MarketingSeo} />
         <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
+
+        {/* AI section */}
+        <Route path="/ai/grounding" component={AdminAiGrounding} />
 
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />

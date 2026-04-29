@@ -913,6 +913,67 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS spe_container_id_prod text;
     `);
 
+    // 29. AI grounding documents — Vega-pattern grounding store. Standalone
+    //     admin-authored docs that get injected wholesale into the system
+    //     prompt of every AI call (no chunking, no embeddings). Backs both
+    //     the future "Ask Synozur" Q&A surface (#134) and the Astra concierge.
+    //
+    //     `scope_tags` (jsonb) replaces Vega's tenant_id since this site is
+    //     single-tenant; null/empty = always inject. `concierge_eligible`
+    //     lets a doc be excluded from the concierge prompt while remaining
+    //     in the public Q&A corpus.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS grounding_documents (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        title text NOT NULL,
+        description text,
+        category text NOT NULL,
+        content text NOT NULL,
+        scope_tags jsonb,
+        priority integer NOT NULL DEFAULT 0,
+        is_active boolean NOT NULL DEFAULT true,
+        concierge_eligible boolean NOT NULL DEFAULT true,
+        created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS grounding_documents_active_priority_idx
+        ON grounding_documents (is_active, priority);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS grounding_documents_category_idx
+        ON grounding_documents (category);
+    `);
+
+    // 29a. Seed the ai.grounding.manage capability + default grants. Mirrors
+    //      CAPABILITY_NAMES and DEFAULT_ROLE_CAPABILITIES in
+    //      lib/db/src/schema/capabilityMap.ts. Idempotent; existing
+    //      admin-edited grants survive.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('ai.grounding.manage',
+         'Manage AI grounding documents that ground every AI call across the site.')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',          'ai.grounding.manage'),
+          ('editor',         'ai.grounding.manage'),
+          ('site_admin',     'ai.grounding.manage'),
+          ('content_author', 'ai.grounding.manage')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

@@ -1109,7 +1109,81 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  // AI grounding documents — Vega-pattern grounding store. Admin-only; gated
+  // by the ai.grounding.manage capability on the server.
+  listGroundingDocuments: () =>
+    jsonFetch<{ items: GroundingDocumentDto[] }>(url("/ai/grounding-documents")),
+  createGroundingDocument: (body: GroundingDocumentInput) =>
+    jsonFetch<GroundingDocumentDto>(url("/ai/grounding-documents"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateGroundingDocument: (id: string, body: Partial<GroundingDocumentInput>) =>
+    jsonFetch<GroundingDocumentDto>(
+      url(`/ai/grounding-documents/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteGroundingDocument: (id: string) =>
+    jsonFetch<void>(
+      url(`/ai/grounding-documents/${encodeURIComponent(id)}`),
+      { method: "DELETE" },
+    ),
+  parseGroundingPdf: async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    return jsonFetch<{ markdown: string }>(url("/ai/parse-pdf"), {
+      method: "POST",
+      body: buffer,
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  },
+  parseGroundingDocx: async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    return jsonFetch<{ markdown: string }>(url("/ai/parse-docx"), {
+      method: "POST",
+      body: buffer,
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  },
 };
+
+export const GROUNDING_CATEGORIES = [
+  "methodology",
+  "best_practices",
+  "terminology",
+  "examples",
+  "about_synozur",
+  "brand_voice",
+  "audience_personas",
+  "concierge_persona",
+] as const;
+export type GroundingCategory = (typeof GROUNDING_CATEGORIES)[number];
+
+export interface GroundingDocumentDto {
+  id: string;
+  title: string;
+  description: string | null;
+  category: GroundingCategory;
+  content: string;
+  scopeTags: string[];
+  priority: number;
+  isActive: boolean;
+  conciergeEligible: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroundingDocumentInput {
+  title: string;
+  description?: string | null;
+  category: GroundingCategory;
+  content: string;
+  scopeTags?: string[] | null;
+  priority?: number;
+  isActive?: boolean;
+  conciergeEligible?: boolean;
+}
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
 

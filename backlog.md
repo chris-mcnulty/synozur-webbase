@@ -221,16 +221,34 @@ The Constellation product page (`/applications/constellation`, sourced from `art
 4. A simulated "send to Outlook" CTA that completes inline (no real email sent) so the visitor sees the Microsoft 365 integration story without auth.
 Implementation: new `artifacts/synozur/src/components/demos/constellation/` module with a step-driven controller (URL-routable steps so we can deep-link from ads to a specific moment). Server-side: a small `/api/demos/constellation/narrative` endpoint that takes a seed id and returns a cached AI-generated narrative — keyed so we never regenerate per-visit. The interaction telemetry feeds into the experimentation framework (#140) and the HubSpot timeline (#131) — clicking through all four moments emits a high-intent `synozur_application_demo_requested` event with `app=constellation, depth=full`. Out of scope: a real free-tier login (still gated by the contact form), demos for the other five applications (apply the pattern in follow-up tasks once Constellation proves the format).
 
-### #134 · "Ask Synozur" — RAG-powered Q&A across Insights, case studies, and white papers
+### #134 · "Ask Synozur" — Vega-pattern grounding documents + retrieval over the editorial corpus
 **Depends on:** — (data is already in the CMS); pairs with #122 (multi-resource attachments give richer source material) and #131 (intent capture)
 
-The site has accumulated a real corpus of editorial content — Insights posts, Polaris episode notes, white papers, case studies, FAQ — but visitors can only find it by browsing or search-by-title. They can't ask the corpus questions like "what does Synozur recommend for AI rollouts in financial services?" or "have you done a Constellation engagement in the public sector?" and get a grounded, cited answer. This task adds a **retrieval-augmented Q&A surface** on top of existing content. Scope:
-- **Embeddings.** Add `pgvector` to the Postgres schema and an `embeddings` table (`source_kind`, `source_id`, `chunk_index`, `text`, `embedding vector(1536)`, `model_version`, `updated_at`); a backfill worker chunks every published Insights post, case study, white paper, FAQ entry, and Polaris show-notes row into ~500-token chunks and embeds them. Re-embedding triggers on publish/update (existing artifact lifecycle hooks make this clean).
-- **Q&A endpoint.** `POST /api/insights/ask` takes a question + optional filter (audience class, sector tag, application tag), runs hybrid retrieval (vector + BM25 over `collateral.title/excerpt`), and produces a grounded answer via Claude with mandatory inline citations linking back to the source content. Refusal path returns a "we don't have published material on that — talk to a human?" CTA wired to the contact form.
-- **Public surface.** New `/insights/ask` page with conversation history (session-scoped, not persisted unless the user authenticates) and per-answer source cards. Also embedded as a discovery widget on the Insights index page.
-- **Editorial telemetry.** Every question + retrieved sources + final answer is logged (with PII redaction on the question) so editors can see what the audience is actually asking and what content gaps that surfaces. Admin page under `/admin/insights/questions` shows the top questions, click-through to sources, refusal rate, and a "create insight on this topic" shortcut.
+The site has accumulated a real corpus of editorial content — Insights posts, Polaris episode notes, white papers, case studies, FAQ — but visitors can only find it by browsing or search-by-title. They can't ask the corpus questions like "what does Synozur recommend for AI rollouts in financial services?" or "have you done a Constellation engagement in the public sector?" and get a grounded, cited answer. This task adds a public Q&A surface backed by **two complementary subsystems** that mirror how Vega grounds its AI assistant:
 
-Out of scope: open-ended chat memory across sessions, fine-tuning, multi-language Q&A (English first; revisit after #139). Follow-up: pipe high-intent questions ("how do I buy / start") to the Polaris concierge in the Strategic Roadmap for a soft hand-off.
+**(1) Grounding documents — Vega pattern, ported verbatim.** Standalone admin-authored documents that get **injected wholesale into the system prompt on every AI call** (no chunking, no embeddings — the whole document goes in). New `grounding_documents` table modeled on Vega's `shared/schema.ts`:
+
+- `id uuid pk`, `title text not null`, `description text`, `category text not null`, `content text not null`, `priority integer default 0`, `is_active boolean default true`, `created_by`, `created_at`, `updated_by`, `updated_at`.
+- **Categories** (driven by an enum that maps to prompt section headers, exactly as Vega does):
+  - *Instructional:* `methodology`, `best_practices`, `terminology`, `examples`
+  - *Contextual:* `about_synozur` (parallel to Vega's `company_os`), `brand_voice`, `audience_personas`
+- **Scope.** The Synozur public site is single-tenant, so we drop Vega's `tenantId` column and replace it with optional `scope_tags jsonb` (audience class / sector / application) for filtered injection — null tags = always inject. No `is_tenant_background` flag needed; `is_active` is sufficient.
+- **Server-side file parsing for editor uploads** (matches Vega's `/api/ai/parse-pdf` and `/parse-docx` endpoints): `POST /api/ai/parse-pdf` and `POST /api/ai/parse-docx` accept raw binary, return extracted text via `pdf-parse` and `mammoth`, and the admin UI pastes the result into the `content` field — keeps heavy parsing libraries out of the browser bundle.
+- **Prompt construction.** New `buildSystemPrompt(scopeTags?)` server util fetches `is_active=true` documents that match the scope (or are unscoped), orders by `priority desc, category asc`, and formats each as `### <CategoryLabel>: <title>\n<content>` joined with double-newlines — identical formatting to Vega's `buildSystemPrompt`. A `getSimpleCompletion()` escape hatch (also matching Vega) skips grounding for lightweight calls like rewriting or scoring where the full corpus would just burn tokens.
+
+**(2) Editorial corpus retrieval — separate RAG layer the model calls as a tool.** Wholesale injection works for ~10–30 grounding docs but not for 200+ Insights posts and case studies. So the *grounded answer* still comes from retrieval, exposed to Claude as a tool:
+
+- `pgvector` + an `editorial_embeddings` table (`source_kind`, `source_id`, `chunk_index`, `text`, `embedding vector(1536)`, `model_version`, `updated_at`). A backfill worker chunks every published Insights post, case study, white paper, FAQ entry, and Polaris show-notes row into ~500-token chunks. Re-embedding triggers on publish/update via existing artifact lifecycle hooks.
+- A `searchEditorialCorpus(query, filters)` Claude tool runs hybrid retrieval (vector + BM25 over `collateral.title/excerpt`) and returns ranked passages with source metadata for citation.
+- The system prompt (built from grounding documents) instructs the model *when* to call this tool and how to format inline citations.
+
+**Public surface.** New `/insights/ask` page with streaming responses, session-scoped conversation history (not persisted unless the user authenticates), and per-answer source cards. Also embedded as a discovery widget on the Insights index page. Refusal path returns a "we don't have published material on that — talk to a human?" CTA wired to the contact form.
+
+**Admin surfaces.**
+- `/admin/ai/grounding` — Vega-style list view (sorted by priority desc, then category) with the standard CRUD form, file upload, and a per-row active toggle. RBAC gated on a new `MANAGE_AI_GROUNDING` permission granted to admins and editors.
+- `/admin/insights/questions` — every question + retrieved sources + final answer logged (PII-redacted), surfacing top questions, click-through to sources, refusal rate, a "low retrieval confidence" report flagging questions where the editorial corpus came up empty, and a "create insight on this topic" shortcut.
+
+Out of scope: multi-tenant grounding scope (single-tenant for now), open-ended chat memory across sessions, fine-tuning, multi-language Q&A (English first; revisit after #139), live foundation-data injection (Vega pulls live mission/vision/values; on this site that role is filled by the `about_synozur` grounding category, edited as a normal document). Follow-up: pipe high-intent questions ("how do I buy / start") to the Astra concierge for a soft hand-off.
 
 ### #138 · Stop pillar overview pages from competing with service pages on Google
 **Depends on:** #55 (services hierarchy public pages)
@@ -247,7 +265,7 @@ Every public string and every editorial CMS field on the site is English-only to
 - **One launch locale.** Pick one (de or ja) for the first translation pass — translate the 30 highest-traffic public pages plus the four service pillars and the six application pages.
 - **Translation workflow.** Integrate with Crowdin or Lokalise (decide during implementation) so external translators work in their native tooling rather than the admin UI; CI exports updated `messages.en.json`, fetches translated bundles, and writes them into `artifacts/synozur/src/locales/`.
 
-Out of scope: right-to-left languages (separate pass), region-specific content (different case studies per locale — possible but not v1), multi-currency pricing. Follow-up: localize the Polaris concierge and the Insights Q&A (#134) once the editorial corpus has enough translated content to retrieve from.
+Out of scope: right-to-left languages (separate pass), region-specific content (different case studies per locale — possible but not v1), multi-currency pricing. Follow-up: localize the Astra concierge and the Insights Q&A (#134) once the editorial corpus has enough translated content to retrieve from.
 
 ---
 
@@ -265,18 +283,21 @@ The four service pillars today are essentially brochure pages — well-written b
 - Optional contact-handoff to a real conversation, with the assessment results pre-populated into the contact-form payload and written through to HubSpot (#131) as contact properties + a `synozur_assessment_completed` timeline event.
 Implementation: new tables `assessments` (`id`, `slug`, `version`, `published`), `assessment_questions` (`id`, `assessmentId`, `text`, `dimension`, `weights jsonb`, `sortOrder`), `assessment_responses` (anonymous + authenticated, with pii flag), `assessment_recommendations` (mapping from score profiles to services/solutions/applications). Admin UI under `/admin/marketing/assessments` lets non-engineers author new assessments, edit recommendations, and version them. Public surface at `/assessments/:slug` with a polished step-by-step UI. Out of scope: gamified scoring, multi-user team assessments (single-respondent only for v1), CRM-side scoring sync. Follow-up: surface the assessment as the primary CTA on the home page once we've validated conversion vs. the existing contact form.
 
-### Polaris AI concierge — site-wide chat assistant
-**Depends on:** #134 (reuses the embeddings + Q&A pipeline as its retrieval layer); pairs with #131 (handoff to humans), maturity assessment above (deep-link into assessment)
+### Astra AI concierge — site-wide chat assistant
+**Depends on:** #134 (reuses both subsystems: the Vega-pattern grounding documents that build the system prompt, and the editorial-corpus retrieval tool); pairs with #131 (handoff to humans), maturity assessment above (deep-link into assessment)
 
-The site has the **Polaris** brand (a podcast about transformation and the eponymous "north star" cosmic motif) — a natural fit for a conversational concierge. This initiative adds a persistent chat widget, branded as "Polaris," that helps visitors navigate the site and answers questions on the spot. Scope:
+Synozur's product family already follows a celestial naming convention (Vega, Orion, Nebula, Constellation, Orbit, Zenith) and "Polaris" is reserved for the podcast brand, so the concierge takes a distinct star-themed name: **Astra**. This initiative adds a persistent chat widget, branded as "Astra," that helps visitors navigate the site and answers questions on the spot. Scope:
+
 - Floating chat button in the lower-right of every public page (and inside the Galaxy portal once #135 ships, with deeper context).
-- Backed by Claude with three tool integrations: (a) the Q&A retrieval layer from #134 for content questions; (b) a `bookMeeting` tool that surfaces a Calendly-style scheduler; (c) a `submitContactForm` tool that fills the existing contact form on the visitor's behalf with their permission.
-- Streaming responses with markdown + source-card rendering identical to the Q&A page.
-- Strict guardrails: refuse pricing speculation, refuse to commit Synozur to delivery, hand off to a human via the contact form whenever the visitor explicitly asks for one or the model's confidence drops.
-- Cookie-consent gated; conversation transcripts (with PII redaction) saved when the visitor consents and surfaced to admins under `/admin/marketing/concierge` for review and content-gap mining.
+- **System prompt is built from the same `grounding_documents` table as Ask Synozur** so Ask Synozur and Astra can never disagree about Synozur methodology, brand voice, or terminology. Astra-specific guidance (greeting tone, escalation rules, when to offer a meeting) is added as new grounding documents in a `concierge_persona` category — *not* a parallel table — keeping the Vega "one grounding store, multiple consumers" property intact.
+- Backed by Claude with three tool integrations: (a) the `searchEditorialCorpus` retrieval tool from #134 for content questions; (b) a `bookMeeting` tool that surfaces a Calendly-style scheduler; (c) a `submitContactForm` tool that fills the existing contact form on the visitor's behalf with their permission.
+- Streaming responses with markdown + source-card rendering identical to the Ask Synozur page.
+- An optional `concierge_eligible boolean default true` column on `grounding_documents` lets editors exclude an instructional doc from the concierge prompt without removing it from Ask Synozur (e.g. an internal-history doc that's fine on `/insights/ask` but shouldn't shape a sales chat). Default true keeps the shared-store invariant for normal cases.
+- Strict guardrails: refuse pricing speculation, refuse to commit Synozur to delivery, hand off to a human via the contact form whenever the visitor explicitly asks for one or the model's confidence drops. Guardrails live as `best_practices` grounding documents so editors can tune them without code changes — same Vega pattern.
+- Cookie-consent gated; conversation transcripts (with PII redaction) saved when the visitor consents and surfaced to admins under `/admin/marketing/astra` for review and content-gap mining — feeding the same low-retrieval-confidence report from #134 so editors see one unified view of where the corpus is thin.
 - Rate-limited per IP and per session; abuse triggers a captcha and then a soft block.
 
-Out of scope: voice mode, multi-language responses (#139 follow-up), agentic actions beyond the three tools above. Follow-up: integrate the maturity assessment so Polaris can steer relevant visitors into the assessment flow.
+Out of scope: voice mode, multi-language responses (#139 follow-up), agentic actions beyond the three tools above, a separate grounding-document table for the concierge (deliberately shared with #134; the `concierge_eligible` flag and the `concierge_persona` category are the only divergences). Follow-up: integrate the maturity assessment so Astra can steer relevant visitors into the assessment flow.
 
 ### Programmatic case-study drafts from Constellation engagement outcomes
 **Depends on:** #128 (OAuth provider, so Constellation can talk back to this site as a registered client); pairs with consent workflow inside Constellation
@@ -312,7 +333,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
 | #132 | SendGrid integration for marketing email and deliverability redundancy | Marketing & Lifecycle | — |
 | #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
-| #134 | "Ask Synozur" RAG-powered Q&A across editorial content | Public Site UX | — |
+| #134 | "Ask Synozur" — Vega-pattern grounding documents + retrieval over the editorial corpus | Public Site UX | — |
 | #135 | Galaxy client portal — v0 | Admin Access & People | #110, #111, #128 |
 | #136 | Verify remember-me sessions get the longer 30-day window when renewed | Admin Access & People | #133 |
 | #137 | Cover the session garbage-collector and revocation helpers with tests | Admin Access & People | #133 |
@@ -325,5 +346,5 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #152 | Add Akismet integration to catch more spam automatically | Content Library | #54 |
 | #153 | Make the spam rules settings page accessible to end-to-end automated testing | Content Library | #54 |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
-| — | Polaris AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
+| — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
