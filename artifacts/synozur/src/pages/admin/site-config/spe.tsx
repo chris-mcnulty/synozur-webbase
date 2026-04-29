@@ -667,7 +667,9 @@ export default function SpeAdminPage() {
                     ))}
                     {orphans.sampleCapped && (
                       <p className="text-muted-foreground pt-1">
-                        … sample capped; cleanup processes the full set.
+                        … sample capped at {orphans.sample.length}; cleanup
+                        only affects the listed items. Re-scan after each
+                        cleanup pass to clear the rest.
                       </p>
                     )}
                   </div>

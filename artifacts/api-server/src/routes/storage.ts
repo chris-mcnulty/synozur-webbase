@@ -161,9 +161,11 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
  * `getObjectEntityUploadURL()` returns a relative URL that points here
  * instead of back at SharePoint. The client PUTs the file body in
  * exactly the same shape it would have used for a GCS presigned URL;
- * we stream the bytes through to SPE and stash the resulting drive-item
- * id in an in-memory cache keyed by `:token` so the subsequent
- * `POST /cms/media` can populate `spe_file_id` on the new media row.
+ * this route buffers the raw request body in memory via `express.raw()`
+ * (up to `DIRECT_UPLOAD_LIMIT`), then uploads those buffered bytes to
+ * SPE and stashes the resulting drive-item id in an in-memory cache
+ * keyed by `:token` so the subsequent `POST /cms/media` can populate
+ * `spe_file_id` on the new media row.
  *
  * Auth: gated to authenticated CMS roles. The bytes are written using
  * the api-server's SPE credentials, so unauthenticated callers must not
