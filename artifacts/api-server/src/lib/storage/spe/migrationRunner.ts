@@ -66,7 +66,9 @@ async function migrateOne(
     return { ok: false, reason: `gcs fetch: ${(err as Error).message}` };
   }
 
-  const filename = row.originalName ?? row.altText.slice(0, 120) ?? row.id;
+  // altText is NOT NULL in schema but may be null in older production rows
+  // that predate the constraint. Guard with optional chaining.
+  const filename = row.originalName ?? row.altText?.slice(0, 120) ?? row.id;
   let stored;
   try {
     stored = await speFileStorage.storeFile({

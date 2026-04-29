@@ -222,12 +222,13 @@ function joinPath(base: string, segment: string): string {
 }
 
 function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {
+  // The Synozur* columns are custom SharePoint list columns that must be
+  // provisioned on the SPE container before they can be written. Until
+  // column provisioning is in place every PATCH returns 400 invalidRequest,
+  // generating log noise and an extra round-trip per file for no benefit.
+  // Disable for now; re-enable once the container schema is extended.
   const out: Record<string, unknown> = {};
-  out["SynozurDocumentType"] = opts.documentType;
-  out["SynozurOwnerId"] = opts.ownerId;
-  out["SynozurOriginalFileName"] = opts.filename;
-  out["SynozurContentType"] = opts.contentType;
-  if (opts.uploadedByUserId) out["SynozurUploadedByUserId"] = opts.uploadedByUserId;
+  // Only pass through caller-supplied extraFields (e.g. one-off overrides).
   if (opts.extraFields) Object.assign(out, opts.extraFields);
   return out;
 }
