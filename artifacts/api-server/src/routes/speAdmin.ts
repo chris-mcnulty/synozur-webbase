@@ -12,7 +12,7 @@
 //   PATCH /admin/integrations/spe/settings          { speStorageEnabled?, speContainerTypeId? }
 
 import { Router, type IRouter } from "express";
-import { eq, isNull, count } from "drizzle-orm";
+import { eq, isNull, isNotNull, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, siteSettingsTable, mediaTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
@@ -24,7 +24,7 @@ import {
   cleanupOrphans,
   speRoundTripTest,
 } from "../lib/storage/spe/orphanCleaner";
-import { runMigration } from "../lib/storage/spe/migrationRunner";
+import { runMigration, fetchMigrationCounts } from "../lib/storage/spe/migrationRunner";
 import { SpeNotEnabledError } from "../lib/storage/spe/fileStorage";
 import { invalidateBackendCache } from "../lib/objectStorage";
 
@@ -458,18 +458,75 @@ router.get(
   "/admin/integrations/spe/migration-status",
   requireAdmin,
   async (_req, res): Promise<void> => {
-    const [totalRow] = await db.select({ n: count() }).from(mediaTable);
-    const [pendingRow] = await db
-      .select({ n: count() })
-      .from(mediaTable)
-      .where(isNull(mediaTable.speFileId));
-    const total = totalRow?.n ?? 0;
-    const pending = pendingRow?.n ?? 0;
+    const counts = await fetchMigrationCounts();
     res.json({
-      totalMedia: total,
-      migratedToSpe: total - pending,
-      awaitingMigration: pending,
+      totalMedia: counts.total,
+      migratedToSpe: counts.alreadyMigrated,
+      awaitingMigration: counts.pending,
+      failedMigration: counts.failedMigration,
     });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /admin/integrations/spe/migration/failures
+// Returns rows where spe_migrate_error IS NOT NULL — i.e. files that
+// permanently failed a previous migration attempt with their reasons.
+// ---------------------------------------------------------------------------
+router.get(
+  "/admin/integrations/spe/migration/failures",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const rows = await db
+      .select({
+        id: mediaTable.id,
+        altText: mediaTable.altText,
+        storageKey: mediaTable.storageKey,
+        speMigrateError: mediaTable.speMigrateError,
+      })
+      .from(mediaTable)
+      .where(and(isNull(mediaTable.speFileId), isNotNull(mediaTable.speMigrateError)))
+      .orderBy(mediaTable.createdAt)
+      .limit(200);
+    res.json({ failures: rows });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /admin/integrations/spe/migration/clear-errors
+// Clears spe_migrate_error on the given IDs (or all if ids is omitted/[]).
+// This re-queues them for the next migration run.
+// ---------------------------------------------------------------------------
+const clearErrorsBody = z.object({
+  ids: z.array(z.string().uuid()).optional(),
+});
+
+router.post(
+  "/admin/integrations/spe/migration/clear-errors",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = clearErrorsBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { ids } = parsed.data;
+    const where =
+      ids && ids.length > 0
+        ? and(isNotNull(mediaTable.speMigrateError), inArray(mediaTable.id, ids))
+        : isNotNull(mediaTable.speMigrateError);
+    const result = await db
+      .update(mediaTable)
+      .set({ speMigrateError: null })
+      .where(where);
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "spe.migration.clear-errors",
+      entity: "media",
+      entityId: ids?.join(",") ?? "all",
+      diff: { cleared: ids?.length ?? "all" },
+    });
+    res.json({ ok: true, cleared: result.rowCount ?? 0 });
   },
 );
 

@@ -38,6 +38,14 @@ interface MigrationStatus {
   totalMedia: number;
   migratedToSpe: number;
   awaitingMigration: number;
+  failedMigration: number;
+}
+
+interface MigrationFailure {
+  id: string;
+  altText: string;
+  storageKey: string;
+  speMigrateError: string | null;
 }
 
 interface MigrationJob {
@@ -216,6 +224,9 @@ export default function SpeAdminPage() {
     created: string[];
     existed: string[];
   } | null>(null);
+  const [failures, setFailures] = useState<MigrationFailure[] | null>(null);
+  const [failuresBusy, setFailuresBusy] = useState(false);
+  const [clearErrorsBusy, setClearErrorsBusy] = useState(false);
   const [devResetOpts, setDevResetOpts] = useState({
     resetMigration: true,
     clearContainerDev: false,
@@ -912,7 +923,7 @@ export default function SpeAdminPage() {
             </div>
 
             {migration ? (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <div className="text-3xl font-semibold tabular-nums">
                     {migration.totalMedia.toLocaleString()}
@@ -937,10 +948,126 @@ export default function SpeAdminPage() {
                     Awaiting migration
                   </div>
                 </div>
+                <div>
+                  <div
+                    className={`text-3xl font-semibold tabular-nums ${
+                      migration.failedMigration > 0
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {(migration.failedMigration ?? 0).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Permanently failed
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">
                 Counts unavailable.
+              </div>
+            )}
+
+            {/* Failed files panel */}
+            {migration && migration.failedMigration > 0 && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-destructive">
+                    {migration.failedMigration} file
+                    {migration.failedMigration !== 1 ? "s" : ""} permanently
+                    failed — excluded from future runs until cleared
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={failuresBusy}
+                      onClick={async () => {
+                        setFailuresBusy(true);
+                        try {
+                          const data = await apiFetch<{
+                            failures: MigrationFailure[];
+                          }>("/admin/integrations/spe/migration/failures");
+                          setFailures(data.failures);
+                        } catch {
+                          toast({
+                            title: "Could not load failure details",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setFailuresBusy(false);
+                        }
+                      }}
+                    >
+                      {failuresBusy ? "Loading…" : failures ? "Refresh" : "View details"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={clearErrorsBusy || migrationJob?.status === "running"}
+                      onClick={async () => {
+                        setClearErrorsBusy(true);
+                        try {
+                          await apiFetch(
+                            "/admin/integrations/spe/migration/clear-errors",
+                            { method: "POST", body: JSON.stringify({}) },
+                          );
+                          setFailures(null);
+                          const updated = await apiFetch<MigrationStatus>(
+                            "/admin/integrations/spe/migration-status",
+                          );
+                          setMigration(updated);
+                          toast({ title: "Errors cleared — files re-queued for migration" });
+                        } catch {
+                          toast({
+                            title: "Could not clear errors",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setClearErrorsBusy(false);
+                        }
+                      }}
+                    >
+                      {clearErrorsBusy ? "Clearing…" : "Clear all & retry"}
+                    </Button>
+                  </div>
+                </div>
+
+                {failures && failures.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left pb-1 pr-3 font-medium text-muted-foreground w-40">
+                            Storage key
+                          </th>
+                          <th className="text-left pb-1 pr-3 font-medium text-muted-foreground w-40">
+                            Alt text
+                          </th>
+                          <th className="text-left pb-1 font-medium text-muted-foreground">
+                            Error
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {failures.map((f) => (
+                          <tr key={f.id} className="border-b border-border/50">
+                            <td className="py-1 pr-3 font-mono text-muted-foreground truncate max-w-[160px]">
+                              {f.storageKey}
+                            </td>
+                            <td className="py-1 pr-3 truncate max-w-[160px]">
+                              {f.altText}
+                            </td>
+                            <td className="py-1 text-destructive break-all">
+                              {f.speMigrateError}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
