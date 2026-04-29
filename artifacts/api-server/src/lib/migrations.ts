@@ -1054,6 +1054,16 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS linked_post_id uuid REFERENCES posts(id) ON DELETE SET NULL;
     `);
 
+    // 32. PR #64 — index on polaris_episodes.linked_post_id.
+    //     The FK column was added in step 31 but no index was included.
+    //     Partial index (WHERE linked_post_id IS NOT NULL) keeps the index
+    //     small — the vast majority of episodes have no linked post.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_polaris_episodes_linked_post_id
+        ON polaris_episodes (linked_post_id)
+        WHERE linked_post_id IS NOT NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

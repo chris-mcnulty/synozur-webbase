@@ -8,6 +8,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import {
   artifactIdentity,
   artifactLifecycle,
@@ -50,6 +51,13 @@ export const polarisEpisodesTable = pgTable(
     index("polaris_episodes_featured_rank_idx").on(t.featured, t.featuredRank),
   ],
 );
+
+export const polarisEpisodesRelations = relations(polarisEpisodesTable, ({ one }) => ({
+  linkedPost: one(postsTable, {
+    fields: [polarisEpisodesTable.linkedPostId],
+    references: [postsTable.id],
+  }),
+}));
 
 export type PolarisEpisode = typeof polarisEpisodesTable.$inferSelect;
 export type InsertPolarisEpisode = typeof polarisEpisodesTable.$inferInsert;

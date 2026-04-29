@@ -175,6 +175,7 @@ router.get("/polaris/episodes", async (req, res) => {
     total: countRow?.count ?? 0,
     page,
     pageSize,
+    // linkedPost is intentionally omitted on list responses (N+1 concern; not needed by list-card UI).
     items: rows.map((r) => serialize(r)),
   });
 });
@@ -337,6 +338,7 @@ router.get("/cms/polaris/episodes", ...readGuard, async (_req, res) => {
     .from(polarisEpisodesTable)
     .where(sql`${polarisEpisodesTable.deletedAt} is null`)
     .orderBy(desc(polarisEpisodesTable.episodeNumber));
+  // linkedPost is intentionally omitted on list responses (N+1 concern; not needed by list-card UI).
   res.json({ items: rows.map((r) => serialize(r)) });
 });
 

@@ -12,15 +12,7 @@ import {
   User,
 } from "lucide-react";
 import NotFound from "@/pages/not-found";
-
-interface LinkedPostDto {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string | null;
-  heroImageUrl: string | null;
-  publishedAt: string | null;
-}
+import type { PolarisLinkedPostDto } from "@/lib/api";
 
 interface PolarisEpisodeDto {
   id: string;
@@ -35,7 +27,7 @@ interface PolarisEpisodeDto {
   durationSeconds: number | null;
   artworkUrl: string;
   publishedAt: string | null;
-  linkedPost: LinkedPostDto | null;
+  linkedPost: PolarisLinkedPostDto | null;
 }
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
