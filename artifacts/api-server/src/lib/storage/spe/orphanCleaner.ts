@@ -96,7 +96,13 @@ function toOrphanItem(item: SpeFileItem, now: number): OrphanItem {
 export async function scanOrphans(): Promise<OrphanScanResult> {
   const containerId = await speFileStorage.resolveContainerId();
   const known = await loadKnownSpeFileIds();
-  const all = await speFileStorage.listFiles();
+  // `listFiles()` already returns only file-kind items via recursive
+  // walk; the explicit filter here is defense-in-depth so a future
+  // refactor that loosens listFiles can't accidentally make folders
+  // candidates for cleanup.
+  const all = (await speFileStorage.listFiles()).filter(
+    (item) => item.kind === "file",
+  );
   const now = Date.now();
 
   const orphans: OrphanItem[] = [];
@@ -145,7 +151,11 @@ export async function cleanupOrphans(
 ): Promise<CleanupResult> {
   const containerId = await speFileStorage.resolveContainerId();
   const known = await loadKnownSpeFileIds();
-  const all = await speFileStorage.listFiles();
+  // Same belt-and-braces filter as scanOrphans — folders must never
+  // be cleanup candidates regardless of any future listFiles change.
+  const all = (await speFileStorage.listFiles()).filter(
+    (item) => item.kind === "file",
+  );
   const now = Date.now();
 
   const candidates = all.filter(

@@ -47,6 +47,11 @@ export interface SpeFileItem {
   name: string;
   size: number;
   contentType: string;
+  // Drive items can be either files or folders; the listing endpoints
+  // return both. Callers iterating `listChildren()` need this so they
+  // don't accidentally treat a folder like a file (e.g. orphan cleanup
+  // attempting to delete a `/media` folder thinking it's a stray asset).
+  kind: "file" | "folder";
   webUrl?: string;
   createdDateTime?: string;
   lastModifiedDateTime?: string;
@@ -376,16 +381,23 @@ interface RawDriveItem {
   webUrl?: string;
   createdDateTime?: string;
   lastModifiedDateTime?: string;
+  // Graph populates exactly one of `file` / `folder` to discriminate.
   file?: { mimeType?: string };
+  folder?: { childCount?: number };
   listItem?: { fields?: Record<string, unknown> };
 }
 
 function toSpeFileItem(raw: RawDriveItem): SpeFileItem {
+  const kind: "file" | "folder" = raw.folder ? "folder" : "file";
   return {
     id: raw.id,
     name: raw.name,
     size: raw.size ?? 0,
-    contentType: raw.file?.mimeType ?? "application/octet-stream",
+    contentType:
+      kind === "folder"
+        ? "inode/directory"
+        : raw.file?.mimeType ?? "application/octet-stream",
+    kind,
     webUrl: raw.webUrl,
     createdDateTime: raw.createdDateTime,
     lastModifiedDateTime: raw.lastModifiedDateTime,
