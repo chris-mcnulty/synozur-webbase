@@ -131,7 +131,14 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed.data;
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    // For SPE the active backend returns an api-server route URL
+    // (`/api/storage/uploads/spe-direct/<token>`) that's NOT a valid
+    // storage_key. Map it to the canonical `/objects/uploads/<token>`
+    // shape so seed scripts (and any other caller persisting
+    // `objectPath` directly into a storage_key column) write the same
+    // shape regardless of which backend is active. GCS URLs flow
+    // through the existing GCS normalizer unchanged.
+    const objectPath = canonicaliseUploadObjectPath(uploadURL);
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -339,5 +346,17 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to serve object" });
   }
 });
+
+const SPE_DIRECT_PREFIX = "/api/storage/uploads/spe-direct/";
+
+function canonicaliseUploadObjectPath(uploadURL: string): string {
+  if (uploadURL.startsWith(SPE_DIRECT_PREFIX)) {
+    const token = uploadURL.slice(SPE_DIRECT_PREFIX.length);
+    return `/objects/uploads/${token}`;
+  }
+  // GCS URLs (https://storage.googleapis.com/...) and any future shapes
+  // route through the existing GCS normalizer unchanged.
+  return objectStorageService.normalizeObjectEntityPath(uploadURL);
+}
 
 export default router;
