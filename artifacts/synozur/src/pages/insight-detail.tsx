@@ -4,7 +4,13 @@ import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { Button } from "@/components/ui/button";
 import { ArticleJsonLd } from "@/components/article-jsonld";
-import { useInsight, useInsightsList, resolveMediaUrl, resolveBodyHtml } from "@/lib/insights";
+import {
+  useInsight,
+  useInsightsList,
+  resolveMediaUrl,
+  resolveBodyHtml,
+  buildMediaSrcSet,
+} from "@/lib/insights";
 import NotFound from "./not-found";
 import { CommentThread } from "@/components/comments/comment-thread";
 import {
@@ -29,6 +35,15 @@ function formatDate(iso: string | null | undefined): string {
   }
 }
 
+// Related-rail thumbs sit in a 3-up grid inside max-w-6xl.
+const RELATED_CARD_WIDTHS = [400, 600, 900] as const;
+const RELATED_CARD_SIZES =
+  "(min-width: 768px) 33vw, 100vw";
+
+// Hero spans the max-w-5xl container — ≈1024px CSS, 2x for retina.
+const HERO_WIDTHS = [768, 1024, 1280, 1600, 2048] as const;
+const HERO_SIZES = "(min-width: 768px) min(64rem, 100vw - 2rem), 100vw";
+
 function RelatedRail({ post }: { post: PublicPost }) {
   const categorySlug = post.categories?.[0]?.slug;
   const { data } = useInsightsList(
@@ -42,7 +57,8 @@ function RelatedRail({ post }: { post: PublicPost }) {
         <h2 className="text-2xl md:text-3xl font-bold mb-8">More from The Feed</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {related.map((p) => {
-            const hero = resolveMediaUrl(p.heroImageUrl);
+            const hero = resolveMediaUrl(p.heroImageUrl, { width: 600 });
+            const heroSrcSet = buildMediaSrcSet(p.heroImageUrl, RELATED_CARD_WIDTHS);
             return (
               <Link
                 key={p.id}
@@ -53,8 +69,11 @@ function RelatedRail({ post }: { post: PublicPost }) {
                   {hero ? (
                     <img
                       src={hero}
+                      srcSet={heroSrcSet ?? undefined}
+                      sizes={heroSrcSet ? RELATED_CARD_SIZES : undefined}
                       alt={p.title}
                       loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
@@ -119,8 +138,11 @@ export default function InsightDetail() {
   }, [post?.slug]);
 
   const bodyHtml = useMemo(() => resolveBodyHtml(post?.bodyHtml), [post?.bodyHtml]);
-  const hero = resolveMediaUrl(post?.heroImageUrl);
-  const ogImage = resolveMediaUrl(post?.ogImageUrl) || hero || undefined;
+  const hero = resolveMediaUrl(post?.heroImageUrl, { width: 1280 });
+  const heroSrcSet = buildMediaSrcSet(post?.heroImageUrl, HERO_WIDTHS);
+  // OG/social previews are consumed by external scrapers (Slack, X, FB) —
+  // keep them at full resolution so unfurls don't pick a downscaled crop.
+  const ogImage = resolveMediaUrl(post?.ogImageUrl) || resolveMediaUrl(post?.heroImageUrl) || undefined;
 
   if (isLoading) {
     return (
@@ -219,7 +241,15 @@ export default function InsightDetail() {
         {hero && (
           <div className="container mx-auto px-4 -mt-8 md:-mt-12 max-w-5xl relative z-10">
             <div className="aspect-[16/9] overflow-hidden rounded-2xl border border-border/60 shadow-2xl">
-              <img src={hero} alt={post.title} className="w-full h-full object-cover" />
+              <img
+                src={hero}
+                srcSet={heroSrcSet ?? undefined}
+                sizes={heroSrcSet ? HERO_SIZES : undefined}
+                alt={post.title}
+                decoding="async"
+                fetchPriority="high"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         )}
@@ -240,8 +270,12 @@ export default function InsightDetail() {
             <aside className="mt-16 pt-10 border-t border-border flex items-start gap-4">
               {post.author.avatarUrl && (
                 <img
-                  src={resolveMediaUrl(post.author.avatarUrl) ?? undefined}
+                  src={resolveMediaUrl(post.author.avatarUrl, { width: 112 }) ?? undefined}
                   alt={post.author.displayName}
+                  loading="lazy"
+                  decoding="async"
+                  width={56}
+                  height={56}
                   className="w-14 h-14 rounded-full object-cover border border-border/60"
                 />
               )}

@@ -36,6 +36,24 @@ import {
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
+// URLs the api-server can resize on the fly (sharp pipeline).
+const RESIZABLE_PATH_RE = /\/api\/storage\/(?:public-)?objects\//i;
+
+function withWidth(resolvedUrl: string, width: number | undefined): string {
+  if (!width || width <= 0) return resolvedUrl;
+  if (!RESIZABLE_PATH_RE.test(resolvedUrl)) return resolvedUrl;
+  const w = Math.max(1, Math.round(width));
+  const hashIdx = resolvedUrl.indexOf("#");
+  const hash = hashIdx >= 0 ? resolvedUrl.slice(hashIdx) : "";
+  const noHash = hashIdx >= 0 ? resolvedUrl.slice(0, hashIdx) : resolvedUrl;
+  const qIdx = noHash.indexOf("?");
+  const base = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash;
+  const params = new URLSearchParams(qIdx >= 0 ? noHash.slice(qIdx + 1) : "");
+  params.set("w", String(w));
+  const qs = params.toString();
+  return qs ? `${base}?${qs}${hash}` : `${base}${hash}`;
+}
+
 // Per-kind upload caps. Mirrors AssetLibraryModal so that swapping pickers
 // doesn't regress upload limits — videos in particular need a much larger
 // cap than images. Keep in sync with the legacy modal until it's removed.
@@ -46,21 +64,29 @@ const DEFAULT_MAX_BYTES = IMAGE_MAX_BYTES;
 
 // Accepts either a plain URL string or a media item object so callers can
 // pass either form.heroImage (string) or a MediaItem from the picker.
+//
+// `options.width` requests a sharp-resized variant from the api-server.
+// External URLs and Vite-served `/images/...` paths are not resizable, so
+// the parameter is dropped silently for those.
 export function mediaUrl(
   m: string | { storageKey: string | null; publicUrl?: string | null },
+  options?: { width?: number },
 ): string {
+  let resolved = "";
   if (typeof m === "string") {
     if (!m) return "";
-    if (m.startsWith("http")) return m;
-    return `${BASE_PATH}${m}`;
+    resolved = m.startsWith("http") ? m : `${BASE_PATH}${m}`;
+  } else if (m.publicUrl) {
+    resolved = m.publicUrl.startsWith("http")
+      ? m.publicUrl
+      : `${BASE_PATH}${m.publicUrl}`;
+  } else if (m.storageKey) {
+    resolved = m.storageKey.startsWith("http")
+      ? m.storageKey
+      : `${BASE_PATH}/api/storage${m.storageKey}`;
   }
-  if (m.publicUrl) {
-    if (m.publicUrl.startsWith("http")) return m.publicUrl;
-    return `${BASE_PATH}${m.publicUrl}`;
-  }
-  if (!m.storageKey) return "";
-  if (m.storageKey.startsWith("http")) return m.storageKey;
-  return `${BASE_PATH}/api/storage${m.storageKey}`;
+  if (!resolved) return "";
+  return withWidth(resolved, options?.width);
 }
 
 interface Props {
@@ -323,8 +349,10 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                   >
                     {isImage ? (
                       <img
-                        src={mediaUrl(m)}
+                        src={mediaUrl(m, { width: 400 })}
                         alt={m.altText ?? ""}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                     ) : (

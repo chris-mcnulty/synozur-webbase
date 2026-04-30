@@ -46,13 +46,36 @@ const ANY_CATEGORY = "__any__";
 const NONE_CATEGORY = "__none__";
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-function itemUrl(item: LibraryAssetItem): string {
+// URLs the api-server can resize on the fly (sharp pipeline).
+const RESIZABLE_PATH_RE = /\/api\/storage\/(?:public-)?objects\//i;
+
+function withWidth(resolvedUrl: string, width: number | undefined): string {
+  if (!width || width <= 0) return resolvedUrl;
+  if (!RESIZABLE_PATH_RE.test(resolvedUrl)) return resolvedUrl;
+  const w = Math.max(1, Math.round(width));
+  const hashIdx = resolvedUrl.indexOf("#");
+  const hash = hashIdx >= 0 ? resolvedUrl.slice(hashIdx) : "";
+  const noHash = hashIdx >= 0 ? resolvedUrl.slice(0, hashIdx) : resolvedUrl;
+  const qIdx = noHash.indexOf("?");
+  const base = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash;
+  const params = new URLSearchParams(qIdx >= 0 ? noHash.slice(qIdx + 1) : "");
+  params.set("w", String(w));
+  const qs = params.toString();
+  return qs ? `${base}?${qs}${hash}` : `${base}${hash}`;
+}
+
+function itemUrl(item: LibraryAssetItem, options?: { width?: number }): string {
+  let resolved = "";
   if (item.publicUrl) {
-    if (item.publicUrl.startsWith("http")) return item.publicUrl;
-    return `${BASE_PATH}${item.publicUrl}`;
+    resolved = item.publicUrl.startsWith("http")
+      ? item.publicUrl
+      : `${BASE_PATH}${item.publicUrl}`;
+  } else if (item.storageKey.startsWith("http")) {
+    resolved = item.storageKey;
+  } else {
+    resolved = `${BASE_PATH}/api/storage${item.storageKey}`;
   }
-  if (item.storageKey.startsWith("http")) return item.storageKey;
-  return `${BASE_PATH}/api/storage${item.storageKey}`;
+  return withWidth(resolved, options?.width);
 }
 
 function displayName(item: LibraryAssetItem): string {
@@ -391,6 +414,9 @@ function AssetCard({
   onChangeCategory: (categoryId: string | null) => Promise<void>;
 }) {
   const url = itemUrl(item);
+  // Library tiles render at ~250–360px CSS width depending on viewport.
+  // 600px covers a 2x DPR screen without round-tripping the original.
+  const thumbUrl = itemUrl(item, { width: 600 });
   const isImage = (item.mime ?? "").startsWith("image/");
   const [alt, setAlt] = useState(item.altText ?? "");
   const [state, setState] = useState<SaveState>("idle");
@@ -422,7 +448,7 @@ function AssetCard({
       <div className="aspect-square bg-muted overflow-hidden flex items-center justify-center relative">
         {isImage ? (
           <img
-            src={url}
+            src={thumbUrl}
             alt={item.altText ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"
