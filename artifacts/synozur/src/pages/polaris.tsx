@@ -18,12 +18,14 @@ interface PolarisEpisodeDto {
   durationSeconds: number | null;
   artworkUrl: string;
   publishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
 }
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 async function fetchPolarisEpisodes(): Promise<PolarisEpisodeDto[]> {
-  const res = await fetch(`${BASE_PATH}/api/polaris/episodes?pageSize=50`);
+  const res = await fetch(`${BASE_PATH}/api/polaris/episodes?pageSize=200`);
   if (!res.ok) throw new Error(`Failed to fetch Polaris episodes: ${res.status}`);
   const data = (await res.json()) as { items: PolarisEpisodeDto[] };
   return data.items;
@@ -36,6 +38,17 @@ function formatReleaseDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
+    day: "numeric",
+  });
+}
+
+function formatReleaseDateShort(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
     day: "numeric",
   });
 }
@@ -57,13 +70,9 @@ const BOILERPLATE_SENTENCES = [
 function getEpisodeDescription(summary: string | null | undefined): string {
   if (!summary) return "";
   let text = summary.trim();
-  // Strip each boilerplate sentence wherever it appears (handles any ordering)
   for (const sentence of BOILERPLATE_SENTENCES) {
     text = text.replace(sentence, "").trim();
   }
-  // To find the first real sentence we temporarily neutralise known
-  // abbreviations (Dr., Mr., Prof., etc.) so their dots don't look like
-  // sentence ends, then split on ". Capital" boundaries.
   const PLACEHOLDER = "\x00";
   const safe = text.replace(
     /\b(Dr|Mr|Mrs|Ms|Prof|Sr|Jr|vs|etc|St|No)\./g,
@@ -103,6 +112,17 @@ export default function Polaris() {
     queryFn: fetchPolarisEpisodes,
   });
   const episodes = episodesQ.data ?? [];
+
+  // Featured episodes sorted by featuredRank asc (nulls last), then publishedAt desc
+  const featuredEpisodes = episodes
+    .filter((e) => e.featured)
+    .sort((a, b) => {
+      if (a.featuredRank !== null && b.featuredRank !== null)
+        return a.featuredRank - b.featuredRank;
+      if (a.featuredRank !== null) return -1;
+      if (b.featuredRank !== null) return 1;
+      return 0;
+    });
 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -200,90 +220,193 @@ export default function Polaris() {
         </div>
       </section>
 
-      {/* Featured episodes */}
-      <section className="py-24 bg-background">
+      {/* Featured episodes — cards */}
+      {(episodesQ.isLoading || featuredEpisodes.length > 0) && (
+        <section className="py-24 bg-background border-b border-border/40">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mb-12">
+              <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                Featured
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold">
+                Featured conversations
+              </h2>
+            </div>
+            {episodesQ.isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-pulse"
+                  >
+                    <div className="aspect-square bg-muted" />
+                    <div className="p-6 space-y-3">
+                      <div className="h-5 bg-muted rounded w-3/4" />
+                      <div className="h-4 bg-muted rounded w-full" />
+                      <div className="h-4 bg-muted rounded w-5/6" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {featuredEpisodes.map((e, i) => {
+                  const detailHref = `/polaris/${e.slug}`;
+                  return (
+                    <motion.article
+                      key={e.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: i * 0.05 }}
+                      className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
+                    >
+                      <div className="relative aspect-square overflow-hidden bg-card">
+                        <Link href={detailHref} className="block w-full h-full">
+                          <img
+                            src={e.artworkUrl}
+                            alt={e.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                          <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
+                            Episode {e.episodeNumber}
+                          </div>
+                        </Link>
+                        <button
+                          onClick={(ev) => togglePlay(e, ev)}
+                          aria-label={playingId === e.id ? `Pause ${e.title}` : `Play ${e.title}`}
+                          className="absolute bottom-5 right-5 h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform hover:bg-white z-10"
+                        >
+                          {playingId === e.id
+                            ? <Pause className="h-5 w-5 fill-current" />
+                            : <Play className="h-5 w-5 ml-0.5 fill-current" />}
+                        </button>
+                      </div>
+                      <Link href={detailHref} className="p-6 flex flex-col flex-1">
+                        <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
+                          {e.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
+                          {getEpisodeDescription(e.summary)}
+                        </p>
+                        <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
+                          <span>{formatReleaseDate(e.publishedAt)}</span>
+                          <span>{formatDurationMin(e.durationSeconds)}</span>
+                        </div>
+                      </Link>
+                    </motion.article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* All episodes — compact list */}
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mb-12">
+          <div className="max-w-2xl mb-10">
             <p className="text-sm uppercase tracking-widest text-primary mb-3">
-              Episodes
+              All Episodes
             </p>
             <h2 className="text-3xl md:text-4xl font-bold">
-              Featured conversations
+              Every episode
             </h2>
           </div>
+
           {episodesQ.isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[0, 1, 2].map((i) => (
+            <div className="space-y-3">
+              {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-pulse"
+                  className="flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4 animate-pulse"
                 >
-                  <div className="aspect-square bg-muted" />
-                  <div className="p-6 space-y-3">
-                    <div className="h-5 bg-muted rounded w-3/4" />
-                    <div className="h-4 bg-muted rounded w-full" />
-                    <div className="h-4 bg-muted rounded w-5/6" />
+                  <div className="h-14 w-14 shrink-0 rounded-lg bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-2/3" />
+                    <div className="h-3 bg-muted rounded w-1/3" />
                   </div>
                 </div>
               ))}
             </div>
           ) : episodesQ.isError ? (
             <p className="text-muted-foreground">
-              We couldn't load Polaris episodes right now. Please try again in a
-              moment.
+              We couldn't load Polaris episodes right now. Please try again in a moment.
             </p>
           ) : episodes.length === 0 ? (
             <p className="text-muted-foreground">
               New episodes are on the way — check back soon.
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="divide-y divide-border/50 rounded-2xl border border-border/60 overflow-hidden">
               {episodes.map((e, i) => {
                 const detailHref = `/polaris/${e.slug}`;
                 return (
-                  <motion.article
+                  <motion.div
                     key={e.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.05 }}
-                    className="group flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors"
+                    transition={{ duration: 0.3, delay: Math.min(i * 0.03, 0.4) }}
                   >
-                    <div className="relative aspect-square overflow-hidden bg-card">
-                      <Link href={detailHref} className="block w-full h-full">
+                    <Link
+                      href={detailHref}
+                      className="group flex items-center gap-4 bg-card hover:bg-card/80 px-5 py-4 transition-colors"
+                    >
+                      {/* Artwork thumbnail */}
+                      <div className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-muted">
                         <img
                           src={e.artworkUrl}
                           alt={e.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="h-full w-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                        <div className="absolute top-5 left-5 text-white/90 text-xs uppercase tracking-widest">
-                          Episode {e.episodeNumber}
+                      </div>
+
+                      {/* Episode info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs text-muted-foreground font-mono shrink-0">
+                            Ep {e.episodeNumber}
+                          </span>
+                          {e.featured && (
+                            <span className="text-[10px] uppercase tracking-widest text-primary font-semibold shrink-0">
+                              Featured
+                            </span>
+                          )}
                         </div>
-                      </Link>
+                        <p className="font-semibold text-sm leading-snug truncate group-hover:text-primary transition-colors">
+                          {e.title}
+                        </p>
+                        {e.guestName && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {e.guestName}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Meta + play */}
+                      <div className="hidden sm:flex items-center gap-6 shrink-0 text-xs text-muted-foreground">
+                        {formatDurationMin(e.durationSeconds) && (
+                          <span>{formatDurationMin(e.durationSeconds)}</span>
+                        )}
+                        {formatReleaseDateShort(e.publishedAt) && (
+                          <span className="w-28 text-right">{formatReleaseDateShort(e.publishedAt)}</span>
+                        )}
+                      </div>
                       <button
                         onClick={(ev) => togglePlay(e, ev)}
                         aria-label={playingId === e.id ? `Pause ${e.title}` : `Play ${e.title}`}
-                        className="absolute bottom-5 right-5 h-14 w-14 rounded-full bg-white/95 text-[#0B0B1A] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform hover:bg-white z-10"
+                        className="shrink-0 h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"
                       >
                         {playingId === e.id
-                          ? <Pause className="h-5 w-5 fill-current" />
-                          : <Play className="h-5 w-5 ml-0.5 fill-current" />}
+                          ? <Pause className="h-4 w-4 fill-current" />
+                          : <Play className="h-4 w-4 ml-0.5 fill-current" />}
                       </button>
-                    </div>
-                    <Link href={detailHref} className="p-6 flex flex-col flex-1">
-                      <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors">
-                        {e.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
-                        {getEpisodeDescription(e.summary)}
-                      </p>
-                      <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
-                        <span>{formatReleaseDate(e.publishedAt)}</span>
-                        <span>{formatDurationMin(e.durationSeconds)}</span>
-                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                     </Link>
-                  </motion.article>
+                  </motion.div>
                 );
               })}
             </div>
