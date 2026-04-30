@@ -292,7 +292,7 @@ export function Header() {
             return (
             <div key={group.title} className="relative group">
               <button
-                className={`text-[21px] font-medium transition-colors py-2 ${
+                className={`text-[17px] font-medium transition-colors py-2 ${
                   isGroupActive
                     ? "text-[#E60CB3] dark:text-primary"
                     : "text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
@@ -311,7 +311,7 @@ export function Header() {
                     <NavLinkItem
                       key={link.label}
                       link={link}
-                      className="text-[21px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
+                      className="text-[17px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
                     />
                   ))}
                   {group.nested && group.nested.length > 0 && (
@@ -325,7 +325,7 @@ export function Header() {
                           )}
                           <Link
                             href={section.href}
-                            className={`block text-[21px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary ${isLinkActive(section.href, location) ? "text-[#E60CB3] dark:text-primary" : "text-popover-foreground"}`}
+                            className={`block text-[17px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary ${isLinkActive(section.href, location) ? "text-[#E60CB3] dark:text-primary" : "text-popover-foreground"}`}
                           >
                             {section.label}
                           </Link>
@@ -335,7 +335,7 @@ export function Header() {
                                 <li key={c.href}>
                                   <Link
                                     href={c.href}
-                                    className={`block text-[18px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 ${isLinkActive(c.href, location) ? "text-[#E60CB3] dark:text-primary font-semibold" : "text-popover-foreground/70"}`}
+                                    className={`block text-[14px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 ${isLinkActive(c.href, location) ? "text-[#E60CB3] dark:text-primary font-semibold" : "text-popover-foreground/70"}`}
                                   >
                                     {c.label}
                                   </Link>
