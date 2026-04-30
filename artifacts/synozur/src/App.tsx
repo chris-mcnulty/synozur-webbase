@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/theme";
 import { captureAttributionOnLoad } from "@/lib/attribution";
 
 import Home from "@/pages/home";
+import HomeB from "@/pages/home-b";
 import About from "@/pages/about";
 import ServicesOverview from "@/pages/services-overview";
 import ServiceDetail from "@/pages/service-detail";
@@ -387,6 +388,7 @@ function Router() {
         <Layout>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
             <Route path="/services-overview/default" component={ServicesOverview} />
             <Route path="/services-overview/:slug" component={ServicesOverview} />

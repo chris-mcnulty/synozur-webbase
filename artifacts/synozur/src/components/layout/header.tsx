@@ -211,6 +211,13 @@ export function Header() {
 
   const navGroups: NavGroup[] = [
     {
+      title: "Home",
+      links: [
+        { label: "Home", href: "/" },
+        { label: "Alt Home", href: "/home-b" },
+      ],
+    },
+    {
       title: "Our Story",
       links: [
         { label: "About", href: "/about" },
