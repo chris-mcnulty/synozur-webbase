@@ -386,10 +386,10 @@ export default function HomeB() {
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Workshops</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-5 leading-tight">
-              One day that changes the trajectory of a year.
+              Commit to direction. Leave with a plan.
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Synozur workshops are designed for leadership teams that need to move from open questions to locked decisions — fast. Not seminars. Not training. Facilitated intensives that end with clarity, commitment, and a next step.
+              Synozur workshops are designed for leadership teams that need to move from open questions to locked decisions. Not seminars. Not training. Facilitated intensives built around your specific challenge — that end with clarity, commitment, and a next step you can act on.
             </p>
           </motion.div>
 
@@ -400,6 +400,10 @@ export default function HomeB() {
                 <Skeleton className="rounded-2xl h-40" />
                 <Skeleton className="rounded-2xl h-40" />
               </div>
+            </div>
+          ) : !featuredWorkshop && !workshopsLoading ? (
+            <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
+              Workshop details coming soon. <Link href="/workshops" className="text-primary underline-offset-2 hover:underline">View all workshops →</Link>
             </div>
           ) : featuredWorkshop ? (
             <div className="space-y-5">
