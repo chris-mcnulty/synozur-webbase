@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Building2, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
@@ -25,19 +25,27 @@ function resolveImageUrl(url: string | null | undefined, fallback: string): stri
 const PILLARS = [
   {
     headline: "Clarity before motion.",
-    body: "Organizations rarely struggle for lack of ideas. They stall when competing priorities obscure which direction actually matters. Every engagement begins here — with a clear-eyed account of where things stand.",
+    body: "Competing priorities stall organizations, not missing ideas. Every Synozur engagement starts with a diagnostic — so decisions are grounded in what's actually true.",
+    proofLabel: "See our assessment approach",
+    proofHref: "/applications/orion",
   },
   {
-    headline: "Honest assessment is the first act of leadership.",
-    body: "We listen before we advise. Understanding your situation fully — what's working, what isn't, and why — is the only foundation worth building on.",
+    headline: "Assessment is the first act of leadership.",
+    body: "We listen before we advise. The Orion diagnostic gives leadership teams a shared, honest account of where things stand before committing to direction.",
+    proofLabel: "Explore Orion",
+    proofHref: "/applications/orion",
   },
   {
-    headline: "Strategy becomes real in execution.",
-    body: "A plan that lives in a deck is not a plan. We work alongside your teams to build the momentum that carries decisions from the conference room into practice.",
+    headline: "Strategy lives in execution.",
+    body: "Plans that stay in decks don't transform organizations. Vega makes strategy trackable — connecting decisions to outcomes so leaders can see what's moving and what isn't.",
+    proofLabel: "Explore Vega",
+    proofHref: "/applications/vega",
   },
   {
     headline: "Outcomes are the only measure.",
-    body: "We define success in concrete terms from the start, and we stay until those terms are met. Transformation isn't complete until it's visible in the work.",
+    body: "We define success in concrete terms from the start. Case studies are proof, not decoration — each one documents what changed and what was built.",
+    proofLabel: "See client work",
+    proofHref: "/case-studies",
   },
 ];
 
@@ -45,26 +53,31 @@ const SOFTWARE = [
   {
     slug: "orion",
     name: "Orion",
-    tagline: "Where most leaders begin.",
+    tagline: "Where every engagement begins.",
+    lens: "inside" as const,
+    lensLabel: "Internal Assessment",
     description:
-      "Orion makes the current state of your organization legible — surfacing the signals that matter and helping leadership teams align around a shared picture of reality before committing to direction.",
+      "Orion is Synozur's organizational diagnostic platform. It surfaces the signals that matter inside your organization — helping leadership teams align around a shared picture of current-state reality before committing to strategy.",
   },
   {
     slug: "vega",
     name: "Vega",
-    tagline: "Turning strategy into tracked progress.",
+    tagline: "Strategy made trackable.",
+    lens: "inside" as const,
+    lensLabel: "Internal Execution",
     description:
-      "Vega connects decisions to measurable outcomes. It gives leaders a living view of how strategic initiatives are advancing, where momentum is building, and where attention is needed.",
+      "Vega connects strategic decisions to measurable outcomes inside the organization. Leaders get a live view of how initiatives are advancing, where momentum is building, and where attention is needed — so strategy doesn't stay in the deck.",
   },
   {
     slug: "orbit",
     name: "Orbit",
-    tagline: "Relationships that sustain transformation.",
+    tagline: "The market, made legible.",
+    lens: "outside" as const,
+    lensLabel: "External Intelligence",
     description:
-      "Orbit keeps the human dimension of change visible. It helps organizations understand how trust, influence, and alignment are evolving across teams and stakeholder networks.",
+      "Orbit surfaces outside-in intelligence — market signals, competitor moves, positioning dynamics, and go-to-market context. It gives Synozur clients a clear view of the landscape their strategy must navigate, not just the terrain inside their organization.",
   },
 ];
-
 
 export default function HomeB() {
   const { data: settings } = useQuery({
@@ -72,12 +85,13 @@ export default function HomeB() {
     queryFn: () => api.getPublicSiteSettings(),
   });
 
-  const { data: workshopsData, isLoading: workshopsLoading, isError: workshopsError } = useQuery({
+  const { data: workshopsData, isLoading: workshopsLoading } = useQuery({
     queryKey: ["public-workshops"],
     queryFn: () => workshopsApi.listPublic(),
   });
-  const workshops: WorkshopDto[] = (workshopsData?.items ?? []).slice(0, 3);
-  const workshopsLoaded = !workshopsLoading && !workshopsError;
+  const allWorkshops: WorkshopDto[] = workshopsData?.items ?? [];
+  const featuredWorkshop = allWorkshops[0] ?? null;
+  const secondaryWorkshops = allWorkshops.slice(1, 3);
 
   const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
   const customVideoSrc = settings?.homeHeroVideoUrl
@@ -110,17 +124,17 @@ export default function HomeB() {
   return (
     <div className="w-full">
       <Meta
-        title="The Synozur Alliance — Strategic Transformation for Complex Organizations"
+        title="The Synozur Alliance — A System for Strategic Transformation"
         rawTitle
-        description="Synozur guides executives through complex change with strategic clarity, human-centered methods, and measurable outcomes. This is transformation built for the real world."
+        description="Synozur is The Transformation Company. Built tools, models, and methods for executives leading complex change — from organizational assessment to market intelligence to execution."
         path="/home-b"
         image="/images/hero-bg.png"
       />
 
-      {/* ── Hero ── */}
-      <section ref={heroRef} className="relative min-h-[92vh] flex items-center overflow-hidden bg-[#0B0B1A]">
+      {/* ── Hero: two-column ── */}
+      <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0B0B1A]/30 to-[#0B0B1A] z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
           {settings?.homeHeroBackgroundType === "video" ? (
             <video
               ref={videoRef}
@@ -148,29 +162,27 @@ export default function HomeB() {
           )}
         </div>
 
-        <div className="container relative z-10 mx-auto px-4 py-24 md:py-32">
-          <div className="max-w-3xl">
+        <div className="container relative z-10 mx-auto px-4 py-20 md:py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+
+            {/* Left: copy */}
             <motion.div
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, ease: "easeOut" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="lg:col-span-6"
             >
               <img
                 src={`${BASE_PATH}/images/sa-logo-horizontal-white.png`}
                 alt="The Synozur Alliance"
-                className="h-24 md:h-28 w-auto mb-12"
+                className="h-28 md:h-32 w-auto mb-10"
                 style={{ mixBlendMode: "screen" }}
               />
-              <p className="text-sm uppercase tracking-[0.25em] text-primary mb-5">
-                The Transformation Company
-              </p>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.08]">
-                A system for navigating{" "}
-                <span className="nebula-text">complexity</span> with confidence.
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.06]">
+                The <span className="nebula-text">Transformation</span> Company
               </h1>
-              <p className="text-xl md:text-2xl text-zinc-300 mb-12 max-w-2xl leading-relaxed">
-                Synozur works with executives who are leading consequential change — in organizations
-                where the stakes are high, the environment is shifting, and clarity is the rarest resource.
+              <p className="text-xl md:text-2xl text-zinc-300 mb-10 max-w-xl leading-relaxed">
+                Built tools, models, and methods for executives navigating complex change — from first assessment to measurable outcome.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link
@@ -181,19 +193,29 @@ export default function HomeB() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
                 <Link
-                  href="/about"
+                  href="/library"
                   className="inline-flex h-12 items-center justify-center rounded-md border border-white/20 bg-white/5 px-8 text-base font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
                 >
-                  Our Story
+                  Explore the Library
                 </Link>
               </div>
+            </motion.div>
+
+            {/* Right: live feed */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+              className="lg:col-span-6"
+            >
+              <FromTheFeedCarousel />
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ── Trusted by ── */}
-      <section className="py-12 bg-[hsl(240_35%_10%)] border-y border-border">
+      <section className="py-14 bg-[hsl(240_35%_10%)] border-y border-border">
         <div className="container mx-auto px-4">
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
             Trusted by
@@ -202,47 +224,54 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* ── Pillars passage ── */}
-      <section className="py-28 bg-background">
+      {/* ── Pillars: shorter + proof links ── */}
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="max-w-xl mb-20"
+            className="max-w-2xl mb-16"
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">How we work</p>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Synozur operates with a disciplined approach to change. You won't see it enumerated —
-              but you will feel it in every engagement.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+              A disciplined approach. Not a methodology deck.
+            </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
             {PILLARS.map((pillar, i) => (
               <motion.div
                 key={pillar.headline}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
+                transition={{ duration: 0.5, delay: i * 0.09 }}
+                className="flex flex-col"
               >
-                <div className="w-8 h-px bg-primary mb-6" />
-                <h3 className="text-2xl md:text-3xl font-bold mb-4 leading-snug">
+                <div className="w-8 h-px bg-primary mb-5" />
+                <h3 className="text-xl md:text-2xl font-bold mb-3 leading-snug">
                   {pillar.headline}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed">{pillar.body}</p>
+                <p className="text-muted-foreground leading-relaxed flex-1">{pillar.body}</p>
+                <Link
+                  href={pillar.proofHref}
+                  className="mt-5 inline-flex items-center gap-1.5 text-sm text-primary font-semibold hover:text-primary/80 transition-colors"
+                >
+                  {pillar.proofLabel} <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Software narrative ── */}
-      <section className="py-28 bg-[hsl(240_35%_8%)] border-y border-border">
+      {/* ── Platforms: corrected Orbit + inside/outside badges ── */}
+      <section className="py-24 bg-[hsl(240_35%_8%)] border-y border-border">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+
             <motion.div
               initial={{ opacity: 0, x: -16 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -251,48 +280,69 @@ export default function HomeB() {
               className="lg:sticky lg:top-32"
             >
               <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
-                Thinking made visible
+                Proprietary platforms
               </p>
               <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
-                Tools that operationalize your strategy — not replace it.
+                Built software, not just slides.
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-                Synozur has built software to make strategic thinking visible, trackable, and shared.
-                These are not products to procure. They are the instruments through which Synozur
-                operationalizes its advisory work.
+              <p className="text-lg text-muted-foreground leading-relaxed mb-4">
+                Synozur's three platforms make strategy operational — from the first diagnostic
+                to ongoing execution to market positioning. Each addresses a distinct view of
+                your organization's challenge.
               </p>
-              <p className="text-muted-foreground leading-relaxed">
-                Most leaders begin with Orion — because understanding the current state clearly is
-                the prerequisite for everything that follows.
-              </p>
+              <div className="flex flex-col gap-2 mt-6">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+                    <Building2 className="h-3 w-3" /> Internal
+                  </span>
+                  <span>organizational clarity and execution</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
+                    <Globe className="h-3 w-3" /> External
+                  </span>
+                  <span>market intelligence and competitive context</span>
+                </div>
+              </div>
             </motion.div>
 
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
               {SOFTWARE.map((app, i) => (
                 <motion.div
                   key={app.slug}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.12 }}
-                  className="group relative rounded-2xl border border-border/60 bg-card p-8 hover-elevate transition-all"
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="group relative rounded-2xl border border-border/60 bg-card p-7 hover-elevate transition-all"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-primary mb-1">
-                        {app.tagline}
-                      </p>
-                      <h3 className="text-2xl font-bold">{app.name}</h3>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="text-xl font-bold">{app.name}</h3>
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        app.lens === "inside"
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-secondary/10 border-secondary/20 text-secondary"
+                      }`}>
+                        {app.lens === "inside"
+                          ? <Building2 className="h-2.5 w-2.5" />
+                          : <Globe className="h-2.5 w-2.5" />
+                        }
+                        {app.lensLabel}
+                      </span>
                     </div>
                     <Link
                       href={`/applications/${app.slug}`}
-                      className="flex-shrink-0 h-9 w-9 rounded-full border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-colors"
+                      className="flex-shrink-0 h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-colors ml-3"
                       aria-label={`Learn about ${app.name}`}
                     >
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>
-                  <p className="text-muted-foreground leading-relaxed">{app.description}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
+                    {app.tagline}
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{app.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -300,76 +350,133 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* ── Workshops ── */}
-      <section className="py-28 bg-background">
+      {/* ── Proof carousel: moved up, stronger framing ── */}
+      <section className="py-24 bg-background border-b border-border">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="max-w-2xl mb-16"
+            className="mb-10"
+          >
+            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-3">
+              In practice
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold max-w-2xl mb-3">
+              Models, applications, cases, and conversations — how the system works in the real world.
+            </h2>
+            <p className="text-muted-foreground max-w-xl">
+              Synozur's IP isn't advisory opinion. It's documented thinking — built into tools, tested with clients, and refined through real engagements.
+            </p>
+          </motion.div>
+          <FromTheFeedCarousel />
+        </div>
+      </section>
+
+      {/* ── Workshops: featured hero card + secondary row ── */}
+      <section className="py-24 bg-[hsl(240_35%_8%)] border-b border-border">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="max-w-2xl mb-12"
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Workshops</p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
-              A day that can change the shape of a year.
+            <h2 className="text-3xl md:text-4xl font-bold mb-5 leading-tight">
+              One day that changes the trajectory of a year.
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Synozur workshops are designed for moments when a leadership team needs to move from
-              conversation to commitment. Facilitated intensives that produce decisions, alignment,
-              and clarity — not decks.
+              Synozur workshops are designed for leadership teams that need to move from open questions to locked decisions — fast. Not seminars. Not training. Facilitated intensives that end with clarity, commitment, and a next step.
             </p>
           </motion.div>
 
           {workshopsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex flex-col rounded-2xl border border-border/60 bg-card overflow-hidden">
-                  <Skeleton className="aspect-[16/9] w-full rounded-none" />
-                  <div className="flex flex-col flex-1 p-6 gap-3">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-5/6" />
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-6">
+              <Skeleton className="w-full rounded-2xl h-64" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Skeleton className="rounded-2xl h-40" />
+                <Skeleton className="rounded-2xl h-40" />
+              </div>
             </div>
-          ) : workshopsLoaded && workshops.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {workshops.map((workshop, i) => (
-                <motion.div
-                  key={workshop.slug}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                >
-                  <Link href={`/workshops/${workshop.slug}`} className="group block h-full">
-                    <div className="flex flex-col h-full rounded-2xl border border-border/60 bg-card overflow-hidden hover-elevate">
-                      <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-                        <img
-                          src={workshop.heroImage}
-                          alt={workshop.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      </div>
-                      <div className="flex flex-col flex-1 p-6">
-                        <h3 className="font-bold text-base leading-snug mb-2 group-hover:text-primary transition-colors">
-                          {workshop.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-                          {workshop.shortDescription}
+          ) : featuredWorkshop ? (
+            <div className="space-y-5">
+              {/* Featured workshop — dominant card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+              >
+                <Link href={`/workshops/${featuredWorkshop.slug}`} className="group block">
+                  <div className="relative rounded-2xl overflow-hidden bg-card border border-border/60 hover-elevate">
+                    <div className="relative aspect-[21/9] overflow-hidden">
+                      <img
+                        src={featuredWorkshop.heroImage}
+                        alt={featuredWorkshop.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+                      <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12">
+                        <p className="text-xs uppercase tracking-[0.2em] text-primary mb-3">
+                          Featured workshop
                         </p>
+                        <h3 className="text-2xl md:text-3xl font-bold text-white mb-3 max-w-xl leading-tight group-hover:text-primary transition-colors">
+                          {featuredWorkshop.title}
+                        </h3>
+                        <p className="text-white/70 text-base max-w-lg leading-relaxed hidden md:block">
+                          {featuredWorkshop.shortDescription}
+                        </p>
+                        <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-white group-hover:text-primary transition-colors">
+                          Explore this workshop <ArrowRight className="h-4 w-4" />
+                        </div>
                       </div>
                     </div>
-                  </Link>
-                </motion.div>
-              ))}
+                  </div>
+                </Link>
+              </motion.div>
+
+              {/* Secondary workshops */}
+              {secondaryWorkshops.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {secondaryWorkshops.map((workshop, i) => (
+                    <motion.div
+                      key={workshop.slug}
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: i * 0.08 }}
+                    >
+                      <Link href={`/workshops/${workshop.slug}`} className="group block h-full">
+                        <div className="flex h-full rounded-2xl border border-border/60 bg-card overflow-hidden hover-elevate">
+                          <div className="relative w-40 flex-shrink-0 overflow-hidden bg-muted">
+                            <img
+                              src={workshop.heroImage}
+                              alt={workshop.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
+                          </div>
+                          <div className="flex flex-col flex-1 p-5">
+                            <h3 className="font-bold text-sm leading-snug mb-2 group-hover:text-primary transition-colors">
+                              {workshop.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                              {workshop.shortDescription}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
 
-          <div className="mt-10">
+          <div className="mt-8">
             <Link
               href="/workshops"
               className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors"
@@ -380,29 +487,8 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* ── Feed carousel ── */}
-      <section className="py-28 bg-card border-y border-border">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="mb-10"
-          >
-            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-3">
-              How Synozur works in the real world
-            </p>
-            <h2 className="text-2xl md:text-3xl font-bold max-w-xl">
-              Models, applications, cases, and conversations — in practice.
-            </h2>
-          </motion.div>
-          <FromTheFeedCarousel />
-        </div>
-      </section>
-
       {/* ── Closing CTA ── */}
-      <section className="py-28 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -412,14 +498,14 @@ export default function HomeB() {
             className="max-w-2xl"
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-5">
-              Ready when you are
+              Ready to begin
             </p>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-8 leading-tight">
-              Every engagement begins with a conversation.
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-7 leading-tight">
+              Every engagement starts with a real conversation.
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed mb-10">
-              If you're navigating a consequential transition — a market shift, an AI adoption
-              challenge, a leadership reorganization — we'd like to understand it with you.
+              If you're navigating a market shift, an AI transformation, or a leadership
+              reorganization — we'd like to understand it with you. Not pitch to you.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
