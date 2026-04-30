@@ -118,7 +118,7 @@ export function FromTheFeedCarousel() {
         <CarouselContent>
           {items.map((item) => (
             <CarouselItem key={item.id} className="basis-full">
-              <CollateralCard item={item} variant="carousel" />
+              <CollateralCard item={item} variant="carousel" imageLoading="eager" />
             </CarouselItem>
           ))}
         </CarouselContent>
@@ -297,6 +297,7 @@ export default function Home() {
                 src={heroBg}
                 alt="Cosmic nebula background"
                 className="w-full h-full object-cover"
+                fetchPriority="high"
               />
             </video>
           ) : (
@@ -304,6 +305,7 @@ export default function Home() {
               src={heroBg}
               alt="Cosmic nebula background"
               className="w-full h-full object-cover"
+              fetchPriority="high"
               data-testid="img-home-hero-bg"
             />
           )}
@@ -322,6 +324,7 @@ export default function Home() {
                 alt="The Synozur Alliance"
                 className="h-28 md:h-32 w-auto mb-10"
                 style={{ mixBlendMode: "screen" }}
+                fetchPriority="high"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
                 The <span className="nebula-text">Transformation</span> Company
@@ -388,6 +391,8 @@ export default function Home() {
                 src={editorial}
                 alt="Editorial: leadership team in a modern conference room"
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
                 data-testid="img-home-editorial"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent z-10 opacity-30 mix-blend-overlay" />
@@ -508,6 +513,8 @@ export default function Home() {
                         src={workshop.heroImage}
                         alt={workshop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <span className="absolute bottom-3 left-3 inline-block py-0.5 px-2.5 rounded-full bg-white/10 border border-white/25 text-white text-[10px] tracking-[0.15em] font-semibold backdrop-blur-md">

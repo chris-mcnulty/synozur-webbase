@@ -18,6 +18,11 @@ interface CollateralCardProps {
    * library/index grids use a more standard ratio.
    */
   variant?: "carousel" | "grid";
+  /**
+   * Native `loading` attribute for the hero image. Defaults to "lazy".
+   * Pass "eager" when the card is guaranteed above the fold (e.g. hero carousel).
+   */
+  imageLoading?: "lazy" | "eager";
 }
 
 // For events the `publishedAt` field carries the event start date (set by
@@ -46,7 +51,7 @@ function dateLabel(item: Collateral): string {
   return item.type === "event" ? "Event" : "Published";
 }
 
-export function CollateralCard({ item, variant = "grid" }: CollateralCardProps) {
+export function CollateralCard({ item, variant = "grid", imageLoading = "lazy" }: CollateralCardProps) {
   // On md+ screens the carousel sits beside the hero headline inside a
   // min-h-[90vh] section. A pure 3/4 portrait aspect makes the card taller
   // than the viewport, pushing the title/badge overlay below the fold. Cap
@@ -75,7 +80,7 @@ export function CollateralCard({ item, variant = "grid" }: CollateralCardProps) 
         srcSet={heroSrcSet ?? undefined}
         sizes={heroSizes}
         alt={item.title}
-        loading="lazy"
+        loading={imageLoading}
         decoding="async"
         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />

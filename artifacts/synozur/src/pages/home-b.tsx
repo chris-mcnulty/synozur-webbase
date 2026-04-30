@@ -155,10 +155,10 @@ export default function HomeB() {
                   </>
                 )
               )}
-              <img src={heroBg} alt="" className="w-full h-full object-cover" />
+              <img src={heroBg} alt="" className="w-full h-full object-cover" fetchPriority="high" />
             </video>
           ) : (
-            <img src={heroBg} alt="" className="w-full h-full object-cover" />
+            <img src={heroBg} alt="" className="w-full h-full object-cover" fetchPriority="high" />
           )}
         </div>
 
@@ -177,6 +177,7 @@ export default function HomeB() {
                 alt="The Synozur Alliance"
                 className="h-28 md:h-32 w-auto mb-10"
                 style={{ mixBlendMode: "screen" }}
+                fetchPriority="high"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.06]">
                 The <span className="nebula-text">Transformation</span> Company
@@ -421,6 +422,8 @@ export default function HomeB() {
                         src={featuredWorkshop.heroImage}
                         alt={featuredWorkshop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
                       <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12">
@@ -460,6 +463,8 @@ export default function HomeB() {
                               src={workshop.heroImage}
                               alt={workshop.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                              loading="lazy"
+                              decoding="async"
                             />
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
                           </div>
