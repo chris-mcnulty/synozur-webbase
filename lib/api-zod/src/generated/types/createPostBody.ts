@@ -24,4 +24,5 @@ export interface CreatePostBody {
   featuredRank?: number | null;
   categoryIds?: string[];
   tagIds?: string[];
+  linkedSolutionId?: string | null;
 }

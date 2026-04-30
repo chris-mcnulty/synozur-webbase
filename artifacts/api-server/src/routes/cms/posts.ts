@@ -49,6 +49,7 @@ const CreateBody = z.object({
   featuredRank: z.number().int().nullish(),
   categoryIds: z.array(z.string().uuid()).optional(),
   tagIds: z.array(z.string().uuid()).optional(),
+  linkedSolutionId: z.string().uuid().nullish(),
   authorId: z.string().uuid().optional(),
 });
 
@@ -223,6 +224,7 @@ router.post("/cms/posts", requireAuth, async (req, res) => {
       readingTimeMin: data.readingTimeMin ?? null,
       featured: data.featured ?? false,
       featuredRank: data.featuredRank ?? null,
+      linkedSolutionId: data.linkedSolutionId ?? null,
       authorId: hasRole(user, "admin", "editor") && data.authorId ? data.authorId : user.id,
       status: "draft",
     })
@@ -294,6 +296,7 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
   if (d.readingTimeMin !== undefined) updates.readingTimeMin = d.readingTimeMin ?? null;
   if (d.featured !== undefined) updates.featured = d.featured;
   if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank ?? null;
+  if (d.linkedSolutionId !== undefined) updates.linkedSolutionId = d.linkedSolutionId ?? null;
   if (d.authorId && hasRole(user, "admin", "editor")) updates.authorId = d.authorId;
 
   const [updated] = await db

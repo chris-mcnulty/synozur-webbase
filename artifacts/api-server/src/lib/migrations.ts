@@ -1078,6 +1078,18 @@ export async function runMigrations(): Promise<void> {
         ON polaris_episodes (episode_number);
     `);
 
+    // 34. Add linked_solution_id to posts so editors can explicitly pin a post
+    //     to a solution; syncCollateral uses this to set collateral.solution_id.
+    await db.execute(sql`
+      ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS linked_solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_posts_linked_solution_id
+        ON posts (linked_solution_id)
+        WHERE linked_solution_id IS NOT NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

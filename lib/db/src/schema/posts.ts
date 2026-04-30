@@ -13,6 +13,7 @@ import {
 import { relations } from "drizzle-orm";
 import { usersTable } from "./users";
 import { mediaTable } from "./media";
+import { solutionsTable } from "./services";
 
 export const POST_STATUSES = ["draft", "scheduled", "published", "archived"] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
@@ -47,6 +48,9 @@ export const postsTable = pgTable(
     readingTimeMin: integer("reading_time_min"),
     featured: boolean("featured").notNull().default(false),
     featuredRank: integer("featured_rank"),
+    linkedSolutionId: uuid("linked_solution_id").references(() => solutionsTable.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

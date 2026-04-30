@@ -3368,6 +3368,10 @@ components:
         featuredRank:
           type: integer
           nullable: true
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
         categories:
           type: array
           items:
@@ -3458,6 +3462,10 @@ components:
           items:
             type: string
             format: uuid
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
     UpdatePostBody:
       type: object
       properties:
@@ -3516,6 +3524,10 @@ components:
           items:
             type: string
             format: uuid
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
     PostRevision:
       type: object
       required:

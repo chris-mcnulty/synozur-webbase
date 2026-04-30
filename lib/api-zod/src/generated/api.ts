@@ -84,6 +84,7 @@ export const ListCmsPostsResponse = zod.object({
       readingTimeMin: zod.number().nullish(),
       featured: zod.boolean().optional(),
       featuredRank: zod.number().nullish(),
+      linkedSolutionId: zod.string().uuid().nullish(),
       categories: zod
         .array(
           zod.object({
@@ -133,6 +134,7 @@ export const CreateCmsPostBody = zod.object({
   featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).optional(),
   tagIds: zod.array(zod.string().uuid()).optional(),
+  linkedSolutionId: zod.string().uuid().nullish(),
 });
 
 export const GetCmsPostParams = zod.object({
@@ -166,6 +168,7 @@ export const GetCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -210,6 +213,7 @@ export const UpdateCmsPostBody = zod.object({
   featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).nullish(),
   tagIds: zod.array(zod.string().uuid()).nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
 });
 
 export const UpdateCmsPostResponse = zod.object({
@@ -239,6 +243,7 @@ export const UpdateCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -297,6 +302,7 @@ export const PublishCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -355,6 +361,7 @@ export const ScheduleCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -409,6 +416,7 @@ export const ArchiveCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -526,6 +534,7 @@ export const RestoreCmsPostRevisionResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({

@@ -250,6 +250,7 @@ export interface Post {
   readingTimeMin?: number | null;
   featured?: boolean;
   featuredRank?: number | null;
+  linkedSolutionId?: string | null;
   categories?: Category[];
   tags?: Tag[];
   createdAt: string;
@@ -281,6 +282,7 @@ export interface CreatePostBody {
   featuredRank?: number | null;
   categoryIds?: string[];
   tagIds?: string[];
+  linkedSolutionId?: string | null;
 }
 
 export interface UpdatePostBody {
@@ -300,6 +302,7 @@ export interface UpdatePostBody {
   featuredRank?: number | null;
   categoryIds?: string[] | null;
   tagIds?: string[] | null;
+  linkedSolutionId?: string | null;
 }
 
 export interface PostRevision {

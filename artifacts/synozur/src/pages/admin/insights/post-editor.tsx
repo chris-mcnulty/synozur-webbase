@@ -51,6 +51,7 @@ import {
   useListCmsCategories,
   useListCmsTags,
   useCreateCmsTag,
+  useCmsListSolutions,
   useListCmsPostRevisions,
   useRestoreCmsPostRevision,
   getListCmsPostRevisionsQueryKey,
@@ -104,6 +105,7 @@ interface FormState {
   featuredRank: string;
   categoryIds: string[];
   tagIds: string[];
+  linkedSolutionId: string | null;
   authorId: string;
 }
 
@@ -127,6 +129,7 @@ const EMPTY: FormState = {
   featuredRank: "",
   categoryIds: [],
   tagIds: [],
+  linkedSolutionId: null,
   authorId: "",
 };
 
@@ -151,6 +154,7 @@ function fromPost(p: Post): FormState {
     featuredRank: p.featuredRank != null ? String(p.featuredRank) : "",
     categoryIds: (p.categories ?? []).map((c) => c.id),
     tagIds: (p.tags ?? []).map((t) => t.id),
+    linkedSolutionId: p.linkedSolutionId ?? null,
     authorId: p.author?.id ?? "",
   };
 }
@@ -178,6 +182,7 @@ function toBody(state: FormState): CreatePostBody & { authorId?: string } {
         : null,
     categoryIds: state.categoryIds,
     tagIds: state.tagIds,
+    linkedSolutionId: state.linkedSolutionId,
     authorId: state.authorId || undefined,
   };
 }
@@ -206,6 +211,7 @@ export default function PostEditor({ id }: Props) {
 
   const cats = useListCmsCategories();
   const tags = useListCmsTags();
+  const { data: solutionsData } = useCmsListSolutions({});
   const canManageAuthor = !!access?.isEditorOrAbove;
   const { data: users } = useQuery({
     queryKey: ["/api/cms/users"],
@@ -675,6 +681,32 @@ export default function PostEditor({ id }: Props) {
                 />
               </div>
             )}
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <Label htmlFor="linkedSolutionId" className="text-sm font-medium">
+              Linked solution
+            </Label>
+            <select
+              id="linkedSolutionId"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.linkedSolutionId ?? ""}
+              onChange={(e) =>
+                update({ linkedSolutionId: e.target.value || null })
+              }
+              data-testid="select-linked-solution"
+            >
+              <option value="">— auto-detect from tags —</option>
+              {(solutionsData?.items ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Explicitly pins this post to a solution in the collateral library.
+              Leave blank to auto-detect from tag slugs.
+            </p>
           </Card>
 
           <Card className="p-4 space-y-3">
