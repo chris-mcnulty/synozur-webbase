@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, ExternalLink, Download, RefreshCw } from "lucide-react";
@@ -37,6 +37,25 @@ export default function AdminPolarisEpisodesList() {
     queryFn: () => api.adminListPolarisEpisodes(),
   });
   const items: PolarisEpisodeDto[] = listQ.data?.items ?? [];
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const services = servicesQ.data?.items ?? [];
+
+  const serviceById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of services) m.set(s.id, s.title);
+    return m;
+  }, [services]);
+  const solutionById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of services) {
+      for (const sol of s.solutions) m.set(sol.id, sol.title);
+    }
+    return m;
+  }, [services]);
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updatePolarisEpisode>[1] }) =>
@@ -124,6 +143,8 @@ export default function AdminPolarisEpisodesList() {
             <TableRow>
               <TableHead className="w-16">#</TableHead>
               <TableHead>Title</TableHead>
+              <TableHead className="w-32">Service</TableHead>
+              <TableHead className="w-40">Solution</TableHead>
               <TableHead className="w-28">Status</TableHead>
               <TableHead className="w-36">Published</TableHead>
               <TableHead className="w-20">Active</TableHead>
@@ -133,13 +154,13 @@ export default function AdminPolarisEpisodesList() {
           <TableBody>
             {listQ.isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No Polaris episodes yet.
                 </TableCell>
               </TableRow>
@@ -156,6 +177,12 @@ export default function AdminPolarisEpisodesList() {
                     <div className="text-xs text-muted-foreground font-mono">
                       /polaris/{e.slug}
                     </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {e.serviceId ? (serviceById.get(e.serviceId) ?? "—") : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {e.solutionId ? (solutionById.get(e.solutionId) ?? "—") : "—"}
                   </TableCell>
                   <TableCell className="text-sm">
                     {STATUS_LABELS[e.status] ?? e.status}

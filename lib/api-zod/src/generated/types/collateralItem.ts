@@ -32,6 +32,15 @@ export interface CollateralItem {
   downloadUrl?: string | null;
   /** Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped. */
   resources?: CollateralResource[];
+  /** @nullable */
+  serviceId?: string | null;
+  /** @nullable */
+  solutionId?: string | null;
+  /**
+   * Opaque reference to the source record that was synced into this collateral item (e.g. "polaris_episode:<uuid>", "white_paper:<uuid>"). Present on synced rows; null on manually created items.
+   * @nullable
+   */
+  sourceId?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;

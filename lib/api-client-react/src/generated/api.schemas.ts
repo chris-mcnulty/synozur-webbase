@@ -1505,6 +1505,15 @@ export interface CollateralItem {
   downloadUrl?: string | null;
   /** Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped. */
   resources?: CollateralResource[];
+  /** @nullable */
+  serviceId?: string | null;
+  /** @nullable */
+  solutionId?: string | null;
+  /**
+   * Opaque reference to the source record that was synced into this collateral item (e.g. "polaris_episode:<uuid>", "white_paper:<uuid>"). Present on synced rows; null on manually created items.
+   * @nullable
+   */
+  sourceId?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1895,6 +1904,126 @@ export interface PublishBlockResolveBody {
 }
 
 /**
+ * Only present on CMS responses.
+ */
+export type PolarisLinkedPostStatus =
+  (typeof PolarisLinkedPostStatus)[keyof typeof PolarisLinkedPostStatus];
+
+export const PolarisLinkedPostStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.
+ */
+export interface PolarisLinkedPost {
+  id: string;
+  slug: string;
+  title: string;
+  /** @nullable */
+  excerpt: string | null;
+  /** @nullable */
+  heroImageUrl: string | null;
+  /** @nullable */
+  publishedAt: string | null;
+  /** Only present on CMS responses. */
+  status?: PolarisLinkedPostStatus;
+}
+
+export type PolarisLinkablePostStatus =
+  (typeof PolarisLinkablePostStatus)[keyof typeof PolarisLinkablePostStatus];
+
+export const PolarisLinkablePostStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * Slim post shape returned by the post-picker endpoint so editors can search for and link a related blog post to a Polaris episode.
+ */
+export interface PolarisLinkablePost {
+  id: string;
+  slug: string;
+  title: string;
+  /** @nullable */
+  excerpt: string | null;
+  /** @nullable */
+  publishedAt: string | null;
+  status: PolarisLinkablePostStatus;
+}
+
+export type PolarisEpisodeStatus =
+  (typeof PolarisEpisodeStatus)[keyof typeof PolarisEpisodeStatus];
+
+export const PolarisEpisodeStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.
+ */
+export interface PolarisEpisode {
+  id: string;
+  slug: string;
+  title: string;
+  episodeNumber: number;
+  summary: string;
+  /** @nullable */
+  guestName?: string | null;
+  audioUrl: string;
+  /** @nullable */
+  appleUrl?: string | null;
+  /** @nullable */
+  spotifyUrl?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  transcriptHtml?: string | null;
+  artworkUrl: string;
+  /** @nullable */
+  serviceId?: string | null;
+  /** @nullable */
+  solutionId?: string | null;
+  /** @nullable */
+  linkedPostId: string | null;
+  linkedPost: PolarisLinkedPost | null;
+  status: PolarisEpisodeStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  featured: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /** @nullable */
+  ogImage?: string | null;
+  active: boolean;
+  /** @nullable */
+  sourceId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolarisEpisodeListResponse {
+  total: number;
+  page: number;
+  pageSize: number;
+  items: PolarisEpisode[];
+}
+
+/**
  * Unauthorized
  */
 export type UnauthorizedResponse = ErrorEnvelope;
@@ -2123,4 +2252,31 @@ export type CmsGetSiteHealthParams = {
    * @maximum 90
    */
   windowDays?: number;
+};
+
+export type ListPolarisEpisodesParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ListCmsPolarisEpisodes200 = {
+  items: PolarisEpisode[];
+};
+
+export type ListPolarisLinkablePostsParams = {
+  /**
+   * Optional title search string.
+   */
+  q?: string;
+};
+
+export type ListPolarisLinkablePosts200 = {
+  items: PolarisLinkablePost[];
 };

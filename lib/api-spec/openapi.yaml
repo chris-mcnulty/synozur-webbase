@@ -5602,6 +5602,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollateralResource'
+        serviceId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        solutionId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        sourceId:
+          description: >-
+            Opaque reference to the source record that was synced into this
+            collateral item (e.g. "polaris_episode:<uuid>",
+            "white_paper:<uuid>"). Present on synced rows; null on manually
+            created items.
+          type:
+            - string
+            - 'null'
         active:
           type: boolean
         createdAt:
