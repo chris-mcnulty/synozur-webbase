@@ -647,7 +647,7 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
       if (computedChallenge !== codeRow.codeChallenge) {
         res
           .status(400)
-          .json({ error: "invalid_grant", error_description: "PKCE verification failed" });
+          .json({ error: "invalid_grant", error_description: "code_verifier does not match code_challenge" });
         return;
       }
     }
