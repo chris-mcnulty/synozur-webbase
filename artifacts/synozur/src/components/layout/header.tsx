@@ -20,6 +20,12 @@ function isExternal(href: string) {
   return /^https?:\/\//.test(href);
 }
 
+function isLinkActive(href: string, location: string): boolean {
+  if (href === "/" || href === "") return location === "/" || location === "";
+  if (isExternal(href)) return false;
+  return location === href || location.startsWith(href + "/");
+}
+
 function NavLinkItem({
   link,
   className,
@@ -29,6 +35,10 @@ function NavLinkItem({
   className: string;
   onClick?: () => void;
 }) {
+  const [location] = useLocation();
+  const active = isLinkActive(link.href, location);
+  const activeClass = active ? " text-[#E60CB3] dark:text-primary font-semibold" : "";
+
   if (isExternal(link.href)) {
     return (
       <a
@@ -43,7 +53,7 @@ function NavLinkItem({
     );
   }
   return (
-    <Link href={link.href} className={className} onClick={onClick}>
+    <Link href={link.href} className={`${className}${activeClass}`} onClick={onClick}>
       {link.label}
     </Link>
   );
@@ -273,10 +283,20 @@ export function Header() {
 
         {/* ── Desktop Nav (centered) ── */}
         <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
-          {navGroups.map((group) => (
+          {navGroups.map((group) => {
+            const allGroupLinks: string[] = [
+              ...group.links.map((l) => l.href),
+              ...(group.nested ?? []).flatMap((s) => [s.href, ...s.children.map((c) => c.href)]),
+            ];
+            const isGroupActive = allGroupLinks.some((href) => isLinkActive(href, location));
+            return (
             <div key={group.title} className="relative group">
               <button
-                className="text-[21px] font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                className={`text-[21px] font-medium transition-colors py-2 ${
+                  isGroupActive
+                    ? "text-[#E60CB3] dark:text-primary"
+                    : "text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
+                }`}
                 aria-haspopup="true"
               >
                 {group.title}
@@ -291,7 +311,7 @@ export function Header() {
                     <NavLinkItem
                       key={link.label}
                       link={link}
-                      className="text-sm text-popover-foreground/80 hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
+                      className="text-[21px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
                     />
                   ))}
                   {group.nested && group.nested.length > 0 && (
@@ -305,7 +325,7 @@ export function Header() {
                           )}
                           <Link
                             href={section.href}
-                            className="block text-sm font-semibold text-popover-foreground hover:text-primary px-3 py-1 rounded-md"
+                            className={`block text-[21px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary ${isLinkActive(section.href, location) ? "text-[#E60CB3] dark:text-primary" : "text-popover-foreground"}`}
                           >
                             {section.label}
                           </Link>
@@ -315,7 +335,7 @@ export function Header() {
                                 <li key={c.href}>
                                   <Link
                                     href={c.href}
-                                    className="block text-xs text-popover-foreground/70 hover:text-primary hover:bg-muted/40 px-3 py-1 rounded-md"
+                                    className={`block text-[18px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 ${isLinkActive(c.href, location) ? "text-[#E60CB3] dark:text-primary font-semibold" : "text-popover-foreground/70"}`}
                                   >
                                     {c.label}
                                   </Link>
@@ -330,7 +350,7 @@ export function Header() {
                 </div>
               </div>
             </div>
-          ))}
+          ); })}
         </nav>
 
         {/* ── Right-side controls (desktop + mobile share this group) ── */}
