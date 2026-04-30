@@ -276,7 +276,7 @@ export function Header() {
           {navGroups.map((group) => (
             <div key={group.title} className="relative group">
               <button
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                className="text-[21px] font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
                 aria-haspopup="true"
               >
                 {group.title}
