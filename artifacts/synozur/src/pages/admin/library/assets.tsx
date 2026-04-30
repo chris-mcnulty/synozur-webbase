@@ -29,6 +29,7 @@ import { AssetCategoriesModal } from "@/components/admin/AssetCategoriesModal";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { formatBytes } from "@/lib/asset-kind";
+import { resolveStoragePath, withWidth } from "@/lib/media-url";
 import {
   useListAssetCategories,
   useListLibraryAssets,
@@ -46,30 +47,12 @@ const ANY_CATEGORY = "__any__";
 const NONE_CATEGORY = "__none__";
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-// URLs the api-server can resize on the fly (sharp pipeline).
-const RESIZABLE_PATH_RE = /\/api\/storage\/(?:public-)?objects\//i;
-
-function withWidth(resolvedUrl: string, width: number | undefined): string {
-  if (!width || width <= 0) return resolvedUrl;
-  if (!RESIZABLE_PATH_RE.test(resolvedUrl)) return resolvedUrl;
-  const w = Math.max(1, Math.round(width));
-  const hashIdx = resolvedUrl.indexOf("#");
-  const hash = hashIdx >= 0 ? resolvedUrl.slice(hashIdx) : "";
-  const noHash = hashIdx >= 0 ? resolvedUrl.slice(0, hashIdx) : resolvedUrl;
-  const qIdx = noHash.indexOf("?");
-  const base = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash;
-  const params = new URLSearchParams(qIdx >= 0 ? noHash.slice(qIdx + 1) : "");
-  params.set("w", String(w));
-  const qs = params.toString();
-  return qs ? `${base}?${qs}${hash}` : `${base}${hash}`;
-}
-
 function itemUrl(item: LibraryAssetItem, options?: { width?: number }): string {
   let resolved = "";
   if (item.publicUrl) {
-    resolved = item.publicUrl.startsWith("http")
-      ? item.publicUrl
-      : `${BASE_PATH}${item.publicUrl}`;
+    // Normalize legacy `/objects/...` publicUrl values so `?w=` resizing
+    // applies (and the URL actually resolves).
+    resolved = resolveStoragePath(item.publicUrl);
   } else if (item.storageKey.startsWith("http")) {
     resolved = item.storageKey;
   } else {

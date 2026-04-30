@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-client-react";
 import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
+import { resolveStoragePath, withWidth } from "@/lib/media-url";
 import {
   type AssetKind,
   isDocumentMime,
@@ -35,24 +36,6 @@ import {
 } from "@/lib/asset-kind";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-
-// URLs the api-server can resize on the fly (sharp pipeline).
-const RESIZABLE_PATH_RE = /\/api\/storage\/(?:public-)?objects\//i;
-
-function withWidth(resolvedUrl: string, width: number | undefined): string {
-  if (!width || width <= 0) return resolvedUrl;
-  if (!RESIZABLE_PATH_RE.test(resolvedUrl)) return resolvedUrl;
-  const w = Math.max(1, Math.round(width));
-  const hashIdx = resolvedUrl.indexOf("#");
-  const hash = hashIdx >= 0 ? resolvedUrl.slice(hashIdx) : "";
-  const noHash = hashIdx >= 0 ? resolvedUrl.slice(0, hashIdx) : resolvedUrl;
-  const qIdx = noHash.indexOf("?");
-  const base = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash;
-  const params = new URLSearchParams(qIdx >= 0 ? noHash.slice(qIdx + 1) : "");
-  params.set("w", String(w));
-  const qs = params.toString();
-  return qs ? `${base}?${qs}${hash}` : `${base}${hash}`;
-}
 
 // Per-kind upload caps. Mirrors AssetLibraryModal so that swapping pickers
 // doesn't regress upload limits — videos in particular need a much larger
@@ -68,6 +51,11 @@ const DEFAULT_MAX_BYTES = IMAGE_MAX_BYTES;
 // `options.width` requests a sharp-resized variant from the api-server.
 // External URLs and Vite-served `/images/...` paths are not resizable, so
 // the parameter is dropped silently for those.
+//
+// String inputs and `publicUrl` values that arrive in the legacy
+// `/objects/...` shape are normalized to `/api/storage/objects/...`
+// (the same mapping used by `resolveMediaUrl`) so resize applies and
+// the URL actually resolves.
 export function mediaUrl(
   m: string | { storageKey: string | null; publicUrl?: string | null },
   options?: { width?: number },
@@ -75,11 +63,9 @@ export function mediaUrl(
   let resolved = "";
   if (typeof m === "string") {
     if (!m) return "";
-    resolved = m.startsWith("http") ? m : `${BASE_PATH}${m}`;
+    resolved = resolveStoragePath(m);
   } else if (m.publicUrl) {
-    resolved = m.publicUrl.startsWith("http")
-      ? m.publicUrl
-      : `${BASE_PATH}${m.publicUrl}`;
+    resolved = resolveStoragePath(m.publicUrl);
   } else if (m.storageKey) {
     resolved = m.storageKey.startsWith("http")
       ? m.storageKey

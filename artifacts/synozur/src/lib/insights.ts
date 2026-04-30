@@ -1,40 +1,6 @@
 import { useListInsights, useGetInsight } from "@workspace/api-client-react";
 import type { ListInsightsParams } from "@workspace/api-client-react";
-
-const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-
-// Matches URLs the api-server can resize on the fly (the storage routes that
-// flow through sharp). External hosts and Vite-served `/images/...` paths are
-// excluded — adding `?w=` to them would either be ignored or break caching.
-const RESIZABLE_PATH_RE = /\/api\/storage\/(?:public-)?objects\//i;
-
-function isResizableMediaUrl(url: string): boolean {
-  return RESIZABLE_PATH_RE.test(url);
-}
-
-function appendWidthQuery(resolvedUrl: string, width: number): string {
-  if (!isResizableMediaUrl(resolvedUrl)) return resolvedUrl;
-  const w = Math.max(1, Math.round(width));
-  // Split off any existing query/hash so re-sizing an already-resolved URL
-  // (e.g. one that already carries `?w=`) doesn't leave dangling separators.
-  const hashIdx = resolvedUrl.indexOf("#");
-  const hash = hashIdx >= 0 ? resolvedUrl.slice(hashIdx) : "";
-  const noHash = hashIdx >= 0 ? resolvedUrl.slice(0, hashIdx) : resolvedUrl;
-  const qIdx = noHash.indexOf("?");
-  const base = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash;
-  const search = qIdx >= 0 ? noHash.slice(qIdx + 1) : "";
-  const params = new URLSearchParams(search);
-  params.set("w", String(w));
-  const qs = params.toString();
-  return qs ? `${base}?${qs}${hash}` : `${base}${hash}`;
-}
-
-function toAbsolutePath(url: string): string {
-  if (/^https?:\/\//i.test(url)) return url;
-  if (url.startsWith("/objects/")) return `${BASE_PATH}/api/storage${url}`;
-  if (url.startsWith("/")) return `${BASE_PATH}${url}`;
-  return url;
-}
+import { isResizableMediaUrl, resolveStoragePath, withWidth } from "@/lib/media-url";
 
 export interface ResolveMediaOptions {
   /** Request a server-resized variant. Ignored for non-resizable paths. */
@@ -55,11 +21,8 @@ export function resolveMediaUrl(
   options?: ResolveMediaOptions,
 ): string | null {
   if (!url) return null;
-  const resolved = toAbsolutePath(url);
-  if (options?.width && options.width > 0) {
-    return appendWidthQuery(resolved, options.width);
-  }
-  return resolved;
+  const resolved = resolveStoragePath(url);
+  return withWidth(resolved, options?.width);
 }
 
 /**
@@ -72,7 +35,7 @@ export function buildMediaSrcSet(
   widths: readonly number[],
 ): string | null {
   if (!url || widths.length === 0) return null;
-  const resolved = toAbsolutePath(url);
+  const resolved = resolveStoragePath(url);
   if (!isResizableMediaUrl(resolved)) return null;
   const seen = new Set<number>();
   const parts: string[] = [];
@@ -80,7 +43,7 @@ export function buildMediaSrcSet(
     const rounded = Math.max(1, Math.round(w));
     if (seen.has(rounded)) continue;
     seen.add(rounded);
-    parts.push(`${appendWidthQuery(resolved, rounded)} ${rounded}w`);
+    parts.push(`${withWidth(resolved, rounded)} ${rounded}w`);
   }
   return parts.join(", ");
 }
