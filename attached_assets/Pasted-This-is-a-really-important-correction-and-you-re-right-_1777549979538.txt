@@ -1,0 +1,94 @@
+This is a really important correction, and you’re right to call it out.
+You’re not trying to market the math.  You’re trying to express the underlying system behind the math.
+Based on the MPF and the MPF 2026 Proposal you authored, the 4×4×4×4 strategy is an internal organizing discipline, not a headline framework for customers. The documents themselves emphasize clarity, empathy, and outcomes over explicit structural exposition 12.
+So the homepage should embody the structure, not teach it.
+Below is a revised Replit agent prompt that reflects this nuance: it captures the essence of the four pillars, software, workshops, and customers without forcing “fourness” into the messaging.
+
+✅ REVISED PROMPT FOR THE REPLIT AGENT
+(Essence‑driven, not numerology‑driven)
+You are constructing the Synozur home page.
+
+Context:
+- Synozur is positioned as “The Transformation Company.”
+- Internally, Synozur operates with a disciplined strategy across:
+  - Core transformation pillars
+  - Proprietary software platforms
+  - High‑impact workshops
+  - Clearly defined ideal customer profiles
+- This structure should be FELT in the experience, not explained or enumerated.
+
+Goal:
+Ensure the home page communicates strategic coherence, depth, and confidence
+— without exposing internal frameworks or forcing numeric symmetry.
+
+Guiding principle:
+Do NOT explain the 4×4×4×4 strategy.
+DO express its underlying logic:
+clarity → assessment → action → outcomes.
+
+Primary implementation guidance:
+
+1. Pillars should be implied through language, not listed as “four”
+   - Use natural language that signals:
+     - Strategic clarity
+     - Human‑centered change
+     - Technology as an enabler
+     - Measurable outcomes
+   - Avoid explicit counts, diagrams, or “our four pillars” copy.
+   - The visitor should intuit the structure without being taught it.
+
+2. Software should appear as enabling systems, not products
+   - Vega, Orion, and Orbit should be presented as:
+     - Ways Synozur operationalizes thinking
+     - Tools that guide leaders, not things to buy
+   - Do not introduce them as a “suite” or list them numerically.
+   - Orion should quietly feel like a natural starting point.
+
+3. Workshops should signal momentum, not transactions
+   - Workshops should feel like:
+     - Moments of alignment
+     - Accelerators of clarity
+     - Safe entry points into transformation
+   - Avoid framing workshops as SKUs or offers.
+   - Use language that emphasizes outcomes and decisions, not duration or format.
+
+4. Ideal customers should recognize themselves without being named
+   - Write for:
+     - Executives leading complex change
+     - Organizations navigating AI, scale, or market shifts
+   - Do not enumerate industries or personas unless already present.
+   - The copy should say “this is for leaders like me” without stating it.
+
+5. The carousel should function as evidence of coherence
+   - The carousel already contains:
+     - Models (how Synozur thinks)
+     - Applications (how Synozur enables)
+     - Case studies (how Synozur proves)
+     - Content (how Synozur teaches)
+   - Add only light framing so visitors understand:
+     “This is how Synozur works in the real world.”
+   - Do not describe the carousel as a framework, library, or feed.
+
+6. Maintain MPF tone at all times
+   - Calm, confident, advisory
+   - Human‑centered and empathetic
+   - No hype, no urgency language, no over‑structuring
+   - Avoid explicit marketing constructs (funnels, stages, counts)
+
+Success criteria:
+- A first‑time executive visitor should feel:
+  “This firm understands complexity and has a system for navigating it.”
+- A returning visitor should quickly find proof, insight, or a way to engage.
+- The experience should feel intentional, not explained.
+
+Why this is the right framing
+It aligns with how the MPF explicitly advises against over‑structuring external messaging 2 
+It keeps the homepage human‑legible, not consultant‑legible 
+It allows the 4×4×4×4 strategy to:
+Govern decisions 
+Shape balance 
+Maintain coherence  without becoming copy 
+In short:  The structure should be discoverable, not declarative.
+If you want next, I can:
+Translate this into acceptance criteria for design/code review 
+Or help you decide where the 4×4×4×4 should surface explicitly (e.g., sales decks, workshops, partner conversations) 
