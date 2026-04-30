@@ -37,7 +37,7 @@ import { LogoRotator } from "@/components/logo-rotator";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function FromTheFeedCarousel() {
+export function FromTheFeedCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
   const [current, setCurrent] = useState(0);
   const [items, setItems] = useState<Collateral[] | null>(null);

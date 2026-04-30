@@ -5,20 +5,11 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
-import {
-  Carousel,
-  CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import { fetchFeatured, type Collateral } from "@/data/collateral";
-import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FromTheFeedCarousel } from "@/pages/home";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -74,101 +65,6 @@ const SOFTWARE = [
   },
 ];
 
-function FeedCarousel() {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
-  const [current, setCurrent] = useState(0);
-  const [items, setItems] = useState<Collateral[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchFeatured()
-      .then((res) => { if (!cancelled) setItems(res); })
-      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load"); });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (!carouselApi) return;
-    setCurrent(carouselApi.selectedScrollSnap());
-    const onSelect = () => setCurrent(carouselApi.selectedScrollSnap());
-    carouselApi.on("select", onSelect);
-    const id = window.setInterval(() => carouselApi.scrollNext(), 6000);
-    return () => {
-      carouselApi.off("select", onSelect);
-      window.clearInterval(id);
-    };
-  }, [carouselApi]);
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
-        Couldn't load the feed right now.
-      </div>
-    );
-  }
-
-  if (!items) {
-    return <CollateralCardSkeleton variant="carousel" />;
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border/60 bg-card p-8 text-sm text-muted-foreground">
-        New stories coming soon.
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="flex items-end justify-between mb-6 gap-4">
-        <div className="hidden md:flex gap-2">
-          <button
-            type="button"
-            onClick={() => carouselApi?.scrollPrev()}
-            aria-label="Previous slide"
-            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-          >
-            <ArrowRight className="h-4 w-4 rotate-180" />
-          </button>
-          <button
-            type="button"
-            onClick={() => carouselApi?.scrollNext()}
-            aria-label="Next slide"
-            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-          >
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <Carousel setApi={setCarouselApi} opts={{ loop: true, align: "start" }} className="w-full">
-        <CarouselContent>
-          {items.map((item) => (
-            <CarouselItem key={item.id} className="basis-full">
-              <CollateralCard item={item} variant="carousel" />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious className="md:hidden -left-2" />
-        <CarouselNext className="md:hidden -right-2" />
-      </Carousel>
-      <div className="flex items-center justify-center gap-2 mt-6">
-        {items.map((it, i) => (
-          <button
-            key={it.id}
-            type="button"
-            aria-label={`Show slide ${i + 1}: ${it.title}`}
-            onClick={() => carouselApi?.scrollTo(i)}
-            className={`h-1.5 rounded-full transition-all ${
-              current === i ? "w-8 bg-primary" : "w-3 bg-white/25 hover:bg-white/50"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function HomeB() {
   const { data: settings } = useQuery({
@@ -501,7 +397,7 @@ export default function HomeB() {
               Models, applications, cases, and conversations — in practice.
             </h2>
           </motion.div>
-          <FeedCarousel />
+          <FromTheFeedCarousel />
         </div>
       </section>
 
