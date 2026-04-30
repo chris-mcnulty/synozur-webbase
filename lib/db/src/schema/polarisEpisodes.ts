@@ -46,7 +46,7 @@ export const polarisEpisodesTable = pgTable(
   },
   (t) => [
     uniqueIndex("polaris_episodes_slug_key").on(t.slug),
-    uniqueIndex("polaris_episodes_number_key").on(t.episodeNumber),
+    index("polaris_episodes_number_idx").on(t.episodeNumber),
     index("polaris_episodes_published_at_idx").on(t.publishedAt),
     index("polaris_episodes_featured_rank_idx").on(t.featured, t.featuredRank),
   ],

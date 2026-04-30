@@ -1064,6 +1064,20 @@ export async function runMigrations(): Promise<void> {
         WHERE linked_post_id IS NOT NULL;
     `);
 
+    // 33. Drop unique constraint on polaris_episodes.episode_number.
+    //     Episode numbers should be freely editable (e.g. correcting an import
+    //     that assigned the wrong number) and podcast shows sometimes reuse or
+    //     skip numbers. The old unique index prevented admins from changing a
+    //     number to one that had already been assigned. Replaced with a plain
+    //     non-unique index (polaris_episodes_number_idx) for query performance.
+    await db.execute(sql`
+      DROP INDEX IF EXISTS polaris_episodes_number_key;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS polaris_episodes_number_idx
+        ON polaris_episodes (episode_number);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
