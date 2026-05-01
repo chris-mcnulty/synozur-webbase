@@ -22,10 +22,11 @@ const BCRYPT_ROUNDS = 12;
 
 // Allowed grant-type vocabulary. Anything else is rejected at the API layer
 // rather than via a DB constraint so we can grow the set without a migration.
+// Note: `client_credentials` is omitted — it isn't implemented in the token
+// endpoint yet and advertising it would let admins create non-functional clients.
 const ALLOWED_GRANT_TYPES = [
   "authorization_code",
   "refresh_token",
-  "client_credentials",
 ] as const;
 
 // Initial scope vocabulary (Phase C will expand this with per-app role

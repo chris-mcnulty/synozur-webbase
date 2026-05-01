@@ -162,7 +162,10 @@ export const oauthRefreshTokensTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
     scopes: text("scopes").array().notNull(),
     // NULL on the first refresh token in a chain; set to the previous row's
-    // id every time we rotate. self-FK to allow chain traversal.
+    // id every time we rotate. No DB-level FK constraint is declared (a
+    // self-referential FK here would complicate cascades and isn't required
+    // for the application-level chain traversal). Chain integrity is enforced
+    // in the rotation logic in routes/oauth.ts.
     parentTokenId: uuid("parent_token_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),

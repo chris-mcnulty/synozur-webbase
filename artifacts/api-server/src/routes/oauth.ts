@@ -69,9 +69,20 @@ function makeConsentCsrfToken(sessionId: string): string {
     .digest("hex");
 }
 
-// ─── JWKS builder ─────────────────────────────────────────────────────────────
+// ─── JWKS builder (with short-lived module-level cache) ───────────────────────
+//
+// Caching avoids hitting the DB and re-running RSA PEM→JWK conversion on
+// every /oauth/userinfo request. TTL matches the JWKS endpoint's
+// Cache-Control: public, max-age=300 header.
+const JWKS_CACHE_TTL_MS = 60_000; // 60 s
+let _jwksCache: { keys: JWK[] } | null = null;
+let _jwksCacheExpiry = 0;
 
 async function buildJwks(): Promise<{ keys: JWK[] }> {
+  const now = Date.now();
+  if (_jwksCache && now < _jwksCacheExpiry) {
+    return _jwksCache;
+  }
   const published = await getPublishedKeys();
   const keys: JWK[] = await Promise.all(
     published.map(async (k) => {
@@ -80,7 +91,9 @@ async function buildJwks(): Promise<{ keys: JWK[] }> {
       return { ...jwk, kid: k.kid, alg: k.algorithm, use: "sig" };
     }),
   );
-  return { keys };
+  _jwksCache = { keys };
+  _jwksCacheExpiry = now + JWKS_CACHE_TTL_MS;
+  return _jwksCache;
 }
 
 // ─── OIDC Discovery ───────────────────────────────────────────────────────────
@@ -139,7 +152,7 @@ const AuthorizeParamsSchema = z.object({
   scope: z.string().min(1).max(1024),
   state: z.string().max(512).optional(),
   code_challenge: z.string().max(256).optional(),
-  code_challenge_method: z.enum(["S256", "plain"]).optional(),
+  code_challenge_method: z.literal("S256").optional(),
   nonce: z.string().max(512).optional(),
 });
 
@@ -595,18 +608,21 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
         .limit(1);
 
       if (consumed) {
-        // Code replay: revoke all active refresh tokens for this client to
-        // limit the blast radius of a compromised authorization code.
+        // Code replay: revoke active refresh tokens for this user+client pair.
+        // Scoped to the user who originally authorized the code so a replay of
+        // one user's code doesn't revoke another user's tokens for the same client.
         await db
           .update(oauthRefreshTokensTable)
           .set({ revokedAt: now })
           .where(
             and(
               eq(oauthRefreshTokensTable.clientId, client.clientId),
+              eq(oauthRefreshTokensTable.userId, consumed.userId),
               isNull(oauthRefreshTokensTable.revokedAt),
             ),
           );
         await audit({
+          actorId: consumed.userId,
           action: "oauth.replay_detected",
           entity: "oauth_client",
           entityId: client.clientId,
@@ -642,7 +658,7 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
       const computedChallenge =
         method === "S256"
           ? createHash("sha256").update(codeVerifier).digest("base64url")
-          : codeVerifier; // plain
+          : codeVerifier; // plain (legacy; only reachable for codes issued before S256-only enforcement)
 
       if (computedChallenge !== codeRow.codeChallenge) {
         res
@@ -795,21 +811,64 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
       return;
     }
 
-    // Rotate: revoke old token, insert new one with parent_token_id chain
-    await db
-      .update(oauthRefreshTokensTable)
-      .set({ revokedAt: now })
-      .where(eq(oauthRefreshTokensTable.id, tokenRow.id));
-
+    // Rotate: atomically revoke the old token and insert the new one in a
+    // single transaction. The conditional UPDATE (WHERE revokedAt IS NULL)
+    // is the compare-and-swap: if a concurrent request already rotated this
+    // token the UPDATE matches zero rows, we detect the race, and treat it
+    // as a replay to limit blast radius.
     const newRefreshTokenValue = newRefreshToken();
-    await db.insert(oauthRefreshTokensTable).values({
-      tokenHash: sha256Hex(newRefreshTokenValue),
-      clientId: client.clientId,
-      userId: tokenRow.userId,
-      scopes: tokenRow.scopes,
-      parentTokenId: tokenRow.id,
-      expiresAt: new Date(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+    const rotated = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(oauthRefreshTokensTable)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(oauthRefreshTokensTable.id, tokenRow.id),
+            isNull(oauthRefreshTokensTable.revokedAt),
+          ),
+        )
+        .returning({ id: oauthRefreshTokensTable.id });
+      if (!updated) return false;
+      await tx.insert(oauthRefreshTokensTable).values({
+        tokenHash: sha256Hex(newRefreshTokenValue),
+        clientId: client.clientId,
+        userId: tokenRow.userId,
+        scopes: tokenRow.scopes,
+        parentTokenId: tokenRow.id,
+        expiresAt: new Date(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+      });
+      return true;
     });
+
+    if (!rotated) {
+      // Lost the CAS race — a concurrent request already rotated this token.
+      // Revoke the entire user+client family and reject.
+      await db
+        .update(oauthRefreshTokensTable)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(oauthRefreshTokensTable.clientId, client.clientId),
+            eq(oauthRefreshTokensTable.userId, tokenRow.userId),
+            isNull(oauthRefreshTokensTable.revokedAt),
+          ),
+        );
+      await audit({
+        actorId: tokenRow.userId,
+        action: "oauth.replay_detected",
+        entity: "oauth_client",
+        entityId: client.clientId,
+        diff: { grantType: "refresh_token", reason: "concurrent_rotation" },
+      });
+      await audit({
+        actorId: tokenRow.userId,
+        action: "oauth.refresh_revoked",
+        entity: "oauth_client",
+        entityId: client.clientId,
+      });
+      res.status(400).json({ error: "invalid_grant" });
+      return;
+    }
 
     const [user] = await db
       .select()
@@ -900,6 +959,16 @@ router.get("/oauth/userinfo", async (req, res): Promise<void> => {
       issuer: siteOrigin(),
     });
 
+    // Reject ID tokens and any other non-access tokens. Access tokens issued
+    // by this server carry `typ: "access"` in the payload claims.
+    if (payload["typ"] !== "access") {
+      res
+        .status(401)
+        .setHeader("WWW-Authenticate", 'Bearer realm="userinfo", error="invalid_token"')
+        .json({ error: "invalid_token" });
+      return;
+    }
+
     const userId = payload.sub;
     if (!userId) {
       res.status(401).json({ error: "invalid_token" });
@@ -931,7 +1000,7 @@ router.get("/oauth/userinfo", async (req, res): Promise<void> => {
       if (user.avatarUrl) claims["picture"] = user.avatarUrl;
     }
 
-    res.json(claims);
+    res.setHeader("Cache-Control", "no-store").json(claims);
   } catch {
     res
       .status(401)
