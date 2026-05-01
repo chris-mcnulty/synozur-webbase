@@ -72,8 +72,8 @@ function makeConsentCsrfToken(sessionId: string): string {
 // ─── JWKS builder (with short-lived module-level cache) ───────────────────────
 //
 // Caching avoids hitting the DB and re-running RSA PEM→JWK conversion on
-// every /oauth/userinfo request. TTL matches the JWKS endpoint's
-// Cache-Control: public, max-age=300 header.
+// every /oauth/userinfo request. 60 s is short enough to pick up a rotation
+// within a minute; the JWKS endpoint itself uses Cache-Control: max-age=300.
 const JWKS_CACHE_TTL_MS = 60_000; // 60 s
 let _jwksCache: { keys: JWK[] } | null = null;
 let _jwksCacheExpiry = 0;
@@ -818,7 +818,7 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
     // as a replay to limit blast radius.
     const newRefreshTokenValue = newRefreshToken();
     const rotated = await db.transaction(async (tx) => {
-      const [updated] = await tx
+      const [revokedRow] = await tx
         .update(oauthRefreshTokensTable)
         .set({ revokedAt: now })
         .where(
@@ -828,7 +828,7 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
           ),
         )
         .returning({ id: oauthRefreshTokensTable.id });
-      if (!updated) return false;
+      if (!revokedRow) return false;
       await tx.insert(oauthRefreshTokensTable).values({
         tokenHash: sha256Hex(newRefreshTokenValue),
         clientId: client.clientId,
