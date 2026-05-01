@@ -1,18 +1,18 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: April 28, 2026  
-> 35 tracked tasks · 3 strategic roadmap items · 105 merged · 30 cancelled
+> Last updated: May 1, 2026  
+> 39 tracked tasks · 3 strategic roadmap items · 111 merged · 30 cancelled
 
-Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record.
+Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
 
 ---
 
 ## Content Library
 
-### #56 · Let editors manage services and solutions in the admin
+### ~~#56 · Let editors manage services and solutions in the admin~~ **— Shipped**
 **Depends on:** #40 (services hierarchy backend)
 
-The services hierarchy lives in the database but can only be updated by re-running an ingest script — editors have no admin UI to manage it. This task adds a full CRUD interface inside the existing admin shell: a `/admin/services` index listing all four pillars and their children, edit forms for services, solutions, methodology blocks, and capability blocks, drag-to-reorder lists for methodology and capability items, rich-text editing via TipTap, icon upload via App Storage, and role gating so editors and admins have write access while contributors are read-only.
+~~The services hierarchy lives in the database but can only be updated by re-running an ingest script — editors have no admin UI to manage it.~~ **Shipped:** the admin shell now ships full CRUD under `/admin/products/` — `services-list.tsx`, `service-edit.tsx`, `service-methodologies.tsx`, `solutions-list.tsx`, `solution-edit.tsx`, and `solution-capabilities.tsx`. (Note: the route prefix landed as `/admin/products/` rather than `/admin/services/` to match the broader `applications` / `case-studies` / `models` admin grouping.) Drag-to-reorder for methodology and capability blocks, TipTap rich text, and role-gated writes are all in place. Verified May 2026.
 
 ### #60 · Preview services and solutions before publishing
 **Depends on:** #39 (services public pages), #56 (services admin UI)
@@ -54,10 +54,10 @@ Editors filling out collateral fields have to navigate away to the public Librar
 
 The spam moderation tab is functional but there is no visual indicator in the admin sidebar that spam comments are waiting for review. Moderators have to navigate to the tab to discover whether there is pending work. This task adds a count badge to the moderation nav item that shows the number of unreviewed spam-flagged comments so the backlog is visible at a glance.
 
-### #152 · Add Akismet integration to catch more spam automatically
+### ~~#152 · Add Akismet integration to catch more spam automatically~~ **— Shipped (code path); production credentials pending**
 **Depends on:** #54 (Insights comments)
 
-The current spam scorer uses rule-based heuristics — link count, keyword list, domain blocklist. The `spamScorer.ts` file already has an Akismet code path that activates when `AKISMET_API_KEY` is set, but the environment variable is not yet configured and the HTTP call needs validation. Enabling Akismet as an additional scoring layer would significantly raise the catch rate without requiring ongoing rule maintenance.
+~~The current spam scorer uses rule-based heuristics — link count, keyword list, domain blocklist.~~ **Shipped:** the `checkAkismet` function in `artifacts/api-server/src/lib/spamScorer.ts` is fully wired with HTTP POST, timeout handling, and a graceful fallback when the API call fails. Activates when `AKISMET_API_KEY` is set. Residual: provision the production key and confirm Akismet scores blend correctly with the existing rule layer (track alongside #102 production-credential verification).
 
 ### #153 · Make the spam rules settings page accessible to end-to-end automated testing
 **Depends on:** #54 (Insights comments)
@@ -68,10 +68,10 @@ The admin area uses Entra SSO exclusively so the Playwright test runner cannot s
 
 ## Admin Access & People
 
-### #57 · Verify the new services pages with automated browser tests
+### ~~#57 · Verify the new services pages with automated browser tests~~ **— Shipped**
 **Depends on:** #40 (services hierarchy backend + public pages)
 
-The pillar overview, per-pillar overview, service-detail, and solution-detail pages were built and manually verified but have no automated test coverage. This task adds Playwright end-to-end tests for the full services flow: loading the overview, navigating to a pillar, browsing to a solution detail page, and asserting that content from the API renders correctly on each page.
+~~The pillar overview, per-pillar overview, service-detail, and solution-detail pages were built and manually verified but have no automated test coverage.~~ **Shipped:** Playwright suite at `artifacts/synozur/tests/services.spec.ts` covers the full flow — overview → pillar → solution detail with API assertions. Runs in the manual-trigger `quality.yml` workflow alongside the axe a11y suite (`a11y.spec.ts`). Verified May 2026.
 
 ### #109 · Careers / HR module under `/admin/people/careers`
 **Depends on:** admin section reorganization (capability layer + section folders)
@@ -163,10 +163,10 @@ White paper detail pages currently offer a plain download button. For lead gener
 
 Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state: webinar records gain a `scheduled_at` date and an optional external `registration_url`. When a webinar is upcoming the detail page shows the event date and a registration CTA instead of a video player; the webinar index gains an "Upcoming" section above the on-demand grid. If no external URL is provided, an inline name/email form creates a submission record and sends a confirmation email with an .ics calendar invite attachment. Once the scheduled date passes, items revert automatically to on-demand behavior.
 
-### #86 · Fix OG tags for social link previews
+### ~~#86 · Fix OG tags for social link previews~~ **— Shipped**
 **Depends on:** —
 
-When the site URL is shared on LinkedIn, Slack, or similar platforms, no title, image, or description appears. The OG tag logic exists in the React app but runs via JavaScript — social crawlers never see it. The fix is to embed default OG tags in the static HTML shell and add a crawler-detection middleware on the API server that injects page-specific title, description, and image for known social bots. Includes a dynamic sitemap endpoint and a Sitemap: directive in robots.txt.
+~~When the site URL is shared on LinkedIn, Slack, or similar platforms, no title, image, or description appears.~~ **Shipped:** default OG tags are embedded in `artifacts/synozur/index.html`; `artifacts/api-server/src/middlewares/socialBotRenderer.ts` detects social crawlers by User-Agent and serves page-specific title/description/image via the server-side `/api/og?path=` endpoint. Dynamic sitemap + `Sitemap:` directive in robots are wired through `artifacts/api-server/src/routes/seo.ts`. Verified May 2026.
 
 ### #102 · Connect search engine submission to live credentials
 **Depends on:** #97 (SEO / search engine submission)
@@ -206,10 +206,10 @@ Out of scope: multi-armed bandits (start with frequentist A/B), causal-inference
 
 ## Public Site UX
 
-### #84 · Seed & verify 301 redirects from Wix
+### ~~#84 · Seed & verify 301 redirects from Wix~~ **— Shipped (seeder); production verification ongoing**
 **Depends on:** —
 
-When the site migrated from Wix most content paths changed, so visitors following old links and Google's crawl index hit 404s. The redirect infrastructure (DB table, Express middleware, admin UI) is already in place. This task seeds the redirect table from three sources — the exported Wix redirect CSV (96 active rules), 53 additional rules identified by sitemap analysis, and 7 rules for pages not being rebuilt — then spot-checks that all source paths return HTTP 301 to the correct destination in the production environment.
+~~When the site migrated from Wix most content paths changed, so visitors following old links and Google's crawl index hit 404s.~~ **Shipped:** seeder lives at `artifacts/api-server/src/scripts/seedWixRedirects.ts` and ingests the three rule sources (Wix CSV, sitemap-derived rules, hand-authored rules) into `wix_redirects`; admin CRUD at `/admin/site-config/redirects.tsx`. Hit counters confirm the middleware is live. Remaining residual: a one-time spot-check pass against production logs to confirm zero high-traffic 404s map to a missing redirect — track this under #163 below.
 
 ### #133 · Constellation interactive demo sandbox on /applications/constellation
 **Depends on:** — (additive on the public site); optional pairing with #128 (OAuth) if we eventually link the demo to a real free tier
@@ -250,10 +250,60 @@ The site has accumulated a real corpus of editorial content — Insights posts, 
 
 Out of scope: multi-tenant grounding scope (single-tenant for now), open-ended chat memory across sessions, fine-tuning, multi-language Q&A (English first; revisit after #139), live foundation-data injection (Vega pulls live mission/vision/values; on this site that role is filled by the `about_synozur` grounding category, edited as a normal document). Follow-up: pipe high-intent questions ("how do I buy / start") to the Astra concierge for a soft hand-off.
 
-### #138 · Stop pillar overview pages from competing with service pages on Google
+### ~~#138 · Stop pillar overview pages from competing with service pages on Google~~ **— Shipped (canonical hint); Search Console verification pending**
 **Depends on:** #55 (services hierarchy public pages)
 
-The route `/services-overview/:slug` and `/services/:slug` render overlapping content and metadata for the same service pillar, causing Google to treat them as duplicate pages and split ranking signals between them. This task resolves the cannibalization by adding a canonical URL hint on the overview pages pointing to the authoritative service-detail URL, adjusting on-page copy so each URL has a distinct, non-overlapping SEO purpose, and verifying the fix with a Coverage report check.
+~~The route `/services-overview/:slug` and `/services/:slug` render overlapping content and metadata for the same service pillar~~ **Shipped:** `artifacts/synozur/src/pages/services-overview.tsx` now emits a canonical hint pointing to the authoritative service-detail URL (lines 7–11). Residual: a Search Console Coverage report sweep to confirm Google has consolidated indexing on the canonical URL — fold into the SEO submission verification under #102.
+
+### #154 · Ship a Web App Manifest (PWA) for the public site
+**Depends on:** —
+
+The site has no `manifest.webmanifest` / `manifest.json`, so installing the site as a PWA falls back to browser defaults and the `theme-color` / `display` / app-icon set is empty. This hurts iOS Safari "Add to Home Screen" appearance and blocks future PWA features (offline cache for the home page, push notifications for content launches). This task adds a manifest at `artifacts/synozur/public/manifest.webmanifest` with the Synozur brand colors, app icons (192/512 PNG plus maskable), `display: standalone`, `start_url`, and a matching `<meta name="theme-color">` plus `<link rel="manifest">` in `index.html`. Out of scope for v1: a service worker / offline support — handle in a follow-up once the manifest itself is verified in Lighthouse PWA audits.
+
+### #155 · Add security headers via `helmet` in the API server
+**Depends on:** —
+
+The Express API at `artifacts/api-server/src/app.ts` does not emit a Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, or Permissions-Policy header. Browser defaults are looser than what a marketing site with embedded YouTube + LinkedIn pixels actually needs, and a missing CSP also depresses Lighthouse Best Practices scores. This task wires `helmet` (or an equivalent header bundle) into the Express middleware stack with a CSP that allows: self, the Vite-built bundles, GA4, LinkedIn Pixel, Meta Pixel (consent-gated), Microsoft Clarity (if enabled), and the YouTube/Vimeo iframe domains used by collateral video embeds. Includes a report-only rollout phase that surfaces violations to a new `csp_violations` table for one week before the policy is enforced.
+
+### #156 · Make Lighthouse CI block PRs instead of running on manual trigger
+**Depends on:** —
+
+`.github/workflows/quality.yml` runs `lhci autorun` only under `workflow_dispatch`. The thresholds in `lighthouserc.json` (SEO ≥0.9, perf ≥0.85, LCP ≤2.5s, CLS ≤0.1, TBT ≤300ms) already exist but never gate a PR. This task moves the Lighthouse step into the standard `pull_request` job so any PR that regresses below the configured budgets fails CI, and adds a GitHub PR comment integration via `@lhci/github-action` so the per-page deltas surface in the PR conversation. Pairs naturally with the warn → hard-mode flip in BACKLOG.md "Quality gates" #3 — both are about turning advisory signals into enforced gates once the inherited backlog is clear.
+
+### #157 · CI broken-link checker over the published site
+**Depends on:** #156 (lands alongside the PR-blocking Lighthouse run)
+
+There is no CI step that crawls the built site and verifies that internal links, image references, and the sitemap entries all resolve. The Wix-migration redirect work and the steady stream of editorial content both create opportunities for stale links to slip through. This task adds a `lychee` (or `linkinator`) job to the quality workflow that crawls the staging deploy from the sitemap root, asserts no 4xx / 5xx, and writes a per-PR link-health summary. False-positives go in a checked-in `lychee.toml` ignore file (e.g. social URLs that 403 on bot user agents) so the signal stays high.
+
+### #158 · Add `eslint-plugin-jsx-a11y` and a pre-commit a11y/SEO gate
+**Depends on:** —
+
+The codebase has axe-core integration in the Playwright suite but no static a11y linting. `eslint-plugin-jsx-a11y` would catch the bulk of the same issues at edit time — missing alt text, invalid ARIA, label-input mismatches, anchor-without-href — long before Lighthouse or axe can. This task: (a) installs the plugin in the workspace ESLint config, (b) sets the rules at `error` for the must-haves and `warn` for the stylistic ones, (c) adds a Husky pre-commit hook (or lint-staged) that runs `eslint` on staged TSX files, (d) fixes the existing violations the new rules surface. Pairs with the publish-block warn-mode work in BACKLOG.md "Quality gates" #1 — author-time linting catches issues the heading-order check today only catches at publish time.
+
+### #159 · Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject)
+**Depends on:** —
+
+The site emits Organization, Article, FAQPage, BreadcrumbList, and Event JSON-LD today, but several artifact types still rank weaker than they could because their structured data is incomplete. This task adds: **LocalBusiness** schema on `/contact` and the office detail card (address, phone, opening hours, geo), **Person** schema on team-member detail surfaces (job title, image, sameAs links to LinkedIn), **VideoObject** schema on collateral video items and Polaris episodes (uploadDate, duration, thumbnailUrl, contentUrl), and **Review/AggregateRating** wrappers on testimonials so SERPs can render the rating star treatment. NewsArticle vs Article distinction is also handled here: insights tagged as `news` emit `NewsArticle`, the rest stay `Article`. Verify each schema with the Google Rich Results Test before merge.
+
+### #160 · Search Console domain-property verification + indexing dashboard
+**Depends on:** #102 (live search-engine submission credentials)
+
+Production verification with Google Search Console and Bing Webmaster Tools is currently file-upload or DNS-record based and has never been re-confirmed after the Wix → Synozur cutover. This task: (a) adds a `<meta name="google-site-verification">` and `<meta name="msvalidate.01">` line to `index.html` keyed off env variables (so dev/staging/prod can each carry their own token without code changes), (b) confirms DNS TXT verification is also in place at the domain registrar, (c) builds an internal `/admin/marketing/seo-coverage` page that reads the Search Console URL Inspection API + Bing Webmaster API on a daily cron and surfaces "indexed", "discovered — not indexed", "crawl error", and "soft 404" buckets per artifact type, so editors can tell at a glance whether a published post has actually made it into the index.
+
+### #161 · Dynamic OG image generation for insights, case studies, and Polaris episodes
+**Depends on:** —
+
+`/api/og?path=` returns a static HTML preview today; OG images themselves are author-uploaded statics or fall back to the global default. Auto-generated, on-brand OG images per article would lift social CTR without adding production work for editors. This task adds a `/api/og/image?kind=&id=` endpoint on the API server that renders a 1200×630 PNG using `@vercel/og` (or `satori` + `resvg`) with: the artifact title, author name and avatar, kind badge (Insight / Case Study / White Paper / Polaris), and the Synozur wordmark over the brand-gradient background. Cache the generated image in object storage keyed by `(kind, id, lastModified)` and serve it via a CDN-friendly URL referenced from each artifact's `<meta property="og:image">` when no explicit override is set. Editors can still upload a custom OG image to override the generated one.
+
+### #162 · Use 410 Gone and 308 Permanent Redirect for unpublished and moved content
+**Depends on:** —
+
+When a published artifact is unpublished today, the route returns 200 with a `noindex` meta tag rather than the more correct 410 Gone — which is the explicit signal Google uses to drop the URL from the index quickly. Similarly, the Wix redirect middleware emits 301 / 302 only, never 308 (the version of 301 that preserves the request method, which matters when migrated POST endpoints are involved). This task: (a) updates the public artifact loaders to return HTTP 410 with a friendly body when the row has `status = 'archived'` or `unpublished_at < now()`, (b) extends the Wix redirect schema with a `status_code` column that supports 301 / 302 / 307 / 308 and surfaces the choice in the redirect admin UI, (c) tightens the sitemap exclusion logic so unpublished URLs are also actively removed from the sitemap on the next regeneration.
+
+### #163 · Tune robots meta directives and add a discovery-friendly 404 page
+**Depends on:** —
+
+Two related improvements that share a single PR. (a) The `Meta` component does not emit `max-snippet`, `max-image-preview`, or `max-video-preview` directives — the defaults Google applies are conservative and clip the rich SERP previews insights and case studies could otherwise earn. Adding `max-snippet:-1, max-image-preview:large, max-video-preview:-1` on indexable artifact pages is a one-line win. (b) `pages/not-found.tsx` is `noindex` but offers no escape route — no search box, no top-categories list, no "popular insights" tile. Visitors who land here from a stale link bounce. Add a small surface that surfaces the sitemap top-level sections, a search input that hits `/api/search`, and a "report this missing page" form that writes to the existing `not_found_logs` table for editor review.
 
 ### #139 · Internationalization foundation (English baseline + one launch locale)
 **Depends on:** — (architecture); pairs with #110 (some audience classes will skew geographically), #130 (theme assets may need locale variants)
@@ -310,8 +360,8 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 
 | # | Title | Area | Depends On |
 |---|-------|------|-----------|
-| #56 | Let editors manage services and solutions in the admin | Content Library | #40 |
-| #57 | Verify the new services pages with automated browser tests | Admin Access & People | #40 |
+| ~~#56~~ | ~~Let editors manage services and solutions in the admin~~ — **Shipped** | Content Library | #40 |
+| ~~#57~~ | ~~Verify the new services pages with automated browser tests~~ — **Shipped** | Admin Access & People | #40 |
 | #60 | Preview services and solutions before publishing | Content Library | #39, #56 |
 | #61 | Track edit history for services and solutions | Content Library | #39, #56 |
 | #66 | Preview a revision's content before restoring it | Content Library | #48 |
@@ -320,9 +370,9 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #75 | Bulk reorder featured library items via drag-and-drop | Content Library | #69 |
 | #76 | Show a live preview of how a library item will appear on the public site | Content Library | #69 |
 | #83 | Gated download CTA for white papers | Marketing & Lifecycle | — |
-| #84 | Seed & verify 301 redirects from Wix | Public Site UX | — |
+| ~~#84~~ | ~~Seed & verify 301 redirects from Wix~~ — **Shipped (seeder)** | Public Site UX | — |
 | #85 | Upcoming webinar registration rail | Marketing & Lifecycle | — |
-| #86 | Fix OG tags for social link previews | Marketing & Lifecycle | — |
+| ~~#86~~ | ~~Fix OG tags for social link previews~~ — **Shipped** | Marketing & Lifecycle | — |
 | #102 | Connect search engine submission to live credentials | Marketing & Lifecycle | #97 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Show a video thumbnail preview when a custom hero video is active | Admin Access & People | #106 |
@@ -337,14 +387,24 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #135 | Galaxy client portal — v0 | Admin Access & People | #110, #111, #128 |
 | #136 | Verify remember-me sessions get the longer 30-day window when renewed | Admin Access & People | #133 |
 | #137 | Cover the session garbage-collector and revocation helpers with tests | Admin Access & People | #133 |
-| #138 | Stop pillar overview pages from competing with service pages on Google | Public Site UX | #55 |
+| ~~#138~~ | ~~Stop pillar overview pages from competing with service pages on Google~~ — **Shipped (canonical)** | Public Site UX | #55 |
 | #139 | Internationalization foundation (English + one launch locale) | Public Site UX | — |
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
 | #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
 | #144 | Add automated tests to confirm sign-up rate limiting works | Admin Access & People | #141 |
 | #151 | Show spam comment count badge on the moderation navigation item | Content Library | #54 |
-| #152 | Add Akismet integration to catch more spam automatically | Content Library | #54 |
+| ~~#152~~ | ~~Add Akismet integration to catch more spam automatically~~ — **Shipped (code path)** | Content Library | #54 |
 | #153 | Make the spam rules settings page accessible to end-to-end automated testing | Content Library | #54 |
+| #154 | Ship a Web App Manifest (PWA) for the public site | Marketing & Lifecycle | — |
+| #155 | Add security headers via `helmet` in the API server | Marketing & Lifecycle | — |
+| #156 | Make Lighthouse CI block PRs instead of running on manual trigger | Marketing & Lifecycle | — |
+| #157 | CI broken-link checker over the published site | Marketing & Lifecycle | #156 |
+| #158 | Add `eslint-plugin-jsx-a11y` and a pre-commit a11y/SEO gate | Marketing & Lifecycle | — |
+| #159 | Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject) | Marketing & Lifecycle | — |
+| #160 | Search Console domain-property verification + indexing dashboard | Marketing & Lifecycle | #102 |
+| #161 | Dynamic OG image generation for insights, case studies, and Polaris episodes | Marketing & Lifecycle | — |
+| #162 | Use 410 Gone and 308 Permanent Redirect for unpublished and moved content | Public Site UX | — |
+| #163 | Tune robots meta directives and add a discovery-friendly 404 page | Public Site UX | — |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
 | — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
