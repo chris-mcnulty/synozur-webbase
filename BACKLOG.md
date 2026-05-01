@@ -182,6 +182,56 @@ the residual warnings are accepted).
 
 ---
 
+## OAuth provider follow-ups (follow-up to #128)
+
+Context: PR for #128 lands the OAuth provider in two phases on a single
+branch. Phase A adds the schema, signing-key bootstrap, and admin CRUD;
+Phase B adds the public OAuth surface (authorize / token / userinfo /
+JWKS / discovery) and the consent screen. Tokens carry a `roles: []`
+claim that's empty until per-OAuth-client roles ship as the follow-up
+below.
+
+Follow-up items, in recommended order:
+
+1. **Per-OAuth-client role catalog + bindings.** Today the platform has
+   one global `roles` table; once Galaxy (#135) and Partner Portal
+   (#141) land, each remote app needs its own role hierarchy
+   (platform-admin / tenant-admin / user) scoped optionally to a
+   `client_organizations` row. Add tables `oauth_client_roles`
+   (`client_id`, `name`, `description`, `scope_level: 'platform' |
+   'tenant'`) and `oauth_client_role_bindings` (`client_id`, `user_id`,
+   `role_id`, nullable `client_organization_id`). Populate the empty
+   `roles` claim on access tokens from these bindings. Add admin UI at
+   `/admin/access/oauth-clients/:id/roles` and a privileged scope
+   `roles.manage:tenant` so the remote app's own admin UI can manage
+   its tenant's bindings. **Required before #135 ships.**
+
+2. **Token-introspection endpoint** (`POST /oauth/introspect`, RFC 7662).
+   Lets resource servers validate opaque-or-JWT bearer tokens out-of-band
+   without re-implementing JWKS + claim checks. Useful for the
+   `@synozur/auth-sdk` helper package.
+
+3. **Token-revocation endpoint** (`POST /oauth/revoke`, RFC 7009). Today
+   refresh tokens are revoked admin-side via the client revoke action;
+   a standard endpoint lets a downstream app revoke on its own (e.g.
+   when the user signs out of Galaxy).
+
+4. **Signing-key rotation cron.** Active key stays put until an admin
+   triggers rotation; a cron job that rotates every N days and retires
+   keys older than the longest token lifetime would close the
+   operational gap.
+
+5. **Publish `@synozur/auth-sdk`.** Per the #128 task description: a
+   small helper package in `lib/` that downstream apps import to wire
+   up the OAuth flow in a handful of lines. Wraps the discovery
+   document, JWKS verification, PKCE, and a React hook for the cross-
+   app switcher (#129).
+
+Owner/tracking: file a ticket referencing this section once #128 lands
+and the first downstream consumer (#135 Galaxy) starts integrating.
+
+---
+
 ## Workshops schema parity (follow-up to #95)
 
 Context: #95 moved workshops from a static TS data file into the

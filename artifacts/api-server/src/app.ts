@@ -10,6 +10,7 @@ import { socialBotRendererMiddleware } from "./middlewares/socialBotRenderer";
 import { attachUserIfPresent } from "./middlewares/auth";
 import { handleLlmsTxt, handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
+import oauthRouter from "./routes/oauth";
 import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 
 const app: Express = express();
@@ -63,6 +64,11 @@ app.use(trafficCrawlerMiddleware());
 app.get("/sitemap.xml", handleSitemap);
 app.get("/robots.txt", handleRobots);
 app.get("/llms.txt", handleLlmsTxt);
+
+// OAuth 2.0 / OIDC provider — mounted at site root so /.well-known/* and
+// /oauth/* are available at the origin directly (RFC 8414 + OIDC Discovery).
+// Must come before /api/ so these paths aren't shadowed.
+app.use(oauthRouter);
 
 // IndexNow key-validation file. Served at /<key>.txt so search engines can
 // verify ownership before accepting bulk submissions. We check the path via

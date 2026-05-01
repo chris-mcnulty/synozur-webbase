@@ -45,6 +45,7 @@ import speAdminRouter from "./speAdmin";
 import clientOrgsRouter from "./clientOrgs";
 import securityLogRouter from "./cms/securityLog";
 import bookingsRouter from "./bookings";
+import cmsOauthClientsRouter from "./cms/oauthClients";
 import aiGroundingRouter from "./aiGrounding";
 import aiChatRouter from "./aiChat";
 
@@ -96,6 +97,7 @@ router.use(speAdminRouter);
 router.use(clientOrgsRouter);
 router.use(securityLogRouter);
 router.use(bookingsRouter);
+router.use(cmsOauthClientsRouter);
 router.use(aiGroundingRouter);
 router.use(aiChatRouter);
 
