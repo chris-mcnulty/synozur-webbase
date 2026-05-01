@@ -60,8 +60,8 @@ import {
   editorPathForSource,
 } from "./_collateral-helpers";
 
-// Server returns serviceId/solutionId/sourceId; the generated CollateralItem
-// type doesn't carry them yet (openapi spec lag — same cast the edit form uses).
+// Alias with the extra fields now included in CollateralItem (formerly needed
+// a manual cast due to openapi spec lag; kept as a named alias for clarity).
 type CollateralRow = CollateralItem & {
   serviceId?: string | null;
   solutionId?: string | null;

@@ -84,6 +84,7 @@ export const ListCmsPostsResponse = zod.object({
       readingTimeMin: zod.number().nullish(),
       featured: zod.boolean().optional(),
       featuredRank: zod.number().nullish(),
+      linkedSolutionId: zod.string().uuid().nullish(),
       categories: zod
         .array(
           zod.object({
@@ -133,6 +134,7 @@ export const CreateCmsPostBody = zod.object({
   featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).optional(),
   tagIds: zod.array(zod.string().uuid()).optional(),
+  linkedSolutionId: zod.string().uuid().nullish(),
 });
 
 export const GetCmsPostParams = zod.object({
@@ -166,6 +168,7 @@ export const GetCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -210,6 +213,7 @@ export const UpdateCmsPostBody = zod.object({
   featuredRank: zod.number().nullish(),
   categoryIds: zod.array(zod.string().uuid()).nullish(),
   tagIds: zod.array(zod.string().uuid()).nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
 });
 
 export const UpdateCmsPostResponse = zod.object({
@@ -239,6 +243,7 @@ export const UpdateCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -297,6 +302,7 @@ export const PublishCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -355,6 +361,7 @@ export const ScheduleCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -409,6 +416,7 @@ export const ArchiveCmsPostResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -526,6 +534,7 @@ export const RestoreCmsPostRevisionResponse = zod.object({
   readingTimeMin: zod.number().nullish(),
   featured: zod.boolean().optional(),
   featuredRank: zod.number().nullish(),
+  linkedSolutionId: zod.string().uuid().nullish(),
   categories: zod
     .array(
       zod.object({
@@ -1785,6 +1794,14 @@ export const CmsListCollateralResponse = zod.object({
         .describe(
           "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
         ),
+      serviceId: zod.string().uuid().nullish(),
+      solutionId: zod.string().uuid().nullish(),
+      sourceId: zod
+        .string()
+        .nullish()
+        .describe(
+          'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
+        ),
       active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -1883,6 +1900,14 @@ export const CmsGetCollateralResponse = zod.object({
     .describe(
       "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
     ),
+  serviceId: zod.string().uuid().nullish(),
+  solutionId: zod.string().uuid().nullish(),
+  sourceId: zod
+    .string()
+    .nullish()
+    .describe(
+      'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
+    ),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -1978,6 +2003,14 @@ export const CmsUpdateCollateralResponse = zod.object({
     .optional()
     .describe(
       "Companion files attached to this item (slides, transcript, code repo link, follow-up deck). Empty when no resources are attached; consumers should fall back to `downloadUrl` in that case until the legacy field is dropped.",
+    ),
+  serviceId: zod.string().uuid().nullish(),
+  solutionId: zod.string().uuid().nullish(),
+  sourceId: zod
+    .string()
+    .nullish()
+    .describe(
+      'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
     ),
   active: zod.boolean(),
   createdAt: zod.string(),
@@ -2559,7 +2592,11 @@ export const RequestUploadUrlBody = zod.object({
 });
 
 export const RequestUploadUrlResponse = zod.object({
-  uploadURL: zod.string().url(),
+  uploadURL: zod
+    .string()
+    .describe(
+      "Absolute HTTPS URL (GCS) or server-relative path starting with \/ (SPE direct-upload). Clients must absolutize relative paths using window.location.origin before use.\n",
+    ),
   objectPath: zod.string(),
   metadata: zod
     .object({
@@ -3535,3 +3572,284 @@ export const CmsGetSiteHealthResponse = zod.object({
       ),
   }),
 });
+
+/**
+ * @summary List published Polaris podcast episodes
+ */
+export const listPolarisEpisodesQueryPageDefault = 1;
+
+export const listPolarisEpisodesQueryPageSizeDefault = 50;
+export const listPolarisEpisodesQueryPageSizeMax = 100;
+
+export const ListPolarisEpisodesQueryParams = zod.object({
+  page: zod.coerce.number().min(1).default(listPolarisEpisodesQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listPolarisEpisodesQueryPageSizeMax)
+    .default(listPolarisEpisodesQueryPageSizeDefault),
+});
+
+export const ListPolarisEpisodesResponse = zod.object({
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  items: zod.array(
+    zod
+      .object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        episodeNumber: zod.number(),
+        summary: zod.string(),
+        guestName: zod.string().nullish(),
+        audioUrl: zod.string(),
+        appleUrl: zod.string().nullish(),
+        spotifyUrl: zod.string().nullish(),
+        durationSeconds: zod.number().nullish(),
+        transcriptHtml: zod.string().nullish(),
+        artworkUrl: zod.string(),
+        serviceId: zod.string().uuid().nullish(),
+        solutionId: zod.string().uuid().nullish(),
+        linkedPostId: zod.string().uuid().nullable(),
+        linkedPost: zod.union([
+          zod
+            .object({
+              id: zod.string().uuid(),
+              slug: zod.string(),
+              title: zod.string(),
+              excerpt: zod.string().nullable(),
+              heroImageUrl: zod.string().nullable(),
+              publishedAt: zod.coerce.date().nullable(),
+              status: zod
+                .enum(["draft", "scheduled", "published", "archived"])
+                .optional()
+                .describe("Only present on CMS responses."),
+            })
+            .describe(
+              "A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.",
+            ),
+          zod.null(),
+        ]),
+        status: zod.enum(["draft", "scheduled", "published", "archived"]),
+        publishedAt: zod.coerce.date().nullish(),
+        unpublishedAt: zod.coerce.date().nullish(),
+        featured: zod.boolean(),
+        featuredRank: zod.number().nullish(),
+        seoTitle: zod.string().nullish(),
+        seoDescription: zod.string().nullish(),
+        ogImage: zod.string().nullish(),
+        active: zod.boolean(),
+        sourceId: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      })
+      .describe(
+        "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
+      ),
+  ),
+});
+
+/**
+ * @summary Get a single published episode by slug (includes linkedPost)
+ */
+export const GetPolarisEpisodeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetPolarisEpisodeResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    episodeNumber: zod.number(),
+    summary: zod.string(),
+    guestName: zod.string().nullish(),
+    audioUrl: zod.string(),
+    appleUrl: zod.string().nullish(),
+    spotifyUrl: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    transcriptHtml: zod.string().nullish(),
+    artworkUrl: zod.string(),
+    serviceId: zod.string().uuid().nullish(),
+    solutionId: zod.string().uuid().nullish(),
+    linkedPostId: zod.string().uuid().nullable(),
+    linkedPost: zod.union([
+      zod
+        .object({
+          id: zod.string().uuid(),
+          slug: zod.string(),
+          title: zod.string(),
+          excerpt: zod.string().nullable(),
+          heroImageUrl: zod.string().nullable(),
+          publishedAt: zod.coerce.date().nullable(),
+          status: zod
+            .enum(["draft", "scheduled", "published", "archived"])
+            .optional()
+            .describe("Only present on CMS responses."),
+        })
+        .describe(
+          "A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.",
+        ),
+      zod.null(),
+    ]),
+    status: zod.enum(["draft", "scheduled", "published", "archived"]),
+    publishedAt: zod.coerce.date().nullish(),
+    unpublishedAt: zod.coerce.date().nullish(),
+    featured: zod.boolean(),
+    featuredRank: zod.number().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImage: zod.string().nullish(),
+    active: zod.boolean(),
+    sourceId: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .describe(
+    "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
+  );
+
+/**
+ * @summary List all episodes (admin, includes drafts)
+ */
+export const ListCmsPolarisEpisodesResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        episodeNumber: zod.number(),
+        summary: zod.string(),
+        guestName: zod.string().nullish(),
+        audioUrl: zod.string(),
+        appleUrl: zod.string().nullish(),
+        spotifyUrl: zod.string().nullish(),
+        durationSeconds: zod.number().nullish(),
+        transcriptHtml: zod.string().nullish(),
+        artworkUrl: zod.string(),
+        serviceId: zod.string().uuid().nullish(),
+        solutionId: zod.string().uuid().nullish(),
+        linkedPostId: zod.string().uuid().nullable(),
+        linkedPost: zod.union([
+          zod
+            .object({
+              id: zod.string().uuid(),
+              slug: zod.string(),
+              title: zod.string(),
+              excerpt: zod.string().nullable(),
+              heroImageUrl: zod.string().nullable(),
+              publishedAt: zod.coerce.date().nullable(),
+              status: zod
+                .enum(["draft", "scheduled", "published", "archived"])
+                .optional()
+                .describe("Only present on CMS responses."),
+            })
+            .describe(
+              "A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.",
+            ),
+          zod.null(),
+        ]),
+        status: zod.enum(["draft", "scheduled", "published", "archived"]),
+        publishedAt: zod.coerce.date().nullish(),
+        unpublishedAt: zod.coerce.date().nullish(),
+        featured: zod.boolean(),
+        featuredRank: zod.number().nullish(),
+        seoTitle: zod.string().nullish(),
+        seoDescription: zod.string().nullish(),
+        ogImage: zod.string().nullish(),
+        active: zod.boolean(),
+        sourceId: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      })
+      .describe(
+        "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
+      ),
+  ),
+});
+
+/**
+ * @summary Search blog posts eligible for linking to a Polaris episode. Returns posts categorised as "Polaris" or "podcast" (matched on category slug or name, case-insensitively). Up to 100 results.
+ */
+export const ListPolarisLinkablePostsQueryParams = zod.object({
+  q: zod.coerce.string().optional().describe("Optional title search string."),
+});
+
+export const ListPolarisLinkablePostsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        excerpt: zod.string().nullable(),
+        publishedAt: zod.coerce.date().nullable(),
+        status: zod.enum(["draft", "scheduled", "published", "archived"]),
+      })
+      .describe(
+        "Slim post shape returned by the post-picker endpoint so editors can search for and link a related blog post to a Polaris episode.",
+      ),
+  ),
+});
+
+/**
+ * @summary Get a single episode by ID (admin, includes linkedPost with status)
+ */
+export const GetCmsPolarisEpisodeParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetCmsPolarisEpisodeResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    episodeNumber: zod.number(),
+    summary: zod.string(),
+    guestName: zod.string().nullish(),
+    audioUrl: zod.string(),
+    appleUrl: zod.string().nullish(),
+    spotifyUrl: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    transcriptHtml: zod.string().nullish(),
+    artworkUrl: zod.string(),
+    serviceId: zod.string().uuid().nullish(),
+    solutionId: zod.string().uuid().nullish(),
+    linkedPostId: zod.string().uuid().nullable(),
+    linkedPost: zod.union([
+      zod
+        .object({
+          id: zod.string().uuid(),
+          slug: zod.string(),
+          title: zod.string(),
+          excerpt: zod.string().nullable(),
+          heroImageUrl: zod.string().nullable(),
+          publishedAt: zod.coerce.date().nullable(),
+          status: zod
+            .enum(["draft", "scheduled", "published", "archived"])
+            .optional()
+            .describe("Only present on CMS responses."),
+        })
+        .describe(
+          "A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.",
+        ),
+      zod.null(),
+    ]),
+    status: zod.enum(["draft", "scheduled", "published", "archived"]),
+    publishedAt: zod.coerce.date().nullish(),
+    unpublishedAt: zod.coerce.date().nullish(),
+    featured: zod.boolean(),
+    featuredRank: zod.number().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImage: zod.string().nullish(),
+    active: zod.boolean(),
+    sourceId: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .describe(
+    "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
+  );

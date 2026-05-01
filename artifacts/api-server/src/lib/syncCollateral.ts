@@ -1,8 +1,9 @@
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import {
   db,
   collateralTable,
   servicesTable,
+  solutionsTable,
   assetsTable,
   postCategories,
   postTags,
@@ -292,6 +293,23 @@ export async function upsertCollateralFromPost(
 
   const tags = tagRows.map((r) => r.slug);
 
+  // Resolve solutionId: prefer the editor's explicit linked_solution_id,
+  // then fall back to matching any tag slug against a live solution slug.
+  let solutionId: string | null = post.linkedSolutionId ?? null;
+  if (!solutionId && tags.length > 0) {
+    const matched = await db
+      .select({ id: solutionsTable.id })
+      .from(solutionsTable)
+      .where(
+        and(
+          inArray(solutionsTable.slug, tags),
+          isNull(solutionsTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    solutionId = matched[0]?.id ?? null;
+  }
+
   const now = new Date();
   const syncedFields = {
     type: "insight" as const,
@@ -305,6 +323,7 @@ export async function upsertCollateralFromPost(
     featured: post.featured,
     featuredRank: post.featuredRank,
     serviceId,
+    solutionId,
     tags,
     active: true,
     updatedAt: now,

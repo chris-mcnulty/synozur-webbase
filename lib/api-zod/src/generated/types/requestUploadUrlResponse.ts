@@ -8,6 +8,8 @@
 import type { RequestUploadUrlBody } from "./requestUploadUrlBody";
 
 export interface RequestUploadUrlResponse {
+  /** Absolute HTTPS URL (GCS) or server-relative path starting with / (SPE direct-upload). Clients must absolutize relative paths using window.location.origin before use.
+   */
   uploadURL: string;
   objectPath: string;
   metadata?: RequestUploadUrlBody;

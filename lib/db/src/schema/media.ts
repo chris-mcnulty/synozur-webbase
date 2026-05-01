@@ -38,6 +38,12 @@ export const mediaTable = pgTable(
     // after the GCS overlap soak (≥30 days post-cutover) per BACKLOG.
     speFileId: text("spe_file_id"),
     speContainerId: text("spe_container_id"),
+    // Populated when a migration attempt permanently fails (e.g. Graph 400
+    // invalidRequest). Non-null rows are excluded from subsequent migration
+    // pages so the runner never loops on the same broken file. An admin can
+    // clear this column (via the "Retry failed" button in the SPE admin page)
+    // to queue the file for another attempt after fixing the root cause.
+    speMigrateError: text("spe_migrate_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

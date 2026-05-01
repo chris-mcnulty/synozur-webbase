@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -38,6 +38,25 @@ export default function AdminPolarisEpisodesList() {
   });
   const items: PolarisEpisodeDto[] = listQ.data?.items ?? [];
 
+  const servicesQ = useQuery({
+    queryKey: ["admin-services"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const services = servicesQ.data?.items ?? [];
+
+  const serviceById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of services) m.set(s.id, s.title);
+    return m;
+  }, [services]);
+  const solutionById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of services) {
+      for (const sol of s.solutions) m.set(sol.id, sol.title);
+    }
+    return m;
+  }, [services]);
+
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updatePolarisEpisode>[1] }) =>
       api.updatePolarisEpisode(id, data),
@@ -56,6 +75,19 @@ export default function AdminPolarisEpisodesList() {
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
+  const bulkSyncMut = useMutation({
+    mutationFn: () => api.bulkSyncPolarisToCollateral(),
+    onSuccess: (data) => {
+      toast({
+        title: "Bulk re-sync complete",
+        description: `${data.updated} updated, ${data.created} created (${data.total} episodes total).`,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-polaris-episodes"] });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Bulk re-sync failed", description: e.message, variant: "destructive" }),
+  });
+
   const onToggleActive = (e: PolarisEpisodeDto, active: boolean) => {
     if (!canWrite) return;
     updateMut.mutate({
@@ -66,7 +98,7 @@ export default function AdminPolarisEpisodesList() {
 
   const onDelete = (e: PolarisEpisodeDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${e.title}"?`)) return;
+    if (!confirm(`Archive "${e.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(e.id);
   };
 
@@ -84,6 +116,18 @@ export default function AdminPolarisEpisodesList() {
             >
               <Download className="h-4 w-4 mr-2" /> Import from Libsyn
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirm("Re-sync all Polaris episodes to the library? This will update service and solution tags on every episode's collateral record.")) return;
+                bulkSyncMut.mutate();
+              }}
+              disabled={bulkSyncMut.isPending}
+              data-testid="button-bulk-sync-polaris"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2${bulkSyncMut.isPending ? " animate-spin" : ""}`} />
+              {bulkSyncMut.isPending ? "Syncing…" : "Re-sync all to library"}
+            </Button>
             <Link href="/library/polaris-episodes/new">
               <Button data-testid="button-create-polaris-episode">
                 <Plus className="h-4 w-4 mr-2" /> New episode
@@ -99,6 +143,8 @@ export default function AdminPolarisEpisodesList() {
             <TableRow>
               <TableHead className="w-16">#</TableHead>
               <TableHead>Title</TableHead>
+              <TableHead className="w-32">Service</TableHead>
+              <TableHead className="w-40">Solution</TableHead>
               <TableHead className="w-28">Status</TableHead>
               <TableHead className="w-36">Published</TableHead>
               <TableHead className="w-20">Active</TableHead>
@@ -108,13 +154,13 @@ export default function AdminPolarisEpisodesList() {
           <TableBody>
             {listQ.isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No Polaris episodes yet.
                 </TableCell>
               </TableRow>
@@ -131,6 +177,12 @@ export default function AdminPolarisEpisodesList() {
                     <div className="text-xs text-muted-foreground font-mono">
                       /polaris/{e.slug}
                     </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {e.serviceId ? (serviceById.get(e.serviceId) ?? "—") : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {e.solutionId ? (solutionById.get(e.solutionId) ?? "—") : "—"}
                   </TableCell>
                   <TableCell className="text-sm">
                     {STATUS_LABELS[e.status] ?? e.status}

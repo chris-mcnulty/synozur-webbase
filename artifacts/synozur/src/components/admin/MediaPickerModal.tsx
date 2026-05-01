@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-client-react";
 import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
+import { resolveStoragePath, withWidth } from "@/lib/media-url";
 import {
   type AssetKind,
   isDocumentMime,
@@ -46,21 +47,32 @@ const DEFAULT_MAX_BYTES = IMAGE_MAX_BYTES;
 
 // Accepts either a plain URL string or a media item object so callers can
 // pass either form.heroImage (string) or a MediaItem from the picker.
+//
+// `options.width` requests a sharp-resized variant from the api-server.
+// External URLs and Vite-served `/images/...` paths are not resizable, so
+// the parameter is dropped silently for those.
+//
+// String inputs and `publicUrl` values that arrive in the legacy
+// `/objects/...` shape are normalized to `/api/storage/objects/...`
+// (the same mapping used by `resolveMediaUrl`) so resize applies and
+// the URL actually resolves.
 export function mediaUrl(
   m: string | { storageKey: string | null; publicUrl?: string | null },
+  options?: { width?: number },
 ): string {
+  let resolved = "";
   if (typeof m === "string") {
     if (!m) return "";
-    if (m.startsWith("http")) return m;
-    return `${BASE_PATH}${m}`;
+    resolved = resolveStoragePath(m);
+  } else if (m.publicUrl) {
+    resolved = resolveStoragePath(m.publicUrl);
+  } else if (m.storageKey) {
+    resolved = m.storageKey.startsWith("http")
+      ? m.storageKey
+      : `${BASE_PATH}/api/storage${m.storageKey}`;
   }
-  if (m.publicUrl) {
-    if (m.publicUrl.startsWith("http")) return m.publicUrl;
-    return `${BASE_PATH}${m.publicUrl}`;
-  }
-  if (!m.storageKey) return "";
-  if (m.storageKey.startsWith("http")) return m.storageKey;
-  return `${BASE_PATH}/api/storage${m.storageKey}`;
+  if (!resolved) return "";
+  return withWidth(resolved, options?.width);
 }
 
 interface Props {
@@ -238,7 +250,10 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                 size: Number(file.size ?? 0),
                 contentType: String(file.type ?? "application/octet-stream"),
               });
-              return { method: "PUT", url: uploadURL };
+              const absURL = uploadURL.startsWith("/")
+                ? `${window.location.origin}${uploadURL}`
+                : uploadURL;
+              return { method: "PUT", url: absURL };
             }}
             onComplete={async (result) => {
               for (const f of (result.successful ?? []) as unknown as Array<
@@ -320,8 +335,10 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
                   >
                     {isImage ? (
                       <img
-                        src={mediaUrl(m)}
+                        src={mediaUrl(m, { width: 400 })}
                         alt={m.altText ?? ""}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -382,8 +399,12 @@ export async function uploadAndRegisterImage(): Promise<string | null> {
           size: file.size,
           contentType: file.type || "application/octet-stream",
         });
-        const putRes = await fetch(uploadURL, {
+        const absUploadURL = uploadURL.startsWith("/")
+          ? `${window.location.origin}${uploadURL}`
+          : uploadURL;
+        const putRes = await fetch(absUploadURL, {
           method: "PUT",
+          credentials: "same-origin",
           headers: { "Content-Type": file.type || "application/octet-stream" },
           body: file,
         });
@@ -391,7 +412,7 @@ export async function uploadAndRegisterImage(): Promise<string | null> {
           resolve(null);
           return;
         }
-        const pathOnly = new URL(uploadURL).pathname;
+        const pathOnly = new URL(absUploadURL).pathname;
         const match = pathOnly.match(/\/o\/(.+)$/);
         const objectName = match ? decodeURIComponent(match[1]) : pathOnly;
         const slashIdx = objectName.lastIndexOf("/");

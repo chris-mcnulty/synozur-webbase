@@ -66,7 +66,7 @@ function RelatedWorkshopsRail({
               Accelerate with a focused workshop
             </h2>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
-              Jump-start your {serviceTitle?.toLowerCase() ?? "transformation"} journey
+              Jump-start your {serviceTitle ?? "transformation"} journey
               with a structured, facilitated intensive — designed to produce clear
               deliverables in a single session.
             </p>
@@ -451,7 +451,7 @@ export default function ServiceDetail() {
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Ready to start a conversation
-            {service ? ` about ${service.title.toLowerCase()}` : ""}?
+            {service ? ` about ${service.title}` : ""}?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
             Tell us where you are headed. We will tell you where we can help.

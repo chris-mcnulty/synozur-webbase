@@ -5,12 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowRight,
   Headphones,
   Calendar,
   Clock,
   User,
 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import type { PolarisLinkedPostDto } from "@/lib/api";
 
 interface PolarisEpisodeDto {
   id: string;
@@ -25,9 +27,73 @@ interface PolarisEpisodeDto {
   durationSeconds: number | null;
   artworkUrl: string;
   publishedAt: string | null;
+  linkedPost: PolarisLinkedPostDto | null;
 }
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+const SHOW_LINKS = [
+  {
+    key: "apple",
+    label: "Apple Podcasts",
+    showUrl: "https://podcasts.apple.com/us/podcast/polaris-pathways-a-synozur-podcast/id1773172041",
+    episodeUrl: (ep: PolarisEpisodeDto) => ep.appleUrl,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+        <path d="M12 0C5.374 0 0 5.373 0 12c0 6.628 5.374 12 12 12 6.628 0 12-5.372 12-12C24 5.373 18.628 0 12 0zm0 2.182a9.818 9.818 0 1 1 0 19.636A9.818 9.818 0 0 1 12 2.182zm-.01 3.636c-2.534 0-4.674 1.642-5.437 3.92-.155.458-.232.937-.232 1.426 0 .682.148 1.33.414 1.916.37.82.972 1.516 1.73 1.997l-.463 2.776a.545.545 0 0 0 .536.628h6.924a.545.545 0 0 0 .536-.628l-.462-2.776c.757-.481 1.36-1.177 1.73-1.997.265-.586.413-1.234.413-1.916 0-.489-.077-.968-.232-1.426-.763-2.278-2.903-3.92-5.437-3.92zm0 1.637c2.024 0 3.74 1.313 4.351 3.134.123.368.185.754.185 1.145 0 .546-.118 1.065-.33 1.534-.297.657-.779 1.214-1.386 1.6a.545.545 0 0 0-.24.58l.43 2.577H9.99l.43-2.577a.545.545 0 0 0-.24-.58c-.607-.386-1.089-.943-1.385-1.6a3.615 3.615 0 0 1-.33-1.534c0-.391.062-.777.184-1.145.612-1.821 2.327-3.134 4.35-3.134zm0 1.636a1.636 1.636 0 1 0 0 3.273 1.636 1.636 0 0 0 0-3.273z"/>
+      </svg>
+    ),
+    color: "bg-[#872EC4]/20 border-[#872EC4]/40 hover:bg-[#872EC4]/30",
+  },
+  {
+    key: "spotify",
+    label: "Spotify",
+    showUrl: "https://open.spotify.com/show/1cEtlJsybYcFFGTiKU1pX6?si=6faafd668eb44d5b",
+    episodeUrl: (ep: PolarisEpisodeDto) => ep.spotifyUrl,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+      </svg>
+    ),
+    color: "bg-[#1DB954]/20 border-[#1DB954]/40 hover:bg-[#1DB954]/30",
+  },
+  {
+    key: "amazon",
+    label: "Amazon Music",
+    showUrl: "https://music.amazon.com/podcasts/db9939ac-8343-420e-97c3-ee09eae50c74/polaris-pathways---a-synozur-podcast",
+    episodeUrl: () => null,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+        <path d="M13.958 10.09c0 1.232.029 2.256-.591 3.351-.502.891-1.301 1.438-2.186 1.438-1.214 0-1.922-.924-1.922-2.292 0-2.692 2.415-3.182 4.699-3.182v.685zm3.186 7.705c-.209.189-.512.201-.745.076-1.051-.872-1.238-1.276-1.814-2.106-1.732 1.767-2.958 2.297-5.201 2.297-2.657 0-4.72-1.641-4.72-4.924 0-2.565 1.392-4.311 3.371-5.163 1.715-.755 4.11-.891 5.938-1.098v-.408c0-.748.059-1.633-.381-2.277-.381-.574-1.124-.811-1.773-.811-1.204 0-2.277.617-2.541 1.896-.054.283-.261.562-.546.576l-3.063-.33c-.258-.059-.545-.267-.471-.663.706-3.717 4.06-4.836 7.068-4.836 1.537 0 3.546.41 4.758 1.574 1.537 1.435 1.39 3.352 1.39 5.437v4.929c0 1.481.614 2.132 1.192 2.932.201.283.246.621-.01.831-.645.54-1.79 1.541-2.422 2.098-.003-.003-.003-.003-.003-.003l.003-.006z"/>
+      </svg>
+    ),
+    color: "bg-[#FF9900]/20 border-[#FF9900]/40 hover:bg-[#FF9900]/30",
+  },
+  {
+    key: "youtube",
+    label: "YouTube",
+    showUrl: "https://www.youtube.com/@SynozurVideos",
+    episodeUrl: () => null,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    ),
+    color: "bg-[#FF0000]/20 border-[#FF0000]/40 hover:bg-[#FF0000]/30",
+  },
+  {
+    key: "rss",
+    label: "RSS",
+    showUrl: `${BASE_PATH}/polaris/rss.xml`,
+    episodeUrl: () => null,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+        <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+      </svg>
+    ),
+    color: "bg-[#F26522]/20 border-[#F26522]/40 hover:bg-[#F26522]/30",
+  },
+];
 
 async function fetchEpisode(slug: string): Promise<PolarisEpisodeDto> {
   const res = await fetch(`${BASE_PATH}/api/polaris/episodes/${encodeURIComponent(slug)}`);
@@ -51,20 +117,6 @@ function formatDuration(seconds: number | null): string {
   return `${m} min`;
 }
 
-const platformLinks = [
-  {
-    key: "apple" as const,
-    label: "Apple Podcasts",
-    url: (ep: PolarisEpisodeDto) => ep.appleUrl,
-    color: "bg-[#8B3FD9]",
-  },
-  {
-    key: "spotify" as const,
-    label: "Spotify",
-    url: (ep: PolarisEpisodeDto) => ep.spotifyUrl,
-    color: "bg-[#1DB954]",
-  },
-];
 
 export default function PolarisEpisodeDetail() {
   const [, params] = useRoute("/polaris/:slug");
@@ -172,19 +224,19 @@ export default function PolarisEpisodeDetail() {
                 )}
               </div>
 
-              {/* Platform links */}
-              <div className="flex flex-wrap gap-3 mb-8">
-                {platformLinks.map((p) => {
-                  const href = p.url(episode);
-                  if (!href) return null;
+              {/* Platform chiclets — episode-specific URL takes priority, falls back to show URL */}
+              <div className="flex flex-wrap gap-2.5 mb-8">
+                {SHOW_LINKS.map((p) => {
+                  const href = p.episodeUrl(episode) ?? p.showUrl;
                   return (
                     <a
                       key={p.key}
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm text-white hover:bg-white/10 hover:border-primary/60 transition-colors"
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm text-white transition-colors ${p.color}`}
                     >
+                      {p.icon}
                       {p.label}
                     </a>
                   );
@@ -207,6 +259,51 @@ export default function PolarisEpisodeDetail() {
           </div>
         </div>
       </section>
+
+      {/* Featured linked blog post — renders only when an editor has linked
+          a related post (typically one categorized as Polaris or podcast). */}
+      {episode.linkedPost && (
+        <section className="bg-background py-14 border-t border-border/60">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <p className="text-sm uppercase tracking-widest text-primary mb-4">
+              Read the post
+            </p>
+            <Link
+              href={`/insights/${episode.linkedPost.slug}`}
+              className="group block rounded-2xl border border-border/70 bg-card hover:border-primary/60 hover:shadow-lg transition-all overflow-hidden"
+              data-testid="polaris-linked-post-card"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-0">
+                {episode.linkedPost.heroImageUrl ? (
+                  <div className="aspect-[4/3] sm:aspect-auto sm:h-full bg-muted overflow-hidden">
+                    <img
+                      src={episode.linkedPost.heroImageUrl}
+                      alt={episode.linkedPost.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-[4/3] sm:aspect-auto sm:h-full bg-gradient-to-br from-primary/20 to-primary/5 hidden sm:block" />
+                )}
+                <div className="p-6 flex flex-col justify-center">
+                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors mb-2 leading-tight">
+                    {episode.linkedPost.title}
+                  </h3>
+                  {episode.linkedPost.excerpt && (
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+                      {episode.linkedPost.excerpt}
+                    </p>
+                  )}
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                    Read the post
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Show notes */}
       {summaryLines.length > 0 && (

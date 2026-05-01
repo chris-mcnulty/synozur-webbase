@@ -44,6 +44,7 @@ function shape(args: {
     readingTimeMin: post.readingTimeMin,
     featured: post.featured,
     featuredRank: post.featuredRank,
+    linkedSolutionId: post.linkedSolutionId ?? null,
     categories,
     tags,
     createdAt: post.createdAt.toISOString(),

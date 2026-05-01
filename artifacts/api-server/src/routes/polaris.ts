@@ -1,13 +1,18 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import {
   db,
   polarisEpisodesTable,
   collateralTable,
   siteSettingsTable,
+  postsTable,
+  postCategories,
+  categoriesTable,
+  mediaTable,
   ARTIFACT_STATUSES,
   type PolarisEpisode,
+  type PostStatus,
 } from "@workspace/db";
 import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
@@ -52,7 +57,20 @@ async function ensureUniqueSlug(base: string, excludeId?: string): Promise<strin
   }
 }
 
-function serialize(e: PolarisEpisode) {
+interface LinkedPostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  heroImageUrl: string | null;
+  publishedAt: string | null;
+  // Only set on CMS responses so editors can see if the linked post is a
+  // draft / scheduled / archived. Public responses already filter by
+  // status === "published", so the field is dropped there.
+  status?: PostStatus;
+}
+
+function serialize(e: PolarisEpisode, linkedPost: LinkedPostDto | null = null) {
   return {
     id: e.id,
     slug: e.slug,
@@ -68,6 +86,8 @@ function serialize(e: PolarisEpisode) {
     artworkUrl: e.artworkUrl,
     serviceId: e.serviceId ?? null,
     solutionId: e.solutionId ?? null,
+    linkedPostId: e.linkedPostId ?? null,
+    linkedPost,
     status: e.status,
     publishedAt: e.publishedAt,
     unpublishedAt: e.unpublishedAt,
@@ -80,6 +100,47 @@ function serialize(e: PolarisEpisode) {
     sourceId: e.sourceId,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
+  };
+}
+
+async function loadLinkedPost(
+  postId: string | null,
+  opts: { publicOnly?: boolean } = {},
+): Promise<LinkedPostDto | null> {
+  if (!postId) return null;
+  const row = await db
+    .select({
+      id: postsTable.id,
+      slug: postsTable.slug,
+      title: postsTable.title,
+      excerpt: postsTable.excerpt,
+      publishedAt: postsTable.publishedAt,
+      heroPublicUrl: mediaTable.publicUrl,
+      status: postsTable.status,
+      deletedAt: postsTable.deletedAt,
+    })
+    .from(postsTable)
+    .leftJoin(mediaTable, eq(mediaTable.id, postsTable.heroImageId))
+    .where(eq(postsTable.id, postId))
+    .limit(1);
+  const r = row[0];
+  if (!r || r.deletedAt) return null;
+  if (opts.publicOnly) {
+    if (r.status !== "published") return null;
+    if (r.publishedAt && r.publishedAt > new Date()) return null;
+  }
+  return {
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    excerpt: r.excerpt,
+    heroImageUrl: r.heroPublicUrl
+      ? r.heroPublicUrl.startsWith("/objects/")
+        ? `/api/storage${r.heroPublicUrl}`
+        : r.heroPublicUrl
+      : null,
+    publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+    ...(opts.publicOnly ? {} : { status: r.status }),
   };
 }
 
@@ -118,7 +179,8 @@ router.get("/polaris/episodes", async (req, res) => {
     total: countRow?.count ?? 0,
     page,
     pageSize,
-    items: rows.map(serialize),
+    // linkedPost is intentionally omitted on list responses (N+1 concern; not needed by list-card UI).
+    items: rows.map((r) => serialize(r)),
   });
 });
 
@@ -131,7 +193,10 @@ router.get("/polaris/episodes/:slug", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serialize(row));
+  const linkedPost = await loadLinkedPost(row.linkedPostId ?? null, {
+    publicOnly: true,
+  });
+  res.json(serialize(row, linkedPost));
 });
 
 // RSS 2.0 feed with iTunes namespace extensions so the show can be submitted
@@ -261,6 +326,7 @@ const EpisodeBody = z.object({
   sourceId: z.string().nullish(),
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
+  linkedPostId: z.string().uuid().nullish(),
 });
 const EpisodePatch = EpisodeBody.partial();
 
@@ -275,9 +341,75 @@ router.get("/cms/polaris/episodes", ...readGuard, async (_req, res) => {
     .select()
     .from(polarisEpisodesTable)
     .where(sql`${polarisEpisodesTable.deletedAt} is null`)
-    .orderBy(desc(polarisEpisodesTable.episodeNumber));
-  res.json({ items: rows.map(serialize) });
+    .orderBy(
+      sql`${polarisEpisodesTable.publishedAt} desc nulls last`,
+      desc(polarisEpisodesTable.createdAt),
+    );
+  // linkedPost is intentionally omitted on list responses (N+1 concern; not needed by list-card UI).
+  res.json({ items: rows.map((r) => serialize(r)) });
 });
+
+// Picker for the episode editor: returns blog posts categorized as
+// "Polaris" or "podcast" (matched on category slug or name,
+// case-insensitively) so an editor can link an episode to a related
+// write-up. Returns slim items only. Single distinct join keeps the work in
+// one query and applies LIMIT before materializing post IDs in the app.
+router.get(
+  "/cms/polaris/episodes/post-picker",
+  ...readGuard,
+  async (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+    const filters = [isNull(postsTable.deletedAt)];
+    if (q.length > 0) {
+      filters.push(ilike(postsTable.title, `%${q}%`));
+    }
+
+    const rows = await db
+      .selectDistinct({
+        id: postsTable.id,
+        slug: postsTable.slug,
+        title: postsTable.title,
+        excerpt: postsTable.excerpt,
+        publishedAt: postsTable.publishedAt,
+        updatedAt: postsTable.updatedAt,
+        status: postsTable.status,
+      })
+      .from(postsTable)
+      .innerJoin(postCategories, eq(postCategories.postId, postsTable.id))
+      .innerJoin(
+        categoriesTable,
+        eq(categoriesTable.id, postCategories.categoryId),
+      )
+      .where(
+        and(
+          or(
+            ilike(categoriesTable.slug, "polaris"),
+            ilike(categoriesTable.slug, "podcast"),
+            ilike(categoriesTable.name, "polaris"),
+            ilike(categoriesTable.name, "podcast"),
+          ),
+          ...filters,
+        ),
+      )
+      .orderBy(
+        sql`${postsTable.publishedAt} desc nulls last`,
+        desc(postsTable.updatedAt),
+      )
+      .limit(100);
+
+    res.json({
+      items: rows.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        title: r.title,
+        excerpt: r.excerpt,
+        publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+        status: r.status,
+      })),
+    });
+  },
+);
 
 router.get("/cms/polaris/episodes/:id", ...readGuard, async (req, res) => {
   const id = String(req.params.id);
@@ -288,7 +420,8 @@ router.get("/cms/polaris/episodes/:id", ...readGuard, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serialize(row));
+  const linkedPost = await loadLinkedPost(row.linkedPostId ?? null);
+  res.json(serialize(row, linkedPost));
 });
 
 router.post("/cms/polaris/episodes", ...adminGuard, async (req, res) => {
@@ -325,6 +458,7 @@ router.post("/cms/polaris/episodes", ...adminGuard, async (req, res) => {
       sourceId: d.sourceId ?? null,
       serviceId: d.serviceId ?? null,
       solutionId: d.solutionId ?? null,
+      linkedPostId: d.linkedPostId ?? null,
     })
     .returning();
   await audit({
@@ -333,7 +467,8 @@ router.post("/cms/polaris/episodes", ...adminGuard, async (req, res) => {
     entity: "polaris_episode",
     entityId: row.id,
   });
-  res.status(201).json(serialize(row));
+  const linkedPost = await loadLinkedPost(row.linkedPostId ?? null);
+  res.status(201).json(serialize(row, linkedPost));
 });
 
 router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
@@ -376,6 +511,7 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     "sourceId",
     "serviceId",
     "solutionId",
+    "linkedPostId",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
@@ -393,7 +529,8 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     entity: "polaris_episode",
     entityId: id,
   });
-  res.json(serialize(updated));
+  const linkedPost = await loadLinkedPost(updated.linkedPostId ?? null);
+  res.json(serialize(updated, linkedPost));
 });
 
 // ----- Libsyn ingestion (#113) ------------------------------------------
@@ -546,6 +683,99 @@ router.get("/cms/polaris/episodes/:id/collateral", ...readGuard, async (req, res
   });
   res.json({ collateral: linked ? serializeCollateralLink(linked) : null });
 });
+
+// POST /cms/polaris/episodes/bulk-sync-collateral — re-syncs ALL non-deleted
+// episodes in one request. For episodes that already have a collateral mirror
+// the record is updated in-place (slug preserved). For episodes without one a
+// new collateral row is created. Returns a summary of what was done.
+router.post(
+  "/cms/polaris/episodes/bulk-sync-collateral",
+  ...adminGuard,
+  async (req, res) => {
+    const episodes = await db.query.polarisEpisodesTable.findMany({
+      where: isNull(polarisEpisodesTable.deletedAt),
+    });
+
+    let created = 0;
+    let updated = 0;
+
+    for (const episode of episodes) {
+      const syncFields = {
+        title: episode.title,
+        description: episode.summary || "",
+        heroImage: episode.artworkUrl || "",
+        url: canonicalUrlForCollateral("podcast", episode.slug),
+        external: false,
+        publishedAt: episode.publishedAt,
+        active: episode.active,
+        featured: episode.featured,
+        featuredRank: episode.featuredRank ?? null,
+        sourceId: `polaris_episode:${episode.id}`,
+        serviceId: episode.serviceId ?? null,
+        solutionId: episode.solutionId ?? null,
+        updatedAt: new Date(),
+      };
+
+      const existing = await db.query.collateralTable.findFirst({
+        where: and(
+          eq(collateralTable.polarisEpisodeId, episode.id),
+          isNull(collateralTable.deletedAt),
+        ),
+      });
+
+      if (existing) {
+        await db
+          .update(collateralTable)
+          .set(syncFields)
+          .where(eq(collateralTable.id, existing.id));
+        await audit({
+          actorId: req.authedUser!.id,
+          action: "polaris_episode.collateral_sync",
+          entity: "collateral",
+          entityId: existing.id,
+          diff: { episodeId: episode.id, bulk: true },
+        });
+        updated++;
+      } else {
+        const base = toSlug(`polaris-${episode.slug}`);
+        let candidate = base;
+        let i = 1;
+        for (;;) {
+          const conflict = await db.query.collateralTable.findFirst({
+            where: eq(collateralTable.slug, candidate),
+          });
+          if (!conflict) break;
+          i++;
+          candidate = `${base}-${i}`;
+        }
+        const [newRow] = await db
+          .insert(collateralTable)
+          .values({
+            slug: candidate,
+            type: "podcast",
+            polarisEpisodeId: episode.id,
+            ...syncFields,
+            tags: [],
+            subtitle: episode.guestName ?? null,
+            pillar: null,
+            videoUrl: null,
+            downloadUrl: null,
+          })
+          .returning();
+        await audit({
+          actorId: req.authedUser!.id,
+          action: "polaris_episode.collateral_add",
+          entity: "collateral",
+          entityId: newRow.id,
+          diff: { episodeId: episode.id, bulk: true },
+        });
+        created++;
+      }
+    }
+
+    res.json({ total: episodes.length, created, updated });
+  },
+);
 
 // POST /cms/polaris/episodes/:id/sync-collateral — creates or re-syncs the
 // linked collateral entry using the episode's current fields. Preserves the

@@ -113,15 +113,19 @@ export const siteSettingsTable = pgTable("site_settings", {
   // (ENTRA_TENANT_ID / ENTRA_APP_CLIENT_ID / ENTRA_APP_CLIENT_SECRET) stay in
   // env; the runtime config below is admin-managed because container IDs are
   // produced by the SPE provisioning flow at runtime, not baked at deploy.
-  // `speStorageEnabled` is the master switch the storage backend factory
-  // consults alongside the `STORAGE_BACKEND` env var. `speContainerTypeId` is
-  // the GUID Azure issues when the container type is created in Synozur's
-  // tenant (one-time setup); the dev/prod container IDs are stamped onto this
-  // row when an admin clicks "Create container" in the SPE admin page.
+  // `speContainerTypeId` is the GUID Azure issues when the container type is
+  // created in Synozur's tenant (one-time setup); the dev/prod container IDs
+  // are stamped onto this row when an admin clicks "Create container".
+  // `storageBackendDev` / `storageBackendProd` are the per-environment backend
+  // selectors ('gcs' | 'spe'); null defaults to 'gcs'. Stored in DB (not env)
+  // so dev and prod can be switched independently from the admin UI without a
+  // redeploy. The old `speStorageEnabled` boolean is kept but no longer read.
   speStorageEnabled: boolean("spe_storage_enabled").notNull().default(false),
   speContainerTypeId: text("spe_container_type_id"),
   speContainerIdDev: text("spe_container_id_dev"),
   speContainerIdProd: text("spe_container_id_prod"),
+  storageBackendDev: text("storage_backend_dev"),
+  storageBackendProd: text("storage_backend_prod"),
 
   // #54: Spam detection rules. All fields are nullable so new deployments
   // fall back to sensible hard-coded defaults without a migration.

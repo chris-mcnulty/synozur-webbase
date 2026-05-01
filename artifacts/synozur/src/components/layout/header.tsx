@@ -16,8 +16,56 @@ const LOGO_COLOR_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42
 const BASE_PATH_HEADER = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const MARK_URL = `${BASE_PATH_HEADER}/images/synozur-mark-color.png`;
 
+type NavService = { title: string; slug: string; solutions: { title: string; slug: string }[] };
+
+const STATIC_SERVICE_PILLARS: NavService[] = [
+  {
+    title: "Organizational Transformation",
+    slug: "strategic-transformation",
+    solutions: [
+      { title: "Company OS", slug: "company-os" },
+      { title: "Fractional Leadership", slug: "fractional-leadership" },
+      { title: "Delivery Management", slug: "delivery-management" },
+    ],
+  },
+  {
+    title: "Technology Transformation",
+    slug: "technology-transformation",
+    solutions: [
+      { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
+      { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
+      { title: "Employee Effectiveness", slug: "employee-effectiveness" },
+      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
+    ],
+  },
+  {
+    title: "Experience Transformation",
+    slug: "experiences",
+    solutions: [
+      { title: "Employee Strategies", slug: "employee-strategies" },
+      { title: "Communication Strategies", slug: "communication-strategies" },
+      { title: "Design Strategies", slug: "design-strategies" },
+    ],
+  },
+  {
+    title: "Go-To-Market Transformation",
+    slug: "go-to-market-transformation",
+    solutions: [
+      { title: "Brand and Messaging", slug: "brand-and-messaging" },
+      { title: "GTM Strategy and Execution", slug: "gtm-strategy-and-execution" },
+      { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
+    ],
+  },
+];
+
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
+}
+
+function isLinkActive(href: string, location: string): boolean {
+  if (href === "/" || href === "") return location === "/" || location === "";
+  if (isExternal(href)) return false;
+  return location === href || location.startsWith(href + "/");
 }
 
 function NavLinkItem({
@@ -29,6 +77,10 @@ function NavLinkItem({
   className: string;
   onClick?: () => void;
 }) {
+  const [location] = useLocation();
+  const active = isLinkActive(link.href, location);
+  const activeClass = active ? " text-[#E60CB3] dark:text-primary font-semibold" : "";
+
   if (isExternal(link.href)) {
     return (
       <a
@@ -43,7 +95,7 @@ function NavLinkItem({
     );
   }
   return (
-    <Link href={link.href} className={className} onClick={onClick}>
+    <Link href={link.href} className={`${className}${activeClass}`} onClick={onClick}>
       {link.label}
     </Link>
   );
@@ -187,7 +239,10 @@ export function Header() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }));
   })();
 
-  const pillars = (servicesQuery.data?.items ?? []).filter((s) => s.slug !== "our-services");
+  const apiServiceItems = servicesQuery.data?.items;
+  const pillars: NavService[] = apiServiceItems
+    ? apiServiceItems.filter((s) => s.slug !== "our-services")
+    : STATIC_SERVICE_PILLARS;
 
   const servicesGroup: NavGroup = {
     title: "Services",
@@ -200,6 +255,13 @@ export function Header() {
   };
 
   const navGroups: NavGroup[] = [
+    {
+      title: "Home",
+      links: [
+        { label: "Home", href: "/" },
+        { label: "Alt Home", href: "/home-b" },
+      ],
+    },
     {
       title: "Our Story",
       links: [
@@ -273,10 +335,20 @@ export function Header() {
 
         {/* ── Desktop Nav (centered) ── */}
         <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
-          {navGroups.map((group) => (
+          {navGroups.map((group) => {
+            const allGroupLinks: string[] = [
+              ...group.links.map((l) => l.href),
+              ...(group.nested ?? []).flatMap((s) => [s.href, ...s.children.map((c) => c.href)]),
+            ];
+            const isGroupActive = allGroupLinks.some((href) => isLinkActive(href, location));
+            return (
             <div key={group.title} className="relative group">
               <button
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                className={`text-[17px] font-medium transition-colors py-2 ${
+                  isGroupActive
+                    ? "text-[#E60CB3] dark:text-primary"
+                    : "text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
+                }`}
                 aria-haspopup="true"
               >
                 {group.title}
@@ -291,7 +363,7 @@ export function Header() {
                     <NavLinkItem
                       key={link.label}
                       link={link}
-                      className="text-sm text-popover-foreground/80 hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
+                      className="text-[17px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
                     />
                   ))}
                   {group.nested && group.nested.length > 0 && (
@@ -305,7 +377,7 @@ export function Header() {
                           )}
                           <Link
                             href={section.href}
-                            className="block text-sm font-semibold text-popover-foreground hover:text-primary px-3 py-1 rounded-md"
+                            className={`block text-[17px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary ${isLinkActive(section.href, location) ? "text-[#E60CB3] dark:text-primary" : "text-popover-foreground"}`}
                           >
                             {section.label}
                           </Link>
@@ -315,7 +387,7 @@ export function Header() {
                                 <li key={c.href}>
                                   <Link
                                     href={c.href}
-                                    className="block text-xs text-popover-foreground/70 hover:text-primary hover:bg-muted/40 px-3 py-1 rounded-md"
+                                    className={`block text-[14px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 ${isLinkActive(c.href, location) ? "text-[#E60CB3] dark:text-primary font-semibold" : "text-popover-foreground/70"}`}
                                   >
                                     {c.label}
                                   </Link>
@@ -330,7 +402,7 @@ export function Header() {
                 </div>
               </div>
             </div>
-          ))}
+          ); })}
         </nav>
 
         {/* ── Right-side controls (desktop + mobile share this group) ── */}

@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { db, siteSettingsTable } from "@workspace/db";
 import { logger } from "../../logger";
 import { SpeGraphClient, SpeFileItem, readSpeGraphConfigFromEnv } from "./graphClient";
+import { SYNOZUR_COLUMN_MAX_LENGTHS } from "./containerCreator";
 
 const SETTINGS_ID = 1;
 
@@ -91,9 +92,10 @@ export class SpeFileStorage {
     if (!settings) {
       throw new SpeNotEnabledError("site_settings row not initialised");
     }
-    if (!settings.speStorageEnabled) {
-      throw new SpeNotEnabledError("speStorageEnabled is false in site_settings");
-    }
+    // `speStorageEnabled` is no longer a gate here — credentials being
+    // present and a container ID being set are the real prerequisites.
+    // The single runtime cutover switch is the STORAGE_BACKEND env var
+    // (controlled via deployment secrets, not the admin UI toggle).
     const isProd = process.env["NODE_ENV"] === "production";
     const containerId = isProd
       ? settings.speContainerIdProd
@@ -211,6 +213,10 @@ function buildPath(
       .replace(GRAPH_FORBIDDEN_RE, "_")
       .replace(/_+/g, "_") // collapse consecutive underscores
       .replace(/^_|_$/g, "") // trim leading/trailing underscores
+      // SharePoint rejects names that end with a period or space.
+      // (A trailing "." after the last word is the most common case from
+      // article titles like "AI in 2026: The Market Is Big. The Gap Is Bigger.")
+      .replace(/[.\s]+$/, "")
       .trim() || "unnamed";
   return `/${documentType}/${prefix}/${ownerId}-${safeName}`;
 }
@@ -222,18 +228,34 @@ function joinPath(base: string, segment: string): string {
 }
 
 function buildMetadataFields(opts: StoreFileOptions): Record<string, unknown> {
-  // Synozur* columns are custom text columns provisioned on the container's
-  // SharePoint document library via POST /admin/integrations/spe/provision-columns.
-  // They must exist on the list schema before Graph will accept writes.
-  // For new containers they are created automatically by createContainer();
-  // existing containers must be provisioned manually from the SPE admin page.
+  // Synozur* columns must already exist on the container schema — they are
+  // provisioned by SpeContainerCreator.provisionColumns() at container-create
+  // time, and re-runnable from the SPE admin page. setItemFields() falls back
+  // to per-field PATCH if any single column is missing, so a partially
+  // initialized schema doesn't fail the upload.
+  //
+  // Long values (filenames pulled from imported assets, weird MIME-with-params
+  // strings) get truncated to the provisioned column maxLength before stamping
+  // — Graph would otherwise reject the value with a 400, and we'd rather log a
+  // truncated value than drop it entirely. Limits come from SYNOZUR_COLUMNS.
   const out: Record<string, unknown> = {
-    SynozurDocumentType:    opts.documentType,
-    SynozurOwnerId:         opts.ownerId,
-    SynozurOriginalFileName: opts.filename,
-    SynozurContentType:     opts.contentType,
+    SynozurDocumentType: clampToColumn("SynozurDocumentType", opts.documentType),
+    SynozurOwnerId: clampToColumn("SynozurOwnerId", opts.ownerId),
+    SynozurOriginalFileName: clampToColumn("SynozurOriginalFileName", opts.filename),
+    SynozurContentType: clampToColumn("SynozurContentType", opts.contentType),
   };
-  if (opts.uploadedByUserId) out["SynozurUploadedByUserId"] = opts.uploadedByUserId;
+  if (opts.uploadedByUserId) {
+    out["SynozurUploadedByUserId"] = clampToColumn(
+      "SynozurUploadedByUserId",
+      opts.uploadedByUserId,
+    );
+  }
   if (opts.extraFields) Object.assign(out, opts.extraFields);
   return out;
+}
+
+function clampToColumn(columnName: string, value: string): string {
+  const max = SYNOZUR_COLUMN_MAX_LENGTHS[columnName];
+  if (max == null || value.length <= max) return value;
+  return value.slice(0, max);
 }

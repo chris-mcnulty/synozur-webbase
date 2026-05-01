@@ -21,6 +21,7 @@ export const CAPABILITY_NAMES = [
   "users.manage",
   "site.manage",
   "oauth.manage",
+  "ai.grounding.manage",
 ] as const;
 
 export type CapabilityName = (typeof CAPABILITY_NAMES)[number];
@@ -34,6 +35,8 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
   "site.manage": "Manage site-wide settings, redirects, and integrations.",
   "oauth.manage":
     "Register, rotate, and revoke OAuth client apps that authenticate against this site (#128).",
+  "ai.grounding.manage":
+    "Manage AI grounding documents that ground every AI call across the site.",
 };
 
 // Default mapping per role. The legacy roles map to exactly what
@@ -42,14 +45,14 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
 // nothing admin-side (they exist for portal authorization, not the CMS).
 export const DEFAULT_ROLE_CAPABILITIES: Record<RoleName, readonly CapabilityName[]> = {
   // Legacy roles (preserved as-is for back-compat)
-  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage"],
-  editor: ["content.view", "content.author", "content.publish", "content.moderate"],
+  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "ai.grounding.manage"],
+  editor: ["content.view", "content.author", "content.publish", "content.moderate", "ai.grounding.manage"],
   author: ["content.view", "content.author"],
   contributor: ["content.view", "content.author"],
   client: [],
   // #110 — audience classes
-  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage"],
-  content_author: ["content.view", "content.author", "content.publish"],
+  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "ai.grounding.manage"],
+  content_author: ["content.view", "content.author", "content.publish", "ai.grounding.manage"],
   hr: ["content.view", "users.manage"],
   internal: ["content.view"],
   customer: [],

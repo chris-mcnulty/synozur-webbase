@@ -51,6 +51,10 @@ tags:
     description: Admin site health (Core Web Vitals, alt-text coverage, redirects).
   - name: PublishBlocks
     description: Quality blocks surfaced on edit pages (warn-mode v0).
+  - name: Polaris
+    description: Public Polaris podcast episode endpoints.
+  - name: CmsPolaris
+    description: Admin Polaris podcast episode management.
 paths:
   /healthz:
     get:
@@ -2699,6 +2703,143 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /polaris/episodes:
+    get:
+      operationId: listPolarisEpisodes
+      tags:
+        - Polaris
+      summary: List published Polaris podcast episodes
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paginated episode list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisEpisodeListResponse'
+
+  /polaris/episodes/{slug}:
+    get:
+      operationId: getPolarisEpisode
+      tags:
+        - Polaris
+      summary: Get a single published episode by slug (includes linkedPost)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Episode detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisEpisode'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cms/polaris/episodes:
+    get:
+      operationId: listCmsPolarisEpisodes
+      tags:
+        - CmsPolaris
+      summary: List all episodes (admin, includes drafts)
+      security:
+        - readRole: []
+      responses:
+        '200':
+          description: Episode list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PolarisEpisode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cms/polaris/episodes/post-picker:
+    get:
+      operationId: listPolarisLinkablePosts
+      tags:
+        - CmsPolaris
+      summary: >-
+        Search blog posts eligible for linking to a Polaris episode.
+        Returns posts categorised as "Polaris" or "podcast" (matched on
+        category slug or name, case-insensitively). Up to 100 results.
+      security:
+        - readRole: []
+      parameters:
+        - in: query
+          name: q
+          description: Optional title search string.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linkable post list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PolarisLinkablePost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cms/polaris/episodes/{id}:
+    get:
+      operationId: getCmsPolarisEpisode
+      tags:
+        - CmsPolaris
+      summary: Get a single episode by ID (admin, includes linkedPost with status)
+      security:
+        - readRole: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Episode detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisEpisode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   responses:
     Unauthorized:
@@ -3227,6 +3368,10 @@ components:
         featuredRank:
           type: integer
           nullable: true
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
         categories:
           type: array
           items:
@@ -3317,6 +3462,10 @@ components:
           items:
             type: string
             format: uuid
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
     UpdatePostBody:
       type: object
       properties:
@@ -3375,6 +3524,10 @@ components:
           items:
             type: string
             format: uuid
+        linkedSolutionId:
+          type: string
+          format: uuid
+          nullable: true
     PostRevision:
       type: object
       required:
@@ -3683,7 +3836,10 @@ components:
       properties:
         uploadURL:
           type: string
-          format: uri
+          description: >
+            Absolute HTTPS URL (GCS) or server-relative path starting with /
+            (SPE direct-upload). Clients must absolutize relative paths using
+            window.location.origin before use.
         objectPath:
           type: string
         metadata:
@@ -5458,6 +5614,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollateralResource'
+        serviceId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        solutionId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        sourceId:
+          description: >-
+            Opaque reference to the source record that was synced into this
+            collateral item (e.g. "polaris_episode:<uuid>",
+            "white_paper:<uuid>"). Present on synced rows; null on manually
+            created items.
+          type:
+            - string
+            - 'null'
         active:
           type: boolean
         createdAt:
@@ -6275,3 +6450,215 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
+
+    PolarisLinkedPost:
+      description: >-
+        A blog post linked to a Polaris episode. Public responses omit `status`
+        (only published posts are surfaced); CMS responses always include it so
+        editors can see if a linked post is still a draft or archived.
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - excerpt
+        - heroImageUrl
+        - publishedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type:
+            - string
+            - 'null'
+        heroImageUrl:
+          type:
+            - string
+            - 'null'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        status:
+          description: Only present on CMS responses.
+          type: string
+          enum: [draft, scheduled, published, archived]
+
+    PolarisLinkablePost:
+      description: >-
+        Slim post shape returned by the post-picker endpoint so editors can
+        search for and link a related blog post to a Polaris episode.
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - excerpt
+        - publishedAt
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type:
+            - string
+            - 'null'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+
+    PolarisEpisode:
+      description: >-
+        A Polaris podcast episode. On list endpoints `linkedPost` is always
+        null (intentionally omitted to avoid N+1 queries and because list-card
+        UI does not display the linked post). On detail endpoints it is
+        populated when an editor has linked a related blog post.
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - episodeNumber
+        - summary
+        - audioUrl
+        - artworkUrl
+        - status
+        - featured
+        - active
+        - linkedPostId
+        - linkedPost
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        episodeNumber:
+          type: integer
+        summary:
+          type: string
+        guestName:
+          type:
+            - string
+            - 'null'
+        audioUrl:
+          type: string
+        appleUrl:
+          type:
+            - string
+            - 'null'
+        spotifyUrl:
+          type:
+            - string
+            - 'null'
+        durationSeconds:
+          type:
+            - integer
+            - 'null'
+        transcriptHtml:
+          type:
+            - string
+            - 'null'
+        artworkUrl:
+          type: string
+        serviceId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        solutionId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        linkedPostId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        linkedPost:
+          oneOf:
+            - $ref: '#/components/schemas/PolarisLinkedPost'
+            - type: 'null'
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
+        ogImage:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        sourceId:
+          type:
+            - string
+            - 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PolarisEpisodeListResponse:
+      type: object
+      required:
+        - total
+        - page
+        - pageSize
+        - items
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolarisEpisode'

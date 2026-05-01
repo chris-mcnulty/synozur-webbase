@@ -19,7 +19,6 @@
 // resolved by the caller in fileStorage.ts, not here.
 
 import { ConfidentialClientApplication } from "@azure/msal-node";
-import { Readable } from "stream";
 import { logger } from "../../logger";
 
 const GRAPH_V1_URL = "https://graph.microsoft.com/v1.0";
@@ -56,6 +55,152 @@ export interface SpeFileItem {
   createdDateTime?: string;
   lastModifiedDateTime?: string;
   fields?: Record<string, unknown>;
+}
+
+// Custom column definition for SPE container schemas. Mirrors the Microsoft
+// Graph `columnDefinition` resource exposed at
+// `/storage/fileStorage/containers/{id}/columns` — the SPE-specific endpoint
+// that, unlike `/drives/{id}/list/columns`, *does* permit schema modification
+// against an SPE container site with app-only Container.Selected/FullControl.
+export type SpeColumnType =
+  | "text"
+  | "choice"
+  | "dateTime"
+  | "number"
+  | "currency"
+  | "boolean"
+  | "personOrGroup"
+  | "hyperlinkOrPicture";
+
+export interface SpeColumnDefinition {
+  /** Returned by Graph after creation. */
+  id?: string;
+  /** Internal name — must match ^[a-zA-Z][a-zA-Z0-9_]*$. Immutable once created. */
+  name: string;
+  /** Human-readable label shown in the SharePoint portal. */
+  displayName: string;
+  description?: string;
+  columnType: SpeColumnType;
+  required?: boolean;
+  /** Indexed columns can be filtered with `$filter` against listItem.fields. */
+  indexed?: boolean;
+  hidden?: boolean;
+  readOnly?: boolean;
+  enforceUniqueValues?: boolean;
+  text?: {
+    allowMultipleLines?: boolean;
+    appendChangesToExistingText?: boolean;
+    linesForEditing?: number;
+    /** SharePoint hard-caps single-line text at 255 characters. */
+    maxLength?: number;
+  };
+  choice?: {
+    choices: string[];
+    allowFillInChoice?: boolean;
+    displayAs?: "dropDownMenu" | "radioButtons" | "checkboxes";
+  };
+  dateTime?: {
+    displayAs?: "default" | "friendly" | "standard";
+    format?: "dateOnly" | "dateTime";
+  };
+  number?: {
+    /** 0–5; mapped to Graph's string enum ("none"|"one"|...|"five"). */
+    decimalPlaces?: number;
+    minimum?: number;
+    maximum?: number;
+  };
+  currency?: {
+    /** Locale identifier — 1033 = en-US, 2057 = en-GB, 2052 = zh-CN, 3082 = es-ES, etc. */
+    lcid?: number;
+  };
+  boolean?: Record<string, never>;
+  personOrGroup?: {
+    allowMultipleSelection?: boolean;
+    chooseFromType?: "peopleOnly" | "peopleAndGroups";
+  };
+  hyperlinkOrPicture?: {
+    isPicture?: boolean;
+  };
+}
+
+const NUMBER_DECIMAL_MAP: Record<number, string> = {
+  0: "none",
+  1: "one",
+  2: "two",
+  3: "three",
+  4: "four",
+  5: "five",
+};
+
+/** SharePoint hard-caps single-line text columns at 255 chars. */
+const TEXT_MAX_LENGTH_CAP = 255;
+
+/** Translates a `SpeColumnDefinition` into the Graph wire shape. */
+function buildColumnRequest(
+  col: SpeColumnDefinition,
+): Record<string, unknown> {
+  const req: Record<string, unknown> = {
+    name: col.name,
+    displayName: col.displayName,
+    description: col.description ?? "",
+    required: col.required ?? false,
+    indexed: col.indexed ?? false,
+    hidden: col.hidden ?? false,
+    readOnly: col.readOnly ?? false,
+    enforceUniqueValues: col.enforceUniqueValues ?? false,
+  };
+  switch (col.columnType) {
+    case "text":
+      req["text"] = {
+        allowMultipleLines: col.text?.allowMultipleLines ?? false,
+        appendChangesToExistingText: col.text?.appendChangesToExistingText ?? false,
+        linesForEditing: col.text?.linesForEditing ?? 0,
+        maxLength: Math.min(col.text?.maxLength ?? TEXT_MAX_LENGTH_CAP, TEXT_MAX_LENGTH_CAP),
+      };
+      break;
+    case "choice":
+      if (!col.choice || !col.choice.choices?.length) {
+        throw new Error(`Choice column "${col.name}" requires non-empty choices[]`);
+      }
+      req["choice"] = {
+        choices: col.choice.choices,
+        allowFillInChoice: col.choice.allowFillInChoice ?? false,
+        displayAs: col.choice.displayAs ?? "dropDownMenu",
+      };
+      break;
+    case "dateTime":
+      req["dateTime"] = {
+        displayAs: col.dateTime?.displayAs ?? "default",
+        format: col.dateTime?.format ?? "dateTime",
+      };
+      break;
+    case "number": {
+      const dp = col.number?.decimalPlaces;
+      const number: Record<string, unknown> = {
+        decimalPlaces: dp != null ? NUMBER_DECIMAL_MAP[dp] ?? "automatic" : "automatic",
+      };
+      if (col.number?.minimum != null) number["minimum"] = col.number.minimum;
+      if (col.number?.maximum != null) number["maximum"] = col.number.maximum;
+      req["number"] = number;
+      break;
+    }
+    case "currency":
+      req["currency"] = { lcid: col.currency?.lcid ?? 1033 };
+      break;
+    case "boolean":
+      req["boolean"] = {};
+      break;
+    case "personOrGroup":
+      req["personOrGroup"] = {
+        allowMultipleSelection: col.personOrGroup?.allowMultipleSelection ?? false,
+        chooseFromType: col.personOrGroup?.chooseFromType ?? "peopleOnly",
+      };
+      break;
+    case "hyperlinkOrPicture":
+      req["hyperlinkOrPicture"] = { isPicture: col.hyperlinkOrPicture?.isPicture ?? false };
+      break;
+  }
+  return req;
 }
 
 export class SpeGraphConfigMissingError extends Error {
@@ -352,17 +497,165 @@ export class SpeGraphClient {
   // Stamp arbitrary list-item field metadata onto a DriveItem.
   // Backend code uses this to record provenance (uploadedByUserId,
   // documentType, original filename, etc.) on the SharePoint item.
+  // Custom columns must be provisioned on the container schema first via
+  // `createContainerColumn` (or the bulk initializer); built-in columns
+  // (e.g. Title, description) are always writable.
+  //
+  // Bulk PATCH first; if Graph rejects the batch because at least one
+  // column doesn't exist on the schema yet, retry field-by-field so the
+  // recognized fields still land. In the per-field retry, only "column
+  // does not exist on the schema" errors are swallowed — other validation
+  // failures (value too long, wrong type, invalid choice) are logged at
+  // warn level so they surface in observability rather than silently
+  // dropping data.
   async setItemFields(
     containerId: string,
     itemId: string,
     fields: Record<string, unknown>,
   ): Promise<void> {
+    if (Object.keys(fields).length === 0) return;
     const driveId = await this.getContainerDriveId(containerId);
-    await this.request<void>(
-      `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/listItem/fields`,
-      {
+    const endpoint = `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/listItem/fields`;
+    try {
+      await this.request<void>(endpoint, {
         method: "PATCH",
         body: JSON.stringify(fields),
+        headers: { "Content-Type": "application/json" },
+        skipJsonParse: true,
+      });
+      return;
+    } catch (err) {
+      // Graph 400/422 for missing/unknown columns — fall back to per-field.
+      if (
+        !(err instanceof SpeGraphRequestError) ||
+        (err.status !== 400 && err.status !== 422)
+      ) {
+        throw err;
+      }
+      logger.warn(
+        { itemId, status: err.status, bodyExcerpt: err.bodyExcerpt },
+        "SPE bulk field PATCH rejected; retrying per-field",
+      );
+    }
+    for (const [key, value] of Object.entries(fields)) {
+      try {
+        await this.request<void>(endpoint, {
+          method: "PATCH",
+          body: JSON.stringify({ [key]: value }),
+          headers: { "Content-Type": "application/json" },
+          skipJsonParse: true,
+        });
+      } catch (err) {
+        if (
+          err instanceof SpeGraphRequestError &&
+          (err.status === 400 || err.status === 422)
+        ) {
+          if (isUnknownColumnError(err.bodyExcerpt)) {
+            logger.debug({ itemId, key }, "SPE field skipped — column not on schema");
+            continue;
+          }
+          // Other validation failure — value too long, type mismatch,
+          // invalid choice value, etc. Don't fail the upload (metadata
+          // is best-effort) but log loudly so it surfaces in monitoring.
+          logger.warn(
+            { itemId, key, status: err.status, bodyExcerpt: err.bodyExcerpt },
+            "SPE field PATCH rejected (validation error); value not stamped",
+          );
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  // ----- Custom column management -----------------------------------------
+  // All column endpoints are SPE-specific:
+  //   /storage/fileStorage/containers/{containerId}/columns
+  // The drive-scoped endpoint `/drives/{driveId}/list/columns` 403s on SPE
+  // containers regardless of permission level — use these container-scoped
+  // calls instead.
+
+  async createContainerColumn(
+    containerId: string,
+    column: SpeColumnDefinition,
+  ): Promise<SpeColumnDefinition> {
+    const body = buildColumnRequest(column);
+    return this.request<SpeColumnDefinition>(
+      `${GRAPH_V1_URL}/storage/fileStorage/containers/${containerId}/columns`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  async listContainerColumns(containerId: string): Promise<SpeColumnDefinition[]> {
+    const url = `${GRAPH_V1_URL}/storage/fileStorage/containers/${containerId}/columns`;
+    const all: SpeColumnDefinition[] = [];
+    let next: string | undefined = url;
+    while (next) {
+      const page: { value?: SpeColumnDefinition[]; "@odata.nextLink"?: string } =
+        await this.request(next);
+      for (const c of page.value ?? []) all.push(c);
+      next = page["@odata.nextLink"];
+    }
+    return all;
+  }
+
+  async getContainerColumn(
+    containerId: string,
+    columnId: string,
+  ): Promise<SpeColumnDefinition> {
+    return this.request<SpeColumnDefinition>(
+      `${GRAPH_V1_URL}/storage/fileStorage/containers/${containerId}/columns/${columnId}`,
+    );
+  }
+
+  // Graph only honors a small subset of properties on PATCH:
+  // displayName, description, required, hidden. Other fields are ignored.
+  async updateContainerColumn(
+    containerId: string,
+    columnId: string,
+    updates: Partial<
+      Pick<SpeColumnDefinition, "displayName" | "description" | "required" | "hidden">
+    >,
+  ): Promise<SpeColumnDefinition> {
+    return this.request<SpeColumnDefinition>(
+      `${GRAPH_V1_URL}/storage/fileStorage/containers/${containerId}/columns/${columnId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  async deleteContainerColumn(containerId: string, columnId: string): Promise<void> {
+    await this.request<void>(
+      `${GRAPH_V1_URL}/storage/fileStorage/containers/${containerId}/columns/${columnId}`,
+      {
+        method: "DELETE",
+        skipJsonParse: true,
+      },
+    );
+  }
+
+  // Sets DriveItem-level properties (e.g. `description`) directly on the
+  // item — distinct from list-item field columns. The description is a
+  // built-in DriveItem property that requires no column creation, is
+  // indexed by Microsoft Search, and is surfaced to Copilot.
+  async patchItem(
+    containerId: string,
+    itemId: string,
+    patch: Record<string, unknown>,
+  ): Promise<void> {
+    const driveId = await this.getContainerDriveId(containerId);
+    await this.request<void>(
+      `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
         headers: { "Content-Type": "application/json" },
         skipJsonParse: true,
       },
@@ -422,6 +715,27 @@ function basename(path: string): string {
   const trimmed = path.split("?")[0]!;
   const idx = trimmed.lastIndexOf("/");
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+}
+
+// Graph reports a missing list-item field with a few different phrasings
+// depending on the surface (SharePoint REST under the hood, SPE wrapper,
+// older list runtime). Match on phrases that unambiguously mean "this
+// column doesn't exist on the schema" — anything else (value too long,
+// type mismatch, choice not in the allowed set) is a real validation
+// failure and must not be swallowed.
+const UNKNOWN_COLUMN_PATTERNS = [
+  /column ['"`].+?['"`] does not exist/i,
+  /field ['"`].+?['"`] does not exist/i,
+  /does not exist on .* list/i,
+  /property ['"`].+?['"`] does not exist on type/i,
+  /no column with name/i,
+  /column not found/i,
+  /unrecognized field/i,
+  /invalid field name/i,
+];
+
+function isUnknownColumnError(bodyExcerpt: string): boolean {
+  return UNKNOWN_COLUMN_PATTERNS.some((re) => re.test(bodyExcerpt));
 }
 
 function backoffMs(attempt: number): number {

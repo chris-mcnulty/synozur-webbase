@@ -2,7 +2,7 @@
 // Used by the CLI script (migrateGcsToSpe.ts) and the admin API
 // (speAdmin.ts). Keeps the two surfaces in sync without duplication.
 
-import { eq, isNull, count } from "drizzle-orm";
+import { eq, isNull, isNotNull, and, count } from "drizzle-orm";
 import { db, mediaTable } from "@workspace/db";
 import { GcsAssetStorageBackend } from "../gcsBackend";
 import { speFileStorage } from "./fileStorage";
@@ -18,7 +18,10 @@ export interface MigrationOptions {
 export interface MigrationCounts {
   total: number;
   alreadyMigrated: number;
+  /** Rows where spe_file_id IS NULL AND spe_migrate_error IS NULL. */
   pending: number;
+  /** Rows where spe_file_id IS NULL AND spe_migrate_error IS NOT NULL. */
+  failedMigration: number;
 }
 
 export interface MigrationResult extends MigrationCounts {
@@ -41,6 +44,10 @@ async function streamGcsToBuffer(
   };
 }
 
+type MigrateOneResult =
+  | { ok: true; itemId: string; containerId: string }
+  | { ok: false; reason: string; permanent: boolean };
+
 async function migrateOne(
   gcs: GcsAssetStorageBackend,
   row: {
@@ -51,7 +58,7 @@ async function migrateOne(
     mime: string | null;
   },
   dryRun: boolean,
-): Promise<{ ok: true; itemId: string; containerId: string } | { ok: false; reason: string }> {
+): Promise<MigrateOneResult> {
   if (dryRun) return { ok: true, itemId: "(dry-run)", containerId: "(dry-run)" };
 
   let body: Buffer;
@@ -63,7 +70,7 @@ async function migrateOne(
     // response headers, making the raw response unreliable.
     contentType = row.mime ?? fetched.contentType;
   } catch (err) {
-    return { ok: false, reason: `gcs fetch: ${(err as Error).message}` };
+    return { ok: false, reason: `gcs fetch: ${(err as Error).message}`, permanent: false };
   }
 
   // altText is NOT NULL in schema but may be null in older production rows
@@ -85,7 +92,20 @@ async function migrateOne(
       err instanceof SpeGraphRequestError && err.bodyExcerpt
         ? ` — ${err.bodyExcerpt}`
         : "";
-    return { ok: false, reason: `spe upload: ${(err as Error).message}${graphDetail}` };
+    // 4xx errors (other than 429 rate-limit) are permanent — the request is
+    // structurally invalid and retrying will never succeed. We write the reason
+    // to spe_migrate_error so the row is excluded from future migration pages
+    // and admins can see exactly which files failed and why, even after restart.
+    const isPermanent =
+      err instanceof SpeGraphRequestError &&
+      err.status >= 400 &&
+      err.status < 500 &&
+      err.status !== 429;
+    return {
+      ok: false,
+      reason: `spe upload: ${(err as Error).message}${graphDetail}`,
+      permanent: isPermanent,
+    };
   }
 
   try {
@@ -97,6 +117,7 @@ async function migrateOne(
     return {
       ok: false,
       reason: `db update failed AFTER spe upload — orphan in SPE: ${stored.itemId}: ${(err as Error).message}`,
+      permanent: false, // DB error is transient; retrying may succeed
     };
   }
 
@@ -108,10 +129,20 @@ export async function fetchMigrationCounts(): Promise<MigrationCounts> {
   const [pendingRow] = await db
     .select({ n: count() })
     .from(mediaTable)
-    .where(isNull(mediaTable.speFileId));
+    .where(and(isNull(mediaTable.speFileId), isNull(mediaTable.speMigrateError)));
+  const [failedRow] = await db
+    .select({ n: count() })
+    .from(mediaTable)
+    .where(and(isNull(mediaTable.speFileId), isNotNull(mediaTable.speMigrateError)));
+  const [migratedRow] = await db
+    .select({ n: count() })
+    .from(mediaTable)
+    .where(isNotNull(mediaTable.speFileId));
   const total = totalRow?.n ?? 0;
   const pending = pendingRow?.n ?? 0;
-  return { total, alreadyMigrated: total - pending, pending };
+  const failedMigration = failedRow?.n ?? 0;
+  const alreadyMigrated = migratedRow?.n ?? 0;
+  return { total, alreadyMigrated, pending, failedMigration };
 }
 
 export async function runMigration(opts: MigrationOptions): Promise<MigrationResult> {
@@ -132,9 +163,9 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
   let failed = 0;
   const failures: Array<{ id: string; reason: string }> = [];
 
-  // In dry-run mode rows are never updated, so the WHERE spe_file_id IS NULL
-  // filter would return the same page on every iteration — an infinite loop.
-  // Use an explicit offset to advance through the result set instead.
+  // In dry-run mode rows are never updated, so the WHERE filter would return
+  // the same page on every iteration — an infinite loop. Use an explicit
+  // offset to advance through the result set instead.
   let dryRunOffset = 0;
 
   while (true) {
@@ -152,7 +183,10 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
         mime: mediaTable.mime,
       })
       .from(mediaTable)
-      .where(isNull(mediaTable.speFileId))
+      // Only attempt rows that haven't been migrated and haven't permanently
+      // failed. spe_migrate_error IS NOT NULL rows are excluded here so they
+      // never cause a retry loop; admins clear them explicitly to re-queue.
+      .where(and(isNull(mediaTable.speFileId), isNull(mediaTable.speMigrateError)))
       .orderBy(mediaTable.createdAt)
       .limit(Math.min(remaining, pageSize))
       .offset(opts.dryRun ? dryRunOffset : 0);
@@ -169,6 +203,16 @@ export async function runMigration(opts: MigrationOptions): Promise<MigrationRes
         failed++;
         failures.push({ id: row.id, reason: result.reason });
         opts.onRow?.(row.id, false, result.reason);
+
+        // Persist permanent failures to the DB so they survive restarts and
+        // are visible in the admin UI. The WHERE clause above excludes these
+        // rows from the next page, preventing infinite retry loops.
+        if (result.permanent && !opts.dryRun) {
+          await db
+            .update(mediaTable)
+            .set({ speMigrateError: result.reason.slice(0, 1000) })
+            .where(eq(mediaTable.id, row.id));
+        }
       }
       if (opts.limit !== null && processed >= opts.limit) break;
     }

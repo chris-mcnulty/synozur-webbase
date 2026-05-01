@@ -31,6 +31,7 @@ export interface Post {
   readingTimeMin?: number | null;
   featured?: boolean;
   featuredRank?: number | null;
+  linkedSolutionId?: string | null;
   categories?: Category[];
   tags?: Tag[];
   createdAt: Date;

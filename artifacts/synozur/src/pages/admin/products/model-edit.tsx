@@ -788,6 +788,7 @@ export default function ModelEdit({ id }: Props) {
 
       {showHeroPicker && (
         <MediaPickerModal
+          open
           onSelect={(m: MediaItem) => {
             update({ heroImage: mediaUrl(m) });
             setShowHeroPicker(false);
@@ -797,6 +798,7 @@ export default function ModelEdit({ id }: Props) {
       )}
       {showOgPicker && (
         <MediaPickerModal
+          open
           onSelect={(m: MediaItem) => {
             update({ ogImage: mediaUrl(m) });
             setShowOgPicker(false);

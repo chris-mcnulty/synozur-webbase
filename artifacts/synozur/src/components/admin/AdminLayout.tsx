@@ -47,6 +47,8 @@ import {
   X,
   KeyRound,
   UserCog,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -145,6 +147,14 @@ const SECTIONS: NavSection[] = [
       { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
       { href: "/marketing/seo-audit", label: "SEO Audit", icon: FileSearch, capability: "content.moderate", testId: "nav-admin-marketing-seo-audit" },
       { href: "/integrations/hubspot", label: "HubSpot", icon: Network, capability: "site.manage", testId: "nav-admin-hubspot" },
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI",
+    icon: Sparkles,
+    items: [
+      { href: "/ai/grounding", label: "Grounding Documents", icon: Brain, capability: "ai.grounding.manage", testId: "nav-admin-ai-grounding" },
     ],
   },
   {

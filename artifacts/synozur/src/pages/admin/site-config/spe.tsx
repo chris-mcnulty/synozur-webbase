@@ -18,11 +18,16 @@ import { useToast } from "@/hooks/use-toast";
 interface SpeStatus {
   credentialsConfigured: boolean;
   tenantId: string | null;
-  enabled: boolean;
+  /** Credentials configured AND a container ID recorded for this slot. */
+  speReady: boolean;
   containerTypeId: string | null;
   containerIdDev: string | null;
   containerIdProd: string | null;
-  activeBackend: string;
+  /** Per-slot backend choice stored in DB. */
+  storageBackendDev: "gcs" | "spe";
+  storageBackendProd: "gcs" | "spe";
+  /** Resolved backend for the current environment slot. */
+  activeBackend: "gcs" | "spe";
   // Server-derived from NODE_ENV — tells the page which container slot
   // is the one this environment will actually use. Authoritative,
   // because the React build has no `process.env` to consult.
@@ -33,6 +38,14 @@ interface MigrationStatus {
   totalMedia: number;
   migratedToSpe: number;
   awaitingMigration: number;
+  failedMigration: number;
+}
+
+interface MigrationFailure {
+  id: string;
+  altText: string;
+  storageKey: string;
+  speMigrateError: string | null;
 }
 
 interface MigrationJob {
@@ -211,6 +224,9 @@ export default function SpeAdminPage() {
     created: string[];
     existed: string[];
   } | null>(null);
+  const [failures, setFailures] = useState<MigrationFailure[] | null>(null);
+  const [failuresBusy, setFailuresBusy] = useState(false);
+  const [clearErrorsBusy, setClearErrorsBusy] = useState(false);
   const [devResetOpts, setDevResetOpts] = useState({
     resetMigration: true,
     clearContainerDev: false,
@@ -456,16 +472,22 @@ export default function SpeAdminPage() {
     description: string,
   ) {
     try {
-      const r = await apiFetch<{ containerId: string }>(
+      const r = await apiFetch<{
+        containerId: string;
+        columns: { created: string[]; existed: string[] } | null;
+      }>(
         "/admin/integrations/spe/container",
         {
           method: "POST",
           body: JSON.stringify({ slot, displayName, description: description || undefined }),
         },
       );
+      const colsSummary = r.columns
+        ? ` · ${r.columns.created.length} columns provisioned`
+        : " · column provisioning failed (run manually)";
       toast({
         title: `${slot} container created`,
-        description: r.containerId,
+        description: r.containerId + colsSummary,
       });
       await refresh();
     } catch (e) {
@@ -558,57 +580,89 @@ export default function SpeAdminPage() {
         <>
           {/* Connection / status */}
           <Card className="p-6 mb-6 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <div className="text-lg font-semibold">Connection</div>
-                <div className="text-sm text-muted-foreground space-y-0.5">
-                  <div>
-                    Credentials:{" "}
-                    {status.credentialsConfigured ? (
-                      <Badge>configured</Badge>
-                    ) : (
-                      <Badge variant="destructive">missing</Badge>
-                    )}
-                  </div>
-                  <div>
-                    Tenant: <code>{status.tenantId ?? "—"}</code>
-                  </div>
-                  <div>
-                    Active backend: <code>{status.activeBackend}</code>
-                  </div>
-                </div>
+            <div className="text-lg font-semibold">Connection</div>
+
+            {/* Prerequisites */}
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <span className={status.credentialsConfigured ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.credentialsConfigured ? "✓" : "✗"}
+                </span>
+                <span>Entra credentials</span>
+                {status.tenantId && (
+                  <code className="text-xs text-muted-foreground ml-1">{status.tenantId}</code>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="spe-enabled">Enabled</Label>
-                <Switch
-                  id="spe-enabled"
-                  checked={status.enabled}
-                  disabled={
-                    saving ||
-                    !status.credentialsConfigured ||
-                    (status.activeContainerSlot === "prod"
-                      ? !status.containerIdProd
-                      : !status.containerIdDev)
-                  }
-                  onCheckedChange={(v) =>
-                    patchSettings({ speStorageEnabled: v })
-                  }
-                />
+              <div className="flex items-center gap-1.5">
+                <span className={status.containerIdDev ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.containerIdDev ? "✓" : "✗"}
+                </span>
+                <span>Container (dev)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={status.containerIdProd ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                  {status.containerIdProd ? "✓" : "✗"}
+                </span>
+                <span>Container (prod)</span>
               </div>
             </div>
+
             {!status.credentialsConfigured && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                Set <code>ENTRA_TENANT_ID</code>, <code>ENTRA_APP_CLIENT_ID</code>,
-                and <code>ENTRA_APP_CLIENT_SECRET</code> in env, then reload.
+                Set <code>ENTRA_TENANT_ID</code>, <code>ENTRA_APP_CLIENT_ID</code>, and{" "}
+                <code>ENTRA_APP_CLIENT_SECRET</code> as environment secrets, then redeploy.
               </p>
             )}
-            {status.enabled && status.activeBackend !== "spe" && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                <code>speStorageEnabled</code> is on but the active backend is{" "}
-                <code>{status.activeBackend}</code>. Set{" "}
-                <code>STORAGE_BACKEND=spe</code> in env to switch reads/writes to SPE.
+
+            {/* Per-environment backend selector — stored in DB, no deploy needed */}
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Each environment's active backend is stored in the database. Switching takes
+                effect within 30 seconds — no redeploy required. Only switch an environment
+                to SPE once its container is created and the migration is complete.
               </p>
-            )}
+              {(["dev", "prod"] as const).map((slot) => {
+                const backendKey =
+                  slot === "dev" ? "storageBackendDev" : "storageBackendProd";
+                const currentBackend = status[backendKey];
+                const containerReady = slot === "dev" ? !!status.containerIdDev : !!status.containerIdProd;
+                const isActive = status.activeContainerSlot === slot;
+                return (
+                  <div key={slot} className="flex items-center justify-between gap-4">
+                    <div className="text-sm">
+                      <span className="font-medium capitalize">{slot}</span>
+                      {isActive && (
+                        <Badge variant="outline" className="ml-2 text-xs">current env</Badge>
+                      )}
+                      <span className="ml-2 text-muted-foreground">
+                        → <Badge variant={currentBackend === "spe" ? "default" : "secondary"} className="text-xs">
+                          {currentBackend.toUpperCase()}
+                        </Badge>
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={currentBackend === "gcs" ? "default" : "outline"}
+                        disabled={saving || currentBackend === "gcs"}
+                        onClick={() => patchSettings({ [backendKey]: "gcs" })}
+                      >
+                        GCS
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentBackend === "spe" ? "default" : "outline"}
+                        disabled={saving || currentBackend === "spe" || !containerReady || !status.credentialsConfigured}
+                        title={!containerReady ? `Create a ${slot} container first` : undefined}
+                        onClick={() => patchSettings({ [backendKey]: "spe" })}
+                      >
+                        SPE
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
 
           {/* Container type */}
@@ -702,70 +756,59 @@ export default function SpeAdminPage() {
               </div>
             </div>
 
-            {/* Column provisioning — required once per container so that
-                metadata stamping (SynozurDocumentType etc.) works. New
-                containers get this automatically; existing containers need
-                a one-time manual trigger. */}
-            <div className="border-t pt-4 space-y-2">
-              <div className="text-sm font-medium">Custom columns</div>
-              <p className="text-xs text-muted-foreground">
-                Provisions the <code>Synozur*</code> text columns on the active
-                container's document library so that file metadata (document
-                type, owner, original filename, content type) is stamped on
-                upload. New containers are provisioned automatically; run this
-                once for the existing dev and prod containers.
-              </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <Button
-                  variant="outline"
-                  disabled={
-                    provisionColumnsBusy ||
-                    !status.credentialsConfigured ||
-                    (status.activeContainerSlot === "prod"
-                      ? !status.containerIdProd
-                      : !status.containerIdDev)
-                  }
-                  onClick={() => provisionColumns()}
-                >
-                  {provisionColumnsBusy
-                    ? "Provisioning…"
-                    : `Provision columns (${status.activeContainerSlot})`}
-                </Button>
-                {status.containerIdDev && status.containerIdProd && (
-                  <>
+            {/* Custom columns — provisioned via the SPE-native
+                /storage/fileStorage/containers/{id}/columns endpoint.
+                New containers have columns auto-provisioned at create time.
+                Use the buttons below to provision (or re-verify) columns on
+                existing containers. Idempotent — safe to run multiple times. */}
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <div className="text-sm font-medium">Custom SharePoint columns</div>
+                <p className="text-xs text-muted-foreground">
+                  Five <code>Synozur*</code> text columns are provisioned on
+                  each container so every uploaded file is stamped with its
+                  document type, owner, original filename, content type, and
+                  uploader. New containers are provisioned automatically.
+                  Use the buttons below to provision existing containers or
+                  to confirm columns are in place.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["dev", "prod"] as const).map((slot) => {
+                  const hasContainer =
+                    slot === "dev" ? !!status.containerIdDev : !!status.containerIdProd;
+                  return (
                     <Button
+                      key={slot}
                       variant="outline"
                       size="sm"
-                      disabled={provisionColumnsBusy}
-                      onClick={() => provisionColumns("dev")}
+                      disabled={
+                        provisionColumnsBusy ||
+                        !status.credentialsConfigured ||
+                        !hasContainer
+                      }
+                      title={!hasContainer ? `Create a ${slot} container first` : undefined}
+                      onClick={() => provisionColumns(slot)}
                     >
-                      dev
+                      {provisionColumnsBusy ? "Provisioning…" : `Provision columns (${slot})`}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={provisionColumnsBusy}
-                      onClick={() => provisionColumns("prod")}
-                    >
-                      prod
-                    </Button>
-                  </>
-                )}
+                  );
+                })}
               </div>
               {provisionColumnsResult && (
                 <div className="text-xs text-muted-foreground space-y-0.5">
-                  <div>
-                    Created:{" "}
-                    {provisionColumnsResult.created.length > 0
-                      ? provisionColumnsResult.created.join(", ")
-                      : "none"}
-                  </div>
-                  <div>
-                    Already existed:{" "}
-                    {provisionColumnsResult.existed.length > 0
-                      ? provisionColumnsResult.existed.join(", ")
-                      : "none"}
-                  </div>
+                  {provisionColumnsResult.created.length > 0 && (
+                    <div>
+                      <span className="text-green-600 dark:text-green-400 font-medium">Created: </span>
+                      {provisionColumnsResult.created.join(", ")}
+                    </div>
+                  )}
+                  {provisionColumnsResult.existed.length > 0 && (
+                    <div>
+                      <span className="font-medium">Already in place: </span>
+                      {provisionColumnsResult.existed.join(", ")}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -923,7 +966,7 @@ export default function SpeAdminPage() {
             </div>
 
             {migration ? (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <div className="text-3xl font-semibold tabular-nums">
                     {migration.totalMedia.toLocaleString()}
@@ -948,10 +991,126 @@ export default function SpeAdminPage() {
                     Awaiting migration
                   </div>
                 </div>
+                <div>
+                  <div
+                    className={`text-3xl font-semibold tabular-nums ${
+                      migration.failedMigration > 0
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {(migration.failedMigration ?? 0).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Permanently failed
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">
                 Counts unavailable.
+              </div>
+            )}
+
+            {/* Failed files panel */}
+            {migration && migration.failedMigration > 0 && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-destructive">
+                    {migration.failedMigration} file
+                    {migration.failedMigration !== 1 ? "s" : ""} permanently
+                    failed — excluded from future runs until cleared
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={failuresBusy}
+                      onClick={async () => {
+                        setFailuresBusy(true);
+                        try {
+                          const data = await apiFetch<{
+                            failures: MigrationFailure[];
+                          }>("/admin/integrations/spe/migration/failures");
+                          setFailures(data.failures);
+                        } catch {
+                          toast({
+                            title: "Could not load failure details",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setFailuresBusy(false);
+                        }
+                      }}
+                    >
+                      {failuresBusy ? "Loading…" : failures ? "Refresh" : "View details"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={clearErrorsBusy || migrationJob?.status === "running"}
+                      onClick={async () => {
+                        setClearErrorsBusy(true);
+                        try {
+                          await apiFetch(
+                            "/admin/integrations/spe/migration/clear-errors",
+                            { method: "POST", body: JSON.stringify({}) },
+                          );
+                          setFailures(null);
+                          const updated = await apiFetch<MigrationStatus>(
+                            "/admin/integrations/spe/migration-status",
+                          );
+                          setMigration(updated);
+                          toast({ title: "Errors cleared — files re-queued for migration" });
+                        } catch {
+                          toast({
+                            title: "Could not clear errors",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setClearErrorsBusy(false);
+                        }
+                      }}
+                    >
+                      {clearErrorsBusy ? "Clearing…" : "Clear all & retry"}
+                    </Button>
+                  </div>
+                </div>
+
+                {failures && failures.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left pb-1 pr-3 font-medium text-muted-foreground w-40">
+                            Storage key
+                          </th>
+                          <th className="text-left pb-1 pr-3 font-medium text-muted-foreground w-40">
+                            Alt text
+                          </th>
+                          <th className="text-left pb-1 font-medium text-muted-foreground">
+                            Error
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {failures.map((f) => (
+                          <tr key={f.id} className="border-b border-border/50">
+                            <td className="py-1 pr-3 font-mono text-muted-foreground truncate max-w-[160px]">
+                              {f.storageKey}
+                            </td>
+                            <td className="py-1 pr-3 truncate max-w-[160px]">
+                              {f.altText}
+                            </td>
+                            <td className="py-1 text-destructive break-all">
+                              {f.speMigrateError}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 

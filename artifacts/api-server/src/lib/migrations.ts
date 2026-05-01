@@ -672,6 +672,38 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // 18f. Retrofit a UNIQUE constraint on role_capabilities(role_id, capability_id).
+    //      The original migration 18c defined PRIMARY KEY (role_id, capability_id) but
+    //      if the table was created before that clause was added, CREATE TABLE IF NOT
+    //      EXISTS is a no-op and the PK is never applied. Without a unique constraint
+    //      the ON CONFLICT DO NOTHING above silently inserts duplicates on every restart.
+    //      This step:
+    //        1. Deduplicates existing rows (keeps the oldest ctid per pair).
+    //        2. Adds the unique constraint exactly once using a DO block guard.
+    await db.execute(sql`
+      DELETE FROM role_capabilities rc
+      WHERE ctid NOT IN (
+        SELECT MIN(ctid)
+        FROM role_capabilities
+        GROUP BY role_id, capability_id
+      );
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON c.conrelid = t.oid
+          WHERE t.relname = 'role_capabilities'
+            AND c.conname = 'role_capabilities_role_id_capability_id_key'
+        ) THEN
+          ALTER TABLE role_capabilities
+            ADD CONSTRAINT role_capabilities_role_id_capability_id_key
+            UNIQUE (role_id, capability_id);
+        END IF;
+      END$$;
+    `);
+
     // 19. Bookings native (Graph) integration.
     //
     // 19a. site_settings.bookings_render_mode — global toggle between
@@ -913,7 +945,152 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS spe_container_id_prod text;
     `);
 
-    // 29. #128 — OAuth 2.0 / OIDC provider tables.
+    // 28a. Storage backend selection — replaces the removed STORAGE_BACKEND env
+    //      var. Two independent per-slot columns so dev and prod can be switched
+    //      independently from the SPE admin page without a deploy.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS storage_backend_dev text NOT NULL DEFAULT 'gcs',
+        ADD COLUMN IF NOT EXISTS storage_backend_prod text NOT NULL DEFAULT 'gcs';
+    `);
+
+    // 28b. Durable migration error column — set on permanent Graph 4xx failures
+    //      so the file is excluded from future migration pages and admins can
+    //      identify and retry it from the admin UI without reading ephemeral logs.
+    await db.execute(sql`
+      ALTER TABLE media
+        ADD COLUMN IF NOT EXISTS spe_migrate_error text;
+    `);
+
+    // 29. AI grounding documents — Vega-pattern grounding store. Standalone
+    //     admin-authored docs that get injected wholesale into the system
+    //     prompt of every AI call (no chunking, no embeddings). Backs both
+    //     the future "Ask Synozur" Q&A surface (#134) and the Astra concierge.
+    //
+    //     `scope_tags` (jsonb) replaces Vega's tenant_id since this site is
+    //     single-tenant; null/empty = always inject. `concierge_eligible`
+    //     lets a doc be excluded from the concierge prompt while remaining
+    //     in the public Q&A corpus.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS grounding_documents (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        title text NOT NULL,
+        description text,
+        category text NOT NULL,
+        content text NOT NULL,
+        scope_tags jsonb,
+        priority integer NOT NULL DEFAULT 0,
+        is_active boolean NOT NULL DEFAULT true,
+        concierge_eligible boolean NOT NULL DEFAULT true,
+        created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS grounding_documents_active_priority_idx
+        ON grounding_documents (is_active, priority);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS grounding_documents_category_idx
+        ON grounding_documents (category);
+    `);
+
+    // 29a. Seed the ai.grounding.manage capability + default grants. Mirrors
+    //      CAPABILITY_NAMES and DEFAULT_ROLE_CAPABILITIES in
+    //      lib/db/src/schema/capabilityMap.ts. Idempotent; existing
+    //      admin-edited grants survive.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('ai.grounding.manage',
+         'Manage AI grounding documents that ground every AI call across the site.')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',          'ai.grounding.manage'),
+          ('editor',         'ai.grounding.manage'),
+          ('site_admin',     'ai.grounding.manage'),
+          ('content_author', 'ai.grounding.manage')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+
+    // 30. conversations + messages tables for the AI concierge / Ask Synozur surface.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id         serial PRIMARY KEY,
+        title      text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS messages (
+        id              serial PRIMARY KEY,
+        conversation_id integer NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        role            text NOT NULL,
+        content         text NOT NULL,
+        created_at      timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS messages_conversation_id_idx
+        ON messages (conversation_id);
+    `);
+
+    // 31. Polaris episode → blog post link. Optional FK so an episode can be
+    //     associated with a related blog post (typically one categorized as
+    //     "Polaris" or "podcast"). When set, the public episode page renders
+    //     the post as a featured card above the show notes.
+    await db.execute(sql`
+      ALTER TABLE polaris_episodes
+        ADD COLUMN IF NOT EXISTS linked_post_id uuid REFERENCES posts(id) ON DELETE SET NULL;
+    `);
+
+    // 32. PR #64 — index on polaris_episodes.linked_post_id.
+    //     The FK column was added in step 31 but no index was included.
+    //     Partial index (WHERE linked_post_id IS NOT NULL) keeps the index
+    //     small — the vast majority of episodes have no linked post.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_polaris_episodes_linked_post_id
+        ON polaris_episodes (linked_post_id)
+        WHERE linked_post_id IS NOT NULL;
+    `);
+
+    // 33. Drop unique constraint on polaris_episodes.episode_number.
+    //     Episode numbers should be freely editable (e.g. correcting an import
+    //     that assigned the wrong number) and podcast shows sometimes reuse or
+    //     skip numbers. The old unique index prevented admins from changing a
+    //     number to one that had already been assigned. Replaced with a plain
+    //     non-unique index (polaris_episodes_number_idx) for query performance.
+    await db.execute(sql`
+      DROP INDEX IF EXISTS polaris_episodes_number_key;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS polaris_episodes_number_idx
+        ON polaris_episodes (episode_number);
+    `);
+
+    // 34. Add linked_solution_id to posts so editors can explicitly pin a post
+    //     to a solution; syncCollateral uses this to set collateral.solution_id.
+    await db.execute(sql`
+      ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS linked_solution_id uuid REFERENCES solutions(id) ON DELETE SET NULL;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_posts_linked_solution_id
+        ON posts (linked_solution_id)
+        WHERE linked_solution_id IS NOT NULL;
+    `);
+
+    // 35. #128 — OAuth 2.0 / OIDC provider tables.
     //
     // Five tables back the provider surface: client registrations, RS256
     // signing keys, single-use authorization codes (hashed), opaque refresh
@@ -1039,7 +1216,7 @@ export async function runMigrations(): Promise<void> {
         ON oauth_consents (client_id);
     `);
 
-    // 29a. Seed the oauth.manage capability and grant it to admin / site_admin
+    // 35a. Seed the oauth.manage capability and grant it to admin / site_admin
     //      so the new admin surface is reachable without a second migration.
     //      Mirrors CAPABILITY_NAMES / DEFAULT_ROLE_CAPABILITIES in
     //      schema/capabilityMap.ts.
@@ -1061,7 +1238,6 @@ export async function runMigrations(): Promise<void> {
         JOIN capabilities c ON c.name = g.cap_name
       ON CONFLICT DO NOTHING;
     `);
-
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

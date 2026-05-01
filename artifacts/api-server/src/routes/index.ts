@@ -46,6 +46,8 @@ import clientOrgsRouter from "./clientOrgs";
 import securityLogRouter from "./cms/securityLog";
 import bookingsRouter from "./bookings";
 import cmsOauthClientsRouter from "./cms/oauthClients";
+import aiGroundingRouter from "./aiGrounding";
+import aiChatRouter from "./aiChat";
 
 const router: IRouter = Router();
 
@@ -96,5 +98,7 @@ router.use(clientOrgsRouter);
 router.use(securityLogRouter);
 router.use(bookingsRouter);
 router.use(cmsOauthClientsRouter);
+router.use(aiGroundingRouter);
+router.use(aiChatRouter);
 
 export default router;

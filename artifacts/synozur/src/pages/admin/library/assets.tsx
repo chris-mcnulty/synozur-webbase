@@ -29,6 +29,7 @@ import { AssetCategoriesModal } from "@/components/admin/AssetCategoriesModal";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { formatBytes } from "@/lib/asset-kind";
+import { resolveStoragePath, withWidth } from "@/lib/media-url";
 import {
   useListAssetCategories,
   useListLibraryAssets,
@@ -46,13 +47,18 @@ const ANY_CATEGORY = "__any__";
 const NONE_CATEGORY = "__none__";
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-function itemUrl(item: LibraryAssetItem): string {
+function itemUrl(item: LibraryAssetItem, options?: { width?: number }): string {
+  let resolved = "";
   if (item.publicUrl) {
-    if (item.publicUrl.startsWith("http")) return item.publicUrl;
-    return `${BASE_PATH}${item.publicUrl}`;
+    // Normalize legacy `/objects/...` publicUrl values so `?w=` resizing
+    // applies (and the URL actually resolves).
+    resolved = resolveStoragePath(item.publicUrl);
+  } else if (item.storageKey.startsWith("http")) {
+    resolved = item.storageKey;
+  } else {
+    resolved = `${BASE_PATH}/api/storage${item.storageKey}`;
   }
-  if (item.storageKey.startsWith("http")) return item.storageKey;
-  return `${BASE_PATH}/api/storage${item.storageKey}`;
+  return withWidth(resolved, options?.width);
 }
 
 function displayName(item: LibraryAssetItem): string {
@@ -210,7 +216,10 @@ export default function AssetsLibrary() {
                 size: Number(file.size ?? 0),
                 contentType: String(file.type ?? "application/octet-stream"),
               });
-              return { method: "PUT", url: uploadURL };
+              const absURL = uploadURL.startsWith("/")
+                ? `${window.location.origin}${uploadURL}`
+                : uploadURL;
+              return { method: "PUT", url: absURL };
             }}
             onComplete={async (result) => {
               for (const f of (result.successful ?? []) as unknown as Array<
@@ -388,6 +397,9 @@ function AssetCard({
   onChangeCategory: (categoryId: string | null) => Promise<void>;
 }) {
   const url = itemUrl(item);
+  // Library tiles render at ~250–360px CSS width depending on viewport.
+  // 600px covers a 2x DPR screen without round-tripping the original.
+  const thumbUrl = itemUrl(item, { width: 600 });
   const isImage = (item.mime ?? "").startsWith("image/");
   const [alt, setAlt] = useState(item.altText ?? "");
   const [state, setState] = useState<SaveState>("idle");
@@ -419,7 +431,7 @@ function AssetCard({
       <div className="aspect-square bg-muted overflow-hidden flex items-center justify-center relative">
         {isImage ? (
           <img
-            src={url}
+            src={thumbUrl}
             alt={item.altText ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"

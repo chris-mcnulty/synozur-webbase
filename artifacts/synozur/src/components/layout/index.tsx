@@ -45,6 +45,12 @@ export function Layout({ children }: { children: ReactNode }) {
     void trackPageview(location);
   }, [location]);
 
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    }
+  }, [location]);
+
   // Emit site-verification meta tags when tokens are configured.
   useEffect(() => {
     const google = settings?.seoGoogleSiteVerification;

@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/theme";
 import { captureAttributionOnLoad } from "@/lib/attribution";
 
 import Home from "@/pages/home";
+import HomeB from "@/pages/home-b";
 import About from "@/pages/about";
 import ServicesOverview from "@/pages/services-overview";
 import ServiceDetail from "@/pages/service-detail";
@@ -91,6 +92,7 @@ import ApplicationEdit from "@/pages/admin/products/application-edit";
 import AdminModelsList from "@/pages/admin/products/models-list";
 import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
+import AdminAiGrounding from "@/pages/admin/ai/grounding";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
@@ -349,6 +351,9 @@ function AdminRoutes() {
         <Route path="/marketing/seo" component={MarketingSeo} />
         <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
 
+        {/* AI section */}
+        <Route path="/ai/grounding" component={AdminAiGrounding} />
+
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />
         <Route path="/access/entra" component={EntraMappingsPage} />
@@ -383,6 +388,7 @@ function Router() {
         <Layout>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
             <Route path="/services-overview/default" component={ServicesOverview} />
             <Route path="/services-overview/:slug" component={ServicesOverview} />

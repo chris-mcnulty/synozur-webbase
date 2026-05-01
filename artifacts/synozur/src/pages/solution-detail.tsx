@@ -382,7 +382,7 @@ export default function SolutionDetail() {
       <section className="relative overflow-hidden bg-background border-t border-border py-24">
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Ready to talk{sol ? ` about ${sol.title.toLowerCase()}` : ""}?
+            Ready to talk{sol ? ` about ${sol.title}` : ""}?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
             Tell us where you are headed. We will tell you where we can help.

@@ -63,15 +63,21 @@ import type {
   ListAssetsParams,
   ListCmsCommentsParams,
   ListCmsMediaParams,
+  ListCmsPolarisEpisodes200,
   ListCmsPostsParams,
   ListInsightsParams,
   ListLibraryAssetsParams,
+  ListPolarisEpisodesParams,
+  ListPolarisLinkablePosts200,
+  ListPolarisLinkablePostsParams,
   MediaItem,
   MediaListResponse,
   Methodology,
   MethodologyItemsResponse,
   ModerateCmsCommentBody,
   NotFoundResponse,
+  PolarisEpisode,
+  PolarisEpisodeListResponse,
   Post,
   PostAnalytics,
   PostListResponse,
@@ -9343,6 +9349,472 @@ export function useCmsGetSiteHealth<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getCmsGetSiteHealthQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List published Polaris podcast episodes
+ */
+export const getListPolarisEpisodesUrl = (
+  params?: ListPolarisEpisodesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/polaris/episodes?${stringifiedParams}`
+    : `/api/polaris/episodes`;
+};
+
+export const listPolarisEpisodes = async (
+  params?: ListPolarisEpisodesParams,
+  options?: RequestInit,
+): Promise<PolarisEpisodeListResponse> => {
+  return customFetch<PolarisEpisodeListResponse>(
+    getListPolarisEpisodesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPolarisEpisodesQueryKey = (
+  params?: ListPolarisEpisodesParams,
+) => {
+  return [`/api/polaris/episodes`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPolarisEpisodesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPolarisEpisodes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListPolarisEpisodesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolarisEpisodes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPolarisEpisodesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPolarisEpisodes>>
+  > = ({ signal }) =>
+    listPolarisEpisodes(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPolarisEpisodes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPolarisEpisodesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPolarisEpisodes>>
+>;
+export type ListPolarisEpisodesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List published Polaris podcast episodes
+ */
+
+export function useListPolarisEpisodes<
+  TData = Awaited<ReturnType<typeof listPolarisEpisodes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListPolarisEpisodesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolarisEpisodes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPolarisEpisodesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single published episode by slug (includes linkedPost)
+ */
+export const getGetPolarisEpisodeUrl = (slug: string) => {
+  return `/api/polaris/episodes/${slug}`;
+};
+
+export const getPolarisEpisode = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<PolarisEpisode> => {
+  return customFetch<PolarisEpisode>(getGetPolarisEpisodeUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPolarisEpisodeQueryKey = (slug: string) => {
+  return [`/api/polaris/episodes/${slug}`] as const;
+};
+
+export const getGetPolarisEpisodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPolarisEpisode>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPolarisEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPolarisEpisodeQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPolarisEpisode>>
+  > = ({ signal }) => getPolarisEpisode(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPolarisEpisode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPolarisEpisodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPolarisEpisode>>
+>;
+export type GetPolarisEpisodeQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Get a single published episode by slug (includes linkedPost)
+ */
+
+export function useGetPolarisEpisode<
+  TData = Awaited<ReturnType<typeof getPolarisEpisode>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPolarisEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPolarisEpisodeQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all episodes (admin, includes drafts)
+ */
+export const getListCmsPolarisEpisodesUrl = () => {
+  return `/api/cms/polaris/episodes`;
+};
+
+export const listCmsPolarisEpisodes = async (
+  options?: RequestInit,
+): Promise<ListCmsPolarisEpisodes200> => {
+  return customFetch<ListCmsPolarisEpisodes200>(
+    getListCmsPolarisEpisodesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCmsPolarisEpisodesQueryKey = () => {
+  return [`/api/cms/polaris/episodes`] as const;
+};
+
+export const getListCmsPolarisEpisodesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsPolarisEpisodes>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsPolarisEpisodes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCmsPolarisEpisodesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCmsPolarisEpisodes>>
+  > = ({ signal }) => listCmsPolarisEpisodes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsPolarisEpisodes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsPolarisEpisodesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsPolarisEpisodes>>
+>;
+export type ListCmsPolarisEpisodesQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List all episodes (admin, includes drafts)
+ */
+
+export function useListCmsPolarisEpisodes<
+  TData = Awaited<ReturnType<typeof listCmsPolarisEpisodes>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsPolarisEpisodes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsPolarisEpisodesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Search blog posts eligible for linking to a Polaris episode. Returns posts categorised as "Polaris" or "podcast" (matched on category slug or name, case-insensitively). Up to 100 results.
+ */
+export const getListPolarisLinkablePostsUrl = (
+  params?: ListPolarisLinkablePostsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/polaris/episodes/post-picker?${stringifiedParams}`
+    : `/api/cms/polaris/episodes/post-picker`;
+};
+
+export const listPolarisLinkablePosts = async (
+  params?: ListPolarisLinkablePostsParams,
+  options?: RequestInit,
+): Promise<ListPolarisLinkablePosts200> => {
+  return customFetch<ListPolarisLinkablePosts200>(
+    getListPolarisLinkablePostsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPolarisLinkablePostsQueryKey = (
+  params?: ListPolarisLinkablePostsParams,
+) => {
+  return [
+    `/api/cms/polaris/episodes/post-picker`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListPolarisLinkablePostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPolarisLinkablePosts>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListPolarisLinkablePostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolarisLinkablePosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPolarisLinkablePostsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPolarisLinkablePosts>>
+  > = ({ signal }) =>
+    listPolarisLinkablePosts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPolarisLinkablePosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPolarisLinkablePostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPolarisLinkablePosts>>
+>;
+export type ListPolarisLinkablePostsQueryError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Search blog posts eligible for linking to a Polaris episode. Returns posts categorised as "Polaris" or "podcast" (matched on category slug or name, case-insensitively). Up to 100 results.
+ */
+
+export function useListPolarisLinkablePosts<
+  TData = Awaited<ReturnType<typeof listPolarisLinkablePosts>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListPolarisLinkablePostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolarisLinkablePosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPolarisLinkablePostsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single episode by ID (admin, includes linkedPost with status)
+ */
+export const getGetCmsPolarisEpisodeUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}`;
+};
+
+export const getCmsPolarisEpisode = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PolarisEpisode> => {
+  return customFetch<PolarisEpisode>(getGetCmsPolarisEpisodeUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsPolarisEpisodeQueryKey = (id: string) => {
+  return [`/api/cms/polaris/episodes/${id}`] as const;
+};
+
+export const getGetCmsPolarisEpisodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsPolarisEpisode>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPolarisEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsPolarisEpisodeQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsPolarisEpisode>>
+  > = ({ signal }) => getCmsPolarisEpisode(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsPolarisEpisode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsPolarisEpisodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsPolarisEpisode>>
+>;
+export type GetCmsPolarisEpisodeQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get a single episode by ID (admin, includes linkedPost with status)
+ */
+
+export function useGetCmsPolarisEpisode<
+  TData = Awaited<ReturnType<typeof getCmsPolarisEpisode>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPolarisEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsPolarisEpisodeQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

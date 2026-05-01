@@ -874,11 +874,24 @@ export const api = {
       url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
       { method: "POST" },
     ),
+  bulkSyncPolarisToCollateral: () =>
+    jsonFetch<{ total: number; created: number; updated: number }>(
+      url("/cms/polaris/episodes/bulk-sync-collateral"),
+      { method: "POST" },
+    ),
   removePolarisCollateralLink: (id: string) =>
     jsonFetch<void>(
       url(`/cms/polaris/episodes/${encodeURIComponent(id)}/sync-collateral`),
       { method: "DELETE" },
     ),
+  // Picker for linking a Polaris episode to a related blog post. Returns
+  // posts categorized as "Polaris" or "podcast" (slug or name match).
+  listPolarisLinkablePosts: (q?: string) => {
+    const qs = q && q.trim().length > 0 ? `?q=${encodeURIComponent(q.trim())}` : "";
+    return jsonFetch<{ items: PolarisLinkablePostDto[] }>(
+      url(`/cms/polaris/episodes/post-picker${qs}`),
+    );
+  },
   previewPolarisLibsyn: (feedUrl?: string) => {
     const qs = feedUrl ? `?feedUrl=${encodeURIComponent(feedUrl)}` : "";
     return jsonFetch<{ feedUrl: string; items: PolarisLibsynPreviewItem[] }>(
@@ -1109,7 +1122,81 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  // AI grounding documents — Vega-pattern grounding store. Admin-only; gated
+  // by the ai.grounding.manage capability on the server.
+  listGroundingDocuments: () =>
+    jsonFetch<{ items: GroundingDocumentDto[] }>(url("/ai/grounding-documents")),
+  createGroundingDocument: (body: GroundingDocumentInput) =>
+    jsonFetch<GroundingDocumentDto>(url("/ai/grounding-documents"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateGroundingDocument: (id: string, body: Partial<GroundingDocumentInput>) =>
+    jsonFetch<GroundingDocumentDto>(
+      url(`/ai/grounding-documents/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteGroundingDocument: (id: string) =>
+    jsonFetch<void>(
+      url(`/ai/grounding-documents/${encodeURIComponent(id)}`),
+      { method: "DELETE" },
+    ),
+  parseGroundingPdf: async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    return jsonFetch<{ markdown: string }>(url("/ai/parse-pdf"), {
+      method: "POST",
+      body: buffer,
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  },
+  parseGroundingDocx: async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    return jsonFetch<{ markdown: string }>(url("/ai/parse-docx"), {
+      method: "POST",
+      body: buffer,
+      headers: { "Content-Type": "application/octet-stream" },
+    });
+  },
 };
+
+export const GROUNDING_CATEGORIES = [
+  "methodology",
+  "best_practices",
+  "terminology",
+  "examples",
+  "about_synozur",
+  "brand_voice",
+  "audience_personas",
+  "concierge_persona",
+] as const;
+export type GroundingCategory = (typeof GROUNDING_CATEGORIES)[number];
+
+export interface GroundingDocumentDto {
+  id: string;
+  title: string;
+  description: string | null;
+  category: GroundingCategory;
+  content: string;
+  scopeTags: string[];
+  priority: number;
+  isActive: boolean;
+  conciergeEligible: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroundingDocumentInput {
+  title: string;
+  description?: string | null;
+  category: GroundingCategory;
+  content: string;
+  scopeTags?: string[] | null;
+  priority?: number;
+  isActive?: boolean;
+  conciergeEligible?: boolean;
+}
 
 export type ArtifactStatus = "draft" | "scheduled" | "published" | "archived";
 
@@ -1152,6 +1239,27 @@ export interface PolarisCollateralLinkDto {
   updatedAt: string;
 }
 
+export interface PolarisLinkedPostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  heroImageUrl: string | null;
+  publishedAt: string | null;
+  // Only present on CMS responses (admin endpoints). Public episode
+  // responses are filtered to published posts and omit this field.
+  status?: ArtifactStatus;
+}
+
+export interface PolarisLinkablePostDto {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  publishedAt: string | null;
+  status: ArtifactStatus;
+}
+
 export interface PolarisEpisodeDto {
   id: string;
   slug: string;
@@ -1175,6 +1283,8 @@ export interface PolarisEpisodeDto {
   ogImage: string | null;
   serviceId: string | null;
   solutionId: string | null;
+  linkedPostId: string | null;
+  linkedPost: PolarisLinkedPostDto | null;
   active: boolean;
   sourceId: string | null;
   createdAt: string;
@@ -1660,4 +1770,5 @@ export interface PolarisEpisodeInput {
   sourceId?: string | null;
   serviceId?: string | null;
   solutionId?: string | null;
+  linkedPostId?: string | null;
 }

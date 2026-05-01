@@ -1,0 +1,154 @@
+You are revising the alternate Synozur home page.
+
+This version improved narrative clarity but lost energy, visual distinction, and misrepresents core capabilities.
+Your task is to REWIRE this page to combine the strengths of both versions.
+
+Do NOT start from scratch.
+Do NOT simplify further.
+Restore missing elements where they carry strategic meaning.
+
+PRIMARY OBJECTIVE
+Create a page that:
+- Feels like a system, not a manifesto
+- Shows momentum, not just principles
+- Demonstrates capability through assets, not assertions
+- Correctly represents Synozur’s platforms (especially Orbit)
+
+GUIDING PRINCIPLES
+- Synozur leads with clarity THROUGH substance, not abstraction
+- The experience should feel intentional, dynamic, and differentiated
+- Internal frameworks (e.g., 4×4×4×4) should be embodied, not explained
+- Visual and content density are strengths, not liabilities
+
+--------------------------------
+REQUIRED CHANGES
+--------------------------------
+
+1. HERO SECTION — KEEP THE IDEA, RESTORE ENERGY
+KEEP:
+- The concept of “system” and “navigating complexity”
+- A confident, executive tone
+
+CHANGE:
+- Reduce abstract language density
+- Reintroduce visual tension and motion from the original version
+- The hero must invite exploration, not contemplation alone
+
+DO:
+- Rebalance headline + subhead so the claim is supported by what follows
+- Ensure the hero visually connects to real artifacts (models, apps, cases)
+
+DO NOT:
+- Turn the hero into a philosophical statement
+- Leave it visually flat or static
+
+--------------------------------
+
+2. PRINCIPLES SECTION — TRIM ASSERTIONS, ADD PROOF PATHS
+CURRENT ISSUE:
+- Statements like “Clarity before motion” and “Outcomes are the only measure”
+  are correct but ungrounded.
+
+CHANGE:
+- Keep the principles, but shorten them
+- Each principle should clearly point toward:
+  - a model
+  - an assessment
+  - a platform
+  - or a case
+
+EXAMPLE INTENT (do not hardcode copy):
+- Principles should feel like doors, not conclusions
+
+--------------------------------
+
+3. PLATFORMS SECTION — CORRECT AND DIFFERENTIATE
+THIS IS CRITICAL.
+
+Vega:
+- Keep as the system that operationalizes strategy
+- Position as inside-the-organization clarity and execution support
+
+Orion:
+- Explicitly frame as the assessment and diagnostic starting point
+- It should quietly feel like “where you begin”
+
+Orbit:
+- CURRENT STATE IS WRONG — FIX THIS
+
+Orbit MUST be positioned as:
+- Outside-in market and competitive intelligence
+- Analysis of market signals, positioning, competitors, and GTM dynamics
+- A tool that informs strategy and go-to-market decisions
+
+Orbit MUST NOT be framed as:
+- An internal execution or transformation operations tool
+- A generic strategy enablement platform
+- Overlapping with Vega’s role
+
+Ensure Vega, Orion, and Orbit feel:
+- Distinct
+- Complementary
+- Purpose-built
+
+--------------------------------
+
+4. WORKSHOPS SECTION — RESTORE MOMENTUM
+KEEP:
+- Workshops as moments of alignment and acceleration
+
+RESTORE FROM ORIGINAL:
+- Strong visuals
+- Sense of urgency and movement
+- The idea that workshops change trajectory, not just understanding
+
+DO NOT:
+- Frame workshops as SKUs, durations, or offerings
+- Let this section feel secondary or informational
+
+--------------------------------
+
+5. REAL-WORLD PROOF — MOVE IT UP AND RE-EMPHASIZE
+CURRENT ISSUE:
+- Proof exists but is visually and strategically de-emphasized
+
+CHANGE:
+- Restore the prominence and richness of the original carousel experience
+- The carousel should feel like:
+  “Here is how this system works in practice”
+
+DO:
+- Maintain diversity: models, apps, cases, content
+- Preserve motion and discoverability
+
+DO NOT:
+- Reduce this to a single case study
+- Flatten it into a static feed
+
+--------------------------------
+
+6. TONE AND EXPERIENCE — CORRECT THE OVER-CORRECTION
+OVER-CORRECTION TO AVOID:
+- Too calm
+- Too abstract
+- Too linear
+- Too safe
+
+RESTORE:
+- Visual contrast
+- Curiosity
+- Sense of depth
+- Feeling that Synozur has built real IP, not just opinions
+
+--------------------------------
+
+SUCCESS CHECK
+The revised page should make an executive think:
+- “These people have a system.”
+- “They’ve built tools, not just slides.”
+- “They understand the market outside my company, not just inside it.”
+- “I want to explore further.”
+
+If the page reads like a white paper, you have gone too far.
+If it feels energetic but unclear, you have gone too far.
+Balance clarity with motion.

@@ -14,7 +14,7 @@ import {
   type TurnstileHandle,
 } from "@/components/turnstile";
 import { BotCheckCallout } from "@/components/bot-check-callout";
-import { useInsightsList, resolveMediaUrl } from "@/lib/insights";
+import { useInsightsList, resolveMediaUrl, buildMediaSrcSet } from "@/lib/insights";
 import { useListCmsCategories } from "@workspace/api-client-react";
 import type { PublicPost } from "@workspace/api-client-react";
 
@@ -112,8 +112,18 @@ function formatDate(iso: string | null | undefined): string {
   }
 }
 
+// Card hero is at most ~1/3 viewport on desktop, full width on mobile.
+const POST_CARD_WIDTHS = [480, 768, 960, 1280] as const;
+const POST_CARD_SIZES =
+  "(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw";
+
+// Featured hero spans roughly half the viewport on lg+ screens.
+const FEATURED_CARD_WIDTHS = [640, 960, 1280, 1600] as const;
+const FEATURED_CARD_SIZES = "(min-width: 1024px) 50vw, 100vw";
+
 function PostCard({ post, index }: { post: PublicPost; index: number }) {
-  const hero = resolveMediaUrl(post.heroImageUrl);
+  const hero = resolveMediaUrl(post.heroImageUrl, { width: 960 });
+  const heroSrcSet = buildMediaSrcSet(post.heroImageUrl, POST_CARD_WIDTHS);
   const cat = post.categories?.[0]?.name;
   return (
     <motion.article
@@ -128,8 +138,11 @@ function PostCard({ post, index }: { post: PublicPost; index: number }) {
           {hero ? (
             <img
               src={hero}
+              srcSet={heroSrcSet ?? undefined}
+              sizes={heroSrcSet ? POST_CARD_SIZES : undefined}
               alt={post.title}
               loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
@@ -161,7 +174,8 @@ function PostCard({ post, index }: { post: PublicPost; index: number }) {
 }
 
 function FeaturedCard({ post }: { post: PublicPost }) {
-  const hero = resolveMediaUrl(post.heroImageUrl);
+  const hero = resolveMediaUrl(post.heroImageUrl, { width: 1280 });
+  const heroSrcSet = buildMediaSrcSet(post.heroImageUrl, FEATURED_CARD_WIDTHS);
   const cat = post.categories?.[0]?.name;
   return (
     <Link
@@ -173,7 +187,10 @@ function FeaturedCard({ post }: { post: PublicPost }) {
           {hero ? (
             <img
               src={hero}
+              srcSet={heroSrcSet ?? undefined}
+              sizes={heroSrcSet ? FEATURED_CARD_SIZES : undefined}
               alt={post.title}
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (

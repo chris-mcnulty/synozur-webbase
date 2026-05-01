@@ -14,18 +14,19 @@ export const CAPABILITIES = [
   "content.moderate",
   "users.manage",
   "site.manage",
+  "ai.grounding.manage",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 const ROLE_CAPABILITIES: Record<string, readonly Capability[]> = {
-  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage"],
-  editor: ["content.view", "content.author", "content.publish", "content.moderate"],
+  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "ai.grounding.manage"],
+  editor: ["content.view", "content.author", "content.publish", "content.moderate", "ai.grounding.manage"],
   author: ["content.view", "content.author"],
   contributor: ["content.view", "content.author"],
   // #110 — audience classes
-  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage"],
-  content_author: ["content.view", "content.author", "content.publish"],
+  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "ai.grounding.manage"],
+  content_author: ["content.view", "content.author", "content.publish", "ai.grounding.manage"],
   hr: ["content.view", "users.manage"],
   internal: ["content.view"],
 };

@@ -23,4 +23,5 @@ export interface UpdatePostBody {
   featuredRank?: number | null;
   categoryIds?: string[] | null;
   tagIds?: string[] | null;
+  linkedSolutionId?: string | null;
 }

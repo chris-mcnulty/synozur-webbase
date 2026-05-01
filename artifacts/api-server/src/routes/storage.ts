@@ -131,15 +131,20 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed.data;
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    // For SPE the active backend returns an api-server route URL
-    // (`/api/storage/uploads/spe-direct/<token>`) that's NOT a valid
-    // storage_key. Map it to the canonical `/objects/uploads/<token>`
-    // shape so seed scripts (and any other caller persisting
-    // `objectPath` directly into a storage_key column) write the same
-    // shape regardless of which backend is active. GCS URLs flow
-    // through the existing GCS normalizer unchanged.
+
+    // Map to the canonical `/objects/uploads/<token>` storage_key shape
+    // regardless of which backend is active, so callers persisting
+    // `objectPath` write the same form for GCS and SPE.
     const objectPath = canonicaliseUploadObjectPath(uploadURL);
 
+    // Return the raw URL — GCS backends already return an absolute HTTPS
+    // signed URL; the SPE backend returns a server-relative path
+    // (`/api/storage/uploads/spe-direct/<token>`). Server-side
+    // absolutization using req.get("host") was unreliable in Replit's
+    // production proxy because the Host header may carry the internal
+    // container address rather than the public-facing domain. Clients
+    // must absolutize relative URLs using window.location.origin, which
+    // is always the correct public origin.
     res.json(
       RequestUploadUrlResponse.parse({
         uploadURL,
@@ -185,19 +190,6 @@ router.put(
     const token = String(req.params.token ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(token)) {
       res.status(400).json({ error: "Invalid token" });
-      return;
-    }
-    // C6 fix — pre-check the active backend before reading the body
-    // and uploading it. Without this, when STORAGE_BACKEND=gcs the
-    // route would happily upload to GCS via the active backend and
-    // then 409 because the resulting ref has no speFileId, leaving a
-    // GCS orphan. Bail early instead.
-    const activeBackend = (process.env["STORAGE_BACKEND"] ?? "gcs").trim().toLowerCase();
-    if (activeBackend !== "spe") {
-      res.status(409).json({
-        error:
-          "spe-direct route requires STORAGE_BACKEND=spe; refusing to write bytes through this path under the active backend",
-      });
       return;
     }
     const body = req.body as Buffer | undefined;
