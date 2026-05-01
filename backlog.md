@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: May 1, 2026  
-> 42 tracked tasks · 3 strategic roadmap items · 110 merged · 30 cancelled
+> 47 tracked tasks · 3 strategic roadmap items · 110 merged · 30 cancelled
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
 
@@ -213,6 +213,22 @@ Out of scope: a full PRM (partner-relationship management) replacement, commissi
 
 The registration endpoint now enforces rate limiting, but no automated tests verify that a 429 response is returned after the threshold is exceeded or that requests below the limit continue to return 201. This task adds those tests so any future change to the rate-limiting middleware is immediately caught.
 
+### #169 · Admin audit-log viewer with entity-scoped activity tab and 365-day retention
+**Depends on:** —
+
+`auditLogTable` is heavily *written* — every admin mutation in `routes/cms/*.ts` calls `audit({ action, entity, entityId, diff })` with structured before/after diffs from `buildAuditDiff()` at `artifacts/api-server/src/lib/audit.ts:25` — but the only *read* path that exists today is `routes/cms/securityLog.ts`, which filters to a single action (`auth.login_rate_limited`) and returns 200 IPs. Nothing surfaces the full audit stream to operators, and the table grows unbounded. So when an editor asks "who deleted that case study last Tuesday?" the answer requires a live SQL session against production.
+
+This task ships an admin audit viewer + retention:
+- **API.** New `routes/cms/auditLog.ts` with `GET /cms/audit-log` accepting `actorId`, `entity`, `entityId`, `actionPrefix`, `from`, `to`, `cursor`, `limit ≤ 100`. The existing `audit_log_entity_idx` covers entity-scoped queries; add a `(actor_id, at desc)` index for the per-actor view and a `(at desc)` index for the global feed.
+- **Global viewer.** New page `pages/admin/access/audit-log.tsx` with a filter bar (date range, action prefix, entity type, actor email lookup), an infinite-scroll table, and a row-detail drawer that pretty-prints the `before` / `after` diff using the same JSON-diff component planned for #67.
+- **Per-artifact activity tab.** A reusable `<ActivityTab>` component fed by `(entity, entityId)` drops into every artifact edit page (post, collateral, service, solution, case-study, application, model, polaris-episode, white-paper, workshop, event, team-member) so an editor sees "Chris updated `excerpt` 2 days ago" inline without leaving the page. Permissions: gated on the same role required to *edit* the underlying artifact, not on global admin.
+- **Retention.** Daily prune job in `lib/scheduler.ts` deletes `audit_log` rows older than `siteSettings.auditLogRetentionDays` (default 365). Auth / OAuth / session actions (`action LIKE 'auth.%' OR 'oauth.%' OR 'session.%'`) keep a 5-year retention regardless — security logs have a longer minimum legal hold under most enterprise procurement reviews.
+- **Export.** `GET /cms/audit-log.csv` with the same filter set so legal / compliance can hand a customer a full audit trail on request.
+
+Migrate `/admin/access/security-log` to read from `/cms/audit-log?actionPrefix=auth.` — kill the duplicated query in `routes/cms/securityLog.ts` once the new viewer ships.
+
+Out of scope: real-time tail / websocket push (the daily-cadence audit pattern doesn't justify it yet), per-row redaction policies (PII is already kept out at write time via `buildAuditDiff`'s `ignoreKeys`). Follow-up: pipe high-severity actions (`role.grant.admin`, `oauth_client.create`, `user.delete`) to a Slack webhook so a security channel pings on each occurrence.
+
 ---
 
 ## Marketing & Lifecycle
@@ -275,6 +291,21 @@ The site is heavily instrumented for traffic (GA4, LinkedIn, Meta pixels) but ha
 - **Documentation.** A short experiment-design guide in `docs/experimentation.md` with templates for hypothesis writing, sample-size calculation, and a "kill criteria" checklist.
 
 Out of scope: multi-armed bandits (start with frequentist A/B), causal-inference observational studies. Follow-up: wire experiment assignment into the cross-app switcher (#129) so we can A/B test Galaxy / portal entry points in one place.
+
+### #168 · Double opt-in confirmation for newsletter subscribers
+**Depends on:** — (additive); pairs with #132 (the confirmation email is itself a transactional send) and #131 (HubSpot — DOI confirmation now gates the contact upsert)
+
+`/forms/subscribe` (`artifacts/api-server/src/routes/forms.ts:499`) currently writes the submission, sends a marketing welcome via Resend, and enqueues a HubSpot contact upsert *all in one synchronous request* — there is no confirmation step. Anyone (or any bot that gets past Turnstile) can sign up an arbitrary third-party email, and a competitor flooding the endpoint with executive addresses can poison our sender reputation overnight. GDPR (Recital 32 — "clear affirmative action") and CASL effectively require an explicit confirmation event for marketing email; today the audit trail captures only IP + UA + timestamp at submit, not at confirm.
+
+This task adds **double opt-in (DOI)**:
+- **Schema.** New `subscribers` table — `email` (unique), `status: 'pending' | 'confirmed' | 'unsubscribed'`, `confirmation_token_hash`, `confirmation_sent_at`, `confirmed_at`, `confirmed_ip`, `confirmed_user_agent`, `unsubscribed_at`, `created_at`. Resubmission while `pending` rotates the token but doesn't multiply rows; resubmission while `confirmed` is a no-op.
+- **Submit path.** `/forms/subscribe` writes the row as `pending` and sends a "Confirm your subscription" email via Resend with a signed link to `/subscribe/confirm?token=…`. Token signing reuses the HMAC pattern from `lib/unsubscribeToken.ts` — single helper, single secret rotation story.
+- **Confirm path.** `GET /forms/subscribe/confirm?token=…` validates the signature, checks `confirmation_sent_at` is within a 7-day TTL, flips `status='confirmed'`, records the confirming IP / UA / timestamp, **and only then** enqueues the HubSpot contact upsert (`enqueueContactSubmission`) and the welcome marketing send. The page renders a success message with a one-click unsubscribe link for symmetry.
+- **Existing newsletter touchpoints** (RSS-driven digests once they ship, scheduled-post notifications) gate sends on `subscribers.status='confirmed'`; pending rows never receive marketing.
+- **Admin surface.** A "Pending confirmations" tab under `/admin/marketing/subscribers` showing pending vs. confirmed funnel + a manual resend-confirmation action for support cases. A 30-day pending-cleanup cron deletes rows that never confirmed.
+- **Re-confirmation pass.** A one-shot `scripts/sendReconfirmationCampaign.ts` mails the existing pre-DOI subscriber list once with a "confirm to keep receiving" CTA; non-confirmers stay opted-in for transactional but get pulled from marketing lists.
+
+Out of scope: per-list DOI (newsletter / insights digest / event invites all share one confirmation today; revisit when #132 SendGrid lists materialize). Follow-up: surface the per-source confirm-rate funnel inside #140 so we can compare DOI conversion across landing pages.
 
 ---
 
@@ -401,6 +432,59 @@ Every public string and every editorial CMS field on the site is English-only to
 
 Out of scope: right-to-left languages (separate pass), region-specific content (different case studies per locale — possible but not v1), multi-currency pricing. Follow-up: localize the Astra concierge and the Insights Q&A (#134) once the editorial corpus has enough translated content to retrieve from.
 
+### #166 · Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget
+**Depends on:** — (must ship before #134 / Astra concierge expose any public surface)
+
+The AI chat infrastructure (`artifacts/api-server/src/routes/aiChat.ts`) is already mounted but is wide open in three independent ways:
+
+1. **No authentication.** Anyone on the internet can `POST /ai/chat` with an arbitrary message and stream a Claude response on Synozur's Anthropic bill. There is no anonymous-session cookie, no Turnstile gate, no rate limiter on the route. A trivial script can drain the daily budget in minutes.
+2. **No conversation ACL.** Conversations are keyed by integer primary key (`conversations.id`) with no `owner_user_id` or `owner_session_id` column. `GET /ai/conversations/:id/messages` returns the full message history for any id the caller asks for, so a curious visitor can walk `1, 2, 3 …` and read every chat anyone else has had — including the user-pasted PII that grounding-doc-driven Q&A typically attracts.
+3. **No token budget.** There is no per-IP / per-user / global daily ceiling. Once #134 ships and the editorial corpus retrieval layer comes online, a single unhandled abuse pattern (long-context prompt injection, retry loops) can spike spend by 100× without any circuit breaker.
+
+This task hardens the endpoint before any public surface lights it up:
+- **Authn / session.** Require either an authenticated session cookie (`requireAuth`) or a server-issued anonymous chat session — `POST /ai/sessions/start` mints a signed cookie + persists a row in a new `ai_chat_sessions` table; the cookie binds to a session id, not just an IP, so VPN flips don't reset the budget. Turnstile gates `POST /ai/sessions/start` so bots can't trivially mint fresh sessions.
+- **ACL.** Add `owner_user_id uuid null` and `owner_session_id uuid null` to `conversations` (one of the two is non-null per row). `GET /ai/conversations/:id/messages` and `POST /ai/chat` both check `owner_*` against the caller. UUIDv7 the table while we're at it — integer ids are an enumeration footgun on a public surface.
+- **Rate limits.** Per-IP and per-session limiters using the existing `rateLimit({...})` pattern from `routes/insights.ts`: 20 messages/hour per session, 60/hour per IP, burst of 3 in 10 seconds. 429s emit `audit.action='ai.chat.rate_limited'`.
+- **Token budget.** A new `ai_chat_token_usage` daily-rollup table counts input + output tokens per session / per IP / global. Hard cap at `siteSettings.aiChatDailyTokenCapPerSession` (default 50k) and `aiChatDailyTokenCapGlobal` (default 5M). Exceeding the cap returns a polite 429 with retry-after midnight UTC; global cap exceedance also pages the on-call.
+- **Prompt-injection guardrails.** Strip `system:` / `assistant:` role headers from the user message before composing `chatMessages`; cap the total `priorMessages` window at 20 turns or 50k tokens (oldest dropped) so an attacker can't bloat the context with their own injected history. Surface a `safety.suspected_injection` audit event when guardrails fire.
+- **Cost observability.** Log per-call `inputTokens` / `outputTokens` / `cacheReadTokens` (pairs with #167) into the rollup table so the Site Health dashboard can chart cost-per-day and per-session.
+
+Out of scope: full content-moderation classifier (rely on Claude's own safety training for now); per-message PII scrubbing on storage (separate task once retention policy is decided). Follow-up: extend the same authn / budget envelope to a future `POST /ai/grounding/parse-pdf` endpoint when #134 lands the file-upload path.
+
+### #167 · Apply Anthropic prompt caching across the AI chat + grounding pipeline
+**Depends on:** #166 (cost observability lands the metrics that prove the win); pairs with #134 (the corpus-retrieval tool layer benefits from the same pattern on its tool-use turn)
+
+`buildSystemPrompt({ scopeTags, conciergeOnly })` (`artifacts/api-server/src/lib/ai/grounding.ts`) reads every `is_active=true` grounding document on every call, formats them into one large system block, and the caller at `routes/aiChat.ts:142` passes it as `system: systemPrompt` with no caching directive. The same is true of `priorMessages` — for a 30-turn conversation, every turn re-sends the entire history as fresh input tokens. With the planned grounding-document corpus (Vega-style instructional + contextual docs) the system block alone is comfortably 10–30k tokens, and at typical turn cadence the cost is dominated by re-reading content that hasn't changed.
+
+The Anthropic SDK supports prompt caching via `cache_control: { type: "ephemeral" }` markers on content blocks — a 5-minute TTL with a ~90 % discount on cached input tokens. `aiChat.ts` already streams via `anthropic.messages.stream(...)` so wiring caching is a one-line marker change per block, but the *correctness* of marker placement matters (cache only stable prefixes; never cache the user's current message).
+
+This task wires caching across every AI surface and instruments the savings:
+- **System block.** Convert `system: systemPrompt` (string) to a single-element content array `[{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }]`. The grounding-doc corpus changes only on edit, so within any 5-minute window every turn for every concurrent visitor reuses the cached block.
+- **Conversation history.** When sending `priorMessages`, mark the *last* assistant message before the new user turn with `cache_control: { type: "ephemeral" }`. That caches the entire prior conversation as a stable prefix; the only fresh tokens are the new user message and the streamed assistant response. Re-cache on every turn so the 5-minute window keeps sliding.
+- **Tool definitions (#134 follow-on).** When the editorial-corpus `searchEditorialCorpus` tool ships, mark its tool-definition block as cached too — tool schemas don't change per call.
+- **Cache-hit metrics.** The streaming response includes `usage.cache_creation_input_tokens` and `usage.cache_read_input_tokens` on the `message_start` event. Persist both into the `ai_chat_token_usage` rollup from #166 so the Site Health page renders cache-hit rate and dollar savings per day. A regression that drops hit rate below 50 % pages the on-call.
+- **`getSimpleCompletion()` escape hatch.** Lightweight calls (rewriting, scoring, scope-tag classification) that bypass grounding stay non-cached — caching a small one-off block is net-negative because cache-write tokens cost more than re-reading would.
+- **Fallback safety.** Cache markers are a hint, not a contract — the model still produces correct output if the cache is cold. Add an integration test that exercises a cold-cache run and a warm-cache run against a stub backend so a future SDK upgrade that changes the marker shape doesn't silently regress to non-cached.
+
+Expected impact: based on Anthropic's published numbers for similar patterns, a 75–90 % reduction in input-token cost on multi-turn sessions, with no observable latency change (cache reads are faster, not slower, than fresh reads).
+
+Out of scope: 1-hour-TTL caching tier (still in beta at the time of writing — revisit once GA). Follow-up: when `@synozur/auth-sdk` (per BACKLOG.md "OAuth provider follow-ups" #5) ships, expose the same caching scaffold to downstream apps that proxy through this site's AI surface.
+
+### #170 · Public-site search endpoint and `/search` page powered by Postgres FTS
+**Depends on:** — (additive); referenced by #163 (the discovery-friendly 404 page assumes a `/api/search` endpoint exists), unblocks #134 phase 0 (cheaper full-text retrieval before the embedding layer ships)
+
+The site has a real editorial corpus — Insights posts, case studies, white papers, services, solutions, FAQ, Polaris episodes, applications, models — but **no on-site search**. There is no `/api/search` route, no `/search` page, no search box in the header. Visitors who arrive via Google can only land on the post they searched for; once on the site they have to navigate by category or guess at slugs. The 404 page proposed in #163 explicitly assumes "a search input that hits `/api/search`" — so #163 can't fully ship until this lands. And the embedding-based corpus retrieval planned in #134 is months of work; a Postgres-FTS layer is hours of work and covers ~80 % of the same use-cases (find me posts about "data governance") without an embedding pipeline, an `editorial_embeddings` table, or a re-embedding cron.
+
+This task ships a tsvector-backed search across every published artifact:
+- **Schema.** Add a generated `search_tsv tsvector` column to each indexed artifact table (`posts`, `case_studies`, `white_papers`, `services`, `solutions`, `faq_items`, `polaris_episodes`, `applications`, `models`) computed as `setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(excerpt, '')), 'B') || setweight(to_tsvector('english', coalesce(body_text, '')), 'C')`. GIN index on each `search_tsv`. Recomputation is automatic via Postgres `GENERATED ALWAYS` so no app-side trigger or backfill cron is needed beyond a one-shot `REINDEX` after the column lands.
+- **Endpoint.** `GET /api/search?q=&kind=&limit=&cursor=` runs `plainto_tsquery('english', :q)` against each enabled kind in parallel (UNION ALL with a kind discriminator), ranks via `ts_rank_cd(search_tsv, query) * kind_boost` where `kind_boost` is editorially configurable in `site_settings.searchKindBoosts` (default `{post:1.0, case_study:1.2, white_paper:1.1, service:1.5, solution:1.5}` so commercial pages outrank blog posts on equal-relevance ties), filters out `status != 'published'` and `deleted_at is not null`, returns `[{kind, id, slug, title, excerptHtml, rankScore}]` with `excerptHtml` produced by `ts_headline` for inline highlighting. Cursor pagination, `limit ≤ 25`.
+- **Public page.** New `pages/search.tsx` with a query input (synced to the `?q=` URL param), per-kind tabs, infinite scroll, and a "no results — try X / talk to a human" CTA. SSR-friendly metadata (`<title>Search results for "{q}" — Synozur</title>`, `noindex` so the SERP isn't full of internal search URLs).
+- **Header search.** A small search-icon button in the existing header that opens a command-palette-style overlay (Cmd-K) with live results from the same endpoint. Reuses the `command.tsx` shadcn primitive that's already in the bundle.
+- **404 page wiring.** Drop the search input from #163 against this endpoint so a stale-link visitor sees "Did you mean…" hits before bouncing.
+- **Telemetry.** Log `(query, resultCount, clickedKind, clickedRank)` into a new `search_queries` table; surface a "top 50 zero-result queries" report on the existing `/admin/insights/post-analytics`-style page so editorial sees content gaps. Pairs naturally with #134's "low retrieval confidence" report — both are surfacing the same signal at different layers.
+
+Out of scope: typo tolerance (Postgres FTS has stemming but not fuzzy matching — defer to embeddings via #134), multi-language search (single-language `'english'` config; revisit when #139 lands a launch locale), private-content search inside Galaxy / partner portals (separate ACL surface).
+
 ---
 
 ## Strategic Roadmap
@@ -491,6 +575,11 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #163 | Tune robots meta directives and add a discovery-friendly 404 page | Public Site UX | — |
 | #164 | Extend the event-detail share rail to insights, case studies, and white papers | Marketing & Lifecycle | — |
 | #165 | Honor `prefers-color-scheme` for first-time visitors | Public Site UX | — |
+| #166 | Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget | Public Site UX | — |
+| #167 | Apply Anthropic prompt caching across the AI chat + grounding pipeline | Public Site UX | #166 |
+| #168 | Double opt-in confirmation for newsletter subscribers | Marketing & Lifecycle | — |
+| #169 | Admin audit-log viewer with entity-scoped activity tab and 365-day retention | Admin Access & People | — |
+| #170 | Public-site search endpoint and `/search` page powered by Postgres FTS | Public Site UX | — |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
 | — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
