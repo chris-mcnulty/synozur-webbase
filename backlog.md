@@ -1,9 +1,63 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: May 1, 2026  
-> 41 tracked tasks · 3 strategic roadmap items · 111 merged · 30 cancelled
+> 42 tracked tasks · 3 strategic roadmap items · 110 merged · 30 cancelled
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
+
+## 🚦 Launch Readiness — Pre-Production Gate
+
+Locked in May 2026 as the gating checklist for the public launch of `synozur.com`. Items in **Tier 1** must close before public launch; Tier 2 must close before any external announcement / SEM spend; Tier 3 can ship in week 1 post-launch.
+
+Each row links to the canonical backlog entry below where the implementation detail lives. This section is the single source of truth for go/no-go status — update the checkbox as items close.
+
+### Tier 1 — Critical, must ship before public launch
+
+- [ ] **L1. Production auth cutover** → BACKLOG.md "Clerk removal cleanup" #1, #2, #3.
+  Run `pnpm --filter @workspace/db run push` in staging then production; provision the Entra app registration per environment (redirect URIs, `User.Read` delegated + `GroupMember.Read.All` application permissions with admin consent, `synozur.com` domain claim hint); set `ENTRA_TENANT_ID`, `ENTRA_APP_CLIENT_ID`, `AUTH_REDIRECT_URI`, `ENTRA_APP_CLIENT_SECRET` in each env's secret store; purge legacy `CLERK_*` env vars. **Blocks every signed-in flow.**
+- [ ] **L2. Search Console + Bing Webmaster verification** → #160.
+  Add `<meta name="google-site-verification">` and `<meta name="msvalidate.01">` to `index.html` keyed off env vars; confirm DNS TXT record at the registrar; submit the sitemap manually for the first crawl. **Blocks organic discoverability — the site is invisible to Google until verified.**
+- [ ] **L3. Live IndexNow / Google Indexing / Bing Webmaster credentials** → #102.
+  Set `INDEXNOW_KEY` (and serve `/{key}.txt`), `GOOGLE_INDEXING_SA_JSON` (service account), `BING_API_KEY`, `BING_SITE_URL` in production; verify a test publish triggers a real submission. **Without these, every submit returns `ok: false` and new content waits days for organic discovery.**
+- [ ] **L4. Security headers via `helmet`** → #155.
+  Ship CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. Roll out CSP as `Content-Security-Policy-Report-Only` for ≥ 7 days against production traffic before enforcing (per BACKLOG.md "SEO & web-platform debt" #1). **Required by enterprise procurement reviews and pen tests.**
+- [ ] **L5. Production GA4 + pixel IDs + privacy review.**
+  Confirm `VITE_GA4_ID` (or DB override `tagGa4Id`) is the production tag, plus the LinkedIn and Meta pixel IDs in site settings. Re-read `/privacy` against the actual tag set so the listing matches reality. Cookie-consent gating is already correct, but a wrong tag ID silently drops every conversion event. **Blocks attribution from day one.**
+- [ ] **L6. Wix-redirect production sweep** → #84 residual.
+  Pull the top 100 not-found URLs from `not_found_logs` after staging traffic; confirm no high-traffic legacy URL is missing a redirect rule. Better to do this once before launch than to lose two weeks of crawl budget. **Last-mile cleanup on already-shipped infrastructure.**
+- [ ] **L7. Backfill per-page OG / SEO data on production artifacts** → #86 residual.
+  The OG-serving infrastructure is shipped, but `seoTitle`, `seoDescription`, and `ogImage` are blank on most production artifact rows, so every shared link previews with the same global default. Run `POST /api/seo/audit` against production, run `POST /api/seo/audit/autofill` for high-volume kinds (insights, case studies, applications, solutions, services, white papers, models), then have editorial review the suggestions before publish. For `ogImage` specifically: seed each kind from a kind-specific default in `site_settings` until #161 (dynamic OG image generation) ships, or hand-author OGs for the top-30-traffic artifacts during the launch sprint. **Without this, social shares look generic regardless of which page was shared — a real visible regression compared to bespoke OG cards.**
+
+### Tier 2 — Strongly recommended, ship before announcing
+
+- [ ] **L8. Akismet production key** → #152 residual.
+  Set `AKISMET_API_KEY` in production; without it the site falls back to rule-based scoring, which leaks spam comments at scale once the comment surface gets organic traffic.
+- [ ] **L9. Auth + rate-limit smoke tests in CI** → #119, #144.
+  Sign-in Playwright test exercising `/sign-in → Entra → /callback → /api/auth/me`, plus a test that confirms the registration endpoint returns 429 above the rate-limit threshold. Both protect surfaces that will get probed within hours of launch.
+- [ ] **L10. PR-blocking Lighthouse CI** → #156.
+  Move `lhci autorun` from `workflow_dispatch` into the standard PR job and bump perf/SEO assertions from `warn` to `error` for routes that already pass cleanly. Pairs with BACKLOG.md "SEO & web-platform debt" #2. Without this, post-launch perf regressions ship invisibly.
+- [ ] **L11. PWA manifest + `theme-color`** → #154.
+  Required for the iOS Safari "Add to Home Screen" experience and for the Lighthouse PWA audit to score above zero. Disproportionate quality signal for the effort (≈1 hour).
+
+### Tier 3 — Polish, can ship in week 1 post-launch
+
+- [ ] **L12.** `eslint-plugin-jsx-a11y` author-time a11y gate → #158.
+- [ ] **L13.** 410 Gone / 308 Permanent Redirect for unpublished content → #162.
+- [ ] **L14.** Dynamic OG image generation for editorial content → #161.
+- [ ] **L15.** Honor `prefers-color-scheme` for first-time visitors → #165.
+- [ ] **L16.** Share rail on insight / case-study / white-paper detail pages → #164.
+- [ ] **L17.** Quality-gates warn → block flip → BACKLOG.md "Quality gates" #3, #4 (once warn-mode metrics are clean).
+- [ ] **L18.** Robots meta + discovery-friendly 404 page → #163.
+- [ ] **L19.** Expanded JSON-LD coverage (LocalBusiness, Person, Review, VideoObject) → #159.
+- [ ] **L20.** CI broken-link checker → #157.
+
+### Owner / cadence
+
+- **Owner:** to be assigned at the launch-readiness kickoff. Editorial owns L7 (OG/SEO copy backfill); the marketing-engineering pair owns L2 / L3 / L5 / L8; platform owns L1 / L4 / L10; QA owns L6 / L9.
+- **Cadence:** review this section in the weekly launch standup; flip checkboxes as items close. **Tier 1 must be 7/7 green before the marketing site DNS cut-over.**
+- **Definition of done:** an item closes only when the code is in `main`, the configuration is applied to production, and a manual smoke test against the production URL confirms behavior. Code-only or staging-only completion does not count for launch-gate purposes.
+
+---
 
 ### Already shipped (recorded so they aren't re-proposed)
 
@@ -173,10 +227,20 @@ White paper detail pages currently offer a plain download button. For lead gener
 
 Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state: webinar records gain a `scheduled_at` date and an optional external `registration_url`. When a webinar is upcoming the detail page shows the event date and a registration CTA instead of a video player; the webinar index gains an "Upcoming" section above the on-demand grid. If no external URL is provided, an inline name/email form creates a submission record and sends a confirmation email with an .ics calendar invite attachment. Once the scheduled date passes, items revert automatically to on-demand behavior.
 
-### ~~#86 · Fix OG tags for social link previews~~ **— Shipped**
+### #86 · Fix OG tags for social link previews — **Infrastructure shipped, production data not populated**
 **Depends on:** —
 
-~~When the site URL is shared on LinkedIn, Slack, or similar platforms, no title, image, or description appears.~~ **Shipped:** default OG tags are embedded in `artifacts/synozur/index.html`; `artifacts/api-server/src/middlewares/socialBotRenderer.ts` detects social crawlers by User-Agent and serves page-specific title/description/image via the server-side `/api/og?path=` endpoint. Dynamic sitemap + `Sitemap:` directive in robots are wired through `artifacts/api-server/src/routes/seo.ts`. Verified May 2026.
+The serving path is fully shipped: default OG tags are embedded in `artifacts/synozur/index.html`; `artifacts/api-server/src/middlewares/socialBotRenderer.ts` detects social crawlers by User-Agent and serves per-page values via the server-side `/api/og?path=` endpoint; the dynamic sitemap and `Sitemap:` directive are wired through `artifacts/api-server/src/routes/seo.ts`.
+
+**Open work — data backfill (May 2026 verification):** the per-page values themselves (`seoTitle`, `seoDescription`, `ogImage` on the artifact rows) are mostly **blank in the production database**, which means the bot middleware resolves to the global defaults from `site_settings` (`seoDefaultTitleTemplate`, `seoDefaultDescription`, `seoDefaultOgImageUrl`) on virtually every URL. Functionally a shared link previews with the same title and image regardless of which insight, case study, application, or solution is being shared. This is a content-side gap, not a code gap.
+
+Resolution path:
+- Run `POST /api/seo/audit` against production to enumerate every published artifact missing one of `seoTitle` / `seoDescription` / `ogImage`. The audit code is shipped at `artifacts/api-server/src/lib/seoAudit.ts`.
+- For high-volume artifacts (insights, case studies, applications, solutions, services, white papers, models), run `POST /api/seo/audit/autofill` to populate suggestions; the autofill helper never overwrites editor-set values, so it is safe to re-run.
+- Editorial review pass on the autofill output before flipping the audit from warn to block.
+- For OG images specifically: until the dynamic OG image generator (#161) lands, either (a) seed each artifact kind's `ogImage` from a kind-specific default set in `site_settings`, or (b) authoritatively author one OG image per top-30-traffic artifact during the launch sprint.
+
+Tracked as a launch-readiness item (L7 above).
 
 ### #102 · Connect search engine submission to live credentials
 **Depends on:** #97 (SEO / search engine submission)
@@ -392,7 +456,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #83 | Gated download CTA for white papers | Marketing & Lifecycle | — |
 | ~~#84~~ | ~~Seed & verify 301 redirects from Wix~~ — **Shipped (seeder)** | Public Site UX | — |
 | #85 | Upcoming webinar registration rail | Marketing & Lifecycle | — |
-| ~~#86~~ | ~~Fix OG tags for social link previews~~ — **Shipped** | Marketing & Lifecycle | — |
+| #86 | Fix OG tags for social link previews — **infrastructure shipped, prod data backfill open (L7)** | Marketing & Lifecycle | — |
 | #102 | Connect search engine submission to live credentials | Marketing & Lifecycle | #97 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
 | #110 | Show a video thumbnail preview when a custom hero video is active | Admin Access & People | #106 |
