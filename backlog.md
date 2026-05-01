@@ -1,9 +1,19 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: May 1, 2026  
-> 39 tracked tasks · 3 strategic roadmap items · 111 merged · 30 cancelled
+> 41 tracked tasks · 3 strategic roadmap items · 111 merged · 30 cancelled
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
+
+### Already shipped (recorded so they aren't re-proposed)
+
+The May 2026 audit cross-checked five frequently-suggested editorial enhancements against the codebase. Three are fully shipped — record them here so future intake passes don't re-file them as new work:
+
+- **Estimated reading time on Insights posts** — `posts.readingTimeMin` column populated on seed via `Math.round(words / 200)` in `artifacts/api-server/src/scripts/seedPosts.ts`; surfaced on the article page at `artifacts/synozur/src/pages/insight-detail.tsx:226` ("X min read"); editable per post via `routes/cms/posts.ts`.
+- **Related content recommendations on article and case-study pages** — `RelatedRail` component in `artifacts/synozur/src/pages/insight-detail.tsx` (3-up grid, filters out the current post), `relatedQ` in `artifacts/synozur/src/pages/case-study-detail.tsx` (2-up rail), and a generic `components/related-content.tsx` for service- and solution-scoped library views.
+- **RSS / Atom feed for Insights** — `GET /api/insights/rss.xml` at `artifacts/api-server/src/routes/insights.ts:93` (RSS 2.0 with `atom:link rel="self"`, `content:encoded`, `dc:creator`, `pubDate`). Polaris also has its own iTunes-namespaced podcast feed at `/api/polaris/rss.xml` aliased to `/polaris/rss.xml`.
+
+The remaining two ("social sharing buttons" and "dark mode") are partially shipped — see #164 (extend the event-detail share rail to editorial pages) and #165 (honor `prefers-color-scheme`) below.
 
 ---
 
@@ -305,6 +315,16 @@ When a published artifact is unpublished today, the route returns 200 with a `no
 
 Two related improvements that share a single PR. (a) The `Meta` component does not emit `max-snippet`, `max-image-preview`, or `max-video-preview` directives — the defaults Google applies are conservative and clip the rich SERP previews insights and case studies could otherwise earn. Adding `max-snippet:-1, max-image-preview:large, max-video-preview:-1` on indexable artifact pages is a one-line win. (b) `pages/not-found.tsx` is `noindex` but offers no escape route — no search box, no top-categories list, no "popular insights" tile. Visitors who land here from a stale link bounce. Add a small surface that surfaces the sitemap top-level sections, a search input that hits `/api/search`, and a "report this missing page" form that writes to the existing `not_found_logs` table for editor review.
 
+### #164 · Extend the event-detail share rail to insights, case studies, and white papers
+**Depends on:** —
+
+`event-detail.tsx` already ships a clean LinkedIn / Facebook / copy-link share rail (`facebookShare`, `share-linkedin` test id) — pure `<a href>` with pre-filled URLs, no third-party script, anchored below the hero. The same pattern is missing on `insight-detail.tsx`, `case-study-detail.tsx`, and `white-paper-detail.tsx`, which are the highest-volume editorial surfaces. This task lifts the existing share-button cluster into a small `components/share-rail.tsx` (kind, title, url props) and drops it under the hero on each editorial detail page. Includes an X/Twitter target alongside LinkedIn and Facebook, plus a `navigator.share` fallback on mobile. Pairs with #86 (already shipped) — the OG tags ensure the shared link renders a rich card.
+
+### #165 · Honor `prefers-color-scheme` for first-time visitors
+**Depends on:** —
+
+Dark mode itself is shipped: `context/theme.tsx` exposes `useTheme()`, `components/ui/theme-toggle.tsx` renders the toggle, and the user's choice persists in `localStorage` under `synozur-theme`. The remaining gap is system-preference detection: `getInitialTheme()` only reads localStorage and falls back to a hard-coded `"dark"`, so a first-time visitor on a system set to light receives the dark canvas regardless of their OS preference. This task: (a) reads `window.matchMedia("(prefers-color-scheme: light)")` when no localStorage value exists, (b) subscribes to its `change` event so the theme follows the system preference until the user explicitly toggles, (c) emits a `<meta name="color-scheme" content="light dark">` tag so the browser's default form-control and scrollbar colors render correctly. Out of scope: a third "system" tri-state on the toggle button itself — keep the toggle binary; the system preference is just the default.
+
 ### #139 · Internationalization foundation (English baseline + one launch locale)
 **Depends on:** — (architecture); pairs with #110 (some audience classes will skew geographically), #130 (theme assets may need locale variants)
 
@@ -405,6 +425,8 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #161 | Dynamic OG image generation for insights, case studies, and Polaris episodes | Marketing & Lifecycle | — |
 | #162 | Use 410 Gone and 308 Permanent Redirect for unpublished and moved content | Public Site UX | — |
 | #163 | Tune robots meta directives and add a discovery-friendly 404 page | Public Site UX | — |
+| #164 | Extend the event-detail share rail to insights, case studies, and white papers | Marketing & Lifecycle | — |
+| #165 | Honor `prefers-color-scheme` for first-time visitors | Public Site UX | — |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
 | — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
