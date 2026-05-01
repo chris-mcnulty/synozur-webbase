@@ -57,11 +57,13 @@ but spans environments.
 
 Follow-up items, in recommended order:
 
-1. **Apply the schema migration in every environment.** `pnpm --filter
-   @workspace/db run push` will drop `clerk_user_id` and add
-   `external_subject`, `auth_provider`, `last_sign_in_at`, plus the new
-   `sessions` and `auth_pending_states` tables. Run dev → staging →
-   production; verify the OIDC sign-in round-trip after each.
+1. ~~**Apply the schema migration in every environment.**~~ **Shipped (May 2026
+   verification).** `lib/db/src/schema/users.ts` no longer carries
+   `clerk_user_id` and now defines `external_subject`, `auth_provider`,
+   `last_sign_in_at`. The `sessions` and `auth_pending_states` tables are
+   present in the schema. The OIDC sign-in round-trip should still be
+   spot-checked per environment after the next `pnpm --filter
+   @workspace/db run push` so dev → staging → production stay in sync.
 
 2. **Provision the Entra app registration per environment** (per
    `docs/integrations.md`): redirect URIs, `User.Read` delegated +
@@ -271,3 +273,77 @@ Follow-up items, in recommended order:
 Owner/tracking: file a ticket referencing this section once #95 is
 deployed to production and the residual workshop count has been
 verified.
+
+---
+
+## SEO & web-platform debt (follow-up to the May 2026 audit)
+
+Context: a May 2026 cross-codebase audit of SEO configuration and
+automation confirmed the strong fundamentals already in place
+(dynamic sitemap, OG/Twitter tags, JSON-LD, `web-vitals` RUM into
+`cwv_samples`, IndexNow + Google + Bing submission, Wix redirect
+table, `socialBotRenderer` middleware) but surfaced a tail of
+infrastructure-level gaps that don't fit cleanly under any single
+product task. The numbered product-backlog items #154–#163 cover the
+user-visible work; the items below are the residual platform-debt
+follow-ups that pair with them.
+
+Follow-up items, in recommended order:
+
+1. **CSP rollout in report-only mode first.** When #155 (helmet +
+   security headers) lands, ship the CSP as `Content-Security-Policy-
+   Report-Only` for ≥ 7 days against production traffic, with
+   violations posted to a new `/api/csp/report` endpoint that writes
+   to a `csp_violations` table. Only flip to enforcing once the report
+   stream is empty for two consecutive days. The risk of breaking the
+   GA4 / LinkedIn / Meta Pixel / YouTube embed chain on a single
+   directive miss is otherwise high.
+
+2. **Move Lighthouse CI from manual to PR-blocking carefully.**
+   #156 calls for the swap, but the existing `lighthouserc.json`
+   only covers six URLs and the perf assertion is `warn` rather
+   than `error`. Before flipping the workflow trigger, audit the
+   URL list against the live sitemap top-N and bump perf to
+   `error` for the routes that already pass cleanly so the gate
+   has teeth. Pair with the publish-blocks warn → block flip in
+   "Quality gates" #3 above — they're the same theme.
+
+3. **Pipe `@axe-core/playwright` results into `publish_blocks`.**
+   This was already item #5 under "Quality gates" but the SEO
+   audit re-confirmed it's still missing. Resolution path: the
+   manual `quality.yml` workflow uploads `axe-violations.json`
+   as a CI artifact, and a small `pnpm run sync:axe` step calls a
+   new authenticated `POST /cms/quality/axe-report` that ingests
+   the JSON and writes one row per `serious|critical` violation
+   into `publish_blocks` keyed on the artifact's canonical URL.
+   Severity stays `warn` until the volume is known.
+
+4. **Generate a `manifest.webmanifest` build artifact, not a
+   hand-edited file.** When #154 lands, the manifest should be
+   templated from site-settings (theme color, brand name) rather
+   than checked in as a static file — otherwise it drifts when
+   the brand is themed (#130). Render it from a small Express
+   route at `/manifest.webmanifest` that reads the active theme
+   and emits the manifest with a `Cache-Control: public,
+   max-age=300` header.
+
+5. **Search Console + Bing Webmaster API plumbing.** #160
+   describes the user-visible dashboard. The platform-debt
+   prerequisite is a service-account-backed credential rotation
+   path: the Google API client wants a JSON service account key,
+   the Bing Webmaster API wants a per-environment API key, and
+   today we have no secret-rotation discipline for either. Add a
+   `docs/seo-credentials.md` runbook and a quarterly rotation
+   reminder via the existing scheduler before the dashboard goes
+   live.
+
+6. **Retire the static `download_url` mirror on `collateral`.**
+   Already item #6 under "Quality gates" — re-listing here only
+   because the SEO audit confirmed the column is still in the
+   schema and still being mirrored on every collateral write.
+   Same prerequisite (every consumer reads from
+   `collateral_resources`) and the same removal step.
+
+Owner/tracking: file a ticket referencing this section once
+#154–#163 are scheduled into a sprint and the audit findings are
+acknowledged by marketing leadership.
