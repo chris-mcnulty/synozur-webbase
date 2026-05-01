@@ -16,6 +16,48 @@ const LOGO_COLOR_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42
 const BASE_PATH_HEADER = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const MARK_URL = `${BASE_PATH_HEADER}/images/synozur-mark-color.png`;
 
+type NavService = { title: string; slug: string; solutions: { title: string; slug: string }[] };
+
+const STATIC_SERVICE_PILLARS: NavService[] = [
+  {
+    title: "Organizational Transformation",
+    slug: "strategic-transformation",
+    solutions: [
+      { title: "Company OS", slug: "company-os" },
+      { title: "Fractional Leadership", slug: "fractional-leadership" },
+      { title: "Delivery Management", slug: "delivery-management" },
+    ],
+  },
+  {
+    title: "Technology Transformation",
+    slug: "technology-transformation",
+    solutions: [
+      { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
+      { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
+      { title: "Employee Effectiveness", slug: "employee-effectiveness" },
+      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
+    ],
+  },
+  {
+    title: "Experience Transformation",
+    slug: "experiences",
+    solutions: [
+      { title: "Employee Strategies", slug: "employee-strategies" },
+      { title: "Communication Strategies", slug: "communication-strategies" },
+      { title: "Design Strategies", slug: "design-strategies" },
+    ],
+  },
+  {
+    title: "Go-To-Market Transformation",
+    slug: "go-to-market-transformation",
+    solutions: [
+      { title: "Brand and Messaging", slug: "brand-and-messaging" },
+      { title: "GTM Strategy and Execution", slug: "gtm-strategy-and-execution" },
+      { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
+    ],
+  },
+];
+
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
 }
@@ -197,7 +239,10 @@ export function Header() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }));
   })();
 
-  const pillars = (servicesQuery.data?.items ?? []).filter((s) => s.slug !== "our-services");
+  const apiServiceItems = servicesQuery.data?.items;
+  const pillars: NavService[] = apiServiceItems
+    ? apiServiceItems.filter((s) => s.slug !== "our-services")
+    : STATIC_SERVICE_PILLARS;
 
   const servicesGroup: NavGroup = {
     title: "Services",
