@@ -140,5 +140,39 @@ export interface SiteSettings {
    * @nullable
    */
   spamDomainBlocklist?: string[] | null;
+  /** @nullable */
+  homeBHeroHeadlinePrefix?: string | null;
+  /** @nullable */
+  homeBHeroHeadlineAccent?: string | null;
+  /** @nullable */
+  homeBHeroHeadlineSuffix?: string | null;
+  /** @nullable */
+  homeBHeroSubheadline?: string | null;
+  /** @nullable */
+  homeBPillarsEyebrow?: string | null;
+  /** @nullable */
+  homeBPillarsHeadline?: string | null;
+  /** @nullable */
+  homeBPillar1Headline?: string | null;
+  /** @nullable */
+  homeBPillar1Body?: string | null;
+  /** @nullable */
+  homeBPillar2Headline?: string | null;
+  /** @nullable */
+  homeBPillar2Body?: string | null;
+  /** @nullable */
+  homeBPillar3Headline?: string | null;
+  /** @nullable */
+  homeBPillar3Body?: string | null;
+  /** @nullable */
+  homeBPillar4Headline?: string | null;
+  /** @nullable */
+  homeBPillar4Body?: string | null;
+  /** @nullable */
+  homeBClosingEyebrow?: string | null;
+  /** @nullable */
+  homeBClosingHeadline?: string | null;
+  /** @nullable */
+  homeBClosingBody?: string | null;
   updatedAt: Date;
 }

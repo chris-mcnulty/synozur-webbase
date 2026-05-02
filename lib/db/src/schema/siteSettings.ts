@@ -159,6 +159,28 @@ export const siteSettingsTable = pgTable("site_settings", {
   // so admins can still preview both side-by-side without a code change.
   homeRootVariant: text("home_root_variant").notNull().default("a"),
 
+  // #215: Editable copy for the alt home page (`/home-b`). Each field is
+  // nullable; when null the page renders the hard-coded defaults baked into
+  // `home-b.tsx`. Lets non-technical admins iterate on hero, pillars, and
+  // closing CTA copy without a code deploy.
+  homeBHeroHeadlinePrefix: text("home_b_hero_headline_prefix"),
+  homeBHeroHeadlineAccent: text("home_b_hero_headline_accent"),
+  homeBHeroHeadlineSuffix: text("home_b_hero_headline_suffix"),
+  homeBHeroSubheadline: text("home_b_hero_subheadline"),
+  homeBPillarsEyebrow: text("home_b_pillars_eyebrow"),
+  homeBPillarsHeadline: text("home_b_pillars_headline"),
+  homeBPillar1Headline: text("home_b_pillar1_headline"),
+  homeBPillar1Body: text("home_b_pillar1_body"),
+  homeBPillar2Headline: text("home_b_pillar2_headline"),
+  homeBPillar2Body: text("home_b_pillar2_body"),
+  homeBPillar3Headline: text("home_b_pillar3_headline"),
+  homeBPillar3Body: text("home_b_pillar3_body"),
+  homeBPillar4Headline: text("home_b_pillar4_headline"),
+  homeBPillar4Body: text("home_b_pillar4_body"),
+  homeBClosingEyebrow: text("home_b_closing_eyebrow"),
+  homeBClosingHeadline: text("home_b_closing_headline"),
+  homeBClosingBody: text("home_b_closing_body"),
+
   // Bookings rendering mode. "iframe" (default) renders Microsoft's hosted
   // Bookings page in an iframe — zero-config but cross-origin so the inner
   // styling can't be themed. "native" calls Microsoft Graph from the

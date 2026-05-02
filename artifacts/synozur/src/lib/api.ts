@@ -140,6 +140,24 @@ export interface PublicSiteSettings {
   orgPostalCode?: string | null;
   orgAddressCountry?: string | null;
   orgSameAs?: string[] | null;
+  // #215: Alt home page (`/home-b`) editorial copy overrides.
+  homeBHeroHeadlinePrefix?: string | null;
+  homeBHeroHeadlineAccent?: string | null;
+  homeBHeroHeadlineSuffix?: string | null;
+  homeBHeroSubheadline?: string | null;
+  homeBPillarsEyebrow?: string | null;
+  homeBPillarsHeadline?: string | null;
+  homeBPillar1Headline?: string | null;
+  homeBPillar1Body?: string | null;
+  homeBPillar2Headline?: string | null;
+  homeBPillar2Body?: string | null;
+  homeBPillar3Headline?: string | null;
+  homeBPillar3Body?: string | null;
+  homeBPillar4Headline?: string | null;
+  homeBPillar4Body?: string | null;
+  homeBClosingEyebrow?: string | null;
+  homeBClosingHeadline?: string | null;
+  homeBClosingBody?: string | null;
 }
 
 export interface AdminSiteSettings {
@@ -193,6 +211,24 @@ export interface AdminSiteSettings {
   spamLinkThreshold?: number | null;
   spamKeywords?: string[] | null;
   spamDomainBlocklist?: string[] | null;
+  // #215: Alt home page (`/home-b`) editorial copy overrides.
+  homeBHeroHeadlinePrefix?: string | null;
+  homeBHeroHeadlineAccent?: string | null;
+  homeBHeroHeadlineSuffix?: string | null;
+  homeBHeroSubheadline?: string | null;
+  homeBPillarsEyebrow?: string | null;
+  homeBPillarsHeadline?: string | null;
+  homeBPillar1Headline?: string | null;
+  homeBPillar1Body?: string | null;
+  homeBPillar2Headline?: string | null;
+  homeBPillar2Body?: string | null;
+  homeBPillar3Headline?: string | null;
+  homeBPillar3Body?: string | null;
+  homeBPillar4Headline?: string | null;
+  homeBPillar4Body?: string | null;
+  homeBClosingEyebrow?: string | null;
+  homeBClosingHeadline?: string | null;
+  homeBClosingBody?: string | null;
   updatedAt: string;
 }
 
@@ -544,6 +580,24 @@ export interface UpdateSiteSettingsBody {
   spamLinkThreshold?: number | null;
   spamKeywords?: string[] | null;
   spamDomainBlocklist?: string[] | null;
+  // #215: Alt home page (`/home-b`) editorial copy overrides.
+  homeBHeroHeadlinePrefix?: string | null;
+  homeBHeroHeadlineAccent?: string | null;
+  homeBHeroHeadlineSuffix?: string | null;
+  homeBHeroSubheadline?: string | null;
+  homeBPillarsEyebrow?: string | null;
+  homeBPillarsHeadline?: string | null;
+  homeBPillar1Headline?: string | null;
+  homeBPillar1Body?: string | null;
+  homeBPillar2Headline?: string | null;
+  homeBPillar2Body?: string | null;
+  homeBPillar3Headline?: string | null;
+  homeBPillar3Body?: string | null;
+  homeBPillar4Headline?: string | null;
+  homeBPillar4Body?: string | null;
+  homeBClosingEyebrow?: string | null;
+  homeBClosingHeadline?: string | null;
+  homeBClosingBody?: string | null;
 }
 
 export interface BulkCollateralBody {

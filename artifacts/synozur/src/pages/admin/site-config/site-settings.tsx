@@ -28,6 +28,47 @@ export default function AdminSiteSettings() {
   const [requireConsent, setRequireConsent] = useState<boolean | null>(null);
   const [polarisFeedDraft, setPolarisFeedDraft] = useState<string | null>(null);
 
+  // #215: Alt home (/home-b) editorial copy. Editor-friendly draft state where
+  // empty string === "use default" on save (we send null to the API).
+  type HomeBKey =
+    | "homeBHeroHeadlinePrefix"
+    | "homeBHeroHeadlineAccent"
+    | "homeBHeroHeadlineSuffix"
+    | "homeBHeroSubheadline"
+    | "homeBPillarsEyebrow"
+    | "homeBPillarsHeadline"
+    | "homeBPillar1Headline"
+    | "homeBPillar1Body"
+    | "homeBPillar2Headline"
+    | "homeBPillar2Body"
+    | "homeBPillar3Headline"
+    | "homeBPillar3Body"
+    | "homeBPillar4Headline"
+    | "homeBPillar4Body"
+    | "homeBClosingEyebrow"
+    | "homeBClosingHeadline"
+    | "homeBClosingBody";
+  const HOME_B_KEYS: HomeBKey[] = [
+    "homeBHeroHeadlinePrefix",
+    "homeBHeroHeadlineAccent",
+    "homeBHeroHeadlineSuffix",
+    "homeBHeroSubheadline",
+    "homeBPillarsEyebrow",
+    "homeBPillarsHeadline",
+    "homeBPillar1Headline",
+    "homeBPillar1Body",
+    "homeBPillar2Headline",
+    "homeBPillar2Body",
+    "homeBPillar3Headline",
+    "homeBPillar3Body",
+    "homeBPillar4Headline",
+    "homeBPillar4Body",
+    "homeBClosingEyebrow",
+    "homeBClosingHeadline",
+    "homeBClosingBody",
+  ];
+  const [homeBDraft, setHomeBDraft] = useState<Record<HomeBKey, string> | null>(null);
+
   // #54: spam rule editor local state
   const [spamLinkThresholdDraft, setSpamLinkThresholdDraft] = useState<string | null>(null);
   const [spamKeywordsDraft, setSpamKeywordsDraft] = useState<string[] | null>(null);
@@ -50,6 +91,14 @@ export default function AdminSiteSettings() {
       setPolarisFeedDraft(data.polarisFeedUrl ?? "");
     }
   }, [data, polarisFeedDraft]);
+
+  useEffect(() => {
+    if (data && homeBDraft === null) {
+      const next = {} as Record<HomeBKey, string>;
+      for (const k of HOME_B_KEYS) next[k] = data[k] ?? "";
+      setHomeBDraft(next);
+    }
+  }, [data, homeBDraft]);
 
   useEffect(() => {
     if (data && spamLinkThresholdDraft === null) {
@@ -78,6 +127,9 @@ export default function AdminSiteSettings() {
       qc.invalidateQueries({ queryKey: ["public-site-settings"] });
       setRequireConsent(result.requireCookieConsent);
       setPolarisFeedDraft(result.polarisFeedUrl ?? "");
+      const nextHomeB = {} as Record<HomeBKey, string>;
+      for (const k of HOME_B_KEYS) nextHomeB[k] = result[k] ?? "";
+      setHomeBDraft(nextHomeB);
       setSpamLinkThresholdDraft(
         typeof result.spamLinkThreshold === "number" ? String(result.spamLinkThreshold) : "",
       );
@@ -148,6 +200,24 @@ export default function AdminSiteSettings() {
     spamLinkThreshold: data?.spamLinkThreshold ?? null,
     spamKeywords: data?.spamKeywords ?? [],
     spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
+    // Alt home page copy: round-trip values so a partial edit doesn't null others.
+    homeBHeroHeadlinePrefix: data?.homeBHeroHeadlinePrefix ?? null,
+    homeBHeroHeadlineAccent: data?.homeBHeroHeadlineAccent ?? null,
+    homeBHeroHeadlineSuffix: data?.homeBHeroHeadlineSuffix ?? null,
+    homeBHeroSubheadline: data?.homeBHeroSubheadline ?? null,
+    homeBPillarsEyebrow: data?.homeBPillarsEyebrow ?? null,
+    homeBPillarsHeadline: data?.homeBPillarsHeadline ?? null,
+    homeBPillar1Headline: data?.homeBPillar1Headline ?? null,
+    homeBPillar1Body: data?.homeBPillar1Body ?? null,
+    homeBPillar2Headline: data?.homeBPillar2Headline ?? null,
+    homeBPillar2Body: data?.homeBPillar2Body ?? null,
+    homeBPillar3Headline: data?.homeBPillar3Headline ?? null,
+    homeBPillar3Body: data?.homeBPillar3Body ?? null,
+    homeBPillar4Headline: data?.homeBPillar4Headline ?? null,
+    homeBPillar4Body: data?.homeBPillar4Body ?? null,
+    homeBClosingEyebrow: data?.homeBClosingEyebrow ?? null,
+    homeBClosingHeadline: data?.homeBClosingHeadline ?? null,
+    homeBClosingBody: data?.homeBClosingBody ?? null,
     ...overrides,
   });
 
@@ -748,6 +818,173 @@ export default function AdminSiteSettings() {
                 </Button>
               </div>
             </div>
+          </div>
+
+          {/* #215: Alt home (/home-b) editorial copy */}
+          <div className="rounded-md border border-border p-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Alt home page copy</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Editable copy for the alternate home page at{" "}
+                <Link href="/home-b">
+                  <a className="underline">/home-b</a>
+                </Link>
+                . Leave any field blank to fall back to the built-in default. Saving
+                applies to all 17 fields at once.
+              </p>
+            </div>
+
+            {homeBDraft && (() => {
+              const set = (k: HomeBKey, v: string) =>
+                setHomeBDraft((prev) => (prev ? { ...prev, [k]: v } : prev));
+              const isDirty = HOME_B_KEYS.some(
+                (k) => (homeBDraft[k] ?? "") !== ((data?.[k] ?? "") as string),
+              );
+              const renderInput = (
+                key: HomeBKey,
+                label: string,
+                placeholder: string,
+                multiline = false,
+              ) => (
+                <div key={key} className="space-y-1">
+                  <label
+                    htmlFor={`input-${key}`}
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                  >
+                    {label}
+                  </label>
+                  {multiline ? (
+                    <textarea
+                      id={`input-${key}`}
+                      className="w-full min-h-[72px] rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder={placeholder}
+                      value={homeBDraft[key]}
+                      onChange={(e) => set(key, e.target.value)}
+                      disabled={updateMutation.isPending}
+                      data-testid={`input-${key}`}
+                    />
+                  ) : (
+                    <Input
+                      id={`input-${key}`}
+                      placeholder={placeholder}
+                      value={homeBDraft[key]}
+                      onChange={(e) => set(key, e.target.value)}
+                      disabled={updateMutation.isPending}
+                      data-testid={`input-${key}`}
+                    />
+                  )}
+                </div>
+              );
+
+              return (
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Hero</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Headline renders as <em>prefix</em> + accented{" "}
+                      <em>accent</em> + <em>suffix</em>.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {renderInput("homeBHeroHeadlinePrefix", "Headline prefix", "The")}
+                      {renderInput("homeBHeroHeadlineAccent", "Headline accent", "Transformation")}
+                      {renderInput("homeBHeroHeadlineSuffix", "Headline suffix", "Company")}
+                    </div>
+                    {renderInput(
+                      "homeBHeroSubheadline",
+                      "Subheadline",
+                      "Built tools, models, and methods…",
+                      true,
+                    )}
+                  </div>
+
+                  <div className="space-y-3 border-t border-border pt-6">
+                    <h3 className="text-sm font-semibold">Pillars section</h3>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {renderInput("homeBPillarsEyebrow", "Eyebrow", "How we work")}
+                      {renderInput(
+                        "homeBPillarsHeadline",
+                        "Section headline",
+                        "A disciplined approach…",
+                      )}
+                    </div>
+                    {([1, 2, 3, 4] as const).map((n) => (
+                      <div key={n} className="space-y-2 rounded-md border border-border/60 p-4">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Pillar {n}
+                        </h4>
+                        {renderInput(
+                          `homeBPillar${n}Headline` as HomeBKey,
+                          "Headline",
+                          "Pillar headline",
+                        )}
+                        {renderInput(
+                          `homeBPillar${n}Body` as HomeBKey,
+                          "Body",
+                          "Supporting paragraph for this pillar…",
+                          true,
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3 border-t border-border pt-6">
+                    <h3 className="text-sm font-semibold">Closing call to action</h3>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {renderInput("homeBClosingEyebrow", "Eyebrow", "Ready to begin")}
+                      {renderInput(
+                        "homeBClosingHeadline",
+                        "Headline",
+                        "Every engagement starts with a real conversation.",
+                      )}
+                    </div>
+                    {renderInput(
+                      "homeBClosingBody",
+                      "Body",
+                      "If you're navigating a market shift…",
+                      true,
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t border-border pt-6">
+                    <Button
+                      onClick={() => {
+                        const overrides: Partial<UpdateSiteSettingsBody> = {};
+                        for (const k of HOME_B_KEYS) {
+                          const v = homeBDraft[k].trim();
+                          (overrides as Record<HomeBKey, string | null>)[k] =
+                            v.length > 0 ? v : null;
+                        }
+                        updateMutation.mutate(buildPayload(overrides));
+                      }}
+                      disabled={updateMutation.isPending || !isDirty}
+                      data-testid="button-save-home-b-copy"
+                    >
+                      Save Alt Home copy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        const reset = {} as Record<HomeBKey, string>;
+                        for (const k of HOME_B_KEYS) reset[k] = "";
+                        setHomeBDraft(reset);
+                        const overrides: Partial<UpdateSiteSettingsBody> = {};
+                        for (const k of HOME_B_KEYS) {
+                          (overrides as Record<HomeBKey, string | null>)[k] = null;
+                        }
+                        updateMutation.mutate(buildPayload(overrides));
+                      }}
+                      disabled={
+                        updateMutation.isPending ||
+                        HOME_B_KEYS.every((k) => (data?.[k] ?? null) === null)
+                      }
+                      data-testid="button-reset-home-b-copy"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Reset all to defaults
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="h-5 text-sm text-muted-foreground flex items-center gap-2">

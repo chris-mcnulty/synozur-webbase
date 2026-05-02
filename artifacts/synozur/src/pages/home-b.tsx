@@ -22,6 +22,23 @@ function resolveImageUrl(url: string | null | undefined, fallback: string): stri
   return url;
 }
 
+// #215: Default editorial copy. Each piece is overridable via Site Settings →
+// "Alt home page (/home-b) copy"; the page falls back to these when the
+// matching `homeB*` field on the public site settings is null/empty.
+const DEFAULTS = {
+  heroHeadlinePrefix: "The",
+  heroHeadlineAccent: "Transformation",
+  heroHeadlineSuffix: "Company",
+  heroSubheadline:
+    "Built tools, models, and methods for executives navigating complex change — from first assessment to measurable outcome.",
+  pillarsEyebrow: "How we work",
+  pillarsHeadline: "A disciplined approach. Not a methodology deck.",
+  closingEyebrow: "Ready to begin",
+  closingHeadline: "Every engagement starts with a real conversation.",
+  closingBody:
+    "If you're navigating a market shift, an AI transformation, or a leadership reorganization — we'd like to understand it with you. Not pitch to you.",
+} as const;
+
 const PILLARS = [
   {
     headline: "Clarity before motion.",
@@ -48,6 +65,14 @@ const PILLARS = [
     proofHref: "/case-studies",
   },
 ];
+
+// Trim & null-out empty strings so an admin clearing a field falls back to the
+// hard-coded default rather than rendering a blank line.
+function override(value: string | null | undefined, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
 
 const SOFTWARE = [
   {
@@ -106,6 +131,27 @@ export default function HomeB() {
   const customVideoSrc = effectiveHeroVideoUrl
     ? resolveImageUrl(effectiveHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
     : null;
+
+  // #215: editable copy with falls-back-to-default semantics.
+  const heroHeadlinePrefix = override(settings?.homeBHeroHeadlinePrefix, DEFAULTS.heroHeadlinePrefix);
+  const heroHeadlineAccent = override(settings?.homeBHeroHeadlineAccent, DEFAULTS.heroHeadlineAccent);
+  const heroHeadlineSuffix = override(settings?.homeBHeroHeadlineSuffix, DEFAULTS.heroHeadlineSuffix);
+  const heroSubheadline = override(settings?.homeBHeroSubheadline, DEFAULTS.heroSubheadline);
+  const pillarsEyebrow = override(settings?.homeBPillarsEyebrow, DEFAULTS.pillarsEyebrow);
+  const pillarsHeadline = override(settings?.homeBPillarsHeadline, DEFAULTS.pillarsHeadline);
+  const pillars = PILLARS.map((p, i) => {
+    const idx = (i + 1) as 1 | 2 | 3 | 4;
+    const hKey = `homeBPillar${idx}Headline` as const;
+    const bKey = `homeBPillar${idx}Body` as const;
+    return {
+      ...p,
+      headline: override(settings?.[hKey], p.headline),
+      body: override(settings?.[bKey], p.body),
+    };
+  });
+  const closingEyebrow = override(settings?.homeBClosingEyebrow, DEFAULTS.closingEyebrow);
+  const closingHeadline = override(settings?.homeBClosingHeadline, DEFAULTS.closingHeadline);
+  const closingBody = override(settings?.homeBClosingBody, DEFAULTS.closingBody);
 
   const [videoReady, setVideoReady] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -189,10 +235,12 @@ export default function HomeB() {
                 fetchPriority="high"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.06]">
-                The <span className="nebula-text">Transformation</span> Company
+                {heroHeadlinePrefix}{heroHeadlinePrefix ? " " : ""}
+                <span className="nebula-text">{heroHeadlineAccent}</span>
+                {heroHeadlineSuffix ? " " : ""}{heroHeadlineSuffix}
               </h1>
               <p className="text-xl md:text-2xl text-zinc-300 mb-10 max-w-xl leading-relaxed">
-                Built tools, models, and methods for executives navigating complex change — from first assessment to measurable outcome.
+                {heroSubheadline}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link
@@ -244,14 +292,14 @@ export default function HomeB() {
             transition={{ duration: 0.6 }}
             className="max-w-2xl mb-16"
           >
-            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">How we work</p>
+            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{pillarsEyebrow}</p>
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              A disciplined approach. Not a methodology deck.
+              {pillarsHeadline}
             </h2>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
-            {PILLARS.map((pillar, i) => (
+            {pillars.map((pillar, i) => (
               <motion.div
                 key={pillar.headline}
                 initial={{ opacity: 0, y: 20 }}
@@ -516,14 +564,13 @@ export default function HomeB() {
             className="max-w-2xl"
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-5">
-              Ready to begin
+              {closingEyebrow}
             </p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-7 leading-tight">
-              Every engagement starts with a real conversation.
+              {closingHeadline}
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed mb-10">
-              If you're navigating a market shift, an AI transformation, or a leadership
-              reorganization — we'd like to understand it with you. Not pitch to you.
+              {closingBody}
             </p>
             <div className="flex flex-wrap gap-4">
               <Link

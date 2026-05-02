@@ -178,6 +178,23 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     spamLinkThreshold: settings.spamLinkThreshold,
     spamKeywords: settings.spamKeywords,
     spamDomainBlocklist: settings.spamDomainBlocklist,
+    homeBHeroHeadlinePrefix: settings.homeBHeroHeadlinePrefix,
+    homeBHeroHeadlineAccent: settings.homeBHeroHeadlineAccent,
+    homeBHeroHeadlineSuffix: settings.homeBHeroHeadlineSuffix,
+    homeBHeroSubheadline: settings.homeBHeroSubheadline,
+    homeBPillarsEyebrow: settings.homeBPillarsEyebrow,
+    homeBPillarsHeadline: settings.homeBPillarsHeadline,
+    homeBPillar1Headline: settings.homeBPillar1Headline,
+    homeBPillar1Body: settings.homeBPillar1Body,
+    homeBPillar2Headline: settings.homeBPillar2Headline,
+    homeBPillar2Body: settings.homeBPillar2Body,
+    homeBPillar3Headline: settings.homeBPillar3Headline,
+    homeBPillar3Body: settings.homeBPillar3Body,
+    homeBPillar4Headline: settings.homeBPillar4Headline,
+    homeBPillar4Body: settings.homeBPillar4Body,
+    homeBClosingEyebrow: settings.homeBClosingEyebrow,
+    homeBClosingHeadline: settings.homeBClosingHeadline,
+    homeBClosingBody: settings.homeBClosingBody,
     updatedAt: settings.updatedAt,
   });
 }
@@ -228,6 +245,23 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       orgPostalCode: settings.orgPostalCode,
       orgAddressCountry: settings.orgAddressCountry,
       orgSameAs: settings.orgSameAs,
+      homeBHeroHeadlinePrefix: settings.homeBHeroHeadlinePrefix,
+      homeBHeroHeadlineAccent: settings.homeBHeroHeadlineAccent,
+      homeBHeroHeadlineSuffix: settings.homeBHeroHeadlineSuffix,
+      homeBHeroSubheadline: settings.homeBHeroSubheadline,
+      homeBPillarsEyebrow: settings.homeBPillarsEyebrow,
+      homeBPillarsHeadline: settings.homeBPillarsHeadline,
+      homeBPillar1Headline: settings.homeBPillar1Headline,
+      homeBPillar1Body: settings.homeBPillar1Body,
+      homeBPillar2Headline: settings.homeBPillar2Headline,
+      homeBPillar2Body: settings.homeBPillar2Body,
+      homeBPillar3Headline: settings.homeBPillar3Headline,
+      homeBPillar3Body: settings.homeBPillar3Body,
+      homeBPillar4Headline: settings.homeBPillar4Headline,
+      homeBPillar4Body: settings.homeBPillar4Body,
+      homeBClosingEyebrow: settings.homeBClosingEyebrow,
+      homeBClosingHeadline: settings.homeBClosingHeadline,
+      homeBClosingBody: settings.homeBClosingBody,
     }),
   );
 });
@@ -416,6 +450,34 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
         : null;
     updates.idleTimeoutMs = next;
     idleTimeoutChanged = true;
+  }
+
+  // #215: Alt home page editorial copy. Each field is a free-form text
+  // override; "" coerces back to null so admins can clear a field and let
+  // the page fall back to its hard-coded default.
+  const homeBTextFields = [
+    "homeBHeroHeadlinePrefix",
+    "homeBHeroHeadlineAccent",
+    "homeBHeroHeadlineSuffix",
+    "homeBHeroSubheadline",
+    "homeBPillarsEyebrow",
+    "homeBPillarsHeadline",
+    "homeBPillar1Headline",
+    "homeBPillar1Body",
+    "homeBPillar2Headline",
+    "homeBPillar2Body",
+    "homeBPillar3Headline",
+    "homeBPillar3Body",
+    "homeBPillar4Headline",
+    "homeBPillar4Body",
+    "homeBClosingEyebrow",
+    "homeBClosingHeadline",
+    "homeBClosingBody",
+  ] as const;
+  for (const field of homeBTextFields) {
+    if (field in input) {
+      updates[field] = trimOrNull(input[field]);
+    }
   }
 
   let spamRulesChanged = false;

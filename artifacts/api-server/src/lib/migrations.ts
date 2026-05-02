@@ -1342,6 +1342,33 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS home_root_variant text NOT NULL DEFAULT 'a';
     `);
 
+    // 42. site_settings — #215: editable copy for the alternate home page
+    //     at /home-b. All 17 columns are nullable text; null/empty falls
+    //     back to the hard-coded editorial defaults in
+    //     `artifacts/synozur/src/pages/home-b.tsx`. Idempotent — safe to
+    //     re-run on databases that already have these columns from a
+    //     prior `pnpm db push`.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_b_hero_headline_prefix text,
+        ADD COLUMN IF NOT EXISTS home_b_hero_headline_accent text,
+        ADD COLUMN IF NOT EXISTS home_b_hero_headline_suffix text,
+        ADD COLUMN IF NOT EXISTS home_b_hero_subheadline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillars_eyebrow text,
+        ADD COLUMN IF NOT EXISTS home_b_pillars_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar1_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar1_body text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar2_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar2_body text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar3_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar3_body text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar4_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_pillar4_body text,
+        ADD COLUMN IF NOT EXISTS home_b_closing_eyebrow text,
+        ADD COLUMN IF NOT EXISTS home_b_closing_headline text,
+        ADD COLUMN IF NOT EXISTS home_b_closing_body text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

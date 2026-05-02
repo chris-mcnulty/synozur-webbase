@@ -4272,6 +4272,74 @@ components:
             - 'null'
           items:
             type: string
+        homeBHeroHeadlinePrefix:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineAccent:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineSuffix:
+          type:
+            - string
+            - 'null'
+        homeBHeroSubheadline:
+          type:
+            - string
+            - 'null'
+        homeBPillarsEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBPillarsHeadline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Body:
+          type:
+            - string
+            - 'null'
+        homeBClosingEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBClosingHeadline:
+          type:
+            - string
+            - 'null'
+        homeBClosingBody:
+          type:
+            - string
+            - 'null'
     SiteSettings:
       type: object
       required: [requireCookieConsent, updatedAt]
@@ -4518,6 +4586,74 @@ components:
             - 'null'
           items:
             type: string
+        homeBHeroHeadlinePrefix:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineAccent:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineSuffix:
+          type:
+            - string
+            - 'null'
+        homeBHeroSubheadline:
+          type:
+            - string
+            - 'null'
+        homeBPillarsEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBPillarsHeadline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Body:
+          type:
+            - string
+            - 'null'
+        homeBClosingEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBClosingHeadline:
+          type:
+            - string
+            - 'null'
+        homeBClosingBody:
+          type:
+            - string
+            - 'null'
         updatedAt:
           type: string
           format: date-time
@@ -4730,6 +4866,74 @@ components:
             - 'null'
           items:
             type: string
+        homeBHeroHeadlinePrefix:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineAccent:
+          type:
+            - string
+            - 'null'
+        homeBHeroHeadlineSuffix:
+          type:
+            - string
+            - 'null'
+        homeBHeroSubheadline:
+          type:
+            - string
+            - 'null'
+        homeBPillarsEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBPillarsHeadline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar1Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar2Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar3Body:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Headline:
+          type:
+            - string
+            - 'null'
+        homeBPillar4Body:
+          type:
+            - string
+            - 'null'
+        homeBClosingEyebrow:
+          type:
+            - string
+            - 'null'
+        homeBClosingHeadline:
+          type:
+            - string
+            - 'null'
+        homeBClosingBody:
+          type:
+            - string
+            - 'null'
     AdminUser:
       type: object
       required:
