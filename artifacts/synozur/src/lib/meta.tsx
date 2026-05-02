@@ -16,6 +16,14 @@ interface MetaProps {
   description?: string;
   /** Path used to compute canonical + og:url. Defaults to the current pathname. */
   path?: string;
+  /**
+   * Override the canonical path independently of the current pathname. When
+   * provided, both `<link rel="canonical">` and `<meta property="og:url">`
+   * resolve to `${SITE_ORIGIN}${canonicalPath}` instead of the current path.
+   * Use this on pages that render the same content as another URL (e.g.
+   * pillar overviews that mirror service detail pages).
+   */
+  canonicalPath?: string;
   /** Absolute or root-relative path to the OG image. */
   image?: string;
   /** "website" (default) or "article". Overrides the page-type default. */
@@ -81,6 +89,7 @@ export function Meta({
   title,
   description,
   path,
+  canonicalPath,
   image,
   type,
   rawTitle = false,
@@ -147,6 +156,9 @@ export function Meta({
     document.title = fullTitle;
 
     const url = `${SITE_ORIGIN}${rawPathname}`;
+    const canonicalUrl = canonicalPath
+      ? `${SITE_ORIGIN}${canonicalPath}`
+      : url;
     const absImage = resolvedImage.startsWith("http")
       ? resolvedImage
       : `${SITE_ORIGIN}${resolvedImage}`;
@@ -160,12 +172,12 @@ export function Meta({
     upsertMeta("property", "og:type", resolvedOgType);
     upsertMeta("property", "og:site_name", SITE_NAME);
     upsertMeta("property", "og:title", fullTitle);
-    upsertMeta("property", "og:url", url);
+    upsertMeta("property", "og:url", canonicalUrl);
     upsertMeta("property", "og:image", absImage);
     upsertMeta("name", "twitter:card", twitterCardType);
     upsertMeta("name", "twitter:title", fullTitle);
     upsertMeta("name", "twitter:image", absImage);
-    upsertLink("canonical", url);
+    upsertLink("canonical", canonicalUrl);
 
     // twitter:site / twitter:creator from DB handle.
     const twitterHandle = siteSettings?.seoTwitterHandle;
@@ -199,6 +211,7 @@ export function Meta({
     title,
     description,
     path,
+    canonicalPath,
     image,
     type,
     rawTitle,

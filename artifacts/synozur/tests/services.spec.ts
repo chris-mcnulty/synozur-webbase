@@ -347,3 +347,67 @@ test.describe("RichText sanitizer", () => {
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * Task #138 — Pillar overview pages (`/services-overview/:slug` for non-default
+ * slugs) render the same content as the corresponding service detail page
+ * (`/services/:slug`). To stop them competing in search results, the pillar
+ * overview must declare the service detail URL as canonical (and og:url),
+ * while `/services-overview/default` (a unique hub) and `/services/:slug`
+ * (the canonical target itself) keep their self-referential canonicals.
+ */
+test.describe("Canonical URL handling for service pages", () => {
+  const SITE_ORIGIN = "https://www.synozur.com";
+
+  async function readCanonicalAndOgUrl(
+    page: Page,
+  ): Promise<{ canonical: string; ogUrl: string }> {
+    return page.evaluate(() => ({
+      canonical:
+        document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "",
+      ogUrl:
+        document
+          .querySelector('meta[property="og:url"]')
+          ?.getAttribute("content") ?? "",
+    }));
+  }
+
+  test("/services-overview/strategic-transformation canonicalizes to /services/strategic-transformation", async ({
+    page,
+  }) => {
+    await page.goto("/services-overview/strategic-transformation");
+    // Wait for the Meta useEffect to run — it writes to document.head once
+    // the service detail query resolves and the slug is known.
+    await expect
+      .poll(async () => (await readCanonicalAndOgUrl(page)).canonical, {
+        timeout: 10_000,
+      })
+      .toBe(`${SITE_ORIGIN}/services/strategic-transformation`);
+
+    const { canonical, ogUrl } = await readCanonicalAndOgUrl(page);
+    expect(canonical).toBe(`${SITE_ORIGIN}/services/strategic-transformation`);
+    expect(ogUrl).toBe(`${SITE_ORIGIN}/services/strategic-transformation`);
+  });
+
+  test("/services/strategic-transformation keeps a self-referential canonical", async ({
+    page,
+  }) => {
+    await page.goto("/services/strategic-transformation");
+    await expect
+      .poll(async () => (await readCanonicalAndOgUrl(page)).canonical, {
+        timeout: 10_000,
+      })
+      .toBe(`${SITE_ORIGIN}/services/strategic-transformation`);
+  });
+
+  test("/services-overview/default keeps its own canonical (unique hub content)", async ({
+    page,
+  }) => {
+    await page.goto("/services-overview/default");
+    await expect
+      .poll(async () => (await readCanonicalAndOgUrl(page)).canonical, {
+        timeout: 10_000,
+      })
+      .toBe(`${SITE_ORIGIN}/services-overview/default`);
+  });
+});

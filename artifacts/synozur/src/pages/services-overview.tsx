@@ -242,10 +242,9 @@ function PillarOverview({ slug }: { slug: string }) {
     );
   }
 
-  // Pillar overview pages render the same service as /services/:slug, so we
-  // emit the canonical Service URL here too. The Meta component still sets
-  // rel=canonical to the current pathname, but search engines will see this
-  // URL inside the JSON-LD as the authoritative service identifier.
+  // Pillar overview pages render the same service content as /services/:slug,
+  // so we point rel=canonical (and og:url) at the service detail URL to
+  // consolidate ranking signals there and avoid duplicate-content competition.
   const seoDescription =
     service?.seoDescription ||
     (service?.blurbHtml ? stripHtml(service.blurbHtml) : undefined);
@@ -298,6 +297,7 @@ function PillarOverview({ slug }: { slug: string }) {
         description={seoDescription}
         image={service?.iconUrl ?? undefined}
         rawTitle={!!service?.seoTitle}
+        canonicalPath={service ? `/services/${service.slug}` : undefined}
       />
       {serviceJsonLd ? (
         <JsonLd data={serviceJsonLd} id="pillar-overview-service-jsonld" />
