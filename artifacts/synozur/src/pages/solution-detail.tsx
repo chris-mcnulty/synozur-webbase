@@ -272,34 +272,49 @@ export default function SolutionDetail() {
 
       {sol?.acceleratorsHtml ? (
         <section className="relative overflow-hidden py-20 bg-[#0B0B1A]">
-          <div className="absolute inset-0 nebula-gradient opacity-20" />
+          <div className="absolute inset-0 nebula-gradient opacity-15" />
           <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-9 w-9 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0">
-                <Zap className="h-5 w-5" />
-              </div>
-              <p className="text-sm uppercase tracking-widest text-primary font-semibold">
-                Accelerators
-              </p>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Zenith — M365 Governance Command Center
-            </h2>
-            <div className="mb-8">
-              <RichText
-                html={sol.acceleratorsHtml}
-                invert
-                className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-[1.5px] rounded-2xl nebula-gradient opacity-90"
               />
+              <div
+                aria-hidden="true"
+                className="absolute -inset-6 rounded-3xl nebula-gradient opacity-25 blur-2xl"
+              />
+              <div className="relative rounded-2xl bg-[#0B0B1A]/95 p-8 md:p-12 shadow-2xl">
+                <div className="flex flex-wrap items-center gap-3 mb-6">
+                  <div className="h-10 w-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 ring-1 ring-primary/40">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm uppercase tracking-widest text-primary font-semibold">
+                    Accelerator
+                  </p>
+                  <span className="inline-flex items-center rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wider text-primary font-semibold">
+                    Add-on product
+                  </span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Zenith — M365 Governance Command Center
+                </h2>
+                <div className="mb-8">
+                  <RichText
+                    html={sol.acceleratorsHtml}
+                    invert
+                    className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
+                  />
+                </div>
+                <a
+                  href="https://zenith.synozur.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-primary/60 bg-primary/10 px-6 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                >
+                  Explore Zenith <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
             </div>
-            <a
-              href="https://zenith.synozur.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-primary/60 bg-primary/10 px-6 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-            >
-              Explore Zenith <ExternalLink className="h-4 w-4" />
-            </a>
           </div>
         </section>
       ) : null}
