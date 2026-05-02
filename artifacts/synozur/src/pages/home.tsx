@@ -167,7 +167,7 @@ function CarouselNextProxy({ api }: { api: CarouselApi | null }) {
   );
 }
 
-function HomeShortcuts() {
+export function HomeShortcuts() {
   const { isSignedIn, isLoaded, signIn } = useAuth();
   const { access, isLoading: accessLoading } = useAdminAccess();
   const basePath = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");

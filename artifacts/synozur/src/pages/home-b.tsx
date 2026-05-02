@@ -9,7 +9,7 @@ import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FromTheFeedCarousel } from "@/pages/home";
+import { FromTheFeedCarousel, HomeShortcuts } from "@/pages/home";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -534,6 +534,8 @@ export default function HomeB() {
           </motion.div>
         </div>
       </section>
+
+      <HomeShortcuts />
     </div>
   );
 }
