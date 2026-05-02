@@ -81,39 +81,54 @@ Follow-up items, in recommended order:
    native flow for ≥30 days. Keep an exported user list around for the
    audit trail; cancel the subscription afterwards.
 
-5. **Backfill `external_subject` / `auth_provider` for imported-author
-   rows.** `scripts/fixPostAuthors.ts` writes
-   `auth_provider="imported"`, `external_subject="imported:<local-part>"`.
-   The OIDC callback path will rewrite these on first Entra sign-in, but
-   any author who never signs in stays as a placeholder forever. Add a
-   one-shot `scripts/linkImportedAuthors.ts` that resolves placeholder
-   rows by email against Microsoft Graph (`/users?$filter=mail eq '…'`)
-   and rewrites `external_subject` / `entra_object_id` in bulk.
+5. ~~**Backfill `external_subject` / `auth_provider` for imported-author
+   rows.**~~ **Shipped (May 2026).**
+   `artifacts/api-server/src/scripts/linkImportedAuthors.ts` resolves
+   `auth_provider="imported"` rows against Microsoft Graph
+   (`/users?$filter=mail eq '…' or userPrincipalName eq '…'`) and
+   rewrites `external_subject` + `entra_object_id` + `auth_provider`
+   in bulk. Defaults to dry-run; pass `--apply` to write. Requires
+   `ENTRA_TENANT_ID` + `ENTRA_APP_CLIENT_ID` + `ENTRA_APP_CLIENT_SECRET`
+   with `User.Read.All` application permission and admin consent.
 
-6. **Remove the `/sign-up` redirect stub** (`pages/sign-up.tsx`) once
-   GA4 / 404 logs confirm zero inbound traffic for ≥30 days. The route
-   exists today only to keep old `/sign-up` bookmarks from 404ing.
+6. ~~**Remove the `/sign-up` redirect stub.**~~ **Skipped — superseded.**
+   `pages/sign-up.tsx` is no longer a redirect stub: it's the active
+   local email/password registration surface, posting to
+   `/api/auth/register` and running the email-verification flow. Removal
+   is no longer appropriate; the BACKLOG description was stale.
 
-7. **Add a `provider` filter to the `/admin/access/users` table** so an
-   admin can see at a glance which users have signed in via Entra vs. are
-   still placeholder (`imported` / `dev`) rows. Trivial UI change once
-   #5 stops being necessary.
+7. ~~**Add a `provider` filter to the `/admin/access/users` table.**~~
+   **Shipped (May 2026).** `pages/admin/access/users.tsx` now exposes a
+   provider Select (`all` / `entra` / `imported` / `local` / `unknown`)
+   with per-bucket counts; each user row also surfaces a provider Badge
+   so the source IdP is visible inline. `data-testid="provider-filter"`
+   for the e2e harness.
 
-8. **Delete the `last_sso_provider` column from `users`** once #5 ships
-   and `auth_provider` is the canonical signal — `last_sso_provider`
-   was added during the OIDC migration as a transitional field and is
-   now redundant.
+8. ~~**Delete the `last_sso_provider` column from `users`.**~~
+   **Shipped (May 2026).** Schema definition removed
+   (`lib/db/src/schema/users.ts`); writes removed from
+   `lib/entra.ts:applyEntraSignIn` and `routes/auth.ts` (insert + update
+   branches); migration step 38 (`ALTER TABLE users DROP COLUMN IF EXISTS
+   last_sso_provider`) added so existing environments drop the column on
+   the next server boot. `auth_provider` is the canonical IdP signal.
 
-9. **Add a Playwright sign-in smoke test** that exercises `/sign-in →
-   Entra → /callback → /api/auth/me`. Pairs naturally with #57 (Playwright
-   end-to-end harness) — needs an Entra test tenant and a service-account
-   credential that can survive automated sign-in challenges.
+9. ~~**Add a Playwright sign-in smoke test.**~~ **Scaffolding shipped
+   (May 2026).** `artifacts/synozur/tests/sign-in.spec.ts` covers two
+   tiers: (a) always-on render assertions on `/sign-in` plus a verified
+   redirect from the Entra button to `login.microsoftonline.com`
+   (with `client_id` and `code_challenge` query params asserted), and
+   (b) a full `/sign-in → Entra → /callback → /api/auth/me` round-trip
+   gated on `E2E_ENTRA_TEST_USER_EMAIL` + `E2E_ENTRA_TEST_USER_PASSWORD`
+   so CI doesn't require an Entra test tenant by default. Provisioning
+   the test-tenant credential is the remaining gap before the full
+   round-trip runs in CI.
 
-10. **Strip the `dev-login` escape hatch** (`/api/auth/dev-login`,
-    gated on `ALLOW_DEV_LOGIN=1` + localhost) once the team has switched
-    fully to Entra-backed local dev. The route is inert in production
-    and on non-localhost requests, but removing it closes one more
-    surface.
+10. ~~**Strip the `dev-login` escape hatch.**~~ **Shipped (May 2026).**
+    Removed `POST /api/auth/dev-login` from `routes/auth.ts` and the
+    `ALLOW_DEV_LOGIN` env-var rows from `admin-guide.md` and
+    `docs/integrations.md`. Local dev now uses the same email/password
+    + email-verification flow as production; Entra sign-in covers the
+    Synozur staff path.
 
 Owner/tracking: file a ticket referencing this section once #45 lands.
 

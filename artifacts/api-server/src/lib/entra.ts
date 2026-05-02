@@ -227,7 +227,6 @@ export async function applyEntraSignIn(args: ApplyEntraSignInArgs): Promise<void
     .set({
       entraTenantId: args.tenantId,
       entraObjectId: args.objectId,
-      lastSsoProvider: "entra",
     })
     .where(eq(usersTable.id, args.userId));
 

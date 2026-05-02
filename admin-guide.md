@@ -73,7 +73,6 @@ You must be signed in with an account that holds at least the **contributor** ro
 **Sign-in options:**
 - **Microsoft Entra SSO** — recommended for Synozur staff. Navigate to `/sign-in` and click the Entra button.
 - **Local email/password** — available for non-Entra users or local development. Password-reset and email-verification flows are built-in.
-- **Dev login** — only available when `ALLOW_DEV_LOGIN=1` and `NODE_ENV !== production`. POST to `/api/auth/dev-login` with `{ "email": "…" }`.
 
 ---
 
@@ -433,7 +432,6 @@ pnpm --filter @workspace/api-server tsx src/scripts/<scriptName>.ts
 | `ENTRA_APP_CLIENT_SECRET` | conditional | Required for confidential app or Graph app-only tokens |
 | `AUTH_POST_LOGOUT_URI` | optional | Post-logout redirect URL |
 | `ADMIN_EMAILS` | optional | Comma-separated bootstrap admin email allow-list |
-| `ALLOW_DEV_LOGIN` | optional | Set to `1` to enable dev sign-in (non-production only) |
 | `HUBSPOT_ACCESS_TOKEN` | optional | HubSpot private app token (fallback when Replit Connections unavailable) |
 | `HUBSPOT_PORTAL_ID` | display only | HubSpot portal ID (shown in admin UI) |
 | `INDEXNOW_KEY` | optional | IndexNow search-engine submission key |

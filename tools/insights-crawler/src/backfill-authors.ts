@@ -13,7 +13,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   db,
   pool,
@@ -26,9 +26,10 @@ import { PostsFileSchema } from "./schema.js";
 
 const OUTPUT_DIR = resolve(import.meta.dirname, "../output");
 const POSTS_PATH = `${OUTPUT_DIR}/posts.json`;
-const SYSTEM_AUTHOR_CLERK_ID = "system:imported-from-wix";
+const IMPORTED_AUTH_PROVIDER = "imported";
+const SYSTEM_AUTHOR_SUBJECT = "system:imported-from-wix";
 const SYSTEM_AUTHOR_NAME = "Imported from Wix";
-const IMPORT_AUTHOR_CLERK_PREFIX = "import:wix:";
+const IMPORT_AUTHOR_SUBJECT_PREFIX = "import:wix:";
 
 const AUTHOR_NAME_ALIASES: Record<string, string> = {
   andrewborg88: "Andrew Borg",
@@ -54,13 +55,17 @@ function normalizeAuthorName(raw: string | null): string | null {
 
 async function ensureSystemAuthor(): Promise<string> {
   const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkUserId, SYSTEM_AUTHOR_CLERK_ID),
+    where: and(
+      eq(usersTable.authProvider, IMPORTED_AUTH_PROVIDER),
+      eq(usersTable.externalSubject, SYSTEM_AUTHOR_SUBJECT),
+    ),
   });
   if (existing) return existing.id;
   const [row] = await db
     .insert(usersTable)
     .values({
-      clerkUserId: SYSTEM_AUTHOR_CLERK_ID,
+      authProvider: IMPORTED_AUTH_PROVIDER,
+      externalSubject: SYSTEM_AUTHOR_SUBJECT,
       email: null,
       displayName: SYSTEM_AUTHOR_NAME,
       avatarUrl: null,
@@ -78,10 +83,13 @@ async function ensureAuthorForName(
   if (!name) return systemUserId;
   const slug = slugify(name);
   if (!slug) return systemUserId;
-  const clerkId = `${IMPORT_AUTHOR_CLERK_PREFIX}${slug}`;
+  const subject = `${IMPORT_AUTHOR_SUBJECT_PREFIX}${slug}`;
 
   const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkUserId, clerkId),
+    where: and(
+      eq(usersTable.authProvider, IMPORTED_AUTH_PROVIDER),
+      eq(usersTable.externalSubject, subject),
+    ),
   });
   if (existing) return existing.id;
 
@@ -92,7 +100,8 @@ async function ensureAuthorForName(
   const [row] = await db
     .insert(usersTable)
     .values({
-      clerkUserId: clerkId,
+      authProvider: IMPORTED_AUTH_PROVIDER,
+      externalSubject: subject,
       email: null,
       displayName: name,
       avatarUrl: teamMember?.imageUrl ?? null,

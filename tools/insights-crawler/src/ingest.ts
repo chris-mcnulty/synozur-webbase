@@ -34,9 +34,10 @@ import { PostsFileSchema, type Post, type PostImage } from "./schema.js";
 const OUTPUT_DIR = resolve(import.meta.dirname, "../output");
 const POSTS_PATH = `${OUTPUT_DIR}/posts.json`;
 const REPLIT_SIDECAR = "http://127.0.0.1:1106";
-const SYSTEM_AUTHOR_CLERK_ID = "system:imported-from-wix";
+const IMPORTED_AUTH_PROVIDER = "imported";
+const SYSTEM_AUTHOR_SUBJECT = "system:imported-from-wix";
 const SYSTEM_AUTHOR_NAME = "Imported from Wix";
-const IMPORT_AUTHOR_CLERK_PREFIX = "import:wix:";
+const IMPORT_AUTHOR_SUBJECT_PREFIX = "import:wix:";
 
 // Wix exports occasionally surface a login handle instead of the display name.
 // Map known handle variants back to the canonical name so posts by the same
@@ -143,13 +144,17 @@ async function uploadImage(
 
 async function ensureSystemAuthor(): Promise<string> {
   const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkUserId, SYSTEM_AUTHOR_CLERK_ID),
+    where: and(
+      eq(usersTable.authProvider, IMPORTED_AUTH_PROVIDER),
+      eq(usersTable.externalSubject, SYSTEM_AUTHOR_SUBJECT),
+    ),
   });
   if (existing) return existing.id;
   const [row] = await db
     .insert(usersTable)
     .values({
-      clerkUserId: SYSTEM_AUTHOR_CLERK_ID,
+      authProvider: IMPORTED_AUTH_PROVIDER,
+      externalSubject: SYSTEM_AUTHOR_SUBJECT,
       email: null,
       displayName: SYSTEM_AUTHOR_NAME,
       avatarUrl: null,
@@ -168,9 +173,11 @@ function normalizeAuthorName(raw: string | null): string | null {
 
 /**
  * Resolve a per-author user record for an imported post. Posts authored by the
- * same person share one row (keyed by `clerkUserId = import:wix:<slug>`) so
- * their display name shows up on the blog. Falls back to the generic system
- * author when the source post has no `authorName`.
+ * same person share one row (keyed on `authProvider="imported"` +
+ * `externalSubject="import:wix:<slug>"`) so their display name shows up on the
+ * blog. Falls back to the generic system author when the source post has no
+ * `authorName`. The OIDC callback rewrites these placeholder rows to
+ * `authProvider="entra"` once the matching email signs in for the first time.
  */
 async function ensureAuthorForName(
   rawName: string | null,
@@ -180,10 +187,13 @@ async function ensureAuthorForName(
   if (!name) return systemUserId;
   const slug = slugify(name);
   if (!slug) return systemUserId;
-  const clerkId = `${IMPORT_AUTHOR_CLERK_PREFIX}${slug}`;
+  const subject = `${IMPORT_AUTHOR_SUBJECT_PREFIX}${slug}`;
 
   const existing = await db.query.usersTable.findFirst({
-    where: eq(usersTable.clerkUserId, clerkId),
+    where: and(
+      eq(usersTable.authProvider, IMPORTED_AUTH_PROVIDER),
+      eq(usersTable.externalSubject, subject),
+    ),
   });
   if (existing) return existing.id;
 
@@ -196,7 +206,8 @@ async function ensureAuthorForName(
   const [row] = await db
     .insert(usersTable)
     .values({
-      clerkUserId: clerkId,
+      authProvider: IMPORTED_AUTH_PROVIDER,
+      externalSubject: subject,
       email: null,
       displayName: name,
       avatarUrl: teamMember?.imageUrl ?? null,
