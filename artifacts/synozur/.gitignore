@@ -1,0 +1,4 @@
+# Playwright artifacts — generated per run, never commit.
+test-results/
+playwright-report/
+playwright/.cache/
