@@ -234,7 +234,7 @@ Set at `/admin/marketing/seo`. Controls:
 - Google and Bing site verification tokens
 - Organization JSON-LD fields (org name, address, logo, `sameAs` links)
 
-> **Important — site verification (L2)**: Search Console and Bing Webmaster verification crawlers do **not** execute JavaScript, so the `seoGoogleSiteVerification` / `seoBingSiteVerification` DB columns are not enough on their own. The `GOOGLE_SITE_VERIFICATION` and `BING_SITE_VERIFICATION` env vars must be set on the SPA server (`artifacts/synozur/server.mjs`), which splices the meta tags directly into the bare HTML response at boot. See [Environment Variables Reference — SPA server](#marketing-site-artifactssynozur) and [`docs/seo-env.md`](docs/seo-env.md).
+> **Important — site verification (L2)**: Search Console and Bing Webmaster verification crawlers do **not** execute JavaScript, so the `seoGoogleSiteVerification` / `seoBingSiteVerification` DB columns are not enough on their own. The `GOOGLE_SITE_VERIFICATION` and `BING_SITE_VERIFICATION` env vars must be set on the SPA server (`artifacts/synozur/server.mjs`), which splices the meta tags directly into the bare HTML response at boot. See [Environment Variables Reference — SPA server](#spa-server-artifactssynozurservermjs) and [`docs/seo-env.md`](docs/seo-env.md).
 
 ### SEO Audit
 
@@ -512,11 +512,12 @@ The API server logs the live status of all Tier 1 launch-readiness configuration
 
 | Prefix | What it checks |
 |---|---|
-| `launch-readiness: L2` | `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` (SPA server logs these separately) |
 | `launch-readiness: L3 SEO submission` | `INDEXNOW_KEY`, `GOOGLE_INDEXING_SA_JSON`, `BING_API_KEY`+`BING_SITE_URL` |
 | `launch-readiness: L5 marketing tag` | `VITE_GA4_ID`, `VITE_LINKEDIN_PARTNER_ID`, `VITE_META_PIXEL_ID` (DB or env) |
 
 Unconfigured channels log at `warn` level; configured channels log at `info`.
+
+> **L2 verification tokens** (`GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION`) are checked and logged by the **SPA server** (`server.mjs`) at boot, not by the API server's launch-readiness logger.
 
 ---
 
