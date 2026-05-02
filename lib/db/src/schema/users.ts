@@ -32,7 +32,6 @@ export const usersTable = pgTable(
     // swaps of the auth provider without a re-link.
     entraTenantId: text("entra_tenant_id"),
     entraObjectId: text("entra_object_id"),
-    lastSsoProvider: text("last_sso_provider"),
     // `entraGroupClaims` is a snapshot of the group object-ids resolved at the
     // last successful sign-in. We persist it so the admin UI can show why a
     // role was granted, and so a deliberate refresh isn't required to inspect

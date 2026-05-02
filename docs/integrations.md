@@ -115,7 +115,6 @@ native OIDC flow (no third-party identity provider). The flow:
 | `ENTRA_APP_CLIENT_SECRET` | conditional | Required when registered as a confidential web app, or to mint app-only Graph tokens. |
 | `AUTH_POST_LOGOUT_URI` | optional | Where Entra sends the browser after RP-initiated logout. |
 | `ADMIN_EMAILS` | optional | Comma-separated allow-list. Listed emails always resolve to admin (bootstrap). |
-| `ALLOW_DEV_LOGIN` | optional | Set to `1` in dev (and `NODE_ENV` !== `production`) to enable `POST /api/auth/dev-login` from localhost — sign in as any email without going through Entra. |
 
 ### Group → role mapping
 

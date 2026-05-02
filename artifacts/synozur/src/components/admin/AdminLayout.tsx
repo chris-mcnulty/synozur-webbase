@@ -182,6 +182,7 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/not-found-logs", label: "404 Log", icon: FileSearch, capability: "site.manage", testId: "nav-admin-not-found-logs" },
       { href: "/site-config/health", label: "Health", icon: Activity, capability: "site.manage", testId: "nav-admin-site-health" },
       { href: "/site-config/csp-violations", label: "CSP Violations", icon: ShieldAlert, capability: "site.manage", testId: "nav-admin-csp-violations" },
+      { href: "/site-config/launch-readiness", label: "Launch Readiness", icon: ShieldCheck, capability: "site.manage", testId: "nav-admin-launch-readiness" },
       { href: "/integrations/spe", label: "SharePoint Embedded", icon: Cloud, capability: "site.manage", testId: "nav-admin-spe" },
     ],
   },

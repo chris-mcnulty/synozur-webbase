@@ -98,6 +98,7 @@ import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
 import AdminCspViolations from "@/pages/admin/site-config/csp-violations";
+import AdminLaunchReadiness from "@/pages/admin/site-config/launch-readiness";
 import AdminActiveSessions from "@/pages/admin/account/sessions";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingTraffic from "@/pages/admin/marketing/traffic";
@@ -345,6 +346,7 @@ function AdminRoutes() {
         <Route path="/site-config/not-found-logs" component={AdminNotFoundLogs} />
         <Route path="/site-config/health" component={AdminSiteHealth} />
         <Route path="/site-config/csp-violations" component={AdminCspViolations} />
+        <Route path="/site-config/launch-readiness" component={AdminLaunchReadiness} />
         <Route path="/site-settings"><Redirect to="/site-config/site-settings" /></Route>
         <Route path="/list-page-copy"><Redirect to="/site-config/list-page-copy" /></Route>
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>

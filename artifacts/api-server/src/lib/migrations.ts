@@ -34,13 +34,13 @@ export async function runMigrations(): Promise<void> {
       END $$;
     `);
 
-    // 2. users: new columns.
+    // 2. users: new columns. (Note: `last_sso_provider` was historically added
+    //    here but dropped in step 38 — `auth_provider` is the canonical signal.)
     await db.execute(sql`
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS auth_provider text,
         ADD COLUMN IF NOT EXISTS entra_tenant_id text,
         ADD COLUMN IF NOT EXISTS entra_object_id text,
-        ADD COLUMN IF NOT EXISTS last_sso_provider text,
         ADD COLUMN IF NOT EXISTS entra_group_claims jsonb,
         ADD COLUMN IF NOT EXISTS entra_groups_refreshed_at timestamptz,
         ADD COLUMN IF NOT EXISTS marketing_opt_in boolean NOT NULL DEFAULT false,
@@ -1281,6 +1281,41 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`
       CREATE UNIQUE INDEX IF NOT EXISTS csp_violations_dedup_idx
         ON csp_violations (document_path, violated_directive, blocked_uri);
+    `);
+
+    // 38. Drop the transitional users.last_sso_provider column. Added during
+    //     the OIDC migration as a discriminator; superseded by `auth_provider`,
+    //     which is the canonical IdP signal. IF EXISTS makes this safe on
+    //     databases where the column was never created (fresh installs after
+    //     step 2 above stopped adding it).
+    await db.execute(sql`
+      ALTER TABLE users DROP COLUMN IF EXISTS last_sso_provider;
+    `);
+
+    // 39. Backfill `auth_provider = 'imported'` for placeholder author rows
+    //     that survived the `clerk_user_id → external_subject` rename in
+    //     step 1. Those historical rows kept their `external_subject`
+    //     ('system:imported-from-wix' / 'import:wix:<slug>' / fixPostAuthors
+    //     'imported:<local-part>') but `auth_provider` was never set, so the
+    //     post-cleanup lookups in `tools/insights-crawler/{ingest,backfill-
+    //     authors}.ts` and `scripts/linkImportedAuthors.ts` — which now
+    //     filter on `auth_provider = 'imported' AND external_subject = …`
+    //     to match the canonical pattern — would miss the historical rows
+    //     and break idempotency on a pre-cleanup install.
+    //
+    //     Idempotent: only updates rows where `auth_provider IS NULL`, so
+    //     re-running is a no-op and rows that are already canonical
+    //     ('entra' / 'local' / etc.) are not touched.
+    await db.execute(sql`
+      UPDATE users
+         SET auth_provider = 'imported'
+       WHERE auth_provider IS NULL
+         AND external_subject IS NOT NULL
+         AND (
+           external_subject = 'system:imported-from-wix'
+           OR external_subject LIKE 'import:wix:%'
+           OR external_subject LIKE 'imported:%'
+         );
     `);
 
     logger.info("Startup migrations complete");

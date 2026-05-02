@@ -428,7 +428,6 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         avatarUrl: identity.avatarUrl ?? userRow.avatarUrl,
         entraTenantId: identity.entraTenantId ?? userRow.entraTenantId,
         entraObjectId: identity.entraObjectId ?? userRow.entraObjectId,
-        lastSsoProvider: "entra",
         lastSignInAt: new Date(),
         ...(orgId ? { clientOrganizationId: orgId } : {}),
       })
@@ -444,7 +443,6 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         avatarUrl: identity.avatarUrl,
         entraTenantId: identity.entraTenantId,
         entraObjectId: identity.entraObjectId,
-        lastSsoProvider: "entra",
         lastSignInAt: new Date(),
         clientOrganizationId: orgId,
       })
@@ -964,50 +962,5 @@ router.delete("/auth/sessions/:id", requireAuth, async (req, res): Promise<void>
   await destroySessionById(id);
   res.json({ ok: true });
 });
-
-// ---------------------------------------------------------------------------
-// Dev-only escape hatch
-// ---------------------------------------------------------------------------
-if (process.env["ALLOW_DEV_LOGIN"] === "1" && process.env["NODE_ENV"] !== "production") {
-  const DevLoginBody = z.object({ email: z.string().email() });
-  router.post("/auth/dev-login", async (req, res): Promise<void> => {
-    const parsed = DevLoginBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
-      return;
-    }
-    const ip = clientIp(req);
-    if (ip && ip !== "127.0.0.1" && ip !== "::1") {
-      res.status(403).json({ error: "Dev login restricted to localhost" });
-      return;
-    }
-    const email = parsed.data.email.toLowerCase();
-    let user = await db.query.usersTable.findFirst({ where: eq(usersTable.email, email) });
-    if (!user) {
-      const [inserted] = await db
-        .insert(usersTable)
-        .values({
-          email,
-          authProvider: "dev",
-          externalSubject: `dev:${email}`,
-          displayName: email,
-        })
-        .returning();
-      user = inserted;
-    }
-    const adminEmails = (process.env["ADMIN_EMAILS"] ?? "")
-      .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-    if (adminEmails.includes(email)) {
-      const adminRole = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, "admin") });
-      if (adminRole) {
-        await db.insert(userRoles).values({ userId: user!.id, roleId: adminRole.id }).onConflictDoNothing();
-      }
-    }
-    const session = await createSession({ userId: user!.id, userAgent: userAgent(req), ip });
-    setSessionCookie(req, res, session.token, session.expiresAt);
-    const fresh = await loadUserById(user!.id);
-    res.json({ ok: true, user: fresh });
-  });
-}
 
 export default router;
