@@ -146,6 +146,14 @@ jobs:
         env:
           PORT: "5000"
           BASE_PATH: "/"
+          # Wire /api/*, /.well-known/*, /oauth/* on the synozur preview
+          # server through to the api-server, mirroring the platform's
+          # production reverse proxy. Without this, the SPA's runtime
+          # API calls (e.g. polaris-collateral-sync.spec.ts admin flow,
+          # /api/auth/me, /api/auth/config) hit the static preview and
+          # 404. The vite preview honours `preview.proxy` when this env
+          # var is set — see artifacts/synozur/vite.config.ts.
+          E2E_API_PROXY_TARGET: "http://localhost:8000"
         run: |
           pnpm --filter "@workspace/synozur" run build
           pnpm --filter "@workspace/synozur" run serve &
@@ -159,7 +167,23 @@ jobs:
           echo "synozur did not start in time" >&2
           exit 1
 
-      - name: Run Playwright (services + axe)
+      - name: Run Playwright (services + axe + polaris collateral sync)
+        # The polaris-collateral-sync suite (#185) self-skips when
+        # E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD are unset.
+        #
+        # We deliberately only forward those secrets when the run
+        # targets an external `e2e_base_url` — i.e. a stack the
+        # operator has provisioned with a verified admin user. The
+        # local-stack mode (blank input) brings up an empty Postgres
+        # via `pnpm --filter @workspace/db run push` and does not
+        # seed any admin/editor account, so attempting login here
+        # would always fail. Letting the suite self-skip in that
+        # mode keeps the gate green and signals to operators that
+        # they need to point at a provisioned URL to actually
+        # exercise the admin flow.
+        env:
+          E2E_ADMIN_EMAIL: ${{ github.event.inputs.e2e_base_url != '' && secrets.E2E_ADMIN_EMAIL || '' }}
+          E2E_ADMIN_PASSWORD: ${{ github.event.inputs.e2e_base_url != '' && secrets.E2E_ADMIN_PASSWORD || '' }}
         run: pnpm --filter "@workspace/synozur" run test:e2e
 
       - name: Run Lighthouse CI

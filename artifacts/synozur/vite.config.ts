@@ -26,6 +26,31 @@ if (!basePath) {
   );
 }
 
+// In production, the platform's reverse proxy fronts both this SPA and the
+// API server on a single domain (`/api/*` -> api-server, everything else
+// -> SPA). When running `vite dev` or `vite preview` directly (local
+// development outside the Replit dev domain, or the CI Playwright job),
+// there is no such proxy, so we wire one up inline when
+// `E2E_API_PROXY_TARGET` is set. This makes /api/* calls from the SPA
+// reach the api-server in the same way the platform proxy does in prod.
+const apiProxyTarget = process.env.E2E_API_PROXY_TARGET;
+const proxyConfig = apiProxyTarget
+  ? {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      "/.well-known": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+      "/oauth": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+    }
+  : undefined;
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -66,10 +91,12 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    ...(proxyConfig ? { proxy: proxyConfig } : {}),
   },
   preview: {
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    ...(proxyConfig ? { proxy: proxyConfig } : {}),
   },
 });
