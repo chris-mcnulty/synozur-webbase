@@ -40,7 +40,7 @@ catalogs:
       specifier: ^2.1.1
       version: 2.1.1
     drizzle-orm:
-      specifier: ^0.45.2
+      specifier: 0.45.2
       version: 0.45.2
     framer-motion:
       specifier: ^12.23.24
@@ -554,6 +554,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../lib/db
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -566,6 +569,9 @@ importers:
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.18.0)(pg@8.20.0)
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.1.0)

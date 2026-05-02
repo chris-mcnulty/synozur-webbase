@@ -42,6 +42,15 @@ End-to-end + accessibility harness for the public marketing site.
   `/sign-in` page render and (when Entra is configured) the OIDC
   redirect; the full Entra round-trip is gated on
   `E2E_ENTRA_TEST_USER_EMAIL` / `E2E_ENTRA_TEST_USER_PASSWORD`.
+- **`sign-in-flow.spec.ts`** — Task #119. End-to-end coverage of the
+  local-auth happy path (register → verify email → sign in →
+  `/admin` → sign out), the wrong-password error banner, and the
+  `?returnTo=/admin/insights/posts` deep-link redirect. Each test
+  creates a brand-new randomized user via `POST /api/auth/register`,
+  consumes its verification token from the `email_verification_tokens`
+  table directly (so it doesn't depend on a real mailbox), grants the
+  `admin` role so `/admin` renders, and deletes the user in `finally`.
+  Requires `DATABASE_URL` to be set in the test runner environment.
 
 The publish gate that consumes these signals lives in #142 Phase D.
 
