@@ -12,9 +12,11 @@ import { logger } from "./logger";
 //      empty for two consecutive days.
 //
 // The CSP allowlist mirrors the third-party tags loaded in the SPA's
-// components/analytics.tsx (GA4, LinkedIn Insight, Meta Pixel) and the
-// embedded surfaces (YouTube, Microsoft Bookings, Google Fonts). Keep this
-// in sync with the equivalent config in artifacts/synozur/server.mjs.
+// components/analytics.tsx (GA4, LinkedIn Insight, Meta Pixel), the
+// embedded surfaces (YouTube, Microsoft Bookings, Google Fonts), the
+// Cloudflare Turnstile widget on contact/subscribe/start forms, and the
+// Libsyn player on the Polaris page. Keep this in sync with the equivalent
+// config in artifacts/synozur/server.mjs.
 
 export const CSP_REPORT_PATH = "/api/csp/report";
 
@@ -24,6 +26,7 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
   defaultSrc: ["'self'"],
   // GA4, LinkedIn, Meta, and the inline pre-hydration theme script all need
   // 'unsafe-inline'; same-origin Vite-built bundles are covered by 'self'.
+  // Cloudflare Turnstile loads its widget JS from challenges.cloudflare.com.
   scriptSrc: [
     "'self'",
     "'unsafe-inline'",
@@ -31,11 +34,14 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
     "https://www.google-analytics.com",
     "https://snap.licdn.com",
     "https://connect.facebook.net",
+    "https://challenges.cloudflare.com",
   ],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
   imgSrc: ["'self'", "data:", "blob:", "https:"],
   mediaSrc: ["'self'", "data:", "blob:", "https:"],
+  // Cloudflare Turnstile renders its challenge inside a Turnstile-hosted iframe.
+  // Libsyn player is embedded as an iframe on the Polaris page.
   frameSrc: [
     "'self'",
     "https://www.youtube.com",
@@ -43,7 +49,10 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
     "https://outlook.office365.com",
     "https://*.bookings.microsoft.com",
     "https://www.google.com",
+    "https://challenges.cloudflare.com",
+    "https://play.libsyn.com",
   ],
+  // Cloudflare Turnstile makes validation XHR calls back to challenges.cloudflare.com.
   connectSrc: [
     "'self'",
     "https://www.google-analytics.com",
@@ -51,6 +60,7 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
     "https://stats.g.doubleclick.net",
     "https://px.ads.linkedin.com",
     "https://www.facebook.com",
+    "https://challenges.cloudflare.com",
   ],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],

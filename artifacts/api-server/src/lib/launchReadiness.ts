@@ -91,9 +91,27 @@ async function checkMarketingTags(): Promise<ChannelStatus[]> {
     return { name: envName, configured: false, source: `site_settings (DB) or env ${envName}` };
   }
 
+  // LinkedIn Insight Tag has a hardcoded fallback partner ID (7337793) in the
+  // SPA's analytics.tsx that activates when neither DB nor env is configured.
+  // This check mirrors that logic so the readiness log reflects the actual
+  // loader behaviour rather than always reporting "NOT configured".
+  function pickLinkedIn(dbVal: string | null): ChannelStatus {
+    const envVal = (process.env["VITE_LINKEDIN_PARTNER_ID"] ?? "").trim();
+    const dbTrim = (dbVal ?? "").trim();
+    if (dbTrim) return { name: "VITE_LINKEDIN_PARTNER_ID", configured: true, source: "site_settings (DB)" };
+    if (envVal) return { name: "VITE_LINKEDIN_PARTNER_ID", configured: true, source: "env VITE_LINKEDIN_PARTNER_ID" };
+    // analytics.tsx falls back to the hardcoded partner ID when neither source
+    // is set, so the tag fires regardless.  Report it as configured.
+    return {
+      name: "VITE_LINKEDIN_PARTNER_ID",
+      configured: true,
+      source: "hardcoded default (7337793)",
+    };
+  }
+
   return [
     pick(dbGa4, "VITE_GA4_ID"),
-    pick(dbLi, "VITE_LINKEDIN_PARTNER_ID"),
+    pickLinkedIn(dbLi),
     pick(dbMeta, "VITE_META_PIXEL_ID"),
   ];
 }

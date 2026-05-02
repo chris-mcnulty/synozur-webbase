@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { db } from "@workspace/db";
 import { cspViolationsTable } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
@@ -101,47 +102,64 @@ async function persistReport(
   const violatedDirective = report.violatedDirective ?? "unknown";
   const blockedUri = report.blockedUri ?? "unknown";
 
-  // UPSERT semantics: bump occurrences + last_seen_at on the dedup key.
-  // Postgres ON CONFLICT requires a unique index on the conflict target.
-  // The dedup composite is non-unique by design (different policies / UAs
-  // shouldn't collide), so we do this as a transactional read + insert/update
-  // instead of relying on a synthetic unique constraint.
-  await db.transaction(async (tx) => {
-    const existing = await tx.execute(sql`
-      SELECT id FROM csp_violations
-      WHERE document_path = ${documentPath}
-        AND violated_directive = ${violatedDirective}
-        AND blocked_uri = ${blockedUri}
-      ORDER BY first_seen_at ASC
-      LIMIT 1
-    `);
-    const existingId = existing.rows[0]?.["id"] as string | undefined;
-    if (existingId) {
-      await tx.execute(sql`
-        UPDATE csp_violations
-        SET occurrences = occurrences + 1,
-            last_seen_at = now()
-        WHERE id = ${existingId}
-      `);
-    } else {
-      await tx.insert(cspViolationsTable).values({
-        documentPath,
-        violatedDirective,
-        effectiveDirective: report.effectiveDirective,
-        blockedUri,
-        originalPolicy: report.originalPolicy,
-        disposition: report.disposition,
-        statusCode: report.statusCode,
-        userAgent,
-        rawReport: rawBody as object,
-      });
-    }
-  });
+  // UPSERT using ON CONFLICT on the unique (document_path, violated_directive,
+  // blocked_uri) index — no transaction needed and safe under concurrent load
+  // because Postgres serialises the conflict check internally.
+  await db
+    .insert(cspViolationsTable)
+    .values({
+      documentPath,
+      violatedDirective,
+      effectiveDirective: report.effectiveDirective,
+      blockedUri,
+      originalPolicy: report.originalPolicy,
+      disposition: report.disposition,
+      statusCode: report.statusCode,
+      userAgent,
+      rawReport: rawBody as object,
+    })
+    .onConflictDoUpdate({
+      target: [
+        cspViolationsTable.documentPath,
+        cspViolationsTable.violatedDirective,
+        cspViolationsTable.blockedUri,
+      ],
+      set: {
+        occurrences: sql`${cspViolationsTable.occurrences} + 1`,
+        lastSeenAt: sql`now()`,
+      },
+    });
 }
 
 const router: IRouter = Router();
 
-router.post("/csp/report", async (req, res) => {
+// IP key helper — mirrors the pattern in routes/traffic.ts: reads XFF for
+// the real client IP when behind a proxy and hashes it via ipKeyGenerator.
+function ipKey(req: import("express").Request): string {
+  const xff = Array.isArray(req.headers["x-forwarded-for"])
+    ? (req.headers["x-forwarded-for"] as string[])[0]
+    : (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+  const ip = xff || req.ip || "0.0.0.0";
+  return ipKeyGenerator(ip);
+}
+
+// Rate-limit CSP reports to prevent a malicious client from filling the
+// csp_violations table with arbitrary rows. Browsers fire-and-forget these
+// reports, so a 204 (same as success) is the right response when the limit
+// is reached — it avoids generating a red error in browser dev tools while
+// silently dropping the excess.
+const cspReportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `csp:${ipKey(req)}`,
+  handler: (_req, res) => {
+    res.status(204).end();
+  },
+});
+
+router.post("/csp/report", cspReportLimiter, async (req, res) => {
   const userAgent = trim(req.headers["user-agent"], 256);
   const body = req.body;
 

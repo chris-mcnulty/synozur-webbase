@@ -106,20 +106,27 @@ const SECURITY_HEADERS = {
 };
 
 // CSP allowlist — kept in sync with the third-party tags loaded in
-// components/analytics.tsx (GA4, LinkedIn Insight, Meta Pixel) and the
-// embedded surfaces (YouTube, Microsoft Bookings, Google Fonts). Adjust
-// here when adding a new tag/embed.
+// components/analytics.tsx (GA4, LinkedIn Insight, Meta Pixel), the
+// embedded surfaces (YouTube, Microsoft Bookings, Google Fonts), the
+// Cloudflare Turnstile widget on contact/subscribe/start forms, and the
+// Libsyn player on the Polaris page. Adjust here AND in
+// artifacts/api-server/src/lib/securityHeaders.ts when adding a new
+// tag/embed.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // GA4, LinkedIn, Meta, and the inline pre-hydration theme script all need
   // 'unsafe-inline'; Vite-built JS bundles are same-origin so 'self' covers them.
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://snap.licdn.com https://connect.facebook.net",
+  // Cloudflare Turnstile loads its widget JS from challenges.cloudflare.com.
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://snap.licdn.com https://connect.facebook.net https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://outlook.office365.com https://*.bookings.microsoft.com https://www.google.com",
-  "connect-src 'self' https://www.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://px.ads.linkedin.com https://www.facebook.com",
+  // Cloudflare Turnstile renders its challenge inside a Turnstile-hosted iframe.
+  // Libsyn player is embedded as an iframe on the Polaris page.
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://outlook.office365.com https://*.bookings.microsoft.com https://www.google.com https://challenges.cloudflare.com https://play.libsyn.com",
+  // Cloudflare Turnstile makes validation XHR calls back to challenges.cloudflare.com.
+  "connect-src 'self' https://www.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://px.ads.linkedin.com https://www.facebook.com https://challenges.cloudflare.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -287,6 +294,15 @@ function handler(req, res) {
   if (!filePath.startsWith(DIST_DIR)) {
     res.writeHead(403);
     res.end("Forbidden");
+    return;
+  }
+
+  // Requests for /index.html must go through serveIndexHtml() so they receive
+  // the same verification-meta splice and security headers as every other HTML
+  // response.  Bypassing this by letting serveFile() handle the path would
+  // serve the raw, unmodified file without the injected tags or CSP header.
+  if (cleaned === "index.html") {
+    serveIndexHtml(res);
     return;
   }
 

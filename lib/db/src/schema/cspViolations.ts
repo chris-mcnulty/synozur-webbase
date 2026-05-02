@@ -5,6 +5,7 @@ import {
   timestamp,
   integer,
   index,
+  uniqueIndex,
   jsonb,
 } from "drizzle-orm/pg-core";
 
@@ -57,8 +58,10 @@ export const cspViolationsTable = pgTable(
       .defaultNow(),
   },
   (t) => [
-    // The dedup key for incoming reports.
-    index("csp_violations_dedup_idx").on(
+    // Unique dedup key for incoming reports — enables the ON CONFLICT upsert
+    // in /api/csp/report to safely merge concurrent duplicate reports without
+    // a racy read-then-insert pattern.
+    uniqueIndex("csp_violations_dedup_idx").on(
       t.documentPath,
       t.violatedDirective,
       t.blockedUri,
