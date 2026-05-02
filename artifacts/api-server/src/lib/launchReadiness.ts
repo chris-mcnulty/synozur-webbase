@@ -21,11 +21,39 @@ import { logger } from "./logger";
 //
 // All checks are non-fatal; misconfigured channels just log a warning.
 
-interface ChannelStatus {
+export interface ChannelStatus {
   name: string;
   configured: boolean;
   source?: string;
   detail?: string;
+}
+
+export interface LaunchReadinessGroup {
+  tier: "L2" | "L3" | "L5";
+  label: string;
+  channels: ChannelStatus[];
+}
+
+export interface LaunchReadinessReport {
+  generatedAt: string;
+  groups: LaunchReadinessGroup[];
+}
+
+function checkVerificationMetaTags(): ChannelStatus[] {
+  const google = (process.env.GOOGLE_SITE_VERIFICATION ?? "").trim();
+  const bing = (process.env.BING_SITE_VERIFICATION ?? "").trim();
+  return [
+    {
+      name: "Google Search Console",
+      configured: google.length > 0,
+      source: "GOOGLE_SITE_VERIFICATION",
+    },
+    {
+      name: "Bing Webmaster verification",
+      configured: bing.length > 0,
+      source: "BING_SITE_VERIFICATION",
+    },
+  ];
 }
 
 function checkSubmissionChannels(): ChannelStatus[] {
@@ -126,11 +154,30 @@ function logChannel(label: string, status: ChannelStatus): void {
   }
 }
 
+export async function getLaunchReadinessReport(): Promise<LaunchReadinessReport> {
+  const groups: LaunchReadinessGroup[] = [
+    {
+      tier: "L2",
+      label: "Search Console + Bing Webmaster verification",
+      channels: checkVerificationMetaTags(),
+    },
+    {
+      tier: "L3",
+      label: "Search engine submission credentials",
+      channels: checkSubmissionChannels(),
+    },
+    {
+      tier: "L5",
+      label: "GA4 + LinkedIn + Meta marketing tags",
+      channels: await checkMarketingTags(),
+    },
+  ];
+  return { generatedAt: new Date().toISOString(), groups };
+}
+
 export async function logLaunchReadiness(): Promise<void> {
-  for (const c of checkSubmissionChannels()) {
-    logChannel("L3 SEO submission", c);
-  }
-  for (const c of await checkMarketingTags()) {
-    logChannel("L5 marketing tag", c);
+  const report = await getLaunchReadinessReport();
+  for (const g of report.groups) {
+    for (const c of g.channels) logChannel(`${g.tier} ${g.label}`, c);
   }
 }

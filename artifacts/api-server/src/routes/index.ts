@@ -50,6 +50,7 @@ import aiGroundingRouter from "./aiGrounding";
 import aiChatRouter from "./aiChat";
 import cspRouter from "./csp";
 import cspViolationsRouter from "./cms/cspViolations";
+import launchReadinessRouter from "./cms/launchReadiness";
 
 const router: IRouter = Router();
 
@@ -104,5 +105,6 @@ router.use(aiGroundingRouter);
 router.use(aiChatRouter);
 router.use(cspRouter);
 router.use(cspViolationsRouter);
+router.use(launchReadinessRouter);
 
 export default router;

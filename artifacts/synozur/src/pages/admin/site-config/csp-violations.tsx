@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ShieldAlert,
+  ShieldCheck,
   RefreshCcw,
   Trash2,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
   Info,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +62,18 @@ interface CspViolation {
 interface ListResponse {
   total: number;
   items: CspViolation[];
+}
+
+interface ReadinessResponse {
+  enforcing: boolean;
+  verdict: "ready" | "monitoring" | "blocked" | "no-data";
+  reason: string;
+  cleanDaysRequired: number;
+  cleanDaysObserved: number | null;
+  hoursSinceLast: number | null;
+  uniqueViolations: number;
+  totalOccurrences: number;
+  lastSeenAt: string | null;
 }
 
 const PAGE_SIZE = 50;
@@ -120,6 +134,12 @@ export default function CspViolationsPage() {
   const { data: directives } = useQuery<string[]>({
     queryKey: ["csp-directives"],
     queryFn: () => apiFetch<string[]>("/api/cms/csp/directives"),
+  });
+
+  const { data: readiness } = useQuery<ReadinessResponse>({
+    queryKey: ["csp-readiness"],
+    queryFn: () => apiFetch<ReadinessResponse>("/api/cms/csp/readiness"),
+    refetchInterval: 60_000,
   });
 
   const deleteOne = useMutation({
@@ -183,18 +203,22 @@ export default function CspViolationsPage() {
       }
     >
       <div className="space-y-4">
-        <Card className="p-4 bg-amber-500/5 border-amber-500/20">
-          <div className="flex gap-3">
-            <Info className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-            <div className="text-sm text-zinc-300">
-              <span className="font-medium text-amber-300">Report-Only mode</span> — browsers are
-              reporting violations but resources are not blocked. Monitor this table for ≥ 7 days of
-              clean production traffic, then set{" "}
-              <code className="text-xs bg-zinc-800 px-1 py-0.5 rounded">CSP_ENFORCE=1</code> to
-              flip the header to enforcing.
+        <ReadinessBanner readiness={readiness} />
+
+        {!readiness && (
+          <Card className="p-4 bg-amber-500/5 border-amber-500/20">
+            <div className="flex gap-3">
+              <Info className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <div className="text-sm text-zinc-300">
+                <span className="font-medium text-amber-300">Report-Only mode</span> — browsers are
+                reporting violations but resources are not blocked. Monitor this table for ≥ 7 days of
+                clean production traffic, then set{" "}
+                <code className="text-xs bg-zinc-800 px-1 py-0.5 rounded">CSP_ENFORCE=1</code> to
+                flip the header to enforcing.
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {directives && directives.length > 0 && (
           <div className="flex items-center gap-3">
@@ -385,5 +409,97 @@ export default function CspViolationsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
+  );
+}
+
+function ReadinessBanner({
+  readiness,
+}: {
+  readiness: ReadinessResponse | undefined;
+}) {
+  if (!readiness) return null;
+
+  if (readiness.enforcing) {
+    return (
+      <Card className="p-4 bg-green-500/5 border-green-500/20">
+        <div className="flex gap-3">
+          <ShieldCheck className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+          <div className="text-sm text-zinc-300">
+            <span className="font-medium text-green-300">Enforcing</span> — the
+            <code className="text-xs bg-zinc-800 px-1 py-0.5 mx-1 rounded">Content-Security-Policy</code>
+            header is live. Reports below are violations the browser blocked rather than
+            warnings; investigate any new entries promptly.
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  const tone =
+    readiness.verdict === "ready"
+      ? "bg-green-500/5 border-green-500/20"
+      : readiness.verdict === "monitoring"
+        ? "bg-amber-500/5 border-amber-500/20"
+        : readiness.verdict === "no-data"
+          ? "bg-zinc-500/5 border-zinc-500/20"
+          : "bg-red-500/5 border-red-500/20";
+
+  const Icon =
+    readiness.verdict === "ready"
+      ? CheckCircle2
+      : readiness.verdict === "monitoring"
+        ? Info
+        : readiness.verdict === "no-data"
+          ? Info
+          : AlertTriangle;
+
+  const iconColor =
+    readiness.verdict === "ready"
+      ? "text-green-400"
+      : readiness.verdict === "monitoring"
+        ? "text-amber-400"
+        : readiness.verdict === "no-data"
+          ? "text-zinc-400"
+          : "text-red-400";
+
+  const headingColor =
+    readiness.verdict === "ready"
+      ? "text-green-300"
+      : readiness.verdict === "monitoring"
+        ? "text-amber-300"
+        : readiness.verdict === "no-data"
+          ? "text-zinc-300"
+          : "text-red-300";
+
+  const heading =
+    readiness.verdict === "ready"
+      ? "Ready to enforce"
+      : readiness.verdict === "monitoring"
+        ? "Monitoring clean window"
+        : readiness.verdict === "no-data"
+          ? "No traffic data yet"
+          : "Active violations — keep Report-Only";
+
+  return (
+    <Card className={`p-4 ${tone}`}>
+      <div className="flex gap-3">
+        <Icon className={`w-4 h-4 ${iconColor} mt-0.5 shrink-0`} />
+        <div className="text-sm text-zinc-300 space-y-1">
+          <div>
+            <span className={`font-medium ${headingColor}`}>{heading}</span> ·{" "}
+            Report-Only mode is active.
+          </div>
+          <div className="text-zinc-400">{readiness.reason}</div>
+          <div className="text-xs text-zinc-500 pt-1">
+            {readiness.uniqueViolations} unique · {readiness.totalOccurrences.toLocaleString()} hits
+            {readiness.cleanDaysObserved !== null && (
+              <> · {readiness.cleanDaysObserved} day(s) clean</>
+            )}
+            {" · "}flip with{" "}
+            <code className="text-xs bg-zinc-800 px-1 py-0.5 rounded">CSP_ENFORCE=1</code>
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
