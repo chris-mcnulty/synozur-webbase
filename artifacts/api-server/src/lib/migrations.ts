@@ -1269,6 +1269,20 @@ export async function runMigrations(): Promise<void> {
         ON csp_violations (last_seen_at);
     `);
 
+    // 37. csp_violations: promote the dedup index from plain → UNIQUE.
+    //     Migration 36 accidentally created a non-unique index, which causes
+    //     the ON CONFLICT DO UPDATE upsert in /api/csp/report to fail with
+    //     "there is no unique or exclusion constraint matching the ON CONFLICT
+    //     specification". Drop the old index and recreate it as UNIQUE.
+    //     Idempotent: DROP IF EXISTS + CREATE UNIQUE INDEX IF NOT EXISTS.
+    await db.execute(sql`
+      DROP INDEX IF EXISTS csp_violations_dedup_idx;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS csp_violations_dedup_idx
+        ON csp_violations (document_path, violated_directive, blocked_uri);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

@@ -49,6 +49,7 @@ import cmsOauthClientsRouter from "./cms/oauthClients";
 import aiGroundingRouter from "./aiGrounding";
 import aiChatRouter from "./aiChat";
 import cspRouter from "./csp";
+import cspViolationsRouter from "./cms/cspViolations";
 
 const router: IRouter = Router();
 
@@ -102,5 +103,6 @@ router.use(cmsOauthClientsRouter);
 router.use(aiGroundingRouter);
 router.use(aiChatRouter);
 router.use(cspRouter);
+router.use(cspViolationsRouter);
 
 export default router;
