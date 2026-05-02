@@ -37,6 +37,7 @@ export default function AdminSiteSettings() {
   type SiteTheme = "cosmic" | "aurora";
   type HeroBackgroundType = "image" | "video";
   type BookingsMode = "iframe" | "native";
+  type HomeRootVariant = "a" | "b";
 
   useEffect(() => {
     if (data && requireConsent === null) {
@@ -124,10 +125,14 @@ export default function AdminSiteSettings() {
   const currentBookingsMode: BookingsMode =
     (data?.bookingsRenderMode as BookingsMode | null | undefined) === "native" ? "native" : "iframe";
 
+  const currentHomeRootVariant: HomeRootVariant =
+    (data?.homeRootVariant as HomeRootVariant | null | undefined) === "b" ? "b" : "a";
+
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
     requireCookieConsent: current,
     homeHeroBackgroundType: currentHeroBgType,
     siteTheme: currentTheme,
+    homeRootVariant: currentHomeRootVariant,
     bookingsRenderMode: currentBookingsMode,
     homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
     homeHeroImageMediaId: data?.homeHeroImageMediaId ?? null,
@@ -352,6 +357,62 @@ export default function AdminSiteSettings() {
                   }`}
                 />
               </button>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Homepage variant at /</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Choose which homepage design is served at the root URL.
+                The non-active variant remains accessible at its alternate
+                path (<code>/home-a</code> or <code>/home-b</code>) so you
+                can keep comparing both without a code change.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(["a", "b"] as const).map((variant) => {
+                const active = currentHomeRootVariant === variant;
+                const label =
+                  variant === "a" ? "Original Home (A)" : "Alt Home (B)";
+                const description =
+                  variant === "a"
+                    ? "The original home page design. Lives at /home-a as well."
+                    : "The Alt Home design. Lives at /home-b as well.";
+                return (
+                  <button
+                    key={variant}
+                    type="button"
+                    disabled={updateMutation.isPending}
+                    data-testid={`home-root-variant-${variant}`}
+                    onClick={() =>
+                      updateMutation.mutate(
+                        buildPayload({ homeRootVariant: variant }),
+                      )
+                    }
+                    className={`flex-1 text-left rounded-lg border-2 p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                      active
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">{label}</span>
+                      {active && (
+                        <span
+                          data-testid={`home-root-variant-${variant}-active`}
+                          className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10"
+                        >
+                          Active at /
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {description}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

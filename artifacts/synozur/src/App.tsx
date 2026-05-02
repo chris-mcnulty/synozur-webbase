@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { ThemeProvider } from "@/context/theme";
 import { captureAttributionOnLoad } from "@/lib/attribution";
+import { api } from "@/lib/api";
 
 import Home from "@/pages/home";
 import HomeB from "@/pages/home-b";
@@ -383,6 +384,18 @@ function AdminRoutes() {
   );
 }
 
+// Root URL "/" serves whichever homepage variant the admin selected in
+// Site Settings. Both variants stay reachable at /home-a and /home-b for
+// side-by-side comparison regardless of which is currently promoted.
+function RootHomeRoute() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+  });
+  if (isLoading && !data) return null;
+  return data?.homeRootVariant === "b" ? <HomeB /> : <Home />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -393,7 +406,8 @@ function Router() {
       <Route>
         <Layout>
           <Switch>
-            <Route path="/" component={Home} />
+            <Route path="/" component={RootHomeRoute} />
+            <Route path="/home-a" component={Home} />
             <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
             <Route path="/services-overview/default" component={ServicesOverview} />

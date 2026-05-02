@@ -153,6 +153,12 @@ export const siteSettingsTable = pgTable("site_settings", {
   spamKeywords: jsonb("spam_keywords").$type<string[]>(),
   spamDomainBlocklist: jsonb("spam_domain_blocklist").$type<string[]>(),
 
+  // Which homepage variant is served at the root URL ("/"). "a" (default) =
+  // the original Home; "b" = the Alt Home (HomeB) design. The non-active
+  // variant remains accessible at its alternate path (/home-a or /home-b)
+  // so admins can still preview both side-by-side without a code change.
+  homeRootVariant: text("home_root_variant").notNull().default("a"),
+
   // Bookings rendering mode. "iframe" (default) renders Microsoft's hosted
   // Bookings page in an iframe — zero-config but cross-origin so the inner
   // styling can't be themed. "native" calls Microsoft Graph from the

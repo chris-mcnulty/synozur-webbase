@@ -106,10 +106,13 @@ export interface AdminSession {
 
 export type BookingsRenderMode = "iframe" | "native";
 
+export type HomeRootVariant = "a" | "b";
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  homeRootVariant?: HomeRootVariant;
   bookingsRenderMode?: BookingsRenderMode | null;
   homeHeroImageUrl?: string | null;
   homeHeroVideoUrl?: string | null;
@@ -143,6 +146,7 @@ export interface AdminSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  homeRootVariant?: HomeRootVariant;
   bookingsRenderMode?: BookingsRenderMode | null;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;
@@ -500,6 +504,7 @@ export interface UpdateSiteSettingsBody {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
   siteTheme?: "cosmic" | "aurora" | null;
+  homeRootVariant?: HomeRootVariant;
   bookingsRenderMode?: BookingsRenderMode;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;

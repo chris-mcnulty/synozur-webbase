@@ -8,12 +8,16 @@
 import type { PublicSiteSettingsBookingsRenderMode } from "./publicSiteSettingsBookingsRenderMode";
 import type { PublicSiteSettingsHomeBHeroBackgroundType } from "./publicSiteSettingsHomeBHeroBackgroundType";
 import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
+import type { PublicSiteSettingsHomeRootVariant } from "./publicSiteSettingsHomeRootVariant";
 import type { PublicSiteSettingsSiteTheme } from "./publicSiteSettingsSiteTheme";
 
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   siteTheme?: PublicSiteSettingsSiteTheme;
+  /** Which homepage variant is served at the root URL ("/"). "a" renders the original Home page; "b" renders the Alt Home design. The non-active variant stays accessible at its alternate path (/home-a or /home-b) for side-by-side comparison.
+   */
+  homeRootVariant?: PublicSiteSettingsHomeRootVariant;
   /** Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
    */
   bookingsRenderMode?: PublicSiteSettingsBookingsRenderMode;

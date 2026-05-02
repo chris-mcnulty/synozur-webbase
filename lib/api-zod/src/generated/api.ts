@@ -1120,6 +1120,7 @@ export const SubmitInsightCommentBody = zod.object({
  */
 export const getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getPublicSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getPublicSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getPublicSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 
 export const GetPublicSiteSettingsResponse = zod.object({
@@ -1130,6 +1131,12 @@ export const GetPublicSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getPublicSiteSettingsResponseSiteThemeDefault),
+  homeRootVariant: zod
+    .enum(["a", "b"])
+    .default(getPublicSiteSettingsResponseHomeRootVariantDefault)
+    .describe(
+      'Which homepage variant is served at the root URL (\"\/\"). \"a\" renders the original Home page; \"b\" renders the Alt Home design. The non-active variant stays accessible at its alternate path (\/home-a or \/home-b) for side-by-side comparison.\n',
+    ),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
     .default(getPublicSiteSettingsResponseBookingsRenderModeDefault)
@@ -1183,6 +1190,7 @@ export const GetPublicSiteSettingsResponse = zod.object({
  */
 export const getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const getAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const getAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
@@ -1199,6 +1207,12 @@ export const GetAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(getAdminSiteSettingsResponseSiteThemeDefault),
+  homeRootVariant: zod
+    .enum(["a", "b"])
+    .default(getAdminSiteSettingsResponseHomeRootVariantDefault)
+    .describe(
+      'Which homepage variant is served at \"\/\". See PublicSiteSettings.\n',
+    ),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
     .default(getAdminSiteSettingsResponseBookingsRenderModeDefault)
@@ -1300,6 +1314,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod.enum(["image", "video"]).optional(),
   siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
+  homeRootVariant: zod.enum(["a", "b"]).optional(),
   bookingsRenderMode: zod.enum(["iframe", "native"]).optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
@@ -1376,6 +1391,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
 export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
+export const updateAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const updateAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
@@ -1392,6 +1408,12 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   siteTheme: zod
     .enum(["cosmic", "aurora"])
     .default(updateAdminSiteSettingsResponseSiteThemeDefault),
+  homeRootVariant: zod
+    .enum(["a", "b"])
+    .default(updateAdminSiteSettingsResponseHomeRootVariantDefault)
+    .describe(
+      'Which homepage variant is served at \"\/\". See PublicSiteSettings.\n',
+    ),
   bookingsRenderMode: zod
     .enum(["iframe", "native"])
     .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault)

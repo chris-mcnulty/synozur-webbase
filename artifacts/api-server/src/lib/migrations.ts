@@ -1332,6 +1332,16 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS home_b_hero_background_type text;
     `);
 
+    // 41. site_settings.home_root_variant — #216: admin-controlled toggle
+    //     that picks which homepage design ('a' or 'b') is served at the
+    //     root URL. Defaulted to 'a' so existing installs continue to
+    //     render the original Home variant at /; both variants stay
+    //     reachable directly at /home-a and /home-b regardless.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_root_variant text NOT NULL DEFAULT 'a';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

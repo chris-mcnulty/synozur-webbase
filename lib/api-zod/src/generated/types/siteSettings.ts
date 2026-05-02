@@ -8,6 +8,7 @@
 import type { SiteSettingsBookingsRenderMode } from "./siteSettingsBookingsRenderMode";
 import type { SiteSettingsHomeBHeroBackgroundType } from "./siteSettingsHomeBHeroBackgroundType";
 import type { SiteSettingsHomeHeroBackgroundType } from "./siteSettingsHomeHeroBackgroundType";
+import type { SiteSettingsHomeRootVariant } from "./siteSettingsHomeRootVariant";
 import type { SiteSettingsSitemapSectionFlags } from "./siteSettingsSitemapSectionFlags";
 import type { SiteSettingsSiteTheme } from "./siteSettingsSiteTheme";
 
@@ -15,6 +16,9 @@ export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   siteTheme?: SiteSettingsSiteTheme;
+  /** Which homepage variant is served at "/". See PublicSiteSettings.
+   */
+  homeRootVariant?: SiteSettingsHomeRootVariant;
   /** Global rendering mode for /start booking pages. See PublicSiteSettings.
    */
   bookingsRenderMode?: SiteSettingsBookingsRenderMode;

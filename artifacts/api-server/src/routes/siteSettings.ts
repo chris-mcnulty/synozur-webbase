@@ -131,6 +131,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     requireCookieConsent: settings.requireCookieConsent,
     homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
     siteTheme: settings.siteTheme ?? "cosmic",
+    homeRootVariant: settings.homeRootVariant ?? "a",
     bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageMediaId: settings.homeHeroImageMediaId,
@@ -191,12 +192,16 @@ function trimOrNull(value: string | null | undefined): string | null {
 router.get("/site-settings", async (_req, res): Promise<void> => {
   const settings = await loadOrCreateSettings();
   const urls = await resolveImageUrls(settings);
-  res.set("Cache-Control", "public, max-age=60");
+  // Admin-toggleable values like `homeRootVariant` need to propagate to
+  // public visitors quickly. ETag-based revalidation (handled by Express
+  // automatically) keeps the response cheap when nothing has changed.
+  res.set("Cache-Control", "no-cache");
   res.json(
     GetPublicSiteSettingsResponse.parse({
       requireCookieConsent: settings.requireCookieConsent,
       homeHeroBackgroundType: settings.homeHeroBackgroundType ?? "image",
       siteTheme: settings.siteTheme ?? "cosmic",
+      homeRootVariant: settings.homeRootVariant ?? "a",
       bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeHeroVideoUrl: urls.homeHeroVideoUrl,
@@ -279,6 +284,10 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
 
   if ("siteTheme" in input && input.siteTheme) {
     updates.siteTheme = input.siteTheme;
+  }
+
+  if ("homeRootVariant" in input && input.homeRootVariant) {
+    updates.homeRootVariant = input.homeRootVariant;
   }
 
   if ("bookingsRenderMode" in input && input.bookingsRenderMode) {

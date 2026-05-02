@@ -464,6 +464,18 @@ export const PublicSiteSettingsSiteTheme = {
 } as const;
 
 /**
+ * Which homepage variant is served at the root URL ("/"). "a" renders the original Home page; "b" renders the Alt Home design. The non-active variant stays accessible at its alternate path (/home-a or /home-b) for side-by-side comparison.
+
+ */
+export type PublicSiteSettingsHomeRootVariant =
+  (typeof PublicSiteSettingsHomeRootVariant)[keyof typeof PublicSiteSettingsHomeRootVariant];
+
+export const PublicSiteSettingsHomeRootVariant = {
+  a: "a",
+  b: "b",
+} as const;
+
+/**
  * Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
 
  */
@@ -493,6 +505,9 @@ export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
   siteTheme?: PublicSiteSettingsSiteTheme;
+  /** Which homepage variant is served at the root URL ("/"). "a" renders the original Home page; "b" renders the Alt Home design. The non-active variant stays accessible at its alternate path (/home-a or /home-b) for side-by-side comparison.
+   */
+  homeRootVariant?: PublicSiteSettingsHomeRootVariant;
   /** Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
    */
   bookingsRenderMode?: PublicSiteSettingsBookingsRenderMode;
@@ -577,6 +592,18 @@ export const SiteSettingsSiteTheme = {
 } as const;
 
 /**
+ * Which homepage variant is served at "/". See PublicSiteSettings.
+
+ */
+export type SiteSettingsHomeRootVariant =
+  (typeof SiteSettingsHomeRootVariant)[keyof typeof SiteSettingsHomeRootVariant];
+
+export const SiteSettingsHomeRootVariant = {
+  a: "a",
+  b: "b",
+} as const;
+
+/**
  * Global rendering mode for /start booking pages. See PublicSiteSettings.
 
  */
@@ -611,6 +638,9 @@ export interface SiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsHomeHeroBackgroundType;
   siteTheme?: SiteSettingsSiteTheme;
+  /** Which homepage variant is served at "/". See PublicSiteSettings.
+   */
+  homeRootVariant?: SiteSettingsHomeRootVariant;
   /** Global rendering mode for /start booking pages. See PublicSiteSettings.
    */
   bookingsRenderMode?: SiteSettingsBookingsRenderMode;
@@ -751,6 +781,14 @@ export const SiteSettingsInputSiteTheme = {
   aurora: "aurora",
 } as const;
 
+export type SiteSettingsInputHomeRootVariant =
+  (typeof SiteSettingsInputHomeRootVariant)[keyof typeof SiteSettingsInputHomeRootVariant];
+
+export const SiteSettingsInputHomeRootVariant = {
+  a: "a",
+  b: "b",
+} as const;
+
 export type SiteSettingsInputBookingsRenderMode =
   (typeof SiteSettingsInputBookingsRenderMode)[keyof typeof SiteSettingsInputBookingsRenderMode];
 
@@ -784,6 +822,7 @@ export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   siteTheme?: SiteSettingsInputSiteTheme;
+  homeRootVariant?: SiteSettingsInputHomeRootVariant;
   bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;

@@ -8,6 +8,7 @@
 import type { SiteSettingsInputBookingsRenderMode } from "./siteSettingsInputBookingsRenderMode";
 import type { SiteSettingsInputHomeBHeroBackgroundType } from "./siteSettingsInputHomeBHeroBackgroundType";
 import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
+import type { SiteSettingsInputHomeRootVariant } from "./siteSettingsInputHomeRootVariant";
 import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
 import type { SiteSettingsInputSiteTheme } from "./siteSettingsInputSiteTheme";
 
@@ -15,6 +16,7 @@ export interface SiteSettingsInput {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: SiteSettingsInputHomeHeroBackgroundType;
   siteTheme?: SiteSettingsInputSiteTheme;
+  homeRootVariant?: SiteSettingsInputHomeRootVariant;
   bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
