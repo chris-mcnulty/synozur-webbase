@@ -112,7 +112,12 @@ export interface PublicSiteSettings {
   siteTheme?: "cosmic" | "aurora" | null;
   bookingsRenderMode?: BookingsRenderMode | null;
   homeHeroImageUrl?: string | null;
+  homeHeroVideoUrl?: string | null;
   homeEditorialImageUrl?: string | null;
+  // /home-b hero overrides — null means "inherit from the homeHero* fields".
+  homeBHeroBackgroundType?: "image" | "video" | null;
+  homeBHeroImageUrl?: string | null;
+  homeBHeroVideoUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
   seoDefaultDescription?: string | null;
   seoDefaultOgImageUrl?: string | null;
@@ -148,6 +153,11 @@ export interface AdminSiteSettings {
   homeEditorialImageAssetId?: number | null;
   homeEditorialImageMediaId?: string | null;
   homeEditorialImageUrl?: string | null;
+  homeBHeroBackgroundType?: "image" | "video" | null;
+  homeBHeroImageMediaId?: string | null;
+  homeBHeroImageUrl?: string | null;
+  homeBHeroVideoMediaId?: string | null;
+  homeBHeroVideoUrl?: string | null;
   idleTimeoutMs?: number | null;
   polarisFeedUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
@@ -497,6 +507,9 @@ export interface UpdateSiteSettingsBody {
   homeHeroVideoMediaId?: string | null;
   homeEditorialImageAssetId?: number | null;
   homeEditorialImageMediaId?: string | null;
+  homeBHeroBackgroundType?: "image" | "video" | null;
+  homeBHeroImageMediaId?: string | null;
+  homeBHeroVideoMediaId?: string | null;
   polarisFeedUrl?: string | null;
   seoDefaultTitleTemplate?: string | null;
   seoDefaultDescription?: string | null;

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PublicSiteSettingsBookingsRenderMode } from "./publicSiteSettingsBookingsRenderMode";
+import type { PublicSiteSettingsHomeBHeroBackgroundType } from "./publicSiteSettingsHomeBHeroBackgroundType";
 import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
 import type { PublicSiteSettingsSiteTheme } from "./publicSiteSettingsSiteTheme";
 
@@ -22,6 +23,24 @@ export interface PublicSiteSettings {
   homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /**
+   * Alt Home (/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.
+
+   * @nullable
+   */
+  homeBHeroBackgroundType?: PublicSiteSettingsHomeBHeroBackgroundType;
+  /**
+   * Alt Home (/home-b) hero image override URL. Null means inherit from `homeHeroImageUrl`.
+
+   * @nullable
+   */
+  homeBHeroImageUrl?: string | null;
+  /**
+   * Alt Home (/home-b) hero video override URL. Null means inherit from `homeHeroVideoUrl`.
+
+   * @nullable
+   */
+  homeBHeroVideoUrl?: string | null;
   /** @nullable */
   seoDefaultTitleTemplate?: string | null;
   /** @nullable */

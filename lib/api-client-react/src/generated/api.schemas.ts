@@ -475,6 +475,20 @@ export const PublicSiteSettingsBookingsRenderMode = {
   native: "native",
 } as const;
 
+/**
+ * Alt Home (/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.
+
+ * @nullable
+ */
+export type PublicSiteSettingsHomeBHeroBackgroundType =
+  | (typeof PublicSiteSettingsHomeBHeroBackgroundType)[keyof typeof PublicSiteSettingsHomeBHeroBackgroundType]
+  | null;
+
+export const PublicSiteSettingsHomeBHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: PublicSiteSettingsHomeHeroBackgroundType;
@@ -488,6 +502,24 @@ export interface PublicSiteSettings {
   homeHeroVideoUrl?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /**
+   * Alt Home (/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.
+
+   * @nullable
+   */
+  homeBHeroBackgroundType?: PublicSiteSettingsHomeBHeroBackgroundType;
+  /**
+   * Alt Home (/home-b) hero image override URL. Null means inherit from `homeHeroImageUrl`.
+
+   * @nullable
+   */
+  homeBHeroImageUrl?: string | null;
+  /**
+   * Alt Home (/home-b) hero video override URL. Null means inherit from `homeHeroVideoUrl`.
+
+   * @nullable
+   */
+  homeBHeroVideoUrl?: string | null;
   /** @nullable */
   seoDefaultTitleTemplate?: string | null;
   /** @nullable */
@@ -557,6 +589,20 @@ export const SiteSettingsBookingsRenderMode = {
 } as const;
 
 /**
+ * Alt Home (/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.
+
+ * @nullable
+ */
+export type SiteSettingsHomeBHeroBackgroundType =
+  | (typeof SiteSettingsHomeBHeroBackgroundType)[keyof typeof SiteSettingsHomeBHeroBackgroundType]
+  | null;
+
+export const SiteSettingsHomeBHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
+/**
  * @nullable
  */
 export type SiteSettingsSitemapSectionFlags = { [key: string]: boolean } | null;
@@ -586,6 +632,20 @@ export interface SiteSettings {
   homeEditorialImageMediaId?: string | null;
   /** @nullable */
   homeEditorialImageUrl?: string | null;
+  /**
+   * Alt Home (/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.
+
+   * @nullable
+   */
+  homeBHeroBackgroundType?: SiteSettingsHomeBHeroBackgroundType;
+  /** @nullable */
+  homeBHeroImageMediaId?: string | null;
+  /** @nullable */
+  homeBHeroImageUrl?: string | null;
+  /** @nullable */
+  homeBHeroVideoMediaId?: string | null;
+  /** @nullable */
+  homeBHeroVideoUrl?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
   /**
@@ -700,6 +760,20 @@ export const SiteSettingsInputBookingsRenderMode = {
 } as const;
 
 /**
+ * Alt Home (/home-b) hero background type override. Pass null to inherit from `homeHeroBackgroundType`.
+
+ * @nullable
+ */
+export type SiteSettingsInputHomeBHeroBackgroundType =
+  | (typeof SiteSettingsInputHomeBHeroBackgroundType)[keyof typeof SiteSettingsInputHomeBHeroBackgroundType]
+  | null;
+
+export const SiteSettingsInputHomeBHeroBackgroundType = {
+  image: "image",
+  video: "video",
+} as const;
+
+/**
  * @nullable
  */
 export type SiteSettingsInputSitemapSectionFlags = {
@@ -723,6 +797,16 @@ export interface SiteSettingsInput {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageMediaId?: string | null;
+  /**
+   * Alt Home (/home-b) hero background type override. Pass null to inherit from `homeHeroBackgroundType`.
+
+   * @nullable
+   */
+  homeBHeroBackgroundType?: SiteSettingsInputHomeBHeroBackgroundType;
+  /** @nullable */
+  homeBHeroImageMediaId?: string | null;
+  /** @nullable */
+  homeBHeroVideoMediaId?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
   /**

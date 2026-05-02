@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SiteSettingsInputBookingsRenderMode } from "./siteSettingsInputBookingsRenderMode";
+import type { SiteSettingsInputHomeBHeroBackgroundType } from "./siteSettingsInputHomeBHeroBackgroundType";
 import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
 import type { SiteSettingsInputSitemapSectionFlags } from "./siteSettingsInputSitemapSectionFlags";
 import type { SiteSettingsInputSiteTheme } from "./siteSettingsInputSiteTheme";
@@ -27,6 +28,16 @@ export interface SiteSettingsInput {
   homeEditorialImageAssetId?: number | null;
   /** @nullable */
   homeEditorialImageMediaId?: string | null;
+  /**
+   * Alt Home (/home-b) hero background type override. Pass null to inherit from `homeHeroBackgroundType`.
+
+   * @nullable
+   */
+  homeBHeroBackgroundType?: SiteSettingsInputHomeBHeroBackgroundType;
+  /** @nullable */
+  homeBHeroImageMediaId?: string | null;
+  /** @nullable */
+  homeBHeroVideoMediaId?: string | null;
   /** @nullable */
   polarisFeedUrl?: string | null;
   /**

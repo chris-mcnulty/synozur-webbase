@@ -16,7 +16,9 @@ const DEFAULT_EDITORIAL = `${BASE_PATH}/images/home-hero-editorial.png`;
 export default function AdminSiteSettings() {
   const qc = useQueryClient();
   const [showSaved, setShowSaved] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState<null | "hero" | "editorial" | "video">(null);
+  const [pickerOpen, setPickerOpen] = useState<
+    null | "hero" | "editorial" | "video" | "homeb-hero" | "homeb-video"
+  >(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-site-settings"],
@@ -108,6 +110,17 @@ export default function AdminSiteSettings() {
   const currentHeroBgType: HeroBackgroundType =
     (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) === "video" ? "video" : "image";
 
+  // Alt Home (/home-b) hero background type. Unlike `homeHeroBackgroundType`,
+  // this column is nullable — null means "inherit from the original
+  // homepage". The UI uses null as a third "Inherit" choice alongside
+  // "Image" / "Video".
+  const currentHomeBHeroBgType: HeroBackgroundType | null =
+    data?.homeBHeroBackgroundType === "video"
+      ? "video"
+      : data?.homeBHeroBackgroundType === "image"
+        ? "image"
+        : null;
+
   const currentBookingsMode: BookingsMode =
     (data?.bookingsRenderMode as BookingsMode | null | undefined) === "native" ? "native" : "iframe";
 
@@ -122,6 +135,9 @@ export default function AdminSiteSettings() {
     homeHeroVideoMediaId: data?.homeHeroVideoMediaId ?? null,
     homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
     homeEditorialImageMediaId: data?.homeEditorialImageMediaId ?? null,
+    homeBHeroBackgroundType: data?.homeBHeroBackgroundType ?? null,
+    homeBHeroImageMediaId: data?.homeBHeroImageMediaId ?? null,
+    homeBHeroVideoMediaId: data?.homeBHeroVideoMediaId ?? null,
     polarisFeedUrl: data?.polarisFeedUrl ?? null,
     idleTimeoutMs: data?.idleTimeoutMs ?? null,
     spamLinkThreshold: data?.spamLinkThreshold ?? null,
@@ -150,11 +166,17 @@ export default function AdminSiteSettings() {
       updateMutation.mutate(
         buildPayload({ homeHeroVideoAssetId: null, homeHeroVideoMediaId: m.id }),
       );
+    } else if (pickerOpen === "homeb-hero") {
+      updateMutation.mutate(buildPayload({ homeBHeroImageMediaId: m.id }));
+    } else if (pickerOpen === "homeb-video") {
+      updateMutation.mutate(buildPayload({ homeBHeroVideoMediaId: m.id }));
     }
     setPickerOpen(null);
   };
 
-  const handleReset = (which: "hero" | "editorial" | "video") => {
+  const handleReset = (
+    which: "hero" | "editorial" | "video" | "homeb-hero" | "homeb-video",
+  ) => {
     if (which === "hero") {
       updateMutation.mutate(
         buildPayload({ homeHeroImageAssetId: null, homeHeroImageMediaId: null }),
@@ -166,10 +188,14 @@ export default function AdminSiteSettings() {
           homeEditorialImageMediaId: null,
         }),
       );
-    } else {
+    } else if (which === "video") {
       updateMutation.mutate(
         buildPayload({ homeHeroVideoAssetId: null, homeHeroVideoMediaId: null }),
       );
+    } else if (which === "homeb-hero") {
+      updateMutation.mutate(buildPayload({ homeBHeroImageMediaId: null }));
+    } else if (which === "homeb-video") {
+      updateMutation.mutate(buildPayload({ homeBHeroVideoMediaId: null }));
     }
   };
 
@@ -348,6 +374,25 @@ export default function AdminSiteSettings() {
             onHeroBgTypeChange={(type) =>
               updateMutation.mutate(buildPayload({ homeHeroBackgroundType: type }))
             }
+          />
+
+          <AltHomeSection
+            heroUrl={data?.homeBHeroImageUrl ?? null}
+            heroFallback={data?.homeHeroImageUrl ?? DEFAULT_HERO}
+            heroVideoUrl={data?.homeBHeroVideoUrl ?? null}
+            inheritedVideoUrl={data?.homeHeroVideoUrl ?? null}
+            heroBgType={currentHomeBHeroBgType}
+            inheritedHeroBgType={currentHeroBgType}
+            onOpenHero={() => setPickerOpen("homeb-hero")}
+            onOpenVideo={() => setPickerOpen("homeb-video")}
+            onResetHero={() => handleReset("homeb-hero")}
+            onResetVideo={() => handleReset("homeb-video")}
+            onHeroBgTypeChange={(type) =>
+              updateMutation.mutate(
+                buildPayload({ homeBHeroBackgroundType: type }),
+              )
+            }
+            disabled={updateMutation.isPending}
           />
 
           <div className="rounded-md border border-border p-6 space-y-4">
@@ -668,16 +713,24 @@ export default function AdminSiteSettings() {
               ? data?.homeEditorialImageMediaId ?? null
               : pickerOpen === "video"
                 ? data?.homeHeroVideoMediaId ?? null
-                : null
+                : pickerOpen === "homeb-hero"
+                  ? data?.homeBHeroImageMediaId ?? null
+                  : pickerOpen === "homeb-video"
+                    ? data?.homeBHeroVideoMediaId ?? null
+                    : null
         }
         categorySlug={
-          pickerOpen === "hero"
+          pickerOpen === "hero" || pickerOpen === "homeb-hero"
             ? "north-star"
             : pickerOpen === "editorial"
               ? "people"
               : undefined
         }
-        kind={pickerOpen === "video" ? "video" : "image"}
+        kind={
+          pickerOpen === "video" || pickerOpen === "homeb-video"
+            ? "video"
+            : "image"
+        }
       />
     </AdminLayout>
   );
@@ -700,6 +753,128 @@ interface HomeSectionProps {
   disabled: boolean;
   heroBgType: "image" | "video";
   onHeroBgTypeChange: (type: "image" | "video") => void;
+}
+
+interface AltHomeSectionProps {
+  heroUrl: string | null;
+  heroFallback: string;
+  heroVideoUrl: string | null;
+  inheritedVideoUrl: string | null;
+  heroBgType: "image" | "video" | null;
+  inheritedHeroBgType: "image" | "video";
+  onOpenHero: () => void;
+  onOpenVideo: () => void;
+  onResetHero: () => void;
+  onResetVideo: () => void;
+  onHeroBgTypeChange: (type: "image" | "video" | null) => void;
+  disabled: boolean;
+}
+
+// Alt Home (/home-b) hero override section. Each control mirrors the Home
+// page section above but persists to the parallel `homeBHero*` columns and
+// surfaces a third "Inherit" choice that clears the override so /home-b
+// falls back to whatever the original homepage is configured to use.
+function AltHomeSection(props: AltHomeSectionProps) {
+  const effectiveType = props.heroBgType ?? props.inheritedHeroBgType;
+  return (
+    <div className="rounded-md border border-border p-6 space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Alt Home (/home-b) hero</h2>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Optional overrides for the /home-b hero. Leave any control on{" "}
+          <em>Inherit from Home</em> to keep that piece in sync with the
+          original homepage settings above. Use this when you want /home-b to
+          diverge visually — for example, a different cosmic still or a
+          different background video — without touching the original page.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Hero background type</div>
+        <p className="text-xs text-muted-foreground">
+          Override the hero background type just for /home-b, or keep it in
+          sync with the original homepage.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {([null, "image", "video"] as const).map((type) => {
+            const active = props.heroBgType === type;
+            const label =
+              type === null
+                ? `Inherit from Home (${props.inheritedHeroBgType})`
+                : type === "image"
+                  ? "Image"
+                  : "Video";
+            const description =
+              type === null
+                ? "Use whatever the original homepage hero is configured to use."
+                : type === "image"
+                  ? "Force a static image hero on /home-b only."
+                  : "Force a looping background video on /home-b only.";
+            return (
+              <button
+                key={type ?? "inherit"}
+                type="button"
+                disabled={props.disabled}
+                data-testid={`homeb-hero-bg-type-${type ?? "inherit"}`}
+                onClick={() => props.onHeroBgTypeChange(type)}
+                className={`flex-1 text-left rounded-lg border-2 px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  active
+                    ? "border-primary bg-primary/5 font-medium"
+                    : "border-border hover:border-muted-foreground/40"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{label}</span>
+                  {active && (
+                    <span className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {description}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Effective on /home-b: <strong>{effectiveType}</strong>
+        </p>
+      </div>
+
+      <ImagePicker
+        label="Hero background image"
+        helper="Cosmic / starry background shown on /home-b. Clear the override to inherit the original homepage hero image. Filter: north-star."
+        previewUrl={props.heroUrl ?? props.heroFallback}
+        isOverridden={props.heroUrl != null}
+        testIdPrefix="homeb-hero"
+        onPick={props.onOpenHero}
+        onReset={props.onResetHero}
+        disabled={props.disabled}
+        resetLabel="Inherit from Home"
+      />
+
+      <VideoPicker
+        label="Hero background video"
+        helper="Custom video for the /home-b hero. Clear the override to inherit whatever video (or bundled default) the original homepage is using."
+        isOverridden={props.heroVideoUrl != null}
+        originalName={
+          props.heroVideoUrl
+            ? "Custom video"
+            : props.inheritedVideoUrl
+              ? "Inherited from Home"
+              : null
+        }
+        testIdPrefix="homeb-hero-video"
+        onPick={props.onOpenVideo}
+        onReset={props.onResetVideo}
+        disabled={props.disabled}
+        emptyLabel={props.inheritedVideoUrl ? "Inherits Home video" : "Inherits bundled default"}
+        resetLabel="Inherit from Home"
+      />
+    </div>
+  );
 }
 
 function HomePageSection(props: HomeSectionProps) {
@@ -795,9 +970,13 @@ interface ImagePickerProps {
   onPick: () => void;
   onReset: () => void;
   disabled: boolean;
+  // Optional override for the reset button label. Defaults to
+  // "Reset to default" — Alt Home pickers pass "Inherit from Home" since
+  // resetting there clears the override rather than restoring a built-in.
+  resetLabel?: string;
 }
 
-function ImagePicker({ label, helper, previewUrl, isOverridden, testIdPrefix, onPick, onReset, disabled }: ImagePickerProps) {
+function ImagePicker({ label, helper, previewUrl, isOverridden, testIdPrefix, onPick, onReset, disabled, resetLabel }: ImagePickerProps) {
   return (
     <div className="space-y-2">
       <div>
@@ -835,7 +1014,7 @@ function ImagePicker({ label, helper, previewUrl, isOverridden, testIdPrefix, on
               disabled={disabled}
               data-testid={`${testIdPrefix}-reset`}
             >
-              <X className="h-4 w-4 mr-1" /> Reset to default
+              <X className="h-4 w-4 mr-1" /> {resetLabel ?? "Reset to default"}
             </Button>
           )}
         </div>
@@ -853,9 +1032,13 @@ interface VideoPickerProps {
   onPick: () => void;
   onReset: () => void;
   disabled: boolean;
+  // Optional overrides so the Alt Home picker can describe the empty state
+  // and reset action as "inherit from Home" instead of "default".
+  emptyLabel?: string;
+  resetLabel?: string;
 }
 
-function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, onPick, onReset, disabled }: VideoPickerProps) {
+function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, onPick, onReset, disabled, emptyLabel, resetLabel }: VideoPickerProps) {
   return (
     <div className="space-y-2">
       <div>
@@ -876,7 +1059,7 @@ function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, 
           ) : (
             <div className="flex flex-col items-center gap-1 p-2 text-center">
               <VideoIcon className="h-8 w-8 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">Bundled default</span>
+              <span className="text-[10px] text-muted-foreground">{emptyLabel ?? "Bundled default"}</span>
             </div>
           )}
         </div>
@@ -898,7 +1081,7 @@ function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, 
               disabled={disabled}
               data-testid={`${testIdPrefix}-reset`}
             >
-              <X className="h-4 w-4 mr-1" /> Reset to default
+              <X className="h-4 w-4 mr-1" /> {resetLabel ?? "Reset to default"}
             </Button>
           )}
         </div>

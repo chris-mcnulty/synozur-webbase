@@ -93,9 +93,18 @@ export default function HomeB() {
   const featuredWorkshop = allWorkshops[0] ?? null;
   const secondaryWorkshops = allWorkshops.slice(1, 3);
 
-  const heroBg = resolveImageUrl(settings?.homeHeroImageUrl, DEFAULT_HERO_BG);
-  const customVideoSrc = settings?.homeHeroVideoUrl
-    ? resolveImageUrl(settings.homeHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
+  // /home-b is allowed to diverge from the original homepage hero from the
+  // admin CMS. Each `homeBHero*` field is null when the admin hasn't picked
+  // an Alt Home-specific override, in which case we transparently fall back
+  // to the original `homeHero*` field so the two pages stay in sync.
+  const effectiveHeroImageUrl = settings?.homeBHeroImageUrl ?? settings?.homeHeroImageUrl;
+  const effectiveHeroVideoUrl = settings?.homeBHeroVideoUrl ?? settings?.homeHeroVideoUrl;
+  const effectiveHeroBgType =
+    settings?.homeBHeroBackgroundType ?? settings?.homeHeroBackgroundType;
+
+  const heroBg = resolveImageUrl(effectiveHeroImageUrl, DEFAULT_HERO_BG);
+  const customVideoSrc = effectiveHeroVideoUrl
+    ? resolveImageUrl(effectiveHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
     : null;
 
   const [videoReady, setVideoReady] = useState(false);
@@ -135,7 +144,7 @@ export default function HomeB() {
       <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
-          {settings?.homeHeroBackgroundType === "video" ? (
+          {effectiveHeroBgType === "video" ? (
             <video
               ref={videoRef}
               autoPlay

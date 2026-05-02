@@ -89,6 +89,22 @@ export const siteSettingsTable = pgTable("site_settings", {
     { onDelete: "set null" },
   ),
 
+  // Alt Home (/home-b) hero overrides. When any of these are null, the
+  // /home-b page falls back to the corresponding `homeHero*` field above so
+  // the two pages stay in sync until an admin explicitly diverges them.
+  // `homeBHeroBackgroundType` is nullable (unlike `homeHeroBackgroundType`
+  // which has a non-null "image" default) so "unset → inherit from original"
+  // is representable.
+  homeBHeroImageMediaId: uuid("home_b_hero_image_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
+  homeBHeroVideoMediaId: uuid("home_b_hero_video_media_id").references(
+    () => mediaTable.id,
+    { onDelete: "set null" },
+  ),
+  homeBHeroBackgroundType: text("home_b_hero_background_type"),
+
   // Site theme: "cosmic" (default) or "aurora". Controls which CSS token set
   // is applied site-wide. Chosen by an admin in Site Settings.
   siteTheme: text("site_theme").notNull().default("cosmic"),

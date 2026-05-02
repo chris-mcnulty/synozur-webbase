@@ -55,6 +55,8 @@ type ResolvedImageUrls = {
   homeHeroImageUrl: string | null;
   homeHeroVideoUrl: string | null;
   homeEditorialImageUrl: string | null;
+  homeBHeroImageUrl: string | null;
+  homeBHeroVideoUrl: string | null;
   seoDefaultOgImageUrl: string | null;
   orgLogoUrl: string | null;
 };
@@ -75,6 +77,8 @@ async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUr
     settings.homeHeroImageMediaId,
     settings.homeHeroVideoMediaId,
     settings.homeEditorialImageMediaId,
+    settings.homeBHeroImageMediaId,
+    settings.homeBHeroVideoMediaId,
     settings.seoDefaultOgImageMediaId,
     settings.orgLogoMediaId,
   ].filter((id): id is string => typeof id === "string");
@@ -109,6 +113,8 @@ async function resolveImageUrls(settings: SiteSettings): Promise<ResolvedImageUr
       settings.homeEditorialImageMediaId ?? null,
       settings.homeEditorialImageAssetId,
     ),
+    homeBHeroImageUrl: urlFor(settings.homeBHeroImageMediaId ?? null, null),
+    homeBHeroVideoUrl: urlFor(settings.homeBHeroVideoMediaId ?? null, null),
     seoDefaultOgImageUrl: urlFor(
       settings.seoDefaultOgImageMediaId ?? null,
       settings.seoDefaultOgImageAssetId,
@@ -135,6 +141,11 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeEditorialImageAssetId: settings.homeEditorialImageAssetId,
     homeEditorialImageMediaId: settings.homeEditorialImageMediaId,
     homeEditorialImageUrl: urls.homeEditorialImageUrl,
+    homeBHeroBackgroundType: settings.homeBHeroBackgroundType,
+    homeBHeroImageMediaId: settings.homeBHeroImageMediaId,
+    homeBHeroImageUrl: urls.homeBHeroImageUrl,
+    homeBHeroVideoMediaId: settings.homeBHeroVideoMediaId,
+    homeBHeroVideoUrl: urls.homeBHeroVideoUrl,
     polarisFeedUrl: settings.polarisFeedUrl,
     seoDefaultTitleTemplate: settings.seoDefaultTitleTemplate,
     seoDefaultDescription: settings.seoDefaultDescription,
@@ -190,6 +201,9 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeHeroVideoUrl: urls.homeHeroVideoUrl,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
+      homeBHeroBackgroundType: settings.homeBHeroBackgroundType,
+      homeBHeroImageUrl: urls.homeBHeroImageUrl,
+      homeBHeroVideoUrl: urls.homeBHeroVideoUrl,
       seoDefaultTitleTemplate: settings.seoDefaultTitleTemplate,
       seoDefaultDescription: settings.seoDefaultDescription,
       seoDefaultOgImageUrl: urls.seoDefaultOgImageUrl,
@@ -235,6 +249,8 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     input.homeHeroImageMediaId,
     input.homeHeroVideoMediaId,
     input.homeEditorialImageMediaId,
+    input.homeBHeroImageMediaId,
+    input.homeBHeroVideoMediaId,
     input.seoDefaultOgImageMediaId,
     input.orgLogoMediaId,
   ].filter((v): v is string => typeof v === "string" && v.length > 0);
@@ -286,6 +302,19 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   if ("homeEditorialImageMediaId" in input) {
     updates.homeEditorialImageMediaId = input.homeEditorialImageMediaId ?? null;
+  }
+  if ("homeBHeroBackgroundType" in input) {
+    // Distinct from `homeHeroBackgroundType` above: this column is nullable
+    // so admins can clear the override and let /home-b inherit the original
+    // homepage's hero background type. The schema constrains values to
+    // "image" | "video" | null.
+    updates.homeBHeroBackgroundType = input.homeBHeroBackgroundType ?? null;
+  }
+  if ("homeBHeroImageMediaId" in input) {
+    updates.homeBHeroImageMediaId = input.homeBHeroImageMediaId ?? null;
+  }
+  if ("homeBHeroVideoMediaId" in input) {
+    updates.homeBHeroVideoMediaId = input.homeBHeroVideoMediaId ?? null;
   }
   if ("polarisFeedUrl" in input) {
     updates.polarisFeedUrl = trimOrNull(input.polarisFeedUrl);

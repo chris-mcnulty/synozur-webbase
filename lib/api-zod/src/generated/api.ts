@@ -1139,6 +1139,24 @@ export const GetPublicSiteSettingsResponse = zod.object({
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  homeBHeroBackgroundType: zod
+    .union([zod.literal("image"), zod.literal("video"), zod.literal(null)])
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.\n",
+    ),
+  homeBHeroImageUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero image override URL. Null means inherit from `homeHeroImageUrl`.\n",
+    ),
+  homeBHeroVideoUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero video override URL. Null means inherit from `homeHeroVideoUrl`.\n",
+    ),
   seoDefaultTitleTemplate: zod.string().nullish(),
   seoDefaultDescription: zod.string().nullish(),
   seoDefaultOgImageUrl: zod.string().nullish(),
@@ -1196,6 +1214,16 @@ export const GetAdminSiteSettingsResponse = zod.object({
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageMediaId: zod.string().uuid().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  homeBHeroBackgroundType: zod
+    .union([zod.literal("image"), zod.literal("video"), zod.literal(null)])
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.\n",
+    ),
+  homeBHeroImageMediaId: zod.string().uuid().nullish(),
+  homeBHeroImageUrl: zod.string().nullish(),
+  homeBHeroVideoMediaId: zod.string().uuid().nullish(),
+  homeBHeroVideoUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
     .string()
@@ -1279,6 +1307,14 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   homeHeroVideoMediaId: zod.string().uuid().nullish(),
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageMediaId: zod.string().uuid().nullish(),
+  homeBHeroBackgroundType: zod
+    .union([zod.literal("image"), zod.literal("video"), zod.literal(null)])
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero background type override. Pass null to inherit from `homeHeroBackgroundType`.\n",
+    ),
+  homeBHeroImageMediaId: zod.string().uuid().nullish(),
+  homeBHeroVideoMediaId: zod.string().uuid().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
     .string()
@@ -1371,6 +1407,16 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   homeEditorialImageAssetId: zod.number().nullish(),
   homeEditorialImageMediaId: zod.string().uuid().nullish(),
   homeEditorialImageUrl: zod.string().nullish(),
+  homeBHeroBackgroundType: zod
+    .union([zod.literal("image"), zod.literal("video"), zod.literal(null)])
+    .nullish()
+    .describe(
+      "Alt Home (\/home-b) hero background type override. Null means inherit from `homeHeroBackgroundType`.\n",
+    ),
+  homeBHeroImageMediaId: zod.string().uuid().nullish(),
+  homeBHeroImageUrl: zod.string().nullish(),
+  homeBHeroVideoMediaId: zod.string().uuid().nullish(),
+  homeBHeroVideoUrl: zod.string().nullish(),
   polarisFeedUrl: zod.string().nullish(),
   seoDefaultTitleTemplate: zod
     .string()

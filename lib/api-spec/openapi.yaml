@@ -3907,6 +3907,28 @@ components:
           type:
             - string
             - 'null'
+        homeBHeroBackgroundType:
+          description: >
+            Alt Home (/home-b) hero background type override. Null means
+            inherit from `homeHeroBackgroundType`.
+          type:
+            - string
+            - 'null'
+          enum: [image, video, null]
+        homeBHeroImageUrl:
+          description: >
+            Alt Home (/home-b) hero image override URL. Null means inherit
+            from `homeHeroImageUrl`.
+          type:
+            - string
+            - 'null'
+        homeBHeroVideoUrl:
+          description: >
+            Alt Home (/home-b) hero video override URL. Null means inherit
+            from `homeHeroVideoUrl`.
+          type:
+            - string
+            - 'null'
         seoDefaultTitleTemplate:
           type:
             - string
@@ -4041,6 +4063,32 @@ components:
             - 'null'
           format: uuid
         homeEditorialImageUrl:
+          type:
+            - string
+            - 'null'
+        homeBHeroBackgroundType:
+          description: >
+            Alt Home (/home-b) hero background type override. Null means
+            inherit from `homeHeroBackgroundType`.
+          type:
+            - string
+            - 'null'
+          enum: [image, video, null]
+        homeBHeroImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        homeBHeroImageUrl:
+          type:
+            - string
+            - 'null'
+        homeBHeroVideoMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        homeBHeroVideoUrl:
           type:
             - string
             - 'null'
@@ -4240,6 +4288,24 @@ components:
             - integer
             - 'null'
         homeEditorialImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        homeBHeroBackgroundType:
+          description: >
+            Alt Home (/home-b) hero background type override. Pass null to
+            inherit from `homeHeroBackgroundType`.
+          type:
+            - string
+            - 'null'
+          enum: [image, video, null]
+        homeBHeroImageMediaId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        homeBHeroVideoMediaId:
           type:
             - string
             - 'null'

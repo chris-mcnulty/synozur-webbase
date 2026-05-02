@@ -1318,6 +1318,20 @@ export async function runMigrations(): Promise<void> {
          );
     `);
 
+    // 40. site_settings: Alt Home (/home-b) hero override columns. Allow the
+    //     /home-b hero to diverge from the original homepage hero from the
+    //     admin CMS without forcing a global change. All three columns are
+    //     nullable; null means "inherit from the corresponding homeHero*
+    //     column" so the two pages stay in sync by default.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_b_hero_image_media_id uuid
+          REFERENCES media(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS home_b_hero_video_media_id uuid
+          REFERENCES media(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS home_b_hero_background_type text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
