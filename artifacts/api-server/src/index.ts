@@ -7,6 +7,8 @@ import { pruneExpiredAuthStates } from "./lib/authStateStore";
 import { warnIfMisconfigured } from "./lib/entraOidc";
 import { runMigrations } from "./lib/migrations";
 import { ensureSigningKey } from "./lib/oauthKeys";
+import { logSecurityHeaderConfig } from "./lib/securityHeaders";
+import { logLaunchReadiness } from "./lib/launchReadiness";
 
 const rawPort = process.env["PORT"];
 
@@ -36,6 +38,8 @@ const server = app.listen(port, (err) => {
 const worker = startScheduledPublishWorker(logger);
 startHubspotWorker();
 warnIfMisconfigured();
+logSecurityHeaderConfig();
+void logLaunchReadiness();
 
 // Hourly GC: clean expired sessions + abandoned OAuth state rows.
 const sessionGc = setInterval(() => {

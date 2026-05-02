@@ -10,6 +10,8 @@ Each submission channel is **independently opt-in**. Channels without credential
 
 ## Environment variables
 
+### Submission channels
+
 | Var | Channel | Required? | Description |
 | --- | --- | --- | --- |
 | `INDEXNOW_KEY` | IndexNow (Bing, Yandex, Seznam, Naver, Yep) | Optional | Secret used both as the API key body parameter and as the name of the key-validation file served at `/{key}.txt`. If the value is already 8–128 hex chars it's passed through; any other value is SHA-256 hashed to produce a conforming key. |
@@ -18,7 +20,30 @@ Each submission channel is **independently opt-in**. Channels without credential
 | `BING_SITE_URL` | Bing Webmaster Tools | Optional (with `BING_API_KEY`) | The exact site URL as verified in Bing Webmaster Tools (e.g. `https://www.synozur.com`). Both `BING_API_KEY` and `BING_SITE_URL` must be set together. |
 | `SITE_URL` | All | Falls back to `https://www.synozur.com` | Used to derive the host for IndexNow and to build the `/{key}.txt` location. |
 
-Implementation lives in `artifacts/api-server/src/lib/seoSubmit.ts`.
+Implementation lives in `artifacts/api-server/src/lib/seoSubmit.ts`. The api-server logs each channel's status at boot under the `launch-readiness: L3 SEO submission` prefix so misconfiguration is visible in the startup log.
+
+### Site verification meta tags (Tier 1 launch-readiness L2)
+
+| Var | Channel | Required? | Description |
+| --- | --- | --- | --- |
+| `GOOGLE_SITE_VERIFICATION` | Google Search Console | Required for organic discoverability | The verification token from the "HTML tag" verification method in Search Console. Spliced into the bare `index.html` response by `artifacts/synozur/server.mjs` as `<meta name="google-site-verification" content="…" />`. The value is read at boot, so rotation requires a redeploy. |
+| `BING_SITE_VERIFICATION` | Bing Webmaster Tools | Required for Bing indexing | Same idea, emitted as `<meta name="msvalidate.01" content="…" />`. |
+
+Both tokens have a redundant React-side fallback in `artifacts/synozur/src/components/layout/index.tsx` driven by the `seoGoogleSiteVerification` / `seoBingSiteVerification` columns in `site_settings`, but Search Console's verification crawler does not execute JavaScript — the env-driven SSR path is what actually completes verification.
+
+### CSP rollout (Tier 1 launch-readiness L4)
+
+| Var | Required? | Description |
+| --- | --- | --- |
+| `CSP_ENFORCE` | Optional | Set to `1` to flip the Content-Security-Policy from `Content-Security-Policy-Report-Only` to enforcing. Default (unset) keeps the policy in report-only mode so violations land in the `csp_violations` table without breaking anything. Per BACKLOG.md "SEO & web-platform debt" #1, run for ≥ 7 days against production traffic with an empty violation stream for two consecutive days before flipping. |
+| `CSP_REPORT_URI` | Optional | Override the report destination on the SPA server. Defaults to `/api/csp/report`. The api-server route is at `routes/csp.ts` and writes one row per `(document_path, violated_directive, blocked_uri)` dedup key into `csp_violations`. |
+
+The CSP allowlist lives in two places that must be kept in sync:
+
+- `artifacts/api-server/src/lib/securityHeaders.ts` — applied to API responses.
+- `artifacts/synozur/server.mjs` — applied to public HTML responses.
+
+When adding a new third-party tag or embed, update both files (they currently allow GA4, LinkedIn Insight, Meta Pixel, YouTube, Microsoft Bookings, and Google Fonts).
 
 ---
 
