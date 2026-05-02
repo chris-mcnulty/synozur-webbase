@@ -76,13 +76,21 @@ import type {
   MethodologyItemsResponse,
   ModerateCmsCommentBody,
   NotFoundResponse,
+  PolarisBulkSyncCollateralResponse,
+  PolarisCollateralLinkResponse,
   PolarisEpisode,
+  PolarisEpisodeBody,
   PolarisEpisodeListResponse,
+  PolarisEpisodePatch,
+  PolarisLibsynImportBody,
+  PolarisLibsynImportSummary,
+  PolarisLibsynPreviewResponse,
   Post,
   PostAnalytics,
   PostListResponse,
   PostRevision,
   PostRevisionDetail,
+  PreviewPolarisLibsynFeedParams,
   PublicComment,
   PublicEvent,
   PublicPost,
@@ -9627,6 +9635,98 @@ export function useListCmsPolarisEpisodes<
 }
 
 /**
+ * @summary Create a Polaris podcast episode
+ */
+export const getCreateCmsPolarisEpisodeUrl = () => {
+  return `/api/cms/polaris/episodes`;
+};
+
+export const createCmsPolarisEpisode = async (
+  polarisEpisodeBody: PolarisEpisodeBody,
+  options?: RequestInit,
+): Promise<PolarisEpisode> => {
+  return customFetch<PolarisEpisode>(getCreateCmsPolarisEpisodeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(polarisEpisodeBody),
+  });
+};
+
+export const getCreateCmsPolarisEpisodeMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsPolarisEpisode>>,
+    TError,
+    { data: BodyType<PolarisEpisodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCmsPolarisEpisode>>,
+  TError,
+  { data: BodyType<PolarisEpisodeBody> },
+  TContext
+> => {
+  const mutationKey = ["createCmsPolarisEpisode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCmsPolarisEpisode>>,
+    { data: BodyType<PolarisEpisodeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCmsPolarisEpisode(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCmsPolarisEpisodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCmsPolarisEpisode>>
+>;
+export type CreateCmsPolarisEpisodeMutationBody = BodyType<PolarisEpisodeBody>;
+export type CreateCmsPolarisEpisodeMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a Polaris podcast episode
+ */
+export const useCreateCmsPolarisEpisode = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsPolarisEpisode>>,
+    TError,
+    { data: BodyType<PolarisEpisodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCmsPolarisEpisode>>,
+  TError,
+  { data: BodyType<PolarisEpisodeBody> },
+  TContext
+> => {
+  return useMutation(getCreateCmsPolarisEpisodeMutationOptions(options));
+};
+
+/**
  * @summary Search blog posts eligible for linking to a Polaris episode. Returns posts categorised as "Polaris" or "podcast" (matched on category slug or name, case-insensitively). Up to 100 results.
  */
 export const getListPolarisLinkablePostsUrl = (
@@ -9822,3 +9922,783 @@ export function useGetCmsPolarisEpisode<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update a Polaris episode (partial update)
+ */
+export const getUpdateCmsPolarisEpisodeUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}`;
+};
+
+export const updateCmsPolarisEpisode = async (
+  id: string,
+  polarisEpisodePatch: PolarisEpisodePatch,
+  options?: RequestInit,
+): Promise<PolarisEpisode> => {
+  return customFetch<PolarisEpisode>(getUpdateCmsPolarisEpisodeUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(polarisEpisodePatch),
+  });
+};
+
+export const getUpdateCmsPolarisEpisodeMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsPolarisEpisode>>,
+    TError,
+    { id: string; data: BodyType<PolarisEpisodePatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCmsPolarisEpisode>>,
+  TError,
+  { id: string; data: BodyType<PolarisEpisodePatch> },
+  TContext
+> => {
+  const mutationKey = ["updateCmsPolarisEpisode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCmsPolarisEpisode>>,
+    { id: string; data: BodyType<PolarisEpisodePatch> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCmsPolarisEpisode(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCmsPolarisEpisodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCmsPolarisEpisode>>
+>;
+export type UpdateCmsPolarisEpisodeMutationBody = BodyType<PolarisEpisodePatch>;
+export type UpdateCmsPolarisEpisodeMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Update a Polaris episode (partial update)
+ */
+export const useUpdateCmsPolarisEpisode = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCmsPolarisEpisode>>,
+    TError,
+    { id: string; data: BodyType<PolarisEpisodePatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCmsPolarisEpisode>>,
+  TError,
+  { id: string; data: BodyType<PolarisEpisodePatch> },
+  TContext
+> => {
+  return useMutation(getUpdateCmsPolarisEpisodeMutationOptions(options));
+};
+
+/**
+ * @summary Soft-delete a Polaris episode
+ */
+export const getDeleteCmsPolarisEpisodeUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}`;
+};
+
+export const deleteCmsPolarisEpisode = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCmsPolarisEpisodeUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCmsPolarisEpisodeMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteCmsPolarisEpisode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCmsPolarisEpisode(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCmsPolarisEpisodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>
+>;
+
+export type DeleteCmsPolarisEpisodeMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Soft-delete a Polaris episode
+ */
+export const useDeleteCmsPolarisEpisode = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCmsPolarisEpisode>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteCmsPolarisEpisodeMutationOptions(options));
+};
+
+/**
+ * @summary Preview the configured (or supplied) Libsyn RSS feed. Returns each feed item annotated with whether it already exists in the DB so an admin can decide which guids to import.
+ */
+export const getPreviewPolarisLibsynFeedUrl = (
+  params?: PreviewPolarisLibsynFeedParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/polaris/libsyn/preview?${stringifiedParams}`
+    : `/api/cms/polaris/libsyn/preview`;
+};
+
+export const previewPolarisLibsynFeed = async (
+  params?: PreviewPolarisLibsynFeedParams,
+  options?: RequestInit,
+): Promise<PolarisLibsynPreviewResponse> => {
+  return customFetch<PolarisLibsynPreviewResponse>(
+    getPreviewPolarisLibsynFeedUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getPreviewPolarisLibsynFeedQueryKey = (
+  params?: PreviewPolarisLibsynFeedParams,
+) => {
+  return [
+    `/api/cms/polaris/libsyn/preview`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getPreviewPolarisLibsynFeedQueryOptions = <
+  TData = Awaited<ReturnType<typeof previewPolarisLibsynFeed>>,
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorEnvelope
+  >,
+>(
+  params?: PreviewPolarisLibsynFeedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewPolarisLibsynFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPreviewPolarisLibsynFeedQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof previewPolarisLibsynFeed>>
+  > = ({ signal }) =>
+    previewPolarisLibsynFeed(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof previewPolarisLibsynFeed>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PreviewPolarisLibsynFeedQueryResult = NonNullable<
+  Awaited<ReturnType<typeof previewPolarisLibsynFeed>>
+>;
+export type PreviewPolarisLibsynFeedQueryError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorEnvelope
+>;
+
+/**
+ * @summary Preview the configured (or supplied) Libsyn RSS feed. Returns each feed item annotated with whether it already exists in the DB so an admin can decide which guids to import.
+ */
+
+export function usePreviewPolarisLibsynFeed<
+  TData = Awaited<ReturnType<typeof previewPolarisLibsynFeed>>,
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorEnvelope
+  >,
+>(
+  params?: PreviewPolarisLibsynFeedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewPolarisLibsynFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPreviewPolarisLibsynFeedQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Import the selected Libsyn feed items into Polaris episodes. Items already present in the DB are skipped unless allowResync is true, in which case feed-derived fields are re-synced (manual fields like transcriptHtml, slug, status, and SEO metadata are preserved).
+ */
+export const getImportPolarisLibsynFeedUrl = () => {
+  return `/api/cms/polaris/libsyn/import`;
+};
+
+export const importPolarisLibsynFeed = async (
+  polarisLibsynImportBody: PolarisLibsynImportBody,
+  options?: RequestInit,
+): Promise<PolarisLibsynImportSummary> => {
+  return customFetch<PolarisLibsynImportSummary>(
+    getImportPolarisLibsynFeedUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(polarisLibsynImportBody),
+    },
+  );
+};
+
+export const getImportPolarisLibsynFeedMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPolarisLibsynFeed>>,
+    TError,
+    { data: BodyType<PolarisLibsynImportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importPolarisLibsynFeed>>,
+  TError,
+  { data: BodyType<PolarisLibsynImportBody> },
+  TContext
+> => {
+  const mutationKey = ["importPolarisLibsynFeed"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importPolarisLibsynFeed>>,
+    { data: BodyType<PolarisLibsynImportBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importPolarisLibsynFeed(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportPolarisLibsynFeedMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importPolarisLibsynFeed>>
+>;
+export type ImportPolarisLibsynFeedMutationBody =
+  BodyType<PolarisLibsynImportBody>;
+export type ImportPolarisLibsynFeedMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorEnvelope
+>;
+
+/**
+ * @summary Import the selected Libsyn feed items into Polaris episodes. Items already present in the DB are skipped unless allowResync is true, in which case feed-derived fields are re-synced (manual fields like transcriptHtml, slug, status, and SEO metadata are preserved).
+ */
+export const useImportPolarisLibsynFeed = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPolarisLibsynFeed>>,
+    TError,
+    { data: BodyType<PolarisLibsynImportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importPolarisLibsynFeed>>,
+  TError,
+  { data: BodyType<PolarisLibsynImportBody> },
+  TContext
+> => {
+  return useMutation(getImportPolarisLibsynFeedMutationOptions(options));
+};
+
+/**
+ * @summary Re-sync all non-deleted Polaris episodes into the collateral library. Existing collateral mirrors are updated in-place (slug preserved); episodes without one get a new collateral row created.
+ */
+export const getBulkSyncPolarisEpisodeCollateralUrl = () => {
+  return `/api/cms/polaris/episodes/bulk-sync-collateral`;
+};
+
+export const bulkSyncPolarisEpisodeCollateral = async (
+  options?: RequestInit,
+): Promise<PolarisBulkSyncCollateralResponse> => {
+  return customFetch<PolarisBulkSyncCollateralResponse>(
+    getBulkSyncPolarisEpisodeCollateralUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getBulkSyncPolarisEpisodeCollateralMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["bulkSyncPolarisEpisodeCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>,
+    void
+  > = () => {
+    return bulkSyncPolarisEpisodeCollateral(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BulkSyncPolarisEpisodeCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>
+>;
+
+export type BulkSyncPolarisEpisodeCollateralMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Re-sync all non-deleted Polaris episodes into the collateral library. Existing collateral mirrors are updated in-place (slug preserved); episodes without one get a new collateral row created.
+ */
+export const useBulkSyncPolarisEpisodeCollateral = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof bulkSyncPolarisEpisodeCollateral>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getBulkSyncPolarisEpisodeCollateralMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Returns the collateral library entry currently linked to the episode (or null if none is linked).
+ */
+export const getGetCmsPolarisEpisodeCollateralUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}/collateral`;
+};
+
+export const getCmsPolarisEpisodeCollateral = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PolarisCollateralLinkResponse> => {
+  return customFetch<PolarisCollateralLinkResponse>(
+    getGetCmsPolarisEpisodeCollateralUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCmsPolarisEpisodeCollateralQueryKey = (id: string) => {
+  return [`/api/cms/polaris/episodes/${id}/collateral`] as const;
+};
+
+export const getGetCmsPolarisEpisodeCollateralQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCmsPolarisEpisodeCollateralQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>
+  > = ({ signal }) =>
+    getCmsPolarisEpisodeCollateral(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsPolarisEpisodeCollateralQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>
+>;
+export type GetCmsPolarisEpisodeCollateralQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Returns the collateral library entry currently linked to the episode (or null if none is linked).
+ */
+
+export function useGetCmsPolarisEpisodeCollateral<
+  TData = Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsPolarisEpisodeCollateral>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsPolarisEpisodeCollateralQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or re-sync the linked collateral entry from the episode's current fields. Preserves the slug on update so public URLs don't break. Featured / featuredRank flow from the episode's own flags.
+ */
+export const getSyncPolarisEpisodeCollateralUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}/sync-collateral`;
+};
+
+export const syncPolarisEpisodeCollateral = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PolarisCollateralLinkResponse> => {
+  return customFetch<PolarisCollateralLinkResponse>(
+    getSyncPolarisEpisodeCollateralUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSyncPolarisEpisodeCollateralMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["syncPolarisEpisodeCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return syncPolarisEpisodeCollateral(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncPolarisEpisodeCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>
+>;
+
+export type SyncPolarisEpisodeCollateralMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Create or re-sync the linked collateral entry from the episode's current fields. Preserves the slug on update so public URLs don't break. Featured / featuredRank flow from the episode's own flags.
+ */
+export const useSyncPolarisEpisodeCollateral = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncPolarisEpisodeCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getSyncPolarisEpisodeCollateralMutationOptions(options));
+};
+
+/**
+ * @summary Soft-delete the collateral entry linked to this episode. The polaris_episode_id FK is preserved on the deleted row for audit traceability.
+ */
+export const getRemovePolarisEpisodeCollateralUrl = (id: string) => {
+  return `/api/cms/polaris/episodes/${id}/sync-collateral`;
+};
+
+export const removePolarisEpisodeCollateral = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemovePolarisEpisodeCollateralUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemovePolarisEpisodeCollateralMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["removePolarisEpisodeCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return removePolarisEpisodeCollateral(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemovePolarisEpisodeCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>
+>;
+
+export type RemovePolarisEpisodeCollateralMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Soft-delete the collateral entry linked to this episode. The polaris_episode_id FK is preserved on the deleted row for audit traceability.
+ */
+export const useRemovePolarisEpisodeCollateral = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removePolarisEpisodeCollateral>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRemovePolarisEpisodeCollateralMutationOptions(options));
+};

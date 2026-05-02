@@ -2778,6 +2778,30 @@ paths:
                       $ref: '#/components/schemas/PolarisEpisode'
         '401':
           $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createCmsPolarisEpisode
+      tags:
+        - CmsPolaris
+      summary: Create a Polaris podcast episode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolarisEpisodeBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisEpisode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /cms/polaris/episodes/post-picker:
     get:
@@ -2837,6 +2861,238 @@ paths:
                 $ref: '#/components/schemas/PolarisEpisode'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateCmsPolarisEpisode
+      tags:
+        - CmsPolaris
+      summary: Update a Polaris episode (partial update)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolarisEpisodePatch'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisEpisode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteCmsPolarisEpisode
+      tags:
+        - CmsPolaris
+      summary: Soft-delete a Polaris episode
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted (soft delete; sets deletedAt and active=false)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cms/polaris/libsyn/preview:
+    get:
+      operationId: previewPolarisLibsynFeed
+      tags:
+        - CmsPolaris
+      summary: >-
+        Preview the configured (or supplied) Libsyn RSS feed. Returns each
+        feed item annotated with whether it already exists in the DB so an
+        admin can decide which guids to import.
+      parameters:
+        - in: query
+          name: feedUrl
+          description: >-
+            Optional override URL. When omitted the URL stored in
+            site_settings.polarisFeedUrl is used.
+          schema:
+            type: string
+            format: uri
+      responses:
+        '200':
+          description: Preview of feed items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisLibsynPreviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: Failed to fetch or parse the feed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /cms/polaris/libsyn/import:
+    post:
+      operationId: importPolarisLibsynFeed
+      tags:
+        - CmsPolaris
+      summary: >-
+        Import the selected Libsyn feed items into Polaris episodes. Items
+        already present in the DB are skipped unless allowResync is true,
+        in which case feed-derived fields are re-synced (manual fields like
+        transcriptHtml, slug, status, and SEO metadata are preserved).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolarisLibsynImportBody'
+      responses:
+        '200':
+          description: Import summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisLibsynImportSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: Import failed (feed fetch or parse error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /cms/polaris/episodes/bulk-sync-collateral:
+    post:
+      operationId: bulkSyncPolarisEpisodeCollateral
+      tags:
+        - CmsPolaris
+      summary: >-
+        Re-sync all non-deleted Polaris episodes into the collateral library.
+        Existing collateral mirrors are updated in-place (slug preserved);
+        episodes without one get a new collateral row created.
+      responses:
+        '200':
+          description: Bulk sync summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisBulkSyncCollateralResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /cms/polaris/episodes/{id}/collateral:
+    get:
+      operationId: getCmsPolarisEpisodeCollateral
+      tags:
+        - CmsPolaris
+      summary: >-
+        Returns the collateral library entry currently linked to the
+        episode (or null if none is linked).
+      security:
+        - readRole: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Linked collateral entry (may be null)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisCollateralLinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cms/polaris/episodes/{id}/sync-collateral:
+    post:
+      operationId: syncPolarisEpisodeCollateral
+      tags:
+        - CmsPolaris
+      summary: >-
+        Create or re-sync the linked collateral entry from the episode's
+        current fields. Preserves the slug on update so public URLs don't
+        break. Featured / featuredRank flow from the episode's own flags.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Linked collateral entry after sync
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolarisCollateralLinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: removePolarisEpisodeCollateral
+      tags:
+        - CmsPolaris
+      summary: >-
+        Soft-delete the collateral entry linked to this episode. The
+        polaris_episode_id FK is preserved on the deleted row for audit
+        traceability.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Linked collateral removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -6728,3 +6984,388 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PolarisEpisode'
+
+    PolarisEpisodeBody:
+      description: >-
+        Request body for creating a Polaris episode. `title` and
+        `episodeNumber` are required; `slug` is auto-generated from the title
+        when omitted. Date fields accept ISO-8601 strings.
+      type: object
+      required:
+        - title
+        - episodeNumber
+      properties:
+        slug:
+          type:
+            - string
+            - 'null'
+        title:
+          type: string
+          minLength: 1
+        episodeNumber:
+          type: integer
+        summary:
+          type: string
+        guestName:
+          type:
+            - string
+            - 'null'
+        audioUrl:
+          type: string
+        appleUrl:
+          type:
+            - string
+            - 'null'
+        spotifyUrl:
+          type:
+            - string
+            - 'null'
+        durationSeconds:
+          type:
+            - integer
+            - 'null'
+        transcriptHtml:
+          type:
+            - string
+            - 'null'
+        artworkUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
+        ogImage:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        sourceId:
+          type:
+            - string
+            - 'null'
+        serviceId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        solutionId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        linkedPostId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+
+    PolarisEpisodePatch:
+      description: >-
+        Request body for updating a Polaris episode. All fields are optional
+        — only the fields present in the request are applied. Setting a
+        nullable field to `null` clears it.
+      type: object
+      properties:
+        slug:
+          type:
+            - string
+            - 'null'
+        title:
+          type: string
+          minLength: 1
+        episodeNumber:
+          type: integer
+        summary:
+          type: string
+        guestName:
+          type:
+            - string
+            - 'null'
+        audioUrl:
+          type: string
+        appleUrl:
+          type:
+            - string
+            - 'null'
+        spotifyUrl:
+          type:
+            - string
+            - 'null'
+        durationSeconds:
+          type:
+            - integer
+            - 'null'
+        transcriptHtml:
+          type:
+            - string
+            - 'null'
+        artworkUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        unpublishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
+        ogImage:
+          type:
+            - string
+            - 'null'
+        active:
+          type: boolean
+        sourceId:
+          type:
+            - string
+            - 'null'
+        serviceId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        solutionId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        linkedPostId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+
+    PolarisLibsynPreviewItem:
+      description: >-
+        A single feed item returned by the Libsyn preview endpoint, annotated
+        with DB existence so the editor knows which guids are new vs. already
+        imported.
+      type: object
+      required:
+        - guid
+        - title
+        - episodeNumber
+        - publishedAt
+        - durationSeconds
+        - audioUrl
+        - artworkUrl
+        - summary
+        - link
+        - existsInDb
+        - existingId
+        - existingEpisodeNumber
+      properties:
+        guid:
+          type: string
+        title:
+          type: string
+        episodeNumber:
+          type:
+            - integer
+            - 'null'
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        durationSeconds:
+          type:
+            - integer
+            - 'null'
+        audioUrl:
+          type: string
+        artworkUrl:
+          type:
+            - string
+            - 'null'
+        summary:
+          type: string
+        link:
+          type:
+            - string
+            - 'null'
+        existsInDb:
+          type: boolean
+        existingId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        existingEpisodeNumber:
+          type:
+            - integer
+            - 'null'
+
+    PolarisLibsynPreviewResponse:
+      type: object
+      required:
+        - feedUrl
+        - items
+      properties:
+        feedUrl:
+          type: string
+          format: uri
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolarisLibsynPreviewItem'
+
+    PolarisLibsynImportBody:
+      description: >-
+        Request body for importing selected Libsyn feed items. `guids`
+        identifies which feed items to import; items already present in the
+        DB are skipped unless `allowResync` is true.
+      type: object
+      required:
+        - guids
+      properties:
+        guids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        allowResync:
+          type: boolean
+          default: false
+        feedUrl:
+          type: string
+          format: uri
+
+    PolarisLibsynImportSummary:
+      description: Counts of created / updated / skipped items plus any per-guid errors.
+      type: object
+      required:
+        - created
+        - updated
+        - skipped
+        - errors
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            required:
+              - guid
+              - message
+            properties:
+              guid:
+                type: string
+              message:
+                type: string
+
+    PolarisCollateralLink:
+      description: >-
+        Slim view of the collateral library entry currently mirroring a
+        Polaris episode. Returned by the sync-collateral endpoints so the
+        editor can show current sync status.
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - featured
+        - featuredRank
+        - active
+        - publishedAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        featured:
+          type: boolean
+        featuredRank:
+          type:
+            - integer
+            - 'null'
+        active:
+          type: boolean
+        publishedAt:
+          description: ISO date (YYYY-MM-DD) or null.
+          type:
+            - string
+            - 'null'
+        updatedAt:
+          type: string
+          format: date-time
+
+    PolarisCollateralLinkResponse:
+      type: object
+      required:
+        - collateral
+      properties:
+        collateral:
+          oneOf:
+            - $ref: '#/components/schemas/PolarisCollateralLink'
+            - type: 'null'
+
+    PolarisBulkSyncCollateralResponse:
+      description: >-
+        Summary returned by the bulk-sync-collateral endpoint. `total` is
+        the number of non-deleted episodes processed.
+      type: object
+      required:
+        - total
+        - created
+        - updated
+      properties:
+        total:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer

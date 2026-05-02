@@ -2110,6 +2110,207 @@ export interface PolarisEpisodeListResponse {
   items: PolarisEpisode[];
 }
 
+export type PolarisEpisodeBodyStatus =
+  (typeof PolarisEpisodeBodyStatus)[keyof typeof PolarisEpisodeBodyStatus];
+
+export const PolarisEpisodeBodyStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * Request body for creating a Polaris episode. `title` and `episodeNumber` are required; `slug` is auto-generated from the title when omitted. Date fields accept ISO-8601 strings.
+ */
+export interface PolarisEpisodeBody {
+  /** @nullable */
+  slug?: string | null;
+  /** @minLength 1 */
+  title: string;
+  episodeNumber: number;
+  summary?: string;
+  /** @nullable */
+  guestName?: string | null;
+  audioUrl?: string;
+  /** @nullable */
+  appleUrl?: string | null;
+  /** @nullable */
+  spotifyUrl?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  transcriptHtml?: string | null;
+  artworkUrl?: string;
+  status?: PolarisEpisodeBodyStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /** @nullable */
+  ogImage?: string | null;
+  active?: boolean;
+  /** @nullable */
+  sourceId?: string | null;
+  /** @nullable */
+  serviceId?: string | null;
+  /** @nullable */
+  solutionId?: string | null;
+  /** @nullable */
+  linkedPostId?: string | null;
+}
+
+export type PolarisEpisodePatchStatus =
+  (typeof PolarisEpisodePatchStatus)[keyof typeof PolarisEpisodePatchStatus];
+
+export const PolarisEpisodePatchStatus = {
+  draft: "draft",
+  scheduled: "scheduled",
+  published: "published",
+  archived: "archived",
+} as const;
+
+/**
+ * Request body for updating a Polaris episode. All fields are optional — only the fields present in the request are applied. Setting a nullable field to `null` clears it.
+ */
+export interface PolarisEpisodePatch {
+  /** @nullable */
+  slug?: string | null;
+  /** @minLength 1 */
+  title?: string;
+  episodeNumber?: number;
+  summary?: string;
+  /** @nullable */
+  guestName?: string | null;
+  audioUrl?: string;
+  /** @nullable */
+  appleUrl?: string | null;
+  /** @nullable */
+  spotifyUrl?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  transcriptHtml?: string | null;
+  artworkUrl?: string;
+  status?: PolarisEpisodePatchStatus;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  /** @nullable */
+  featuredRank?: number | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /** @nullable */
+  ogImage?: string | null;
+  active?: boolean;
+  /** @nullable */
+  sourceId?: string | null;
+  /** @nullable */
+  serviceId?: string | null;
+  /** @nullable */
+  solutionId?: string | null;
+  /** @nullable */
+  linkedPostId?: string | null;
+}
+
+/**
+ * A single feed item returned by the Libsyn preview endpoint, annotated with DB existence so the editor knows which guids are new vs. already imported.
+ */
+export interface PolarisLibsynPreviewItem {
+  guid: string;
+  title: string;
+  /** @nullable */
+  episodeNumber: number | null;
+  /** @nullable */
+  publishedAt: string | null;
+  /** @nullable */
+  durationSeconds: number | null;
+  audioUrl: string;
+  /** @nullable */
+  artworkUrl: string | null;
+  summary: string;
+  /** @nullable */
+  link: string | null;
+  existsInDb: boolean;
+  /** @nullable */
+  existingId: string | null;
+  /** @nullable */
+  existingEpisodeNumber: number | null;
+}
+
+export interface PolarisLibsynPreviewResponse {
+  feedUrl: string;
+  items: PolarisLibsynPreviewItem[];
+}
+
+/**
+ * Request body for importing selected Libsyn feed items. `guids` identifies which feed items to import; items already present in the DB are skipped unless `allowResync` is true.
+ */
+export interface PolarisLibsynImportBody {
+  /** @minItems 1 */
+  guids: string[];
+  allowResync?: boolean;
+  feedUrl?: string;
+}
+
+export type PolarisLibsynImportSummaryErrorsItem = {
+  guid: string;
+  message: string;
+};
+
+/**
+ * Counts of created / updated / skipped items plus any per-guid errors.
+ */
+export interface PolarisLibsynImportSummary {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: PolarisLibsynImportSummaryErrorsItem[];
+}
+
+/**
+ * Slim view of the collateral library entry currently mirroring a Polaris episode. Returned by the sync-collateral endpoints so the editor can show current sync status.
+ */
+export interface PolarisCollateralLink {
+  id: string;
+  slug: string;
+  title: string;
+  featured: boolean;
+  /** @nullable */
+  featuredRank: number | null;
+  active: boolean;
+  /**
+   * ISO date (YYYY-MM-DD) or null.
+   * @nullable
+   */
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export interface PolarisCollateralLinkResponse {
+  collateral: PolarisCollateralLink | null;
+}
+
+/**
+ * Summary returned by the bulk-sync-collateral endpoint. `total` is the number of non-deleted episodes processed.
+ */
+export interface PolarisBulkSyncCollateralResponse {
+  total: number;
+  created: number;
+  updated: number;
+}
+
 /**
  * Unauthorized
  */
@@ -2366,4 +2567,11 @@ export type ListPolarisLinkablePostsParams = {
 
 export type ListPolarisLinkablePosts200 = {
   items: PolarisLinkablePost[];
+};
+
+export type PreviewPolarisLibsynFeedParams = {
+  /**
+   * Optional override URL. When omitted the URL stored in site_settings.polarisFeedUrl is used.
+   */
+  feedUrl?: string;
 };

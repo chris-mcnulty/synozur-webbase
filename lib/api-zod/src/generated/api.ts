@@ -3817,6 +3817,43 @@ export const ListCmsPolarisEpisodesResponse = zod.object({
 });
 
 /**
+ * @summary Create a Polaris podcast episode
+ */
+
+export const CreateCmsPolarisEpisodeBody = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1),
+    episodeNumber: zod.number(),
+    summary: zod.string().optional(),
+    guestName: zod.string().nullish(),
+    audioUrl: zod.string().optional(),
+    appleUrl: zod.string().nullish(),
+    spotifyUrl: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    transcriptHtml: zod.string().nullish(),
+    artworkUrl: zod.string().optional(),
+    status: zod
+      .enum(["draft", "scheduled", "published", "archived"])
+      .optional(),
+    publishedAt: zod.coerce.date().nullish(),
+    unpublishedAt: zod.coerce.date().nullish(),
+    featured: zod.boolean().optional(),
+    featuredRank: zod.number().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImage: zod.string().nullish(),
+    active: zod.boolean().optional(),
+    sourceId: zod.string().nullish(),
+    serviceId: zod.string().uuid().nullish(),
+    solutionId: zod.string().uuid().nullish(),
+    linkedPostId: zod.string().uuid().nullish(),
+  })
+  .describe(
+    "Request body for creating a Polaris episode. `title` and `episodeNumber` are required; `slug` is auto-generated from the title when omitted. Date fields accept ISO-8601 strings.",
+  );
+
+/**
  * @summary Search blog posts eligible for linking to a Polaris episode. Returns posts categorised as "Polaris" or "podcast" (matched on category slug or name, case-insensitively). Up to 100 results.
  */
 export const ListPolarisLinkablePostsQueryParams = zod.object({
@@ -3899,3 +3936,254 @@ export const GetCmsPolarisEpisodeResponse = zod
   .describe(
     "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
   );
+
+/**
+ * @summary Update a Polaris episode (partial update)
+ */
+export const UpdateCmsPolarisEpisodeParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCmsPolarisEpisodeBody = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    episodeNumber: zod.number().optional(),
+    summary: zod.string().optional(),
+    guestName: zod.string().nullish(),
+    audioUrl: zod.string().optional(),
+    appleUrl: zod.string().nullish(),
+    spotifyUrl: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    transcriptHtml: zod.string().nullish(),
+    artworkUrl: zod.string().optional(),
+    status: zod
+      .enum(["draft", "scheduled", "published", "archived"])
+      .optional(),
+    publishedAt: zod.coerce.date().nullish(),
+    unpublishedAt: zod.coerce.date().nullish(),
+    featured: zod.boolean().optional(),
+    featuredRank: zod.number().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImage: zod.string().nullish(),
+    active: zod.boolean().optional(),
+    sourceId: zod.string().nullish(),
+    serviceId: zod.string().uuid().nullish(),
+    solutionId: zod.string().uuid().nullish(),
+    linkedPostId: zod.string().uuid().nullish(),
+  })
+  .describe(
+    "Request body for updating a Polaris episode. All fields are optional — only the fields present in the request are applied. Setting a nullable field to `null` clears it.",
+  );
+
+export const UpdateCmsPolarisEpisodeResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    episodeNumber: zod.number(),
+    summary: zod.string(),
+    guestName: zod.string().nullish(),
+    audioUrl: zod.string(),
+    appleUrl: zod.string().nullish(),
+    spotifyUrl: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    transcriptHtml: zod.string().nullish(),
+    artworkUrl: zod.string(),
+    serviceId: zod.string().uuid().nullish(),
+    solutionId: zod.string().uuid().nullish(),
+    linkedPostId: zod.string().uuid().nullable(),
+    linkedPost: zod.union([
+      zod
+        .object({
+          id: zod.string().uuid(),
+          slug: zod.string(),
+          title: zod.string(),
+          excerpt: zod.string().nullable(),
+          heroImageUrl: zod.string().nullable(),
+          publishedAt: zod.coerce.date().nullable(),
+          status: zod
+            .enum(["draft", "scheduled", "published", "archived"])
+            .optional()
+            .describe("Only present on CMS responses."),
+        })
+        .describe(
+          "A blog post linked to a Polaris episode. Public responses omit `status` (only published posts are surfaced); CMS responses always include it so editors can see if a linked post is still a draft or archived.",
+        ),
+      zod.null(),
+    ]),
+    status: zod.enum(["draft", "scheduled", "published", "archived"]),
+    publishedAt: zod.coerce.date().nullish(),
+    unpublishedAt: zod.coerce.date().nullish(),
+    featured: zod.boolean(),
+    featuredRank: zod.number().nullish(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImage: zod.string().nullish(),
+    active: zod.boolean(),
+    sourceId: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .describe(
+    "A Polaris podcast episode. On list endpoints `linkedPost` is always null (intentionally omitted to avoid N+1 queries and because list-card UI does not display the linked post). On detail endpoints it is populated when an editor has linked a related blog post.",
+  );
+
+/**
+ * @summary Soft-delete a Polaris episode
+ */
+export const DeleteCmsPolarisEpisodeParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Preview the configured (or supplied) Libsyn RSS feed. Returns each feed item annotated with whether it already exists in the DB so an admin can decide which guids to import.
+ */
+export const PreviewPolarisLibsynFeedQueryParams = zod.object({
+  feedUrl: zod.coerce
+    .string()
+    .url()
+    .optional()
+    .describe(
+      "Optional override URL. When omitted the URL stored in site_settings.polarisFeedUrl is used.",
+    ),
+});
+
+export const PreviewPolarisLibsynFeedResponse = zod.object({
+  feedUrl: zod.string().url(),
+  items: zod.array(
+    zod
+      .object({
+        guid: zod.string(),
+        title: zod.string(),
+        episodeNumber: zod.number().nullable(),
+        publishedAt: zod.coerce.date().nullable(),
+        durationSeconds: zod.number().nullable(),
+        audioUrl: zod.string(),
+        artworkUrl: zod.string().nullable(),
+        summary: zod.string(),
+        link: zod.string().nullable(),
+        existsInDb: zod.boolean(),
+        existingId: zod.string().uuid().nullable(),
+        existingEpisodeNumber: zod.number().nullable(),
+      })
+      .describe(
+        "A single feed item returned by the Libsyn preview endpoint, annotated with DB existence so the editor knows which guids are new vs. already imported.",
+      ),
+  ),
+});
+
+/**
+ * @summary Import the selected Libsyn feed items into Polaris episodes. Items already present in the DB are skipped unless allowResync is true, in which case feed-derived fields are re-synced (manual fields like transcriptHtml, slug, status, and SEO metadata are preserved).
+ */
+
+export const importPolarisLibsynFeedBodyAllowResyncDefault = false;
+
+export const ImportPolarisLibsynFeedBody = zod
+  .object({
+    guids: zod.array(zod.string().min(1)).min(1),
+    allowResync: zod
+      .boolean()
+      .default(importPolarisLibsynFeedBodyAllowResyncDefault),
+    feedUrl: zod.string().url().optional(),
+  })
+  .describe(
+    "Request body for importing selected Libsyn feed items. `guids` identifies which feed items to import; items already present in the DB are skipped unless `allowResync` is true.",
+  );
+
+export const ImportPolarisLibsynFeedResponse = zod
+  .object({
+    created: zod.number(),
+    updated: zod.number(),
+    skipped: zod.number(),
+    errors: zod.array(
+      zod.object({
+        guid: zod.string(),
+        message: zod.string(),
+      }),
+    ),
+  })
+  .describe(
+    "Counts of created \/ updated \/ skipped items plus any per-guid errors.",
+  );
+
+/**
+ * @summary Re-sync all non-deleted Polaris episodes into the collateral library. Existing collateral mirrors are updated in-place (slug preserved); episodes without one get a new collateral row created.
+ */
+export const BulkSyncPolarisEpisodeCollateralResponse = zod
+  .object({
+    total: zod.number(),
+    created: zod.number(),
+    updated: zod.number(),
+  })
+  .describe(
+    "Summary returned by the bulk-sync-collateral endpoint. `total` is the number of non-deleted episodes processed.",
+  );
+
+/**
+ * @summary Returns the collateral library entry currently linked to the episode (or null if none is linked).
+ */
+export const GetCmsPolarisEpisodeCollateralParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetCmsPolarisEpisodeCollateralResponse = zod.object({
+  collateral: zod.union([
+    zod
+      .object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        featured: zod.boolean(),
+        featuredRank: zod.number().nullable(),
+        active: zod.boolean(),
+        publishedAt: zod
+          .string()
+          .nullable()
+          .describe("ISO date (YYYY-MM-DD) or null."),
+        updatedAt: zod.coerce.date(),
+      })
+      .describe(
+        "Slim view of the collateral library entry currently mirroring a Polaris episode. Returned by the sync-collateral endpoints so the editor can show current sync status.",
+      ),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Create or re-sync the linked collateral entry from the episode's current fields. Preserves the slug on update so public URLs don't break. Featured / featuredRank flow from the episode's own flags.
+ */
+export const SyncPolarisEpisodeCollateralParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const SyncPolarisEpisodeCollateralResponse = zod.object({
+  collateral: zod.union([
+    zod
+      .object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        featured: zod.boolean(),
+        featuredRank: zod.number().nullable(),
+        active: zod.boolean(),
+        publishedAt: zod
+          .string()
+          .nullable()
+          .describe("ISO date (YYYY-MM-DD) or null."),
+        updatedAt: zod.coerce.date(),
+      })
+      .describe(
+        "Slim view of the collateral library entry currently mirroring a Polaris episode. Returned by the sync-collateral endpoints so the editor can show current sync status.",
+      ),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Soft-delete the collateral entry linked to this episode. The polaris_episode_id FK is preserved on the deleted row for audit traceability.
+ */
+export const RemovePolarisEpisodeCollateralParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
