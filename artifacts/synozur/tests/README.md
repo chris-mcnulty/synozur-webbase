@@ -11,6 +11,17 @@ End-to-end + accessibility harness for the public marketing site.
   against six representative public routes. Fails the run on any
   `serious`+ WCAG 2.2 AA violation; less-severe findings surface as
   test annotations.
+- **`polaris-linked-post.spec.ts`** — Backlog #212. Locks down the
+  episode → blog post link card on `/polaris/:slug`. Asserts the card
+  renders with the correct title and `/insights/:slug` href, that
+  clicking it navigates to the insight detail page, and that an
+  episode without a linked post renders no card. Data-driven against
+  the public Polaris API rather than hard-coded slugs. **Content
+  prerequisite:** the target environment must contain at least one
+  published Polaris episode with a published linked post **and** at
+  least one episode without one — both legs fail (rather than skip)
+  if those aren't present, so coverage can't quietly disappear if seed
+  data drifts.
 
 The publish gate that consumes these signals lives in #142 Phase D.
 
