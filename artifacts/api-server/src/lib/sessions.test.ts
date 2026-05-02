@@ -224,6 +224,112 @@ test("resolveSession: lastSeenAt older than ROLLING_RENEW_MS but within IDLE_TIM
   }
 });
 
+test("resolveSession: rememberMe:true session is renewed with a ~30-day expiresAt window", async () => {
+  const userId = await makeTestUser();
+  try {
+    const { token, rowId } = await createSession({
+      userId,
+      userAgent: null,
+      ip: null,
+      rememberMe: true,
+    });
+
+    // Park lastSeenAt past the 30-min rolling threshold so the renewal
+    // branch fires. Keep createdAt fresh so the absolute-cap check doesn't
+    // trip, and pin expiresAt to a near-future value so we can confirm the
+    // resolver pushed it forward to the long (30-day) window rather than
+    // the short (8-hour) one.
+    const oneHourAgo = new Date(Date.now() - HOUR);
+    const originalExpiresAt = new Date(Date.now() + HOUR);
+    await db
+      .update(sessionsTable)
+      .set({ lastSeenAt: oneHourAgo, expiresAt: originalExpiresAt })
+      .where(eq(sessionsTable.id, rowId));
+
+    const beforeResolve = Date.now();
+    const resolved = await resolveSession(token);
+    assert.ok(resolved, "remember-me session should resolve");
+    assert.equal(resolved!.renewed, true, "resolver should report renewed:true");
+
+    // Expect the renewed expiresAt to be ~30 days from now. Allow a generous
+    // ±1 minute slack to absorb test execution time without being so loose
+    // it would also accept the 8-hour (non-remember-me) window.
+    const expectedRenewMs = 30 * DAY;
+    const slack = MINUTE;
+    const renewedDelta = resolved!.expiresAt.getTime() - beforeResolve;
+    assert.ok(
+      renewedDelta >= expectedRenewMs - slack &&
+        renewedDelta <= expectedRenewMs + slack,
+      `renewed expiresAt should be ~30 days out (got delta ${renewedDelta}ms, expected ~${expectedRenewMs}ms)`,
+    );
+
+    const [row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, rowId))
+      .limit(1);
+    assert.ok(row, "renewed remember-me session row should still exist");
+    assert.equal(row.rememberMe, true, "rememberMe flag should be preserved");
+    const rowDelta = row.expiresAt.getTime() - beforeResolve;
+    assert.ok(
+      rowDelta >= expectedRenewMs - slack && rowDelta <= expectedRenewMs + slack,
+      `row expiresAt should be ~30 days out (got delta ${rowDelta}ms)`,
+    );
+  } finally {
+    await deleteUser(userId);
+  }
+});
+
+test("resolveSession: rememberMe:false session is renewed with a ~8-hour expiresAt window", async () => {
+  const userId = await makeTestUser();
+  try {
+    const { token, rowId } = await createSession({
+      userId,
+      userAgent: null,
+      ip: null,
+      rememberMe: false,
+    });
+
+    // Same setup as the remember-me case above, but with rememberMe:false
+    // we expect the short (8-hour) renewal window instead of 30 days.
+    const oneHourAgo = new Date(Date.now() - HOUR);
+    const originalExpiresAt = new Date(Date.now() + 30 * MINUTE);
+    await db
+      .update(sessionsTable)
+      .set({ lastSeenAt: oneHourAgo, expiresAt: originalExpiresAt })
+      .where(eq(sessionsTable.id, rowId));
+
+    const beforeResolve = Date.now();
+    const resolved = await resolveSession(token);
+    assert.ok(resolved, "session should resolve");
+    assert.equal(resolved!.renewed, true, "resolver should report renewed:true");
+
+    const expectedRenewMs = 8 * HOUR;
+    const slack = MINUTE;
+    const renewedDelta = resolved!.expiresAt.getTime() - beforeResolve;
+    assert.ok(
+      renewedDelta >= expectedRenewMs - slack &&
+        renewedDelta <= expectedRenewMs + slack,
+      `renewed expiresAt should be ~8 hours out (got delta ${renewedDelta}ms, expected ~${expectedRenewMs}ms)`,
+    );
+
+    const [row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, rowId))
+      .limit(1);
+    assert.ok(row, "renewed session row should still exist");
+    assert.equal(row.rememberMe, false, "rememberMe flag should be preserved");
+    const rowDelta = row.expiresAt.getTime() - beforeResolve;
+    assert.ok(
+      rowDelta >= expectedRenewMs - slack && rowDelta <= expectedRenewMs + slack,
+      `row expiresAt should be ~8 hours out (got delta ${rowDelta}ms)`,
+    );
+  } finally {
+    await deleteUser(userId);
+  }
+});
+
 test("resolveSession: a session whose createdAt is beyond ABSOLUTE_TTL_MS is rejected and its row is deleted", async () => {
   const userId = await makeTestUser();
   try {
