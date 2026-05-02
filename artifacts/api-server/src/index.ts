@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduledPublishWorker } from "./lib/scheduler";
+import { startRevisionRetentionWorker } from "./lib/revisionRetention";
 import { startHubspotWorker, stopHubspotWorker } from "./lib/hubspotSync";
 import { pruneExpiredSessions } from "./lib/sessions";
 import { pruneExpiredAuthStates } from "./lib/authStateStore";
@@ -36,6 +37,7 @@ const server = app.listen(port, (err) => {
 });
 
 const worker = startScheduledPublishWorker(logger);
+const retentionWorker = startRevisionRetentionWorker(logger);
 startHubspotWorker();
 warnIfMisconfigured();
 logSecurityHeaderConfig();
@@ -51,6 +53,7 @@ sessionGc.unref();
 function shutdown(signal: string) {
   logger.info({ signal }, "Shutting down");
   worker.stop();
+  retentionWorker.stop();
   stopHubspotWorker();
   clearInterval(sessionGc);
   server.close(() => process.exit(0));

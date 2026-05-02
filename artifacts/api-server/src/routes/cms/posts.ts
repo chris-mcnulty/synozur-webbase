@@ -19,6 +19,7 @@ import {
   upsertCollateralFromPost,
   softDeleteCollateralForPost,
 } from "../../lib/syncCollateral";
+import { trimPostRevisions } from "../../lib/revisionRetention";
 
 const router: IRouter = Router();
 
@@ -278,6 +279,14 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
     snapshotJson: post as never,
     editedBy: user.id,
   });
+  // Cap per-post revision history (autosave every 15s would otherwise pile
+  // up unbounded large JSON snapshots). Best-effort: a failure here must
+  // not break the user's save.
+  try {
+    await trimPostRevisions(post.id);
+  } catch (err) {
+    req.log.error({ err, postId: post.id }, "trimPostRevisions failed");
+  }
 
   const updates: Partial<typeof postsTable.$inferInsert> = {
     updatedAt: new Date(),
@@ -604,6 +613,12 @@ router.post(
         .where(eq(postsTable.id, post.id))
         .returning();
     });
+    // Best-effort retention trim after the restore snapshot insert.
+    try {
+      await trimPostRevisions(post.id);
+    } catch (err) {
+      req.log.error({ err, postId: post.id }, "trimPostRevisions failed");
+    }
 
     await audit({
       actorId: user.id,
