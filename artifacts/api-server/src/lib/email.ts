@@ -1,11 +1,25 @@
 import { logger } from "./logger";
 import { signUnsubscribeToken } from "./unsubscribeToken";
+import {
+  getUncachableSendGridClient,
+  SendGridNotConfiguredError,
+} from "./sendgridClient";
 
-const RESEND_API_KEY = process.env["RESEND_API_KEY"] ?? "";
-const EMAIL_FROM =
-  process.env["EMAIL_FROM"] ?? "The Synozur Alliance <hello@synozur.com>";
+// Email transport.
+//
+// Delivery goes through SendGrid via the Replit SendGrid connector. The
+// connector must be installed via the Integrations panel — it provides
+// `api_key` and `from_email` and the client is fetched fresh on every send
+// (see `sendgridClient.ts`) so rotated tokens are picked up automatically.
+//
+// `EMAIL_FROM` (e.g. `"Display Name <addr@example.com>"`) and `FORMS_NOTIFY_EMAIL`
+// continue to be honored as before. Without the SendGrid connector all sends
+// are skipped gracefully so local development and tests still work.
+
+const EMAIL_FROM_OVERRIDE = process.env["EMAIL_FROM"] ?? "";
 const FORMS_NOTIFY_EMAIL = process.env["FORMS_NOTIFY_EMAIL"] ?? "";
 const SITE_URL = process.env["SITE_URL"] ?? "https://synozur.com";
+const FROM_NAME = "The Synozur Alliance";
 
 export interface SendEmailArgs {
   to: string;
@@ -20,38 +34,68 @@ export interface SendEmailResult {
   error: string | null;
 }
 
-export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
-  if (!RESEND_API_KEY) {
-    logger.info({ to: args.to, subject: args.subject }, "Email skipped (no RESEND_API_KEY)");
-    return { status: "skipped", error: null };
+// Parse "Display Name <addr@example.com>" or a bare address. Returns the
+// {name?, email} pair SendGrid expects.
+function parseFromOverride(value: string): { email: string; name?: string } | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const angle = trimmed.match(/^(.*)<\s*([^>]+)\s*>\s*$/);
+  if (angle) {
+    const name = angle[1]?.trim().replace(/^"(.*)"$/, "$1") ?? "";
+    const email = angle[2]?.trim() ?? "";
+    if (!email) return null;
+    return name ? { email, name } : { email };
   }
+  return { email: trimmed };
+}
+
+export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
+  let handle;
   try {
-    const body: Record<string, unknown> = {
-      from: EMAIL_FROM,
-      to: [args.to],
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-    };
-    if (args.replyTo) body["reply_to"] = args.replyTo;
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const text = (await res.text()).slice(0, 500);
-      logger.warn({ status: res.status, body: text, to: args.to }, "Email send failed");
-      return { status: "error", error: `http_${res.status}: ${text}` };
-    }
-    return { status: "ok", error: null };
+    handle = await getUncachableSendGridClient();
   } catch (err) {
+    if (err instanceof SendGridNotConfiguredError) {
+      logger.info(
+        { to: args.to, subject: args.subject },
+        "Email skipped (SendGrid connector not configured)",
+      );
+      return { status: "skipped", error: null };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     logger.warn({ err: msg, to: args.to }, "Email send threw");
     return { status: "error", error: msg };
+  }
+
+  const override = parseFromOverride(EMAIL_FROM_OVERRIDE);
+  const from = override ?? { email: handle.fromEmail, name: FROM_NAME };
+
+  try {
+    const message: Parameters<typeof handle.client.send>[0] = {
+      to: args.to,
+      from,
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+      ...(args.replyTo ? { replyTo: args.replyTo } : {}),
+    };
+    await handle.client.send(message);
+    logger.info(
+      { to: args.to, subject: args.subject },
+      "Email sent via SendGrid",
+    );
+    return { status: "ok", error: null };
+  } catch (err) {
+    const e = err as { code?: number; message?: string; response?: { body?: unknown } };
+    const status = typeof e.code === "number" ? e.code : undefined;
+    const msg = e.message ?? String(err);
+    logger.warn(
+      { status, err: msg, to: args.to },
+      "Email send failed",
+    );
+    return {
+      status: "error",
+      error: status ? `http_${status}: ${msg}` : msg,
+    };
   }
 }
 
