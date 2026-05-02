@@ -234,6 +234,8 @@ Set at `/admin/marketing/seo`. Controls:
 - Google and Bing site verification tokens
 - Organization JSON-LD fields (org name, address, logo, `sameAs` links)
 
+> **Important — site verification (L2)**: Search Console and Bing Webmaster verification crawlers do **not** execute JavaScript, so the `seoGoogleSiteVerification` / `seoBingSiteVerification` DB columns are not enough on their own. The `GOOGLE_SITE_VERIFICATION` and `BING_SITE_VERIFICATION` env vars must be set on the SPA server (`artifacts/synozur/server.mjs`), which splices the meta tags directly into the bare HTML response at boot. See [Environment Variables Reference — SPA server](#spa-server-artifactssynozurservermjs) and [`docs/seo-env.md`](docs/seo-env.md).
+
 ### SEO Audit
 
 Available at `/admin/marketing/seo-audit`. Audits every published artifact for missing SEO fields and provides:
@@ -255,6 +257,8 @@ Client-side analytics tags (GA4, LinkedIn Partner, Meta Pixel) load only **after
 LinkedIn Partner ID falls back to the hardcoded value `7337793` when neither the DB setting nor the env var is set.
 
 The API server logs crawler/bot pageviews server-side via the `trafficCrawlerMiddleware` middleware so bot traffic is captured even without JavaScript.
+
+At boot the API server logs the live configuration status of every analytics tag under the `launch-readiness: L5 marketing tag` prefix — check startup logs to confirm `VITE_GA4_ID`, `VITE_LINKEDIN_PARTNER_ID`, and `VITE_META_PIXEL_ID` are set from the expected source (DB or env).
 
 ---
 
@@ -442,8 +446,22 @@ pnpm --filter @workspace/api-server tsx src/scripts/<scriptName>.ts
 | `MS_BOOKINGS_CLIENT_SECRET` | optional | Override for Bookings client secret |
 | `TURNSTILE_SECRET_KEY` | optional | Cloudflare Turnstile server-side secret |
 | `IDLE_TIMEOUT_MS` | optional | Session idle timeout in ms (default 4 hours) |
+| `CSP_ENFORCE` | optional | Set to `1` to flip CSP from Report-Only to enforcing mode on both servers. Default (unset) keeps the policy in report-only mode; see [CSP rollout](#csp-rollout) |
 
-### Marketing site (`artifacts/synozur`)
+### SPA server (`artifacts/synozur/server.mjs`)
+
+Runtime env vars read by `server.mjs` (not baked into the Vite bundle):
+
+| Variable | Description |
+|---|---|
+| `GOOGLE_SITE_VERIFICATION` | Google Search Console verification token. Spliced into `<head>` as `<meta name="google-site-verification">` at boot so verification crawlers (which don't run JS) can confirm site ownership. Rotation requires a redeploy. |
+| `BING_SITE_VERIFICATION` | Bing Webmaster Tools verification token. Spliced in as `<meta name="msvalidate.01">`. |
+| `CSP_REPORT_URI` | Override the CSP `report-uri` directive on the SPA server. Defaults to `/api/csp/report`. |
+| `CSP_ENFORCE` | Set to `1` to flip CSP from Report-Only to enforcing (shared with API server). |
+| `PORT` | SPA server listen port (default `20131`) |
+| `API_PORT` | API server port for OG-tag proxy (default `8080`) |
+
+### Marketing site — Vite build vars (`artifacts/synozur`)
 
 | Variable | Description |
 |---|---|
@@ -463,6 +481,43 @@ pnpm --filter @workspace/api-server tsx src/scripts/<scriptName>.ts
 - The marketing site uses Vite.
 - The API server must be started before the marketing site; the site proxies `/api/*` to the server.
 - SEO artifacts (`/sitemap.xml`, `/robots.txt`, `/llms.txt`) are served directly at the site root by the API server.
+
+### Security headers
+
+Both the API server (`artifacts/api-server/src/lib/securityHeaders.ts`) and the SPA server (`artifacts/synozur/server.mjs`) emit the same set of security headers on every response:
+
+| Header | Value |
+|---|---|
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` (2 years) |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` |
+| `Content-Security-Policy-Report-Only` (or `Content-Security-Policy`) | CSP allowlist (see below) |
+
+The CSP allowlist covers GA4, LinkedIn Insight, Meta Pixel, YouTube, Microsoft Bookings, Google Fonts, Cloudflare Turnstile, and the Libsyn player. When adding a new third-party tag or embed, update **both** `artifacts/api-server/src/lib/securityHeaders.ts` and `artifacts/synozur/server.mjs` to keep the policies in sync.
+
+#### CSP rollout
+
+The CSP ships in **Report-Only mode** by default (browsers post violations to `POST /api/csp/report` but nothing is blocked). Violations are deduplicated into the `csp_violations` table — one row per `(document_path, violated_directive, blocked_uri)` with an `occurrences` counter.
+
+Rollout steps per `backlog.md`:
+1. Deploy with `CSP_ENFORCE` unset (report-only). Monitor the `csp_violations` table.
+2. Run for ≥ 7 days against production traffic.
+3. Once the violation stream is empty for two consecutive days, set `CSP_ENFORCE=1` and redeploy to flip to enforcing mode.
+
+### Launch-readiness startup log
+
+The API server logs the live status of all Tier 1 launch-readiness configuration at boot. Check these prefixes in startup logs to verify production secrets are set:
+
+| Prefix | What it checks |
+|---|---|
+| `launch-readiness: L3 SEO submission` | `INDEXNOW_KEY`, `GOOGLE_INDEXING_SA_JSON`, `BING_API_KEY`+`BING_SITE_URL` |
+| `launch-readiness: L5 marketing tag` | `VITE_GA4_ID`, `VITE_LINKEDIN_PARTNER_ID`, `VITE_META_PIXEL_ID` (DB or env) |
+
+Unconfigured channels log at `warn` level; configured channels log at `info`.
+
+> **L2 verification tokens** (`GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION`) are checked and logged by the **SPA server** (`server.mjs`) at boot, not by the API server's launch-readiness logger.
 
 ---
 
