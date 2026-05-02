@@ -578,6 +578,7 @@ export default function PostEditor({ id }: Props) {
                 <RevisionsPanel
                   postId={postId!}
                   currentTitle={form.title}
+                  currentExcerpt={form.excerpt}
                   currentBodyHtml={form.bodyHtml}
                 />
               )}
@@ -946,10 +947,12 @@ function htmlToText(html: string): string {
 function RevisionsPanel({
   postId,
   currentTitle,
+  currentExcerpt,
   currentBodyHtml,
 }: {
   postId: string;
   currentTitle: string;
+  currentExcerpt: string;
   currentBodyHtml: string;
 }) {
   const qc = useQueryClient();
@@ -1063,7 +1066,7 @@ function RevisionsPanel({
                   data-testid={`button-diff-${rev.id}`}
                 >
                   <GitCompare className="h-3.5 w-3.5 mr-1" />
-                  Diff
+                  Compare
                 </Button>
                 <Button
                   size="sm"
@@ -1089,6 +1092,7 @@ function RevisionsPanel({
         isLoading={detailQ.isLoading}
         isError={detailQ.isError}
         currentTitle={currentTitle}
+        currentExcerpt={currentExcerpt}
         currentBodyHtml={currentBodyHtml}
         onRestore={() => {
           if (viewer) restoreMut.mutate({ id: postId, revisionId: viewer.revisionId });
@@ -1109,6 +1113,7 @@ function RevisionViewer(props: {
   isLoading: boolean;
   isError: boolean;
   currentTitle: string;
+  currentExcerpt: string;
   currentBodyHtml: string;
   onRestore: () => void;
   restorePending: boolean;
@@ -1123,6 +1128,7 @@ function RevisionViewer(props: {
     isLoading,
     isError,
     currentTitle,
+    currentExcerpt,
     currentBodyHtml,
     onRestore,
     restorePending,
@@ -1139,13 +1145,16 @@ function RevisionViewer(props: {
     if (!detail) return null;
     const oldTitle = detail.snapshotTitle ?? "";
     const newTitle = currentTitle;
+    const oldExcerpt = detail.snapshotExcerpt ?? "";
+    const newExcerpt = currentExcerpt;
     const oldBody = htmlToText(detail.snapshotBodyHtml ?? "");
     const newBody = htmlToText(currentBodyHtml ?? "");
     return {
       title: diffWords(oldTitle, newTitle),
+      excerpt: diffWords(oldExcerpt, newExcerpt),
       body: diffWords(oldBody, newBody),
     };
-  }, [detail, currentTitle, currentBodyHtml]);
+  }, [detail, currentTitle, currentExcerpt, currentBodyHtml]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1216,15 +1225,38 @@ function RevisionViewer(props: {
               <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                 Title
               </div>
-              <div className="mb-4 leading-relaxed">
+              <div
+                className="mb-4 leading-relaxed"
+                data-testid="revision-diff-title"
+              >
                 {diffTokens?.title.map((t, i) => (
                   <DiffSpan key={`t-${i}`} token={t} />
                 ))}
               </div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                Excerpt
+              </div>
+              <div
+                className="mb-4 whitespace-pre-wrap leading-relaxed"
+                data-testid="revision-diff-excerpt"
+              >
+                {diffTokens?.excerpt.length === 0 ? (
+                  <span className="italic text-muted-foreground">
+                    (no excerpt)
+                  </span>
+                ) : (
+                  diffTokens?.excerpt.map((t, i) => (
+                    <DiffSpan key={`e-${i}`} token={t} />
+                  ))
+                )}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                 Body
               </div>
-              <div className="whitespace-pre-wrap leading-relaxed">
+              <div
+                className="whitespace-pre-wrap leading-relaxed"
+                data-testid="revision-diff-body"
+              >
                 {diffTokens?.body.map((t, i) => (
                   <DiffSpan key={`b-${i}`} token={t} />
                 ))}
