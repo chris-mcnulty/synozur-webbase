@@ -17,7 +17,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
 import { db, pool, sessionsTable, usersTable } from "@workspace/db";
-import { createSession, pruneExpiredSessions, resolveSession } from "./sessions";
+import {
+  createSession,
+  destroyAllSessionsForUser,
+  destroySessionById,
+  listSessionsForUser,
+  pruneExpiredSessions,
+  resolveSession,
+} from "./sessions";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -479,6 +486,160 @@ test("pruneExpiredSessions: deletes only rows with expiresAt in the past", async
     assert.equal(liveRow.userId, userId, "the surviving row belongs to our test user");
   } finally {
     // Cascades to any remaining sessions via the FK on sessions.user_id.
+    await deleteUser(userId);
+  }
+});
+
+test("destroyAllSessionsForUser: deletes only the target user's sessions", async () => {
+  const targetUserId = await makeTestUser();
+  const otherUserId = await makeTestUser();
+  try {
+    const t1 = await createSession({ userId: targetUserId, userAgent: null, ip: null });
+    const t2 = await createSession({ userId: targetUserId, userAgent: null, ip: null });
+    const o1 = await createSession({ userId: otherUserId, userAgent: null, ip: null });
+
+    await destroyAllSessionsForUser(targetUserId);
+
+    const [t1Row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, t1.rowId))
+      .limit(1);
+    const [t2Row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, t2.rowId))
+      .limit(1);
+    const [o1Row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, o1.rowId))
+      .limit(1);
+
+    assert.equal(t1Row, undefined, "target user's first session should be deleted");
+    assert.equal(t2Row, undefined, "target user's second session should be deleted");
+    assert.ok(o1Row, "other user's session should remain untouched");
+    assert.equal(o1Row.userId, otherUserId);
+  } finally {
+    await deleteUser(targetUserId);
+    await deleteUser(otherUserId);
+  }
+});
+
+test("destroySessionById: deletes only the targeted row", async () => {
+  const userId = await makeTestUser();
+  try {
+    const a = await createSession({ userId, userAgent: null, ip: null });
+    const b = await createSession({ userId, userAgent: null, ip: null });
+
+    await destroySessionById(a.rowId);
+
+    const [aRow] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, a.rowId))
+      .limit(1);
+    const [bRow] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, b.rowId))
+      .limit(1);
+
+    assert.equal(aRow, undefined, "targeted session row should be deleted");
+    assert.ok(bRow, "non-targeted session row for same user should remain");
+    assert.equal(bRow.id, b.rowId);
+  } finally {
+    await deleteUser(userId);
+  }
+});
+
+test("destroySessionById: deleting a non-existent id is a no-op", async () => {
+  const userId = await makeTestUser();
+  try {
+    const a = await createSession({ userId, userAgent: null, ip: null });
+
+    // Random hex of the same shape as a real session id.
+    await destroySessionById("0".repeat(64));
+
+    const [aRow] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, a.rowId))
+      .limit(1);
+    assert.ok(aRow, "real session should be untouched by deleting an unrelated id");
+  } finally {
+    await deleteUser(userId);
+  }
+});
+
+test("listSessionsForUser: returns only non-expired sessions for the target user", async () => {
+  const targetUserId = await makeTestUser();
+  const otherUserId = await makeTestUser();
+  try {
+    const live1 = await createSession({
+      userId: targetUserId,
+      userAgent: "ua-live-1",
+      ip: "10.0.0.1",
+    });
+    const live2 = await createSession({
+      userId: targetUserId,
+      userAgent: "ua-live-2",
+      ip: "10.0.0.2",
+      rememberMe: true,
+    });
+    const expired = await createSession({
+      userId: targetUserId,
+      userAgent: "ua-expired",
+      ip: "10.0.0.3",
+    });
+    const otherLive = await createSession({
+      userId: otherUserId,
+      userAgent: "ua-other",
+      ip: "10.0.0.4",
+    });
+
+    // Backdate one of the target's sessions to be expired.
+    const past = new Date(Date.now() - HOUR);
+    await db
+      .update(sessionsTable)
+      .set({ expiresAt: past })
+      .where(eq(sessionsTable.id, expired.rowId));
+
+    const summaries = await listSessionsForUser(targetUserId);
+    const ids = summaries.map((s) => s.id).sort();
+    const expectedIds = [live1.rowId, live2.rowId].sort();
+    assert.deepEqual(
+      ids,
+      expectedIds,
+      "should list both live sessions and exclude the expired one",
+    );
+    assert.ok(
+      !ids.includes(expired.rowId),
+      "expired session must not appear in the list",
+    );
+    assert.ok(
+      !ids.includes(otherLive.rowId),
+      "other user's session must not appear in the list",
+    );
+
+    // Spot-check the projected fields on a known row.
+    const live2Summary = summaries.find((s) => s.id === live2.rowId);
+    assert.ok(live2Summary, "live2 should be present");
+    assert.equal(live2Summary!.userAgent, "ua-live-2");
+    assert.equal(live2Summary!.ip, "10.0.0.2");
+    assert.equal(live2Summary!.rememberMe, true);
+  } finally {
+    await deleteUser(targetUserId);
+    await deleteUser(otherUserId);
+  }
+});
+
+test("listSessionsForUser: returns empty array when user has no sessions", async () => {
+  const userId = await makeTestUser();
+  try {
+    const summaries = await listSessionsForUser(userId);
+    assert.deepEqual(summaries, [], "user with no sessions should get []");
+  } finally {
     await deleteUser(userId);
   }
 });
