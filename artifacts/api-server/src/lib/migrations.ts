@@ -1238,6 +1238,37 @@ export async function runMigrations(): Promise<void> {
         JOIN capabilities c ON c.name = g.cap_name
       ON CONFLICT DO NOTHING;
     `);
+    // 36. csp_violations — #155 / launch readiness L4. Browser-posted CSP
+    //     violation reports while the policy is rolled out in Report-Only
+    //     mode. One row per (document_path, violated_directive, blocked_uri)
+    //     dedup key; occurrences and last_seen_at are bumped on repeat
+    //     reports so the table stays small.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS csp_violations (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_path text NOT NULL,
+        violated_directive text NOT NULL,
+        effective_directive text,
+        blocked_uri text NOT NULL,
+        original_policy text,
+        disposition text,
+        status_code integer,
+        user_agent text,
+        raw_report jsonb,
+        occurrences integer NOT NULL DEFAULT 1,
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS csp_violations_dedup_idx
+        ON csp_violations (document_path, violated_directive, blocked_uri);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS csp_violations_last_seen_idx
+        ON csp_violations (last_seen_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

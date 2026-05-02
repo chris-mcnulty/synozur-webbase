@@ -34,6 +34,7 @@ export * from "./contentParentPages";
 export * from "./bookings";
 export * from "./hubspotSync";
 export * from "./cwvSamples";
+export * from "./cspViolations";
 export * from "./publishBlocks";
 export * from "./oauth";
 export * from "./groundingDocuments";

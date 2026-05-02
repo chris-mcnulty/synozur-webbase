@@ -12,6 +12,7 @@ import { handleLlmsTxt, handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
 import oauthRouter from "./routes/oauth";
 import { matchIndexNowKeyPath } from "./lib/seoSubmit";
+import { securityHeadersMiddleware } from "./lib/securityHeaders";
 
 const app: Express = express();
 
@@ -35,9 +36,19 @@ app.use(
   }),
 );
 
+// Security headers via helmet (#155 / launch readiness L4). CSP runs in
+// Report-Only mode by default; flip to enforcing with CSP_ENFORCE=1 once
+// the violation stream is empty for two consecutive days. Must come before
+// any handler that writes a response so the headers are set on every reply.
+app.use(securityHeadersMiddleware());
+
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
+// CSP violation reports use the application/csp-report media type per the
+// spec; modern Chromium also accepts application/reports+json. Both are
+// parsed as JSON and routed through the same body parser.
+app.use(express.json({ type: ["application/csp-report", "application/reports+json"], limit: "64kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Native session resolver — populates `req.authedUser` and `req.session` if a
