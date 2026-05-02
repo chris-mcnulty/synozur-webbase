@@ -1292,6 +1292,32 @@ export async function runMigrations(): Promise<void> {
       ALTER TABLE users DROP COLUMN IF EXISTS last_sso_provider;
     `);
 
+    // 39. Backfill `auth_provider = 'imported'` for placeholder author rows
+    //     that survived the `clerk_user_id → external_subject` rename in
+    //     step 1. Those historical rows kept their `external_subject`
+    //     ('system:imported-from-wix' / 'import:wix:<slug>' / fixPostAuthors
+    //     'imported:<local-part>') but `auth_provider` was never set, so the
+    //     post-cleanup lookups in `tools/insights-crawler/{ingest,backfill-
+    //     authors}.ts` and `scripts/linkImportedAuthors.ts` — which now
+    //     filter on `auth_provider = 'imported' AND external_subject = …`
+    //     to match the canonical pattern — would miss the historical rows
+    //     and break idempotency on a pre-cleanup install.
+    //
+    //     Idempotent: only updates rows where `auth_provider IS NULL`, so
+    //     re-running is a no-op and rows that are already canonical
+    //     ('entra' / 'local' / etc.) are not touched.
+    await db.execute(sql`
+      UPDATE users
+         SET auth_provider = 'imported'
+       WHERE auth_provider IS NULL
+         AND external_subject IS NOT NULL
+         AND (
+           external_subject = 'system:imported-from-wix'
+           OR external_subject LIKE 'import:wix:%'
+           OR external_subject LIKE 'imported:%'
+         );
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

@@ -81,13 +81,22 @@ Follow-up items, in recommended order:
    native flow for ≥30 days. Keep an exported user list around for the
    audit trail; cancel the subscription afterwards.
 
-5. ~~**Backfill `external_subject` / `auth_provider` for imported-author
-   rows.**~~ **Shipped (May 2026).**
+5. ~~**Pre-link directory metadata for imported-author rows.**~~
+   **Shipped (May 2026).**
    `artifacts/api-server/src/scripts/linkImportedAuthors.ts` resolves
    `auth_provider="imported"` rows against Microsoft Graph
    (`/users?$filter=mail eq '…' or userPrincipalName eq '…'`) and
-   rewrites `external_subject` + `entra_object_id` + `auth_provider`
-   in bulk. Defaults to dry-run; pass `--apply` to write. Requires
+   populates `entra_object_id` + `entra_tenant_id` in bulk so admin
+   queries can show the directory linkage before first sign-in.
+   `external_subject` is intentionally NOT touched: for Entra users
+   that column holds the OIDC `sub` claim, not the directory object
+   id, and pre-populating it would cause the callback's
+   `(auth_provider, external_subject)` lookup to miss the row on
+   first sign-in. Leaving `auth_provider = 'imported'` keeps the row
+   visible to the callback's email-fallback branch in
+   `routes/auth.ts`, which writes the real `sub` to
+   `external_subject` at sign-in time and flips the provider to
+   `entra`. Defaults to dry-run; pass `--apply` to write. Requires
    `ENTRA_TENANT_ID` + `ENTRA_APP_CLIENT_ID` + `ENTRA_APP_CLIENT_SECRET`
    with `User.Read.All` application permission and admin consent.
 

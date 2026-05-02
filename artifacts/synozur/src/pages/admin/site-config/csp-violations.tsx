@@ -147,6 +147,7 @@ export default function CspViolationsPage() {
       apiFetch<undefined>(`/api/cms/csp/violations/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp-violations"] });
+      void qc.invalidateQueries({ queryKey: ["csp-readiness"] });
       toast({ title: "Violation removed" });
     },
     onError: () => toast({ title: "Delete failed", variant: "destructive" }),
@@ -158,6 +159,7 @@ export default function CspViolationsPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp-violations"] });
       void qc.invalidateQueries({ queryKey: ["csp-directives"] });
+      void qc.invalidateQueries({ queryKey: ["csp-readiness"] });
       setPage(0);
       toast({ title: "All violations cleared" });
     },
@@ -182,6 +184,7 @@ export default function CspViolationsPage() {
             onClick={() => {
               void qc.invalidateQueries({ queryKey: ["csp-violations"] });
               void qc.invalidateQueries({ queryKey: ["csp-directives"] });
+              void qc.invalidateQueries({ queryKey: ["csp-readiness"] });
             }}
             disabled={isFetching}
           >

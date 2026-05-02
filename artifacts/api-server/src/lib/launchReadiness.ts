@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { siteSettingsTable } from "@workspace/db/schema";
 import { logger } from "./logger";
+import { siteOrigin } from "./siteOrigin";
 
 // Launch-readiness configuration check (BACKLOG.md "Launch Readiness" Tier 1).
 //
@@ -39,19 +40,70 @@ export interface LaunchReadinessReport {
   groups: LaunchReadinessGroup[];
 }
 
-function checkVerificationMetaTags(): ChannelStatus[] {
-  const google = (process.env.GOOGLE_SITE_VERIFICATION ?? "").trim();
-  const bing = (process.env.BING_SITE_VERIFICATION ?? "").trim();
+// Probe the public SPA HTML for the verification meta tags rather than
+// reading our own process.env. The verification tags are spliced into the
+// HTML response by the *separate* SPA server (artifacts/synozur/server.mjs)
+// from its own env vars; the api-server's env may differ, so reading
+// process.env here would lie to operators in either direction. Probing
+// the rendered HTML is the only truthful signal that the public bot
+// crawl will actually see the tags.
+//
+// Best-effort: a probe failure (origin unreachable, timeout, non-2xx) is
+// reported as `configured: false` with a `detail` explaining why, never
+// throws. The probe response is small (HTML head only), so we cap the
+// read and the timeout to keep the admin endpoint snappy.
+async function checkVerificationMetaTags(): Promise<ChannelStatus[]> {
+  const origin = siteOrigin();
+  let html: string | null = null;
+  let probeError: string | null = null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(origin, {
+        headers: { "User-Agent": "synozur-launch-readiness/1.0" },
+        signal: controller.signal,
+        redirect: "follow",
+      });
+      if (!res.ok) {
+        probeError = `probe of ${origin} returned ${res.status}`;
+      } else {
+        // Cap the read at 64 KB — the verification tags live in <head>,
+        // well before any meaningful body content.
+        const buf = await res.arrayBuffer();
+        const slice = buf.byteLength > 65_536 ? buf.slice(0, 65_536) : buf;
+        html = new TextDecoder("utf-8", { fatal: false }).decode(slice);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    probeError = `probe of ${origin} threw: ${(err as Error).message}`;
+  }
+
+  function detect(metaName: string): boolean {
+    if (!html) return false;
+    // Match `<meta name="…">` with the metaName as either name= or
+    // property= attribute, in any order, with single or double quotes.
+    const re = new RegExp(
+      `<meta\\s+[^>]*name\\s*=\\s*["']${metaName.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}["'][^>]*content\\s*=\\s*["'][^"']+["']`,
+      "i",
+    );
+    return re.test(html);
+  }
+
   return [
     {
       name: "Google Search Console",
-      configured: google.length > 0,
-      source: "GOOGLE_SITE_VERIFICATION",
+      configured: detect("google-site-verification"),
+      source: `GOOGLE_SITE_VERIFICATION (rendered into ${origin})`,
+      detail: probeError ?? undefined,
     },
     {
       name: "Bing Webmaster verification",
-      configured: bing.length > 0,
-      source: "BING_SITE_VERIFICATION",
+      configured: detect("msvalidate.01"),
+      source: `BING_SITE_VERIFICATION (rendered into ${origin})`,
+      detail: probeError ?? undefined,
     },
   ];
 }
@@ -159,7 +211,7 @@ export async function getLaunchReadinessReport(): Promise<LaunchReadinessReport>
     {
       tier: "L2",
       label: "Search Console + Bing Webmaster verification",
-      channels: checkVerificationMetaTags(),
+      channels: await checkVerificationMetaTags(),
     },
     {
       tier: "L3",

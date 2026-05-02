@@ -1,18 +1,28 @@
 /**
- * Resolve placeholder users created by the imported-author flow against
- * Microsoft Graph and rewrite them to real Entra identities. The OIDC
- * callback already does this for any imported author who eventually signs
- * in, but authors who never sign in stay as `auth_provider="imported"`
- * forever and never gain a working sign-in path.
+ * Pre-link placeholder users created by the imported-author flow to their
+ * real Entra directory entries via Microsoft Graph, so `/admin/access/users`
+ * can show their org context (groups, tenant, object id) before they ever
+ * sign in. The OIDC callback already absorbs imported placeholders on first
+ * sign-in via its email-fallback path, but authors who never sign in stay
+ * as bare `auth_provider="imported"` rows with no directory linkage.
  *
  * For each user with `auth_provider = 'imported'` and a non-null email,
- * queries `GET /users?$filter=mail eq '…'` (with a fallback to
- * `userPrincipalName eq '…'` for accounts whose `mail` attribute is unset)
- * against the Synozur tenant. When a match is found the row is rewritten:
- *   - external_subject  → the Entra object id (Graph `id`)
- *   - entra_object_id   → the Entra object id (mirror)
+ * queries `GET /users?$filter=mail eq '…' or userPrincipalName eq '…'`
+ * against the Synozur tenant. When a match is found the row is updated:
+ *   - entra_object_id   → the Graph `id` (directory object id, the `oid`
+ *                         claim Entra delivers — distinct from the OIDC
+ *                         `sub` claim that the callback writes to
+ *                         `external_subject` on first real sign-in)
  *   - entra_tenant_id   → ENTRA_TENANT_ID
- *   - auth_provider     → "entra"
+ *
+ * `external_subject` is intentionally NOT touched. Pre-populating it with
+ * the object id would cause the callback's `(auth_provider,
+ * external_subject)` lookup to miss the row on first sign-in (since the
+ * `sub` claim is opaque per-app and not equal to the object id) and
+ * create a duplicate user. Leaving `auth_provider = 'imported'` keeps
+ * the row visible to the callback's email-fallback branch in
+ * `routes/auth.ts`, which writes the real `sub` to `external_subject`
+ * at sign-in time and flips the provider to `entra`.
  *
  * Uses the same app-only credential plumbing as the runtime sign-in path
  * (`ENTRA_TENANT_ID` + `ENTRA_APP_CLIENT_ID` + `ENTRA_APP_CLIENT_SECRET`,
@@ -106,7 +116,6 @@ async function main(): Promise<void> {
       id: usersTable.id,
       email: usersTable.email,
       displayName: usersTable.displayName,
-      externalSubject: usersTable.externalSubject,
     })
     .from(usersTable)
     .where(
@@ -144,15 +153,29 @@ async function main(): Promise<void> {
       console.log(
         `  ✓ ${email} → ${match.id} (${match.displayName ?? "(no name)"})`,
       );
+      // Count the match before the dry-run early-exit so the summary
+      // reflects "would-link" totals an operator can act on.
+      linked++;
       if (!APPLY) continue;
 
+      // Deliberately do NOT overwrite `external_subject` here. For Entra
+      // users `external_subject` is the OIDC `sub` claim (per-app, opaque,
+      // delivered in the ID token at sign-in), not the directory object id.
+      // Pre-populating it with `match.id` would cause the OIDC callback's
+      // `(auth_provider, external_subject)` lookup to miss the row on
+      // first sign-in and create a duplicate user instead of upgrading
+      // this placeholder. Leave `auth_provider = 'imported'` so the
+      // callback's email-fallback path (`byEmail && (!externalSubject ||
+      // authProvider === 'imported')`) absorbs the row and writes the
+      // real `sub` at sign-in time. We still populate `entra_object_id`
+      // and `entra_tenant_id` so admin queries (group reconciliation,
+      // /admin/access/users provider filter) can match the row in
+      // advance of first sign-in.
       await db
         .update(usersTable)
         .set({
-          externalSubject: match.id,
           entraObjectId: match.id,
           entraTenantId: tenantId,
-          authProvider: "entra",
         })
         .where(eq(usersTable.id, user.id));
       await db.insert(auditLogTable).values({
@@ -162,12 +185,10 @@ async function main(): Promise<void> {
         entityId: user.id,
         diffJson: {
           email,
-          previousSubject: user.externalSubject,
           entraObjectId: match.id,
           tenantId,
         } as never,
       });
-      linked++;
     } catch (err) {
       errored++;
       console.error(`  ✗ ${email}: ${(err as Error).message}`);
@@ -175,7 +196,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `\nDone. linked=${linked} unmatched=${unmatched} errored=${errored} (apply=${APPLY})`,
+    `\nDone. ${APPLY ? "linked" : "would-link"}=${linked} unmatched=${unmatched} errored=${errored} (apply=${APPLY})`,
   );
   await pool.end();
 }

@@ -176,8 +176,16 @@ function normalizeAuthorName(raw: string | null): string | null {
  * same person share one row (keyed on `authProvider="imported"` +
  * `externalSubject="import:wix:<slug>"`) so their display name shows up on the
  * blog. Falls back to the generic system author when the source post has no
- * `authorName`. The OIDC callback rewrites these placeholder rows to
- * `authProvider="entra"` once the matching email signs in for the first time.
+ * `authorName`.
+ *
+ * These placeholders intentionally have `email: null` because the Wix export
+ * carries display names, not addresses. The OIDC callback's email-fallback
+ * branch in `routes/auth.ts` cannot match them (no email to compare against),
+ * so they will NOT be auto-upgraded on first Entra sign-in. To retire a
+ * placeholder, run `artifacts/api-server/src/scripts/fixPostAuthors.ts` first
+ * (which assigns canonical emails per the KNOWN_AUTHORS table) and then
+ * `linkImportedAuthors.ts` to pre-populate the directory linkage so the
+ * callback can absorb the row on next sign-in.
  */
 async function ensureAuthorForName(
   rawName: string | null,

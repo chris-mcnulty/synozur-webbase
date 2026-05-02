@@ -67,7 +67,7 @@ test.describe("Sign-in smoke", () => {
     expect(location).toMatch(/[?&]code_challenge=/);
   });
 
-  test("full /sign-in → Entra → /callback → /api/auth/me round-trip", async ({ page, request }) => {
+  test("full /sign-in → Entra → /callback → /api/auth/me round-trip", async ({ page }) => {
     test.skip(
       !ENTRA_TEST_USER || !ENTRA_TEST_PASS,
       "Set E2E_ENTRA_TEST_USER_EMAIL + E2E_ENTRA_TEST_USER_PASSWORD to enable",
@@ -91,12 +91,21 @@ test.describe("Sign-in smoke", () => {
     }
 
     // Back on our origin, the /callback route consumes the OAuth code and
-    // redirects to `/` (or returnTo).
-    await page.waitForURL((url) => url.origin === new URL(page.url()).origin, {
-      timeout: 30_000,
-    });
+    // redirects to `/` (or returnTo). Wait for the URL to leave the
+    // login.microsoftonline.com host — Playwright's predicate-based
+    // waitForURL fires whenever the URL changes, so anchoring the check
+    // on the host means we wait through the post-Microsoft redirects
+    // (consent → /callback → /) until we're back on this app.
+    await page.waitForURL(
+      (url) => !url.hostname.includes("login.microsoftonline.com"),
+      { timeout: 30_000 },
+    );
 
-    const me = await request
+    // Use the page's bound request context (not the standalone `request`
+    // fixture) so `/api/auth/me` carries the session cookie just set by
+    // the /callback flow. Otherwise the request would go through a fresh
+    // context with no cookies and always come back unauthenticated.
+    const me = await page.request
       .get("/api/auth/me")
       .then((r) => r.json() as Promise<{ id?: string; email?: string }>);
     expect(me.id).toBeTruthy();
