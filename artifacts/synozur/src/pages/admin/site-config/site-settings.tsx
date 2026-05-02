@@ -1164,6 +1164,7 @@ function AltHomeSection(props: AltHomeSectionProps) {
               ? "Inherited from Home"
               : null
         }
+        previewUrl={props.heroVideoUrl ?? props.inheritedVideoUrl}
         testIdPrefix="homeb-hero-video"
         onPick={props.onOpenVideo}
         onReset={props.onResetVideo}
@@ -1239,6 +1240,7 @@ function HomePageSection(props: HomeSectionProps) {
         helper="Custom video played silently on loop in the hero section when the type is set to Video. When cleared, the bundled default video is used."
         isOverridden={props.heroVideoUrl != null}
         originalName={props.heroVideoUrl ? "Custom video" : null}
+        previewUrl={props.heroVideoUrl}
         testIdPrefix="home-hero-video"
         onPick={props.onOpenVideo}
         onReset={props.onResetVideo}
@@ -1326,6 +1328,7 @@ interface VideoPickerProps {
   helper: string;
   isOverridden: boolean;
   originalName: string | null;
+  previewUrl?: string | null;
   testIdPrefix: string;
   onPick: () => void;
   onReset: () => void;
@@ -1336,7 +1339,7 @@ interface VideoPickerProps {
   resetLabel?: string;
 }
 
-function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, onPick, onReset, disabled, emptyLabel, resetLabel }: VideoPickerProps) {
+function VideoPicker({ label, helper, isOverridden, originalName, previewUrl, testIdPrefix, onPick, onReset, disabled, emptyLabel, resetLabel }: VideoPickerProps) {
   return (
     <div className="space-y-2">
       <div>
@@ -1344,8 +1347,30 @@ function VideoPicker({ label, helper, isOverridden, originalName, testIdPrefix, 
         <p className="text-xs text-muted-foreground">{helper}</p>
       </div>
       <div className="flex items-center gap-4">
-        <div className="w-40 h-24 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center">
-          {isOverridden ? (
+        <div className="w-40 h-24 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center relative">
+          {isOverridden && previewUrl ? (
+            <>
+              <video
+                key={previewUrl}
+                src={previewUrl}
+                className="w-full h-full object-cover"
+                muted
+                loop
+                autoPlay
+                playsInline
+                preload="metadata"
+                data-testid={`${testIdPrefix}-preview`}
+              />
+              {originalName && (
+                <span
+                  className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/60 truncate px-1 py-0.5"
+                  title={originalName}
+                >
+                  {originalName}
+                </span>
+              )}
+            </>
+          ) : isOverridden ? (
             <div className="flex flex-col items-center gap-1 p-2 text-center">
               <VideoIcon className="h-8 w-8 text-primary" />
               {originalName && (
