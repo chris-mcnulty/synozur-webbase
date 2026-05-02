@@ -104,12 +104,17 @@ function checkKeywords(text: string, keywords: string[]): string | null {
   return null;
 }
 
-async function checkAkismet(payload: CommentPayload): Promise<boolean | null> {
+interface AkismetResult {
+  isSpam: boolean;
+  discard: boolean;
+}
+
+async function checkAkismet(payload: CommentPayload): Promise<AkismetResult | null> {
   const apiKey = process.env["AKISMET_API_KEY"];
   if (!apiKey) return null;
   try {
     const blog = process.env["SITE_URL"] ?? "https://www.synozur.com";
-    const body = new URLSearchParams({
+    const params: Record<string, string> = {
       blog,
       user_ip: payload.ip ?? "127.0.0.1",
       user_agent: payload.userAgent ?? "",
@@ -117,8 +122,13 @@ async function checkAkismet(payload: CommentPayload): Promise<boolean | null> {
       comment_author_email: payload.authorEmail,
       comment_content: payload.bodyText,
       comment_type: "comment",
-      ...(payload.postUrl ? { permalink: payload.postUrl } : {}),
-    });
+    };
+    if (payload.postUrl) params["permalink"] = payload.postUrl;
+    // Opt-in test mode for environments doing integration testing — Akismet
+    // will not learn from these submissions when `is_test=1`.
+    if (process.env["AKISMET_TEST"] === "1") params["is_test"] = "1";
+    const body = new URLSearchParams(params);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), AKISMET_TIMEOUT_MS);
     try {
@@ -129,15 +139,34 @@ async function checkAkismet(payload: CommentPayload): Promise<boolean | null> {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             "User-Agent": "SynozurCMS/1.0 | Akismet/1.0",
+            // Ask Akismet to include a debug-help header on `invalid` responses
+            // so we can surface the reason in our logs without leaking it to
+            // end users.
+            "Akismet-DEBUG-Help": "1",
           },
           body: body.toString(),
           signal: controller.signal,
         },
       );
-      clearTimeout(timeout);
-      const text = await res.text();
-      if (text.trim() === "true") return true;
-      if (text.trim() === "false") return false;
+      const text = (await res.text()).trim();
+      const proTip = res.headers.get("x-akismet-pro-tip") ?? "";
+      const debugHelp = res.headers.get("x-akismet-debug-help") ?? "";
+      if (text === "true") {
+        return { isSpam: true, discard: proTip === "discard" };
+      }
+      if (text === "false") {
+        return { isSpam: false, discard: false };
+      }
+      // Akismet returns the literal string "invalid" when the API key (or
+      // another required field) is rejected. Surface the debug header so the
+      // operator can fix the misconfiguration.
+      if (text === "invalid") {
+        logger.warn(
+          { debugHelp },
+          "Akismet rejected request as invalid; falling back to rule-based scorer",
+        );
+        return null;
+      }
       logger.warn({ response: text }, "Akismet returned unexpected response");
       return null;
     } finally {
@@ -146,6 +175,40 @@ async function checkAkismet(payload: CommentPayload): Promise<boolean | null> {
   } catch (err) {
     logger.warn({ err }, "Akismet check failed, falling back to rule-based scorer");
     return null;
+  }
+}
+
+/**
+ * Validate an Akismet API key against the verify-key endpoint. Returns true
+ * when Akismet replies with "valid". Used at server startup to log a clear
+ * warning if the configured key is wrong, and exposed for ad-hoc checks.
+ */
+export async function verifyAkismetKey(): Promise<boolean | null> {
+  const apiKey = process.env["AKISMET_API_KEY"];
+  if (!apiKey) return null;
+  const blog = process.env["SITE_URL"] ?? "https://www.synozur.com";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AKISMET_TIMEOUT_MS);
+  try {
+    const res = await fetch("https://rest.akismet.com/1.1/verify-key", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "SynozurCMS/1.0 | Akismet/1.0",
+      },
+      body: new URLSearchParams({ key: apiKey, blog }).toString(),
+      signal: controller.signal,
+    });
+    const text = (await res.text()).trim();
+    if (text === "valid") return true;
+    const debugHelp = res.headers.get("x-akismet-debug-help") ?? "";
+    logger.warn({ response: text, debugHelp }, "Akismet verify-key did not return 'valid'");
+    return false;
+  } catch (err) {
+    logger.warn({ err }, "Akismet verify-key request failed");
+    return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -177,10 +240,16 @@ export async function scoreComment(payload: CommentPayload): Promise<SpamVerdict
   const ruleIsSpam = signals.length > 0;
 
   const akismetVerdict = await checkAkismet(payload);
-  if (akismetVerdict === true) {
+  if (akismetVerdict?.isSpam) {
     signals.push("akismet");
+    if (akismetVerdict.discard) {
+      // Akismet's "discard" pro-tip means the comment is so blatantly spam
+      // it's safe to drop without admin review. We still file it under spam
+      // so admins can audit, but tag it so the UI can surface that hint.
+      signals.push("akismet-discard");
+    }
   }
 
-  const isSpam = ruleIsSpam || akismetVerdict === true;
+  const isSpam = ruleIsSpam || akismetVerdict?.isSpam === true;
   return { isSpam, signals };
 }

@@ -69,6 +69,7 @@ function formatSignal(signal: string): string {
     return `Blocked domain: ${signal.split(":")[1]}`;
   }
   if (signal === "akismet") return "Flagged by Akismet";
+  if (signal === "akismet-discard") return "Akismet: definite spam (safe to discard)";
   return signal;
 }
 

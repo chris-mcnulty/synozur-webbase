@@ -34,8 +34,8 @@ Each row links to the canonical backlog entry below where the implementation det
 
 ### Tier 2 — Strongly recommended, ship before announcing
 
-- [ ] **L8. Akismet production key** → #152 residual.
-  Set `AKISMET_API_KEY` in production; without it the site falls back to rule-based scoring, which leaks spam comments at scale once the comment surface gets organic traffic.
+- [x] **L8. Akismet production key** → #152 residual. **Shipped May 2026.**
+  `AKISMET_API_KEY` is provisioned (verified `valid` against `rest.akismet.com/1.1/verify-key`) and the comment-check round-trip was confirmed end-to-end with the documented `viagra-test-123` always-spam pattern (lands as `status=spam` with `spam_signals=["akismet"]`) and a ham control (lands as `status=pending`). Rule-based fallback still kicks in when Akismet is unavailable (timeout / error / `invalid`).
 - [ ] **L9. Auth + rate-limit smoke tests in CI** → #119, #144.
   Sign-in Playwright test exercising `/sign-in → Entra → /callback → /api/auth/me`, plus a test that confirms the registration endpoint returns 429 above the rate-limit threshold. Both protect surfaces that will get probed within hours of launch.
   **Code shipped (sign-in tier):** `artifacts/synozur/tests/sign-in.spec.ts` (PR #71) covers (a) always-on render assertions on `/sign-in` plus a verified redirect from the Entra button to `login.microsoftonline.com` with `client_id` and `code_challenge` query params asserted, and (b) a full `/sign-in → Entra → /callback → /api/auth/me` round-trip gated on `E2E_ENTRA_TEST_USER_EMAIL` + `E2E_ENTRA_TEST_USER_PASSWORD` env vars so CI doesn't require an Entra test tenant by default. **Remaining gap:** provision those two secrets for the CI environment to unlock the full round-trip; the rate-limit (429) test is not yet written.
@@ -123,10 +123,10 @@ Editors filling out collateral fields have to navigate away to the public Librar
 
 The spam moderation tab is functional but there is no visual indicator in the admin sidebar that spam comments are waiting for review. Moderators have to navigate to the tab to discover whether there is pending work. This task adds a count badge to the moderation nav item that shows the number of unreviewed spam-flagged comments so the backlog is visible at a glance.
 
-### ~~#152 · Add Akismet integration to catch more spam automatically~~ **— Shipped (code path); production credentials pending**
+### ~~#152 · Add Akismet integration to catch more spam automatically~~ **— Shipped May 2026**
 **Depends on:** #54 (Insights comments)
 
-~~The current spam scorer uses rule-based heuristics — link count, keyword list, domain blocklist.~~ **Shipped:** the `checkAkismet` function in `artifacts/api-server/src/lib/spamScorer.ts` is fully wired with HTTP POST, timeout handling, and a graceful fallback when the API call fails. Activates when `AKISMET_API_KEY` is set. Residual: provision the production key and confirm Akismet scores blend correctly with the existing rule layer (track alongside #102 production-credential verification).
+~~The current spam scorer uses rule-based heuristics — link count, keyword list, domain blocklist.~~ **Shipped:** `checkAkismet` in `artifacts/api-server/src/lib/spamScorer.ts` is fully wired (HTTP POST, 5 s timeout, graceful fallback) and now also captures Akismet's `X-akismet-pro-tip: discard` header (surfaced as the `akismet-discard` signal in the moderation UI), handles the `invalid` response by logging the `X-akismet-debug-help` reason, and exposes a `verifyAkismetKey()` helper that calls `rest.akismet.com/1.1/verify-key`. `AKISMET_API_KEY` is provisioned and was verified `valid`. End-to-end check on a real published post confirmed the documented `viagra-test-123` always-spam payload lands as `status=spam` with `spam_signals=["akismet"]`, while a control ham comment lands as `status=pending`. Rule-based scoring still runs in parallel and remains the sole signal source when the Akismet call returns `null` (timeout / network error / `invalid`).
 
 ### #153 · Make the spam rules settings page accessible to end-to-end automated testing
 **Depends on:** #54 (Insights comments)
