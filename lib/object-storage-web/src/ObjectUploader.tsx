@@ -31,6 +31,13 @@ interface ObjectUploaderProps {
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
   ) => void;
+  /**
+   * Callback invoked when an individual file upload fails (e.g. the backend
+   * rejected the presigned-URL request with a 4xx, or the PUT itself
+   * failed). Receives a human-readable message extracted from the upstream
+   * error so callers can surface it via a toast / notification.
+   */
+  onUploadError?: (message: string) => void;
   buttonClassName?: string;
   children: ReactNode;
 }
@@ -70,13 +77,16 @@ export function ObjectUploader({
   allowedFileTypes,
   onGetUploadParameters,
   onComplete,
+  onUploadError,
   buttonClassName,
   children,
 }: ObjectUploaderProps) {
   const onCompleteRef = useRef(onComplete);
   const onGetUploadParametersRef = useRef(onGetUploadParameters);
+  const onUploadErrorRef = useRef(onUploadError);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => { onGetUploadParametersRef.current = onGetUploadParameters; }, [onGetUploadParameters]);
+  useEffect(() => { onUploadErrorRef.current = onUploadError; }, [onUploadError]);
 
   const [showModal, setShowModal] = useState(false);
   const [uppy] = useState(() =>
@@ -96,6 +106,27 @@ export function ObjectUploader({
       })
       .on("complete", (result) => {
         onCompleteRef.current?.(result);
+      })
+      .on("upload-error", (_file, error, response) => {
+        // The api-server returns `{ error: "..." }` JSON on 4xx; surface
+        // that message verbatim when present so editors see exactly why
+        // their video was rejected (e.g. "Unsupported video format
+        // 'video/x-matroska'..."). Falls back to Uppy's own message.
+        const body = (response as { body?: unknown } | undefined)?.body;
+        const apiMessage =
+          body && typeof body === "object" && "error" in body
+            ? String((body as { error?: unknown }).error ?? "")
+            : "";
+        const fallback = error instanceof Error ? error.message : String(error);
+        onUploadErrorRef.current?.(apiMessage || fallback || "Upload failed");
+      })
+      .on("restriction-failed", (_file, error) => {
+        // Triggered when Uppy's own pre-upload restrictions reject a file
+        // (allowedFileTypes mismatch, maxFileSize exceeded, etc.). Without
+        // this hook the error only appears inside the dashboard modal.
+        const message =
+          error instanceof Error ? error.message : String(error);
+        onUploadErrorRef.current?.(message || "File rejected");
       })
   );
 

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -94,6 +95,7 @@ export function AssetLibraryModal({
   const [uploadCategory, setUploadCategory] = useState<string | null>(null);
   const [filterKind, setFilterKind] = useState<AssetKind | null>(null);
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
   const categories = catsData?.items ?? [];
@@ -292,6 +294,13 @@ export function AssetLibraryModal({
             maxFileSize={uploadMaxBytes}
             allowedFileTypes={uploadAcceptTypes}
             buttonClassName="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+            onUploadError={(message) =>
+              toast({
+                title: "Upload failed",
+                description: message,
+                variant: "destructive",
+              })
+            }
             onGetUploadParameters={async (file) => {
               const { uploadURL } = await api.requestUploadUrl({
                 name: String(file.name ?? "file"),

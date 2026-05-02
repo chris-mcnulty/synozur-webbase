@@ -63,4 +63,21 @@ export function fileExtensionLabel(asset: {
 
 export const IMAGE_ACCEPT_TYPES = ["image/*"];
 export const DOCUMENT_ACCEPT_TYPES = [...DOCUMENT_MIME_TYPES];
-export const VIDEO_ACCEPT_TYPES = ["video/*"];
+
+// Concrete video MIME allowlist. Mirrors the server-side check in
+// `artifacts/api-server/src/routes/storage.ts` so the file picker won't even
+// offer formats that the upload-url endpoint will reject.
+//   - video/mp4         → MP4 (H.264/H.265)
+//   - video/quicktime   → MOV (Apple QuickTime, common from iPhones)
+//   - video/webm        → WebM (VP8/VP9/AV1 + Opus/Vorbis)
+export const ALLOWED_VIDEO_MIME_TYPES: readonly string[] = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+];
+
+export const VIDEO_ACCEPT_TYPES = [...ALLOWED_VIDEO_MIME_TYPES];
+
+export function isAllowedVideoMime(mime: string): boolean {
+  return ALLOWED_VIDEO_MIME_TYPES.includes(mime);
+}

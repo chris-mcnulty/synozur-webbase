@@ -24,6 +24,59 @@ const DIRECT_UPLOAD_LIMIT = "100mb";
 // Upper bound to prevent sharp from being used as a resize-bomb amplifier.
 const MAX_THUMBNAIL_WIDTH = 2048;
 
+// Allowlist of video MIME types we accept for uploads. Mirrored on the
+// client in `artifacts/synozur/src/lib/asset-kind.ts` so the picker only
+// surfaces formats this endpoint will accept. The browser <video> element
+// reliably autoplays MP4 (H.264) and WebM; MOV is included because iPhone
+// captures land here and most are H.264-in-MOV which the browser plays
+// without re-encoding. AV1-in-MKV and other exotic combinations are
+// rejected because they will not autoplay in mainstream browsers and
+// produce unusable hero videos.
+const ALLOWED_VIDEO_MIME_TYPES: readonly string[] = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+];
+
+function isVideoMime(contentType: string): boolean {
+  return contentType.toLowerCase().startsWith("video/");
+}
+
+function isAllowedVideoMime(contentType: string): boolean {
+  return ALLOWED_VIDEO_MIME_TYPES.includes(contentType.toLowerCase());
+}
+
+/**
+ * Lightweight magic-byte sniff for the video container formats we accept.
+ * Returns true if the buffer's first bytes are consistent with `contentType`.
+ *
+ * - MP4 / MOV (ISO BMFF): bytes 4..7 spell "ftyp". This is true for both
+ *   `video/mp4` and `video/quicktime`; the brand at bytes 8..11 distinguishes
+ *   them, but for the purposes of "is this actually a playable container"
+ *   the `ftyp` box header is sufficient.
+ * - WebM (Matroska/EBML): file starts with the EBML magic `1A 45 DF A3`.
+ *
+ * Returns true when we don't have enough bytes to decide, so callers can
+ * skip enforcement on tiny payloads rather than reject legitimate uploads.
+ */
+function videoBytesMatchContentType(buf: Buffer, contentType: string): boolean {
+  const ct = contentType.toLowerCase();
+  if (ct === "video/mp4" || ct === "video/quicktime") {
+    if (buf.length < 12) return true;
+    return buf.slice(4, 8).toString("ascii") === "ftyp";
+  }
+  if (ct === "video/webm") {
+    if (buf.length < 4) return true;
+    return (
+      buf[0] === 0x1a &&
+      buf[1] === 0x45 &&
+      buf[2] === 0xdf &&
+      buf[3] === 0xa3
+    );
+  }
+  return true;
+}
+
 function parseWidth(req: Request): number | null {
   const raw = req.query.w;
   const s = Array.isArray(raw) ? raw[0] : raw;
@@ -130,6 +183,18 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   try {
     const { name, size, contentType } = parsed.data;
 
+    // Reject any video/* upload whose declared MIME isn't on our allowlist.
+    // The browser <video> element only reliably autoplays a narrow set of
+    // container/codec combinations; accepting `video/x-matroska`,
+    // `video/x-msvideo`, etc. just produces hero videos that silently fail
+    // to play in production.
+    if (isVideoMime(contentType) && !isAllowedVideoMime(contentType)) {
+      res.status(415).json({
+        error: `Unsupported video format "${contentType}". Allowed: ${ALLOWED_VIDEO_MIME_TYPES.join(", ")}.`,
+      });
+      return;
+    }
+
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
 
     // Map to the canonical `/objects/uploads/<token>` storage_key shape
@@ -198,6 +263,30 @@ router.put(
       return;
     }
     const contentType = req.get("content-type") ?? "application/octet-stream";
+
+    // Same allowlist enforcement as the request-url endpoint, repeated
+    // here because the SPE-direct route is the actual byte sink — without
+    // this a client could request a presigned URL with `video/mp4` and
+    // then PUT bytes with a different content-type header.
+    if (isVideoMime(contentType) && !isAllowedVideoMime(contentType)) {
+      res.status(415).json({
+        error: `Unsupported video format "${contentType}". Allowed: ${ALLOWED_VIDEO_MIME_TYPES.join(", ")}.`,
+      });
+      return;
+    }
+
+    // Post-upload byte-level check: the request body has already been
+    // buffered (express.raw above), so we can sniff the container header
+    // before forwarding it to SharePoint. Catches the "MIME is video/mp4
+    // but the bytes are an MKV / a renamed .exe / random JSON" case that
+    // the MIME check alone cannot.
+    if (isVideoMime(contentType) && !videoBytesMatchContentType(body, contentType)) {
+      res.status(415).json({
+        error: `Uploaded bytes do not match declared video format "${contentType}".`,
+      });
+      return;
+    }
+
     const queryName = req.query.name;
     const filename =
       typeof queryName === "string" && queryName.length > 0 ? queryName : token;
