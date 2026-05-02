@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { useQueries } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ListOrdered } from "lucide-react";
+import { Plus, Pencil, Trash2, ListOrdered, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -41,16 +42,26 @@ export default function AdminSolutionsList() {
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const serviceFilter = params.get("service") ?? "all";
 
+  const [query, setQuery] = useState("");
+
   const servicesQ = useCmsListServices();
   const solutionsQ = useCmsListSolutions();
 
   const services: Service[] = (servicesQ.data?.items ?? []) as Service[];
   const serviceById = new Map(services.map((s) => [s.id, s]));
   const allSolutions: Solution[] = (solutionsQ.data?.items ?? []) as Solution[];
-  const solutions =
+  const filteredByService =
     serviceFilter === "all"
       ? allSolutions
       : allSolutions.filter((s) => s.parentServiceId === serviceFilter);
+  const solutions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return filteredByService;
+    return filteredByService.filter((s) => {
+      const hay = `${s.title ?? ""} ${s.slug ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredByService, query]);
 
   const capabilityQueries = useQueries({
     queries: solutions.map((s) => ({
@@ -119,6 +130,16 @@ export default function AdminSolutionsList() {
       }
     >
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search title or slug…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-solutions-search"
+          />
+        </div>
         <Select value={serviceFilter} onValueChange={setFilter}>
           <SelectTrigger className="w-[260px]" data-testid="select-solutions-service-filter">
             <SelectValue />
@@ -132,6 +153,11 @@ export default function AdminSolutionsList() {
             ))}
           </SelectContent>
         </Select>
+        {(query || serviceFilter !== "all") && (
+          <span className="text-xs text-muted-foreground">
+            {solutions.length} of {allSolutions.length} matching
+          </span>
+        )}
       </div>
 
       <div className="rounded-md border border-border overflow-x-auto">
@@ -158,7 +184,9 @@ export default function AdminSolutionsList() {
             ) : solutions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  No solutions match this filter.
+                  {query || serviceFilter !== "all"
+                    ? "No solutions match this filter."
+                    : "No solutions yet."}
                 </TableCell>
               </TableRow>
             ) : (

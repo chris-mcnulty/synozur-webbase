@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueries } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ListOrdered, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, ListOrdered, Layers, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -28,10 +30,21 @@ export default function AdminServicesList() {
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
 
+  const [search, setSearch] = useState("");
+
   const servicesQ = useCmsListServices();
   const solutionsQ = useCmsListSolutions();
 
-  const services: Service[] = (servicesQ.data?.items ?? []) as Service[];
+  const allServices: Service[] = (servicesQ.data?.items ?? []) as Service[];
+  const services = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allServices;
+    return allServices.filter((s) => {
+      const hay = `${s.title ?? ""} ${s.slug ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [allServices, search]);
+
   const solutionCounts = new Map<string, number>();
   for (const s of solutionsQ.data?.items ?? []) {
     if (!s.parentServiceId) continue;
@@ -93,6 +106,24 @@ export default function AdminServicesList() {
         )
       }
     >
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search title or slug…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            data-testid="input-services-search"
+          />
+        </div>
+        {search && (
+          <span className="text-xs text-muted-foreground">
+            {services.length} of {allServices.length} matching
+          </span>
+        )}
+      </div>
+
       <div className="rounded-md border border-border overflow-x-auto">
         <Table>
           <TableHeader>
@@ -116,7 +147,7 @@ export default function AdminServicesList() {
             ) : services.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No services yet.
+                  {search ? "No services match this search." : "No services yet."}
                 </TableCell>
               </TableRow>
             ) : (

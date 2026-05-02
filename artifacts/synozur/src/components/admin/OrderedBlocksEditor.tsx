@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   GripVertical,
   Pencil,
@@ -7,6 +7,7 @@ import {
   X,
   Image as ImageIcon,
   Save,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ export function OrderedBlocksEditor({
   testIdPrefix,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [iconForId, setIconForId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -82,6 +84,13 @@ export function OrderedBlocksEditor({
   }, [blocks]);
 
   const editing = editingId ? orderedLocal.find((b) => b.id === editingId) ?? null : null;
+
+  const isFiltering = search.trim().length > 0;
+  const visibleBlocks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return orderedLocal;
+    return orderedLocal.filter((b) => (b.title ?? "").toLowerCase().includes(q));
+  }, [orderedLocal, search]);
 
   const handleAdd = async () => {
     const t = draft.trim();
@@ -129,21 +138,38 @@ export function OrderedBlocksEditor({
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search blocks…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            data-testid={`${testIdPrefix}-search`}
+          />
+        </div>
+        {isFiltering && (
+          <span className="text-xs text-muted-foreground">
+            {visibleBlocks.length} of {orderedLocal.length} matching · drag-to-reorder paused
+          </span>
+        )}
+      </div>
       <div
         className="rounded-md border border-border divide-y divide-border bg-card"
         data-testid={`${testIdPrefix}-list`}
       >
         {isLoading ? (
           <div className="p-6 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : orderedLocal.length === 0 ? (
+        ) : visibleBlocks.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            {emptyMessage ?? "No blocks yet."}
+            {isFiltering ? "No blocks match this search." : emptyMessage ?? "No blocks yet."}
           </div>
         ) : (
-          orderedLocal.map((b) => (
+          visibleBlocks.map((b) => (
             <div
               key={b.id}
-              draggable={canWrite}
+              draggable={canWrite && !isFiltering}
               onDragStart={() => setDragId(b.id)}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -161,9 +187,11 @@ export function OrderedBlocksEditor({
             >
               <button
                 type="button"
-                className="text-muted-foreground cursor-grab disabled:opacity-30"
-                disabled={!canWrite}
-                aria-label="Drag to reorder"
+                className="text-muted-foreground cursor-grab disabled:opacity-30 disabled:cursor-not-allowed"
+                disabled={!canWrite || isFiltering}
+                aria-label={
+                  isFiltering ? "Reordering disabled while filtering" : "Drag to reorder"
+                }
                 data-testid={`${testIdPrefix}-drag-${b.id}`}
               >
                 <GripVertical className="h-4 w-4" />
