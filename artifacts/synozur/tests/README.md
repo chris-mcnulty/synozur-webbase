@@ -22,6 +22,14 @@ End-to-end + accessibility harness for the public marketing site.
   least one episode without one — both legs fail (rather than skip)
   if those aren't present, so coverage can't quietly disappear if seed
   data drifts.
+- **`admin-solution-content.spec.ts`** — Backlog #193. Round-trip for
+  the Solution admin form's Accelerators and FAQ rich-text editors
+  (`data-testid="editor-solution-accelerators"` and
+  `editor-solution-faq`, added in #188): signs in via the local
+  password endpoint as `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`, types
+  unique markers into both editors, clicks `button-save-solution`, and
+  asserts the markers render on the public `/solutions/:slug` page.
+  Skipped when those env vars are unset.
 
 The publish gate that consumes these signals lives in #142 Phase D.
 
