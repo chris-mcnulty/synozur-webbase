@@ -4,6 +4,10 @@ This project is a pnpm workspace monorepo using TypeScript, designed for **The S
 
 The primary goal is to provide a robust platform for managing content, engaging with users, and supporting business operations, including client organizations and event management. The project emphasizes scalability, maintainability, and a structured development approach with a focus on a seamless user experience and secure data handling.
 
+# Admin Guide
+
+The platform admin guide is maintained at [`admin-guide.md`](admin-guide.md). It covers all admin UI areas, authentication, content types, integrations, environment variables, and maintenance instructions for agents. Read it before making changes to the CMS, admin routes, site settings, or integrations.
+
 # User Preferences
 
 I want iterative development.
