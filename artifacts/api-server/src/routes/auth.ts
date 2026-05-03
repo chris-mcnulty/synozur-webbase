@@ -193,9 +193,9 @@ const loginRateLimiter = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `login:${ipKeyGenerator(req)}`,
+  keyGenerator: (req) => `login:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (req: Request, res: Response): void => {
-    const ip = ipKeyGenerator(req);
+    const ip = ipKeyGenerator(req.ip ?? "");
     void audit({
       action: "auth.login_rate_limited",
       entity: "ip",
@@ -215,7 +215,7 @@ const forgotPasswordRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `forgot-password:${ipKeyGenerator(req)}`,
+  keyGenerator: (req) => `forgot-password:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (_req: Request, res: Response): void => {
     res.status(429).json({
       error: "Too many password reset requests. Please try again in 15 minutes.",
@@ -231,7 +231,7 @@ const resetPasswordRateLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `reset-password:${ipKeyGenerator(req)}`,
+  keyGenerator: (req) => `reset-password:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (_req: Request, res: Response): void => {
     res.status(429).json({
       error: "Too many password reset attempts. Please try again in 15 minutes.",
@@ -247,7 +247,7 @@ const registerRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `register:${ipKeyGenerator(req)}`,
+  keyGenerator: (req) => `register:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (_req: Request, res: Response): void => {
     res.status(429).json({
       error: "Too many registration attempts. Please try again in 15 minutes.",
@@ -263,7 +263,7 @@ const resendVerificationRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `resend-verification:${ipKeyGenerator(req)}`,
+  keyGenerator: (req) => `resend-verification:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (_req: Request, res: Response): void => {
     res.status(429).json({
       error: "Too many verification email requests. Please try again in 15 minutes.",

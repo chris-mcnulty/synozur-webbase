@@ -50,6 +50,16 @@ function parseFromOverride(value: string): { email: string; name?: string } | nu
 }
 
 export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
+  // Test/CI hatch: when EMAIL_DISABLED=1, skip delivery entirely. Used by
+  // integration tests that exercise routes which fire-and-forget email sends
+  // (e.g. /api/auth/register) so they never hit the live SendGrid connector.
+  if (process.env["EMAIL_DISABLED"] === "1") {
+    logger.info(
+      { to: args.to, subject: args.subject },
+      "Email skipped (EMAIL_DISABLED=1)",
+    );
+    return { status: "skipped", error: null };
+  }
   let handle;
   try {
     handle = await getUncachableSendGridClient();
