@@ -46,7 +46,7 @@ export interface SendEmailResult {
 
 // Parse "Display Name <addr@example.com>" or a bare address. Returns the
 // {name?, email} pair SendGrid expects.
-function parseFromOverride(value: string): { email: string; name?: string } | null {
+export function parseFromOverride(value: string): { email: string; name?: string } | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const angle = trimmed.match(/^(.*)<\s*([^>]+)\s*>\s*$/);
