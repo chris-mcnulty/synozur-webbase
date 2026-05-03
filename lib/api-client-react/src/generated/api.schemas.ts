@@ -2337,12 +2337,68 @@ export interface SiteHealthRedirects {
   chains: SiteHealthRedirectRow[];
 }
 
+export interface SiteHealthAiPromptCacheDay {
+  /** ISO calendar day, e.g. `2026-05-03`. */
+  utcDay: string;
+  model: string;
+  requestCount: number;
+  /** Requests in the day where `cache_read_input_tokens > 0`. */
+  warmRequestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationInputTokens: number;
+  cacheReadInputTokens: number;
+  /** Fraction of input-equivalent tokens served from cache (0–1). */
+  hitRate: number;
+  /** Fraction of requests in the day that had any cache read (0–1). */
+  requestHitRate: number;
+  /** Estimated USD cost if caching were disabled (input + cache_creation + cache_read all billed at the standard input rate, plus output). */
+  estimatedFullCostUsd: number;
+  /** Estimated USD cost actually billed (cache_creation at 1.25x, cache_read at 0.1x, input + output at 1.0x). */
+  estimatedActualCostUsd: number;
+  /** estimatedFullCostUsd − estimatedActualCostUsd. Negative on cold-cache days where the surcharge dominates. */
+  estimatedSavingsUsd: number;
+}
+
+export type SiteHealthAiPromptCacheAlertSeverity =
+  (typeof SiteHealthAiPromptCacheAlertSeverity)[keyof typeof SiteHealthAiPromptCacheAlertSeverity];
+
+export const SiteHealthAiPromptCacheAlertSeverity = {
+  ok: "ok",
+  page: "page",
+  "insufficient-data": "insufficient-data",
+} as const;
+
+export interface SiteHealthAiPromptCacheAlert {
+  severity: SiteHealthAiPromptCacheAlertSeverity;
+  message?: string | null;
+}
+
+export type SiteHealthAiPromptCacheThresholds = {
+  hitRate: number;
+  minRequests: number;
+};
+
+export interface SiteHealthAiPromptCache {
+  daily: SiteHealthAiPromptCacheDay[];
+  /** Most recent fully-elapsed UTC day with rollup data, or null if none. */
+  latestComplete: string | null;
+  /** Per-token hit rate aggregated across all models on `latestComplete`. */
+  latestHitRate: number;
+  latestRequestCount: number;
+  /** Sum of `estimatedSavingsUsd` over all `daily` rows in the window. */
+  estimatedSavingsUsd: number;
+  alert: SiteHealthAiPromptCacheAlert;
+  thresholds: SiteHealthAiPromptCacheThresholds;
+}
+
 export interface SiteHealthSnapshot {
   generatedAt: string;
   windowDays: number;
   cwv: SiteHealthCwvRow[];
   altText: SiteHealthAltCoverage;
   redirects: SiteHealthRedirects;
+  aiPromptCache: SiteHealthAiPromptCache;
 }
 
 /**

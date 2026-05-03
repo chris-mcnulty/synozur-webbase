@@ -29,7 +29,9 @@
     "test:traffic-ingest": "node --import tsx --test src/routes/traffic.ingest.test.ts",
     "test:insights-gone": "node --import tsx --test src/routes/insights.gone.test.ts",
     "test:seo-unpublish": "node --import tsx --test src/routes/seoUnpublishSubmit.test.ts",
-    "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts"
+    "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts",
+    "test:prompt-cache": "node --import tsx --test src/lib/ai/promptCache.test.ts",
+    "test:ai-chat-cache": "node --import tsx --test src/routes/aiChat.cache.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

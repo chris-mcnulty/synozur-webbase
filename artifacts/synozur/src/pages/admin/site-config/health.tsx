@@ -9,6 +9,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -165,6 +166,11 @@ function SiteHealthDashboard({ snapshot }: { snapshot: SiteHealthSnapshot }) {
 
       <PublishBlocksCard />
 
+      <AiPromptCacheCard
+        data={snapshot.aiPromptCache}
+        windowDays={snapshot.windowDays}
+      />
+
       <CwvTable rows={snapshot.cwv} windowDays={snapshot.windowDays} />
 
       {snapshot.redirects.chains.length > 0 && (
@@ -173,6 +179,189 @@ function SiteHealthDashboard({ snapshot }: { snapshot: SiteHealthSnapshot }) {
 
       <RedirectsTopCard top={snapshot.redirects.top} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI prompt-cache hit rate (#167)
+// ---------------------------------------------------------------------------
+
+function formatUsd(amount: number): string {
+  const sign = amount < 0 ? "-" : "";
+  const abs = Math.abs(amount);
+  if (abs < 0.01 && abs > 0) return `${sign}<$0.01`;
+  return `${sign}$${abs.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function AiPromptCacheCard({
+  data,
+  windowDays,
+}: {
+  data: SiteHealthSnapshot["aiPromptCache"];
+  windowDays: number;
+}) {
+  const alertTone =
+    data.alert.severity === "page"
+      ? "border-red-500/40 bg-red-500/5"
+      : data.alert.severity === "ok"
+        ? "border-emerald-500/30"
+        : "border-border";
+  const hitRateTone =
+    data.latestHitRate >= 0.7
+      ? "text-emerald-300"
+      : data.latestHitRate >= data.thresholds.hitRate
+        ? "text-amber-300"
+        : "text-red-300";
+  const savingsTone =
+    data.estimatedSavingsUsd > 0 ? "text-emerald-300" : "text-amber-300";
+
+  return (
+    <Card className={`overflow-hidden ${alertTone}`}>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5 text-amber-300" />
+            AI prompt-cache hit rate · last {windowDays}d
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Anthropic ephemeral prompt caching reuses the grounding
+            system block + prior conversation inside its 5-minute TTL.
+            Pager fires when the most recent fully-elapsed UTC day's
+            hit rate drops below {Math.round(data.thresholds.hitRate * 100)}%
+            over at least {data.thresholds.minRequests} requests.
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-b border-border">
+        <div className="p-4 md:border-r border-border">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Latest complete day
+          </div>
+          <div className={`mt-2 text-3xl font-semibold ${hitRateTone}`}>
+            {data.latestComplete
+              ? `${Math.round(data.latestHitRate * 100)}%`
+              : "—"}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {data.latestComplete
+              ? `${data.latestComplete} · ${data.latestRequestCount} request${data.latestRequestCount === 1 ? "" : "s"}`
+              : "No fully-elapsed UTC day yet."}
+          </div>
+        </div>
+        <div className="p-4 md:border-r border-border">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Estimated savings · {windowDays}d
+          </div>
+          <div className={`mt-2 text-3xl font-semibold ${savingsTone}`}>
+            {formatUsd(data.estimatedSavingsUsd)}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            vs. running uncached at standard input rates.
+          </div>
+        </div>
+        <div className="p-4">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Alert
+          </div>
+          <div className="mt-2 text-sm">
+            {data.alert.severity === "page" && (
+              <span className="inline-flex items-center gap-1 text-red-300 font-semibold">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Page on-call
+              </span>
+            )}
+            {data.alert.severity === "ok" && (
+              <span className="inline-flex items-center gap-1 text-emerald-300 font-semibold">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Healthy
+              </span>
+            )}
+            {data.alert.severity === "insufficient-data" && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                Insufficient data
+              </span>
+            )}
+          </div>
+          {data.alert.message && (
+            <div className="mt-1 text-xs text-red-200/80">
+              {data.alert.message}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {data.daily.length === 0 ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">
+          No /ai/chat traffic in the last {windowDays} day
+          {windowDays === 1 ? "" : "s"} yet.
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>UTC day</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead className="text-right">Requests</TableHead>
+              <TableHead className="text-right">Warm</TableHead>
+              <TableHead className="text-right">Hit rate</TableHead>
+              <TableHead className="text-right">Cache reads</TableHead>
+              <TableHead className="text-right">Cache writes</TableHead>
+              <TableHead className="text-right">Savings</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.daily.map((d) => {
+              const tone =
+                d.hitRate >= 0.7
+                  ? "text-emerald-300"
+                  : d.hitRate >= data.thresholds.hitRate
+                    ? "text-amber-300"
+                    : "text-red-300";
+              const savingsToneRow =
+                d.estimatedSavingsUsd > 0
+                  ? "text-emerald-300"
+                  : "text-amber-300";
+              return (
+                <TableRow key={`${d.utcDay}:${d.model}`}>
+                  <TableCell className="font-mono text-xs">
+                    {d.utcDay}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {d.model}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {d.requestCount.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {d.warmRequestCount.toLocaleString()}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right text-xs font-medium ${tone}`}
+                  >
+                    {Math.round(d.hitRate * 100)}%
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {d.cacheReadInputTokens.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    {d.cacheCreationInputTokens.toLocaleString()}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right text-xs ${savingsToneRow}`}
+                  >
+                    {formatUsd(d.estimatedSavingsUsd)}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </Card>
   );
 }
 

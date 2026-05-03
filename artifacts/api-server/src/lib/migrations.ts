@@ -1759,6 +1759,42 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (slug) DO NOTHING;
     `);
 
+    // #167 — ai_chat_token_usage rollup table.
+    //
+    // Daily rollup of /ai/chat token usage so the Site Health dashboard
+    // can chart prompt-cache hit rate, dollar savings, and page on-call
+    // when the daily hit rate drops below 50%. One row per (utc_day,
+    // model); each chat request upserts via ON CONFLICT.
+    //
+    // Counters use bigint because a chatty day's cache_read tokens can
+    // get into the millions on multi-turn conversations with a large
+    // grounding corpus, and we don't want the Site Health writer to
+    // need to think about overflow. requestCount stays integer because
+    // /ai/chat is rate-limited well below 2^31 hits/day.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_chat_token_usage (
+        id text PRIMARY KEY,
+        utc_day date NOT NULL,
+        model text NOT NULL,
+        input_tokens bigint NOT NULL DEFAULT 0,
+        output_tokens bigint NOT NULL DEFAULT 0,
+        cache_creation_input_tokens bigint NOT NULL DEFAULT 0,
+        cache_read_input_tokens bigint NOT NULL DEFAULT 0,
+        request_count integer NOT NULL DEFAULT 0,
+        warm_request_count integer NOT NULL DEFAULT 0,
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS ai_chat_token_usage_day_model_idx
+        ON ai_chat_token_usage (utc_day, model);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS ai_chat_token_usage_last_seen_idx
+        ON ai_chat_token_usage (last_seen_at);
+    `);
+
     // #254 — SEO unpublish-submission audit table. Records per-channel
     // IndexNow / Google Indexing / Bing Webmaster ping results when content
     // transitions to a "gone" state, surfaced on /admin/site-config/launch-readiness.
@@ -1810,9 +1846,6 @@ export async function runMigrations(): Promise<void> {
     `);
     // For environments where the table was created before grandfathered_at
     // was added, ensure the column exists.
-    await db.execute(sql`
-      ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS grandfathered_at timestamptz;
-    `);
     await db.execute(sql`
       ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS grandfathered_at timestamptz;
     `);

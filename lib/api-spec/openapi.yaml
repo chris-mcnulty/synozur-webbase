@@ -7657,6 +7657,114 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SiteHealthRedirectRow'
+    SiteHealthAiPromptCacheDay:
+      type: object
+      required:
+        - utcDay
+        - model
+        - requestCount
+        - warmRequestCount
+        - inputTokens
+        - outputTokens
+        - cacheCreationInputTokens
+        - cacheReadInputTokens
+        - hitRate
+        - requestHitRate
+        - estimatedFullCostUsd
+        - estimatedActualCostUsd
+        - estimatedSavingsUsd
+      properties:
+        utcDay:
+          type: string
+          description: ISO calendar day, e.g. `2026-05-03`.
+        model:
+          type: string
+        requestCount:
+          type: integer
+        warmRequestCount:
+          description: Requests in the day where `cache_read_input_tokens > 0`.
+          type: integer
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        cacheCreationInputTokens:
+          type: integer
+        cacheReadInputTokens:
+          type: integer
+        hitRate:
+          description: Fraction of input-equivalent tokens served from cache (0–1).
+          type: number
+          format: double
+        requestHitRate:
+          description: Fraction of requests in the day that had any cache read (0–1).
+          type: number
+          format: double
+        estimatedFullCostUsd:
+          description: Estimated USD cost if caching were disabled (input + cache_creation + cache_read all billed at the standard input rate, plus output).
+          type: number
+          format: double
+        estimatedActualCostUsd:
+          description: Estimated USD cost actually billed (cache_creation at 1.25x, cache_read at 0.1x, input + output at 1.0x).
+          type: number
+          format: double
+        estimatedSavingsUsd:
+          description: estimatedFullCostUsd − estimatedActualCostUsd. Negative on cold-cache days where the surcharge dominates.
+          type: number
+          format: double
+    SiteHealthAiPromptCacheAlert:
+      type: object
+      required:
+        - severity
+      properties:
+        severity:
+          type: string
+          enum: [ok, page, insufficient-data]
+        message:
+          type: string
+          nullable: true
+    SiteHealthAiPromptCache:
+      type: object
+      required:
+        - daily
+        - latestComplete
+        - latestHitRate
+        - latestRequestCount
+        - estimatedSavingsUsd
+        - alert
+        - thresholds
+      properties:
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteHealthAiPromptCacheDay'
+        latestComplete:
+          description: Most recent fully-elapsed UTC day with rollup data, or null if none.
+          type: string
+          nullable: true
+        latestHitRate:
+          description: Per-token hit rate aggregated across all models on `latestComplete`.
+          type: number
+          format: double
+        latestRequestCount:
+          type: integer
+        estimatedSavingsUsd:
+          description: Sum of `estimatedSavingsUsd` over all `daily` rows in the window.
+          type: number
+          format: double
+        alert:
+          $ref: '#/components/schemas/SiteHealthAiPromptCacheAlert'
+        thresholds:
+          type: object
+          required:
+            - hitRate
+            - minRequests
+          properties:
+            hitRate:
+              type: number
+              format: double
+            minRequests:
+              type: integer
     SiteHealthSnapshot:
       type: object
       required:
@@ -7665,6 +7773,7 @@ components:
         - cwv
         - altText
         - redirects
+        - aiPromptCache
       properties:
         generatedAt:
           type: string
@@ -7679,6 +7788,8 @@ components:
           $ref: '#/components/schemas/SiteHealthAltCoverage'
         redirects:
           $ref: '#/components/schemas/SiteHealthRedirects'
+        aiPromptCache:
+          $ref: '#/components/schemas/SiteHealthAiPromptCache'
     PublishBlock:
       type: object
       required:

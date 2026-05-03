@@ -3734,6 +3734,72 @@ export const CmsGetSiteHealthResponse = zod.object({
         "Redirects whose target is itself the source of another redirect (one-hop chain detection).",
       ),
   }),
+  aiPromptCache: zod.object({
+    daily: zod.array(
+      zod.object({
+        utcDay: zod.string().describe("ISO calendar day, e.g. `2026-05-03`."),
+        model: zod.string(),
+        requestCount: zod.number(),
+        warmRequestCount: zod
+          .number()
+          .describe("Requests in the day where `cache_read_input_tokens > 0`."),
+        inputTokens: zod.number(),
+        outputTokens: zod.number(),
+        cacheCreationInputTokens: zod.number(),
+        cacheReadInputTokens: zod.number(),
+        hitRate: zod
+          .number()
+          .describe(
+            "Fraction of input-equivalent tokens served from cache (0–1).",
+          ),
+        requestHitRate: zod
+          .number()
+          .describe(
+            "Fraction of requests in the day that had any cache read (0–1).",
+          ),
+        estimatedFullCostUsd: zod
+          .number()
+          .describe(
+            "Estimated USD cost if caching were disabled (input + cache_creation + cache_read all billed at the standard input rate, plus output).",
+          ),
+        estimatedActualCostUsd: zod
+          .number()
+          .describe(
+            "Estimated USD cost actually billed (cache_creation at 1.25x, cache_read at 0.1x, input + output at 1.0x).",
+          ),
+        estimatedSavingsUsd: zod
+          .number()
+          .describe(
+            "estimatedFullCostUsd − estimatedActualCostUsd. Negative on cold-cache days where the surcharge dominates.",
+          ),
+      }),
+    ),
+    latestComplete: zod
+      .string()
+      .nullable()
+      .describe(
+        "Most recent fully-elapsed UTC day with rollup data, or null if none.",
+      ),
+    latestHitRate: zod
+      .number()
+      .describe(
+        "Per-token hit rate aggregated across all models on `latestComplete`.",
+      ),
+    latestRequestCount: zod.number(),
+    estimatedSavingsUsd: zod
+      .number()
+      .describe(
+        "Sum of `estimatedSavingsUsd` over all `daily` rows in the window.",
+      ),
+    alert: zod.object({
+      severity: zod.enum(["ok", "page", "insufficient-data"]),
+      message: zod.string().nullish(),
+    }),
+    thresholds: zod.object({
+      hitRate: zod.number(),
+      minRequests: zod.number(),
+    }),
+  }),
 });
 
 /**

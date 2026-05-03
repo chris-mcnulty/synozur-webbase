@@ -41,6 +41,7 @@ export * from "./hubspotSync";
 export * from "./seoUnpublishSubmissions";
 export * from "./cwvSamples";
 export * from "./cspViolations";
+export * from "./aiChatTokenUsage";
 export * from "./publishBlocks";
 export * from "./oauth";
 export * from "./groundingDocuments";

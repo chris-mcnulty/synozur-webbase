@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SiteHealthAiPromptCache } from "./siteHealthAiPromptCache";
 import type { SiteHealthAltCoverage } from "./siteHealthAltCoverage";
 import type { SiteHealthCwvRow } from "./siteHealthCwvRow";
 import type { SiteHealthRedirects } from "./siteHealthRedirects";
@@ -15,4 +16,5 @@ export interface SiteHealthSnapshot {
   cwv: SiteHealthCwvRow[];
   altText: SiteHealthAltCoverage;
   redirects: SiteHealthRedirects;
+  aiPromptCache: SiteHealthAiPromptCache;
 }

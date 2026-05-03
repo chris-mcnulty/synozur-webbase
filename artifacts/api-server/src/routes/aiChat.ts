@@ -1,9 +1,19 @@
 import { Router } from "express";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db, conversations, messages } from "@workspace/db";
+import { db, conversations, messages, aiChatTokenUsageTable } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { buildSystemPrompt } from "../lib/ai/grounding.js";
+import {
+  applyHistoryCacheMarkers,
+  buildCachedSystemBlocks,
+  emptyCacheUsage,
+  cacheHitRate,
+  mergeMessageDeltaUsage,
+  mergeMessageStartUsage,
+  type CacheUsage,
+} from "../lib/ai/promptCache.js";
 
 const router = Router();
 
@@ -117,17 +127,22 @@ router.post("/ai/chat", async (req, res) => {
       content: message,
     });
 
-    // Build the grounding system prompt
+    // Build the grounding system prompt and apply prompt-cache markers
+    // (#167). The grounding-doc corpus changes only on edit, so within any
+    // 5-minute window every turn for every concurrent visitor reuses the
+    // cached system block. The last assistant message in history gets a
+    // marker too, caching the entire prior conversation as a stable prefix
+    // — only the new user message and the streamed assistant response are
+    // billed as fresh input tokens.
     const systemPrompt = await buildSystemPrompt({ scopeTags, conciergeOnly });
-
-    // Compose the full message array for the API
-    const chatMessages = [
-      ...priorMessages.map((m) => ({
+    const systemBlocks = buildCachedSystemBlocks(systemPrompt);
+    const chatMessages = applyHistoryCacheMarkers(
+      priorMessages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
-      { role: "user" as const, content: message },
-    ];
+      message,
+    );
 
     // Begin SSE stream
     res.setHeader("Content-Type", "text/event-stream");
@@ -138,24 +153,84 @@ router.post("/ai/chat", async (req, res) => {
     res.write(`data: ${JSON.stringify({ conversationId: convId })}\n\n`);
 
     let fullResponse = "";
+    let usage: CacheUsage = emptyCacheUsage();
 
     const streamParams: Parameters<typeof anthropic.messages.stream>[0] = {
       model: model as AllowedModel,
       max_tokens: 8192,
       messages: chatMessages,
-      ...(systemPrompt ? { system: systemPrompt } : {}),
+      ...(systemBlocks ? { system: systemBlocks } : {}),
     };
 
     const stream = anthropic.messages.stream(streamParams);
 
     for await (const event of stream) {
-      if (
+      if (event.type === "message_start") {
+        usage = mergeMessageStartUsage(usage, event.message.usage);
+      } else if (event.type === "message_delta") {
+        usage = mergeMessageDeltaUsage(usage, event.usage);
+      } else if (
         event.type === "content_block_delta" &&
         event.delta.type === "text_delta"
       ) {
         fullResponse += event.delta.text;
         res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
       }
+    }
+
+    // Capture cache-hit metrics. We both emit a structured-log line per
+    // request (for ad-hoc tailing) AND upsert the daily (utc_day, model)
+    // rollup row that the Site Health dashboard reads. Failure to write
+    // the rollup must NEVER break the chat response — the catch swallows
+    // the error and logs it.
+    const utcDay = new Date().toISOString().slice(0, 10);
+    const isWarm = usage.cacheReadInputTokens > 0 ? 1 : 0;
+    req.log.info(
+      {
+        event: "ai-chat.usage",
+        conversationId: convId,
+        model,
+        utcDay,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheCreationInputTokens: usage.cacheCreationInputTokens,
+        cacheReadInputTokens: usage.cacheReadInputTokens,
+        cacheHitRate: cacheHitRate(usage),
+        warm: isWarm === 1,
+      },
+      "ai-chat: usage rollup",
+    );
+    try {
+      await db
+        .insert(aiChatTokenUsageTable)
+        .values({
+          id: `${utcDay}:${model}`,
+          utcDay,
+          model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          cacheCreationInputTokens: usage.cacheCreationInputTokens,
+          cacheReadInputTokens: usage.cacheReadInputTokens,
+          requestCount: 1,
+          warmRequestCount: isWarm,
+        })
+        .onConflictDoUpdate({
+          target: [aiChatTokenUsageTable.utcDay, aiChatTokenUsageTable.model],
+          set: {
+            inputTokens: sql`${aiChatTokenUsageTable.inputTokens} + ${usage.inputTokens}`,
+            outputTokens: sql`${aiChatTokenUsageTable.outputTokens} + ${usage.outputTokens}`,
+            cacheCreationInputTokens: sql`${aiChatTokenUsageTable.cacheCreationInputTokens} + ${usage.cacheCreationInputTokens}`,
+            cacheReadInputTokens: sql`${aiChatTokenUsageTable.cacheReadInputTokens} + ${usage.cacheReadInputTokens}`,
+            requestCount: sql`${aiChatTokenUsageTable.requestCount} + 1`,
+            warmRequestCount: sql`${aiChatTokenUsageTable.warmRequestCount} + ${isWarm}`,
+            lastSeenAt: sql`now()`,
+          },
+        });
+    } catch (rollupErr) {
+      req.log.warn(
+        { err: rollupErr },
+        "ai-chat: token-usage rollup write failed (chat response unaffected)",
+      );
     }
 
     // Persist the complete assistant response
