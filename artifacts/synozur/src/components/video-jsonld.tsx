@@ -8,7 +8,8 @@ function absolutize(url: string | null | undefined): string | undefined {
   try {
     return new URL(url).toString();
   } catch {
-    return `${SITE_ORIGIN}${url.startsWith("/") ? "" : "/"}${url.replace(/^\/+/, "")}`;
+    const path = url.startsWith("/") ? url : `/${url}`;
+    return `${SITE_ORIGIN}${path}`;
   }
 }
 
