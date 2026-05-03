@@ -98,6 +98,8 @@ import AdminModelsList from "@/pages/admin/products/models-list";
 import AdminModelEdit from "@/pages/admin/products/model-edit";
 import AdminFaq from "@/pages/admin/products/faq";
 import AdminAiGrounding from "@/pages/admin/ai/grounding";
+import AdminInsightsQuestions from "@/pages/admin/insights/questions";
+import InsightsAskPage from "@/pages/insights/ask";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
@@ -393,6 +395,7 @@ function AdminRoutes() {
 
         {/* AI section */}
         <Route path="/ai/grounding" component={AdminAiGrounding} />
+        <Route path="/insights/questions" component={AdminInsightsQuestions} />
 
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />
@@ -482,6 +485,7 @@ function Router() {
             <Route path="/team/:slug" component={TeamDetail} />
             <Route path="/partners" component={Partners} />
             <Route path="/insights" component={Insights} />
+            <Route path="/insights/ask" component={InsightsAskPage} />
             <Route path="/insights/:slug" component={InsightDetail} />
             <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />

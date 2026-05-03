@@ -45,6 +45,8 @@ export * from "./aiChatTokenUsage";
 export * from "./publishBlocks";
 export * from "./oauth";
 export * from "./groundingDocuments";
+export * from "./editorialChunks";
+export * from "./insightsQuestions";
 export * from "./conversations";
 export * from "./messages";
 export * from "./portalArtifacts";

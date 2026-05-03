@@ -2,7 +2,7 @@ import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
 import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
-import { ArrowRight, Search, Rss } from "lucide-react";
+import { ArrowRight, Search, Rss, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -305,6 +305,15 @@ export default function Insights() {
               dangerouslySetInnerHTML={{ __html: copy.introHtml }}
             />
           )}
+          <Link
+            href="/insights/ask"
+            className="mt-8 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-primary hover:bg-primary/20"
+            data-testid="link-ask-synozur-hero"
+          >
+            <Sparkles className="h-4 w-4 text-primary" />
+            Ask Synozur — get a grounded answer with citations
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 

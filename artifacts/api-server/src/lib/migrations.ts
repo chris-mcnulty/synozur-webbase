@@ -1875,6 +1875,79 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (email) DO NOTHING;
     `);
 
+    // 49. #262 — Ask Synozur: editorial corpus chunks + question telemetry.
+    //     Phase-0 retrieval is FTS-based (per backlog #170); the
+    //     editorial_embeddings vector column is deferred until an
+    //     embeddings-API integration is available.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS editorial_chunks (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_kind text NOT NULL,
+        source_id uuid NOT NULL,
+        chunk_index integer NOT NULL,
+        title text NOT NULL,
+        url text NOT NULL,
+        text text NOT NULL,
+        embedding_model_version text,
+        source_updated_at timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS editorial_chunks_source_chunk_key
+        ON editorial_chunks (source_kind, source_id, chunk_index);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS editorial_chunks_source_idx
+        ON editorial_chunks (source_kind, source_id);
+    `);
+    // FTS support: a generated tsvector that weights the title above the
+    // body so a question matching the headline ranks higher than one that
+    // only matches a passing mention deep in the body.
+    await db.execute(sql`
+      ALTER TABLE editorial_chunks
+        ADD COLUMN IF NOT EXISTS text_search tsvector
+        GENERATED ALWAYS AS (
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(text, '')),  'B')
+        ) STORED;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS editorial_chunks_text_search_idx
+        ON editorial_chunks USING gin (text_search);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS insights_questions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        question text NOT NULL,
+        answer text NOT NULL DEFAULT '',
+        sources jsonb NOT NULL DEFAULT '[]'::jsonb,
+        model text,
+        refused boolean NOT NULL DEFAULT false,
+        low_confidence boolean NOT NULL DEFAULT false,
+        source_count integer NOT NULL DEFAULT 0,
+        top_score integer,
+        click_through_count integer NOT NULL DEFAULT 0,
+        session_id text,
+        ip_hash text,
+        user_agent text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS insights_questions_created_at_idx
+        ON insights_questions (created_at DESC);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS insights_questions_refused_idx
+        ON insights_questions (refused);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS insights_questions_low_conf_idx
+        ON insights_questions (low_confidence);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

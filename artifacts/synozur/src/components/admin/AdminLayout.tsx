@@ -175,6 +175,7 @@ const SECTIONS: NavSection[] = [
     icon: Sparkles,
     items: [
       { href: "/ai/grounding", label: "Grounding Documents", icon: Brain, capability: "ai.grounding.manage", testId: "nav-admin-ai-grounding" },
+      { href: "/insights/questions", label: "Ask Synozur — Questions", icon: HelpCircle, capability: "content.moderate", testId: "nav-admin-ai-questions" },
     ],
   },
   {
