@@ -2250,32 +2250,38 @@ export async function runMigrations(): Promise<void> {
     //    natively but we still target older majors, so we define our own
     //    plpgsql function (timestamp-prefixed; sortable; collision-safe).
     //    CREATE OR REPLACE is idempotent so re-running is harmless.
+    //    NOTE: the function is kept for backward compatibility with any
+    //    existing rows / column defaults that reference it, but NEW
+    //    table DEFAULTs below use gen_random_uuid() instead. On some
+    //    managed Postgres deployments uuidv7() ended up unresolved at
+    //    CREATE TABLE time (Postgres validates DEFAULT expressions when
+    //    the column is added), causing publish to fail with
+    //    "function uuidv7() does not exist". gen_random_uuid() is a
+    //    built-in in PG 13+ and is universally available.
+    // Historically this function generated a true UUIDv7 using
+    // gen_random_bytes() from pgcrypto. On managed Postgres deployments
+    // where pgcrypto isn't installed (or the role can't invoke it) the
+    // function body fails at *call* time with
+    // "function gen_random_bytes(integer) does not exist", which then
+    // breaks any INSERT that triggers a `DEFAULT uuidv7()` column.
+    //
+    // Re-define it as a thin alias for gen_random_uuid() (built-in to
+    // PG 13+). We lose monotonic-by-timestamp ordering, but every
+    // call-site only treats the value as an opaque PK, so this is
+    // safe. CREATE OR REPLACE keeps the function name available for
+    // any pre-existing column defaults that still reference it.
     await db.execute(sql`
       CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $func$
-      DECLARE
-        unix_ts_ms bytea;
-        uuid_bytes bytea;
-      BEGIN
-        unix_ts_ms := substring(
-          int8send((extract(epoch from clock_timestamp()) * 1000)::bigint)
-          from 3
-        );
-        uuid_bytes := unix_ts_ms || gen_random_bytes(10);
-        -- Set version (7) in the high nibble of byte 6.
-        uuid_bytes := set_byte(uuid_bytes, 6, (112 | (get_byte(uuid_bytes, 6) & 15)));
-        -- Set RFC 4122 variant in the high two bits of byte 8.
-        uuid_bytes := set_byte(uuid_bytes, 8, (128 | (get_byte(uuid_bytes, 8) & 63)));
-        RETURN encode(uuid_bytes, 'hex')::uuid;
-      END;
-      $func$ LANGUAGE plpgsql VOLATILE;
+        SELECT gen_random_uuid();
+      $func$ LANGUAGE sql VOLATILE;
     `);
 
     // 2. Create the new auxiliary tables first — the conversations
     //    backfill below references ai_chat_sessions for its sentinel row.
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ai_chat_sessions (
-        id uuid PRIMARY KEY DEFAULT uuidv7(),
-        token_hash text NOT NULL UNIQUE,
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        token_hash text NOT NULL,
         ip_at_creation text,
         user_agent text,
         created_at timestamptz NOT NULL DEFAULT now(),
@@ -2283,6 +2289,32 @@ export async function runMigrations(): Promise<void> {
         expires_at timestamptz NOT NULL,
         revoked_at timestamptz
       );
+    `);
+    // Defensive: drizzle-kit push has historically generated this
+    // table without the UNIQUE on token_hash (depending on push
+    // ordering relative to the schema change that added .unique()).
+    // The ON CONFLICT (token_hash) below requires it, so add it
+    // idempotently here.
+    await db.execute(sql`
+      DO $unique$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'ai_chat_sessions_token_hash_key'
+        ) THEN
+          BEGIN
+            ALTER TABLE ai_chat_sessions
+              ADD CONSTRAINT ai_chat_sessions_token_hash_key UNIQUE (token_hash);
+          EXCEPTION WHEN unique_violation THEN
+            -- Pre-existing duplicate token_hash rows would block adding
+            -- the constraint. This shouldn't happen in practice
+            -- (token_hash is server-generated random) but if it does
+            -- we leave the constraint off and let the ON CONFLICT path
+            -- fall through; an admin can dedupe manually.
+            NULL;
+          END;
+        END IF;
+      END $unique$;
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS ai_chat_sessions_expires_idx
@@ -2353,7 +2385,7 @@ export async function runMigrations(): Promise<void> {
           RETURNING id INTO legacy_session;
 
           ALTER TABLE conversations
-            ADD COLUMN IF NOT EXISTS id_uuid uuid NOT NULL DEFAULT uuidv7(),
+            ADD COLUMN IF NOT EXISTS id_uuid uuid NOT NULL DEFAULT gen_random_uuid(),
             ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
             ADD COLUMN IF NOT EXISTS owner_session_id uuid;
 
@@ -2383,12 +2415,12 @@ export async function runMigrations(): Promise<void> {
           ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_pkey;
           ALTER TABLE messages DROP COLUMN id;
           ALTER TABLE messages
-            ADD COLUMN id uuid PRIMARY KEY DEFAULT uuidv7();
+            ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();
 
           ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_pkey;
           ALTER TABLE conversations DROP COLUMN id;
           ALTER TABLE conversations RENAME COLUMN id_uuid TO id;
-          ALTER TABLE conversations ALTER COLUMN id SET DEFAULT uuidv7();
+          ALTER TABLE conversations ALTER COLUMN id SET DEFAULT gen_random_uuid();
           ALTER TABLE conversations ADD PRIMARY KEY (id);
 
           ALTER TABLE messages
@@ -2403,7 +2435,7 @@ export async function runMigrations(): Promise<void> {
     //    the UUIDv7 schema.
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS conversations (
-        id uuid PRIMARY KEY DEFAULT uuidv7(),
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         title text NOT NULL,
         owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
         owner_session_id uuid,
@@ -2420,7 +2452,7 @@ export async function runMigrations(): Promise<void> {
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS messages (
-        id uuid PRIMARY KEY DEFAULT uuidv7(),
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
         role text NOT NULL,
         content text NOT NULL,
