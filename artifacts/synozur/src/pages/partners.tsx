@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { LeadCaptureForm } from "@/components/lead-capture-form";
 
 const MicrosoftSquares = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -220,23 +221,26 @@ export default function Partners() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA + #131 partner inquiry capture */}
       <section className="relative overflow-hidden py-24 bg-card border-t border-border">
         <div className="absolute inset-0 nebula-gradient opacity-10" />
-        <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Interested in partnering?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            We are deliberate about who we work with. If our practices line up
-            with your roadmap, we would like to hear from you.
-          </p>
-          <Link
-            href="/contact"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Reach the partner team <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
+        <div className="container relative z-10 mx-auto px-4 max-w-2xl">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Interested in partnering?
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              We are deliberate about who we work with. If our practices line
+              up with your roadmap, we would like to hear from you.
+            </p>
+          </div>
+          <LeadCaptureForm
+            formType="partner"
+            heading="Tell us about your firm"
+            description="Share a few details and our partner team will reach out."
+            ctaLabel="Reach the partner team"
+            successMessage="Thanks — our partner team will be in touch shortly."
+          />
         </div>
       </section>
     </div>

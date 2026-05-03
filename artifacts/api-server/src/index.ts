@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduledPublishWorker } from "./lib/scheduler";
 import { startRevisionRetentionWorker } from "./lib/revisionRetention";
-import { startHubspotWorker, stopHubspotWorker } from "./lib/hubspotSync";
+import { startHubspotWorker, stopHubspotWorker, bootstrapHubspotOnStartup } from "./lib/hubspotSync";
 import { pruneExpiredSessions } from "./lib/sessions";
 import { pruneExpiredAuthStates } from "./lib/authStateStore";
 import { warnIfMisconfigured } from "./lib/entraOidc";
@@ -43,6 +43,10 @@ const server = app.listen(port, (err) => {
 const worker = startScheduledPublishWorker(logger);
 const retentionWorker = startRevisionRetentionWorker(logger);
 startHubspotWorker();
+// #131 — On first deploy / launch, register custom HubSpot properties +
+// timeline-event templates and enqueue the historical form_submissions
+// backlog. Both calls are idempotent and gated on `hubspotEnabled`.
+void bootstrapHubspotOnStartup();
 warnIfMisconfigured();
 logSecurityHeaderConfig();
 void logLaunchReadiness();

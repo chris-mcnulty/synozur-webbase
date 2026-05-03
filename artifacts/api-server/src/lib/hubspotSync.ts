@@ -1,5 +1,5 @@
-import { and, eq, sql } from "drizzle-orm";
-import { db, hubspotSyncEventsTable, siteSettingsTable, formSubmissionsTable } from "@workspace/db";
+import { and, eq, max, sql } from "drizzle-orm";
+import { db, hubspotSyncEventsTable, siteSettingsTable, formSubmissionsTable, subscribersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 
@@ -12,21 +12,27 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 
 const REPLIT_CONNECTORS_AVAILABLE = !!process.env["REPLIT_CONNECTORS_HOSTNAME"];
 
-async function hubspotProxy(
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
+interface SimpleInit {
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+}
+
+async function hubspotProxy(path: string, init: SimpleInit = {}): Promise<Response> {
   if (REPLIT_CONNECTORS_AVAILABLE) {
     const connectors = new ReplitConnectors();
-    return connectors.proxy("hubspot", path, init) as Promise<Response>;
+    return connectors.proxy("hubspot", path, {
+      method: init.method,
+      body: init.body,
+      headers: init.headers ?? {},
+    }) as Promise<Response>;
   }
   // Static token fallback for local dev / self-hosted.
   const token = process.env["HUBSPOT_ACCESS_TOKEN"];
   if (!token) throw new Error("No HubSpot access token available");
-  const headers = new Headers(init.headers as HeadersInit | undefined);
-  headers.set("Authorization", `Bearer ${token}`);
-  if (init.body) headers.set("Content-Type", "application/json");
-  return fetch(`${HUBSPOT_API}${path}`, { ...init, headers });
+  const headers: Record<string, string> = { ...(init.headers ?? {}), Authorization: `Bearer ${token}` };
+  if (init.body) headers["Content-Type"] = "application/json";
+  return fetch(`${HUBSPOT_API}${path}`, { method: init.method, body: init.body, headers });
 }
 
 export async function isHubspotConfigured(): Promise<boolean> {
@@ -57,9 +63,28 @@ export async function getHubspotAccessToken(): Promise<string | null> {
 //     contact (HubSpot timeline events require a registered app + template id)
 
 const HUBSPOT_API = "https://api.hubapi.com";
-const MAX_ATTEMPTS = 6;
+// 5 attempts ≈ ~45 minutes of backoff (5s/30s/2m/10m/30m) before a row
+// transitions to dead_letter for admin review. Matches the spec on #131.
+const MAX_ATTEMPTS = 5;
 
-export type FormType = "contact" | "subscribe" | "start";
+export type FormType =
+  | "contact"
+  | "subscribe"
+  | "start"
+  | "white-paper"
+  | "webinar"
+  | "partner"
+  | "demo";
+
+export const ALL_FORM_TYPES: readonly FormType[] = [
+  "contact",
+  "subscribe",
+  "start",
+  "white-paper",
+  "webinar",
+  "partner",
+  "demo",
+];
 
 export type LifecycleStage = "subscriber" | "lead" | "marketingqualifiedlead" | "salesqualifiedlead" | "opportunity" | "customer" | "evangelist" | "other";
 
@@ -82,6 +107,15 @@ export interface ContactProperties {
   utm_content?: string;
   // GDPR / consent
   hs_legal_basis?: string;
+  // HubSpot tracking cookie (`hubspotutk`). Stitches the contact to their
+  // pre-form anonymous browsing behaviour for first-touch attribution.
+  // Sent as a custom property because the v3 contact upsert endpoint
+  // does not natively accept `hutk`; the HubSpot Forms API does, but we
+  // use the CRM upsert path.
+  synozur_hubspotutk?: string;
+  // HubSpot built-in opt-out toggle. We mirror our own
+  // `synozur_marketing_opt_in` onto it so list segmentation honours it.
+  hs_email_optout?: "true" | "false";
   // Custom Synozur properties (must exist on the portal — created via the
   // bootstrap script in scripts/bootstrapHubspotProperties.ts).
   synozur_form_type?: string;
@@ -105,6 +139,15 @@ export interface EnqueueContactArgs {
     landingPage?: string | null;
     referrer?: string | null;
   };
+  // Stable visitor identity — `hubspotutk` cookie value if HubSpot's
+  // tracking pixel was loaded on the originating page. Lets HubSpot
+  // stitch the resulting contact to their pre-form anonymous activity.
+  hutk?: string | null;
+  // Optional type-specific tokens merged into the timeline event payload
+  // (e.g. white-paper title/slug, webinar starts_at, demo application
+  // depth). Generic attribution tokens are always included; this is for
+  // the contextual fields the timeline-event templates expect.
+  timelineTokens?: Record<string, unknown>;
 }
 
 function nowPlus(ms: number): Date {
@@ -121,9 +164,20 @@ function lifecycleFor(formType: FormType, mappings: Record<string, string> | nul
   const explicit = mappings?.[formType];
   if (explicit) return explicit as LifecycleStage;
   if (formType === "subscribe") return "subscriber";
-  if (formType === "start") return "marketingqualifiedlead";
+  if (formType === "start" || formType === "demo" || formType === "webinar") return "marketingqualifiedlead";
+  if (formType === "partner") return "salesqualifiedlead";
   return "lead";
 }
+
+const TIMELINE_TEMPLATE_FOR_FORM: Record<FormType, string> = {
+  contact: "synozur_form_submitted",
+  subscribe: "synozur_newsletter_subscribed",
+  start: "synozur_get_started_submitted",
+  "white-paper": "synozur_white_paper_downloaded",
+  webinar: "synozur_webinar_registered",
+  partner: "synozur_form_submitted",
+  demo: "synozur_application_demo_requested",
+};
 
 function splitName(name: string | null): { firstname?: string; lastname?: string } {
   if (!name) return {};
@@ -165,6 +219,8 @@ export async function enqueueContactSubmission(args: EnqueueContactArgs): Promis
     lifecyclestage: lifecycle,
     synozur_form_type: args.formType,
     synozur_marketing_opt_in: args.marketingOptIn ? "true" : "false",
+    hs_email_optout: args.marketingOptIn ? "false" : "true",
+    ...(args.hutk ? { synozur_hubspotutk: args.hutk } : {}),
     ...(args.utm.source ? { utm_source: args.utm.source } : {}),
     ...(args.utm.medium ? { utm_medium: args.utm.medium } : {}),
     ...(args.utm.campaign ? { utm_campaign: args.utm.campaign } : {}),
@@ -187,12 +243,9 @@ export async function enqueueContactSubmission(args: EnqueueContactArgs): Promis
 
   // High-intent timeline event mirrors the form submission so sales sees the
   // raw signal even if a property update later overwrites the lifecycle stage.
-  const timelineEventTemplate = {
-    contact: "synozur_form_submitted",
-    subscribe: "synozur_newsletter_subscribed",
-    start: "synozur_get_started_submitted",
-  }[args.formType];
+  const timelineEventTemplate = TIMELINE_TEMPLATE_FOR_FORM[args.formType];
 
+  if (!timelineEventTemplate) return;
   await db.insert(hubspotSyncEventsTable).values({
     kind: `timeline.${timelineEventTemplate}`,
     contactEmail: args.email,
@@ -206,6 +259,11 @@ export async function enqueueContactSubmission(args: EnqueueContactArgs): Promis
         utm_campaign: args.utm.campaign ?? null,
         landing_page: args.utm.landingPage ?? null,
         marketing_opt_in: args.marketingOptIn,
+        hutk: args.hutk ?? null,
+        // Type-specific tokens (title, slug, starts_at, application,
+        // depth, …) overlay the generic attribution tokens so the
+        // timeline event reflects the actual action taken.
+        ...(args.timelineTokens ?? {}),
       },
     },
   });
@@ -263,13 +321,89 @@ async function callUpsertContact(
   }
 }
 
+// #131 — HubSpot Forms API submission used purely to stitch a contact's
+// pre-form anonymous browsing history (`hubspotutk` cookie) to the
+// contact record. Configured per form-type via env vars, e.g.
+//   HUBSPOT_FORM_GUID_CONTACT=…
+//   HUBSPOT_FORM_GUID_WHITE_PAPER=…
+// plus HUBSPOT_PORTAL_ID. Without those, this is a no-op — we still
+// upsert the contact via the CRM API, just without identity stitching.
+function formGuidFor(formType: string): string | null {
+  const key = `HUBSPOT_FORM_GUID_${formType.toUpperCase().replace(/-/g, "_")}`;
+  const v = process.env[key];
+  return v && v.length > 0 ? v : null;
+}
+
+async function submitFormForStitching(
+  formType: string,
+  properties: ContactProperties,
+  hutk: string,
+): Promise<void> {
+  const formGuid = formGuidFor(formType);
+  const portalId = process.env["HUBSPOT_PORTAL_ID"];
+  if (!formGuid || !portalId) return;
+  const fields: Array<{ name: string; value: string }> = [
+    { name: "email", value: properties.email },
+  ];
+  if (properties.firstname) fields.push({ name: "firstname", value: properties.firstname });
+  if (properties.lastname) fields.push({ name: "lastname", value: properties.lastname });
+  if (properties.company) fields.push({ name: "company", value: properties.company });
+  const body = {
+    fields,
+    context: { hutk, pageUri: properties.hs_analytics_first_url ?? undefined },
+  };
+  const url = `https://api.hsforms.com/submissions/v3/integration/submit/${encodeURIComponent(portalId)}/${encodeURIComponent(formGuid)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = (await res.text()).slice(0, 300);
+    throw new Error(`hsforms_${res.status}: ${text}`);
+  }
+}
+
+// HubSpot's timeline-event API requires the numeric template *id* in
+// the `eventTemplateId` field, not the template name. Bootstrap creates
+// templates by name (e.g. `synozur_white_paper_downloaded`); we resolve
+// the name→id mapping at first use and cache it in-process. The cache
+// is invalidated on a 404 so a freshly-bootstrapped template is picked
+// up without a server restart.
+let timelineTemplateIdCache: Map<string, string> | null = null;
+async function resolveTimelineTemplateId(
+  appId: string,
+  templateName: string,
+): Promise<string | null> {
+  if (timelineTemplateIdCache?.has(templateName)) {
+    return timelineTemplateIdCache.get(templateName) ?? null;
+  }
+  const res = await hubspotProxy(`/crm/v3/timeline/${encodeURIComponent(appId)}/event-templates`);
+  if (!res.ok) return null;
+  const json = (await res.json()) as { results?: Array<{ id?: string; name?: string }> };
+  const map = new Map<string, string>();
+  for (const t of json.results ?? []) {
+    if (t.name && t.id) map.set(t.name, t.id);
+  }
+  timelineTemplateIdCache = map;
+  return map.get(templateName) ?? null;
+}
+
 async function callTimelineEvent(
   appId: string,
-  eventTemplateId: string,
+  templateName: string,
   email: string,
   tokens: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string; retryable: boolean }> {
   try {
+    const eventTemplateId = await resolveTimelineTemplateId(appId, templateName);
+    if (!eventTemplateId) {
+      return {
+        ok: false,
+        error: `timeline_template_not_found: ${templateName}`,
+        retryable: false,
+      };
+    }
     const res = await hubspotProxy(
       `/crm/v3/timeline/${encodeURIComponent(appId)}/events`,
       {
@@ -277,6 +411,9 @@ async function callTimelineEvent(
         body: JSON.stringify({ eventTemplateId, email, tokens }),
       },
     );
+    // A 404 here usually means the cached template id was wiped on the
+    // portal; bust the cache so the next call re-discovers it.
+    if (res.status === 404) timelineTemplateIdCache = null;
     if (res.ok) return { ok: true };
     const text = (await res.text()).slice(0, 500);
     return {
@@ -309,6 +446,24 @@ async function processOne(
 
   if (row.kind === "contact.upsert") {
     const properties = (payload["properties"] ?? {}) as ContactProperties;
+    // #131 — When the form handler captured a `hubspotutk` cookie, we
+    // also submit through the HubSpot Forms API (when a form GUID is
+    // configured) so HubSpot stitches anonymous browsing/session
+    // history to the resulting contact. The contact upsert below is
+    // still authoritative for properties; the form submission's role
+    // is purely identity stitching, so failures are logged but never
+    // dead-letter the row.
+    const formType = typeof payload["formType"] === "string" ? (payload["formType"] as string) : null;
+    const hutk = typeof properties.synozur_hubspotutk === "string" && properties.synozur_hubspotutk.length > 0
+      ? properties.synozur_hubspotutk
+      : null;
+    if (formType && hutk) {
+      try {
+        await submitFormForStitching(formType, properties, hutk);
+      } catch (err) {
+        logger.warn({ err, formType }, "HubSpot Forms API stitching failed (non-fatal)");
+      }
+    }
     const result = await callUpsertContact(properties);
     if (result.ok) {
       await db
@@ -455,6 +610,215 @@ export async function drainHubspotQueue(limit = 25): Promise<{ processed: number
   return { processed };
 }
 
+// #131 — Local→HubSpot subscription mirroring. Called from the
+// /forms/subscribe/unsubscribe route (and any future preference centre)
+// so a local opt-out is durably propagated to HubSpot through the same
+// queue + retry machinery that contact upserts ride. We enqueue a
+// `contact.upsert` that flips both our custom `synozur_marketing_opt_in`
+// flag and HubSpot's built-in `hs_email_optout` so list segmentation and
+// transactional gating both honour it.
+export async function enqueueSubscriptionUpdate(args: {
+  email: string;
+  subscribed: boolean;
+  reason?: string;
+}): Promise<void> {
+  const settings = await loadSettings();
+  if (!settings || settings.hubspotEnabled !== true) return;
+  await db.insert(hubspotSyncEventsTable).values({
+    kind: "contact.upsert",
+    contactEmail: args.email,
+    payload: {
+      properties: {
+        email: args.email,
+        synozur_marketing_opt_in: args.subscribed ? "true" : "false",
+        hs_email_optout: args.subscribed ? "false" : "true",
+        ...(args.reason ? { hs_legal_basis: args.reason } : {}),
+      },
+      reason: args.reason ?? "subscription_change",
+    },
+  });
+}
+
+// #131 — Deterministic mapping from a stored submission payload to the
+// type-specific timeline-event tokens HubSpot expects. Lives here (not
+// the form handlers) so live submits, the backlog migration, and admin
+// force-resync all produce the *same* tokens for the same row. If a
+// caller wants to override (e.g. start handler trims `brief`), it can
+// pass `timelineTokens` to `enqueueContactSubmission`, which take
+// precedence over these computed defaults.
+export function computeTimelineTokens(
+  formType: FormType,
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  const str = (k: string): string | null =>
+    typeof payload[k] === "string" ? (payload[k] as string) : null;
+  switch (formType) {
+    case "white-paper":
+      return { title: str("title"), slug: str("slug") };
+    case "webinar":
+      return { title: str("title"), slug: str("slug"), starts_at: str("startsAt") };
+    case "partner":
+      return { partner_type: str("partnerType"), application: str("application") };
+    case "demo":
+      return { depth: str("depth"), application: str("application") };
+    case "start":
+      return {
+        brief: str("brief")?.slice(0, 200) ?? null,
+        timeline: str("timeline"),
+        budget: str("budget"),
+      };
+    case "contact":
+    case "subscribe":
+    default:
+      return {};
+  }
+}
+
+// Force a re-sync of a single previously-synced form submission.
+// Re-enqueues a fresh `contact.upsert` AND the matching timeline event
+// from the persisted submission row, so admins can recover from a
+// transient HubSpot misconfiguration without re-running the full
+// backfill script. Going through `enqueueContactSubmission` keeps the
+// resync semantically identical to a fresh form submit.
+export async function forceResyncSubmission(submissionId: number): Promise<boolean> {
+  const row = await db.query.formSubmissionsTable.findFirst({
+    where: eq(formSubmissionsTable.id, submissionId),
+  });
+  if (!row || !row.email) return false;
+  const formType = (ALL_FORM_TYPES as readonly string[]).includes(row.formType)
+    ? (row.formType as FormType)
+    : "contact";
+  const payload = (row.payload ?? {}) as Record<string, unknown>;
+  // hutk is persisted under the live cookie name (`hubspotutk`) by the
+  // form handlers; older rows may have stored it as `hutk`.
+  const hutk = typeof payload["hubspotutk"] === "string"
+    ? (payload["hubspotutk"] as string)
+    : typeof payload["hutk"] === "string"
+      ? (payload["hutk"] as string)
+      : null;
+  // Recompute the timeline tokens from the persisted payload so backfill
+  // and resync produce the same timeline event a fresh submit would.
+  const timelineTokens = computeTimelineTokens(formType, payload);
+  await enqueueContactSubmission({
+    formType,
+    submissionId: row.id,
+    email: row.email,
+    name: row.name ?? null,
+    company: row.company ?? null,
+    marketingOptIn: row.marketingOptIn ?? false,
+    payload,
+    utm: {
+      source: row.utmSource,
+      medium: row.utmMedium,
+      campaign: row.utmCampaign,
+      term: row.utmTerm,
+      content: row.utmContent,
+      landingPage: row.landingPage,
+      referrer: row.referrer,
+    },
+    hutk,
+    timelineTokens,
+  });
+  await db
+    .update(formSubmissionsTable)
+    .set({ hubspotSyncStatus: "queued", hubspotSyncError: null })
+    .where(eq(formSubmissionsTable.id, submissionId));
+  return true;
+}
+
+// Per-form-type and per-status last-sync timestamps. Powers the admin
+// health dashboard's "last contact synced", "last timeline event sent",
+// and per-form-type freshness indicators.
+export async function lastSyncTimestamps(): Promise<{
+  lastContactUpsert: Date | null;
+  lastTimelineEvent: Date | null;
+  lastDeadLetter: Date | null;
+  perFormType: Record<string, Date | null>;
+}> {
+  const [contact] = await db
+    .select({ at: max(hubspotSyncEventsTable.succeededAt) })
+    .from(hubspotSyncEventsTable)
+    .where(and(eq(hubspotSyncEventsTable.kind, "contact.upsert"), eq(hubspotSyncEventsTable.status, "succeeded")));
+  const [timeline] = await db
+    .select({ at: max(hubspotSyncEventsTable.succeededAt) })
+    .from(hubspotSyncEventsTable)
+    .where(
+      and(
+        sql`kind LIKE 'timeline.%'`,
+        eq(hubspotSyncEventsTable.status, "succeeded"),
+      ),
+    );
+  const [deadLetter] = await db
+    .select({ at: max(hubspotSyncEventsTable.createdAt) })
+    .from(hubspotSyncEventsTable)
+    .where(eq(hubspotSyncEventsTable.status, "dead_letter"));
+  // Per-form-type freshness is derived from the sync queue itself — the
+  // last `succeeded_at` of a contact-upsert event whose persisted
+  // payload carries that formType. Driving this off
+  // `form_submissions.created_at` would conflate submission time with
+  // sync time and report stale data after a backfill or a long worker
+  // outage.
+  const perFormRows = await db
+    .select({
+      formType: sql<string>`payload->>'formType'`,
+      at: max(hubspotSyncEventsTable.succeededAt),
+    })
+    .from(hubspotSyncEventsTable)
+    .where(
+      and(
+        eq(hubspotSyncEventsTable.kind, "contact.upsert"),
+        eq(hubspotSyncEventsTable.status, "succeeded"),
+        sql`payload->>'formType' IS NOT NULL`,
+      ),
+    )
+    .groupBy(sql`payload->>'formType'`);
+  const perFormType: Record<string, Date | null> = {};
+  for (const ft of ALL_FORM_TYPES) perFormType[ft] = null;
+  for (const r of perFormRows) {
+    if (r.formType) perFormType[r.formType] = r.at ?? null;
+  }
+  return {
+    lastContactUpsert: contact?.at ?? null,
+    lastTimelineEvent: timeline?.at ?? null,
+    lastDeadLetter: deadLetter?.at ?? null,
+    perFormType,
+  };
+}
+
+// Lightweight live connection probe — calls the HubSpot account-info
+// endpoint and reports whether the configured token is currently
+// authorized. Used by the admin health page so operators can tell at a
+// glance whether the integration is live without inspecting the queue.
+export async function probeHubspotConnection(): Promise<{ ok: boolean; portalId?: number; error?: string }> {
+  if (!(await isHubspotConfigured())) return { ok: false, error: "no_access_token" };
+  try {
+    const res = await hubspotProxy("/account-info/v3/details");
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 200);
+      return { ok: false, error: `account_info_${res.status}: ${text}` };
+    }
+    const json = (await res.json()) as { portalId?: number };
+    return { ok: true, portalId: json.portalId };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// Look up a contact's email address by HubSpot internal id. Used by the
+// inbound webhook handler when HubSpot delivers an objectId-only CRM
+// event (common for subscription / property-change webhooks) so we can
+// still mirror the change onto the canonical `subscribers` row.
+export async function resolveContactEmailById(objectId: string): Promise<string | null> {
+  if (!(await isHubspotConfigured())) return null;
+  const res = await hubspotProxy(
+    `/crm/v3/objects/contacts/${encodeURIComponent(objectId)}?properties=email`,
+  );
+  if (!res.ok) return null;
+  const json = (await res.json()) as { properties?: { email?: string | null } };
+  const email = json.properties?.email;
+  return typeof email === "string" && email.length > 0 ? email : null;
+}
+
 export async function replayDeadLetter(eventId: string): Promise<boolean> {
   const [row] = await db
     .update(hubspotSyncEventsTable)
@@ -505,6 +869,28 @@ export async function eraseContact(email: string): Promise<{ ok: boolean; error?
 
 let workerHandle: NodeJS.Timeout | null = null;
 let workerRunning = false;
+
+// #131 — Run on api-server startup to guarantee the portal is bootstrapped
+// (custom contact properties + timeline event templates) and that any
+// pre-existing form_submissions rows are enqueued for sync. Both phases
+// are idempotent: bootstrap PUTs/POSTs are skipped when an existing
+// definition matches, and the migration only enqueues rows whose
+// `hubspotSyncStatus IS NULL`. Gated on `hubspotEnabled` so dev portals
+// without a token noop. Errors are logged but never crash the server.
+export async function bootstrapHubspotOnStartup(): Promise<void> {
+  try {
+    if (!(await isHubspotConfigured())) return;
+    const settings = await loadSettings();
+    if (!settings || settings.hubspotEnabled !== true) return;
+    const { runHubspotBootstrap } = await import("../scripts/bootstrapHubspotProperties");
+    const { runHubspotBacklogMigration } = await import("../scripts/migrateSubmissionsToHubspot");
+    await runHubspotBootstrap({ apply: true });
+    await runHubspotBacklogMigration({ apply: true, closePool: false });
+    logger.info("HubSpot startup bootstrap + backlog migration complete");
+  } catch (err) {
+    logger.warn({ err }, "HubSpot startup bootstrap failed (non-fatal)");
+  }
+}
 
 export function startHubspotWorker(intervalMs = 30_000): void {
   if (workerHandle) return;

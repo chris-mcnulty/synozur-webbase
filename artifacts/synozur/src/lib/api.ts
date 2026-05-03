@@ -31,6 +31,23 @@ function withAttribution<T extends object>(
   return { ...body, ...attr, ...extras };
 }
 
+// #131 — Body shape for the generic /forms/:formType intake. All
+// type-specific tokens are optional; callers populate whichever apply
+// (e.g. `slug` + `title` for white papers; `startsAt` for webinars).
+export interface GenericFormInput {
+  email: string;
+  name?: string | null;
+  company?: string | null;
+  title?: string | null;
+  slug?: string | null;
+  startsAt?: string | null;
+  application?: string | null;
+  depth?: string | null;
+  partnerType?: string | null;
+  website?: string;
+  turnstileToken: string | null;
+}
+
 export interface SubmissionsQuery {
   formType?: string;
   search?: string;
@@ -812,6 +829,21 @@ export const api = {
     }),
   submitStart: (body: StartFormInput, opts: { marketingOptIn?: boolean } = {}) =>
     jsonFetch<FormSubmissionAck>(url("/forms/start"), {
+      method: "POST",
+      body: JSON.stringify(withAttribution(body, opts)),
+    }),
+  // #131 — Generic intake for white-paper / webinar / partner / demo
+  // capture forms. The server route lives at POST /forms/:formType and
+  // routes through the same persist + HubSpot enqueue path as the named
+  // endpoints above. `body` carries the type-specific context fields
+  // (slug/title/startsAt/application/depth/partnerType) which become
+  // timeline-event tokens in HubSpot.
+  submitGenericForm: (
+    formType: "white-paper" | "webinar" | "partner" | "demo",
+    body: GenericFormInput,
+    opts: { marketingOptIn?: boolean } = {},
+  ) =>
+    jsonFetch<FormSubmissionAck>(url(`/forms/${formType}`), {
       method: "POST",
       body: JSON.stringify(withAttribution(body, opts)),
     }),

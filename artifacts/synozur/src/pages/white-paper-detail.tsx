@@ -5,6 +5,7 @@ import { Meta } from "@/lib/meta";
 import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
 import { trackEvent } from "@/lib/traffic-tracker";
+import { LeadCaptureForm } from "@/components/lead-capture-form";
 import { RichText } from "@/components/rich-text";
 import { ShareRail } from "@/components/share-rail";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
@@ -213,6 +214,20 @@ export default function WhitePaperDetail() {
                 )}
               </div>
             )}
+
+            {/* #131 — Lead capture: download/open is ungated, but we
+                offer a follow-up form so readers who want to stay in
+                touch flow into HubSpot as a contact + timeline event. */}
+            <div className="mt-12">
+              <LeadCaptureForm
+                formType="white-paper"
+                context={{ slug: wp.slug, title: wp.title }}
+                heading="Want more like this?"
+                description="Leave your details and we'll send related research and briefings directly to your inbox."
+                ctaLabel="Send me updates"
+                successMessage="Thanks — we'll be in touch with related research."
+              />
+            </div>
           </div>
         </section>
       </div>
@@ -321,6 +336,18 @@ export default function WhitePaperDetail() {
                 Get in touch <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             )}
+          </div>
+
+          {/* #131 — Lead capture for the legacy collateral branch. */}
+          <div className="mt-10">
+            <LeadCaptureForm
+              formType="white-paper"
+              context={{ slug: col.slug, title: col.title }}
+              heading="Want more like this?"
+              description="Leave your details and we'll send related research and briefings directly to your inbox."
+              ctaLabel="Send me updates"
+              successMessage="Thanks — we'll be in touch with related research."
+            />
           </div>
         </div>
       </section>

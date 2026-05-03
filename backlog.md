@@ -624,6 +624,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#165~~ | ~~Honor `prefers-color-scheme` for first-time visitors~~ — **Shipped May 2026** | Public Site UX | — |
 | #166 | Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget | Public Site UX | — |
 | #167 | Apply Anthropic prompt caching across the AI chat + grounding pipeline | Public Site UX | #166 |
+| ~~#131~~ | ~~HubSpot lead capture and lifecycle sync — provider abstraction, queued contact upserts + timeline events, custom Synozur properties, subscription mirroring (HubSpot ↔ local), admin health page, backlog migration, hutk identity stitching~~ — **Shipped May 2026 (#263)** | Marketing & Lifecycle | — |
 | ~~#168~~ | ~~Double opt-in confirmation for newsletter subscribers~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | #169 | Admin audit-log viewer with entity-scoped activity tab and 365-day retention | Admin Access & People | — |
 | ~~#170~~ | ~~Public-site search endpoint and `/search` page powered by Postgres FTS~~ — Shipped May 2026 | Public Site UX | — |

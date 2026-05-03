@@ -29,7 +29,12 @@ import {
   sendSubscriptionConfirmation,
 } from "../lib/email";
 import { verifyTurnstile } from "../lib/turnstile";
-import { enqueueContactSubmission, type FormType } from "../lib/hubspotSync";
+import {
+  computeTimelineTokens,
+  enqueueContactSubmission,
+  enqueueSubscriptionUpdate,
+  type FormType,
+} from "../lib/hubspotSync";
 import { flushPendingDemoCompletionsForVisitor } from "../lib/applicationDemoFlush";
 import {
   signSubscriberConfirmToken,
@@ -56,7 +61,19 @@ const MarketingExtension = z.object({
   utmContent: z.string().max(200).nullish(),
   landingPage: z.string().max(2048).nullish(),
   referrer: z.string().max(2048).nullish(),
+  // #131 — HubSpot tracking cookie value (`hubspotutk`). Read from
+  // either the request cookie (set when the HubSpot pixel runs on
+  // synozur.com) or an explicit body field, so static pages that
+  // submit cross-origin can still pass it through.
+  hubspotutk: z.string().max(200).nullish(),
 });
+
+// Read the `hubspotutk` cookie or fall back to an explicit body field.
+function extractHutk(req: Request, body: { hubspotutk?: string | null | undefined }): string | null {
+  if (body.hubspotutk && body.hubspotutk.trim().length > 0) return body.hubspotutk.trim();
+  const cookie = (req as Request & { cookies?: Record<string, string> }).cookies?.["hubspotutk"];
+  return cookie && cookie.length > 0 ? cookie : null;
+}
 
 const ContactBodyExt = SubmitContactBody.and(MarketingExtension);
 const SubscribeBodyExt = SubmitSubscribeBody.and(MarketingExtension);
@@ -511,6 +528,7 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     marketingOptIn: attribution.marketingOptIn,
     payload,
     utm: attribution.utm,
+    hutk: extractHutk(req, data),
   }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (contact)"));
 
   // #133 — Now that this anonymous visitor has identified themselves with
@@ -820,6 +838,10 @@ router.get("/forms/subscribe/confirm", async (req, res): Promise<void> => {
         ? (originalSubmission.payload as Record<string, unknown>)
         : {}),
     },
+    hutk: (() => {
+      const p = originalSubmission?.payload as Record<string, unknown> | null | undefined;
+      return p && typeof p["hubspotutk"] === "string" ? (p["hubspotutk"] as string) : null;
+    })(),
     utm: {
       source: originalSubmission?.utmSource ?? null,
       medium: originalSubmission?.utmMedium ?? null,
@@ -885,6 +907,19 @@ router.get("/forms/subscribe/unsubscribe", async (req, res): Promise<void> => {
       confirmationTokenHash: null,
     })
     .where(eq(subscribersTable.id, row.id));
+  // #131 — propagate the local opt-out to HubSpot through the sync queue
+  // so list segmentation + transactional gating both honour the user's
+  // request, even if HubSpot is briefly unreachable. The worker handles
+  // retry / dead-letter; we never block the unsubscribe response on it.
+  try {
+    await enqueueSubscriptionUpdate({
+      email: row.email,
+      subscribed: false,
+      reason: "user_unsubscribe",
+    });
+  } catch (err) {
+    logger.warn({ err, subscriberId: row.id }, "Failed to enqueue HubSpot unsubscribe; local state still updated");
+  }
   res.type("html").send(
     renderConfirmPage({
       ok: true,
@@ -1041,7 +1076,112 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     marketingOptIn: attribution.marketingOptIn,
     payload,
     utm: attribution.utm,
+    hutk: extractHutk(req, data),
+    // Token shape lives in `computeTimelineTokens` so a backfill /
+    // force-resync of this row produces an identical timeline event.
+    timelineTokens: computeTimelineTokens("start", payload as Record<string, unknown>),
   }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (start)"));
+  res.json(SubmitContactResponse.parse({ ok: true, id }));
+});
+
+// #131: generic intake for the white-paper / webinar / partner / demo
+// flows. These forms share the same shape (email + name + optional
+// company + a small bag of context fields) but diverge in their
+// timeline-event payload tokens, so we accept the form type as a path
+// parameter and overlay type-specific tokens onto the shared marketing
+// extension. Keeps every inbound HubSpot-syncing endpoint going through
+// the same persist + enqueue path.
+const GenericFormBody = z.object({
+  email: z.string().email().max(320),
+  name: z.string().max(200).nullish(),
+  company: z.string().max(200).nullish(),
+  // Type-specific context. All optional; whichever apply to the
+  // inbound flow are merged into the timeline-event tokens.
+  title: z.string().max(300).nullish(),
+  slug: z.string().max(200).nullish(),
+  startsAt: z.string().max(50).nullish(),
+  application: z.string().max(2000).nullish(),
+  depth: z.string().max(50).nullish(),
+  partnerType: z.string().max(100).nullish(),
+  website: z.string().max(2048).optional(), // honeypot
+  turnstileToken: z.string().min(1),
+}).and(MarketingExtension);
+
+const GENERIC_FORM_TYPES = ["white-paper", "webinar", "partner", "demo"] as const;
+type GenericFormType = (typeof GENERIC_FORM_TYPES)[number];
+
+// path-to-regexp v8 (Express 5) does not support inline regex param
+// constraints, so we use a plain `:formType` param and validate the
+// allowlist in-handler. Unknown values 404 before any work happens.
+router.post("/forms/:formType", async (req, res): Promise<void> => {
+  const rawFormType = (req.params as Record<string, string>)["formType"] ?? "";
+  if (!(GENERIC_FORM_TYPES as readonly string[]).includes(rawFormType)) {
+    res.status(404).json({ error: "Unknown form type" });
+    return;
+  }
+  const formType = rawFormType as GenericFormType;
+  const parsed = GenericFormBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const data = parsed.data;
+  if (data.website && data.website.trim() !== "") {
+    res.json(SubmitContactResponse.parse({ ok: true, id: 0 }));
+    return;
+  }
+  const ip = clientIp(req);
+  if (!(await verifyTurnstile(data.turnstileToken, ip))) {
+    res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
+    return;
+  }
+  const {
+    turnstileToken: _t,
+    website: _w,
+    marketingOptIn: _m,
+    utmSource: _us,
+    utmMedium: _um,
+    utmCampaign: _uc,
+    utmTerm: _ut,
+    utmContent: _uct,
+    landingPage: _lp,
+    referrer: _ref,
+    // NB: `hubspotutk` is intentionally retained in `payload` so a later
+    // backfill or admin force-resync of this row can rebuild the same
+    // contact upsert (with stable visitor identity) without a live cookie.
+    ...payload
+  } = data;
+  const attribution = await resolveAttribution(formType as FormType, data);
+  const webhook = await forwardToWebhook({ formType, ...payload });
+  const id = await persist({
+    formType,
+    email: payload.email,
+    name: payload.name ?? null,
+    company: payload.company ?? null,
+    payload,
+    req,
+    webhook,
+    attribution,
+  });
+  // Token shape lives in `computeTimelineTokens` so that a backfill or
+  // admin force-resync from the persisted payload produces an identical
+  // timeline event for this row.
+  const timelineTokens = computeTimelineTokens(
+    formType as FormType,
+    payload as Record<string, unknown>,
+  );
+  void enqueueContactSubmission({
+    formType: formType as FormType,
+    submissionId: id,
+    email: payload.email,
+    name: payload.name ?? null,
+    company: payload.company ?? null,
+    marketingOptIn: attribution.marketingOptIn,
+    payload,
+    utm: attribution.utm,
+    hutk: extractHutk(req, data),
+    timelineTokens,
+  }).catch((err) => logger.warn({ err, id, formType }, "HubSpot enqueue failed (generic)"));
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 

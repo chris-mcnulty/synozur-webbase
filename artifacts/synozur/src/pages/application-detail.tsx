@@ -14,6 +14,7 @@ import {
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+import { LeadCaptureForm } from "@/components/lead-capture-form";
 
 // #133 — Constellation interactive demo A/B toggle.
 //
@@ -272,6 +273,22 @@ export default function ApplicationDetail() {
           </div>
         </section>
       )}
+
+      {/* #131 — Demo / interest capture for application detail pages.
+          Stores the application slug as a timeline-event token so the
+          HubSpot record reflects which app the lead asked about. */}
+      <section className="py-16 bg-background border-t border-border">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <LeadCaptureForm
+            formType="demo"
+            context={{ slug: app.slug, title: app.name, application: app.name }}
+            heading={`See ${app.name} in action`}
+            description="Tell us a little about your goals and we'll set up a personalized walkthrough."
+            ctaLabel="Request a demo"
+            successMessage="Thanks — we'll reach out shortly to schedule your demo."
+          />
+        </div>
+      </section>
 
       {others.length > 0 && (
         <section className="py-20 bg-card border-t border-border">

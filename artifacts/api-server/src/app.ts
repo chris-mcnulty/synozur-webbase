@@ -45,10 +45,13 @@ app.use(securityHeadersMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
-// #221 — Capture the raw body buffer alongside the parsed JSON so the
-// SendGrid event webhook can verify the ECDSA signature against the exact
-// bytes SendGrid signed. The buffer is a tiny reference attached to `req`
-// (no copy) so this is essentially free for non-webhook traffic.
+// #221 / #263 — Capture the raw body buffer alongside the parsed JSON so
+// downstream webhook handlers can verify HMAC/ECDSA signatures against the
+// exact bytes the platform signed. Used by the SendGrid event webhook
+// (#221) and the HubSpot subscription webhook (#263). The buffer is a
+// tiny reference attached to `req` (no copy) so this is essentially free
+// for non-webhook traffic; signature handlers that want a string just
+// call `.toString("utf8")`.
 app.use(
   express.json({
     limit: "2mb",

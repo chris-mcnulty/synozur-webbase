@@ -4,6 +4,7 @@ import { Meta } from "@/lib/meta";
 import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
+import { LeadCaptureForm } from "@/components/lead-capture-form";
 
 function isEmbeddable(url: string) {
   return /youtube\.com\/embed|player\.vimeo\.com|wistia\.net\/embed/.test(url);
@@ -134,6 +135,25 @@ export default function WebinarDetail() {
               </a>
             </div>
           )}
+
+          {/* #131 — Webinar registration / follow-up capture. We pass
+              `startsAt` (or `publishedAt` for on-demand recordings) as
+              the timeline-event token so HubSpot reflects when the
+              event aired or was published. */}
+          <div className="mt-12">
+            <LeadCaptureForm
+              formType="webinar"
+              context={{
+                slug: item.slug,
+                title: item.title,
+                startsAt: item.publishedAt,
+              }}
+              heading="Register for updates"
+              description="Tell us where to send replays, slides, and invites to upcoming sessions."
+              ctaLabel="Send me updates"
+              successMessage="Thanks — we'll send you the recording and future invites."
+            />
+          </div>
         </div>
       </section>
     </div>

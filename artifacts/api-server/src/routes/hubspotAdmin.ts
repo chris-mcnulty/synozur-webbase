@@ -6,7 +6,10 @@ import { requireAdmin } from "../middlewares/requireAdmin";
 import {
   drainHubspotQueue,
   eraseContact,
+  forceResyncSubmission,
   isHubspotConfigured,
+  lastSyncTimestamps,
+  probeHubspotConnection,
   queueDepth,
   replayDeadLetter,
 } from "../lib/hubspotSync";
@@ -24,6 +27,11 @@ router.get("/admin/integrations/hubspot/status", requireAdmin, async (_req, res)
     where: eq(siteSettingsTable.id, 1),
   });
   const depth = await queueDepth();
+  // Live HubSpot connection probe + per-object freshness so the admin
+  // health card can show "connected, last contact synced 4m ago, last
+  // timeline event 12m ago" without a separate request.
+  const probe = await probeHubspotConnection();
+  const freshness = await lastSyncTimestamps();
   const recent = await db
     .select()
     .from(hubspotSyncEventsTable)
@@ -40,24 +48,36 @@ router.get("/admin/integrations/hubspot/status", requireAdmin, async (_req, res)
     configured,
     tokenSource,
     enabled: settings?.hubspotEnabled === true,
-    portalId: process.env["HUBSPOT_PORTAL_ID"] ?? null,
+    portalId: probe.ok && probe.portalId ? probe.portalId : process.env["HUBSPOT_PORTAL_ID"] ?? null,
+    connection: probe,
     timelineAppId: settings?.hubspotTimelineAppId ?? null,
     formToggles: settings?.hubspotFormToggles ?? null,
     lifecycleMappings: settings?.hubspotLifecycleMappings ?? null,
     euOptInDefault: settings?.hubspotEuOptInDefault ?? false,
     queue: depth,
-    recentEvents: recent.map((r) => ({
-      id: r.id,
-      kind: r.kind,
-      contactEmail: r.contactEmail,
-      status: r.status,
-      attempts: r.attempts,
-      lastError: r.lastError,
-      hubspotResourceId: r.hubspotResourceId,
-      nextAttemptAt: r.nextAttemptAt,
-      createdAt: r.createdAt,
-      succeededAt: r.succeededAt,
-    })),
+    freshness,
+    recentEvents: recent.map((r) => {
+      // Pull `submissionId` out of the persisted payload so the admin
+      // UI can offer a per-row "force re-sync" action without an extra
+      // round trip per row.
+      const payload = (r.payload ?? {}) as Record<string, unknown>;
+      const submissionId = typeof payload["submissionId"] === "number"
+        ? (payload["submissionId"] as number)
+        : null;
+      return {
+        id: r.id,
+        kind: r.kind,
+        contactEmail: r.contactEmail,
+        status: r.status,
+        attempts: r.attempts,
+        lastError: r.lastError,
+        hubspotResourceId: r.hubspotResourceId,
+        nextAttemptAt: r.nextAttemptAt,
+        createdAt: r.createdAt,
+        succeededAt: r.succeededAt,
+        submissionId,
+      };
+    }),
   });
 });
 
@@ -93,6 +113,27 @@ router.post("/admin/integrations/hubspot/drain", requireAdmin, async (_req, res)
   const result = await drainHubspotQueue(50);
   res.json({ ok: true, processed: result.processed });
 });
+
+// Per-submission force-resync. Re-enqueues a fresh `contact.upsert` for
+// the targeted form_submission so an operator can recover a single row
+// without re-running the full backfill script.
+router.post(
+  "/admin/integrations/hubspot/resync/:submissionId",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const id = Number.parseInt(String(req.params.submissionId ?? ""), 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid submissionId" });
+      return;
+    }
+    const ok = await forceResyncSubmission(id);
+    if (!ok) {
+      res.status(404).json({ error: "Submission not found or has no email" });
+      return;
+    }
+    res.json({ ok: true });
+  },
+);
 
 router.post("/admin/integrations/hubspot/replay/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = String(req.params.id ?? "");

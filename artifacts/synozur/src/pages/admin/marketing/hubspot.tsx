@@ -12,6 +12,22 @@ import { useToast } from "@/hooks/use-toast";
 // settings form. Per-form-type toggles and lifecycle mappings are stored as
 // JSON in site_settings; we render them as labeled rows.
 
+interface SyncEvent {
+  id: string;
+  kind: string;
+  contactEmail: string | null;
+  status: string;
+  attempts: number;
+  lastError: string | null;
+  hubspotResourceId: string | null;
+  nextAttemptAt: string;
+  createdAt: string;
+  succeededAt: string | null;
+  // New: link back to the originating submission so admins can force a
+  // full re-sync (contact upsert + matching timeline event).
+  submissionId?: number | null;
+}
+
 interface HubspotStatus {
   configured: boolean;
   enabled: boolean;
@@ -21,26 +37,55 @@ interface HubspotStatus {
   lifecycleMappings: Record<string, string> | null;
   euOptInDefault: boolean;
   queue: { pending: number; deadLetter: number; succeeded: number };
-  recentEvents: Array<{
-    id: string;
-    kind: string;
-    contactEmail: string | null;
-    status: string;
-    attempts: number;
-    lastError: string | null;
-    hubspotResourceId: string | null;
-    nextAttemptAt: string;
-    createdAt: string;
-    succeededAt: string | null;
-  }>;
+  // #131 — health surface. `connection` is a live probe of the HubSpot
+  // account-info endpoint, `freshness` is the most-recent successful
+  // sync per kind/form-type so we can flag stale or never-synced flows.
+  connection?: {
+    ok: boolean;
+    portalId?: number | null;
+    error?: string | null;
+  } | null;
+  freshness?: {
+    lastContactUpsert: string | null;
+    lastTimelineEvent: string | null;
+    lastDeadLetter?: string | null;
+    perFormType: Record<string, string | null>;
+  } | null;
+  recentEvents: Array<SyncEvent>;
 }
 
-const FORM_TYPES = ["contact", "subscribe", "start"] as const;
+const FORM_TYPES = [
+  "contact",
+  "subscribe",
+  "start",
+  "white-paper",
+  "webinar",
+  "partner",
+  "demo",
+] as const;
 const DEFAULT_LIFECYCLES: Record<string, string> = {
   contact: "lead",
   subscribe: "subscriber",
   start: "marketingqualifiedlead",
+  "white-paper": "lead",
+  webinar: "lead",
+  partner: "lead",
+  demo: "marketingqualifiedlead",
 };
+
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  const ts = new Date(iso).getTime();
+  if (!Number.isFinite(ts)) return "never";
+  const delta = Math.max(0, Date.now() - ts);
+  const mins = Math.floor(delta / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -129,6 +174,19 @@ export default function HubspotAdminPage() {
     }
   }
 
+  async function resyncSubmission(submissionId: number) {
+    try {
+      await apiFetch(`/admin/integrations/hubspot/resync/${submissionId}`, { method: "POST" });
+      toast({
+        title: "Re-sync queued",
+        description: "Contact upsert and the matching timeline event have been re-enqueued.",
+      });
+      await refresh();
+    } catch (e) {
+      toast({ title: "Re-sync failed", description: (e as Error).message, variant: "destructive" });
+    }
+  }
+
   async function erase() {
     if (!erasureEmail.trim()) return;
     if (!confirm(`Permanently delete the HubSpot contact for ${erasureEmail}? This cannot be undone.`)) return;
@@ -157,9 +215,17 @@ export default function HubspotAdminPage() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <div className="text-lg font-semibold">Connection</div>
-                <div className="text-sm text-muted-foreground">
-                  Token: {status.configured ? <Badge>configured</Badge> : <Badge variant="destructive">missing</Badge>}{" "}
-                  Portal: {status.portalId ?? "—"}
+                <div className="text-sm text-muted-foreground space-x-2">
+                  <span>Token: {status.configured ? <Badge>configured</Badge> : <Badge variant="destructive">missing</Badge>}</span>
+                  <span>
+                    Live:{" "}
+                    {status.connection
+                      ? status.connection.ok
+                        ? <Badge>reachable</Badge>
+                        : <Badge variant="destructive">{status.connection.error ?? "unreachable"}</Badge>
+                      : <Badge variant="secondary">unknown</Badge>}
+                  </span>
+                  <span>Portal: {status.connection?.portalId ?? status.portalId ?? "—"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -201,6 +267,33 @@ export default function HubspotAdminPage() {
                 onCheckedChange={(v) => save({ euOptInDefault: v })}
               />
               <Label htmlFor="hs-eu-default">EU geo: default to opt-out</Label>
+            </div>
+          </Card>
+
+          <Card className="p-6 mb-6 space-y-3">
+            <div className="text-lg font-semibold">Sync freshness</div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-muted-foreground">Last contact upsert</div>
+                <div className="font-medium">{formatRelative(status.freshness?.lastContactUpsert)}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Last timeline event</div>
+                <div className="font-medium">{formatRelative(status.freshness?.lastTimelineEvent)}</div>
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground text-sm mb-1">Per-form last successful sync</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {FORM_TYPES.map((ft) => (
+                  <div key={ft} className="flex items-center justify-between border-b border-border py-1">
+                    <code>{ft}</code>
+                    <span className="text-muted-foreground">
+                      {formatRelative(status.freshness?.perFormType?.[ft] ?? null)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </Card>
 
@@ -253,9 +346,19 @@ export default function HubspotAdminPage() {
                   <code className="truncate flex-1">{e.kind}</code>
                   <span className="truncate min-w-0 max-w-[200px]">{e.contactEmail ?? "—"}</span>
                   <span className="text-muted-foreground">attempts {e.attempts}</span>
+                  {e.lastError && (
+                    <span className="text-destructive truncate min-w-0 max-w-[260px]" title={e.lastError}>
+                      {e.lastError}
+                    </span>
+                  )}
                   {e.status === "dead_letter" && (
                     <Button size="sm" variant="ghost" onClick={() => replay(e.id)}>Replay</Button>
                   )}
+                  {e.submissionId ? (
+                    <Button size="sm" variant="ghost" onClick={() => resyncSubmission(e.submissionId!)}>
+                      Re-sync
+                    </Button>
+                  ) : null}
                 </div>
               ))}
             </div>
