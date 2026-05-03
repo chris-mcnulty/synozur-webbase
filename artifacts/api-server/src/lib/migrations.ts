@@ -2595,6 +2595,22 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS careers_default_hiring_manager text;
     `);
 
+    // oauth_consents primary key — the CREATE TABLE IF NOT EXISTS block that
+    // defines the PK is skipped when the table pre-existed the migration, so
+    // tables created before that block have no PK and the ON CONFLICT upsert
+    // in the consent endpoint crashes with "no unique constraint" at runtime.
+    await db.execute(sql`
+      DO $pk$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'oauth_consents_pkey'
+            AND conrelid = 'oauth_consents'::regclass
+        ) THEN
+          ALTER TABLE oauth_consents ADD PRIMARY KEY (user_id, client_id);
+        END IF;
+      END $pk$;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
