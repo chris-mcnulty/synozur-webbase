@@ -1775,6 +1775,23 @@ export interface UpdateCollateralResourceBody {
   sortOrder?: number;
 }
 
+export interface CollateralReorderBody {
+  /**
+   * Featured collateral ids in their desired carousel order. Each id is
+assigned a `featuredRank` equal to its 1-based position. Must contain
+unique values and at least one id.
+
+   * @minItems 1
+   * @maxItems 500
+   */
+  ids: string[];
+}
+
+export interface CollateralReorderResponse {
+  /** Number of collateral rows whose featured rank was updated. */
+  updated: number;
+}
+
 export interface CollateralResourceReorderBody {
   /**
    * Resource ids in their new order. All must belong to the path collateral id.

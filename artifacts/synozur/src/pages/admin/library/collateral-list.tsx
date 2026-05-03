@@ -14,6 +14,9 @@ import {
   ArrowUpDown,
   Lock,
   ShieldCheck,
+  GripVertical,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -51,6 +54,7 @@ import {
   useCmsListCollateral,
   useCmsUpdateCollateral,
   useCmsDeleteCollateral,
+  useCmsReorderCollateral,
   type CollateralItem,
 } from "@workspace/api-client-react";
 import {
@@ -268,6 +272,98 @@ export default function AdminCollateralList() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkDraft, setBulkDraft] = useState<BulkDraft>(EMPTY_BULK);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  // Reorder mode (#75): when active the table shows only featured rows in
+  // featured-rank order with drag handles; the new order is held locally
+  // until the editor saves it as a single bulk request.
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reorderIds, setReorderIds] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  const reorderMut = useCmsReorderCollateral({
+    mutation: {
+      onSuccess: async () => {
+        toast({ title: "Featured order saved" });
+        setReorderMode(false);
+        setReorderIds(null);
+        await listQ.refetch();
+      },
+      onError: (e: Error) =>
+        toast({
+          title: "Reorder failed",
+          description: e.message,
+          variant: "destructive",
+        }),
+    },
+  });
+
+  // Featured items in their current carousel order. Used by reorder mode.
+  const featuredOrdered = useMemo(
+    () =>
+      items
+        .filter((i) => i.featured)
+        .slice()
+        .sort((a, b) => {
+          const ra = a.featuredRank ?? Number.POSITIVE_INFINITY;
+          const rb = b.featuredRank ?? Number.POSITIVE_INFINITY;
+          if (ra !== rb) return ra - rb;
+          return a.title.localeCompare(b.title);
+        }),
+    [items],
+  );
+
+  const reorderRows = useMemo(() => {
+    if (!reorderIds) return featuredOrdered;
+    const byId = new Map(featuredOrdered.map((f) => [f.id, f]));
+    const ordered = reorderIds
+      .map((id) => byId.get(id))
+      .filter((x): x is CollateralRow => !!x);
+    const extras = featuredOrdered.filter((f) => !reorderIds.includes(f.id));
+    return [...ordered, ...extras];
+  }, [featuredOrdered, reorderIds]);
+
+  const reorderDirty =
+    !!reorderIds &&
+    (reorderIds.length !== featuredOrdered.length ||
+      reorderIds.some((id, i) => featuredOrdered[i]?.id !== id));
+
+  const handleReorderDrop = (targetId: string) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    const currentIds = reorderRows.map((r) => r.id);
+    const from = currentIds.indexOf(dragId);
+    const to = currentIds.indexOf(targetId);
+    setDragId(null);
+    setOverId(null);
+    if (from < 0 || to < 0) return;
+    const next = currentIds.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setReorderIds(next);
+  };
+
+  const enterReorderMode = () => {
+    setReorderMode(true);
+    setReorderIds(featuredOrdered.map((f) => f.id));
+    clearSelection();
+  };
+
+  const cancelReorder = () => {
+    setReorderMode(false);
+    setReorderIds(null);
+    setDragId(null);
+    setOverId(null);
+  };
+
+  const saveReorder = () => {
+    const ids = reorderRows.map((r) => r.id);
+    if (ids.length === 0) return;
+    reorderMut.mutate({ data: { ids } });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -546,21 +642,133 @@ export default function AdminCollateralList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Library" }]}
       actions={
         <div className="flex items-center gap-2">
-          <Link href="/library/audit">
-            <Button variant="outline" data-testid="button-library-audit">
-              <ShieldCheck className="h-4 w-4 mr-2" /> Audit library
-            </Button>
-          </Link>
-          {canWrite && (
-            <Link href="/library/collateral/new">
-              <Button data-testid="button-create-collateral">
-                <Plus className="h-4 w-4 mr-2" /> New item
+          {reorderMode ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={cancelReorder}
+                disabled={reorderMut.isPending}
+                data-testid="button-reorder-cancel"
+              >
+                <X className="h-4 w-4 mr-2" /> Cancel
               </Button>
-            </Link>
+              <Button
+                onClick={saveReorder}
+                disabled={!reorderDirty || reorderMut.isPending}
+                data-testid="button-reorder-save"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                {reorderMut.isPending ? "Saving…" : "Save order"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/library/audit">
+                <Button variant="outline" data-testid="button-library-audit">
+                  <ShieldCheck className="h-4 w-4 mr-2" /> Audit library
+                </Button>
+              </Link>
+              {canWrite && featuredOrdered.length > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={enterReorderMode}
+                  data-testid="button-reorder-featured"
+                >
+                  <GripVertical className="h-4 w-4 mr-2" /> Reorder featured
+                </Button>
+              )}
+              {canWrite && (
+                <Link href="/library/collateral/new">
+                  <Button data-testid="button-create-collateral">
+                    <Plus className="h-4 w-4 mr-2" /> New item
+                  </Button>
+                </Link>
+              )}
+            </>
           )}
         </div>
       }
     >
+      {reorderMode && (
+        <div className="mb-4" data-testid="reorder-panel">
+          <div className="text-sm text-muted-foreground mb-3">
+            Drag to reorder the featured items that power the home carousel and
+            the featured-library row. Click <strong>Save order</strong> to apply
+            all changes in one update.
+            {reorderMut.isPending ? " Saving…" : ""}
+          </div>
+          {featuredOrdered.length === 0 ? (
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted-foreground">
+              No featured items yet. Mark items as featured from the list to
+              add them to the home carousel.
+            </div>
+          ) : (
+            <ul className="space-y-1" data-testid="reorder-list">
+              {reorderRows.map((item, idx) => {
+                const isDragging = dragId === item.id;
+                const isOver = overId === item.id && dragId !== item.id;
+                const draggable = canWrite && !reorderMut.isPending;
+                return (
+                  <li
+                    key={item.id}
+                    draggable={draggable}
+                    onDragStart={(e) => {
+                      if (!draggable) return;
+                      setDragId(item.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", item.id);
+                    }}
+                    onDragOver={(e) => {
+                      if (!dragId) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (overId !== item.id) setOverId(item.id);
+                    }}
+                    onDragLeave={() => {
+                      if (overId === item.id) setOverId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleReorderDrop(item.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverId(null);
+                    }}
+                    className={
+                      "flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm transition-colors " +
+                      (isDragging ? "opacity-50 " : "") +
+                      (isOver ? "border-primary bg-primary/5 " : "") +
+                      (draggable
+                        ? "cursor-grab active:cursor-grabbing"
+                        : "cursor-not-allowed")
+                    }
+                    data-testid={`reorder-row-${item.id}`}
+                  >
+                    <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span
+                      className="w-8 text-xs text-muted-foreground tabular-nums"
+                      title="New rank"
+                    >
+                      #{idx + 1}
+                    </span>
+                    <HeroThumb url={item.heroImage} title={item.title} />
+                    <span className="flex-1 font-medium truncate">
+                      {item.title}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {COLLATERAL_TYPE_LABELS[item.type] ?? item.type}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {!reorderMode && (
+      <>
       {/* Type tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as TypeTab)} className="w-full">
         <TabsList className="flex-wrap h-auto" data-testid="tabs-collateral-type">
@@ -943,6 +1151,8 @@ export default function AdminCollateralList() {
           </TableBody>
         </Table>
       </div>
+      </>
+      )}
 
       {/* Bulk edit dialog */}
       <Dialog open={bulkOpen} onOpenChange={(o) => !o && setBulkOpen(false)}>

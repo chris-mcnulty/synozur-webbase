@@ -1978,6 +1978,31 @@ export const CmsCreateCollateralBody = zod.object({
   active: zod.boolean().optional(),
 });
 
+/**
+ * Bulk-reorder featured collateral items in one request. The request body is
+a list of collateral ids in their new order. Each id is assigned a
+`featuredRank` matching its position (1-based). All ids must reference
+collateral that is currently flagged `featured`.
+
+ */
+export const cmsReorderCollateralBodyIdsMax = 500;
+
+export const CmsReorderCollateralBody = zod.object({
+  ids: zod
+    .array(zod.string())
+    .min(1)
+    .max(cmsReorderCollateralBodyIdsMax)
+    .describe(
+      "Featured collateral ids in their desired carousel order. Each id is\nassigned a `featuredRank` equal to its 1-based position. Must contain\nunique values and at least one id.\n",
+    ),
+});
+
+export const CmsReorderCollateralResponse = zod.object({
+  updated: zod
+    .number()
+    .describe("Number of collateral rows whose featured rank was updated."),
+});
+
 export const CmsGetCollateralParams = zod.object({
   id: zod.coerce.string(),
 });

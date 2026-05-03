@@ -1185,6 +1185,31 @@ paths:
                 $ref: '#/components/schemas/CollateralItem'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /cms/collateral/reorder:
+    post:
+      operationId: cmsReorderCollateral
+      tags:
+        - CmsCollateral
+      description: |
+        Bulk-reorder featured collateral items in one request. The request body is
+        a list of collateral ids in their new order. Each id is assigned a
+        `featuredRank` matching its position (1-based). All ids must reference
+        collateral that is currently flagged `featured`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollateralReorderBody'
+      responses:
+        '200':
+          description: Reordered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralReorderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /cms/collateral/{id}:
     get:
       operationId: cmsGetCollateral
@@ -6282,6 +6307,30 @@ components:
             - 'null'
         sortOrder:
           type: integer
+    CollateralReorderBody:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          description: |
+            Featured collateral ids in their desired carousel order. Each id is
+            assigned a `featuredRank` equal to its 1-based position. Must contain
+            unique values and at least one id.
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items:
+            type: string
+    CollateralReorderResponse:
+      type: object
+      required:
+        - updated
+      properties:
+        updated:
+          type: integer
+          description: Number of collateral rows whose featured rank was updated.
     CollateralResourceReorderBody:
       type: object
       required:

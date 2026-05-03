@@ -37,6 +37,8 @@ export * from "./cmsUser";
 export * from "./collateralItem";
 export * from "./collateralItemsResponse";
 export * from "./collateralPillar";
+export * from "./collateralReorderBody";
+export * from "./collateralReorderResponse";
 export * from "./collateralResource";
 export * from "./collateralResourceReorderBody";
 export * from "./collateralResourcesResponse";

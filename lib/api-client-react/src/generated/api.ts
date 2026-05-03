@@ -38,6 +38,8 @@ import type {
   CmsUser,
   CollateralItem,
   CollateralItemsResponse,
+  CollateralReorderBody,
+  CollateralReorderResponse,
   CollateralResource,
   CollateralResourceReorderBody,
   CollateralResourcesResponse,
@@ -3965,6 +3967,93 @@ export const useCmsCreateCollateral = <
   TContext
 > => {
   return useMutation(getCmsCreateCollateralMutationOptions(options));
+};
+
+/**
+ * Bulk-reorder featured collateral items in one request. The request body is
+a list of collateral ids in their new order. Each id is assigned a
+`featuredRank` matching its position (1-based). All ids must reference
+collateral that is currently flagged `featured`.
+
+ */
+export const getCmsReorderCollateralUrl = () => {
+  return `/api/cms/collateral/reorder`;
+};
+
+export const cmsReorderCollateral = async (
+  collateralReorderBody: CollateralReorderBody,
+  options?: RequestInit,
+): Promise<CollateralReorderResponse> => {
+  return customFetch<CollateralReorderResponse>(getCmsReorderCollateralUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(collateralReorderBody),
+  });
+};
+
+export const getCmsReorderCollateralMutationOptions = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReorderCollateral>>,
+    TError,
+    { data: BodyType<CollateralReorderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsReorderCollateral>>,
+  TError,
+  { data: BodyType<CollateralReorderBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsReorderCollateral"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsReorderCollateral>>,
+    { data: BodyType<CollateralReorderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cmsReorderCollateral(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsReorderCollateralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsReorderCollateral>>
+>;
+export type CmsReorderCollateralMutationBody = BodyType<CollateralReorderBody>;
+export type CmsReorderCollateralMutationError = ErrorType<BadRequestResponse>;
+
+export const useCmsReorderCollateral = <
+  TError = ErrorType<BadRequestResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReorderCollateral>>,
+    TError,
+    { data: BodyType<CollateralReorderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsReorderCollateral>>,
+  TError,
+  { data: BodyType<CollateralReorderBody> },
+  TContext
+> => {
+  return useMutation(getCmsReorderCollateralMutationOptions(options));
 };
 
 export const getCmsGetCollateralUrl = (id: string) => {
