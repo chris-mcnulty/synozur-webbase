@@ -10,6 +10,7 @@ import { runMigrations } from "./lib/migrations";
 import { ensureSigningKey } from "./lib/oauthKeys";
 import { logSecurityHeaderConfig } from "./lib/securityHeaders";
 import { logLaunchReadiness } from "./lib/launchReadiness";
+import { seedTestAdminIfConfigured } from "./lib/testAdminSeed";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +28,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 await runMigrations();
 await ensureSigningKey();
+await seedTestAdminIfConfigured();
 
 const server = app.listen(port, (err) => {
   if (err) {
