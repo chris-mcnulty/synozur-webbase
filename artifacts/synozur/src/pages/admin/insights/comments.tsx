@@ -25,6 +25,7 @@ import {
   useModerateCmsComment,
   type CommentStatus,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 
@@ -75,6 +76,7 @@ function formatSignal(signal: string): string {
 
 export default function CommentsModeration() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<CommentStatus | "all">("pending");
   // Per-comment "notify on approve" flag (defaults to true; only effective
   // if the commenter opted in).
@@ -97,6 +99,9 @@ export default function CommentsModeration() {
         toast({ title: label });
         setSelected(new Set());
         refetch();
+        // Invalidate any other comment list queries (notably the spam
+        // count badge in AdminLayout) so they reflect the new state.
+        void queryClient.invalidateQueries({ queryKey: ["/api/cms/comments"] });
       },
       onError: (e: Error) =>
         toast({ title: "Failed", description: e.message, variant: "destructive" }),
@@ -127,6 +132,7 @@ export default function CommentsModeration() {
       toast({ title: `Deleted ${result.deleted.length} spam comment${result.deleted.length === 1 ? "" : "s"}` });
       setSelected(new Set());
       refetch();
+      void queryClient.invalidateQueries({ queryKey: ["/api/cms/comments"] });
     } catch (e) {
       toast({ title: "Bulk delete failed", description: (e as Error).message, variant: "destructive" });
     } finally {

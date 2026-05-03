@@ -56,6 +56,10 @@ import { useAdminAccess } from "@/components/admin/AdminGate";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import type { Capability } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
+import {
+  getListCmsCommentsQueryKey,
+  useListCmsComments,
+} from "@workspace/api-client-react";
 
 type AccessLike = ReturnType<typeof useAdminAccess>["access"];
 
@@ -65,6 +69,8 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   capability?: Capability;
   testId: string;
+  badgeCount?: number;
+  badgeTestId?: string;
 }
 
 interface NavSection {
@@ -232,12 +238,39 @@ export function AdminLayout({
     return location === href || location.startsWith(`${href}/`);
   };
 
+  // Pull the count of pending spam comments so we can surface a badge on the
+  // Comments nav item. Only enabled for users with content.moderate so we
+  // don't fire 403s for everyone else.
+  const canModerate = !!access?.hasCapability("content.moderate");
+  const spamCountParams = { status: "spam" as const, pageSize: 1 };
+  const spamCommentsQuery = useListCmsComments(spamCountParams, {
+    query: {
+      queryKey: getListCmsCommentsQueryKey(spamCountParams),
+      enabled: canModerate,
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
+    },
+  });
+  const spamCount = spamCommentsQuery.data?.total ?? 0;
+  const refetchSpamCount = spamCommentsQuery.refetch;
+
   const visibleSections = useMemo(
     () =>
       SECTIONS
-        .map((s) => ({ section: s, items: visibleItems(s, access) }))
+        .map((s) => ({
+          section: s,
+          items: visibleItems(s, access).map((item) =>
+            item.testId === "nav-admin-comments"
+              ? {
+                  ...item,
+                  badgeCount: spamCount,
+                  badgeTestId: "badge-nav-admin-comments-spam",
+                }
+              : item,
+          ),
+        }))
         .filter(({ items }) => items.length > 0),
-    [access],
+    [access, spamCount],
   );
 
   const activeSectionId = useMemo(() => {
@@ -443,6 +476,15 @@ export function AdminLayout({
                     items.map((item) => {
                       const Icon = item.icon;
                       const active = isActive(item.href);
+                      const showBadge =
+                        typeof item.badgeCount === "number" && item.badgeCount > 0;
+                      // For the Comments item, refresh the spam count when
+                      // the moderator hovers/focuses/clicks the link so the
+                      // badge reflects reality before they navigate.
+                      const isCommentsItem = item.testId === "nav-admin-comments";
+                      const navRefresh = isCommentsItem && canModerate
+                        ? () => { void refetchSpamCount(); }
+                        : undefined;
                       return (
                         <Link key={item.href} href={item.href}>
                           <a
@@ -453,9 +495,21 @@ export function AdminLayout({
                                 : "text-muted-foreground border-l-2 border-transparent",
                             )}
                             data-testid={item.testId}
+                            onMouseEnter={navRefresh}
+                            onFocus={navRefresh}
+                            onClick={navRefresh}
                           >
                             <Icon className="h-4 w-4" />
-                            {item.label}
+                            <span className="flex-1">{item.label}</span>
+                            {showBadge && (
+                              <span
+                                className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none"
+                                aria-label={`${item.badgeCount} spam comment${item.badgeCount === 1 ? "" : "s"} pending review`}
+                                data-testid={item.badgeTestId}
+                              >
+                                {item.badgeCount! > 99 ? "99+" : item.badgeCount}
+                              </span>
+                            )}
                           </a>
                         </Link>
                       );
