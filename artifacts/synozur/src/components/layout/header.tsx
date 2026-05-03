@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut, Loader2 } from "lucide-react";
+import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut, Loader2, Globe } from "lucide-react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -192,6 +192,15 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
               Admin dashboard
             </Link>
           )}
+          <a
+            href="/galaxy/"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted transition-colors"
+          >
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            Galaxy portal
+          </a>
           <button
             role="menuitem"
             onClick={() => { setOpen(false); void signOut(); }}
