@@ -6,6 +6,7 @@ import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
 import { trackEvent } from "@/lib/traffic-tracker";
 import { RichText } from "@/components/rich-text";
+import { ShareRail } from "@/components/share-rail";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 
@@ -139,6 +140,12 @@ export default function WhitePaperDetail() {
           </section>
         )}
 
+        <section className="bg-background pt-10">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <ShareRail kind="white-paper" label="white paper" title={wp.title} className="" />
+          </div>
+        </section>
+
         <section className="bg-background py-16">
           <div className="container mx-auto px-4 max-w-3xl">
             {wp.bodyHtml ? (
@@ -244,6 +251,12 @@ export default function WhitePaperDetail() {
           </div>
         </section>
       )}
+
+      <section className="bg-background pt-10">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <ShareRail kind="white-paper" label="white paper" title={col.title} className="" />
+        </div>
+      </section>
 
       <section className="bg-background py-16">
         <div className="container mx-auto px-4 max-w-3xl">

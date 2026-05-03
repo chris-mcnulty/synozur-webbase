@@ -6,12 +6,11 @@ import {
   ExternalLink,
   ArrowLeft,
   Clock,
-  Facebook,
-  Linkedin,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Meta } from "@/lib/meta";
 import { EventJsonLd } from "@/components/event-jsonld";
+import { ShareRail } from "@/components/share-rail";
 import { Button } from "@/components/ui/button";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 import { toEmbedUrl } from "@/lib/video-embed";
@@ -31,20 +30,6 @@ function formatTime(iso: string | Date): string {
     minute: "2-digit",
     timeZoneName: "short",
   });
-}
-
-function XIcon({ className }: { className?: string }) {
-  // Lucide doesn't ship an X/Twitter glyph; inline SVG keeps us off extra deps.
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M18.244 2H21.5l-7.52 8.593L22.9 22h-6.93l-5.43-6.84L4.2 22H.94l8.04-9.194L1.1 2h7.09l4.9 6.28L18.244 2Zm-1.22 18h1.913L7.07 4H5.05l11.974 16Z" />
-    </svg>
-  );
 }
 
 export default function EventDetail() {
@@ -89,13 +74,6 @@ export default function EventDetail() {
     (event.registrationStatus === "OPEN" ||
       event.registrationStatus === "OPEN_EXTERNAL") &&
     event.registrationUrl;
-
-  const shareUrl =
-    typeof window !== "undefined" ? window.location.href : "";
-  const shareTitle = event.title;
-  const facebookShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-  const xShare = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
-  const linkedinShare = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
 
   const mapSrc = event.location
     ? `https://www.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`
@@ -236,41 +214,11 @@ export default function EventDetail() {
               </div>
             )}
 
-            <div className="mt-10 pt-6 border-t border-border">
-              <p className="text-sm font-medium mb-3">Share this event</p>
-              <div className="flex items-center gap-3">
-                <a
-                  href={facebookShare}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label="Share on Facebook"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                  data-testid="share-facebook"
-                >
-                  <Facebook className="h-4 w-4" />
-                </a>
-                <a
-                  href={xShare}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label="Share on X"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                  data-testid="share-x"
-                >
-                  <XIcon className="h-3.5 w-3.5" />
-                </a>
-                <a
-                  href={linkedinShare}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label="Share on LinkedIn"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                  data-testid="share-linkedin"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
+            <ShareRail
+              kind="event"
+              title={event.title}
+              targets={["facebook", "x", "linkedin"]}
+            />
           </div>
 
           {/* Sidebar */}

@@ -5,6 +5,7 @@ import { Meta } from "@/lib/meta";
 import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { Button } from "@/components/ui/button";
 import { ArticleJsonLd } from "@/components/article-jsonld";
+import { ShareRail } from "@/components/share-rail";
 import {
   useInsight,
   useInsightsList,
@@ -261,6 +262,10 @@ export default function InsightDetail() {
             </div>
           </div>
         )}
+
+        <div className="container mx-auto px-4 max-w-3xl pt-10">
+          <ShareRail kind="insight" title={post.title} className="" />
+        </div>
 
         <div className="container mx-auto px-4 py-16 md:py-24 max-w-3xl">
           {bodyHtml ? (

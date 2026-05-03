@@ -5,6 +5,7 @@ import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
+import { ShareRail } from "@/components/share-rail";
 import { api, type CaseStudyDto } from "@/lib/api";
 import {
   caseStudies as staticCaseStudies,
@@ -148,6 +149,12 @@ export default function CaseStudyDetail() {
               className="w-full h-full object-cover"
             />
           </motion.div>
+        </div>
+      </section>
+
+      <section className="bg-background pt-10">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <ShareRail kind="case-study" label="case study" title={study.title} className="" />
         </div>
       </section>
 
