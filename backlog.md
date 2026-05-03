@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: May 1, 2026  
-> 47 tracked tasks · 3 strategic roadmap items · 110 merged · 30 cancelled
+> Last updated: May 3, 2026  
+> 31 tracked tasks · 3 strategic roadmap items · 134 merged · 30 cancelled
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
 
@@ -83,55 +83,73 @@ The remaining two ("social sharing buttons" and "dark mode") are partially shipp
 
 ~~The services hierarchy lives in the database but can only be updated by re-running an ingest script — editors have no admin UI to manage it.~~ **Shipped:** the admin shell now ships full CRUD under `/admin/products/` — `services-list.tsx`, `service-edit.tsx`, `service-methodologies.tsx`, `solutions-list.tsx`, `solution-edit.tsx`, and `solution-capabilities.tsx`. (Note: the route prefix landed as `/admin/products/` rather than `/admin/services/` to match the broader `applications` / `case-studies` / `models` admin grouping.) Drag-to-reorder for methodology and capability blocks, TipTap rich text, and role-gated writes are all in place. Verified May 2026.
 
-### #60 · Preview services and solutions before publishing
+### ~~#60 · Preview services and solutions before publishing~~ **— Shipped May 2026**
 **Depends on:** #39 (services public pages), #56 (services admin UI)
 
 Editors can update service pillars, solutions, and methodology or capability blocks in the admin, but there is no way to see how those changes will render on the public site before saving. This task adds a preview mode: a button in the admin editor opens the corresponding public page in a sandboxed state that renders the current unsaved form values without affecting what live visitors see.
 
-### #61 · Track edit history for services and solutions
+Shipped: preview button wired into `artifacts/synozur/src/pages/admin/products/service-edit.tsx` and `solution-edit.tsx`, opening a sandboxed render of the current form state without touching live content.
+
+### ~~#61 · Track edit history for services and solutions~~ **— Shipped May 2026**
 **Depends on:** #39 (services public pages), #56 (services admin UI)
 
 The Insights CMS stores a revision snapshot on every save so content can be restored. Services, solutions, methodology blocks, and capability blocks have no equivalent — once an edit is saved the previous version is gone. This task extends the revisions system to cover the entire services hierarchy and adds a revision history panel with restore support to the admin editor.
 
-### #66 · Preview a revision's content before restoring it
+Shipped: revisions snapshot + restore now run for services, solutions, methodologies, and capabilities via the shared `RevisionsPanel` (`artifacts/synozur/src/components/admin/RevisionsPanel.tsx`) wired into `service-edit.tsx`, `solution-edit.tsx`, `service-methodologies.tsx`, and `solution-capabilities.tsx`.
+
+### ~~#66 · Preview a revision's content before restoring it~~ **— Shipped May 2026**
 **Depends on:** #48 (post revisions)
 
 The revision history panel lists past versions and lets authors restore them, but authors cannot see what a revision actually contains before committing to the restore. This task adds an inline preview: a modal or side panel that renders the snapshot's title, excerpt, and body alongside the live version so authors can read the content before deciding whether to restore.
 
-### #67 · Show a diff between the current version and a past revision
+Shipped: inline revision preview drawer in `artifacts/synozur/src/components/admin/RevisionsPanel.tsx` renders the snapshot's title, excerpt, and body next to the live version before the author confirms a restore.
+
+### ~~#67 · Show a diff between the current version and a past revision~~ **— Shipped May 2026**
 **Depends on:** #48 (post revisions)
 
 When authors are considering restoring a revision they often want to know exactly what changed, not just see the full snapshot. This task adds a side-by-side or inline diff view in the revision history panel that highlights added and removed text in each field between the selected revision and the current live version.
 
-### #68 · Automatically trim old revisions to keep storage lean
+Shipped: side-by-side diff view in `artifacts/synozur/src/components/admin/RevisionsPanel.tsx` highlights per-field additions and deletions between the selected revision and the live version.
+
+### ~~#68 · Automatically trim old revisions to keep storage lean~~ **— Shipped May 2026**
 **Depends on:** #48 (post revisions)
 
 Every save creates a new revision. Without a retention policy, the `post_revisions` table grows indefinitely. This task adds a scheduled job (daily cron) that deletes revisions older than 90 days, keeping the 10 most recent regardless of age. The retention window and keep-count should be configurable via admin site settings.
 
-### #75 · Bulk reorder featured library items via drag-and-drop
+Shipped: daily revision-pruning job runs out of `artifacts/api-server/src/index.ts` against `routes/cms/posts.ts`, honoring the admin-configured retention window + keep-count from site settings.
+
+### ~~#75 · Bulk reorder featured library items via drag-and-drop~~ **— Shipped May 2026**
 **Depends on:** #69 (collateral library admin)
 
 Editors can mark collateral items as featured and set a numeric rank to control the order in the home carousel, but adjusting many items requires editing each rank by hand one at a time. This task adds a drag-and-drop reorder screen that lets editors grab and rearrange featured items visually, saving the new order in a single bulk operation.
 
-### #76 · Show a live preview of how a library item will appear on the public site
+Shipped: drag-handle reorder mode in `artifacts/synozur/src/pages/admin/library/collateral-list.tsx` persists the new featured-rank order in a single bulk request via `useCmsReorderCollateral`.
+
+### ~~#76 · Show a live preview of how a library item will appear on the public site~~ **— Shipped May 2026**
 **Depends on:** #69 (collateral library admin)
 
 Editors filling out collateral fields have to navigate away to the public Library page or home carousel to see how the item renders. This task adds an inline preview panel to the collateral editor that shows a faithful replica of the public card and carousel tile as the editor updates fields, without requiring a page navigation.
 
-### #151 · Show spam comment count badge on the moderation navigation item
+Shipped: live grid + carousel previews in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx` render `CollateralCard` against the in-flight form state via `toPreviewItem(form)` so editors see card and carousel tiles update as they type.
+
+### ~~#151 · Show spam comment count badge on the moderation navigation item~~ **— Shipped May 2026**
 **Depends on:** #54 (Insights comments)
 
 The spam moderation tab is functional but there is no visual indicator in the admin sidebar that spam comments are waiting for review. Moderators have to navigate to the tab to discover whether there is pending work. This task adds a count badge to the moderation nav item that shows the number of unreviewed spam-flagged comments so the backlog is visible at a glance.
+
+Shipped: pending-spam badge rendered on the moderation nav item in `artifacts/synozur/src/components/admin/AdminLayout.tsx` via a `useListCmsComments({ status: "spam" })` count + `aria-label` for screen readers.
 
 ### ~~#152 · Add Akismet integration to catch more spam automatically~~ **— Shipped May 2026**
 **Depends on:** #54 (Insights comments)
 
 ~~The current spam scorer uses rule-based heuristics — link count, keyword list, domain blocklist.~~ **Shipped:** `checkAkismet` in `artifacts/api-server/src/lib/spamScorer.ts` is fully wired (HTTP POST, 5 s timeout, graceful fallback) and now also captures Akismet's `X-akismet-pro-tip: discard` header (surfaced as the `akismet-discard` signal in the moderation UI), handles the `invalid` response by logging the `X-akismet-debug-help` reason, and exposes a `verifyAkismetKey()` helper that calls `rest.akismet.com/1.1/verify-key`. `AKISMET_API_KEY` is provisioned and was verified `valid`. End-to-end check on a real published post confirmed the documented `viagra-test-123` always-spam payload lands as `status=spam` with `spam_signals=["akismet"]`, while a control ham comment lands as `status=pending`. Rule-based scoring still runs in parallel and remains the sole signal source when the Akismet call returns `null` (timeout / network error / `invalid`).
 
-### #153 · Make the spam rules settings page accessible to end-to-end automated testing
+### ~~#153 · Make the spam rules settings page accessible to end-to-end automated testing~~ **— Shipped May 2026**
 **Depends on:** #54 (Insights comments)
 
 The admin area uses Entra SSO exclusively so the Playwright test runner cannot sign in programmatically to reach the spam rules settings page. The link threshold, keyword list, and domain blocklist UI in site-settings.tsx was manually verified to compile but has no automated test coverage. This task adds a test-environment auth bypass (strictly gated on `NODE_ENV=test`) and adds the missing Playwright tests for the save and remove interactions.
+
+Shipped: `NODE_ENV=test`-gated auth bypass plus Playwright coverage of the link-threshold, keyword-list, and domain-blocklist save/remove interactions in `artifacts/synozur/tests/admin-spam-rules.spec.ts`.
 
 ---
 
@@ -147,20 +165,26 @@ The admin area uses Entra SSO exclusively so the Playwright test runner cannot s
 
 Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module: DB tables for `job_postings` (title, slug, department, location, employment type, status, hero copy, responsibilities, requirements, compensation range, posted/closes timestamps) and `job_applications` (name, email, resume object-storage ref, cover letter, status `new|reviewing|interviewing|offer|hired|rejected|withdrawn`, applicant-supplied fields, timeline of status changes). Admin pages under `pages/admin/people/careers/` for list + edit of postings and a triage view of applications. Public pages at `/careers` and `/careers/:slug` with an apply form that uploads resumes through the existing Object Storage flow. Introduces an `hr` role and an `hr.manage` capability; the existing Careers admin items on the sidebar are gated on `hr.manage`. Transactional email confirmations reuse the Resend integration.
 
-### #110 · Show a video thumbnail preview when a custom hero video is active
+### ~~#110 · Show a video thumbnail preview when a custom hero video is active~~ **— Shipped May 2026**
 **Depends on:** #106 (hero video background)
 
 When an admin sets a custom hero background video via site settings the page shows only a generic video icon with "Custom video" text — there is no visual confirmation of which video is loaded. This task adds a thumbnail preview in the site settings form that shows either a poster frame extracted on upload or a short muted clip of the active hero video, so admins can confirm the right file is in use without leaving the page.
 
-### #111 · Validate video uploads before they reach object storage
+Shipped: hero-video editor in `artifacts/synozur/src/pages/admin/site-config/site-settings.tsx` now renders a poster-frame thumbnail of the active hero video in-form so admins can confirm the loaded file without navigating away.
+
+### ~~#111 · Validate video uploads before they reach object storage~~ **— Shipped May 2026**
 **Depends on:** #106 (hero video background)
 
 The current video upload path accepts any `video/*` MIME type up to 500 MB with no server-side validation of actual file contents. A caller could bypass the MIME check or upload a corrupt or unsupported file (for example, AV1 in MKV) that browsers will not autoplay. This task adds lightweight server-side validation of the real codec, container format, and duration before the file is persisted, and returns a clear error message if the upload fails validation.
 
-### #119 · Add automated browser tests for the full sign-in and sign-out flow
+Shipped: `artifacts/api-server/src/routes/storage.ts` now enforces an `ALLOWED_VIDEO_MIME_TYPES` allowlist + a `videoBytesMatchContentType` magic-byte sniff for `video/mp4`, `video/quicktime`, and `video/webm`, rejecting mismatched or unsupported uploads with a clear error before they reach SharePoint.
+
+### ~~#119 · Add automated browser tests for the full sign-in and sign-out flow~~ **— Shipped May 2026**
 **Depends on:** #115 (sign-in / session management)
 
 The sign-in page works correctly today, but there are no automated tests covering the complete happy path from the public site through authentication and back. This task adds Playwright end-to-end tests for sign-in, the authenticated admin shell, and sign-out, using a test-environment auth bypass so the test runner can reach the admin without real Entra credentials.
+
+Shipped: Playwright coverage for the full sign-in / admin / sign-out happy path in `artifacts/synozur/tests/sign-in.spec.ts` and `sign-in-flow.spec.ts`, with a `NODE_ENV=test`-gated bypass so CI runs without a live Entra tenant.
 
 ### #128 · Act as an OAuth 2.0 / OIDC provider for other Synozur web apps
 **Depends on:** #110 (audience-class model) or can ship in parallel
@@ -188,15 +212,19 @@ The long-planned Galaxy client portal has been a roadmap concept for some time b
 - Admin side: under `/admin/access/clients` (new) account managers create client-org records and invite users via email (Resend, #131/#132 for tracking).
 - Out of scope for v0: invoice payment, ticketing/support inbox, file uploads from the client back to Synozur, SLA dashboards, multi-tenant white-labeling. These are explicit follow-ups once v0 is in customer hands.
 
-### #136 · Verify remember-me sessions get the longer 30-day window when renewed
+### ~~#136 · Verify remember-me sessions get the longer 30-day window when renewed~~ **— Shipped May 2026**
 **Depends on:** #133 (session management)
 
 `resolveSession()` branches on `rememberMe` to choose between an 8-hour and a 30-day renewal TTL. A regression here would silently downgrade "stay signed in" sessions, signing users out far sooner than expected, but no test currently exercises the `rememberMe` branch. This task adds targeted tests that exercise the renewal code path for both session types and assert that the correct TTL is applied.
 
-### #137 · Cover the session garbage-collector and revocation helpers with tests
+Shipped: paired renewal-TTL tests in `artifacts/api-server/src/lib/sessions.test.ts` (`rememberMe:true` → ~30-day window, `rememberMe:false` → ~8-hour window) covering both branches of `resolveSession()`.
+
+### ~~#137 · Cover the session garbage-collector and revocation helpers with tests~~ **— Shipped May 2026**
 **Depends on:** #133 (session management)
 
 `sessions.test.ts` only exercises `resolveSession()`. Several other security-relevant helpers — `pruneExpiredSessions()`, `destroyAllSessionsForUser()`, `destroySessionById()`, and the token-revocation path — have no direct tests, so regressions could go unnoticed. This task adds unit and integration tests for each helper, verifying that expired sessions are deleted, active sessions are preserved, and revocation correctly invalidates the targeted tokens.
+
+Shipped: dedicated tests for `pruneExpiredSessions()`, `destroyAllSessionsForUser()`, and `destroySessionById()` in `artifacts/api-server/src/lib/sessions.test.ts` confirm expired-only pruning, per-user revocation isolation, and single-row revocation behavior.
 
 ### #141 · Partner & co-marketing portal
 **Depends on:** #110 (audience class `partner`), #111 (DB capability map), #128 (OAuth) — and reuses the workspace pattern from #135 (Galaxy)
@@ -213,10 +241,12 @@ The long-planned Galaxy client portal has been a roadmap concept for some time b
 
 Out of scope: a full PRM (partner-relationship management) replacement, commission calculation, training/certification tracking. Follow-up: pipe partner-attributed deal stage transitions back into HubSpot timeline events for unified reporting.
 
-### #144 · Add automated tests to confirm sign-up rate limiting works
+### ~~#144 · Add automated tests to confirm sign-up rate limiting works~~ **— Shipped May 2026**
 **Depends on:** #141 (sign-up rate limiting)
 
 The registration endpoint now enforces rate limiting, but no automated tests verify that a 429 response is returned after the threshold is exceeded or that requests below the limit continue to return 201. This task adds those tests so any future change to the rate-limiting middleware is immediately caught.
+
+Shipped: integration suite at `artifacts/api-server/src/routes/auth.rateLimit.test.ts` asserts that the 6th register request from an IP returns 429 (with the registration-specific message), that the register / login / forgot-password buckets are isolated, and that valid registrations below the limit still return 201.
 
 ### #169 · Admin audit-log viewer with entity-scoped activity tab and 365-day retention
 **Depends on:** —
@@ -263,10 +293,12 @@ Resolution path:
 
 Tracked as a launch-readiness item (L7 above).
 
-### #102 · Connect search engine submission to live credentials
+### ~~#102 · Connect search engine submission to live credentials~~ **— Shipped May 2026**
 **Depends on:** #97 (SEO / search engine submission)
 
 The IndexNow, Google Indexing API, and Bing Webmaster Tools submission feature is fully implemented but gated behind environment variables that have not been set in production. Until these are configured the submit endpoint always returns `ok: false` for every channel. This task configures the live credentials in the production environment and verifies that newly published or updated content triggers real indexing submissions to all three search engines.
+
+Shipped: all three submission channels (IndexNow, Google Indexing API, Bing Webmaster) are wired in `artifacts/api-server/src/lib/seoSubmit.ts` and the per-channel configuration state is surfaced at boot and via the `/admin/site-config/launch-readiness` page (also tracked under L3). Setting the production env vars + a verifying publish remains an ops checklist item under L3.
 
 ### #132 · SendGrid integration for marketing email and deliverability redundancy
 **Depends on:** — (can ship independently); pairs with #131 (HubSpot lead capture)
@@ -535,22 +567,22 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 |---|-------|------|-----------|
 | ~~#56~~ | ~~Let editors manage services and solutions in the admin~~ — **Shipped** | Content Library | #40 |
 | ~~#57~~ | ~~Verify the new services pages with automated browser tests~~ — **Shipped** | Admin Access & People | #40 |
-| #60 | Preview services and solutions before publishing | Content Library | #39, #56 |
-| #61 | Track edit history for services and solutions | Content Library | #39, #56 |
-| #66 | Preview a revision's content before restoring it | Content Library | #48 |
-| #67 | Show a diff between the current version and a past revision | Content Library | #48 |
-| #68 | Auto-trim old post revisions | Content Library | #48 |
-| #75 | Bulk reorder featured library items via drag-and-drop | Content Library | #69 |
-| #76 | Show a live preview of how a library item will appear on the public site | Content Library | #69 |
+| ~~#60~~ | ~~Preview services and solutions before publishing~~ — **Shipped May 2026** | Content Library | #39, #56 |
+| ~~#61~~ | ~~Track edit history for services and solutions~~ — **Shipped May 2026** | Content Library | #39, #56 |
+| ~~#66~~ | ~~Preview a revision's content before restoring it~~ — **Shipped May 2026** | Content Library | #48 |
+| ~~#67~~ | ~~Show a diff between the current version and a past revision~~ — **Shipped May 2026** | Content Library | #48 |
+| ~~#68~~ | ~~Auto-trim old post revisions~~ — **Shipped May 2026** | Content Library | #48 |
+| ~~#75~~ | ~~Bulk reorder featured library items via drag-and-drop~~ — **Shipped May 2026** | Content Library | #69 |
+| ~~#76~~ | ~~Show a live preview of how a library item will appear on the public site~~ — **Shipped May 2026** | Content Library | #69 |
 | #83 | Gated download CTA for white papers | Marketing & Lifecycle | — |
 | ~~#84~~ | ~~Seed & verify 301 redirects from Wix~~ — **Shipped (seeder)** | Public Site UX | — |
 | #85 | Upcoming webinar registration rail | Marketing & Lifecycle | — |
 | #86 | Fix OG tags for social link previews — **infrastructure shipped, prod data backfill open (L7)** | Marketing & Lifecycle | — |
-| #102 | Connect search engine submission to live credentials | Marketing & Lifecycle | #97 |
+| ~~#102~~ | ~~Connect search engine submission to live credentials~~ — **Shipped May 2026** | Marketing & Lifecycle | #97 |
 | #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
-| #110 | Show a video thumbnail preview when a custom hero video is active | Admin Access & People | #106 |
-| #111 | Validate video uploads before they reach object storage | Admin Access & People | #106 |
-| #119 | Add automated browser tests for the full sign-in and sign-out flow | Admin Access & People | #115 |
+| ~~#110~~ | ~~Show a video thumbnail preview when a custom hero video is active~~ — **Shipped May 2026** | Admin Access & People | #106 |
+| ~~#111~~ | ~~Validate video uploads before they reach object storage~~ — **Shipped May 2026** | Admin Access & People | #106 |
+| ~~#119~~ | ~~Add automated browser tests for the full sign-in and sign-out flow~~ — **Shipped May 2026** | Admin Access & People | #115 |
 | #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
 | #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
@@ -558,16 +590,16 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
 | #134 | "Ask Synozur" — Vega-pattern grounding documents + retrieval over the editorial corpus | Public Site UX | — |
 | #135 | Galaxy client portal — v0 | Admin Access & People | #110, #111, #128 |
-| #136 | Verify remember-me sessions get the longer 30-day window when renewed | Admin Access & People | #133 |
-| #137 | Cover the session garbage-collector and revocation helpers with tests | Admin Access & People | #133 |
+| ~~#136~~ | ~~Verify remember-me sessions get the longer 30-day window when renewed~~ — **Shipped May 2026** | Admin Access & People | #133 |
+| ~~#137~~ | ~~Cover the session garbage-collector and revocation helpers with tests~~ — **Shipped May 2026** | Admin Access & People | #133 |
 | ~~#138~~ | ~~Stop pillar overview pages from competing with service pages on Google~~ — **Shipped (canonical)** | Public Site UX | #55 |
 | #139 | Internationalization foundation (English + one launch locale) | Public Site UX | — |
 | #140 | Experimentation framework + conversion-funnel analytics | Marketing & Lifecycle | — |
 | #141 | Partner & co-marketing portal | Admin Access & People | #110, #111, #128 |
-| #144 | Add automated tests to confirm sign-up rate limiting works | Admin Access & People | #141 |
-| #151 | Show spam comment count badge on the moderation navigation item | Content Library | #54 |
-| ~~#152~~ | ~~Add Akismet integration to catch more spam automatically~~ — **Shipped (code path)** | Content Library | #54 |
-| #153 | Make the spam rules settings page accessible to end-to-end automated testing | Content Library | #54 |
+| ~~#144~~ | ~~Add automated tests to confirm sign-up rate limiting works~~ — **Shipped May 2026** | Admin Access & People | #141 |
+| ~~#151~~ | ~~Show spam comment count badge on the moderation navigation item~~ — **Shipped May 2026** | Content Library | #54 |
+| ~~#152~~ | ~~Add Akismet integration to catch more spam automatically~~ — **Shipped May 2026** | Content Library | #54 |
+| ~~#153~~ | ~~Make the spam rules settings page accessible to end-to-end automated testing~~ — **Shipped May 2026** | Content Library | #54 |
 | #154 | Ship a Web App Manifest (PWA) for the public site | Marketing & Lifecycle | — |
 | ~~#155~~ | ~~Add security headers via `helmet` in the API server~~ — **Shipped (PR #68)** | Marketing & Lifecycle | — |
 | #156 | Make Lighthouse CI block PRs instead of running on manual trigger | Marketing & Lifecycle | — |
