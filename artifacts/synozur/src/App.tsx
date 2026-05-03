@@ -120,6 +120,7 @@ import CareersApply from "@/pages/careers-apply";
 import CareersApplied from "@/pages/careers-applied";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
+import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import Library from "@/pages/library";
@@ -388,6 +389,7 @@ function AdminRoutes() {
         <Route path="/marketing/traffic-import" component={TrafficImportPage} />
         <Route path="/marketing/seo" component={MarketingSeo} />
         <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
+        <Route path="/marketing/subscribers" component={MarketingSubscribers} />
 
         {/* AI section */}
         <Route path="/ai/grounding" component={AdminAiGrounding} />

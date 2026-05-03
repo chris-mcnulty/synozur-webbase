@@ -331,7 +331,7 @@ The site is heavily instrumented for traffic (GA4, LinkedIn, Meta pixels) but ha
 
 Out of scope: multi-armed bandits (start with frequentist A/B), causal-inference observational studies. Follow-up: wire experiment assignment into the cross-app switcher (#129) so we can A/B test Galaxy / portal entry points in one place.
 
-### #168 · Double opt-in confirmation for newsletter subscribers
+### ~~#168 · Double opt-in confirmation for newsletter subscribers~~ **— Shipped May 2026**
 **Depends on:** — (additive); pairs with #132 (the confirmation email is itself a transactional send) and #131 (HubSpot — DOI confirmation now gates the contact upsert)
 
 `/forms/subscribe` (`artifacts/api-server/src/routes/forms.ts:499`) currently writes the submission, sends a marketing welcome via Resend, and enqueues a HubSpot contact upsert *all in one synchronous request* — there is no confirmation step. Anyone (or any bot that gets past Turnstile) can sign up an arbitrary third-party email, and a competitor flooding the endpoint with executive addresses can poison our sender reputation overnight. GDPR (Recital 32 — "clear affirmative action") and CASL effectively require an explicit confirmation event for marketing email; today the audit trail captures only IP + UA + timestamp at submit, not at confirm.
@@ -622,7 +622,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #165 | Honor `prefers-color-scheme` for first-time visitors | Public Site UX | — |
 | #166 | Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget | Public Site UX | — |
 | #167 | Apply Anthropic prompt caching across the AI chat + grounding pipeline | Public Site UX | #166 |
-| #168 | Double opt-in confirmation for newsletter subscribers | Marketing & Lifecycle | — |
+| ~~#168~~ | ~~Double opt-in confirmation for newsletter subscribers~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | #169 | Admin audit-log viewer with entity-scoped activity tab and 365-day retention | Admin Access & People | — |
 | #170 | Public-site search endpoint and `/search` page powered by Postgres FTS | Public Site UX | — |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |

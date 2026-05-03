@@ -1782,6 +1782,66 @@ export async function runMigrations(): Promise<void> {
         ON seo_unpublish_submissions (channel, submitted_at);
     `);
 
+    // #259 — Double opt-in subscribers table.
+    //   Created here so a fresh deploy provisions the table before
+    //   /forms/subscribe, the confirm route, the admin page, the daily
+    //   cleanup cron, and the reconfirmation script all touch it.
+    //   Backfill from form_submissions seeds existing pre-DOI subscribers
+    //   as 'confirmed' (grandfathered) so they keep receiving until the
+    //   one-shot reconfirmation campaign rotates them to 'pending'.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id serial PRIMARY KEY,
+        email text NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        source text,
+        confirmation_token_hash text,
+        confirmation_sent_at timestamptz,
+        confirmed_at timestamptz,
+        confirmed_ip text,
+        confirmed_user_agent text,
+        submitted_ip text,
+        submitted_user_agent text,
+        unsubscribed_at timestamptz,
+        grandfathered_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    // For environments where the table was created before grandfathered_at
+    // was added, ensure the column exists.
+    await db.execute(sql`
+      ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS grandfathered_at timestamptz;
+    `);
+    await db.execute(sql`
+      ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS grandfathered_at timestamptz;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS subscribers_email_unique ON subscribers (email);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS subscribers_status_idx ON subscribers (status);
+    `);
+    // Backfill marks each row with grandfathered_at = now() so the
+    // reconfirmation script can target only the pre-DOI cohort and never
+    // touch organically-confirmed subscribers added after this migration.
+    await db.execute(sql`
+      INSERT INTO subscribers (email, status, source, submitted_ip, submitted_user_agent, confirmed_at, grandfathered_at, created_at)
+      SELECT DISTINCT ON (lower(fs.email))
+             lower(fs.email),
+             'confirmed',
+             COALESCE((fs.payload->>'source'), 'subscribe'),
+             fs.ip_address,
+             fs.user_agent,
+             fs.created_at,
+             now(),
+             fs.created_at
+      FROM form_submissions fs
+      WHERE fs.form_type = 'subscribe' AND fs.email IS NOT NULL AND fs.email <> ''
+      ORDER BY lower(fs.email), fs.created_at ASC
+      ON CONFLICT (email) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

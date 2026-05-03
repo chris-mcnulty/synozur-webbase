@@ -195,6 +195,45 @@ const VISITOR_COPY: Record<"contact" | "subscribe" | "start", VisitorEmailConten
   },
 };
 
+// #259 — DOI confirmation email. Sent on /forms/subscribe before any
+// marketing send; recipient must click the signed link for the row to flip
+// to `status='confirmed'` and unlock downstream sends.
+export async function sendSubscriptionConfirmation(args: {
+  to: string;
+  confirmUrl: string;
+}): Promise<SendEmailResult> {
+  const html = brandedShell({
+    preheader: "Confirm your Synozur Alliance newsletter subscription.",
+    heading: "Confirm your subscription",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">Hello,</p>
+      <p style="margin:0 0 16px;">Thanks for signing up for Synozur Alliance insights. Please confirm your subscription by clicking the button below. This link expires in 7 days.</p>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(args.confirmUrl)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Confirm subscription</a>
+      </p>
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">If you didn't sign up, you can safely ignore this email — we won't send you anything else.</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#9999aa;word-break:break-all;">Or copy this link: ${escapeHtml(args.confirmUrl)}</p>
+    `,
+  });
+  const text = [
+    "Hello,",
+    "",
+    "Thanks for signing up for Synozur Alliance insights. Please confirm your subscription by visiting the link below. This link expires in 7 days.",
+    "",
+    args.confirmUrl,
+    "",
+    "If you didn't sign up, you can safely ignore this email — we won't send you anything else.",
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: "Confirm your subscription — The Synozur Alliance",
+    html,
+    text,
+  });
+}
+
 export async function sendVisitorConfirmation(
   formType: "contact" | "subscribe" | "start",
   to: string,

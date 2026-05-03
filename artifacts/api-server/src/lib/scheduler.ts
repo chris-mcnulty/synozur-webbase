@@ -1,5 +1,5 @@
-import { and, eq, lte, isNull } from "drizzle-orm";
-import { db, postsTable } from "@workspace/db";
+import { and, eq, lt, lte, isNull, sql } from "drizzle-orm";
+import { db, postsTable, subscribersTable } from "@workspace/db";
 import { audit } from "./audit";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
 import type { Logger } from "pino";
@@ -7,6 +7,9 @@ import type { Logger } from "pino";
 const TICK_INTERVAL_MS = 60_000;
 const PORTAL_DOCS_RECONCILE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const PORTAL_DOCS_RECONCILE_INITIAL_DELAY_MS = 10 * 60 * 1000;
+const SUBSCRIBERS_PENDING_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const SUBSCRIBERS_PENDING_CLEANUP_INITIAL_DELAY_MS = 15 * 60 * 1000;
+const SUBSCRIBERS_PENDING_TTL_DAYS = 30;
 
 export function startScheduledPublishWorker(logger: Logger): { stop: () => void } {
   let stopping = false;
@@ -69,6 +72,53 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
   const reconcileInitial = setTimeout(reconcileTick, PORTAL_DOCS_RECONCILE_INITIAL_DELAY_MS);
   const reconcileInterval = setInterval(reconcileTick, PORTAL_DOCS_RECONCILE_INTERVAL_MS);
 
+  // #259 — daily cleanup of pending DOI subscribers older than the TTL.
+  // Pending rows that never confirmed within 30 days are deleted so the
+  // funnel stays meaningful and we don't accumulate unconfirmed addresses
+  // indefinitely.
+  let pendingCleanupRunning = false;
+  async function pendingCleanupTick() {
+    if (stopping || pendingCleanupRunning) return;
+    pendingCleanupRunning = true;
+    try {
+      // Use the most recent of confirmation_sent_at / created_at as the
+      // cutoff anchor so a freshly resent confirmation link is never deleted
+      // mid-window. A row only ages out if its *latest* confirmation issue
+      // is older than the TTL.
+      const cutoff = new Date(Date.now() - SUBSCRIBERS_PENDING_TTL_DAYS * 24 * 60 * 60 * 1000);
+      const deleted = await db
+        .delete(subscribersTable)
+        .where(
+          and(
+            eq(subscribersTable.status, "pending"),
+            lt(
+              sql`COALESCE(${subscribersTable.confirmationSentAt}, ${subscribersTable.createdAt})`,
+              cutoff,
+            ),
+          ),
+        )
+        .returning({ id: subscribersTable.id });
+      if (deleted.length > 0) {
+        logger.info(
+          { count: deleted.length, ttlDays: SUBSCRIBERS_PENDING_TTL_DAYS },
+          "Pruned stale pending subscribers",
+        );
+      }
+    } catch (err) {
+      logger.error({ err }, "subscribers pending-cleanup tick failed");
+    } finally {
+      pendingCleanupRunning = false;
+    }
+  }
+  const pendingCleanupInitial = setTimeout(
+    pendingCleanupTick,
+    SUBSCRIBERS_PENDING_CLEANUP_INITIAL_DELAY_MS,
+  );
+  const pendingCleanupInterval = setInterval(
+    pendingCleanupTick,
+    SUBSCRIBERS_PENDING_CLEANUP_INTERVAL_MS,
+  );
+
   return {
     stop() {
       stopping = true;
@@ -76,6 +126,8 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
       clearInterval(interval);
       clearTimeout(reconcileInitial);
       clearInterval(reconcileInterval);
+      clearTimeout(pendingCleanupInitial);
+      clearInterval(pendingCleanupInterval);
     },
   };
 }

@@ -48,3 +48,4 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./portalArtifacts";
 export * from "./careers";
+export * from "./subscribers";

@@ -14,12 +14,30 @@ import {
   RetryFailedAdminFormSubmissionsQueryParams,
   RetryFailedAdminFormSubmissionsResponse,
 } from "@workspace/api-zod";
-import { db, formSubmissionsTable, siteSettingsTable, type FormSubmission } from "@workspace/db";
+import {
+  db,
+  formSubmissionsTable,
+  siteSettingsTable,
+  subscribersTable,
+  type FormSubmission,
+} from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { logger } from "../lib/logger";
-import { sendVisitorConfirmation, sendInternalNotification } from "../lib/email";
+import {
+  sendVisitorConfirmation,
+  sendInternalNotification,
+  sendSubscriptionConfirmation,
+} from "../lib/email";
 import { verifyTurnstile } from "../lib/turnstile";
 import { enqueueContactSubmission, type FormType } from "../lib/hubspotSync";
+import {
+  signSubscriberConfirmToken,
+  verifySubscriberConfirmToken,
+  hashToken,
+  signSubscriberUnsubscribeToken,
+  verifySubscriberUnsubscribeToken,
+} from "../lib/subscriberToken";
+import { siteOrigin } from "../lib/siteOrigin";
 
 const router: IRouter = Router();
 
@@ -496,6 +514,16 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 
+// #259 — Double opt-in. /forms/subscribe creates a `pending` row in the
+// `subscribers` table and emails a signed confirmation link. We deliberately
+// do NOT enqueue the HubSpot upsert or send the welcome email here — both
+// happen on confirm, so a bot or competitor cannot poison our HubSpot
+// contact list or trigger marketing sends to addresses we cannot prove the
+// recipient owns.
+async function buildConfirmUrl(token: string): Promise<string> {
+  return `${siteOrigin()}/api/forms/subscribe/confirm?token=${encodeURIComponent(token)}`;
+}
+
 router.post("/forms/subscribe", async (req, res): Promise<void> => {
   const parsed = SubscribeBodyExt.safeParse(req.body);
   if (!parsed.success) {
@@ -509,7 +537,9 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
   }
   const ip = clientIp(req);
   if (!(await verifyTurnstile(data.turnstileToken, ip))) {
-    res.status(400).json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
+    res
+      .status(400)
+      .json({ error: "Bot check failed. Please reload and try again.", code: "bot_check_failed" });
     return;
   }
   const {
@@ -525,11 +555,16 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     referrer: _ref,
     ...payload
   } = data;
+  const email = payload.email.trim().toLowerCase();
   const attribution = await resolveAttribution("subscribe", data);
   const webhook = await forwardToWebhook({ formType: "subscribe", ...payload });
-  const id = await persist({
+
+  // Always log the form submission for audit/attribution; it stays the
+  // canonical record of "someone hit the endpoint", separate from
+  // confirmed-subscriber state.
+  const submissionId = await persist({
     formType: "subscribe",
-    email: payload.email,
+    email,
     name: null,
     company: null,
     payload,
@@ -537,25 +572,402 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     webhook,
     attribution,
   });
-  void sendEmails({
+
+  const source = typeof payload["source"] === "string" ? (payload["source"] as string) : null;
+  const submittedIp = clientIp(req);
+  const submittedUa = userAgent(req);
+  const now = new Date();
+
+  // Find or create the subscriber row.
+  const existing = await db.query.subscribersTable.findFirst({
+    where: eq(subscribersTable.email, email),
+  });
+
+  let subscriberId: number;
+  let shouldSendConfirmation = false;
+  if (!existing) {
+    const [row] = await db
+      .insert(subscribersTable)
+      .values({
+        email,
+        status: "pending",
+        source,
+        submittedIp,
+        submittedUserAgent: submittedUa,
+      })
+      .returning({ id: subscribersTable.id });
+    subscriberId = row!.id;
+    shouldSendConfirmation = true;
+  } else if (existing.status === "confirmed") {
+    // Already confirmed — no-op (#259: "resubmission while confirmed is a no-op").
+    res.json(SubmitContactResponse.parse({ ok: true, id: submissionId }));
+    return;
+  } else {
+    // Pending or unsubscribed: rotate token and (re)send confirmation,
+    // bringing an unsubscribed address back into the pending state.
+    subscriberId = existing.id;
+    shouldSendConfirmation = true;
+  }
+
+  if (shouldSendConfirmation) {
+    const { token, hash } = signSubscriberConfirmToken(subscriberId);
+    await db
+      .update(subscribersTable)
+      .set({
+        status: "pending",
+        confirmationTokenHash: hash,
+        confirmationSentAt: now,
+        unsubscribedAt: null,
+        ...(source ? { source } : {}),
+        submittedIp,
+        submittedUserAgent: submittedUa,
+      })
+      .where(eq(subscribersTable.id, subscriberId));
+    const confirmUrl = await buildConfirmUrl(token);
+    void sendSubscriptionConfirmation({ to: email, confirmUrl }).then((r) => {
+      if (r.status === "error") {
+        logger.warn(
+          { subscriberId, submissionId, error: r.error },
+          "DOI confirmation email failed",
+        );
+      }
+    });
+  }
+
+  // Internal notification still fires (so sales sees the raw signal); the
+  // visitor-facing welcome email is gated on confirm.
+  void sendInternalNotification({
     formType: "subscribe",
-    submissionId: id,
-    email: payload.email,
+    submissionId,
+    email,
     name: null,
     payload,
+  }).then((r) => {
+    if (r.status === "error") {
+      logger.warn(
+        { submissionId, error: r.error },
+        "Internal notification email failed (subscribe)",
+      );
+    }
+  });
+
+  res.json(SubmitContactResponse.parse({ ok: true, id: submissionId }));
+});
+
+// #259 — DOI confirmation landing.
+// Validates the signed token, enforces the 7-day TTL, requires the stored
+// hash to match (so revoked tokens stop working), flips status to
+// `confirmed`, records the confirming IP/UA, and only then enqueues the
+// HubSpot upsert + welcome marketing send. Renders an HTML success page
+// with a one-click unsubscribe link.
+function renderConfirmPage(opts: {
+  ok: boolean;
+  title: string;
+  body: string;
+  unsubscribeUrl?: string;
+}): string {
+  const escape = (s: string): string =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  const unsubLink = opts.unsubscribeUrl
+    ? `<p style="margin-top:32px;font-size:13px;color:#9999aa;">Changed your mind? <a href="${escape(opts.unsubscribeUrl)}" style="color:#9999aa;">Unsubscribe</a></p>`
+    : "";
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>${escape(opts.title)} — The Synozur Alliance</title>
+  </head>
+  <body style="margin:0;padding:0;background:#0b0b1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1a1a2e;min-height:100vh;">
+    <div style="max-width:560px;margin:64px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+      <div style="background:linear-gradient(135deg,#810FFB 0%,#3a0ca3 100%);padding:28px 32px;color:#ffffff;">
+        <div style="font-size:13px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85;">The Synozur Alliance</div>
+        <div style="margin-top:6px;font-size:22px;font-weight:600;line-height:1.25;">${escape(opts.title)}</div>
+      </div>
+      <div style="padding:28px 32px;font-size:15px;line-height:1.6;color:#1a1a2e;">
+        <p style="margin:0 0 16px;">${opts.body}</p>
+        <p style="margin:24px 0 0;"><a href="${escape(siteOrigin())}" style="color:#810FFB;font-weight:600;text-decoration:none;">Return to ${escape(siteOrigin().replace(/^https?:\/\//, ""))} →</a></p>
+        ${unsubLink}
+      </div>
+    </div>
+  </body>
+</html>`;
+}
+
+router.get("/forms/subscribe/confirm", async (req, res): Promise<void> => {
+  const token = typeof req.query["token"] === "string" ? req.query["token"] : null;
+  const payload = verifySubscriberConfirmToken(token);
+  if (!payload || !token) {
+    res.status(400).type("html").send(
+      renderConfirmPage({
+        ok: false,
+        title: "Confirmation link invalid or expired",
+        body:
+          "This confirmation link is invalid or has expired. Please subscribe again from the site to receive a new confirmation email.",
+      }),
+    );
+    return;
+  }
+  const row = await db.query.subscribersTable.findFirst({
+    where: eq(subscribersTable.id, payload.subscriberId),
+  });
+  if (!row) {
+    res.status(404).type("html").send(
+      renderConfirmPage({
+        ok: false,
+        title: "Confirmation link invalid",
+        body: "We couldn't find a matching subscription. Please subscribe again from the site.",
+      }),
+    );
+    return;
+  }
+  // Already confirmed — render the same success page (idempotent).
+  if (row.status === "confirmed") {
+    res.type("html").send(
+      renderConfirmPage({
+        ok: true,
+        title: "You're already confirmed",
+        body: `<strong>${row.email}</strong> is already confirmed for Synozur Alliance insights — thanks for subscribing.`,
+      }),
+    );
+    return;
+  }
+  // Verify hash matches the active token (revoked tokens must fail even if
+  // the signature still verifies).
+  const incomingHash = hashToken(token);
+  if (!row.confirmationTokenHash || row.confirmationTokenHash !== incomingHash) {
+    res.status(400).type("html").send(
+      renderConfirmPage({
+        ok: false,
+        title: "Confirmation link superseded",
+        body:
+          "This confirmation link has been replaced by a newer one. Please use the most recent confirmation email we sent you, or subscribe again to receive a fresh link.",
+      }),
+    );
+    return;
+  }
+
+  const now = new Date();
+  await db
+    .update(subscribersTable)
+    .set({
+      status: "confirmed",
+      confirmedAt: now,
+      confirmedIp: clientIp(req),
+      confirmedUserAgent: userAgent(req),
+      confirmationTokenHash: null,
+      unsubscribedAt: null,
+    })
+    .where(eq(subscribersTable.id, row.id));
+
+  // Now — and only now — enqueue the HubSpot upsert and send the welcome
+  // marketing email. Failures here are logged but do not turn the user-facing
+  // confirmation into an error; the row is already confirmed.
+  //
+  // Carry first-touch attribution forward from the original /forms/subscribe
+  // row so HubSpot doesn't lose UTM/landing/referrer just because the contact
+  // confirmed on a different device or hours later. The most-recent
+  // form_submissions row for this email + formType=subscribe is the canonical
+  // source — that's what /forms/subscribe wrote at submit time.
+  const originalSubmission = await db.query.formSubmissionsTable.findFirst({
+    where: and(
+      eq(formSubmissionsTable.email, row.email),
+      eq(formSubmissionsTable.formType, "subscribe"),
+    ),
+    orderBy: [desc(formSubmissionsTable.createdAt)],
+  });
+  void sendVisitorConfirmation("subscribe", row.email, null).then((r) => {
+    if (r.status === "error") {
+      logger.warn(
+        { subscriberId: row.id, error: r.error },
+        "Welcome subscribe email failed after DOI confirm",
+      );
+    }
   });
   void enqueueContactSubmission({
     formType: "subscribe",
-    submissionId: id,
-    email: payload.email,
+    submissionId: originalSubmission?.id ?? 0,
+    email: row.email,
     name: null,
     company: null,
-    marketingOptIn: attribution.marketingOptIn,
-    payload,
-    utm: attribution.utm,
-  }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (subscribe)"));
-  res.json(SubmitContactResponse.parse({ ok: true, id }));
+    marketingOptIn: true,
+    payload: {
+      email: row.email,
+      source: row.source ?? "subscribe",
+      doiConfirmed: true,
+      ...(originalSubmission?.payload && typeof originalSubmission.payload === "object"
+        ? (originalSubmission.payload as Record<string, unknown>)
+        : {}),
+    },
+    utm: {
+      source: originalSubmission?.utmSource ?? null,
+      medium: originalSubmission?.utmMedium ?? null,
+      campaign: originalSubmission?.utmCampaign ?? null,
+      term: originalSubmission?.utmTerm ?? null,
+      content: originalSubmission?.utmContent ?? null,
+      landingPage: originalSubmission?.landingPage ?? null,
+      referrer: originalSubmission?.referrer ?? null,
+    },
+  }).catch((err) =>
+    logger.warn({ err, subscriberId: row.id }, "HubSpot enqueue failed (subscribe DOI confirm)"),
+  );
+
+  const unsubscribeToken = signSubscriberUnsubscribeToken(row.id);
+  const unsubscribeUrl = `${siteOrigin()}/api/forms/subscribe/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
+  res.type("html").send(
+    renderConfirmPage({
+      ok: true,
+      title: "Subscription confirmed",
+      body: `Thanks — <strong>${row.email}</strong> is now subscribed to Synozur Alliance insights. We'll only send occasional research and announcements, never spam.`,
+      unsubscribeUrl,
+    }),
+  );
 });
+
+// One-click unsubscribe for confirmed subscribers. The link must be a
+// signed token (not a raw email) — otherwise anyone who knows or guesses an
+// address could unsubscribe that person from marketing. Token signs the
+// stable `subscribers.id` so an outstanding link cannot be repurposed if the
+// row is recreated.
+router.get("/forms/subscribe/unsubscribe", async (req, res): Promise<void> => {
+  const token = typeof req.query["token"] === "string" ? req.query["token"] : null;
+  const payload = verifySubscriberUnsubscribeToken(token);
+  if (!payload) {
+    res.status(400).type("html").send(
+      renderConfirmPage({
+        ok: false,
+        title: "Unsubscribe link invalid",
+        body:
+          "This unsubscribe link is invalid. Please use the unsubscribe link from a recent email, or contact us directly.",
+      }),
+    );
+    return;
+  }
+  const row = await db.query.subscribersTable.findFirst({
+    where: eq(subscribersTable.id, payload.subscriberId),
+  });
+  if (!row) {
+    res.type("html").send(
+      renderConfirmPage({
+        ok: true,
+        title: "You're not on our list",
+        body: "We don't have a matching subscription on file. No further action needed.",
+      }),
+    );
+    return;
+  }
+  await db
+    .update(subscribersTable)
+    .set({
+      status: "unsubscribed",
+      unsubscribedAt: new Date(),
+      confirmationTokenHash: null,
+    })
+    .where(eq(subscribersTable.id, row.id));
+  res.type("html").send(
+    renderConfirmPage({
+      ok: true,
+      title: "You've been unsubscribed",
+      body: `<strong>${row.email}</strong> has been removed from Synozur Alliance marketing. We won't send you marketing email anymore.`,
+    }),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// #259 — Admin endpoints for /admin/marketing/subscribers
+// ---------------------------------------------------------------------------
+
+router.get("/admin/marketing/subscribers", requireAdmin, async (req, res): Promise<void> => {
+  const status = typeof req.query["status"] === "string" ? req.query["status"] : "";
+  const search = typeof req.query["search"] === "string" ? req.query["search"] : "";
+  const conditions: SQL[] = [];
+  if (status === "pending" || status === "confirmed" || status === "unsubscribed") {
+    conditions.push(eq(subscribersTable.status, status));
+  }
+  if (search.trim().length > 0) {
+    conditions.push(ilike(subscribersTable.email, `%${search.trim()}%`));
+  }
+  const where =
+    conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+  const baseQuery = db.select().from(subscribersTable);
+  const filtered = where ? baseQuery.where(where) : baseQuery;
+  const rows = await filtered.orderBy(desc(subscribersTable.createdAt)).limit(500);
+
+  const counts = await db
+    .select({ status: subscribersTable.status, count: sql<number>`count(*)::int` })
+    .from(subscribersTable)
+    .groupBy(subscribersTable.status);
+  const funnel = { pending: 0, confirmed: 0, unsubscribed: 0 } as Record<string, number>;
+  for (const c of counts) funnel[c.status] = c.count;
+
+  res.json({
+    funnel,
+    items: rows.map((r) => ({
+      id: r.id,
+      email: r.email,
+      status: r.status,
+      source: r.source,
+      confirmationSentAt: r.confirmationSentAt,
+      confirmedAt: r.confirmedAt,
+      confirmedIp: r.confirmedIp,
+      unsubscribedAt: r.unsubscribedAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    })),
+  });
+});
+
+router.post(
+  "/admin/marketing/subscribers/:id/resend",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const id = Number.parseInt(String(req.params.id ?? ""), 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid subscriber id" });
+      return;
+    }
+    const row = await db.query.subscribersTable.findFirst({
+      where: eq(subscribersTable.id, id),
+    });
+    if (!row) {
+      res.status(404).json({ error: "Subscriber not found" });
+      return;
+    }
+    // Restrict resend to pending rows only. We deliberately do NOT revive
+    // unsubscribed rows through this admin path — bringing someone back from
+    // 'unsubscribed' to 'pending' without a fresh user-initiated subscribe
+    // is a compliance hazard. They must hit /forms/subscribe themselves.
+    if (row.status !== "pending") {
+      res.status(400).json({
+        error:
+          row.status === "confirmed"
+            ? "Subscriber is already confirmed"
+            : "Subscriber is unsubscribed; they must resubscribe themselves",
+      });
+      return;
+    }
+    const { token, hash } = signSubscriberConfirmToken(row.id);
+    await db
+      .update(subscribersTable)
+      .set({
+        status: "pending",
+        confirmationTokenHash: hash,
+        confirmationSentAt: new Date(),
+      })
+      .where(eq(subscribersTable.id, row.id));
+    const confirmUrl = await buildConfirmUrl(token);
+    const result = await sendSubscriptionConfirmation({ to: row.email, confirmUrl });
+    res.json({ ok: result.status !== "error", emailStatus: result.status, error: result.error });
+  },
+);
+
+
 
 router.post("/forms/start", async (req, res): Promise<void> => {
   const parsed = StartBodyExt.safeParse(req.body);
