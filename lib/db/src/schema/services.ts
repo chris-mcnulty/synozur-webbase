@@ -205,6 +205,47 @@ export const solutionRevisionsTable = pgTable(
   (t) => [index("solution_revisions_solution_edited_idx").on(t.solutionId, t.editedAt)],
 );
 
+// #61: methodology + capability blocks are independently edited (separate
+// PATCH endpoints), so they each need their own revision history. Same
+// pattern as the service/solution revision tables above.
+export const serviceMethodologyRevisionsTable = pgTable(
+  "service_methodology_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    methodologyId: uuid("methodology_id")
+      .notNull()
+      .references(() => serviceMethodologiesTable.id, { onDelete: "cascade" }),
+    snapshotJson: jsonb("snapshot_json").notNull(),
+    editedBy: uuid("edited_by").references(() => usersTable.id, { onDelete: "set null" }),
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("methodology_revisions_methodology_edited_idx").on(
+      t.methodologyId,
+      t.editedAt,
+    ),
+  ],
+);
+
+export const solutionCapabilityRevisionsTable = pgTable(
+  "solution_capability_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    capabilityId: uuid("capability_id")
+      .notNull()
+      .references(() => solutionCapabilitiesTable.id, { onDelete: "cascade" }),
+    snapshotJson: jsonb("snapshot_json").notNull(),
+    editedBy: uuid("edited_by").references(() => usersTable.id, { onDelete: "set null" }),
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("capability_revisions_capability_edited_idx").on(
+      t.capabilityId,
+      t.editedAt,
+    ),
+  ],
+);
+
 export const servicesRelations = relations(servicesTable, ({ one, many }) => ({
   icon: one(mediaTable, { fields: [servicesTable.iconId], references: [mediaTable.id] }),
   parent: one(servicesTable, {
@@ -266,3 +307,11 @@ export type ServiceRevision = typeof serviceRevisionsTable.$inferSelect;
 export type InsertServiceRevision = typeof serviceRevisionsTable.$inferInsert;
 export type SolutionRevision = typeof solutionRevisionsTable.$inferSelect;
 export type InsertSolutionRevision = typeof solutionRevisionsTable.$inferInsert;
+export type ServiceMethodologyRevision =
+  typeof serviceMethodologyRevisionsTable.$inferSelect;
+export type InsertServiceMethodologyRevision =
+  typeof serviceMethodologyRevisionsTable.$inferInsert;
+export type SolutionCapabilityRevision =
+  typeof solutionCapabilityRevisionsTable.$inferSelect;
+export type InsertSolutionCapabilityRevision =
+  typeof solutionCapabilityRevisionsTable.$inferInsert;

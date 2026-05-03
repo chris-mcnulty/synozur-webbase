@@ -317,11 +317,15 @@ export interface CapabilityDto {
   hidden: boolean;
 }
 
-// #61: shared shape for service + solution revision list entries.
+// #61: shared shape for service / solution / methodology / capability
+// revision list entries. The id fields are mutually exclusive — only the
+// one matching the entity kind will be set on a given response.
 export interface ServiceRevisionSummary {
   id: string;
   serviceId?: string;
   solutionId?: string;
+  methodologyId?: string;
+  capabilityId?: string;
   editedAt: string;
   editor: {
     id: string;
@@ -734,6 +738,29 @@ export const api = {
     jsonFetch<SolutionDto>(
       url(
         `/cms/solutions/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`,
+      ),
+      { method: "POST" },
+    ),
+  // #61: revision history for individual methodology and capability blocks.
+  listMethodologyRevisions: (id: string) =>
+    jsonFetch<{ items: ServiceRevisionSummary[] }>(
+      url(`/cms/methodologies/${encodeURIComponent(id)}/revisions`),
+    ),
+  restoreMethodologyRevision: (id: string, revisionId: string) =>
+    jsonFetch<MethodologyDto>(
+      url(
+        `/cms/methodologies/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`,
+      ),
+      { method: "POST" },
+    ),
+  listCapabilityRevisions: (id: string) =>
+    jsonFetch<{ items: ServiceRevisionSummary[] }>(
+      url(`/cms/capabilities/${encodeURIComponent(id)}/revisions`),
+    ),
+  restoreCapabilityRevision: (id: string, revisionId: string) =>
+    jsonFetch<CapabilityDto>(
+      url(
+        `/cms/capabilities/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`,
       ),
       { method: "POST" },
     ),

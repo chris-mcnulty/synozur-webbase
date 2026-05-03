@@ -1369,6 +1369,73 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS home_b_closing_body text;
     `);
 
+    // 43. #61 — Revision history tables for services, solutions, methodologies,
+    //     and capabilities. Each PATCH endpoint inserts a snapshot of the
+    //     prior row before applying the update so editors can roll back
+    //     accidental edits. Stored as jsonb so future column additions don't
+    //     require a migration of the revision table itself.
+    //
+    //     The service/solution variants pre-existed in the schema but lacked
+    //     an explicit production migration; methodology/capability are new.
+    //     All four are idempotent (CREATE TABLE IF NOT EXISTS).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS service_revisions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        service_id uuid NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+        snapshot_json jsonb NOT NULL,
+        edited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        edited_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS service_revisions_service_edited_idx
+        ON service_revisions (service_id, edited_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solution_revisions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        solution_id uuid NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+        snapshot_json jsonb NOT NULL,
+        edited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        edited_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solution_revisions_solution_edited_idx
+        ON solution_revisions (solution_id, edited_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS service_methodology_revisions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        methodology_id uuid NOT NULL
+          REFERENCES service_methodologies(id) ON DELETE CASCADE,
+        snapshot_json jsonb NOT NULL,
+        edited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        edited_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS methodology_revisions_methodology_edited_idx
+        ON service_methodology_revisions (methodology_id, edited_at);
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solution_capability_revisions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        capability_id uuid NOT NULL
+          REFERENCES solution_capabilities(id) ON DELETE CASCADE,
+        snapshot_json jsonb NOT NULL,
+        edited_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        edited_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS capability_revisions_capability_edited_idx
+        ON solution_capability_revisions (capability_id, edited_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

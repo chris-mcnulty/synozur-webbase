@@ -6,31 +6,51 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { api, type ServiceRevisionSummary } from "@/lib/api";
 
-type Kind = "service" | "solution";
+type Kind = "service" | "solution" | "methodology" | "capability";
 
 interface Props {
   kind: Kind;
   id: string;
   /**
    * Query keys to invalidate after a successful restore so the parent edit
-   * form re-fetches the now-overwritten row.
+   * form re-fetches the now-overwritten row. Accepts the readonly tuples
+   * that orval-generated `get*QueryKey` helpers return.
    */
-  invalidateKeys?: unknown[][];
+  invalidateKeys?: ReadonlyArray<readonly unknown[]>;
+  /**
+   * When true, the panel is rendered always-open without the collapse
+   * toggle — used inside dialogs where the chrome is supplied by the
+   * parent.
+   */
+  alwaysOpen?: boolean;
 }
 
-// #61: collapsible history panel for services and solutions. Shared
-// between `service-edit` and `solution-edit` because both drive the same
-// backend pattern; differences are a handful of URLs and labels.
-export function RevisionsPanel({ kind, id, invalidateKeys = [] }: Props) {
+// #61: collapsible history panel for services, solutions, methodology
+// blocks, and capability blocks. Shared because all four follow the same
+// snapshot-on-PATCH backend pattern; the only differences are which
+// `api.*` pair to call and a handful of labels.
+const LIST_FNS: Record<Kind, (id: string) => Promise<{ items: ServiceRevisionSummary[] }>> = {
+  service: (id) => api.listServiceRevisions(id),
+  solution: (id) => api.listSolutionRevisions(id),
+  methodology: (id) => api.listMethodologyRevisions(id),
+  capability: (id) => api.listCapabilityRevisions(id),
+};
+
+const RESTORE_FNS: Record<Kind, (id: string, revisionId: string) => Promise<unknown>> = {
+  service: (id, r) => api.restoreServiceRevision(id, r),
+  solution: (id, r) => api.restoreSolutionRevision(id, r),
+  methodology: (id, r) => api.restoreMethodologyRevision(id, r),
+  capability: (id, r) => api.restoreCapabilityRevision(id, r),
+};
+
+export function RevisionsPanel({ kind, id, invalidateKeys = [], alwaysOpen = false }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(alwaysOpen);
 
   const queryKey = [`${kind}-revisions`, id] as const;
-  const listFn =
-    kind === "service" ? api.listServiceRevisions : api.listSolutionRevisions;
-  const restoreFn: (entityId: string, revisionId: string) => Promise<unknown> =
-    kind === "service" ? api.restoreServiceRevision : api.restoreSolutionRevision;
+  const listFn = LIST_FNS[kind];
+  const restoreFn = RESTORE_FNS[kind];
 
   const query = useQuery({
     queryKey,
@@ -53,6 +73,80 @@ export function RevisionsPanel({ kind, id, invalidateKeys = [] }: Props) {
 
   const items: ServiceRevisionSummary[] = query.data?.items ?? [];
 
+  const body = (
+    <>
+      {query.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No past snapshots yet — one is created automatically each time you save.
+        </p>
+      ) : (
+        <ul
+          className="space-y-2 max-h-96 overflow-y-auto"
+          data-testid={`${kind}-revisions-list`}
+        >
+          {items.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm"
+              data-testid={`${kind}-revision-${r.id}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">
+                  {r.snapshotTitle ?? "(untitled)"}
+                </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span>{new Date(r.editedAt).toLocaleString()}</span>
+                  {r.editor?.displayName && (
+                    <>
+                      <span>·</span>
+                      <span>{r.editor.displayName}</span>
+                    </>
+                  )}
+                  {r.snapshotStatus && (
+                    <>
+                      <span>·</span>
+                      <span className="uppercase tracking-wide">
+                        {r.snapshotStatus}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={restore.isPending}
+                onClick={() => {
+                  if (
+                    confirm(
+                      "Restore this revision? The current content will be snapshotted first so you can roll back.",
+                    )
+                  ) {
+                    restore.mutate(r.id);
+                  }
+                }}
+                data-testid={`${kind}-revision-restore-${r.id}`}
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Restore
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  if (alwaysOpen) {
+    return (
+      <div className="space-y-2" data-testid={`${kind}-revisions-panel`}>
+        {body}
+      </div>
+    );
+  }
+
   return (
     <Card className="p-4 mt-6">
       <button
@@ -73,71 +167,7 @@ export function RevisionsPanel({ kind, id, invalidateKeys = [] }: Props) {
         </span>
       </button>
 
-      {expanded && (
-        <div className="mt-3 space-y-2">
-          {query.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No past snapshots yet — one is created automatically each time you save.
-            </p>
-          ) : (
-            <ul
-              className="space-y-2 max-h-96 overflow-y-auto"
-              data-testid={`${kind}-revisions-list`}
-            >
-              {items.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm"
-                  data-testid={`${kind}-revision-${r.id}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">
-                      {r.snapshotTitle ?? "(untitled)"}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{new Date(r.editedAt).toLocaleString()}</span>
-                      {r.editor?.displayName && (
-                        <>
-                          <span>·</span>
-                          <span>{r.editor.displayName}</span>
-                        </>
-                      )}
-                      {r.snapshotStatus && (
-                        <>
-                          <span>·</span>
-                          <span className="uppercase tracking-wide">
-                            {r.snapshotStatus}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={restore.isPending}
-                    onClick={() => {
-                      if (
-                        confirm(
-                          "Restore this revision? The current content will be snapshotted first so you can roll back.",
-                        )
-                      ) {
-                        restore.mutate(r.id);
-                      }
-                    }}
-                    data-testid={`${kind}-revision-restore-${r.id}`}
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Restore
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {expanded && <div className="mt-3 space-y-2">{body}</div>}
     </Card>
   );
 }

@@ -1,12 +1,20 @@
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   OrderedBlocksEditor,
   type OrderedBlock,
 } from "@/components/admin/OrderedBlocksEditor";
+import { RevisionsPanel } from "@/components/admin/RevisionsPanel";
 import { useToast } from "@/hooks/use-toast";
 import {
   useCmsListSolutions,
@@ -14,6 +22,7 @@ import {
   useCmsCreateCapability,
   useCmsUpdateCapability,
   useCmsDeleteCapability,
+  getCmsListSolutionCapabilitiesQueryKey,
   type Solution,
 } from "@workspace/api-client-react";
 
@@ -22,6 +31,8 @@ export default function SolutionCapabilitiesPage({ id }: { id: string }) {
   const { access } = useAdminAccess();
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
+  // #61: id of the capability block whose revision history dialog is open.
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   const solutionsQ = useCmsListSolutions();
   const solution = (solutionsQ.data?.items ?? []).find((s: Solution) => s.id === id);
@@ -120,7 +131,37 @@ export default function SolutionCapabilitiesPage({ id }: { id: string }) {
             ),
           );
         }}
+        onShowHistory={(cid) => setHistoryId(cid)}
       />
+
+      <Dialog
+        open={!!historyId}
+        onOpenChange={(o) => !o && setHistoryId(null)}
+      >
+        <DialogContent
+          className="max-w-2xl"
+          data-testid="capability-history-dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              Revision history
+              {historyId && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {items.find((i) => i.id === historyId)?.title ?? ""}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {historyId && (
+            <RevisionsPanel
+              kind="capability"
+              id={historyId}
+              alwaysOpen
+              invalidateKeys={[getCmsListSolutionCapabilitiesQueryKey(id)]}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

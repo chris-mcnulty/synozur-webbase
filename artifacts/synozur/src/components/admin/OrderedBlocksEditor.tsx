@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   GripVertical,
+  History,
   Pencil,
   Plus,
   Trash2,
@@ -57,6 +58,11 @@ interface Props {
   onReorder: (
     items: { id: string; displayOrder: number }[],
   ) => Promise<void> | void;
+  /**
+   * #61: optional handler to open a per-block revision history dialog. When
+   * provided, every row gets a clock icon next to the edit button.
+   */
+  onShowHistory?: (id: string) => void;
   testIdPrefix: string;
 }
 
@@ -69,6 +75,7 @@ export function OrderedBlocksEditor({
   onUpdate,
   onDelete,
   onReorder,
+  onShowHistory,
   testIdPrefix,
 }: Props) {
   const [draft, setDraft] = useState("");
@@ -261,6 +268,18 @@ export function OrderedBlocksEditor({
               >
                 <Pencil className="h-4 w-4" />
               </Button>
+              {onShowHistory && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onShowHistory(b.id)}
+                  data-testid={`${testIdPrefix}-history-${b.id}`}
+                  aria-label="Revision history"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              )}
               {canWrite && (
                 <Button
                   type="button"

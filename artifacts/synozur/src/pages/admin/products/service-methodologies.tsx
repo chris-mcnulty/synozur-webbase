@@ -1,12 +1,20 @@
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   OrderedBlocksEditor,
   type OrderedBlock,
 } from "@/components/admin/OrderedBlocksEditor";
+import { RevisionsPanel } from "@/components/admin/RevisionsPanel";
 import { useToast } from "@/hooks/use-toast";
 import {
   useCmsListServices,
@@ -14,6 +22,7 @@ import {
   useCmsCreateMethodology,
   useCmsUpdateMethodology,
   useCmsDeleteMethodology,
+  getCmsListServiceMethodologiesQueryKey,
   type Service,
 } from "@workspace/api-client-react";
 
@@ -22,6 +31,8 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
   const { access } = useAdminAccess();
   const { toast } = useToast();
   const canWrite = !!access?.isEditorOrAbove;
+  // #61: id of the methodology block whose revision history dialog is open.
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   const servicesQ = useCmsListServices();
   const service = (servicesQ.data?.items ?? []).find((s: Service) => s.id === id);
@@ -113,7 +124,37 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
             ),
           );
         }}
+        onShowHistory={(mid) => setHistoryId(mid)}
       />
+
+      <Dialog
+        open={!!historyId}
+        onOpenChange={(o) => !o && setHistoryId(null)}
+      >
+        <DialogContent
+          className="max-w-2xl"
+          data-testid="methodology-history-dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              Revision history
+              {historyId && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {items.find((i) => i.id === historyId)?.title ?? ""}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {historyId && (
+            <RevisionsPanel
+              kind="methodology"
+              id={historyId}
+              alwaysOpen
+              invalidateKeys={[getCmsListServiceMethodologiesQueryKey(id)]}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

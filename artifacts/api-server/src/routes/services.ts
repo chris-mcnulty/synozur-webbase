@@ -9,11 +9,15 @@ import {
   solutionCapabilitiesTable,
   serviceRevisionsTable,
   solutionRevisionsTable,
+  serviceMethodologyRevisionsTable,
+  solutionCapabilityRevisionsTable,
   usersTable,
   ARTIFACT_STATUSES,
   COLLATERAL_PILLARS,
   type Service,
   type Solution,
+  type ServiceMethodology,
+  type SolutionCapability,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -538,11 +542,20 @@ router.patch("/cms/methodologies/:id", ...adminGuard, async (req, res) => {
   for (const k of ["serviceId", "title", "displayOrder", "iconId", "bodyHtml", "hidden"] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
-  const [updated] = await db
-    .update(serviceMethodologiesTable)
-    .set(updates)
-    .where(eq(serviceMethodologiesTable.id, id))
-    .returning();
+  // #61: snapshot prior state before overwriting — both ops in one
+  // transaction so a failed update cannot leave an orphan revision row.
+  const [updated] = await db.transaction(async (tx) => {
+    await tx.insert(serviceMethodologyRevisionsTable).values({
+      methodologyId: id,
+      snapshotJson: existing as never,
+      editedBy: req.authedUser!.id,
+    });
+    return tx
+      .update(serviceMethodologiesTable)
+      .set(updates)
+      .where(eq(serviceMethodologiesTable.id, id))
+      .returning();
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "methodology.update",
@@ -628,11 +641,20 @@ router.patch("/cms/capabilities/:id", ...adminGuard, async (req, res) => {
   for (const k of ["solutionId", "title", "displayOrder", "iconId", "bodyHtml", "hidden"] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
-  const [updated] = await db
-    .update(solutionCapabilitiesTable)
-    .set(updates)
-    .where(eq(solutionCapabilitiesTable.id, id))
-    .returning();
+  // #61: snapshot prior state before overwriting — both ops in one
+  // transaction so a failed update cannot leave an orphan revision row.
+  const [updated] = await db.transaction(async (tx) => {
+    await tx.insert(solutionCapabilityRevisionsTable).values({
+      capabilityId: id,
+      snapshotJson: existing as never,
+      editedBy: req.authedUser!.id,
+    });
+    return tx
+      .update(solutionCapabilitiesTable)
+      .set(updates)
+      .where(eq(solutionCapabilitiesTable.id, id))
+      .returning();
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "capability.update",
@@ -902,6 +924,218 @@ router.post(
       diff: { revisionId },
     });
     res.json(await serializeSolution(updated));
+  },
+);
+
+// #61: revision history for methodology and capability blocks. Same shape
+// as the service/solution revision endpoints above; restore preserves
+// `serviceId`/`solutionId` and `displayOrder` so a restore never reparents
+// a block or changes its position in the list.
+
+type MethodologyRow = ServiceMethodology;
+type CapabilityRow = SolutionCapability;
+
+const METHODOLOGY_RESTORABLE_FIELDS = [
+  "title",
+  "iconId",
+  "bodyHtml",
+  "hidden",
+] as const;
+
+const CAPABILITY_RESTORABLE_FIELDS = [
+  "title",
+  "iconId",
+  "bodyHtml",
+  "hidden",
+] as const;
+
+router.get("/cms/methodologies/:id/revisions", ...readGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const methodology = await db.query.serviceMethodologiesTable.findFirst({
+    where: eq(serviceMethodologiesTable.id, id),
+  });
+  if (!methodology) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: serviceMethodologyRevisionsTable.id,
+      methodologyId: serviceMethodologyRevisionsTable.methodologyId,
+      editedAt: serviceMethodologyRevisionsTable.editedAt,
+      editorId: usersTable.id,
+      editorDisplayName: usersTable.displayName,
+      editorAvatarUrl: usersTable.avatarUrl,
+      snapshotTitle: sql<string | null>`${serviceMethodologyRevisionsTable.snapshotJson}->>'title'`,
+      snapshotHidden: sql<string | null>`${serviceMethodologyRevisionsTable.snapshotJson}->>'hidden'`,
+    })
+    .from(serviceMethodologyRevisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, serviceMethodologyRevisionsTable.editedBy))
+    .where(eq(serviceMethodologyRevisionsTable.methodologyId, id))
+    .orderBy(desc(serviceMethodologyRevisionsTable.editedAt));
+  res.json({
+    items: rows.map((r) => ({
+      id: r.id,
+      methodologyId: r.methodologyId,
+      editedAt: r.editedAt.toISOString(),
+      editor: r.editorId
+        ? {
+            id: r.editorId,
+            displayName: r.editorDisplayName ?? null,
+            avatarUrl: r.editorAvatarUrl ?? null,
+          }
+        : null,
+      snapshotTitle: r.snapshotTitle ?? null,
+      snapshotStatus: r.snapshotHidden === "true" ? "hidden" : null,
+    })),
+  });
+});
+
+router.post(
+  "/cms/methodologies/:id/revisions/:revisionId/restore",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const revisionId = String(req.params.revisionId);
+    const methodology = await db.query.serviceMethodologiesTable.findFirst({
+      where: eq(serviceMethodologiesTable.id, id),
+    });
+    if (!methodology) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const revision = await db.query.serviceMethodologyRevisionsTable.findFirst({
+      where: and(
+        eq(serviceMethodologyRevisionsTable.id, revisionId),
+        eq(serviceMethodologyRevisionsTable.methodologyId, id),
+      ),
+    });
+    if (!revision) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (revision.snapshotJson ?? {}) as Partial<MethodologyRow>;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const field of METHODOLOGY_RESTORABLE_FIELDS) {
+      if (field in snap) {
+        updates[field] = (snap as Record<string, unknown>)[field] ?? null;
+      }
+    }
+    const [updated] = await db.transaction(async (tx) => {
+      await tx.insert(serviceMethodologyRevisionsTable).values({
+        methodologyId: id,
+        snapshotJson: methodology as never,
+        editedBy: req.authedUser!.id,
+      });
+      return tx
+        .update(serviceMethodologiesTable)
+        .set(updates)
+        .where(eq(serviceMethodologiesTable.id, id))
+        .returning();
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "methodology.restore_revision",
+      entity: "methodology",
+      entityId: id,
+      diff: { revisionId },
+    });
+    res.json(await serializeMethodology(updated));
+  },
+);
+
+router.get("/cms/capabilities/:id/revisions", ...readGuard, async (req, res) => {
+  const id = String(req.params.id);
+  const capability = await db.query.solutionCapabilitiesTable.findFirst({
+    where: eq(solutionCapabilitiesTable.id, id),
+  });
+  if (!capability) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const rows = await db
+    .select({
+      id: solutionCapabilityRevisionsTable.id,
+      capabilityId: solutionCapabilityRevisionsTable.capabilityId,
+      editedAt: solutionCapabilityRevisionsTable.editedAt,
+      editorId: usersTable.id,
+      editorDisplayName: usersTable.displayName,
+      editorAvatarUrl: usersTable.avatarUrl,
+      snapshotTitle: sql<string | null>`${solutionCapabilityRevisionsTable.snapshotJson}->>'title'`,
+      snapshotHidden: sql<string | null>`${solutionCapabilityRevisionsTable.snapshotJson}->>'hidden'`,
+    })
+    .from(solutionCapabilityRevisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, solutionCapabilityRevisionsTable.editedBy))
+    .where(eq(solutionCapabilityRevisionsTable.capabilityId, id))
+    .orderBy(desc(solutionCapabilityRevisionsTable.editedAt));
+  res.json({
+    items: rows.map((r) => ({
+      id: r.id,
+      capabilityId: r.capabilityId,
+      editedAt: r.editedAt.toISOString(),
+      editor: r.editorId
+        ? {
+            id: r.editorId,
+            displayName: r.editorDisplayName ?? null,
+            avatarUrl: r.editorAvatarUrl ?? null,
+          }
+        : null,
+      snapshotTitle: r.snapshotTitle ?? null,
+      snapshotStatus: r.snapshotHidden === "true" ? "hidden" : null,
+    })),
+  });
+});
+
+router.post(
+  "/cms/capabilities/:id/revisions/:revisionId/restore",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const revisionId = String(req.params.revisionId);
+    const capability = await db.query.solutionCapabilitiesTable.findFirst({
+      where: eq(solutionCapabilitiesTable.id, id),
+    });
+    if (!capability) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const revision = await db.query.solutionCapabilityRevisionsTable.findFirst({
+      where: and(
+        eq(solutionCapabilityRevisionsTable.id, revisionId),
+        eq(solutionCapabilityRevisionsTable.capabilityId, id),
+      ),
+    });
+    if (!revision) {
+      res.status(404).json({ error: "Revision not found" });
+      return;
+    }
+    const snap = (revision.snapshotJson ?? {}) as Partial<CapabilityRow>;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    for (const field of CAPABILITY_RESTORABLE_FIELDS) {
+      if (field in snap) {
+        updates[field] = (snap as Record<string, unknown>)[field] ?? null;
+      }
+    }
+    const [updated] = await db.transaction(async (tx) => {
+      await tx.insert(solutionCapabilityRevisionsTable).values({
+        capabilityId: id,
+        snapshotJson: capability as never,
+        editedBy: req.authedUser!.id,
+      });
+      return tx
+        .update(solutionCapabilitiesTable)
+        .set(updates)
+        .where(eq(solutionCapabilitiesTable.id, id))
+        .returning();
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "capability.restore_revision",
+      entity: "capability",
+      entityId: id,
+      diff: { revisionId },
+    });
+    res.json(await serializeCapability(updated));
   },
 );
 
