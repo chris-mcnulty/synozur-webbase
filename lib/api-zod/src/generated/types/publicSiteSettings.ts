@@ -21,6 +21,9 @@ export interface PublicSiteSettings {
   /** Global rendering mode for /start booking pages. "iframe" embeds Microsoft's hosted Bookings page; "native" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_* credentials and a populated msBusinessId on the booking).
    */
   bookingsRenderMode?: PublicSiteSettingsBookingsRenderMode;
+  /** #133 — A/B kill-switch for the Constellation interactive demo on /applications/constellation. When false, the page renders the static description-only experience (the control arm). Defaults to true. URL `?demo=on|off` overrides this flag per visitor and sticks for the session.
+   */
+  constellationDemoEnabled?: boolean;
   /** @nullable */
   homeHeroImageUrl?: string | null;
   /** @nullable */

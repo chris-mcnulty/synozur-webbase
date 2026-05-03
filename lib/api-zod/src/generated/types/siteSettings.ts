@@ -22,6 +22,9 @@ export interface SiteSettings {
   /** Global rendering mode for /start booking pages. See PublicSiteSettings.
    */
   bookingsRenderMode?: SiteSettingsBookingsRenderMode;
+  /** #133 — A/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.
+   */
+  constellationDemoEnabled?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

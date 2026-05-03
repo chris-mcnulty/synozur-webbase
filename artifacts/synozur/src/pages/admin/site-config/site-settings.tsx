@@ -201,6 +201,7 @@ export default function AdminSiteSettings() {
     spamKeywords: data?.spamKeywords ?? [],
     spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
     auditLogRetentionDays: data?.auditLogRetentionDays ?? 365,
+    constellationDemoEnabled: data?.constellationDemoEnabled ?? true,
     // Alt home page copy: round-trip values so a partial edit doesn't null others.
     homeBHeroHeadlinePrefix: data?.homeBHeroHeadlinePrefix ?? null,
     homeBHeroHeadlineAccent: data?.homeBHeroHeadlineAccent ?? null,
@@ -425,6 +426,48 @@ export default function AdminSiteSettings() {
                 <span
                   className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
                     current ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h2 className="text-lg font-semibold mb-1">
+                  Constellation interactive demo
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  When ON, the in-page sandbox demo renders on{" "}
+                  <code>/applications/constellation</code> below the hero.
+                  When OFF, the page shows the static marketing copy only.
+                  Visitors can still preview the demo via{" "}
+                  <code>?demo=on</code> for QA.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={data?.constellationDemoEnabled ?? true}
+                disabled={updateMutation.isPending}
+                onClick={() =>
+                  updateMutation.mutate(
+                    buildPayload({
+                      constellationDemoEnabled: !(
+                        data?.constellationDemoEnabled ?? true
+                      ),
+                    }),
+                  )
+                }
+                data-testid="toggle-constellation-demo-enabled"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  (data?.constellationDemoEnabled ?? true) ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
+                    (data?.constellationDemoEnabled ?? true) ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>

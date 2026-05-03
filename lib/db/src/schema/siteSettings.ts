@@ -190,6 +190,15 @@ export const siteSettingsTable = pgTable("site_settings", {
   // fall back to iframe per-row even when the global mode is "native".
   bookingsRenderMode: text("bookings_render_mode").notNull().default("iframe"),
 
+  // #133 — Constellation interactive demo on /applications/constellation.
+  // Server-controlled kill-switch so the team can disable the demo without a
+  // redeploy (e.g. if the AI integration is misbehaving or we want to flip
+  // back to the static control arm during an experiment). Per-visitor URL
+  // overrides (`?demo=on|off`) layer on top of this flag client-side. When
+  // #140 ships proper bucketing, this column becomes the "globally enabled"
+  // gate that the bucketing framework consults before assigning treatments.
+  constellationDemoEnabled: boolean("constellation_demo_enabled").notNull().default(true),
+
   // #223 — Careers section. `careersMode` controls whether `/careers/*` is
   // hosted natively from this site or 301-redirected to an external careers
   // host (preserving the path tail). `careersExternalUrl` is the redirect

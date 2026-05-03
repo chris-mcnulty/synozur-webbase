@@ -18,6 +18,7 @@ export interface SiteSettingsInput {
   siteTheme?: SiteSettingsInputSiteTheme;
   homeRootVariant?: SiteSettingsInputHomeRootVariant;
   bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
+  constellationDemoEnabled?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

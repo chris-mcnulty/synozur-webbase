@@ -133,6 +133,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     siteTheme: settings.siteTheme ?? "cosmic",
     homeRootVariant: settings.homeRootVariant ?? "a",
     bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
+    constellationDemoEnabled: settings.constellationDemoEnabled,
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageMediaId: settings.homeHeroImageMediaId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
@@ -221,6 +222,7 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       siteTheme: settings.siteTheme ?? "cosmic",
       homeRootVariant: settings.homeRootVariant ?? "a",
       bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
+      constellationDemoEnabled: settings.constellationDemoEnabled,
       homeHeroImageUrl: urls.homeHeroImageUrl,
       homeHeroVideoUrl: urls.homeHeroVideoUrl,
       homeEditorialImageUrl: urls.homeEditorialImageUrl,
@@ -327,6 +329,10 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
 
   if ("bookingsRenderMode" in input && input.bookingsRenderMode) {
     updates.bookingsRenderMode = input.bookingsRenderMode;
+  }
+
+  if ("constellationDemoEnabled" in input && typeof input.constellationDemoEnabled === "boolean") {
+    updates.constellationDemoEnabled = input.constellationDemoEnabled;
   }
 
   if ("homeHeroImageAssetId" in input) {

@@ -114,6 +114,9 @@ export interface PublicSiteSettings {
   siteTheme?: "cosmic" | "aurora" | null;
   homeRootVariant?: HomeRootVariant;
   bookingsRenderMode?: BookingsRenderMode | null;
+  // #133 — Server-controlled kill-switch for the Constellation interactive
+  // demo on /applications/constellation. Default true.
+  constellationDemoEnabled?: boolean;
   homeHeroImageUrl?: string | null;
   homeHeroVideoUrl?: string | null;
   homeEditorialImageUrl?: string | null;
@@ -166,6 +169,8 @@ export interface AdminSiteSettings {
   siteTheme?: "cosmic" | "aurora" | null;
   homeRootVariant?: HomeRootVariant;
   bookingsRenderMode?: BookingsRenderMode | null;
+  // #133 — see PublicSiteSettings.
+  constellationDemoEnabled?: boolean;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;
   homeHeroImageUrl?: string | null;

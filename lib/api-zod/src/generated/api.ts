@@ -1185,6 +1185,7 @@ export const getPublicSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image
 export const getPublicSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const getPublicSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getPublicSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
+export const getPublicSiteSettingsResponseConstellationDemoEnabledDefault = true;
 
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1205,6 +1206,12 @@ export const GetPublicSiteSettingsResponse = zod.object({
     .default(getPublicSiteSettingsResponseBookingsRenderModeDefault)
     .describe(
       'Global rendering mode for \/start booking pages. \"iframe\" embeds Microsoft\'s hosted Bookings page; \"native\" renders an on-brand React flow against Microsoft Graph (requires MS_BOOKINGS_\* credentials and a populated msBusinessId on the booking).\n',
+    ),
+  constellationDemoEnabled: zod
+    .boolean()
+    .default(getPublicSiteSettingsResponseConstellationDemoEnabledDefault)
+    .describe(
+      "#133 — A\/B kill-switch for the Constellation interactive demo on \/applications\/constellation. When false, the page renders the static description-only experience (the control arm). Defaults to true. URL `?demo=on|off` overrides this flag per visitor and sticks for the session.\n",
     ),
   homeHeroImageUrl: zod.string().nullish(),
   homeHeroVideoUrl: zod.string().nullish(),
@@ -1272,6 +1279,7 @@ export const getAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`
 export const getAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const getAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
+export const getAdminSiteSettingsResponseConstellationDemoEnabledDefault = true;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1301,6 +1309,12 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .default(getAdminSiteSettingsResponseBookingsRenderModeDefault)
     .describe(
       "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
+  constellationDemoEnabled: zod
+    .boolean()
+    .default(getAdminSiteSettingsResponseConstellationDemoEnabledDefault)
+    .describe(
+      "#133 — A\/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.\n",
     ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
@@ -1427,6 +1441,7 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   siteTheme: zod.enum(["cosmic", "aurora"]).optional(),
   homeRootVariant: zod.enum(["a", "b"]).optional(),
   bookingsRenderMode: zod.enum(["iframe", "native"]).optional(),
+  constellationDemoEnabled: zod.boolean().optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
@@ -1529,6 +1544,7 @@ export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `ima
 export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const updateAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const updateAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
+export const updateAdminSiteSettingsResponseConstellationDemoEnabledDefault = true;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1558,6 +1574,12 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .default(updateAdminSiteSettingsResponseBookingsRenderModeDefault)
     .describe(
       "Global rendering mode for \/start booking pages. See PublicSiteSettings.\n",
+    ),
+  constellationDemoEnabled: zod
+    .boolean()
+    .default(updateAdminSiteSettingsResponseConstellationDemoEnabledDefault)
+    .describe(
+      "#133 — A\/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.\n",
     ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),

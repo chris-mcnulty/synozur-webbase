@@ -133,6 +133,47 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS entra_admin_group_fallback text;
     `);
 
+    // 8b. #133 — Constellation interactive demo kill-switch column. Defaults
+    // to enabled so existing deployments stay on; admins flip from the
+    // site-settings admin without a redeploy.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS constellation_demo_enabled boolean NOT NULL DEFAULT true;
+    `);
+
+    // 8c. #133 — application_demo_completions: anonymous demo completions
+    // queued for HubSpot timeline sync once the visitor self-identifies via
+    // a form submission carrying the same `syn_visitor` cookie.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS application_demo_completions (
+        id serial PRIMARY KEY,
+        app text NOT NULL,
+        visitor_id text NOT NULL,
+        step text,
+        path text,
+        payload jsonb,
+        completion_id text,
+        completed_at timestamptz NOT NULL DEFAULT now(),
+        synced_at timestamptz
+      );
+    `);
+    await db.execute(sql`
+      ALTER TABLE application_demo_completions
+        ADD COLUMN IF NOT EXISTS completion_id text;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS application_demo_completions_visitor_idx
+        ON application_demo_completions (visitor_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS application_demo_completions_pending_idx
+        ON application_demo_completions (synced_at);
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS application_demo_completions_completion_id_uidx
+        ON application_demo_completions (completion_id);
+    `);
+
     // 9. form_submissions: attribution + HubSpot sync columns.
     await db.execute(sql`
       ALTER TABLE form_submissions

@@ -30,6 +30,7 @@ import {
 } from "../lib/email";
 import { verifyTurnstile } from "../lib/turnstile";
 import { enqueueContactSubmission, type FormType } from "../lib/hubspotSync";
+import { flushPendingDemoCompletionsForVisitor } from "../lib/applicationDemoFlush";
 import {
   signSubscriberConfirmToken,
   verifySubscriberConfirmToken,
@@ -511,6 +512,20 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     payload,
     utm: attribution.utm,
   }).catch((err) => logger.warn({ err, id }, "HubSpot enqueue failed (contact)"));
+
+  // #133 — Now that this anonymous visitor has identified themselves with
+  // a real email, flush any prior application demo completions captured
+  // under their `syn_visitor` cookie into the HubSpot timeline queue.
+  const visitorCookie = typeof req.cookies?.["syn_visitor"] === "string"
+    ? (req.cookies["syn_visitor"] as string)
+    : null;
+  void flushPendingDemoCompletionsForVisitor({
+    visitorId: visitorCookie,
+    email: payload.email,
+  }).catch((err) =>
+    logger.warn({ err, id }, "demo completion flush failed (contact)"),
+  );
+
   res.json(SubmitContactResponse.parse({ ok: true, id }));
 });
 

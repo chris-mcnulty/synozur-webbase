@@ -5041,6 +5041,15 @@ components:
           type: string
           enum: [iframe, native]
           default: iframe
+        constellationDemoEnabled:
+          description: >
+            #133 — A/B kill-switch for the Constellation interactive demo on
+            /applications/constellation. When false, the page renders the
+            static description-only experience (the control arm). Defaults
+            to true. URL `?demo=on|off` overrides this flag per visitor and
+            sticks for the session.
+          type: boolean
+          default: true
         homeHeroImageUrl:
           type:
             - string
@@ -5247,6 +5256,12 @@ components:
           type: string
           enum: [iframe, native]
           default: iframe
+        constellationDemoEnabled:
+          description: >
+            #133 — A/B kill-switch for the Constellation interactive demo.
+            See PublicSiteSettings.
+          type: boolean
+          default: true
         homeHeroImageAssetId:
           type:
             - integer
@@ -5564,6 +5579,8 @@ components:
         bookingsRenderMode:
           type: string
           enum: [iframe, native]
+        constellationDemoEnabled:
+          type: boolean
         homeHeroImageAssetId:
           type:
             - integer

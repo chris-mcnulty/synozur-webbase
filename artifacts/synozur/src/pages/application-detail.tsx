@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { api, type ApplicationDto } from "@/lib/api";
 import { BookingCard } from "@/components/BookingCard";
+import { ConstellationDemo } from "@/components/demos/constellation";
 import {
   getApplicationBySlug as getStaticApplicationBySlug,
   getActiveApplications,
@@ -13,6 +14,41 @@ import {
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+
+// #133 — Constellation interactive demo A/B toggle.
+//
+// Two layers gate the demo:
+//   1. The server-controlled `constellationDemoEnabled` flag on the public
+//      site-settings response. Admins flip this from the site-settings
+//      admin to disable the demo site-wide without a redeploy. When #140
+//      lands proper bucketing, that framework will consult this flag
+//      before assigning a treatment arm.
+//   2. A per-visitor URL override (`?demo=on|off`) sticky in sessionStorage,
+//      used to deep-link from ad campaigns straight into the treatment or
+//      to force the control arm for screenshots / QA.
+function resolveConstellationDemoEnabled(serverFlag: boolean | undefined): boolean {
+  if (typeof window === "undefined") return serverFlag !== false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const override = params.get("demo");
+    if (override === "off") {
+      window.sessionStorage.setItem("synozur.constellationDemo", "off");
+      return false;
+    }
+    if (override === "on") {
+      window.sessionStorage.setItem("synozur.constellationDemo", "on");
+      return true;
+    }
+    const sticky = window.sessionStorage.getItem("synozur.constellationDemo");
+    if (sticky === "off") return false;
+    if (sticky === "on") return true;
+  } catch {
+    /* sessionStorage unavailable — fall through to the server flag */
+  }
+  // Server flag is the source of truth when no per-visitor override is set.
+  // Default to "on" if the server response predates the field (older API).
+  return serverFlag !== false;
+}
 
 function staticAsDto(
   s: ReturnType<typeof getActiveApplications>[number],
@@ -66,6 +102,16 @@ export default function ApplicationDetail() {
     queryKey: ["applications"],
     queryFn: () => api.listApplications(),
   });
+
+  // #133 — Site-settings drives the Constellation demo kill-switch. Cached
+  // long because the flag changes rarely; the URL `?demo=on|off` override
+  // works regardless of cache freshness.
+  const siteSettingsQ = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+    staleTime: 5 * 60_000,
+  });
+  const siteSettings = siteSettingsQ.data;
 
   const staticFallback = slug ? getStaticApplicationBySlug(slug) : undefined;
   const app: ApplicationDto | undefined = useMemo(() => {
@@ -207,6 +253,17 @@ export default function ApplicationDetail() {
           )}
         </div>
       </section>
+
+      {app.slug === "constellation" &&
+        // Wait for the in-flight fetch so we don't briefly render the demo
+        // and then yank it. But once the fetch settles — even on error —
+        // fall through to the resolver, which defaults to enabled when the
+        // server flag is unknown. This preserves the documented default-on
+        // behavior if `/site-settings` is transiently unreachable.
+        !siteSettingsQ.isLoading &&
+        resolveConstellationDemoEnabled(siteSettings?.constellationDemoEnabled) && (
+          <ConstellationDemo />
+        )}
 
       {app.booking && (
         <section className="py-16 bg-background border-t border-border">
