@@ -61,6 +61,8 @@ import type {
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
   HealthStatus,
+  IngestTrafficBatch202,
+  IngestTrafficBatchBody,
   LibraryAssetListResponse,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
@@ -11649,3 +11651,99 @@ export function useListPortalEngagements<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Authenticated batched-pageview ingest. The caller authenticates with
+`Authorization: Bearer <api-key>` where the key was issued from the
+admin Traffic Properties page. Each row is normalized and stored
+with the matched property's slug as `source_system`.
+
+The endpoint is idempotent on `(source_system, sessionKey, path,
+viewedAt)` — sister apps that retry a batch will not double-count.
+
+ * @summary Ingest a batch of pageviews from a sister Synozur web property (#228)
+ */
+export const getIngestTrafficBatchUrl = () => {
+  return `/api/traffic/ingest`;
+};
+
+export const ingestTrafficBatch = async (
+  ingestTrafficBatchBody: IngestTrafficBatchBody,
+  options?: RequestInit,
+): Promise<IngestTrafficBatch202> => {
+  return customFetch<IngestTrafficBatch202>(getIngestTrafficBatchUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(ingestTrafficBatchBody),
+  });
+};
+
+export const getIngestTrafficBatchMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestTrafficBatch>>,
+    TError,
+    { data: BodyType<IngestTrafficBatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ingestTrafficBatch>>,
+  TError,
+  { data: BodyType<IngestTrafficBatchBody> },
+  TContext
+> => {
+  const mutationKey = ["ingestTrafficBatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ingestTrafficBatch>>,
+    { data: BodyType<IngestTrafficBatchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return ingestTrafficBatch(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IngestTrafficBatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof ingestTrafficBatch>>
+>;
+export type IngestTrafficBatchMutationBody = BodyType<IngestTrafficBatchBody>;
+export type IngestTrafficBatchMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse
+>;
+
+/**
+ * @summary Ingest a batch of pageviews from a sister Synozur web property (#228)
+ */
+export const useIngestTrafficBatch = <
+  TError = ErrorType<ErrorEnvelope | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestTrafficBatch>>,
+    TError,
+    { data: BodyType<IngestTrafficBatchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ingestTrafficBatch>>,
+  TError,
+  { data: BodyType<IngestTrafficBatchBody> },
+  TContext
+> => {
+  return useMutation(getIngestTrafficBatchMutationOptions(options));
+};

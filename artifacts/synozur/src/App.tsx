@@ -105,7 +105,10 @@ import AdminCspViolations from "@/pages/admin/site-config/csp-violations";
 import AdminLaunchReadiness from "@/pages/admin/site-config/launch-readiness";
 import AdminActiveSessions from "@/pages/admin/account/sessions";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
-import MarketingTraffic from "@/pages/admin/marketing/traffic";
+import MarketingContentAnalytics from "@/pages/admin/marketing/traffic";
+import AdminTraffic from "@/pages/admin/traffic";
+import TrafficPropertiesPage from "@/pages/admin/marketing/traffic-properties";
+import TrafficImportPage from "@/pages/admin/marketing/traffic-import";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import { AdminGate } from "@/components/admin/AdminGate";
@@ -356,7 +359,10 @@ function AdminRoutes() {
         <Route path="/wix-redirects"><Redirect to="/site-config/redirects" /></Route>
 
         {/* Marketing section */}
-        <Route path="/marketing/traffic" component={MarketingTraffic} />
+        <Route path="/marketing/traffic" component={AdminTraffic} />
+        <Route path="/marketing/content-analytics" component={MarketingContentAnalytics} />
+        <Route path="/marketing/traffic-properties" component={TrafficPropertiesPage} />
+        <Route path="/marketing/traffic-import" component={TrafficImportPage} />
         <Route path="/marketing/seo" component={MarketingSeo} />
         <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
 

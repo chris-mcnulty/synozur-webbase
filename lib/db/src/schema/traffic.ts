@@ -50,10 +50,12 @@ export const trafficSessionsTable = pgTable(
     // future legacy source) is bulk-imported from an analytics export. The
     // column lets reporting filter to a single source while letting YTD
     // dashboards include everything by default.
-    sourceSystem: text("source_system").notNull().default("native"),
+    sourceSystem: text("source_system").notNull().default("synozur"),
     importBatchId: uuid("import_batch_id"),
-    // Stable per-row key for legacy imports so re-running the same export is
-    // idempotent. Populated only when sourceSystem != 'native'.
+    // Stable per-row key for non-native sources (legacy bulk imports OR
+    // external API/JSON/CSV ingestion from sister apps) so re-running the
+    // same export or retrying the same batch is idempotent. Populated for
+    // any sourceSystem != 'synozur'.
     legacySessionKey: text("legacy_session_key"),
   },
   (t) => [
@@ -96,7 +98,7 @@ export const trafficPageviewsTable = pgTable(
     // See trafficSessionsTable.sourceSystem. A pageview row mirrors its
     // session's provenance, denormalized so reporting queries don't need to
     // join the sessions table just to filter by source.
-    sourceSystem: text("source_system").notNull().default("native"),
+    sourceSystem: text("source_system").notNull().default("synozur"),
     importBatchId: uuid("import_batch_id"),
     // For legacy imports each Wix detail row already aggregates multiple
     // pageviews of the same path within a session. Storing the count rather

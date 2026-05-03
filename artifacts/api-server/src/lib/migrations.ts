@@ -1659,6 +1659,106 @@ export async function runMigrations(): Promise<void> {
         ON portal_artifacts (client_organization_id);
     `);
 
+    // 48. #228 — Centralized multi-property traffic reporting.
+    // Promote the free-text source_system column into a first-class
+    // "property" concept. Existing values were `native` (live first-party
+    // tracker) and `wix` (legacy bulk import); we remap to `synozur` and
+    // `wix-legacy` so reporting can join cleanly on `traffic_properties.slug`.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS traffic_properties (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug text NOT NULL,
+        name text NOT NULL,
+        base_url text,
+        api_key_hash text,
+        api_key_prefix text,
+        is_default boolean NOT NULL DEFAULT false,
+        is_active boolean NOT NULL DEFAULT true,
+        notes text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        last_ingested_at timestamptz
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS traffic_properties_slug_key
+        ON traffic_properties (slug);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS traffic_property_imports (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id uuid NOT NULL REFERENCES traffic_properties(id) ON DELETE CASCADE,
+        kind text NOT NULL,
+        source_file text,
+        source_file_sha256 text,
+        accepted integer NOT NULL DEFAULT 0,
+        skipped integer NOT NULL DEFAULT 0,
+        duplicates integer NOT NULL DEFAULT 0,
+        errors integer NOT NULL DEFAULT 0,
+        notes text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by uuid
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS traffic_property_imports_property_idx
+        ON traffic_property_imports (property_id, created_at);
+    `);
+
+    // Backfill source_system: native → synozur, anything else → wix-legacy.
+    // Idempotent — second-run UPDATEs touch zero rows.
+    await db.execute(sql`
+      UPDATE traffic_sessions SET source_system = 'synozur'
+      WHERE source_system = 'native';
+    `);
+    await db.execute(sql`
+      UPDATE traffic_pageviews SET source_system = 'synozur'
+      WHERE source_system = 'native';
+    `);
+    await db.execute(sql`
+      UPDATE traffic_sessions SET source_system = 'wix-legacy'
+      WHERE source_system NOT IN ('synozur', 'wix-legacy');
+    `);
+    await db.execute(sql`
+      UPDATE traffic_pageviews SET source_system = 'wix-legacy'
+      WHERE source_system NOT IN ('synozur', 'wix-legacy');
+    `);
+
+    // Update column defaults so future inserts without an explicit value
+    // are tagged as the built-in property.
+    await db.execute(sql`
+      ALTER TABLE traffic_sessions ALTER COLUMN source_system SET DEFAULT 'synozur';
+    `);
+    await db.execute(sql`
+      ALTER TABLE traffic_pageviews ALTER COLUMN source_system SET DEFAULT 'synozur';
+    `);
+
+    // Seed the two built-in properties.
+    await db.execute(sql`
+      INSERT INTO traffic_properties (slug, name, base_url, is_default, is_active, notes)
+      VALUES (
+        'synozur',
+        'Synozur Alliance (this app)',
+        NULL,
+        true,
+        true,
+        'Built-in property for first-party traffic collected via /api/traffic/collect.'
+      )
+      ON CONFLICT (slug) DO NOTHING;
+    `);
+    await db.execute(sql`
+      INSERT INTO traffic_properties (slug, name, base_url, is_default, is_active, notes)
+      VALUES (
+        'wix-legacy',
+        'Wix (legacy)',
+        NULL,
+        false,
+        true,
+        'Historical traffic imported from the previous Wix site.'
+      )
+      ON CONFLICT (slug) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

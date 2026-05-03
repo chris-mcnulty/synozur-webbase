@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
@@ -33,6 +34,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trafficApi, type TrafficFilters } from "@/lib/traffic-api";
+import { trafficPropertiesApi } from "@/lib/traffic-properties-api";
+import { Check } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 
 const TOOLTIP_STYLE = {
   backgroundColor: "hsl(var(--card))",
@@ -101,6 +112,41 @@ export default function AdminTraffic() {
   const [includeBots, setIncludeBots] = useState<"false" | "true" | "only">("false");
   const [pageType, setPageType] = useState<string>("");
   const [device, setDevice] = useState<string>("");
+  // #228 — multi-property filter; default is the canonical first-party feed.
+  // Selection is persisted to the URL via ?properties=slug1,slug2 so the
+  // current view is shareable and survives reloads.
+  const [location, setLocation] = useLocation();
+  const [propertySlugs, setPropertySlugs] = useState<string[]>(() => {
+    if (typeof window === "undefined") return ["synozur"];
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("properties");
+    if (!raw) return ["synozur"];
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return parts.length === 0 ? ["synozur"] : parts;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const isDefault = propertySlugs.length === 1 && propertySlugs[0] === "synozur";
+    if (isDefault) {
+      params.delete("properties");
+    } else {
+      params.set("properties", propertySlugs.join(","));
+    }
+    const qs = params.toString();
+    const next = qs ? `${location.split("?")[0]}?${qs}` : location.split("?")[0]!;
+    if (next !== location) setLocation(next, { replace: true });
+  }, [propertySlugs, location, setLocation]);
+
+  const enabled = !!access?.isEditorOrAbove;
+
+  const propsListQ = useQuery({
+    queryKey: ["traffic-properties"],
+    queryFn: () => trafficPropertiesApi.list(),
+    enabled,
+  });
+  const allProps = propsListQ.data?.items ?? [];
 
   const filters = useMemo<TrafficFilters>(
     () => ({
@@ -108,15 +154,37 @@ export default function AdminTraffic() {
       includeBots,
       pageType: pageType || undefined,
       device: (device as TrafficFilters["device"]) || undefined,
+      propertySlugs: propertySlugs.length === 0 ? ["synozur"] : propertySlugs,
     }),
-    [days, includeBots, pageType, device],
+    [days, includeBots, pageType, device, propertySlugs],
   );
 
-  const enabled = !!access?.isEditorOrAbove;
+  function togglePropertySlug(slug: string) {
+    setPropertySlugs((prev) => {
+      if (slug === "all") return ["all"];
+      const without = prev.filter((s) => s !== "all");
+      if (without.includes(slug)) {
+        const next = without.filter((s) => s !== slug);
+        return next.length === 0 ? ["synozur"] : next;
+      }
+      return [...without, slug];
+    });
+  }
+
+  const propertyButtonLabel = propertySlugs.includes("all")
+    ? "All properties"
+    : propertySlugs.length === 1
+      ? (allProps.find((p) => p.slug === propertySlugs[0])?.name ?? propertySlugs[0])
+      : `${propertySlugs.length} properties`;
 
   const overviewQ = useQuery({
     queryKey: ["traffic-overview", filters],
     queryFn: () => trafficApi.overview(filters),
+    enabled,
+  });
+  const byPropertyQ = useQuery({
+    queryKey: ["traffic-by-property", filters],
+    queryFn: () => trafficApi.byProperty(filters),
     enabled,
   });
   const seriesQ = useQuery({
@@ -215,6 +283,44 @@ export default function AdminTraffic() {
           <Card className="p-4 mb-6">
             <div className="flex flex-wrap items-end gap-3">
               <div>
+                <div className="text-xs text-muted-foreground mb-1">Properties</div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs min-w-[180px] justify-between"
+                      data-testid="btn-property-filter"
+                    >
+                      <span className="truncate">{propertyButtonLabel}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel className="text-xs">Properties to include</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={propertySlugs.includes("all")}
+                      onCheckedChange={() => togglePropertySlug("all")}
+                      data-testid="property-option-all"
+                    >
+                      All properties
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    {allProps.map((p) => (
+                      <DropdownMenuCheckboxItem
+                        key={p.id}
+                        checked={!propertySlugs.includes("all") && propertySlugs.includes(p.slug)}
+                        onCheckedChange={() => togglePropertySlug(p.slug)}
+                        data-testid={`property-option-${p.slug}`}
+                      >
+                        <span className="flex-1 truncate">{p.name}</span>
+                        {p.isDefault && <Check className="h-3 w-3 ml-1 text-muted-foreground" />}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div>
                 <div className="text-xs text-muted-foreground mb-1">Range</div>
                 <Select value={String(days)} onValueChange={(v) => setDays(Number(v) as 7 | 30 | 90)}>
                   <SelectTrigger className="w-[160px] h-8 text-xs">
@@ -286,6 +392,41 @@ export default function AdminTraffic() {
             <Stat label="Unique visitors" value={overviewQ.data?.totals.uniqueVisitors ?? 0} icon={MonitorSmartphone} />
             <Stat label="Countries" value={overviewQ.data?.totals.countries ?? 0} icon={Globe} />
           </div>
+
+          {/* Per-property breakdown — shown whenever the active selection
+              spans more than one property (or is "all"). #228 review. */}
+          {(propertySlugs.includes("all") || propertySlugs.length > 1) &&
+            (byPropertyQ.data?.items.length ?? 0) > 0 && (
+              <div className="mb-6">
+                <div className="text-sm font-medium mb-2">By property</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {byPropertyQ.data!.items.map((row) => {
+                    const friendly =
+                      allProps.find((p) => p.slug === row.slug)?.name ?? row.slug;
+                    return (
+                      <Card key={row.slug} className="p-4">
+                        <div className="text-xs text-muted-foreground">{row.slug}</div>
+                        <div className="text-sm font-medium mb-2">{friendly}</div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <div className="text-xs text-muted-foreground">Sessions</div>
+                            <div className="text-base font-semibold">{row.sessions.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Visitors</div>
+                            <div className="text-base font-semibold">{row.uniqueVisitors.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Pageviews</div>
+                            <div className="text-base font-semibold">{row.pageviews.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
           {/* Visits over time */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

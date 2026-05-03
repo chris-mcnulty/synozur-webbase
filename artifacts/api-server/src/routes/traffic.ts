@@ -1,14 +1,25 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import bcrypt from "bcryptjs";
+import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import {
   db,
   trafficSessionsTable,
   trafficPageviewsTable,
   trafficEventsTable,
+  trafficPropertiesTable,
   notFoundLogsTable,
 } from "@workspace/db";
+import {
+  ingestPageviewBatch,
+  ingestSessionBatch,
+  normalizeIngestRow,
+  normalizeIngestSessionRow,
+  type IngestPageviewRow,
+  type IngestSessionRow,
+} from "../lib/trafficIngest";
 import {
   classifyPageType,
   classifySource,
@@ -491,5 +502,269 @@ export async function recordPageview(args: RecordPageviewArgs): Promise<{ id: st
 
   return pv ?? null;
 }
+
+// ─── Multi-property ingest endpoint (#228) ────────────────────────────────────
+//
+// Authenticated batched-pageview ingest for sister Synozur web apps. The
+// caller authenticates with `Authorization: Bearer <api-key>` where the key
+// was issued at /cms/traffic/properties → create. We bcrypt-compare the key
+// against `traffic_properties.api_key_hash` and tag each row with the
+// matching property's slug.
+//
+// Idempotency: rows are de-duped on (sourceSystem, legacy_session_key, path,
+// viewedAt) inside ingestPageviewBatch so a sister app that retries a batch
+// won't double-count.
+
+// Canonical batch contract — shared with the admin import surface and the
+// OpenAPI doc. A batch ALWAYS targets exactly one property (the one the
+// API key is bound to), and may contain any combination of session
+// metadata, pageviews, and events. Sessions are still derived from the
+// pageview rows' sessionKey; the optional `sessions` array lets sister
+// apps ship session-level overrides (e.g. country, UA) for sessions that
+// have no pageview in this batch.
+const IngestEventRow = z.object({
+  sessionKey: z.string().min(1),
+  eventName: z.string().min(1).max(64),
+  occurredAt: z.string().min(1),
+  path: z.string().optional().nullable(),
+  metadata: z.record(z.unknown()).optional().nullable(),
+});
+
+const IngestBody = z
+  .object({
+    // Optional caller-provided slug. If present it MUST match the
+    // authenticated property; mismatch → 403. Defense against a sister app
+    // accidentally posting one property's batch with another's key.
+    propertySlug: z.string().min(1).max(64).optional(),
+    rows: z.array(z.record(z.unknown())).min(1).max(5000).optional(),
+    pageviews: z.array(z.record(z.unknown())).max(5000).optional(),
+    sessions: z.array(z.record(z.unknown())).max(5000).optional(),
+    events: z.array(IngestEventRow).max(5000).optional(),
+  })
+  .refine(
+    (b) =>
+      (b.rows && b.rows.length > 0) ||
+      (b.pageviews && b.pageviews.length > 0) ||
+      (b.sessions && b.sessions.length > 0) ||
+      (b.events && b.events.length > 0),
+    { message: "must include at least one of rows, pageviews, sessions, or events" },
+  );
+
+// Per-property rate limiter — 60 batches/min per key (each batch may carry
+// up to 5k rows). Keyed on the API key prefix so a noisy property can't
+// starve a quiet one.
+const ingestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const auth = (req.headers["authorization"] as string | undefined) ?? "";
+    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : "";
+    return `t:i:${token.slice(0, 12) || ipKey(req)}`;
+  },
+  handler: (_req, res) => {
+    res.status(429).json({ error: "Rate limit exceeded for this property" });
+  },
+});
+
+router.post("/traffic/ingest", ingestLimiter, async (req, res) => {
+  const auth = (req.headers["authorization"] as string | undefined) ?? "";
+  if (!auth.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Missing Bearer token" });
+    return;
+  }
+  const token = auth.slice("Bearer ".length).trim();
+  if (!token) {
+    res.status(401).json({ error: "Empty Bearer token" });
+    return;
+  }
+  const prefix = token.slice(0, 8);
+
+  // Look up candidate properties by stored prefix. The prefix isn't unique
+  // by itself (rare collision), so we bcrypt-compare against each candidate
+  // and pick the matching one.
+  const candidates = await db
+    .select()
+    .from(trafficPropertiesTable)
+    .where(eq(trafficPropertiesTable.apiKeyPrefix, prefix));
+
+  let matched: typeof candidates[number] | null = null;
+  for (const c of candidates) {
+    if (!c.isActive || !c.apiKeyHash) continue;
+    if (await bcrypt.compare(token, c.apiKeyHash)) {
+      matched = c;
+      break;
+    }
+  }
+  if (!matched) {
+    res.status(401).json({ error: "Invalid API key" });
+    return;
+  }
+
+  const parsed = IngestBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+
+  // If the caller named a property in the body it must match the authed key.
+  if (parsed.data.propertySlug && parsed.data.propertySlug !== matched.slug) {
+    res.status(403).json({
+      error: `propertySlug "${parsed.data.propertySlug}" does not match the authenticated key`,
+    });
+    return;
+  }
+
+  try {
+    // Normalize each pageview / session row. Errors are counted but don't
+    // fail the batch — sister apps get back per-row diagnostics.
+    const pageviewRaw = parsed.data.pageviews ?? parsed.data.rows ?? [];
+    const sessionsRaw = parsed.data.sessions ?? [];
+    const eventsRaw = parsed.data.events ?? [];
+    const errorSamples: Array<{ index: number; reason: string }> = [];
+
+    // Sessions go FIRST so events posted in the same batch can bind to
+    // session rows that didn't exist before this request.
+    const sessNormalized: IngestSessionRow[] = [];
+    let sessNormalizeErrors = 0;
+    for (let i = 0; i < sessionsRaw.length; i++) {
+      const result = normalizeIngestSessionRow(sessionsRaw[i]!);
+      if ("error" in result) {
+        sessNormalizeErrors += 1;
+        if (errorSamples.length < 10) errorSamples.push({ index: i, reason: `session: ${result.error}` });
+        continue;
+      }
+      sessNormalized.push(result.row);
+    }
+    const sessionCounters =
+      sessNormalized.length > 0
+        ? await ingestSessionBatch(matched.slug, sessNormalized)
+        : { accepted: 0, duplicates: 0, skipped: 0, errors: 0, errorSamples: [] };
+
+    const normalized: IngestPageviewRow[] = [];
+    let normalizeErrors = 0;
+    for (let i = 0; i < pageviewRaw.length; i++) {
+      const result = normalizeIngestRow(pageviewRaw[i]!);
+      if ("error" in result) {
+        normalizeErrors += 1;
+        if (errorSamples.length < 10) errorSamples.push({ index: i, reason: result.error });
+        continue;
+      }
+      normalized.push(result.row);
+    }
+
+    const counters = await ingestPageviewBatch(matched.slug, normalized);
+
+    // Events: look up the session by (sourceSystem, sessionKey). Idempotency
+    // requires checking for an existing matching event before insert —
+    // otherwise a retry would double-count. Match on
+    // (sessionId, eventName, occurredAt, path).
+    let eventsAccepted = 0;
+    let eventsDuplicates = 0;
+    let eventsErrors = 0;
+    for (let i = 0; i < eventsRaw.length; i++) {
+      const ev = eventsRaw[i]!;
+      const occurredAt = new Date(ev.occurredAt);
+      if (Number.isNaN(occurredAt.getTime())) {
+        eventsErrors += 1;
+        if (errorSamples.length < 10) {
+          errorSamples.push({ index: i, reason: `event invalid occurredAt: ${ev.occurredAt}` });
+        }
+        continue;
+      }
+      const session = await db
+        .select({ id: trafficSessionsTable.id })
+        .from(trafficSessionsTable)
+        .where(
+          and(
+            eq(trafficSessionsTable.sourceSystem, matched.slug),
+            eq(trafficSessionsTable.legacySessionKey, ev.sessionKey),
+          ),
+        )
+        .limit(1);
+      if (!session[0]) {
+        eventsErrors += 1;
+        if (errorSamples.length < 10) {
+          errorSamples.push({ index: i, reason: `event sessionKey not found: ${ev.sessionKey}` });
+        }
+        continue;
+      }
+      const eventName = ev.eventName.slice(0, 80);
+      const evPath = ev.path ?? "";
+      const existing = await db
+        .select({ id: trafficEventsTable.id })
+        .from(trafficEventsTable)
+        .where(
+          and(
+            eq(trafficEventsTable.sessionId, session[0].id),
+            eq(trafficEventsTable.eventName, eventName),
+            eq(trafficEventsTable.occurredAt, occurredAt),
+            eq(trafficEventsTable.path, evPath),
+          ),
+        )
+        .limit(1);
+      if (existing[0]) {
+        eventsDuplicates += 1;
+        continue;
+      }
+      const propsSerialized = ev.metadata ? JSON.stringify(ev.metadata) : null;
+      const safeProps = propsSerialized && propsSerialized.length <= 4096 ? ev.metadata : null;
+      await db.insert(trafficEventsTable).values({
+        sessionId: session[0].id,
+        path: evPath,
+        eventName,
+        occurredAt,
+        properties: safeProps as Record<string, unknown> | null,
+      });
+      eventsAccepted += 1;
+    }
+
+    const totalErrors =
+      counters.errors +
+      normalizeErrors +
+      eventsErrors +
+      sessionCounters.errors +
+      sessNormalizeErrors;
+    const allErrorSamples = [
+      ...errorSamples,
+      ...counters.errorSamples,
+      ...sessionCounters.errorSamples,
+    ].slice(0, 10);
+
+    if (totalErrors > 0) {
+      req.log.warn(
+        {
+          propertySlug: matched.slug,
+          totalErrors,
+          accepted: counters.accepted,
+          sessionsAccepted: sessionCounters.accepted,
+          eventsAccepted,
+          samples: allErrorSamples,
+        },
+        "traffic.ingest completed with errors",
+      );
+    }
+
+    res.status(202).json({
+      accepted: counters.accepted,
+      duplicates: counters.duplicates,
+      skipped: counters.skipped,
+      errors: totalErrors,
+      sessionsAccepted: sessionCounters.accepted,
+      sessionsUpdated: sessionCounters.duplicates,
+      eventsAccepted,
+      eventsDuplicates,
+      errorSamples: allErrorSamples,
+      rowsParsed: pageviewRaw.length,
+      sessionsParsed: sessionsRaw.length,
+      eventsParsed: eventsRaw.length,
+      propertySlug: matched.slug,
+    });
+  } catch (err) {
+    req.log.error({ err, propertySlug: matched.slug }, "traffic.ingest failed");
+    res.status(500).json({ error: "Ingest failed" });
+  }
+});
 
 export default router;

@@ -32,13 +32,25 @@ export interface TrafficFilters {
   browser?: string;
   source?: "direct" | "organic" | "ai" | "referral" | "social" | "paid" | "internal";
   includeBots?: "true" | "false" | "only";
+  /**
+   * Multi-property filter (#228). Pass an array of property slugs (e.g.
+   * ['synozur', 'wix-legacy']) or the single sentinel ['all'] to include
+   * every property. Defaults to ['synozur'] on the server when omitted.
+   */
+  propertySlugs?: string[];
   limit?: number;
 }
 
 export function buildQuery(filters: TrafficFilters): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+    if (v === undefined || v === null || v === "") return;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return;
+      params.set(k, v.join(","));
+      return;
+    }
+    params.set(k, String(v));
   });
   const s = params.toString();
   return s ? `?${s}` : "";
@@ -145,9 +157,20 @@ export interface TrafficEvents {
   recent: EventRecentRow[];
 }
 
+export interface TrafficByPropertyRow {
+  slug: string;
+  sessions: number;
+  uniqueVisitors: number;
+  pageviews: number;
+}
+
 export const trafficApi = {
   overview: (filters: TrafficFilters) =>
     jsonFetch<TrafficOverview>(apiUrl(`/cms/traffic/overview${buildQuery(filters)}`)),
+  byProperty: (filters: TrafficFilters) =>
+    jsonFetch<{ items: TrafficByPropertyRow[] }>(
+      apiUrl(`/cms/traffic/by-property${buildQuery(filters)}`),
+    ),
   timeseries: (filters: TrafficFilters) =>
     jsonFetch<TrafficSeries>(apiUrl(`/cms/traffic/timeseries${buildQuery(filters)}`)),
   pages: (filters: TrafficFilters) =>

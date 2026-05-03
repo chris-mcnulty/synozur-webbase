@@ -151,6 +151,8 @@ const SECTIONS: NavSection[] = [
     icon: Megaphone,
     items: [
       { href: "/marketing/traffic", label: "Traffic", icon: LineChart, capability: "content.moderate", testId: "nav-admin-marketing-traffic" },
+      { href: "/marketing/traffic-properties", label: "Traffic Properties", icon: Network, capability: "content.moderate", testId: "nav-admin-marketing-traffic-properties" },
+      { href: "/marketing/traffic-import", label: "Traffic Import", icon: Inbox, capability: "content.moderate", testId: "nav-admin-marketing-traffic-import" },
       { href: "/marketing/seo", label: "SEO", icon: Search, capability: "content.moderate", testId: "nav-admin-marketing-seo" },
       { href: "/marketing/seo-audit", label: "SEO Audit", icon: FileSearch, capability: "content.moderate", testId: "nav-admin-marketing-seo-audit" },
       { href: "/integrations/hubspot", label: "HubSpot", icon: Network, capability: "site.manage", testId: "nav-admin-hubspot" },

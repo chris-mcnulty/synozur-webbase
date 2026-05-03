@@ -9,6 +9,125 @@ export interface HealthStatus {
   status: string;
 }
 
+export type IngestPageviewRowTrafficSource =
+  | (typeof IngestPageviewRowTrafficSource)[keyof typeof IngestPageviewRowTrafficSource]
+  | null;
+
+export const IngestPageviewRowTrafficSource = {
+  direct: "direct",
+  organic: "organic",
+  ai: "ai",
+  referral: "referral",
+  social: "social",
+  paid: "paid",
+  internal: "internal",
+} as const;
+
+export type IngestPageviewRowDeviceType =
+  | (typeof IngestPageviewRowDeviceType)[keyof typeof IngestPageviewRowDeviceType]
+  | null;
+
+export const IngestPageviewRowDeviceType = {
+  desktop: "desktop",
+  mobile: "mobile",
+  tablet: "tablet",
+  bot: "bot",
+} as const;
+
+export interface IngestPageviewRow {
+  sessionKey: string;
+  path: string;
+  title?: string | null;
+  viewedAt: string;
+  /** @minimum 1 */
+  pageviewCount?: number;
+  timeOnPageMs?: number | null;
+  pageType?: string | null;
+  referrerUrl?: string | null;
+  referrerHost?: string | null;
+  trafficSource?: IngestPageviewRowTrafficSource;
+  deviceType?: IngestPageviewRowDeviceType;
+  browserName?: string | null;
+  osName?: string | null;
+  /** When set, the server fills missing browser/os/device/bot fields. */
+  userAgent?: string | null;
+  country?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+}
+
+export type IngestSessionRowDeviceType =
+  | (typeof IngestSessionRowDeviceType)[keyof typeof IngestSessionRowDeviceType]
+  | null;
+
+export const IngestSessionRowDeviceType = {
+  desktop: "desktop",
+  mobile: "mobile",
+  tablet: "tablet",
+  bot: "bot",
+} as const;
+
+export type IngestSessionRowTrafficSource =
+  | (typeof IngestSessionRowTrafficSource)[keyof typeof IngestSessionRowTrafficSource]
+  | null;
+
+export const IngestSessionRowTrafficSource = {
+  direct: "direct",
+  organic: "organic",
+  ai: "ai",
+  referral: "referral",
+  social: "social",
+  paid: "paid",
+  internal: "internal",
+} as const;
+
+/**
+ * Session-only metadata. Use to backfill / override session attributes
+independently of pageviews. Idempotent on (propertySlug, sessionKey).
+
+ */
+export interface IngestSessionRow {
+  sessionKey: string;
+  firstSeenAt?: string | null;
+  lastSeenAt?: string | null;
+  userAgent?: string | null;
+  browserName?: string | null;
+  browserVersion?: string | null;
+  osName?: string | null;
+  deviceType?: IngestSessionRowDeviceType;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  landingPath?: string | null;
+  referrerUrl?: string | null;
+  referrerHost?: string | null;
+  trafficSource?: IngestSessionRowTrafficSource;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  isBot?: boolean | null;
+  botName?: string | null;
+  botCategory?: string | null;
+}
+
+export type IngestEventRowProperties = { [key: string]: unknown };
+
+/**
+ * Custom event bound to a session by (propertySlug, sessionKey).
+ */
+export interface IngestEventRow {
+  sessionKey: string;
+  eventName: string;
+  occurredAt: string;
+  path?: string | null;
+  eventCategory?: string | null;
+  eventValue?: number | null;
+  properties?: IngestEventRowProperties;
+}
+
 export interface ErrorEnvelope {
   error: string;
   details?: unknown;
@@ -2908,4 +3027,49 @@ export type ListPortalAppArtifacts200 = {
 
 export type ListPortalEngagements200 = {
   items: PortalEngagement[];
+};
+
+/**
+ * Batch envelope. At least one of `rows`, `pageviews`, `sessions`,
+or `events` must be present. `rows` is a deprecated alias for
+`pageviews` retained for backward compatibility.
+
+ */
+export type IngestTrafficBatchBody = {
+  /** Optional; if supplied must equal the slug bound to the API key (else 403). */
+  propertySlug?: string;
+  /**
+   * @deprecated
+   * @maxItems 50000
+   */
+  rows?: IngestPageviewRow[];
+  /** @maxItems 50000 */
+  pageviews?: IngestPageviewRow[];
+  /** @maxItems 50000 */
+  sessions?: IngestSessionRow[];
+  /** @maxItems 50000 */
+  events?: IngestEventRow[];
+};
+
+export type IngestTrafficBatch202ErrorSamplesItem = {
+  index: number;
+  reason: string;
+};
+
+export type IngestTrafficBatch202 = {
+  /** Pageviews accepted */
+  accepted: number;
+  /** Pageviews ignored as duplicates */
+  duplicates: number;
+  skipped: number;
+  errors: number;
+  sessionsAccepted?: number;
+  sessionsUpdated?: number;
+  eventsAccepted?: number;
+  eventsDuplicates?: number;
+  rowsParsed: number;
+  sessionsParsed?: number;
+  eventsParsed?: number;
+  propertySlug: string;
+  errorSamples: IngestTrafficBatch202ErrorSamplesItem[];
 };

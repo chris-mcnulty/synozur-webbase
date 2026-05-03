@@ -59,6 +59,8 @@ tags:
     description: Galaxy customer portal — same-host session bridge.
   - name: PortalApps
     description: Galaxy per-application cockpit surfaces (#226).
+  - name: Traffic
+    description: Multi-property traffic ingest (#228).
 paths:
   /healthz:
     get:
@@ -3419,7 +3421,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/PortalForbidden'
 
+  /traffic/ingest:
+    post:
+      operationId: ingestTrafficBatch
+      tags:
+        - Traffic
+      summary: Ingest a batch of pageviews from a sister Synozur web property (#228)
+      description: |
+        Authenticated batched-pageview ingest. The caller authenticates with
+        `Authorization: Bearer <api-key>` where the key was issued from the
+        admin Traffic Properties page. Each row is normalized and stored
+        with the matched property's slug as `source_system`.
+
+        The endpoint is idempotent on `(source_system, sessionKey, path,
+        viewedAt)` — sister apps that retry a batch will not double-count.
+      security:
+        - trafficPropertyApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: |
+                Batch envelope. At least one of `rows`, `pageviews`, `sessions`,
+                or `events` must be present. `rows` is a deprecated alias for
+                `pageviews` retained for backward compatibility.
+              properties:
+                propertySlug:
+                  type: string
+                  description: Optional; if supplied must equal the slug bound to the API key (else 403).
+                rows:
+                  type: array
+                  deprecated: true
+                  maxItems: 50000
+                  items: { $ref: '#/components/schemas/IngestPageviewRow' }
+                pageviews:
+                  type: array
+                  maxItems: 50000
+                  items: { $ref: '#/components/schemas/IngestPageviewRow' }
+                sessions:
+                  type: array
+                  maxItems: 50000
+                  items: { $ref: '#/components/schemas/IngestSessionRow' }
+                events:
+                  type: array
+                  maxItems: 50000
+                  items: { $ref: '#/components/schemas/IngestEventRow' }
+      responses:
+        '202':
+          description: Batch accepted (per-row outcomes in the body)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, duplicates, skipped, errors, rowsParsed, propertySlug, errorSamples]
+                properties:
+                  accepted: { type: integer, description: Pageviews accepted }
+                  duplicates: { type: integer, description: Pageviews ignored as duplicates }
+                  skipped: { type: integer }
+                  errors: { type: integer }
+                  sessionsAccepted: { type: integer }
+                  sessionsUpdated: { type: integer }
+                  eventsAccepted: { type: integer }
+                  eventsDuplicates: { type: integer }
+                  rowsParsed: { type: integer }
+                  sessionsParsed: { type: integer }
+                  eventsParsed: { type: integer }
+                  propertySlug: { type: string }
+                  errorSamples:
+                    type: array
+                    items:
+                      type: object
+                      required: [index, reason]
+                      properties:
+                        index: { type: integer }
+                        reason: { type: string }
+        '403':
+          description: propertySlug in body did not match the authenticated API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limit exceeded for this property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
+  securitySchemes:
+    trafficPropertyApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: |
+        Per-property API key issued from the admin Traffic Properties page.
+        Sent as `Authorization: Bearer <key>` to /api/traffic/ingest.
   responses:
     Unauthorized:
       description: Unauthorized
@@ -3453,6 +3560,84 @@ components:
       properties:
         status:
           type: string
+    IngestPageviewRow:
+      type: object
+      required: [sessionKey, path, viewedAt]
+      properties:
+        sessionKey: { type: string }
+        path: { type: string }
+        title: { type: string, nullable: true }
+        viewedAt: { type: string, format: date-time }
+        pageviewCount: { type: integer, minimum: 1 }
+        timeOnPageMs: { type: integer, nullable: true }
+        pageType: { type: string, nullable: true }
+        referrerUrl: { type: string, nullable: true }
+        referrerHost: { type: string, nullable: true }
+        trafficSource:
+          type: string
+          nullable: true
+          enum: [direct, organic, ai, referral, social, paid, internal]
+        deviceType:
+          type: string
+          nullable: true
+          enum: [desktop, mobile, tablet, bot]
+        browserName: { type: string, nullable: true }
+        osName: { type: string, nullable: true }
+        userAgent: { type: string, nullable: true, description: 'When set, the server fills missing browser/os/device/bot fields.' }
+        country: { type: string, nullable: true }
+        utmSource: { type: string, nullable: true }
+        utmMedium: { type: string, nullable: true }
+        utmCampaign: { type: string, nullable: true }
+    IngestSessionRow:
+      type: object
+      required: [sessionKey]
+      description: |
+        Session-only metadata. Use to backfill / override session attributes
+        independently of pageviews. Idempotent on (propertySlug, sessionKey).
+      properties:
+        sessionKey: { type: string }
+        firstSeenAt: { type: string, format: date-time, nullable: true }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        userAgent: { type: string, nullable: true }
+        browserName: { type: string, nullable: true }
+        browserVersion: { type: string, nullable: true }
+        osName: { type: string, nullable: true }
+        deviceType:
+          type: string
+          nullable: true
+          enum: [desktop, mobile, tablet, bot]
+        country: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        landingPath: { type: string, nullable: true }
+        referrerUrl: { type: string, nullable: true }
+        referrerHost: { type: string, nullable: true }
+        trafficSource:
+          type: string
+          nullable: true
+          enum: [direct, organic, ai, referral, social, paid, internal]
+        utmSource: { type: string, nullable: true }
+        utmMedium: { type: string, nullable: true }
+        utmCampaign: { type: string, nullable: true }
+        utmTerm: { type: string, nullable: true }
+        utmContent: { type: string, nullable: true }
+        isBot: { type: boolean, nullable: true }
+        botName: { type: string, nullable: true }
+        botCategory: { type: string, nullable: true }
+    IngestEventRow:
+      type: object
+      required: [sessionKey, eventName, occurredAt]
+      description: Custom event bound to a session by (propertySlug, sessionKey).
+      properties:
+        sessionKey: { type: string }
+        eventName: { type: string }
+        occurredAt: { type: string, format: date-time }
+        path: { type: string, nullable: true }
+        eventCategory: { type: string, nullable: true }
+        eventValue: { type: number, nullable: true }
+        properties:
+          type: object
+          additionalProperties: true
     ErrorEnvelope:
       type: object
       required:

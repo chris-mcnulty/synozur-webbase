@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, gte, lte, sql, countDistinct } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql, countDistinct } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import {
   db,
@@ -30,14 +30,20 @@ const Filters = z.object({
     .enum(["true", "false", "only"])
     .optional()
     .default("false"),
-  // Source system filter. 'all' is the default and covers both native (live)
-  // and any legacy bulk imports (e.g. Wix). 'native' restricts to the new
-  // platform's first-party tracker; 'legacy' restricts to imported data.
-  // Concrete legacy values like 'wix' are also accepted.
-  sourceSystem: z
-    .union([z.enum(["all", "native", "legacy"]), z.string().min(1).max(32)])
-    .optional()
-    .default("all"),
+  // Property filter (#228). Multi-select list of `traffic_properties.slug`
+  // values, comma-separated in the query string. Default is the built-in
+  // `synozur` property — admins must explicitly opt in to legacy / external
+  // properties. The sentinel value `all` (alone) skips the filter.
+  // Accepts repeated `propertySlugs=` params or one CSV `propertySlugs=a,b`.
+  propertySlugs: z
+    .preprocess(
+      (v) => {
+        if (v === undefined || v === null) return undefined;
+        if (Array.isArray(v)) return v.flatMap((x) => String(x).split(","));
+        return String(v).split(",");
+      },
+      z.array(z.string().min(1).max(64)).optional(),
+    ),
 });
 
 type ParsedFilters = z.infer<typeof Filters>;
@@ -60,30 +66,24 @@ function resolveWindow(f: ParsedFilters): Window {
   return { from, to };
 }
 
-function applySourceSystemPageview(f: ParsedFilters, where: SQL[]): void {
-  if (f.sourceSystem === "all") return;
-  if (f.sourceSystem === "native") {
-    where.push(eq(trafficPageviewsTable.sourceSystem, "native"));
-    return;
-  }
-  if (f.sourceSystem === "legacy") {
-    where.push(sql`${trafficPageviewsTable.sourceSystem} <> 'native'`);
-    return;
-  }
-  where.push(eq(trafficPageviewsTable.sourceSystem, f.sourceSystem));
+function resolvePropertySlugs(f: ParsedFilters): string[] | null {
+  // Default = built-in synozur property only. `['all']` (sentinel) skips
+  // the filter entirely so cross-property comparison reports work.
+  const slugs = f.propertySlugs && f.propertySlugs.length > 0 ? f.propertySlugs : ["synozur"];
+  if (slugs.length === 1 && slugs[0] === "all") return null;
+  return Array.from(new Set(slugs));
 }
 
-function applySourceSystemSession(f: ParsedFilters, where: SQL[]): void {
-  if (f.sourceSystem === "all") return;
-  if (f.sourceSystem === "native") {
-    where.push(eq(trafficSessionsTable.sourceSystem, "native"));
-    return;
-  }
-  if (f.sourceSystem === "legacy") {
-    where.push(sql`${trafficSessionsTable.sourceSystem} <> 'native'`);
-    return;
-  }
-  where.push(eq(trafficSessionsTable.sourceSystem, f.sourceSystem));
+function applyPropertyPageview(f: ParsedFilters, where: SQL[]): void {
+  const slugs = resolvePropertySlugs(f);
+  if (!slugs) return;
+  where.push(inArray(trafficPageviewsTable.sourceSystem, slugs));
+}
+
+function applyPropertySession(f: ParsedFilters, where: SQL[]): void {
+  const slugs = resolvePropertySlugs(f);
+  if (!slugs) return;
+  where.push(inArray(trafficSessionsTable.sourceSystem, slugs));
 }
 
 /** Build the WHERE clause for joined pageview+session queries. */
@@ -100,7 +100,7 @@ function pageviewFilters(f: ParsedFilters, window: Window): SQL[] {
   if (f.source) where.push(eq(trafficSessionsTable.trafficSource, f.source));
   if (f.includeBots === "false") where.push(eq(trafficSessionsTable.isBot, false));
   if (f.includeBots === "only") where.push(eq(trafficSessionsTable.isBot, true));
-  applySourceSystemPageview(f, where);
+  applyPropertyPageview(f, where);
   return where;
 }
 
@@ -116,7 +116,7 @@ function sessionFilters(f: ParsedFilters, window: Window): SQL[] {
   if (f.source) where.push(eq(trafficSessionsTable.trafficSource, f.source));
   if (f.includeBots === "false") where.push(eq(trafficSessionsTable.isBot, false));
   if (f.includeBots === "only") where.push(eq(trafficSessionsTable.isBot, true));
-  applySourceSystemSession(f, where);
+  applyPropertySession(f, where);
   return where;
 }
 
@@ -172,6 +172,65 @@ router.get("/cms/traffic/overview", ...adminOnly, async (req, res) => {
       humanSessions: Math.max(0, (sessTotalsRow?.sessions ?? 0) - (sessTotalsRow?.bots ?? 0)),
       activeSessions: pvTotalsRow?.sessions ?? 0,
     },
+  });
+});
+
+// #228 — Per-property breakdown for the dashboard. Returns one row per
+// source_system within the active window so multi-property selections can
+// render side-by-side property cards. Honors all the standard filters
+// EXCEPT propertySlugs (the breakdown is itself a property axis).
+router.get("/cms/traffic/by-property", ...adminOnly, async (req, res) => {
+  const f = parseFilters(req, res);
+  if (!f) return;
+  const window = resolveWindow(f);
+
+  // Honor every non-property filter via the shared sessionFilters() so the
+  // breakdown stays consistent with the overview / pages / sources cards.
+  // Path and pageType, however, live on pageviews — apply those by joining.
+  const sessWhere = sessionFilters(f, window);
+  const needsPageviewJoin = Boolean(f.path) || Boolean(f.pageType);
+
+  let rows;
+  if (needsPageviewJoin) {
+    const pvWhere: SQL[] = [];
+    if (f.path) pvWhere.push(eq(trafficPageviewsTable.path, f.path));
+    if (f.pageType) pvWhere.push(eq(trafficPageviewsTable.pageType, f.pageType));
+    rows = await db
+      .selectDistinct({
+        slug: trafficSessionsTable.sourceSystem,
+        sessions: countDistinct(trafficSessionsTable.id),
+        uniqueVisitors: countDistinct(trafficSessionsTable.ipHash),
+        pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
+      })
+      .from(trafficSessionsTable)
+      .innerJoin(
+        trafficPageviewsTable,
+        eq(trafficPageviewsTable.sessionId, trafficSessionsTable.id),
+      )
+      .where(and(...sessWhere, ...pvWhere))
+      .groupBy(trafficSessionsTable.sourceSystem)
+      .orderBy(desc(countDistinct(trafficSessionsTable.id)));
+  } else {
+    rows = await db
+      .select({
+        slug: trafficSessionsTable.sourceSystem,
+        sessions: sql<number>`count(*)::int`,
+        uniqueVisitors: countDistinct(trafficSessionsTable.ipHash),
+        pageviews: sql<number>`coalesce(sum(${trafficSessionsTable.pageviewCount}), 0)::int`,
+      })
+      .from(trafficSessionsTable)
+      .where(and(...sessWhere))
+      .groupBy(trafficSessionsTable.sourceSystem)
+      .orderBy(desc(sql`count(*)`));
+  }
+
+  res.json({
+    items: rows.map((r) => ({
+      slug: r.slug,
+      sessions: r.sessions,
+      uniqueVisitors: r.uniqueVisitors,
+      pageviews: r.pageviews,
+    })),
   });
 });
 
@@ -349,6 +408,7 @@ router.get("/cms/traffic/ai-crawlers", ...adminOnly, async (req, res) => {
     lte(trafficSessionsTable.firstSeenAt, window.to),
     eq(trafficSessionsTable.isBot, true),
   ];
+  applyPropertySession(f, sessWhere);
 
   const byBot = await db
     .select({
@@ -370,6 +430,7 @@ router.get("/cms/traffic/ai-crawlers", ...adminOnly, async (req, res) => {
     eq(trafficSessionsTable.isBot, false),
     eq(trafficSessionsTable.trafficSource, "ai"),
   ];
+  applyPropertySession(f, aiReferredHumanWhere);
   const fromAiPlatforms = await db
     .select({
       host: sql<string>`coalesce(${trafficSessionsTable.referrerHost}, '(direct)')`,

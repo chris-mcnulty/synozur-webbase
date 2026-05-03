@@ -22,6 +22,7 @@ export * from "./collateralResources";
 export * from "./teamMembers";
 export * from "./analytics";
 export * from "./traffic";
+export * from "./trafficProperties";
 export * from "./legacyTraffic";
 export * from "./videos";
 export * from "./whitePapers";

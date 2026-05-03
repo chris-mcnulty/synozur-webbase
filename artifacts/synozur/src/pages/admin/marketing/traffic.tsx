@@ -102,7 +102,12 @@ export default function MarketingTraffic() {
 
   const analytics = useGetCmsAnalyticsOverview(
     { days: rangeDays },
-    { query: { enabled: !!access?.hasCapability("content.moderate") } },
+    {
+      query: {
+        queryKey: ["cms-analytics-overview", rangeDays],
+        enabled: !!access?.hasCapability("content.moderate"),
+      },
+    },
   );
 
   const seriesData = (analytics.data?.series ?? []).map((d) => ({

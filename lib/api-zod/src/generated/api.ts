@@ -4556,3 +4556,184 @@ export const ListPortalEngagementsResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Authenticated batched-pageview ingest. The caller authenticates with
+`Authorization: Bearer <api-key>` where the key was issued from the
+admin Traffic Properties page. Each row is normalized and stored
+with the matched property's slug as `source_system`.
+
+The endpoint is idempotent on `(source_system, sessionKey, path,
+viewedAt)` — sister apps that retry a batch will not double-count.
+
+ * @summary Ingest a batch of pageviews from a sister Synozur web property (#228)
+ */
+
+export const ingestTrafficBatchBodyRowsMax = 50000;
+
+export const ingestTrafficBatchBodyPageviewsMax = 50000;
+
+export const ingestTrafficBatchBodySessionsMax = 50000;
+
+export const ingestTrafficBatchBodyEventsMax = 50000;
+
+export const IngestTrafficBatchBody = zod
+  .object({
+    propertySlug: zod
+      .string()
+      .optional()
+      .describe(
+        "Optional; if supplied must equal the slug bound to the API key (else 403).",
+      ),
+    rows: zod
+      .array(
+        zod.object({
+          sessionKey: zod.string(),
+          path: zod.string(),
+          title: zod.string().nullish(),
+          viewedAt: zod.coerce.date(),
+          pageviewCount: zod.number().min(1).optional(),
+          timeOnPageMs: zod.number().nullish(),
+          pageType: zod.string().nullish(),
+          referrerUrl: zod.string().nullish(),
+          referrerHost: zod.string().nullish(),
+          trafficSource: zod
+            .enum([
+              "direct",
+              "organic",
+              "ai",
+              "referral",
+              "social",
+              "paid",
+              "internal",
+            ])
+            .nullish(),
+          deviceType: zod
+            .enum(["desktop", "mobile", "tablet", "bot"])
+            .nullish(),
+          browserName: zod.string().nullish(),
+          osName: zod.string().nullish(),
+          userAgent: zod
+            .string()
+            .nullish()
+            .describe(
+              "When set, the server fills missing browser\/os\/device\/bot fields.",
+            ),
+          country: zod.string().nullish(),
+          utmSource: zod.string().nullish(),
+          utmMedium: zod.string().nullish(),
+          utmCampaign: zod.string().nullish(),
+        }),
+      )
+      .max(ingestTrafficBatchBodyRowsMax)
+      .optional(),
+    pageviews: zod
+      .array(
+        zod.object({
+          sessionKey: zod.string(),
+          path: zod.string(),
+          title: zod.string().nullish(),
+          viewedAt: zod.coerce.date(),
+          pageviewCount: zod.number().min(1).optional(),
+          timeOnPageMs: zod.number().nullish(),
+          pageType: zod.string().nullish(),
+          referrerUrl: zod.string().nullish(),
+          referrerHost: zod.string().nullish(),
+          trafficSource: zod
+            .enum([
+              "direct",
+              "organic",
+              "ai",
+              "referral",
+              "social",
+              "paid",
+              "internal",
+            ])
+            .nullish(),
+          deviceType: zod
+            .enum(["desktop", "mobile", "tablet", "bot"])
+            .nullish(),
+          browserName: zod.string().nullish(),
+          osName: zod.string().nullish(),
+          userAgent: zod
+            .string()
+            .nullish()
+            .describe(
+              "When set, the server fills missing browser\/os\/device\/bot fields.",
+            ),
+          country: zod.string().nullish(),
+          utmSource: zod.string().nullish(),
+          utmMedium: zod.string().nullish(),
+          utmCampaign: zod.string().nullish(),
+        }),
+      )
+      .max(ingestTrafficBatchBodyPageviewsMax)
+      .optional(),
+    sessions: zod
+      .array(
+        zod
+          .object({
+            sessionKey: zod.string(),
+            firstSeenAt: zod.coerce.date().nullish(),
+            lastSeenAt: zod.coerce.date().nullish(),
+            userAgent: zod.string().nullish(),
+            browserName: zod.string().nullish(),
+            browserVersion: zod.string().nullish(),
+            osName: zod.string().nullish(),
+            deviceType: zod
+              .enum(["desktop", "mobile", "tablet", "bot"])
+              .nullish(),
+            country: zod.string().nullish(),
+            region: zod.string().nullish(),
+            city: zod.string().nullish(),
+            landingPath: zod.string().nullish(),
+            referrerUrl: zod.string().nullish(),
+            referrerHost: zod.string().nullish(),
+            trafficSource: zod
+              .enum([
+                "direct",
+                "organic",
+                "ai",
+                "referral",
+                "social",
+                "paid",
+                "internal",
+              ])
+              .nullish(),
+            utmSource: zod.string().nullish(),
+            utmMedium: zod.string().nullish(),
+            utmCampaign: zod.string().nullish(),
+            utmTerm: zod.string().nullish(),
+            utmContent: zod.string().nullish(),
+            isBot: zod.boolean().nullish(),
+            botName: zod.string().nullish(),
+            botCategory: zod.string().nullish(),
+          })
+          .describe(
+            "Session-only metadata. Use to backfill \/ override session attributes\nindependently of pageviews. Idempotent on (propertySlug, sessionKey).\n",
+          ),
+      )
+      .max(ingestTrafficBatchBodySessionsMax)
+      .optional(),
+    events: zod
+      .array(
+        zod
+          .object({
+            sessionKey: zod.string(),
+            eventName: zod.string(),
+            occurredAt: zod.coerce.date(),
+            path: zod.string().nullish(),
+            eventCategory: zod.string().nullish(),
+            eventValue: zod.number().nullish(),
+            properties: zod.record(zod.string(), zod.unknown()).optional(),
+          })
+          .describe(
+            "Custom event bound to a session by (propertySlug, sessionKey).",
+          ),
+      )
+      .max(ingestTrafficBatchBodyEventsMax)
+      .optional(),
+  })
+  .describe(
+    "Batch envelope. At least one of `rows`, `pageviews`, `sessions`,\nor `events` must be present. `rows` is a deprecated alias for\n`pageviews` retained for backward compatibility.\n",
+  );
