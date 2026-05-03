@@ -673,6 +673,16 @@ export function Header() {
                   Admin Dashboard
                 </Link>
               )}
+              {isSignedIn && (
+                <a
+                  href="/galaxy/"
+                  className="flex w-full h-12 items-center justify-center rounded-md border border-border text-sm font-medium hover:bg-muted transition-colors gap-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Globe className="h-4 w-4" />
+                  Galaxy Portal
+                </a>
+              )}
             </div>
           </div>
         </div>

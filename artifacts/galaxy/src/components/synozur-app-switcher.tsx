@@ -1,12 +1,9 @@
-// Pixel-faithful port of the SCDP/Constellation Synozur Suite app switcher.
-// Source: github.com/chris-mcnulty/synozur-scdp
-//   client/src/components/synozur-app-switcher.tsx
-// Widened `currentApp` to include "synozur" and "galaxy" so both the main
-// Synozur web app and the Galaxy customer portal can mark themselves current.
 import { useState, useRef, useEffect } from "react";
 
 const BRAND_PRIMARY = "#810FFB";
 const BRAND_SECONDARY = "#E60CB3";
+
+const BASE = (import.meta.env.BASE_URL || "/galaxy/").replace(/\/+$/, "");
 
 const SYNOZUR_APPS = [
   {
@@ -14,7 +11,7 @@ const SYNOZUR_APPS = [
     name: "Synozur",
     tagline: "Home",
     description: "Explore Synozur's AI-powered platform, insights, and resources.",
-    url: "https://www.synozur.com",
+    url: "/",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
         <path d="M3 10.5L12 3L21 10.5V20A1 1 0 0120 21H15V16H9V21H4A1 1 0 013 20V10.5Z" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.15" strokeLinejoin="round" />
@@ -26,7 +23,7 @@ const SYNOZUR_APPS = [
     name: "Galaxy",
     tagline: "Customer Portal",
     description: "Access your engagements, documents, and Synozur application suite.",
-    url: "/galaxy/",
+    url: `${BASE}/`,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.08" />
@@ -138,7 +135,7 @@ const SYNOZUR_APPS = [
   },
 ];
 
-export type SynozurAppId =
+export type GalaxyAppId =
   | "synozur"
   | "galaxy"
   | "vega"
@@ -149,12 +146,12 @@ export type SynozurAppId =
   | "orbit";
 
 interface SynozurAppSwitcherProps {
-  currentApp?: SynozurAppId;
+  currentApp?: GalaxyAppId;
   forceDark?: boolean;
 }
 
 export function SynozurAppSwitcher({
-  currentApp = "synozur",
+  currentApp = "galaxy",
   forceDark = false,
 }: SynozurAppSwitcherProps) {
   const [open, setOpen] = useState(false);
@@ -226,7 +223,7 @@ export function SynozurAppSwitcher({
           id="synozur-app-menu"
           role="menu"
           aria-label="Synozur Suite Applications"
-          className={`absolute top-full right-0 mt-2 w-[360px] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
+          className={`absolute top-full left-0 mt-2 w-[360px] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
             fd
               ? "bg-gray-950 border-white/10"
               : "bg-white dark:bg-gray-950 border-gray-200 dark:border-white/10"
@@ -245,21 +242,15 @@ export function SynozurAppSwitcher({
             {SYNOZUR_APPS.map((app, index) => {
               const isCurrent = app.id === currentApp;
               const accentColor = index % 2 === 0 ? BRAND_PRIMARY : BRAND_SECONDARY;
+              const isExternal = app.url.startsWith("http");
               return (
-                // The current app's tile is non-navigating (it's the page
-                // you're already on) so we render an `<a>` without href and
-                // intentionally use a click handler to close the menu. This
-                // is a deliberate menu pattern — the rule's preferButton
-                // suggestion would lose the visual consistency with the
-                // other tiles in the list.
-                // eslint-disable-next-line jsx-a11y/anchor-is-valid
                 <a
                   key={app.id}
                   href={isCurrent ? undefined : app.url}
-                  target={isCurrent ? undefined : "_blank"}
-                  rel={isCurrent ? undefined : "noopener noreferrer"}
+                  target={(!isCurrent && isExternal) ? "_blank" : undefined}
+                  rel={(!isCurrent && isExternal) ? "noopener noreferrer" : undefined}
                   role="menuitem"
-                  onClick={isCurrent ? (e) => { e.preventDefault(); closeMenu(); } : undefined}
+                  onClick={isCurrent ? (e) => { e.preventDefault(); closeMenu(); } : () => closeMenu()}
                   className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all group cursor-pointer ${
                     isCurrent
                       ? fd
@@ -312,9 +303,7 @@ export function SynozurAppSwitcher({
 
           <div className={`border-t px-4 py-2.5 ${fd ? "border-white/5" : "border-gray-100 dark:border-white/5"}`}>
             <a
-              href="https://www.synozur.com/applications"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/applications"
               className={`text-[11px] transition-colors ${fd ? "text-gray-500 hover:text-gray-300" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
             >
               Learn more at synozur.com

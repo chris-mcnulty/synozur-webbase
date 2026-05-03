@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
 import {
   useListPortalDocuments,
   listPortalDocuments,
@@ -20,8 +19,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useAuth } from "@/context/auth";
 import NotCustomer from "./not-customer";
+import { PortalShell } from "@/components/portal-shell";
 
 // Page size used both server-side and to detect when more pages remain.
 // Matches the API's max so a single round trip covers most engagements;
@@ -91,7 +90,6 @@ function versionDownloadUrl(
 }
 
 export default function Documents() {
-  const { user, signOut } = useAuth();
   const meQuery = useGetPortalMe();
   const docsQuery = useListPortalDocuments({ page: 1, pageSize: DOC_PAGE_SIZE });
   const [sortKey, setSortKey] = useState<SortKey>("lastModifiedAt");
@@ -213,52 +211,7 @@ export default function Documents() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3 hover-elevate rounded-md px-1 -ml-1">
-              <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-                G
-              </div>
-              <div>
-                <p className="text-sm font-semibold leading-tight">Galaxy</p>
-                <p className="text-xs text-muted-foreground leading-tight">
-                  Synozur customer portal
-                </p>
-              </div>
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-1 text-sm">
-              <Link href="/" className="px-3 py-1.5 rounded-md text-muted-foreground hover-elevate">
-                Home
-              </Link>
-              <Link
-                href="/documents"
-                className="px-3 py-1.5 rounded-md font-medium hover-elevate"
-                data-testid="nav-documents"
-              >
-                Documents
-              </Link>
-            </nav>
-            {user?.email ? (
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                {user.email}
-              </span>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void signOut()}
-              data-testid="button-sign-out"
-            >
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
+    <PortalShell>
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-8">
         <section className="space-y-2">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -426,7 +379,7 @@ export default function Documents() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </PortalShell>
   );
 }
 
