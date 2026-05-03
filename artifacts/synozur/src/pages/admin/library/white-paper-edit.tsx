@@ -25,6 +25,7 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
@@ -702,8 +703,16 @@ export default function WhitePaperEdit({ id }: Props) {
                 rows={2}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Auto-generated preview</Label>
+              <OgImagePreview
+                kind="white-paper"
+                id={isNew ? null : (itemQ.data?.id ?? null)}
+                updatedAt={itemQ.data?.updatedAt}
+              />
+            </div>
             <div>
-              <Label htmlFor="ogImage">Open Graph image URL</Label>
+              <Label htmlFor="ogImage">Open Graph image override URL</Label>
               <Input
                 id="ogImage"
                 value={form.ogImage}

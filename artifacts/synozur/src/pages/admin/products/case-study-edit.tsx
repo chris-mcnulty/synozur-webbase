@@ -31,6 +31,7 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import {
   MediaPickerModal,
   mediaUrl,
@@ -738,8 +739,16 @@ export default function CaseStudyEdit({ id }: Props) {
                 placeholder="Meta description (≤ 160 chars)"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Auto-generated preview</Label>
+              <OgImagePreview
+                kind="case-study"
+                id={isNew ? null : (caseStudyQ.data?.id ?? null)}
+                updatedAt={caseStudyQ.data?.updatedAt}
+              />
+            </div>
             <div className="space-y-1">
-              <Label>OG image</Label>
+              <Label>OG image override</Label>
               <div className="flex items-center gap-2">
                 <Input
                   value={form.ogImage}

@@ -18,6 +18,7 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -543,6 +544,14 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                 onChange={(e) => update({ seoDescription: e.target.value })}
                 disabled={!canWrite}
                 rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Auto-generated social share preview</Label>
+              <OgImagePreview
+                kind="polaris"
+                id={isNew ? null : (itemQ.data?.id ?? null)}
+                updatedAt={itemQ.data?.updatedAt}
               />
             </div>
           </Card>

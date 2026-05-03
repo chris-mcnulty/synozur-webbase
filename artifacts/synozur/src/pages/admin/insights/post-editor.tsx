@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { MediaPickerModal, mediaUrl, uploadAndRegisterImage } from "@/components/admin/MediaPickerModal";
 import { sanitizeHtml } from "@/components/rich-text";
@@ -539,8 +540,16 @@ export default function PostEditor({ id }: Props) {
                     data-testid="input-seo-canonical"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Auto-generated social share preview</Label>
+                  <OgImagePreview
+                    kind="insight"
+                    id={postId}
+                    updatedAt={existing?.updatedAt}
+                  />
+                </div>
                 <div>
-                  <Label>OG Image</Label>
+                  <Label>OG Image override</Label>
                   <div className="flex items-center gap-3">
                     <div className="w-24 h-24 rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center">
                       {form.ogImageUrl ? (
