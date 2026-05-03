@@ -72,6 +72,140 @@ jobs:
           PORT: "5000"
           BASE_PATH: "/"
 
+  lighthouse:
+    name: Lighthouse CI
+    # Runs on every PR and on push to main so perf/SEO regressions block
+    # merge instead of waiting for someone to manually dispatch the
+    # `e2e-and-lighthouse` job. Boots the same stack as that job, but
+    # scoped to LHCI only (no Playwright) so the per-PR cost stays low.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: synozur
+          POSTGRES_PASSWORD: synozur
+          POSTGRES_DB: synozur
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://synozur:synozur@localhost:5432/synozur
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision database
+        run: pnpm --filter "@workspace/db" run push
+
+      - name: Boot api-server
+        env:
+          PORT: "8000"
+          NODE_ENV: production
+        run: |
+          pnpm --filter "@workspace/api-server" run build
+          pnpm --filter "@workspace/api-server" run start &
+          for i in {1..30}; do
+            if curl -sf http://localhost:8000/api/healthz >/dev/null; then
+              echo "api-server up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "api-server did not start in time" >&2
+          exit 1
+
+      - name: Build + preview synozur
+        env:
+          PORT: "5000"
+          BASE_PATH: "/"
+          E2E_API_PROXY_TARGET: "http://localhost:8000"
+        run: |
+          pnpm --filter "@workspace/synozur" run build
+          pnpm --filter "@workspace/synozur" run serve &
+          for i in {1..30}; do
+            if curl -sf http://localhost:5000/ >/dev/null; then
+              echo "synozur up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "synozur did not start in time" >&2
+          exit 1
+
+      - name: Run Lighthouse CI
+        id: lhci
+        # Don't fail the step yet — we want the summary + artifact upload
+        # to run even when assertions block. The dedicated assertion-gate
+        # step below converts the saved exit code into the job result.
+        run: |
+          set +e
+          pnpm exec lhci autorun --config=./lighthouserc.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Build PR summary
+        if: always()
+        run: pnpm --filter "@workspace/scripts" run lighthouse:pr-summary
+
+      - name: Upload Lighthouse HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: |
+            .lighthouseci/*.html
+            .lighthouseci/*.json
+            .lighthouseci/manifest.json
+            .lighthouseci/assertion-results.json
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Post sticky PR comment
+        # Skip on fork PRs — `GITHUB_TOKEN` doesn't get write access to
+        # pull-request conversations from forks, and a permission error
+        # here would otherwise fail an otherwise-green Lighthouse run.
+        # Same-repo PRs still get the sticky comment.
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: lighthouse-ci
+          path: lhci-pr-summary.md
+
+      - name: Enforce Lighthouse assertions
+        if: always()
+        run: |
+          code="${{ steps.lhci.outputs.exit_code }}"
+          if [ "$code" != "0" ]; then
+            echo "Lighthouse CI assertions failed (exit $code)" >&2
+            exit "$code"
+          fi
+
   e2e-and-lighthouse:
     name: E2E + Lighthouse
     if: github.event_name == 'workflow_dispatch'
