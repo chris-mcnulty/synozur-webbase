@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Linkedin, Twitter, Youtube } from "lucide-react";
+import { ArrowRight, Linkedin, Twitter, Youtube, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -102,6 +102,65 @@ function FooterSubscribeForm() {
   );
 }
 
+type SocialLink = { href: string; label: string; Icon: LucideIcon };
+
+// #268: derive footer social links from the same `orgSameAs` array that
+// powers the Organization JSON-LD `sameAs` field. Admins edit it once in
+// Site Settings → SEO; the footer only renders an icon when the matching
+// profile URL is present, so we never ship anchors that go nowhere.
+//
+// Mirrors the fallback list baked into `OrganizationJsonLd` so the footer
+// and JSON-LD advertise the same profiles when `orgSameAs` is unset in the
+// DB. Keep these in sync if either side gains/loses a default profile.
+const SAME_AS_FALLBACK: readonly string[] = ["https://www.linkedin.com/company/synozur"];
+
+// Strict host matchers: exact domain or one-level subdomain (e.g. `www.`),
+// not arbitrary suffix matches like `evil-linkedin.com`.
+const matchesDomain = (host: string, domain: string) =>
+  host === domain || host.endsWith(`.${domain}`);
+
+function pickSocialLinks(sameAs: readonly string[] | null | undefined): SocialLink[] {
+  const source = sameAs && sameAs.length > 0 ? sameAs : SAME_AS_FALLBACK;
+  const matchers: { test: (host: string) => boolean; label: string; Icon: LucideIcon }[] = [
+    {
+      test: (h) => matchesDomain(h, "linkedin.com"),
+      label: "LinkedIn",
+      Icon: Linkedin,
+    },
+    {
+      test: (h) => matchesDomain(h, "twitter.com") || matchesDomain(h, "x.com"),
+      label: "Twitter",
+      Icon: Twitter,
+    },
+    {
+      test: (h) => matchesDomain(h, "youtube.com") || h === "youtu.be",
+      label: "YouTube",
+      Icon: Youtube,
+    },
+  ];
+  const seen = new Set<string>();
+  const out: SocialLink[] = [];
+  for (const raw of source) {
+    const trimmed = (raw ?? "").trim();
+    if (!trimmed) continue;
+    let host: string;
+    try {
+      host = new URL(trimmed).hostname.toLowerCase();
+    } catch {
+      continue;
+    }
+    for (const m of matchers) {
+      if (seen.has(m.label)) continue;
+      if (m.test(host)) {
+        out.push({ href: trimmed, label: m.label, Icon: m.Icon });
+        seen.add(m.label);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
 export function Footer() {
   // #103: applications column reads from the same API endpoint that
   // drives the header nav and the applications list page. Falls back to
@@ -118,6 +177,16 @@ export function Footer() {
       ? apiApps
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }))
   ).slice(0, 4);
+
+  // #268: pull social URLs from public site settings (same query key the
+  // header/JSON-LD already share so this hits the cache).
+  const settingsQuery = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const socialLinks = pickSocialLinks(settingsQuery.data?.orgSameAs ?? null);
 
   return (
     <footer className="bg-card border-t border-border pt-16 pb-8">
@@ -179,18 +248,22 @@ export function Footer() {
 
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Connect</h3>
-            <div className="flex gap-4 mb-6">
-              {/* TODO: wire real social URLs from site settings; render as buttons until then so they don't pretend to navigate. */}
-              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn">
-                <Linkedin className="h-5 w-5" />
-              </button>
-              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Twitter">
-                <Twitter className="h-5 w-5" />
-              </button>
-              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="YouTube">
-                <Youtube className="h-5 w-5" />
-              </button>
-            </div>
+            {socialLinks.length > 0 && (
+              <div className="flex gap-4 mb-6">
+                {socialLinks.map(({ href, label, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label={label}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </a>
+                ))}
+              </div>
+            )}
             <Link href="/start" className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
               Get Started <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
