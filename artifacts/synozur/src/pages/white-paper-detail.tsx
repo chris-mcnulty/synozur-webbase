@@ -85,7 +85,7 @@ export default function WhitePaperDetail() {
     );
   }
   if (!item) {
-    if (isGone) return <Gone backHref="/white-papers" backLabel="Back to White Papers" />;
+    if (isGone) return <Gone kind="white-paper" />;
     return <NotFound />;
   }
 

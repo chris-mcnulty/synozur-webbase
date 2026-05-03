@@ -28,7 +28,7 @@ export default function ModelDetail() {
   const m = modelQ.data;
   if (!m) {
     if (modelQ.error instanceof ApiError && modelQ.error.status === 410) {
-      return <Gone backHref="/models" backLabel="Back to Models" />;
+      return <Gone kind="model" />;
     }
     return <NotFound />;
   }

@@ -87,7 +87,7 @@ export default function CaseStudyDetail() {
 
   if (!study) {
     if (detailQ.error instanceof ApiError && detailQ.error.status === 410) {
-      return <Gone backHref="/case-studies" backLabel="Back to Case Studies" />;
+      return <Gone kind="case-study" />;
     }
     return <NotFound />;
   }

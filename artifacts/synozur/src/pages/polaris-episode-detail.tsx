@@ -159,7 +159,7 @@ export default function PolarisEpisodeDetail() {
 
   if (error || !episode) {
     if (error instanceof PolarisEpisodeError && error.status === 410) {
-      return <Gone backHref="/polaris" backLabel="Back to Polaris" />;
+      return <Gone kind="polaris-episode" />;
     }
     return <NotFound />;
   }

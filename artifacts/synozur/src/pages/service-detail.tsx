@@ -153,7 +153,7 @@ export default function ServiceDetail() {
   });
 
   if (detail.isError && detail.error instanceof Error && /\b410\b/.test(detail.error.message)) {
-    return <Gone backHref="/services" backLabel="Back to Services" />;
+    return <Gone kind="service" />;
   }
 
   if (detail.isError && detail.error instanceof Error && /404/.test(detail.error.message)) {

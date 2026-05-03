@@ -118,7 +118,7 @@ export default function WorkshopDetail() {
   if (detailQ.isError) {
     const status =
       detailQ.error instanceof WorkshopsApiError ? detailQ.error.status : null;
-    if (status === 410) return <Gone backHref="/workshops" backLabel="Back to Workshops" />;
+    if (status === 410) return <Gone kind="workshop" />;
     if (status === 404) return <NotFound />;
     return (
       <div className="w-full py-24 text-center text-destructive">

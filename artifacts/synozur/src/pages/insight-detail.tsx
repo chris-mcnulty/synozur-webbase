@@ -183,7 +183,7 @@ export default function InsightDetail() {
 
   if (isError) {
     const status = (error as { status?: number } | null)?.status;
-    if (status === 410) return <Gone backHref="/insights" backLabel="Back to The Feed" />;
+    if (status === 410) return <Gone kind="insight" backLabel="Back to The Feed" />;
     if (status === 404) return <NotFound />;
     return (
       <div className="container mx-auto px-4 py-32 text-center">

@@ -48,7 +48,7 @@ export default function SolutionDetail() {
   });
 
   if (q.isError && q.error instanceof Error && /\b410\b/.test(q.error.message)) {
-    return <Gone backHref="/services" backLabel="Back to Services" />;
+    return <Gone kind="solution" />;
   }
 
   if (q.isError && q.error instanceof Error && /404/.test(q.error.message)) {
