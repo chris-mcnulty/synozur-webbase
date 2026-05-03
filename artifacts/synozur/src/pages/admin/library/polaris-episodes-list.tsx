@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import {
   useQuery,
   useQueries,
@@ -370,11 +370,11 @@ export default function AdminPolarisEpisodesList() {
               <RefreshCw className={`h-4 w-4 mr-2${bulkSyncMut.isPending ? " animate-spin" : ""}`} />
               {bulkSyncMut.isPending ? "Syncing…" : "Re-sync all to library"}
             </Button>
-            <Link href="/library/polaris-episodes/new">
-              <Button data-testid="button-create-polaris-episode">
+            <Button asChild data-testid="button-create-polaris-episode">
+              <AppLink href="/library/polaris-episodes/new" asChild unstyled>
                 <Plus className="h-4 w-4 mr-2" /> New episode
-              </Button>
-            </Link>
+              </AppLink>
+            </Button>
           </div>
         )
       }
@@ -422,13 +422,12 @@ export default function AdminPolarisEpisodesList() {
                 <TableRow key={e.id} data-testid={`row-polaris-${e.id}`}>
                   <TableCell className="font-mono">{e.episodeNumber}</TableCell>
                   <TableCell className="font-medium">
-                    <Link
+                    <AppLink
                       href={`/library/polaris-episodes/${e.id}/edit`}
-                      className="hover:underline"
                       data-testid={`link-edit-polaris-${e.id}`}
                     >
                       {e.title}
-                    </Link>
+                    </AppLink>
                     <div className="text-xs text-muted-foreground font-mono">
                       /polaris/{e.slug}
                     </div>
@@ -478,11 +477,11 @@ export default function AdminPolarisEpisodesList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/library/polaris-episodes/${e.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                      <Button asChild variant="ghost" size="icon">
+                        <AppLink href={`/library/polaris-episodes/${e.id}/edit`} asChild unstyled>
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                        </AppLink>
+                      </Button>
                       {canWrite && (
                         <Button
                           variant="ghost"

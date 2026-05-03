@@ -153,6 +153,25 @@ export default [
       "react/jsx-uses-react": "off",
       "react/react-in-jsx-scope": "off",
       "react/jsx-uses-vars": "error",
+
+      // AppLink invariant: forbid the legacy v2-shim pattern
+      // `<AppLink href><a className/data-testid>...</a></AppLink>`. The
+      // wrapper already renders an <a>, so any inner <a> child produces
+      // invalid nested-anchor markup. This rule replaces the
+      // compile-time guard (infeasible because React 19's JSX.Element
+      // erases the tag-name discriminator) and is paired with a
+      // dev-mode runtime assertion in `AppLink` itself.
+      "no-restricted-syntax": [
+        "error",
+        {
+          // Catches `<AppLink>...<a/>...</AppLink>` at any nesting depth,
+          // including inside fragments.
+          selector:
+            "JSXElement[openingElement.name.name='AppLink'] JSXElement[openingElement.name.name='a']",
+          message:
+            "Inner <a> children are forbidden inside <AppLink> (it already renders an <a>). Move className/data-testid onto <AppLink> itself, or — if the child is a non-anchor element — use the `asChild` prop to widen the children type.",
+        },
+      ],
     },
   },
 

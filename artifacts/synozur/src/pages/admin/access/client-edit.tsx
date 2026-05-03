@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -308,7 +309,7 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
       actions={
         <div className="flex items-center gap-2">
           <Button asChild variant="outline">
-            <Link href="/access/clients">Back</Link>
+            <AppLink href="/access/clients" unstyled>Back</AppLink>
           </Button>
           <Button onClick={save} disabled={saving} data-testid="button-save-client-org">
             {saving ? "Saving…" : isNew ? "Create" : "Save"}

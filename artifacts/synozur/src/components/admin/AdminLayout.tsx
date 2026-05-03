@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
 import {
@@ -377,12 +378,12 @@ export function AdminLayout({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Link href="/" className="text-sm" data-testid="link-admin-mobile-home">
+        <AppLink href="/" asChild unstyled className="text-sm" data-testid="link-admin-mobile-home">
           <span className="text-xs uppercase tracking-widest text-muted-foreground">
             Synozur
           </span>{" "}
           <span className="font-semibold">Admin</span>
-        </Link>
+        </AppLink>
         <div className="flex items-center gap-1">
           <SynozurAppSwitcher currentApp="synozur" />
           <a
@@ -420,12 +421,12 @@ export function AdminLayout({
           aria-hidden={drawerHidden || undefined}
         >
           <div className="p-5 border-b border-border flex items-start justify-between gap-3">
-            <Link href="/" className="block">
+            <AppLink href="/" asChild unstyled className="block">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
                 Synozur
               </div>
               <div className="text-lg font-semibold">Admin</div>
-            </Link>
+            </AppLink>
             <div className="flex items-center gap-1">
               <div className="hidden md:block">
                 <SynozurAppSwitcher currentApp="synozur" />
@@ -446,9 +447,11 @@ export function AdminLayout({
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
-                <Link
+                <AppLink
                   key={item.href}
                   href={item.href}
+                  asChild
+                  unstyled
                   className={cn(
                     "flex items-center gap-3 px-5 py-2.5 text-sm hover-elevate",
                     active
@@ -459,7 +462,7 @@ export function AdminLayout({
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
-                </Link>
+                </AppLink>
               );
             })}
             {visibleSections.map(({ section, items }) => {
@@ -500,9 +503,11 @@ export function AdminLayout({
                         ? () => { void refetchSpamCount(); }
                         : undefined;
                       return (
-                        <Link
+                        <AppLink
                           key={item.href}
                           href={item.href}
+                          asChild
+                          unstyled
                           className={cn(
                             "flex items-center gap-3 pl-10 pr-5 py-2 text-sm hover-elevate",
                             active
@@ -525,7 +530,7 @@ export function AdminLayout({
                               {item.badgeCount! > 99 ? "99+" : item.badgeCount}
                             </span>
                           )}
-                        </Link>
+                        </AppLink>
                       );
                     })}
                 </div>
@@ -565,9 +570,9 @@ export function AdminLayout({
                     <span key={i} className="flex items-center gap-1">
                       {i > 0 && <ChevronRight className="h-3 w-3" />}
                       {c.href ? (
-                        <Link href={c.href} className="hover:text-foreground">
+                        <AppLink href={c.href} unstyled className="hover:text-foreground">
                           {c.label}
-                        </Link>
+                        </AppLink>
                       ) : (
                         <span>{c.label}</span>
                       )}

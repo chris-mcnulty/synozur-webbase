@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, ExternalLink, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,11 +83,11 @@ export default function AdminVideosList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Videos" }]}
       actions={
         canWrite && (
-          <Link href="/library/videos/new">
-            <Button data-testid="button-create-video">
+          <Button asChild data-testid="button-create-video">
+            <AppLink href="/library/videos/new" asChild unstyled>
               <Plus className="h-4 w-4 mr-2" /> New video
-            </Button>
-          </Link>
+            </AppLink>
+          </Button>
         )
       }
     >
@@ -120,13 +120,12 @@ export default function AdminVideosList() {
               items.map((v) => (
                 <TableRow key={v.id} data-testid={`row-video-${v.id}`}>
                   <TableCell className="font-medium">
-                    <Link
+                    <AppLink
                       href={`/library/videos/${v.id}/edit`}
-                      className="hover:underline"
                       data-testid={`link-edit-video-${v.id}`}
                     >
                       {v.title}
-                    </Link>
+                    </AppLink>
                     <div className="text-xs text-muted-foreground font-mono">/videos/{v.slug}</div>
                   </TableCell>
                   <TableCell className="text-sm">
@@ -171,11 +170,11 @@ export default function AdminVideosList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/library/videos/${v.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                      <Button asChild variant="ghost" size="icon">
+                        <AppLink href={`/library/videos/${v.id}/edit`} asChild unstyled>
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                        </AppLink>
+                      </Button>
                       {canWrite && (
                         <Button
                           variant="ghost"

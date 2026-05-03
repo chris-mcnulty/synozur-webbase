@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -663,11 +663,11 @@ export default function AdminCollateralList() {
             </>
           ) : (
             <>
-              <Link href="/library/audit">
-                <Button variant="outline" data-testid="button-library-audit">
+              <Button asChild variant="outline" data-testid="button-library-audit">
+                <AppLink href="/library/audit" asChild unstyled>
                   <ShieldCheck className="h-4 w-4 mr-2" /> Audit library
-                </Button>
-              </Link>
+                </AppLink>
+              </Button>
               {canWrite && featuredOrdered.length > 1 && (
                 <Button
                   variant="outline"
@@ -678,11 +678,11 @@ export default function AdminCollateralList() {
                 </Button>
               )}
               {canWrite && (
-                <Link href="/library/collateral/new">
-                  <Button data-testid="button-create-collateral">
+                <Button asChild data-testid="button-create-collateral">
+                  <AppLink href="/library/collateral/new" asChild unstyled>
                     <Plus className="h-4 w-4 mr-2" /> New item
-                  </Button>
-                </Link>
+                  </AppLink>
+                </Button>
               )}
             </>
           )}
@@ -1040,12 +1040,13 @@ export default function AdminCollateralList() {
                       <HeroThumb url={item.heroImage} title={item.title} />
                     </TableCell>
                     <TableCell className="font-medium">
-                      <Link
+                      <AppLink
                         href={
                           editorPathForSource(item.sourceId) ??
                           `/library/collateral/${item.id}/edit`
                         }
-                        className="hover:underline inline-flex items-center gap-1.5"
+                        asChild
+                        className="inline-flex items-center gap-1.5"
                         data-testid={`link-edit-collateral-${item.id}`}
                       >
                         {item.sourceId && (
@@ -1055,7 +1056,7 @@ export default function AdminCollateralList() {
                           />
                         )}
                         <span>{item.title}</span>
-                      </Link>
+                      </AppLink>
                       <div className="text-xs text-muted-foreground font-mono">
                         /{item.slug}
                       </div>
@@ -1114,24 +1115,27 @@ export default function AdminCollateralList() {
                             </Button>
                           </a>
                         )}
-                        <Link
-                          href={
-                            editorPathForSource(item.sourceId) ??
-                            `/library/collateral/${item.id}/edit`
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon"
+                          title={
+                            item.sourceId
+                              ? "Edit content at the source"
+                              : "Edit"
                           }
                         >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title={
-                              item.sourceId
-                                ? "Edit content at the source"
-                                : "Edit"
+                          <AppLink
+                            href={
+                              editorPathForSource(item.sourceId) ??
+                              `/library/collateral/${item.id}/edit`
                             }
+                            asChild
+                            unstyled
                           >
                             <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                          </AppLink>
+                        </Button>
                         {canWrite && (
                           <Button
                             variant="ghost"

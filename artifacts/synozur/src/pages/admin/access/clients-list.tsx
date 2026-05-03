@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +98,7 @@ export default function ClientsListPage() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Access" }, { label: "Client orgs" }]}
       actions={
         <Button asChild data-testid="button-new-client-org">
-          <Link href="/access/clients/new">New client organization</Link>
+          <AppLink href="/access/clients/new" unstyled>New client organization</AppLink>
         </Button>
       }
     >
@@ -188,7 +188,7 @@ export default function ClientsListPage() {
                       size="sm"
                       data-testid={`button-edit-${r.slug}`}
                     >
-                      <Link href={`/access/clients/${r.id}`}>Manage</Link>
+                      <AppLink href={`/access/clients/${r.id}`} unstyled>Manage</AppLink>
                     </Button>
                   </td>
                 </tr>

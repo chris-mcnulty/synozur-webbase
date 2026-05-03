@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, ExternalLink, Star, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -81,11 +81,11 @@ export default function AdminWhitePapersList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "White Papers" }]}
       actions={
         canWrite && (
-          <Link href="/library/white-papers/new">
-            <Button data-testid="button-create-white-paper">
+          <Button asChild data-testid="button-create-white-paper">
+            <AppLink href="/library/white-papers/new" asChild unstyled>
               <Plus className="h-4 w-4 mr-2" /> New white paper
-            </Button>
-          </Link>
+            </AppLink>
+          </Button>
         )
       }
     >
@@ -118,13 +118,12 @@ export default function AdminWhitePapersList() {
               items.map((w) => (
                 <TableRow key={w.id} data-testid={`row-white-paper-${w.id}`}>
                   <TableCell className="font-medium">
-                    <Link
+                    <AppLink
                       href={`/library/white-papers/${w.id}/edit`}
-                      className="hover:underline"
                       data-testid={`link-edit-white-paper-${w.id}`}
                     >
                       {w.title}
-                    </Link>
+                    </AppLink>
                     <div className="text-xs text-muted-foreground font-mono">
                       /white-papers/{w.slug}
                     </div>
@@ -178,11 +177,11 @@ export default function AdminWhitePapersList() {
                           </Button>
                         </a>
                       )}
-                      <Link href={`/library/white-papers/${w.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                      <Button asChild variant="ghost" size="icon">
+                        <AppLink href={`/library/white-papers/${w.id}/edit`} asChild unstyled>
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                        </AppLink>
+                      </Button>
                       {canWrite && (
                         <Button
                           variant="ghost"

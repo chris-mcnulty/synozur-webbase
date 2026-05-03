@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,11 +67,11 @@ export default function AdminWorkshopsList() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "Workshops" }]}
       actions={
         canWrite && (
-          <Link href="/library/workshops/new">
-            <Button data-testid="button-create-workshop">
+          <Button asChild data-testid="button-create-workshop">
+            <AppLink href="/library/workshops/new" asChild unstyled>
               <Plus className="h-4 w-4 mr-2" /> New workshop
-            </Button>
-          </Link>
+            </AppLink>
+          </Button>
         )
       }
     >
@@ -104,13 +104,12 @@ export default function AdminWorkshopsList() {
               items.map((w) => (
                 <TableRow key={w.id} data-testid={`row-workshop-${w.id}`}>
                   <TableCell className="font-medium">
-                    <Link
+                    <AppLink
                       href={`/library/workshops/${w.id}/edit`}
-                      className="hover:underline"
                       data-testid={`link-edit-workshop-${w.id}`}
                     >
                       {w.title}
-                    </Link>
+                    </AppLink>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">
                     /{w.slug}
@@ -129,11 +128,11 @@ export default function AdminWorkshopsList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      <Link href={`/library/workshops/${w.id}/edit`}>
-                        <Button variant="ghost" size="icon">
+                      <Button asChild variant="ghost" size="icon">
+                        <AppLink href={`/library/workshops/${w.id}/edit`} asChild unstyled>
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                        </AppLink>
+                      </Button>
                       {canWrite && (
                         <Button
                           variant="ghost"

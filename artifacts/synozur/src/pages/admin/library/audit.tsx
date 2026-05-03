@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { AppLink } from "@/components/ui/app-link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -165,13 +165,14 @@ function FindingSection({
 
 function CollateralEditLink({ id, slug }: { id: string; slug: string }) {
   return (
-    <Link
+    <AppLink
       href={`/library/collateral/${id}/edit`}
-      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      asChild
+      className="inline-flex items-center gap-1 text-xs text-primary"
     >
       <Pencil className="h-3 w-3" />
       {slug}
-    </Link>
+    </AppLink>
   );
 }
 
@@ -397,13 +398,14 @@ export default function AdminCollateralAudit() {
                       <TableCell className="text-xs font-mono">
                         {f.sourceId}
                         {editorPath && (
-                          <Link
+                          <AppLink
                             href={editorPath}
-                            className="ml-2 inline-flex items-center text-primary hover:underline"
+                            asChild
+                            className="ml-2 inline-flex items-center text-primary"
                             title="Open source editor"
                           >
                             <ExternalLink className="h-3 w-3" />
-                          </Link>
+                          </AppLink>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">{f.reason}</TableCell>
@@ -439,13 +441,14 @@ export default function AdminCollateralAudit() {
                           return (
                             <li key={r.id} className="text-xs">
                               {editorPath ? (
-                                <Link
+                                <AppLink
                                   href={editorPath}
-                                  className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+                                  asChild
+                                  className="inline-flex items-center gap-1 font-mono text-primary"
                                 >
                                   <Pencil className="h-3 w-3" />
                                   {r.slug}
-                                </Link>
+                                </AppLink>
                               ) : (
                                 <span className="font-mono">{r.slug}</span>
                               )}
