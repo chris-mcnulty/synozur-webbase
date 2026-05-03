@@ -157,19 +157,86 @@ jobs:
           echo "synozur did not start in time" >&2
           exit 1
 
-      - name: Run Lighthouse CI
-        id: lhci
-        # Don't fail the step yet — we want the summary + artifact upload
-        # to run even when assertions block. The dedicated assertion-gate
-        # step below converts the saved exit code into the job result.
+      # Lighthouse runs are split into explicit collect / assert / upload
+      # phases (instead of one `lhci autorun`) so we can distinguish
+      # *execution* failures (collect / upload / config / runtime) — which
+      # must fail the job, otherwise a broken mobile invocation could
+      # silently pass CI — from *assertion* failures, which are gated
+      # separately by the "Enforce Lighthouse assertions" step below
+      # (desktop=blocking, mobile=informational on first rollout per
+      # task #248).
+      - name: Collect Lighthouse (desktop)
+        # Hard-fails the job if collect fails — no usable results means
+        # the gate is meaningless, so we refuse to proceed.
+        run: |
+          rm -rf .lighthouseci .lighthouseci-desktop
+          pnpm exec lhci collect --config=./lighthouserc.json
+          test -s .lighthouseci/manifest.json
+          mv .lighthouseci .lighthouseci-desktop
+
+      - name: Assert Lighthouse (desktop)
+        id: lhci_desktop
+        # Captured exit code is enforced as a merge gate below. We don't
+        # fail here so the mobile run, summary, and artifact upload all
+        # still execute on a desktop assertion failure.
         run: |
           set +e
-          pnpm exec lhci autorun --config=./lighthouserc.json
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          rm -rf .lighthouseci
+          ln -s .lighthouseci-desktop .lighthouseci
+          pnpm exec lhci assert --config=./lighthouserc.json
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          rm -f .lighthouseci
           set -e
+
+      - name: Upload Lighthouse (desktop)
+        # Best-effort upload to temporary-public-storage; never block
+        # the job on this since it talks to an external service.
+        continue-on-error: true
+        run: |
+          rm -rf .lighthouseci
+          ln -s .lighthouseci-desktop .lighthouseci
+          pnpm exec lhci upload --config=./lighthouserc.json || true
+          rm -f .lighthouseci
+
+      - name: Collect Lighthouse (mobile)
+        # Same hard-fail-on-collect contract as desktop: a broken mobile
+        # invocation must surface as a CI failure, not silently pass.
+        run: |
+          rm -rf .lighthouseci .lighthouseci-mobile
+          pnpm exec lhci collect --config=./lighthouserc.mobile.json
+          test -s .lighthouseci/manifest.json
+          mv .lighthouseci .lighthouseci-mobile
+
+      - name: Assert Lighthouse (mobile)
+        id: lhci_mobile
+        # Mobile assertions are all 'warn' on first rollout (task #248);
+        # exit code is informational and surfaced via the PR comment /
+        # report artifact. Once thresholds flip to 'error', wire the
+        # captured exit_code into the merge gate below.
+        run: |
+          set +e
+          rm -rf .lighthouseci
+          ln -s .lighthouseci-mobile .lighthouseci
+          pnpm exec lhci assert --config=./lighthouserc.mobile.json
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          rm -f .lighthouseci
+          set -e
+
+      - name: Upload Lighthouse (mobile)
+        continue-on-error: true
+        run: |
+          rm -rf .lighthouseci
+          ln -s .lighthouseci-mobile .lighthouseci
+          pnpm exec lhci upload --config=./lighthouserc.mobile.json || true
+          rm -f .lighthouseci
 
       - name: Build PR summary
         if: always()
+        env:
+          LHCI_DESKTOP_DIR: .lighthouseci-desktop
+          LHCI_MOBILE_DIR: .lighthouseci-mobile
         run: pnpm --filter "@workspace/scripts" run lighthouse:pr-summary
 
       - name: Upload Lighthouse HTML report
@@ -178,10 +245,14 @@ jobs:
         with:
           name: lighthouse-report
           path: |
-            .lighthouseci/*.html
-            .lighthouseci/*.json
-            .lighthouseci/manifest.json
-            .lighthouseci/assertion-results.json
+            .lighthouseci-desktop/*.html
+            .lighthouseci-desktop/*.json
+            .lighthouseci-desktop/manifest.json
+            .lighthouseci-desktop/assertion-results.json
+            .lighthouseci-mobile/*.html
+            .lighthouseci-mobile/*.json
+            .lighthouseci-mobile/manifest.json
+            .lighthouseci-mobile/assertion-results.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -202,12 +273,18 @@ jobs:
 
       - name: Enforce Lighthouse assertions
         if: always()
+        # Only desktop is merge-blocking today (task #248). Mobile assertions
+        # are all 'warn' on first rollout, so its exit code is informational
+        # and surfaced via the PR comment / report artifact only. Once mobile
+        # thresholds flip to 'error', add its exit_code to this gate.
         run: |
-          code="${{ steps.lhci.outputs.exit_code }}"
+          code="${{ steps.lhci_desktop.outputs.exit_code }}"
           if [ "$code" != "0" ]; then
-            echo "Lighthouse CI assertions failed (exit $code)" >&2
+            echo "Lighthouse CI (desktop) assertions failed (exit $code)" >&2
             exit "$code"
           fi
+          mobile_code="${{ steps.lhci_mobile.outputs.exit_code }}"
+          echo "Lighthouse CI (mobile) exit code: $mobile_code (informational)"
 
   e2e-and-lighthouse:
     name: E2E + Lighthouse

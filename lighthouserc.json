@@ -1,6 +1,10 @@
 {
   "_comment": [
-    "Lighthouse CI assertions for the public marketing site.",
+    "Desktop-profile Lighthouse CI assertions for the public marketing site.",
+    "Mobile-profile assertions live in lighthouserc.mobile.json (task #248);",
+    "the CI workflow runs both configs and merges the results into the PR",
+    "summary. Desktop is the merge-blocking gate today; mobile starts at",
+    "'warn' until the first clean rollout.",
     "Two assertMatrix entries:",
     "  1. Clean routes (/, /about, /services, /insights, /contact) gate at",
     "     'error' for performance/accessibility/best-practices/SEO",
