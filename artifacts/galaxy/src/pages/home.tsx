@@ -11,8 +11,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 import { useAuth } from "@/context/auth";
 import NotCustomer from "./not-customer";
+import { PortalShell } from "@/components/portal-shell";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -140,53 +142,7 @@ export default function Home() {
   const isLoading = meQuery.isLoading || engagementsQuery.isLoading;
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-              G
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-tight">Galaxy</p>
-              <p className="text-xs text-muted-foreground leading-tight">
-                Synozur customer portal
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-1 text-sm">
-              <Link
-                href="/"
-                className="px-3 py-1.5 rounded-md font-medium hover-elevate"
-              >
-                Home
-              </Link>
-              <Link
-                href="/documents"
-                className="px-3 py-1.5 rounded-md text-muted-foreground hover-elevate"
-                data-testid="nav-documents"
-              >
-                Documents
-              </Link>
-            </nav>
-            {user?.email ? (
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                {user.email}
-              </span>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void signOut()}
-              data-testid="button-sign-out"
-            >
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
+    <PortalShell>
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
         <section className="space-y-2">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -204,6 +160,13 @@ export default function Home() {
             and the documents your team is putting together for you all show
             up here.
           </p>
+          <div className="pt-1">
+            <Link href="/apps">
+              <Button variant="outline" size="sm" data-testid="link-apps">
+                Browse your apps →
+              </Button>
+            </Link>
+          </div>
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -256,6 +219,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-    </div>
+    </PortalShell>
   );
 }

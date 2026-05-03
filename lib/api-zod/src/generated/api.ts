@@ -4422,6 +4422,115 @@ export const PreviewPortalDocumentParams = zod.object({
 });
 
 /**
+ * @summary Six per-application cockpit cards with this client's artifact counts.
+ */
+export const ListPortalAppsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      sourceApp: zod.enum([
+        "vega",
+        "nebula",
+        "constellation",
+        "orion",
+        "orbit",
+        "zenith",
+      ]),
+      name: zod.string(),
+      tagline: zod.string(),
+      logo: zod.string(),
+      artifactCount: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary List published artifacts for one app, ordered by publishedAt desc.
+ */
+export const ListPortalAppArtifactsParams = zod.object({
+  sourceApp: zod.enum([
+    "vega",
+    "nebula",
+    "constellation",
+    "orion",
+    "orbit",
+    "zenith",
+  ]),
+});
+
+export const listPortalAppArtifactsQueryPageDefault = 1;
+
+export const listPortalAppArtifactsQueryPageSizeDefault = 20;
+export const listPortalAppArtifactsQueryPageSizeMax = 100;
+
+export const ListPortalAppArtifactsQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(listPortalAppArtifactsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listPortalAppArtifactsQueryPageSizeMax)
+    .default(listPortalAppArtifactsQueryPageSizeDefault),
+});
+
+export const ListPortalAppArtifactsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      sourceApp: zod.enum([
+        "vega",
+        "nebula",
+        "constellation",
+        "orion",
+        "orbit",
+        "zenith",
+      ]),
+      artifactKind: zod.string(),
+      title: zod.string(),
+      summary: zod.string().nullish(),
+      externalUrl: zod.string().nullish(),
+      thumbnail: zod.string().nullish(),
+      publishedAt: zod.coerce.date().nullable(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Fetch one artifact with its full payload (also records a view event).
+ */
+export const GetPortalArtifactParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPortalArtifactResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    sourceApp: zod.enum([
+      "vega",
+      "nebula",
+      "constellation",
+      "orion",
+      "orbit",
+      "zenith",
+    ]),
+    artifactKind: zod.string(),
+    title: zod.string(),
+    summary: zod.string().nullish(),
+    externalUrl: zod.string().nullish(),
+    thumbnail: zod.string().nullish(),
+    publishedAt: zod.coerce.date().nullable(),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      payload: zod.unknown().optional(),
+    }),
+  );
+
+/**
  * @summary Active engagements for the signed-in customer's organization.
  */
 export const ListPortalEngagementsResponse = zod.object({

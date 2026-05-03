@@ -1616,6 +1616,49 @@ export async function runMigrations(): Promise<void> {
         ON client_org_invitations (expires_at);
     `);
 
+    // 47. Galaxy per-application cockpit (#226). portal_artifacts: curated
+    //     artifacts published by an account manager (or, future, by the
+    //     owning Synozur app via OAuth) for a specific client org. Used by
+    //     Galaxy to render six per-app surfaces (Vega, Nebula, Constellation,
+    //     Orion, Orbit, Zenith).
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        CREATE TYPE portal_source_app AS ENUM (
+          'vega','nebula','constellation','orion','orbit','zenith'
+        );
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS portal_artifacts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_organization_id uuid NOT NULL
+          REFERENCES client_organizations(id) ON DELETE CASCADE,
+        source_app portal_source_app NOT NULL,
+        artifact_kind text NOT NULL,
+        title text NOT NULL,
+        summary text,
+        payload jsonb,
+        external_url text,
+        thumbnail text,
+        published_at timestamptz,
+        archived_at timestamptz,
+        created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        deleted_at timestamptz
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS portal_artifacts_org_app_published_idx
+        ON portal_artifacts (client_organization_id, source_app, published_at DESC);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS portal_artifacts_org_idx
+        ON portal_artifacts (client_organization_id);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

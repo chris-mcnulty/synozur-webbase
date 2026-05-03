@@ -38,6 +38,40 @@ interface Member {
   createdAt: string;
 }
 
+// Mirrors the portal_source_app pg enum and the Galaxy /apps cockpit.
+const PORTAL_SOURCE_APPS = [
+  "vega",
+  "nebula",
+  "constellation",
+  "orion",
+  "orbit",
+  "zenith",
+] as const;
+type PortalSourceApp = (typeof PORTAL_SOURCE_APPS)[number];
+
+interface PortalArtifact {
+  id: string;
+  clientOrganizationId: string;
+  sourceApp: PortalSourceApp;
+  artifactKind: string;
+  title: string;
+  summary: string | null;
+  externalUrl: string | null;
+  thumbnail: string | null;
+  publishedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const EMPTY_ARTIFACT_FORM = {
+  sourceApp: "constellation" as PortalSourceApp,
+  artifactKind: "",
+  title: "",
+  summary: "",
+  externalUrl: "",
+};
+
 function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   return fetch(`${base}/api${path}`, {
@@ -83,6 +117,90 @@ export default function OrganizationsPage() {
   const [members, setMembers] = useState<Record<string, Member[]>>({});
   const [assignEmail, setAssignEmail] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<string | null>(null);
+  const [artifacts, setArtifacts] = useState<Record<string, PortalArtifact[]>>({});
+  const [artifactForm, setArtifactForm] = useState<Record<string, typeof EMPTY_ARTIFACT_FORM>>({});
+
+  function getArtifactForm(orgId: string) {
+    return artifactForm[orgId] ?? EMPTY_ARTIFACT_FORM;
+  }
+  function setArtifactFormFor(
+    orgId: string,
+    patch: Partial<typeof EMPTY_ARTIFACT_FORM>,
+  ) {
+    setArtifactForm((m) => ({
+      ...m,
+      [orgId]: { ...getArtifactForm(orgId), ...patch },
+    }));
+  }
+
+  async function loadArtifacts(orgId: string) {
+    try {
+      const data = await apiFetch<{ items: PortalArtifact[] }>(
+        `/cms/portal-artifacts?clientOrganizationId=${orgId}`,
+      );
+      setArtifacts((a) => ({ ...a, [orgId]: data.items }));
+    } catch (e) {
+      toast({
+        title: "Artifacts load failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function createArtifact(orgId: string) {
+    const f = getArtifactForm(orgId);
+    if (!f.title.trim() || !f.artifactKind.trim()) return;
+    try {
+      await apiFetch("/cms/portal-artifacts", {
+        method: "POST",
+        body: JSON.stringify({
+          clientOrganizationId: orgId,
+          sourceApp: f.sourceApp,
+          artifactKind: f.artifactKind.trim(),
+          title: f.title.trim(),
+          summary: f.summary.trim() || null,
+          externalUrl: f.externalUrl.trim() || null,
+        }),
+      });
+      setArtifactForm((m) => ({ ...m, [orgId]: { ...EMPTY_ARTIFACT_FORM } }));
+      toast({ title: "Artifact published" });
+      await loadArtifacts(orgId);
+    } catch (e) {
+      toast({
+        title: "Publish failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function archiveArtifact(orgId: string, id: string) {
+    try {
+      await apiFetch(`/cms/portal-artifacts/${id}/archive`, { method: "POST" });
+      await loadArtifacts(orgId);
+    } catch (e) {
+      toast({
+        title: "Update failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function deleteArtifact(orgId: string, id: string) {
+    if (!confirm("Delete this artifact? It will be hidden from the customer portal.")) return;
+    try {
+      await apiFetch(`/cms/portal-artifacts/${id}`, { method: "DELETE" });
+      await loadArtifacts(orgId);
+    } catch (e) {
+      toast({
+        title: "Delete failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -113,6 +231,7 @@ export default function OrganizationsPage() {
     } else {
       setExpandedOrg(orgId);
       void loadMembers(orgId);
+      void loadArtifacts(orgId);
     }
   }
 
@@ -357,6 +476,120 @@ export default function OrganizationsPage() {
                     />
                     <Button size="sm" variant="outline" onClick={() => assignUser(org.id)}>
                       Assign user
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Galaxy artifacts
+                    </p>
+                    {(artifacts[org.id] ?? []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No artifacts published to this client's portal yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {(artifacts[org.id] ?? []).map((a) => (
+                          <div key={a.id} className="flex items-start gap-3 text-sm">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-xs">
+                                  {a.sourceApp}
+                                </Badge>
+                                <span className="font-medium truncate">{a.title}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  · {a.artifactKind}
+                                </span>
+                                {a.archivedAt ? (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Archived
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              {a.summary ? (
+                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                  {a.summary}
+                                </p>
+                              ) : null}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => archiveArtifact(org.id, a.id)}
+                            >
+                              {a.archivedAt ? "Restore" : "Archive"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              onClick={() => deleteArtifact(org.id, a.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
+                      <select
+                        value={getArtifactForm(org.id).sourceApp}
+                        onChange={(e) =>
+                          setArtifactFormFor(org.id, {
+                            sourceApp: e.target.value as PortalSourceApp,
+                          })
+                        }
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        {PORTAL_SOURCE_APPS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        placeholder="Kind (e.g. roadmap, brief, dashboard)"
+                        value={getArtifactForm(org.id).artifactKind}
+                        onChange={(e) =>
+                          setArtifactFormFor(org.id, { artifactKind: e.target.value })
+                        }
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="Title"
+                        value={getArtifactForm(org.id).title}
+                        onChange={(e) =>
+                          setArtifactFormFor(org.id, { title: e.target.value })
+                        }
+                        className="md:col-span-2 text-sm"
+                      />
+                      <Input
+                        placeholder="Summary (optional)"
+                        value={getArtifactForm(org.id).summary}
+                        onChange={(e) =>
+                          setArtifactFormFor(org.id, { summary: e.target.value })
+                        }
+                        className="md:col-span-2 text-sm"
+                      />
+                      <Input
+                        placeholder="External URL (optional)"
+                        value={getArtifactForm(org.id).externalUrl}
+                        onChange={(e) =>
+                          setArtifactFormFor(org.id, { externalUrl: e.target.value })
+                        }
+                        className="md:col-span-2 text-sm"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => createArtifact(org.id)}
+                      disabled={
+                        !getArtifactForm(org.id).title.trim() ||
+                        !getArtifactForm(org.id).artifactKind.trim()
+                      }
+                    >
+                      Publish artifact
                     </Button>
                   </div>
                 </div>

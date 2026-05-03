@@ -80,6 +80,42 @@ export interface PortalDocumentList {
   pageSize: number;
 }
 
+export type PortalSourceApp =
+  (typeof PortalSourceApp)[keyof typeof PortalSourceApp];
+
+export const PortalSourceApp = {
+  vega: "vega",
+  nebula: "nebula",
+  constellation: "constellation",
+  orion: "orion",
+  orbit: "orbit",
+  zenith: "zenith",
+} as const;
+
+export interface PortalAppCard {
+  sourceApp: PortalSourceApp;
+  name: string;
+  tagline: string;
+  logo: string;
+  artifactCount: number;
+}
+
+export interface PortalArtifactSummary {
+  id: string;
+  sourceApp: PortalSourceApp;
+  artifactKind: string;
+  title: string;
+  summary?: string | null;
+  externalUrl?: string | null;
+  thumbnail?: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export type PortalArtifactDetail = PortalArtifactSummary & {
+  payload?: unknown;
+};
+
 export type PortalEngagementStatus =
   (typeof PortalEngagementStatus)[keyof typeof PortalEngagementStatus];
 
@@ -2847,6 +2883,27 @@ export const DownloadPortalDocumentInline = {
   true: "true",
   false: "false",
 } as const;
+
+export type ListPortalApps200 = {
+  items: PortalAppCard[];
+};
+
+export type ListPortalAppArtifactsParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ListPortalAppArtifacts200 = {
+  items: PortalArtifactSummary[];
+  total: number;
+};
 
 export type ListPortalEngagements200 = {
   items: PortalEngagement[];

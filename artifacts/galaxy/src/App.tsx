@@ -6,9 +6,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/auth";
 import Home from "@/pages/home";
 import Documents from "@/pages/documents";
+import AppsPage from "@/pages/apps";
+import AppSurfacePage from "@/pages/app-surface";
+import ArtifactDetailPage from "@/pages/artifact-detail";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
 import AcceptInvitePage from "@/pages/accept-invite";
+import {
+  PortalSourceApp,
+  type PortalSourceApp as PortalSourceAppType,
+} from "@workspace/api-client-react";
+
+const SOURCE_APPS = Object.values(PortalSourceApp) as PortalSourceAppType[];
+
+function isSourceApp(s: string | undefined): s is PortalSourceAppType {
+  return !!s && (SOURCE_APPS as readonly string[]).includes(s);
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +60,26 @@ function AppRouter() {
       </Route>
       <Route path="/documents">
         <Gated><Documents /></Gated>
+      </Route>
+      <Route path="/apps">{() => <Gated><AppsPage /></Gated>}</Route>
+      <Route path="/apps/:sourceApp">
+        {(params) => {
+          const sa = params.sourceApp;
+          if (!isSourceApp(sa)) return <NotFound />;
+          return <Gated><AppSurfacePage sourceApp={sa} /></Gated>;
+        }}
+      </Route>
+      <Route path="/apps/:sourceApp/:id">
+        {(params) => {
+          const sa = params.sourceApp;
+          const id = params.id;
+          if (!isSourceApp(sa) || !id) return <NotFound />;
+          return (
+            <Gated>
+              <ArtifactDetailPage sourceApp={sa} id={id} />
+            </Gated>
+          );
+        }}
       </Route>
       <Route component={NotFound} />
     </Switch>

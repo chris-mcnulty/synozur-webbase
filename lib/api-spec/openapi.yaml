@@ -57,6 +57,8 @@ tags:
     description: Admin Polaris podcast episode management.
   - name: Portal
     description: Galaxy customer portal — same-host session bridge.
+  - name: PortalApps
+    description: Galaxy per-application cockpit surfaces (#226).
 paths:
   /healthz:
     get:
@@ -3280,6 +3282,114 @@ paths:
                 $ref: '#/components/schemas/PortalForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /portal/apps:
+    get:
+      operationId: listPortalApps
+      tags:
+        - PortalApps
+      summary: Six per-application cockpit cards with this client's artifact counts.
+      responses:
+        '200':
+          description: App cards
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalAppCard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+  /portal/apps/{sourceApp}:
+    get:
+      operationId: listPortalAppArtifacts
+      tags:
+        - PortalApps
+      summary: List published artifacts for one app, ordered by publishedAt desc.
+      parameters:
+        - in: path
+          name: sourceApp
+          required: true
+          schema:
+            $ref: '#/components/schemas/PortalSourceApp'
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Artifact list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalArtifactSummary'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+  /portal/artifacts/{id}:
+    get:
+      operationId: getPortalArtifact
+      tags:
+        - PortalApps
+      summary: Fetch one artifact with its full payload (also records a view event).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Artifact detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalArtifactDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /portal/engagements:
     get:
       operationId: listPortalEngagements
@@ -3480,6 +3590,75 @@ components:
           type: integer
         pageSize:
           type: integer
+    PortalSourceApp:
+      type: string
+      enum:
+        - vega
+        - nebula
+        - constellation
+        - orion
+        - orbit
+        - zenith
+    PortalAppCard:
+      type: object
+      required:
+        - sourceApp
+        - name
+        - tagline
+        - logo
+        - artifactCount
+      properties:
+        sourceApp:
+          $ref: '#/components/schemas/PortalSourceApp'
+        name:
+          type: string
+        tagline:
+          type: string
+        logo:
+          type: string
+        artifactCount:
+          type: integer
+    PortalArtifactSummary:
+      type: object
+      required:
+        - id
+        - sourceApp
+        - artifactKind
+        - title
+        - publishedAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceApp:
+          $ref: '#/components/schemas/PortalSourceApp'
+        artifactKind:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        externalUrl:
+          type: string
+          nullable: true
+        thumbnail:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    PortalArtifactDetail:
+      allOf:
+        - $ref: '#/components/schemas/PortalArtifactSummary'
+        - type: object
+          properties:
+            payload: {}
     PortalEngagement:
       type: object
       required:

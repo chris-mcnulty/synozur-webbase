@@ -44,3 +44,4 @@ export * from "./oauth";
 export * from "./groundingDocuments";
 export * from "./conversations";
 export * from "./messages";
+export * from "./portalArtifacts";

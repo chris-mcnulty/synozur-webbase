@@ -73,6 +73,9 @@ import type {
   ListPolarisEpisodesParams,
   ListPolarisLinkablePosts200,
   ListPolarisLinkablePostsParams,
+  ListPortalAppArtifacts200,
+  ListPortalAppArtifactsParams,
+  ListPortalApps200,
   ListPortalDocumentsParams,
   ListPortalEngagements200,
   MediaItem,
@@ -90,10 +93,12 @@ import type {
   PolarisLibsynImportBody,
   PolarisLibsynImportSummary,
   PolarisLibsynPreviewResponse,
+  PortalArtifactDetail,
   PortalDocument,
   PortalDocumentList,
   PortalForbidden,
   PortalMe,
+  PortalSourceApp,
   Post,
   PostAnalytics,
   PostListResponse,
@@ -11271,6 +11276,295 @@ export function usePreviewPortalDocument<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getPreviewPortalDocumentQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Six per-application cockpit cards with this client's artifact counts.
+ */
+export const getListPortalAppsUrl = () => {
+  return `/api/portal/apps`;
+};
+
+export const listPortalApps = async (
+  options?: RequestInit,
+): Promise<ListPortalApps200> => {
+  return customFetch<ListPortalApps200>(getListPortalAppsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPortalAppsQueryKey = () => {
+  return [`/api/portal/apps`] as const;
+};
+
+export const getListPortalAppsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortalApps>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalApps>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPortalAppsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortalApps>>> = ({
+    signal,
+  }) => listPortalApps({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalApps>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortalAppsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortalApps>>
+>;
+export type ListPortalAppsQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden
+>;
+
+/**
+ * @summary Six per-application cockpit cards with this client's artifact counts.
+ */
+
+export function useListPortalApps<
+  TData = Awaited<ReturnType<typeof listPortalApps>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalApps>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortalAppsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List published artifacts for one app, ordered by publishedAt desc.
+ */
+export const getListPortalAppArtifactsUrl = (
+  sourceApp: PortalSourceApp,
+  params?: ListPortalAppArtifactsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/portal/apps/${sourceApp}?${stringifiedParams}`
+    : `/api/portal/apps/${sourceApp}`;
+};
+
+export const listPortalAppArtifacts = async (
+  sourceApp: PortalSourceApp,
+  params?: ListPortalAppArtifactsParams,
+  options?: RequestInit,
+): Promise<ListPortalAppArtifacts200> => {
+  return customFetch<ListPortalAppArtifacts200>(
+    getListPortalAppArtifactsUrl(sourceApp, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPortalAppArtifactsQueryKey = (
+  sourceApp: PortalSourceApp,
+  params?: ListPortalAppArtifactsParams,
+) => {
+  return [
+    `/api/portal/apps/${sourceApp}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListPortalAppArtifactsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortalAppArtifacts>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(
+  sourceApp: PortalSourceApp,
+  params?: ListPortalAppArtifactsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalAppArtifacts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListPortalAppArtifactsQueryKey(sourceApp, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPortalAppArtifacts>>
+  > = ({ signal }) =>
+    listPortalAppArtifacts(sourceApp, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!sourceApp,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalAppArtifacts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortalAppArtifactsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortalAppArtifacts>>
+>;
+export type ListPortalAppArtifactsQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden
+>;
+
+/**
+ * @summary List published artifacts for one app, ordered by publishedAt desc.
+ */
+
+export function useListPortalAppArtifacts<
+  TData = Awaited<ReturnType<typeof listPortalAppArtifacts>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(
+  sourceApp: PortalSourceApp,
+  params?: ListPortalAppArtifactsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalAppArtifacts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortalAppArtifactsQueryOptions(
+    sourceApp,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch one artifact with its full payload (also records a view event).
+ */
+export const getGetPortalArtifactUrl = (id: string) => {
+  return `/api/portal/artifacts/${id}`;
+};
+
+export const getPortalArtifact = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PortalArtifactDetail> => {
+  return customFetch<PortalArtifactDetail>(getGetPortalArtifactUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPortalArtifactQueryKey = (id: string) => {
+  return [`/api/portal/artifacts/${id}`] as const;
+};
+
+export const getGetPortalArtifactQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPortalArtifact>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPortalArtifact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPortalArtifactQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPortalArtifact>>
+  > = ({ signal }) => getPortalArtifact(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalArtifact>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPortalArtifactQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPortalArtifact>>
+>;
+export type GetPortalArtifactQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Fetch one artifact with its full payload (also records a view event).
+ */
+
+export function useGetPortalArtifact<
+  TData = Awaited<ReturnType<typeof getPortalArtifact>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPortalArtifact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPortalArtifactQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

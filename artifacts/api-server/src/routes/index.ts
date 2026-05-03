@@ -53,6 +53,8 @@ import cspViolationsRouter from "./cms/cspViolations";
 import launchReadinessRouter from "./cms/launchReadiness";
 import portalRouter from "./portal";
 import portalDocumentsAdminRouter from "./portalDocumentsAdmin";
+import portalAppsRouter from "./portalApps";
+import cmsPortalArtifactsRouter from "./cmsPortalArtifacts";
 
 const router: IRouter = Router();
 
@@ -110,5 +112,7 @@ router.use(cspViolationsRouter);
 router.use(launchReadinessRouter);
 router.use(portalRouter);
 router.use(portalDocumentsAdminRouter);
+router.use(portalAppsRouter);
+router.use(cmsPortalArtifactsRouter);
 
 export default router;
