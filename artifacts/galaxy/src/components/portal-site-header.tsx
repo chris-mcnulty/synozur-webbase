@@ -232,8 +232,12 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
   const navGroups: NavGroup[] = [
     {
-      title: "Home",
-      links: [{ label: "Home", href: "/" }],
+      title: "Portal",
+      links: [
+        { label: "Dashboard", href: "/galaxy/" },
+        { label: "Documents", href: "/galaxy/documents" },
+        { label: "Apps", href: "/galaxy/apps" },
+      ],
     },
     {
       title: "Our Story",
@@ -394,6 +398,8 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   {group.title}
                 </button>
                 <div className="absolute left-0 top-full pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                  {/* Invisible bridge fills the pt-2 gap so the mouse doesn't leave the group */}
+                  <div className="absolute -top-2 left-0 w-full h-2" />
                   <div className={`bg-popover border border-border rounded-md shadow-md p-4 flex flex-col gap-2 ${group.nested && group.nested.length > 0 ? "w-[28rem]" : "w-64"}`}>
                     {group.links.map((link) => (
                       <SiteNavLink
