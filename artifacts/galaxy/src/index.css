@@ -1,3 +1,46 @@
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-Demi.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/fonts/AvenirNextLTPro-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -117,18 +160,18 @@
   --sidebar-accent-foreground: 222 47% 11%;
   --sidebar-ring: 222 47% 30%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'Avenir Next LT Pro', 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(222 47% 11% / 0.04);
-  --shadow-xs: 0px 1px 2px 0px hsl(222 47% 11% / 0.05);
-  --shadow-sm: 0px 1px 3px 0px hsl(222 47% 11% / 0.06);
-  --shadow: 0px 2px 4px 0px hsl(222 47% 11% / 0.08);
-  --shadow-md: 0px 4px 8px 0px hsl(222 47% 11% / 0.10);
-  --shadow-lg: 0px 8px 16px 0px hsl(222 47% 11% / 0.12);
-  --shadow-xl: 0px 12px 24px 0px hsl(222 47% 11% / 0.14);
+  --shadow-xs:  0px 1px 2px 0px hsl(222 47% 11% / 0.05);
+  --shadow-sm:  0px 1px 3px 0px hsl(222 47% 11% / 0.06);
+  --shadow:     0px 2px 4px 0px hsl(222 47% 11% / 0.08);
+  --shadow-md:  0px 4px 8px 0px hsl(222 47% 11% / 0.10);
+  --shadow-lg:  0px 8px 16px 0px hsl(222 47% 11% / 0.12);
+  --shadow-xl:  0px 12px 24px 0px hsl(222 47% 11% / 0.14);
   --shadow-2xl: 0px 24px 48px 0px hsl(222 47% 11% / 0.18);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
@@ -206,47 +249,117 @@
     @apply border-border;
   }
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-primary;
   }
+}
+
+/* ── AURORA THEME ──────────────────────────────────────────────────────────
+   Pixel-exact port of SCDP aurora.css. Applied when <html class="theme-aurora">
+   is set by the ThemeProvider — Galaxy always uses the Aurora brand palette.  */
+
+html.theme-aurora {
+  --background:  260 20% 98%;
+  --foreground:  268 25% 8%;
+  --border:      268 18% 86%;
+  --input:       268 18% 94%;
+  --ring:        268.98 96.72% 52.16%;
+
+  --card:             268 25% 95.5%;
+  --card-foreground:  268 25% 8%;
+  --card-border:      268 18% 86%;
+
+  --popover:            268 30% 97%;
+  --popover-foreground: 268 25% 8%;
+  --popover-border:     268 18% 86%;
+
+  --primary:            268.98 96.72% 52.16%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary:            314.04 90.08% 47.45%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted:            268 15% 89%;
+  --muted-foreground: 268 8% 38%;
+
+  --accent:            268 50% 92%;
+  --accent-foreground: 268 80% 25%;
+
+  --destructive:            356.3 90.56% 54.31%;
+  --destructive-foreground: 0 0% 100%;
+
+  --sidebar:            268 25% 95%;
+  --sidebar-foreground: 268 25% 8%;
+  --sidebar-border:     268 18% 86%;
+  --sidebar-primary:    268.98 96.72% 52.16%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent:     268 50% 91%;
+  --sidebar-accent-foreground: 268.98 96.72% 45%;
+  --sidebar-ring:       268.98 96.72% 52.16%;
+
+  --chart-1: 268.98 96.72% 52.16%;
+  --chart-2: 314.04 90.08% 47.45%;
+  --chart-3: 269.16 80.45% 26.08%;
+  --chart-4: 147.14 78.5% 41.96%;
+  --chart-5: 341.49 75.2% 50.98%;
+}
+
+html.theme-aurora .dark {
+  --background:  268 20% 7%;
+  --foreground:  268 8% 88%;
+  --border:      268 18% 17%;
+  --input:       268 18% 13%;
+  --ring:        268.98 92% 64%;
+
+  --card:             268 20% 10%;
+  --card-foreground:  268 8% 85%;
+  --card-border:      268 18% 17%;
+
+  --popover:            268 20% 7%;
+  --popover-foreground: 268 8% 88%;
+  --popover-border:     268 18% 17%;
+
+  --primary:            268.98 92% 64%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary:            314.04 85% 61%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted:            268 15% 15%;
+  --muted-foreground: 268 6% 53%;
+
+  --accent:            268 35% 16%;
+  --accent-foreground: 268.98 92% 70%;
+
+  --destructive:            356.3 85% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --sidebar:            268 25% 6%;
+  --sidebar-foreground: 268 8% 80%;
+  --sidebar-border:     268 18% 14%;
+  --sidebar-primary:    268.98 92% 64%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent:     268 35% 14%;
+  --sidebar-accent-foreground: 268.98 92% 72%;
+  --sidebar-ring:       268.98 92% 64%;
+
+  --chart-1: 268.98 92% 64%;
+  --chart-2: 314.04 85% 61%;
+  --chart-3: 269.16 75% 72%;
+  --chart-4: 147.14 68% 54%;
+  --chart-5: 341.49 72% 63%;
 }
 
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
-  [contenteditable][data-placeholder]:empty::before {
-    content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground));
-    pointer-events: none;
-  }
-  .no-default-hover-elevate {}
-  .no-default-active-elevate {}
-  .toggle-elevate::before,
-  .toggle-elevate-2::before {
-    content: "";
-    pointer-events: none;
-    position: absolute;
-    inset: 0px;
-    border-radius: inherit;
-    z-index: -1;
-  }
-  .toggle-elevate.toggle-elevated::before {
-    background-color: var(--elevate-2);
-  }
-  .border.toggle-elevate::before {
-    inset: -1px;
-  }
   .hover-elevate:not(.no-default-hover-elevate),
-  .active-elevate:not(.no-default-active-elevate),
-  .hover-elevate-2:not(.no-default-hover-elevate),
-  .active-elevate-2:not(.no-default-active-elevate) {
+  .active-elevate:not(.no-default-active-elevate) {
     position: relative;
     z-index: 0;
   }
   .hover-elevate:not(.no-default-hover-elevate)::after,
-  .active-elevate:not(.no-default-active-elevate)::after,
-  .hover-elevate-2:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:not(.no-default-active-elevate)::after {
+  .active-elevate:not(.no-default-active-elevate)::after {
     content: "";
     pointer-events: none;
     position: absolute;
@@ -254,19 +367,10 @@
     border-radius: inherit;
     z-index: 999;
   }
-  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after {
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after {
     background-color: var(--elevate-1);
   }
-  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+  .active-elevate:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-2);
-  }
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
-    inset: -1px;
   }
 }

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/context/auth";
 import type { ReactNode } from "react";
 
@@ -60,12 +61,13 @@ export function PortalShell({ children }: { children: ReactNode }) {
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {user?.email ? (
               <span className="text-xs text-muted-foreground hidden sm:inline">
                 {user.email}
               </span>
             ) : null}
+            <ThemeToggle />
             <Button
               variant="outline"
               size="sm"
