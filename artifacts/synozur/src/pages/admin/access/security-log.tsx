@@ -18,18 +18,36 @@ const BASE_PATH =
     ? ""
     : import.meta.env.BASE_URL.replace(/\/$/, "");
 
-interface LockoutEvent {
+interface AuditLogItem {
   id: string;
-  ip: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  actorDisplayName: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  diff: unknown;
   at: string;
 }
 
-async function fetchLockouts(): Promise<LockoutEvent[]> {
-  const res = await fetch(`${BASE_PATH}/api/cms/security/lockouts`, {
+interface ListResponse {
+  items: AuditLogItem[];
+  nextCursor: string | null;
+}
+
+// #169 — The dedicated security-log endpoint was retired. We now read from the
+// general audit-log viewer with `actionPrefix=auth.` so this page surfaces all
+// auth-related events (rate-limited login attempts, sign-ins, lockouts, etc.)
+// without a separate query path. The lockout view remains the headline because
+// it's the most actionable signal for ops.
+async function fetchAuthEvents(): Promise<AuditLogItem[]> {
+  const params = new URLSearchParams({ actionPrefix: "auth.", limit: "100" });
+  const res = await fetch(`${BASE_PATH}/api/cms/audit-log?${params.toString()}`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<LockoutEvent[]>;
+  const body = (await res.json()) as ListResponse;
+  return body.items;
 }
 
 function formatDate(iso: string): string {
@@ -46,15 +64,16 @@ function formatDate(iso: string): string {
 const RECENT_THRESHOLD_MS = 60 * 60 * 1000;
 
 export default function SecurityLogPage() {
-  const { data, isLoading, error, refetch, isFetching } = useQuery<LockoutEvent[]>({
-    queryKey: ["cms", "security", "lockouts"],
-    queryFn: fetchLockouts,
+  const { data, isLoading, error, refetch, isFetching } = useQuery<AuditLogItem[]>({
+    queryKey: ["cms", "audit-log", "auth-events"],
+    queryFn: fetchAuthEvents,
     staleTime: 30_000,
   });
 
   const events = data ?? [];
+  const lockouts = events.filter((e) => e.action === "auth.login_rate_limited");
   const now = Date.now();
-  const recentCount = events.filter(
+  const recentCount = lockouts.filter(
     (e) => now - new Date(e.at).getTime() < RECENT_THRESHOLD_MS,
   ).length;
 
@@ -90,12 +109,19 @@ export default function SecurityLogPage() {
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Rate-Limited Login Attempts</span>
-              {events.length > 0 && (
+              {lockouts.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {events.length}
+                  {lockouts.length}
                 </Badge>
               )}
             </div>
+            <a
+              href={`${BASE_PATH}/admin/access/audit-log?actionPrefix=auth.`}
+              className="text-xs text-muted-foreground hover:text-foreground"
+              data-testid="link-security-log-audit"
+            >
+              View full audit log →
+            </a>
           </div>
 
           {isLoading ? (
@@ -106,7 +132,7 @@ export default function SecurityLogPage() {
             <div className="px-4 py-10 text-center text-destructive text-sm">
               Failed to load security log.
             </div>
-          ) : events.length === 0 ? (
+          ) : lockouts.length === 0 ? (
             <div className="px-4 py-10 text-center text-muted-foreground text-sm">
               No rate-limited attempts recorded yet.
             </div>
@@ -119,11 +145,13 @@ export default function SecurityLogPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {events.map((e) => {
+                {lockouts.map((e) => {
                   const isRecent = now - new Date(e.at).getTime() < RECENT_THRESHOLD_MS;
                   return (
                     <TableRow key={e.id}>
-                      <TableCell className="font-mono text-sm">{e.ip}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {e.entityId ?? "unknown"}
+                      </TableCell>
                       <TableCell className="text-sm">
                         <span>{formatDate(e.at)}</span>
                         {isRecent && (

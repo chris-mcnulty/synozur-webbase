@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   MediaPickerModal,
@@ -833,6 +834,9 @@ export default function ApplicationEdit({ id }: Props) {
           onSelect={handleScreenshot}
         />
       )}
+      <div className="mt-6">
+        <ActivityTab entity="application" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

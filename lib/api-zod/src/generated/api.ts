@@ -791,6 +791,67 @@ export const ModerateCmsCommentResponse = zod.object({
   moderatedAt: zod.coerce.date().nullish(),
 });
 
+/**
+ * Cursor-paginated, filterable feed of `audit_log` rows. Any CMS role can read; the per-entity activity tab on artifact edit pages calls this with `entity` + `entityId`. The global viewer page is nav-gated to admins via the `users.manage` capability, but the endpoint itself accepts editor / author / contributor too.
+
+ * @summary List audit-log entries (#258)
+ */
+export const listAuditLogQueryLimitMax = 100;
+
+export const ListAuditLogQueryParams = zod.object({
+  actorId: zod.coerce.string().uuid().optional(),
+  actorEmail: zod.coerce.string().optional(),
+  entity: zod.coerce.string().optional(),
+  entityId: zod.coerce.string().optional(),
+  actionPrefix: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Matches rows whose `action` begins with this value (e.g. `auth.`, `post.`).",
+    ),
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+  cursor: zod.coerce.string().optional(),
+  limit: zod.coerce.number().min(1).max(listAuditLogQueryLimitMax).optional(),
+});
+
+export const ListAuditLogResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      actorId: zod.string().uuid().nullish(),
+      actorEmail: zod.string().nullish(),
+      actorDisplayName: zod.string().nullish(),
+      action: zod.string(),
+      entity: zod.string(),
+      entityId: zod.string().nullish(),
+      diff: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe(
+          "Structured `{ before, after }` diff produced by `buildAuditDiff()`; null when no diff was captured.\n",
+        ),
+      at: zod.coerce.date(),
+    }),
+  ),
+  nextCursor: zod.string().nullable(),
+});
+
+/**
+ * Same filters as `GET /cms/audit-log`, returning up to 10,000 rows in CSV form. Admin-only since this is the compliance / legal-handoff path.
+
+ * @summary Export audit-log entries as CSV (#258)
+ */
+export const ExportAuditLogCsvQueryParams = zod.object({
+  actorId: zod.coerce.string().uuid().optional(),
+  actorEmail: zod.coerce.string().optional(),
+  entity: zod.coerce.string().optional(),
+  entityId: zod.coerce.string().optional(),
+  actionPrefix: zod.coerce.string().optional(),
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+});
+
 export const ListCmsUsersResponseItem = zod.object({
   id: zod.string().uuid(),
   externalSubject: zod.string().nullish(),
@@ -1218,6 +1279,9 @@ export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 export const getAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
 export const getAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
+export const getAdminSiteSettingsResponseAuditLogRetentionDaysMin = 30;
+export const getAdminSiteSettingsResponseAuditLogRetentionDaysMax = 3650;
+
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
   homeHeroBackgroundType: zod
@@ -1298,6 +1362,14 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
     ),
+  auditLogRetentionDays: zod
+    .number()
+    .min(getAdminSiteSettingsResponseAuditLogRetentionDaysMin)
+    .max(getAdminSiteSettingsResponseAuditLogRetentionDaysMax)
+    .optional()
+    .describe(
+      "How many days of `audit_log` rows are retained by the daily prune job (#258). Defaults to 365. Auth\/OAuth\/session events ignore this and are kept for 5 years regardless.\n",
+    ),
   spamLinkThreshold: zod
     .number()
     .nullish()
@@ -1345,6 +1417,9 @@ export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
 
 export const updateAdminSiteSettingsBodyIdleTimeoutMsMin = 1800000;
 export const updateAdminSiteSettingsBodyIdleTimeoutMsMax = 2592000000;
+
+export const updateAdminSiteSettingsBodyAuditLogRetentionDaysMin = 30;
+export const updateAdminSiteSettingsBodyAuditLogRetentionDaysMax = 3650;
 
 export const UpdateAdminSiteSettingsBody = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1405,6 +1480,14 @@ export const UpdateAdminSiteSettingsBody = zod.object({
     .describe(
       "Session idle timeout in milliseconds. Pass null to fall back to the IDLE_TIMEOUT_MS env var (then a 4 hour default). Effective value is clamped to at least 30 minutes server-side.\n",
     ),
+  auditLogRetentionDays: zod
+    .number()
+    .min(updateAdminSiteSettingsBodyAuditLogRetentionDaysMin)
+    .max(updateAdminSiteSettingsBodyAuditLogRetentionDaysMax)
+    .optional()
+    .describe(
+      "Audit-log retention in days (#258). Pass an integer between 30 and 3650; auth\/oauth\/session events are always kept for 5 years.\n",
+    ),
   spamLinkThreshold: zod
     .number()
     .nullish()
@@ -1452,6 +1535,9 @@ export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
 export const updateAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
 export const updateAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
+
+export const updateAdminSiteSettingsResponseAuditLogRetentionDaysMin = 30;
+export const updateAdminSiteSettingsResponseAuditLogRetentionDaysMax = 3650;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1532,6 +1618,14 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .nullish()
     .describe(
       "Session idle timeout in milliseconds. When null the server falls back to the IDLE_TIMEOUT_MS env var, then a 4 hour default. The effective value is clamped to at least 30 minutes (the rolling heartbeat interval) to prevent false sign-outs of active users.\n",
+    ),
+  auditLogRetentionDays: zod
+    .number()
+    .min(updateAdminSiteSettingsResponseAuditLogRetentionDaysMin)
+    .max(updateAdminSiteSettingsResponseAuditLogRetentionDaysMax)
+    .optional()
+    .describe(
+      "How many days of `audit_log` rows are retained by the daily prune job (#258). Defaults to 365. Auth\/OAuth\/session events ignore this and are kept for 5 years regardless.\n",
     ),
   spamLinkThreshold: zod
     .number()

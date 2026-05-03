@@ -55,6 +55,7 @@ import type {
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
+  ExportAuditLogCsvParams,
   ForbiddenResponse,
   FormSubmissionAck,
   GetCmsAnalyticsOverviewParams,
@@ -66,6 +67,8 @@ import type {
   LibraryAssetListResponse,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
+  ListAuditLog200,
+  ListAuditLogParams,
   ListCmsCommentsParams,
   ListCmsMediaParams,
   ListCmsPolarisEpisodes200,
@@ -2458,6 +2461,201 @@ export const useModerateCmsComment = <
 > => {
   return useMutation(getModerateCmsCommentMutationOptions(options));
 };
+
+/**
+ * Cursor-paginated, filterable feed of `audit_log` rows. Any CMS role can read; the per-entity activity tab on artifact edit pages calls this with `entity` + `entityId`. The global viewer page is nav-gated to admins via the `users.manage` capability, but the endpoint itself accepts editor / author / contributor too.
+
+ * @summary List audit-log entries (#258)
+ */
+export const getListAuditLogUrl = (params?: ListAuditLogParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/audit-log?${stringifiedParams}`
+    : `/api/cms/audit-log`;
+};
+
+export const listAuditLog = async (
+  params?: ListAuditLogParams,
+  options?: RequestInit,
+): Promise<ListAuditLog200> => {
+  return customFetch<ListAuditLog200>(getListAuditLogUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAuditLogQueryKey = (params?: ListAuditLogParams) => {
+  return [`/api/cms/audit-log`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAuditLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAuditLogQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLog>>> = ({
+    signal,
+  }) => listAuditLog(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditLog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAuditLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAuditLog>>
+>;
+export type ListAuditLogQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List audit-log entries (#258)
+ */
+
+export function useListAuditLog<
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAuditLogQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Same filters as `GET /cms/audit-log`, returning up to 10,000 rows in CSV form. Admin-only since this is the compliance / legal-handoff path.
+
+ * @summary Export audit-log entries as CSV (#258)
+ */
+export const getExportAuditLogCsvUrl = (params?: ExportAuditLogCsvParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/audit-log.csv?${stringifiedParams}`
+    : `/api/cms/audit-log.csv`;
+};
+
+export const exportAuditLogCsv = async (
+  params?: ExportAuditLogCsvParams,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getExportAuditLogCsvUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportAuditLogCsvQueryKey = (
+  params?: ExportAuditLogCsvParams,
+) => {
+  return [`/api/cms/audit-log.csv`, ...(params ? [params] : [])] as const;
+};
+
+export const getExportAuditLogCsvQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportAuditLogCsv>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ExportAuditLogCsvParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAuditLogCsv>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getExportAuditLogCsvQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportAuditLogCsv>>
+  > = ({ signal }) => exportAuditLogCsv(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportAuditLogCsv>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportAuditLogCsvQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportAuditLogCsv>>
+>;
+export type ExportAuditLogCsvQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Export audit-log entries as CSV (#258)
+ */
+
+export function useExportAuditLogCsv<
+  TData = Awaited<ReturnType<typeof exportAuditLogCsv>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ExportAuditLogCsvParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAuditLogCsv>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportAuditLogCsvQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListCmsUsersUrl = () => {
   return `/api/cms/users`;

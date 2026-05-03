@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useToast } from "@/hooks/use-toast";
@@ -799,6 +800,9 @@ export default function PolarisEpisodeEdit({ id }: Props) {
             </Card>
           )}
         </aside>
+      </div>
+      <div className="mt-6">
+        <ActivityTab entity="polaris_episode" entityId={id} />
       </div>
     </AdminLayout>
   );

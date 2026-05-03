@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
@@ -893,6 +894,9 @@ export default function WhitePaperEdit({ id }: Props) {
         title="Pick document"
         kind="document"
       />
+      <div className="mt-6">
+        <ActivityTab entity="white_paper" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

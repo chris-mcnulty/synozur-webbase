@@ -1022,6 +1022,13 @@ export interface SiteSettings {
    */
   idleTimeoutMs?: number | null;
   /**
+   * How many days of `audit_log` rows are retained by the daily prune job (#258). Defaults to 365. Auth/OAuth/session events ignore this and are kept for 5 years regardless.
+
+   * @minimum 30
+   * @maximum 3650
+   */
+  auditLogRetentionDays?: number;
+  /**
    * Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.
 
    * @nullable
@@ -1221,6 +1228,13 @@ export interface SiteSettingsInput {
    * @nullable
    */
   idleTimeoutMs?: number | null;
+  /**
+   * Audit-log retention in days (#258). Pass an integer between 30 and 3650; auth/oauth/session events are always kept for 5 years.
+
+   * @minimum 30
+   * @maximum 3650
+   */
+  auditLogRetentionDays?: number;
   /**
    * Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.
 
@@ -2867,6 +2881,69 @@ export const ModerateCmsCommentBodyAction = {
 
 export type ModerateCmsCommentBody = {
   action: ModerateCmsCommentBodyAction;
+};
+
+export type ListAuditLogParams = {
+  actorId?: string;
+  actorEmail?: string;
+  entity?: string;
+  entityId?: string;
+  /**
+   * Matches rows whose `action` begins with this value (e.g. `auth.`, `post.`).
+   */
+  actionPrefix?: string;
+  from?: string;
+  to?: string;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+/**
+ * Structured `{ before, after }` diff produced by `buildAuditDiff()`; null when no diff was captured.
+
+ * @nullable
+ */
+export type ListAuditLog200ItemsItemDiff = { [key: string]: unknown } | null;
+
+export type ListAuditLog200ItemsItem = {
+  id: string;
+  /** @nullable */
+  actorId?: string | null;
+  /** @nullable */
+  actorEmail?: string | null;
+  /** @nullable */
+  actorDisplayName?: string | null;
+  action: string;
+  entity: string;
+  /** @nullable */
+  entityId?: string | null;
+  /**
+   * Structured `{ before, after }` diff produced by `buildAuditDiff()`; null when no diff was captured.
+
+   * @nullable
+   */
+  diff?: ListAuditLog200ItemsItemDiff;
+  at: string;
+};
+
+export type ListAuditLog200 = {
+  items: ListAuditLog200ItemsItem[];
+  /** @nullable */
+  nextCursor: string | null;
+};
+
+export type ExportAuditLogCsvParams = {
+  actorId?: string;
+  actorEmail?: string;
+  entity?: string;
+  entityId?: string;
+  actionPrefix?: string;
+  from?: string;
+  to?: string;
 };
 
 export type SetCmsUserRolesBody = {

@@ -1,0 +1,21 @@
+    // #169 — Audit log viewer + retention.
+    // Indexes for the new global audit-log viewer and per-entity activity
+    // tab. The (entity, entity_id) index already exists from the original
+    // schema. Add (actor_id, at desc) for "what did this user do?" lookups
+    // and (at desc) for the unfiltered global stream.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS audit_log_actor_at_idx
+        ON audit_log (actor_id, at DESC);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS audit_log_at_idx
+        ON audit_log (at DESC);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS audit_log_action_idx
+        ON audit_log (action);
+    `);
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS audit_log_retention_days integer NOT NULL DEFAULT 365;
+    `);

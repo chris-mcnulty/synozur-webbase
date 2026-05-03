@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   MediaPickerModal,
@@ -806,6 +807,9 @@ export default function ModelEdit({ id }: Props) {
           onClose={() => setShowOgPicker(false)}
         />
       )}
+      <div className="mt-6">
+        <ActivityTab entity="model" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

@@ -178,6 +178,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     spamLinkThreshold: settings.spamLinkThreshold,
     spamKeywords: settings.spamKeywords,
     spamDomainBlocklist: settings.spamDomainBlocklist,
+    auditLogRetentionDays: settings.auditLogRetentionDays,
     homeBHeroHeadlinePrefix: settings.homeBHeroHeadlinePrefix,
     homeBHeroHeadlineAccent: settings.homeBHeroHeadlineAccent,
     homeBHeroHeadlineSuffix: settings.homeBHeroHeadlineSuffix,
@@ -439,6 +440,16 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   if ("sitemapSectionFlags" in input) {
     updates.sitemapSectionFlags = input.sitemapSectionFlags ?? null;
+  }
+
+  // #258 — audit-log retention. The DB column is non-null (default 365), so
+  // we accept positive integers within the documented bounds and reject any
+  // attempt to clear it; out-of-range values fall through to the default.
+  if ("auditLogRetentionDays" in input) {
+    const next = input.auditLogRetentionDays;
+    if (typeof next === "number" && next >= 30 && next <= 3650) {
+      updates.auditLogRetentionDays = Math.floor(next);
+    }
   }
 
   let idleTimeoutChanged = false;

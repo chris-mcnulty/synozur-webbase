@@ -265,21 +265,15 @@ The registration endpoint now enforces rate limiting, but no automated tests ver
 
 Shipped: integration suite at `artifacts/api-server/src/routes/auth.rateLimit.test.ts` asserts that the 6th register request from an IP returns 429 (with the registration-specific message), that the register / login / forgot-password buckets are isolated, and that valid registrations below the limit still return 201.
 
-### #169 · Admin audit-log viewer with entity-scoped activity tab and 365-day retention
+### ~~#169 · Admin audit-log viewer with entity-scoped activity tab and 365-day retention~~
 **Depends on:** —
 
-`auditLogTable` is heavily *written* — every admin mutation in `routes/cms/*.ts` calls `audit({ action, entity, entityId, diff })` with structured before/after diffs from `buildAuditDiff()` at `artifacts/api-server/src/lib/audit.ts:25` — but the only *read* path that exists today is `routes/cms/securityLog.ts`, which filters to a single action (`auth.login_rate_limited`) and returns 200 IPs. Nothing surfaces the full audit stream to operators, and the table grows unbounded. So when an editor asks "who deleted that case study last Tuesday?" the answer requires a live SQL session against production.
-
-This task ships an admin audit viewer + retention:
-- **API.** New `routes/cms/auditLog.ts` with `GET /cms/audit-log` accepting `actorId`, `entity`, `entityId`, `actionPrefix`, `from`, `to`, `cursor`, `limit ≤ 100`. The existing `audit_log_entity_idx` covers entity-scoped queries; add a `(actor_id, at desc)` index for the per-actor view and a `(at desc)` index for the global feed.
-- **Global viewer.** New page `pages/admin/access/audit-log.tsx` with a filter bar (date range, action prefix, entity type, actor email lookup), an infinite-scroll table, and a row-detail drawer that pretty-prints the `before` / `after` diff using the same JSON-diff component planned for #67.
-- **Per-artifact activity tab.** A reusable `<ActivityTab>` component fed by `(entity, entityId)` drops into every artifact edit page (post, collateral, service, solution, case-study, application, model, polaris-episode, white-paper, workshop, event, team-member) so an editor sees "Chris updated `excerpt` 2 days ago" inline without leaving the page. Permissions: gated on the same role required to *edit* the underlying artifact, not on global admin.
-- **Retention.** Daily prune job in `lib/scheduler.ts` deletes `audit_log` rows older than `siteSettings.auditLogRetentionDays` (default 365). Auth / OAuth / session actions (`action LIKE 'auth.%' OR 'oauth.%' OR 'session.%'`) keep a 5-year retention regardless — security logs have a longer minimum legal hold under most enterprise procurement reviews.
-- **Export.** `GET /cms/audit-log.csv` with the same filter set so legal / compliance can hand a customer a full audit trail on request.
-
-Migrate `/admin/access/security-log` to read from `/cms/audit-log?actionPrefix=auth.` — kill the duplicated query in `routes/cms/securityLog.ts` once the new viewer ships.
-
-Out of scope: real-time tail / websocket push (the daily-cadence audit pattern doesn't justify it yet), per-row redaction policies (PII is already kept out at write time via `buildAuditDiff`'s `ignoreKeys`). Follow-up: pipe high-severity actions (`role.grant.admin`, `oauth_client.create`, `user.delete`) to a Slack webhook so a security channel pings on each occurrence.
+~~Shipped via #258:~~
+- ~~`GET /cms/audit-log` (cursor-paginated, filtered by actor, entity, action prefix, date range) and `GET /cms/audit-log.csv` (10k-row cap) live in `artifacts/api-server/src/routes/cms/auditLog.ts`. Indexes `audit_log_actor_at_idx`, `audit_log_at_idx`, and `audit_log_action_idx` were added to `audit_log` in `lib/migrations.ts`.~~
+- ~~Global viewer at `/admin/access/audit-log` with filter bar, infinite scroll, CSV export, and a row drawer showing field-level before/after diffs.~~
+- ~~Reusable `<ActivityTab>` (`components/admin/ActivityTab.tsx`) wired into all 12 artifact edit pages (post, collateral, service, solution, case-study, application, model, polaris-episode, white-paper, workshop, event, team-member).~~
+- ~~Daily prune job in `lib/scheduler.ts` honoring `siteSettings.auditLogRetentionDays` (default 365), with `auth.%` / `oauth.%` / `session.%` actions held for 5 years.~~
+- ~~`/admin/access/security-log` now reads from `/cms/audit-log?actionPrefix=auth.`; the old `routes/cms/securityLog.ts` was deleted.~~
 
 ---
 

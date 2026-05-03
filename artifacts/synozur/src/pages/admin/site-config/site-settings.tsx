@@ -200,6 +200,7 @@ export default function AdminSiteSettings() {
     spamLinkThreshold: data?.spamLinkThreshold ?? null,
     spamKeywords: data?.spamKeywords ?? [],
     spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
+    auditLogRetentionDays: data?.auditLogRetentionDays ?? 365,
     // Alt home page copy: round-trip values so a partial edit doesn't null others.
     homeBHeroHeadlinePrefix: data?.homeBHeroHeadlinePrefix ?? null,
     homeBHeroHeadlineAccent: data?.homeBHeroHeadlineAccent ?? null,
@@ -625,6 +626,41 @@ export default function AdminSiteSettings() {
                   <X className="h-4 w-4 mr-1" /> Use server default
                 </Button>
               )}
+            </div>
+          </div>
+
+          {/* #258: Audit-log retention */}
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">Audit-log retention</h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                How many days of audit-log entries are kept by the daily prune
+                job. Auth, OAuth, and session events are retained for 5 years
+                regardless of this setting to satisfy security review
+                requirements.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                disabled={updateMutation.isPending}
+                value={data?.auditLogRetentionDays ?? 365}
+                data-testid="select-audit-log-retention"
+                onChange={(e) => {
+                  const next = parseInt(e.target.value, 10);
+                  if (Number.isFinite(next)) {
+                    updateMutation.mutate(
+                      buildPayload({ auditLogRetentionDays: next }),
+                    );
+                  }
+                }}
+              >
+                <option value={90}>90 days</option>
+                <option value={180}>180 days</option>
+                <option value={365}>365 days (default)</option>
+                <option value={730}>2 years</option>
+                <option value={1825}>5 years</option>
+              </select>
             </div>
           </div>
 

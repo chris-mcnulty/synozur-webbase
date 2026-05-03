@@ -105,6 +105,13 @@ export interface SiteSettingsInput {
    */
   idleTimeoutMs?: number | null;
   /**
+   * Audit-log retention in days (#258). Pass an integer between 30 and 3650; auth/oauth/session events are always kept for 5 years.
+
+   * @minimum 30
+   * @maximum 3650
+   */
+  auditLogRetentionDays?: number;
+  /**
    * Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.
 
    * @nullable

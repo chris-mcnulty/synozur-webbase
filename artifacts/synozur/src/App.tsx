@@ -59,6 +59,7 @@ import EngagementDocumentsPage from "@/pages/admin/access/engagement-documents";
 import ClientsListPage from "@/pages/admin/access/clients-list";
 import ClientEditPage from "@/pages/admin/access/client-edit";
 import SecurityLogPage from "@/pages/admin/access/security-log";
+import AuditLogPage from "@/pages/admin/access/audit-log";
 import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import OAuthClientsPage from "@/pages/admin/access/oauth-clients";
 import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
@@ -410,6 +411,7 @@ function AdminRoutes() {
           {(params) => <ClientEditPage id={params.id} />}
         </Route>
         <Route path="/access/security-log" component={SecurityLogPage} />
+        <Route path="/access/audit-log" component={AuditLogPage} />
         <Route path="/access/capabilities" component={CapabilitiesPage} />
         <Route path="/access/oauth-clients" component={OAuthClientsPage} />
         <Route path="/users"><Redirect to="/access/users" /></Route>

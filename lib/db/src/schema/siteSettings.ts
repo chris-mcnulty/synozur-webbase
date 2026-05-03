@@ -203,6 +203,11 @@ export const siteSettingsTable = pgTable("site_settings", {
   careersEeoEnabled: boolean("careers_eeo_enabled").notNull().default(true),
   careersDefaultHiringManager: text("careers_default_hiring_manager"),
 
+  // #169 — Audit log retention. The daily prune job in scheduler.ts deletes
+  // audit_log rows older than this many days. Auth/oauth/session actions
+  // are exempt (5-year retention regardless) — see scheduler.ts.
+  auditLogRetentionDays: integer("audit_log_retention_days").notNull().default(365),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

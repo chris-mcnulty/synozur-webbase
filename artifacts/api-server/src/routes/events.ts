@@ -27,6 +27,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { sendGone } from "../lib/goneResponse";
+import { audit, buildAuditDiff } from "../lib/audit";
 import {
   upsertCollateralFromEvent,
   softDeleteCollateralForEvent,
@@ -369,6 +370,13 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       error,
     });
   }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "event.create",
+    entity: "event",
+    entityId: String(event.id),
+    diff: { after: event },
+  });
   res.status(201).json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
 });
 
@@ -395,6 +403,10 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
   }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
   const slug = await ensureUniqueSlug(slugBase, params.data.id);
+  const [before] = await db
+    .select()
+    .from(eventsTable)
+    .where(eq(eventsTable.id, params.data.id));
   const [event] = await db
     .update(eventsTable)
     .set({
@@ -429,6 +441,13 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       error,
     });
   }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "event.update",
+    entity: "event",
+    entityId: String(event.id),
+    diff: before ? buildAuditDiff(before, event) : { after: event },
+  });
   res.json(ListAdminEventsResponseItem.parse(adminShape(enriched)));
 });
 
@@ -454,6 +473,13 @@ router.delete("/admin/events/:id", requireAdmin, async (req, res): Promise<void>
       error,
     });
   }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "event.delete",
+    entity: "event",
+    entityId: String(event.id),
+    diff: { before: event },
+  });
   res.sendStatus(204);
 });
 

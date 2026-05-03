@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
@@ -814,6 +815,9 @@ export default function CollateralEdit({ id }: Props) {
         categorySlug="case-study"
         kind="image"
       />
+      <div className="mt-6">
+        <ActivityTab entity="collateral" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

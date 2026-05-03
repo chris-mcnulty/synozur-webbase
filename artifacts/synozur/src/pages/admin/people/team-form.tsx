@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { api } from "@/lib/api";
 import type { TeamMemberInput } from "@workspace/api-zod/types";
 
@@ -303,6 +304,9 @@ export default function TeamForm({ id }: Props) {
           </Button>
         </div>
       </form>
+      <div className="mt-6">
+        <ActivityTab entity="team_member" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

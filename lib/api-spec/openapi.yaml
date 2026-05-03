@@ -751,6 +751,140 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Comment'
+  /cms/audit-log:
+    get:
+      tags: [CMS]
+      operationId: listAuditLog
+      summary: List audit-log entries (#258)
+      description: >
+        Cursor-paginated, filterable feed of `audit_log` rows. Any CMS role
+        can read; the per-entity activity tab on artifact edit pages calls
+        this with `entity` + `entityId`. The global viewer page is nav-gated
+        to admins via the `users.manage` capability, but the endpoint itself
+        accepts editor / author / contributor too.
+      parameters:
+        - in: query
+          name: actorId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: actorEmail
+          schema: { type: string }
+        - in: query
+          name: entity
+          schema: { type: string }
+        - in: query
+          name: entityId
+          schema: { type: string }
+        - in: query
+          name: actionPrefix
+          description: Matches rows whose `action` begins with this value (e.g. `auth.`, `post.`).
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Page of audit log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, action, entity, at]
+                      properties:
+                        id: { type: string, format: uuid }
+                        actorId:
+                          type: [string, 'null']
+                          format: uuid
+                        actorEmail:
+                          type: [string, 'null']
+                        actorDisplayName:
+                          type: [string, 'null']
+                        action: { type: string }
+                        entity: { type: string }
+                        entityId:
+                          type: [string, 'null']
+                        diff:
+                          description: >
+                            Structured `{ before, after }` diff produced by
+                            `buildAuditDiff()`; null when no diff was captured.
+                          type: [object, 'null']
+                          additionalProperties: true
+                        at: { type: string, format: date-time }
+                  nextCursor:
+                    type: [string, 'null']
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /cms/audit-log.csv:
+    get:
+      tags: [CMS]
+      operationId: exportAuditLogCsv
+      summary: Export audit-log entries as CSV (#258)
+      description: >
+        Same filters as `GET /cms/audit-log`, returning up to 10,000 rows in
+        CSV form. Admin-only since this is the compliance / legal-handoff
+        path.
+      parameters:
+        - in: query
+          name: actorId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: actorEmail
+          schema: { type: string }
+        - in: query
+          name: entity
+          schema: { type: string }
+        - in: query
+          name: entityId
+          schema: { type: string }
+        - in: query
+          name: actionPrefix
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
   /cms/users:
     get:
       operationId: listCmsUsers
@@ -5308,6 +5442,14 @@ components:
             - 'null'
           minimum: 1800000
           maximum: 2592000000
+        auditLogRetentionDays:
+          description: >
+            How many days of `audit_log` rows are retained by the daily prune
+            job (#258). Defaults to 365. Auth/OAuth/session events ignore this
+            and are kept for 5 years regardless.
+          type: integer
+          minimum: 30
+          maximum: 3650
         spamLinkThreshold:
           description: >
             Maximum number of links allowed in a contact form submission before
@@ -5588,6 +5730,13 @@ components:
             - 'null'
           minimum: 1800000
           maximum: 2592000000
+        auditLogRetentionDays:
+          description: >
+            Audit-log retention in days (#258). Pass an integer between 30 and
+            3650; auth/oauth/session events are always kept for 5 years.
+          type: integer
+          minimum: 30
+          maximum: 3650
         spamLinkThreshold:
           description: >
             Maximum number of links allowed in a contact form submission before

@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import {
   MediaPickerModal,
@@ -917,6 +918,9 @@ export default function CaseStudyEdit({ id }: Props) {
         }}
         filter="image"
       />
+      <div className="mt-6">
+        <ActivityTab entity="case_study" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

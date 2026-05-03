@@ -211,6 +211,7 @@ export interface AdminSiteSettings {
   spamLinkThreshold?: number | null;
   spamKeywords?: string[] | null;
   spamDomainBlocklist?: string[] | null;
+  auditLogRetentionDays?: number;
   // #215: Alt home page (`/home-b`) editorial copy overrides.
   homeBHeroHeadlinePrefix?: string | null;
   homeBHeroHeadlineAccent?: string | null;
@@ -584,6 +585,7 @@ export interface UpdateSiteSettingsBody {
   spamLinkThreshold?: number | null;
   spamKeywords?: string[] | null;
   spamDomainBlocklist?: string[] | null;
+  auditLogRetentionDays?: number;
   // #215: Alt home page (`/home-b`) editorial copy overrides.
   homeBHeroHeadlinePrefix?: string | null;
   homeBHeroHeadlineAccent?: string | null;

@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Image as ImageIcon, X, RefreshCw, MapPin, Film } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -472,6 +473,9 @@ export default function EventForm({ id }: Props) {
         categorySlug={libraryMode === "location" ? "location" : undefined}
         kind="image"
       />
+      <div className="mt-6">
+        <ActivityTab entity="event" entityId={id} />
+      </div>
       </div>
     </AdminLayout>
   );

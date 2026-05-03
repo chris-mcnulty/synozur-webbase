@@ -123,6 +123,13 @@ export interface SiteSettings {
    */
   idleTimeoutMs?: number | null;
   /**
+   * How many days of `audit_log` rows are retained by the daily prune job (#258). Defaults to 365. Auth/OAuth/session events ignore this and are kept for 5 years regardless.
+
+   * @minimum 30
+   * @maximum 3650
+   */
+  auditLogRetentionDays?: number;
+  /**
    * Maximum number of links allowed in a contact form submission before it is flagged as spam. Null disables link-count filtering.
 
    * @nullable

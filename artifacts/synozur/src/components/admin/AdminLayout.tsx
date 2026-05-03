@@ -190,6 +190,7 @@ const SECTIONS: NavSection[] = [
       { href: "/access/engagement-documents", label: "Engagement Documents", icon: FileText, capability: "users.manage", testId: "nav-admin-engagement-documents" },
       { href: "/access/entra", label: "Entra Mappings", icon: ShieldCheck, capability: "users.manage", testId: "nav-admin-entra" },
       { href: "/access/security-log", label: "Security Log", icon: Activity, capability: "users.manage", testId: "nav-admin-security-log" },
+      { href: "/access/audit-log", label: "Audit Log", icon: FileSearch, capability: "users.manage", testId: "nav-admin-audit-log" },
       { href: "/access/oauth-clients", label: "OAuth Clients", icon: AppWindow, capability: "oauth.manage", testId: "nav-admin-oauth-clients" },
     ],
   },

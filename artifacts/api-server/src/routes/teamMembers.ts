@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { ricosToHtml } from "../lib/ricos";
+import { audit, buildAuditDiff } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -174,6 +175,13 @@ router.post("/admin/team-members", requireAdmin, async (req, res): Promise<void>
       tags: parsed.data.tags ?? [],
     })
     .returning();
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "team_member.create",
+    entity: "team_member",
+    entityId: String(m.id),
+    diff: { after: m },
+  });
   res.status(201).json(ListAdminTeamMembersResponseItem.parse(adminShape(m)));
 });
 
@@ -190,6 +198,10 @@ router.patch("/admin/team-members/:id", requireAdmin, async (req, res): Promise<
   }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.name);
   const slug = await ensureUniqueSlug(slugBase, params.data.id);
+  const [before] = await db
+    .select()
+    .from(teamMembersTable)
+    .where(eq(teamMembersTable.id, params.data.id));
   const [m] = await db
     .update(teamMembersTable)
     .set({
@@ -213,6 +225,13 @@ router.patch("/admin/team-members/:id", requireAdmin, async (req, res): Promise<
     res.status(404).json({ error: "Team member not found" });
     return;
   }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "team_member.update",
+    entity: "team_member",
+    entityId: String(m.id),
+    diff: before ? buildAuditDiff(before, m) : { after: m },
+  });
   res.json(ListAdminTeamMembersResponseItem.parse(adminShape(m)));
 });
 
@@ -230,6 +249,13 @@ router.delete("/admin/team-members/:id", requireAdmin, async (req, res): Promise
     res.status(404).json({ error: "Team member not found" });
     return;
   }
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "team_member.delete",
+    entity: "team_member",
+    entityId: String(m.id),
+    diff: { before: m },
+  });
   res.sendStatus(204);
 });
 

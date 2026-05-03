@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
@@ -1111,6 +1112,9 @@ export default function WorkshopEdit({ id }: Props) {
         }}
         kind="image"
       />
+      <div className="mt-6">
+        <ActivityTab entity="workshop" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

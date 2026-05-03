@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import {
@@ -902,6 +903,9 @@ export default function SolutionEdit({ id }: Props) {
         title="Choose solution icon"
         categorySlug="service-icon"
       />
+      <div className="mt-6">
+        <ActivityTab entity="solution" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }

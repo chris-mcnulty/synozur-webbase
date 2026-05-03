@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { MediaPickerModal, mediaUrl, uploadAndRegisterImage } from "@/components/admin/MediaPickerModal";
@@ -851,6 +852,9 @@ export default function PostEditor({ id }: Props) {
         selectedId={form.ogImageId}
         title="Pick OG image"
       />
+      <div className="mt-6">
+        <ActivityTab entity="post" entityId={id} />
+      </div>
     </AdminLayout>
   );
 }
