@@ -74,35 +74,55 @@ function override(value: string | null | undefined, fallback: string): string {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
-const SOFTWARE = [
+// #214: Per-slug presentation overlays for /home-b's software cards. The
+// applications API drives the set, ordering, names, taglines, and
+// descriptions — these entries only contribute the editorial bits that
+// aren't part of an application record (the inside/outside lens framing
+// and a fallback copy block used if the API is unreachable on first
+// paint). Any slug *not* in this map will render with a neutral
+// "Internal" lens default.
+type LensKey = "inside" | "outside";
+
+const SOFTWARE_PRESENTATION: Record<
+  string,
   {
-    slug: "orion",
-    name: "Orion",
-    tagline: "Where every engagement begins.",
-    lens: "inside" as const,
+    lens: LensKey;
+    lensLabel: string;
+    fallbackName: string;
+    fallbackTagline: string;
+    fallbackDescription: string;
+  }
+> = {
+  orion: {
+    lens: "inside",
     lensLabel: "Internal Assessment",
-    description:
+    fallbackName: "Orion",
+    fallbackTagline: "Where every engagement begins.",
+    fallbackDescription:
       "Orion is Synozur's organizational diagnostic platform. It surfaces the signals that matter inside your organization — helping leadership teams align around a shared picture of current-state reality before committing to strategy.",
   },
-  {
-    slug: "vega",
-    name: "Vega",
-    tagline: "Strategy made trackable.",
-    lens: "inside" as const,
+  vega: {
+    lens: "inside",
     lensLabel: "Internal Execution",
-    description:
+    fallbackName: "Vega",
+    fallbackTagline: "Strategy made trackable.",
+    fallbackDescription:
       "Vega connects strategic decisions to measurable outcomes inside the organization. Leaders get a live view of how initiatives are advancing, where momentum is building, and where attention is needed — so strategy doesn't stay in the deck.",
   },
-  {
-    slug: "orbit",
-    name: "Orbit",
-    tagline: "The market, made legible.",
-    lens: "outside" as const,
+  orbit: {
+    lens: "outside",
     lensLabel: "External Intelligence",
-    description:
+    fallbackName: "Orbit",
+    fallbackTagline: "The market, made legible.",
+    fallbackDescription:
       "Orbit surfaces outside-in intelligence — market signals, competitor moves, positioning dynamics, and go-to-market context. It gives Synozur clients a clear view of the landscape their strategy must navigate, not just the terrain inside their organization.",
   },
-];
+};
+
+// Slugs we want to feature on /home-b. The API decides the *order*
+// among these (via featured / featuredRank); this list only filters
+// the broader application set down to the three "platform" cards.
+const FEATURED_SOFTWARE_SLUGS = ["orion", "vega", "orbit"] as const;
 
 export default function HomeB() {
   const { data: settings } = useQuery({
@@ -113,6 +133,54 @@ export default function HomeB() {
   const { data: workshopsData, isLoading: workshopsLoading } = useQuery({
     queryKey: ["public-workshops"],
     queryFn: () => workshopsApi.listPublic(),
+  });
+
+  // #214: Pull live applications so the featured software cards reflect
+  // current names, taglines, descriptions, AND ordering from the CMS.
+  // Same query key as the header nav so React Query dedupes the request.
+  // The API endpoint already orders by `featured` desc, then
+  // `featuredRank` asc, then title — so simply preserving its order
+  // here means changing rank in admin reorders the cards on /home-b
+  // without a code change.
+  const { data: applicationsData } = useQuery({
+    queryKey: ["applications", "nav"],
+    queryFn: () => api.listApplications(true),
+    staleTime: 5 * 60 * 1000,
+  });
+  const apiApps = applicationsData?.items ?? [];
+  const apiPositionBySlug = new Map(apiApps.map((a, i) => [a.slug, i]));
+
+  // Always render all three featured slots. We sort the slugs by the
+  // API's returned position (which already reflects featured /
+  // featuredRank / title) so admin reordering takes effect, but
+  // missing slugs still appear using their local fallback copy. Slugs
+  // not present in the API response are pinned to the end in their
+  // canonical declaration order so the layout stays stable.
+  const cardSlugs: string[] = [...FEATURED_SOFTWARE_SLUGS]
+    .map((slug, declIndex) => ({ slug, declIndex }))
+    .sort((a, b) => {
+      const aPos = apiPositionBySlug.get(a.slug);
+      const bPos = apiPositionBySlug.get(b.slug);
+      if (aPos === undefined && bPos === undefined) return a.declIndex - b.declIndex;
+      if (aPos === undefined) return 1;
+      if (bPos === undefined) return -1;
+      return aPos - bPos;
+    })
+    .map((entry) => entry.slug);
+
+  const softwareCards = cardSlugs.map((slug) => {
+    const live = apiApps.find((a) => a.slug === slug);
+    const presentation = SOFTWARE_PRESENTATION[slug];
+    const lens: LensKey = presentation?.lens ?? "inside";
+    const lensLabel = presentation?.lensLabel ?? "Internal";
+    const name = live?.name?.trim() || presentation?.fallbackName || slug;
+    const tagline =
+      live?.tagline?.trim() || presentation?.fallbackTagline || "";
+    const description =
+      live?.shortSummary?.trim() ||
+      presentation?.fallbackDescription ||
+      "";
+    return { slug, lens, lensLabel, name, tagline, description };
   });
   const allWorkshops: WorkshopDto[] = workshopsData?.items ?? [];
   const featuredWorkshop = allWorkshops[0] ?? null;
@@ -365,7 +433,7 @@ export default function HomeB() {
             </motion.div>
 
             <div className="flex flex-col gap-5">
-              {SOFTWARE.map((app, i) => (
+              {softwareCards.map((app, i) => (
                 <motion.div
                   key={app.slug}
                   initial={{ opacity: 0, y: 16 }}
