@@ -23,7 +23,8 @@
     "migrate:gcs-to-spe": "tsx src/scripts/migrateGcsToSpe.ts",
     "provision:spe-columns": "tsx src/scripts/provisionColumnsAll.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
-    "test:sessions": "node --import tsx --test src/lib/sessions.test.ts"
+    "test:sessions": "node --import tsx --test src/lib/sessions.test.ts",
+    "test:polaris-bulk-sync": "node --import tsx --test src/routes/polaris.bulkSync.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",
