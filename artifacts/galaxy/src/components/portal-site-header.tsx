@@ -178,7 +178,7 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
   );
 }
 
-export function PortalSiteHeader() {
+export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: boolean } = {}) {
   const { user, signOut } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -464,22 +464,24 @@ export function PortalSiteHeader() {
                 </button>
               </form>
 
-              {/* Portal nav */}
-              <div className="flex flex-col gap-3">
-                <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
-                <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
-                  {PORTAL_NAV.map((n) => {
-                    const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
-                    return (
-                      <Link key={n.href} href={n.href}
-                        className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
-                        onClick={() => setMobileMenuOpen(false)}>
-                        {n.label}
-                      </Link>
-                    );
-                  })}
+              {/* Portal nav — hidden when showing the lightweight sign-in header */}
+              {!hidePortalNav && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
+                  <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
+                    {PORTAL_NAV.map((n) => {
+                      const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+                      return (
+                        <Link key={n.href} href={n.href}
+                          className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
+                          onClick={() => setMobileMenuOpen(false)}>
+                          {n.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {navGroups.map((group) => (
                 <div key={group.title} className="flex flex-col gap-3">
@@ -529,7 +531,7 @@ export function PortalSiteHeader() {
       </header>
 
       {/* ── Galaxy portal secondary nav bar ── */}
-      <div className="w-full border-b border-border bg-background/95 backdrop-blur">
+      {!hidePortalNav && <div className="w-full border-b border-border bg-background/95 backdrop-blur">
         <div className="container mx-auto px-4 h-10 flex items-center gap-1">
           <span className="text-xs text-muted-foreground font-medium mr-3 hidden sm:inline">Galaxy Portal</span>
           <div className="flex items-center gap-1">
@@ -553,7 +555,7 @@ export function PortalSiteHeader() {
             </span>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ── Cmd-K command palette ── */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
