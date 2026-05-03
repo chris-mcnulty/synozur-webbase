@@ -98,6 +98,7 @@ export default function AdminCareersApplications() {
                   </td>
                   <td className="p-3 text-right">
                     <Link href={`/careers/applications/${a.id}`}>
+                      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
                       <a className="text-fuchsia-300 hover:underline text-xs" data-testid={`view-app-${a.id}`}>View</a>
                     </Link>
                   </td>

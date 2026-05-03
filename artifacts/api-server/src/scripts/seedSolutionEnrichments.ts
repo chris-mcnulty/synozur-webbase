@@ -44,9 +44,8 @@ function p(...lines: string[]): string {
   return lines.map((l) => `<p>${l}</p>`).join("\n");
 }
 
-function ul(items: string[]): string {
-  return `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
-}
+// `ul()` was a stale helper for an earlier seed shape; current seeds emit
+// list HTML inline. Removed.
 
 // ---------------------------------------------------------------------------
 // Microsoft Partner Development — content

@@ -22,7 +22,6 @@ import {
   LayoutGrid,
   Video as VideoIcon,
   BookOpen as BookOpenIcon,
-  CornerDownRight,
   GraduationCap,
   ExternalLink,
   Headphones,
@@ -246,7 +245,7 @@ export function AdminLayout({
   crumbs?: Crumb[];
   actions?: ReactNode;
 }) {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { signOut } = useAuth();
   const { access } = useAdminAccess();
   const { theme } = useTheme();

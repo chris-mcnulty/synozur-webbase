@@ -10,15 +10,12 @@ import {
   tagsTable,
   postCategories,
   postTags,
-  mediaTable,
-  usersTable,
   postViewsTable,
 } from "@workspace/db";
 import crypto from "node:crypto";
 import { serializePosts } from "../lib/postSerializer";
 import { audit } from "../lib/audit";
 import { verifyTurnstile } from "../lib/turnstile";
-import { logger } from "../lib/logger";
 import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
 import { scoreComment } from "../lib/spamScorer";
 import { isGone, sendGone } from "../lib/goneResponse";

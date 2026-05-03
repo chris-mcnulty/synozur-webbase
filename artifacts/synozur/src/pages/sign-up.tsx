@@ -9,7 +9,7 @@ import { useAuth } from "@/context/auth";
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 export default function SignUpPage() {
-  const { isSignedIn, isLoaded, refresh } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const search = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(search);

@@ -99,7 +99,7 @@ export default function SubscribersAdminPage() {
 
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tab]);
 
   async function resend(id: number) {

@@ -19,6 +19,7 @@ function AppCard({ card }: { card: PortalAppCard }) {
   const empty = card.artifactCount === 0;
   return (
     <Link href={`/apps/${card.sourceApp}`}>
+      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
       <a
         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         data-testid={`app-card-${card.sourceApp}`}
@@ -29,6 +30,7 @@ function AppCard({ card }: { card: PortalAppCard }) {
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-10 w-10 rounded-md bg-muted overflow-hidden flex items-center justify-center text-xs font-semibold uppercase">
                   {card.logo ? (
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError is a recovery hook, not user interaction.
                     <img
                       src={card.logo}
                       alt=""

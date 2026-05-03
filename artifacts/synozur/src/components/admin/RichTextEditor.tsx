@@ -204,7 +204,7 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, placeholder }: Props) {
+export function RichTextEditor({ value, onChange, placeholder: _placeholder }: Props) {
   const lastValueRef = useRef(value);
   // Heading-order issues are recomputed on every editor update — bumping
   // this counter tells the memo below to re-walk the doc.

@@ -27,6 +27,7 @@ export default function AdminCareersJobs() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Job postings</h1>
         <Link href="/careers/jobs/new">
+          {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
           <a>
             <Button data-testid="button-new-job"><Plus size={16} className="mr-1" /> New job</Button>
           </a>
@@ -63,6 +64,7 @@ export default function AdminCareersJobs() {
                   </td>
                   <td className="p-3 text-right">
                     <Link href={`/careers/jobs/${j.id}/edit`}>
+                      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
                       <a className="inline-flex items-center text-xs gap-1 mr-3 text-fuchsia-300 hover:underline" data-testid={`edit-${j.slug}`}>
                         <Pencil size={12} /> Edit
                       </a>

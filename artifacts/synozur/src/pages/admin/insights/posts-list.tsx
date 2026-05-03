@@ -38,26 +38,12 @@ const TAB_LABELS: { value: TabValue; label: string }[] = [
   { value: "archived", label: "Archived" },
 ];
 
-function statusBadge(s: PostStatus) {
-  const map: Record<PostStatus, string> = {
-    draft: "bg-muted text-muted-foreground",
-    scheduled: "bg-blue-500/15 text-blue-300",
-    published: "bg-emerald-500/15 text-emerald-300",
-    archived: "bg-amber-500/15 text-amber-300",
-  };
-  return (
-    <span className={`text-xs uppercase tracking-wide px-2 py-1 rounded ${map[s]}`}>
-      {s}
-    </span>
-  );
-}
-
 function formatDate(d?: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function SortIcon({ field, active, dir }: { field: string; active: boolean; dir: SortDir }) {
+function SortIcon({ field: _field, active, dir }: { field: string; active: boolean; dir: SortDir }) {
   if (!active) return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />;
   return dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 }

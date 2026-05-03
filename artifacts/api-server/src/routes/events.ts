@@ -15,7 +15,6 @@ import {
 } from "@workspace/db";
 import {
   ListPublicEventsResponse,
-  ListPublicEventsResponseItem,
   ListAdminEventsResponse,
   ListAdminEventsResponseItem,
   GetAdminEventResponse,

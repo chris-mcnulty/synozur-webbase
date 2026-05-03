@@ -45,6 +45,7 @@ const PaginationLink = ({
   size = "icon",
   ...props
 }: PaginationLinkProps) => (
+  // eslint-disable-next-line jsx-a11y/anchor-has-content -- shadcn PaginationLink slot; href + content come from the caller via {...props}.
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(

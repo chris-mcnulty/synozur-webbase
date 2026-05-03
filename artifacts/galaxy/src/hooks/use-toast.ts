@@ -15,6 +15,10 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
+// Shadcn use-toast canonical shape: the const is only consumed via
+// `typeof actionTypes` to derive `ActionType`, but kept verbatim here so
+// upstream-template diffs stay clean.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",

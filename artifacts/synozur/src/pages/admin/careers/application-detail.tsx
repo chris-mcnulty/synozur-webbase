@@ -49,6 +49,7 @@ export default function CareersApplicationDetail({ id }: Props) {
   return (
     <AdminLayout title={`Application — ${a.fullName}`}>
       <Link href="/careers/applications">
+        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
         <a className="text-sm text-muted-foreground hover:text-foreground">← All applications</a>
       </Link>
       <h1 className="text-2xl font-semibold mt-2 mb-1" data-testid="app-name">{a.fullName}</h1>
@@ -58,6 +59,7 @@ export default function CareersApplicationDetail({ id }: Props) {
         <div className="md:col-span-2 space-y-6">
           {data.job && (
             <div className="rounded border border-border bg-card p-4 text-sm">
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
               Applied for: <Link href={`/careers/jobs/${data.job.id}/edit`}><a className="font-medium text-fuchsia-300">{data.job.title}</a></Link> <span className="text-muted-foreground">({data.job.requisitionNumber})</span>
             </div>
           )}

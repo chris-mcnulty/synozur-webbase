@@ -53,6 +53,8 @@ export async function ensureUniqueSlugFor(
 ): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
+  // Drizzle column references are statically typed per-schema; this helper is
+  // generic across all soft-deletable tables, so we widen `table` here.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t = table as any;
   while (true) {
@@ -136,6 +138,7 @@ export async function softDeleteArtifact(args: {
   actorId: string;
 }): Promise<boolean> {
   const { table, id, entity, actorId } = args;
+  // Generic across all soft-deletable tables — same rationale as above.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t = table as any;
   const existing = await db

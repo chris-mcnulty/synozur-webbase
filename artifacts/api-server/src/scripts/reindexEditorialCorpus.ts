@@ -8,7 +8,7 @@ import { logger } from "../lib/logger";
 async function main() {
   const result = await reindexEditorialCorpus();
   logger.info(result, "Editorial corpus reindex complete");
-  // eslint-disable-next-line no-console
+   
   console.log(JSON.stringify(result, null, 2));
   process.exit(0);
 }

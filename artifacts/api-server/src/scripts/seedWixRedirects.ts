@@ -16,7 +16,7 @@
  *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedWixRedirects.ts
  */
 
-import { db, wixRedirectsTable } from "@workspace/db";
+import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -241,7 +241,8 @@ async function main() {
   console.log(`CSV: ${csvRows.length} active rows found`);
   for (const [src, tgt] of csvRows) {
     const ok = await upsert(src, tgt, "Seeded from Wix CSV export");
-    ok ? csvInserted++ : csvSkipped++;
+    if (ok) csvInserted++;
+    else csvSkipped++;
   }
   console.log(`CSV: inserted=${csvInserted}, skipped/duplicate=${csvSkipped}\n`);
 
@@ -249,7 +250,8 @@ async function main() {
   console.log(`Sitemap-analysis: ${SITEMAP.length} rules`);
   for (const [src, tgt] of SITEMAP) {
     const ok = await upsert(src, tgt, "Seeded from sitemap analysis");
-    ok ? sitemapInserted++ : sitemapSkipped++;
+    if (ok) sitemapInserted++;
+    else sitemapSkipped++;
   }
   console.log(`Sitemap-analysis: inserted=${sitemapInserted}, skipped/duplicate=${sitemapSkipped}\n`);
 
@@ -257,7 +259,8 @@ async function main() {
   console.log(`Group 1: ${GROUP1.length} rules`);
   for (const [src, tgt] of GROUP1) {
     const ok = await upsert(src, tgt, "Group 1 — page not rebuilt on new site");
-    ok ? g1Inserted++ : g1Skipped++;
+    if (ok) g1Inserted++;
+    else g1Skipped++;
   }
   console.log(`Group 1: inserted=${g1Inserted}, skipped/duplicate=${g1Skipped}\n`);
 

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
-import { api, type AdminSiteSettings, type UpdateSiteSettingsBody } from "@/lib/api";
+import { api, type UpdateSiteSettingsBody } from "@/lib/api";
 import type { MediaItem } from "@workspace/api-client-react";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

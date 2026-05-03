@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ne, asc, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import {
   db,
   videosTable,
@@ -24,7 +24,7 @@ const readGuard = [requireAuth];
 async function ensureUniqueVideoSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.videosTable.findFirst({
       where: excludeId

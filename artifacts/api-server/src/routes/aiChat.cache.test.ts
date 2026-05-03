@@ -51,7 +51,7 @@ const utcDay = new Date().toISOString().slice(0, 10);
 // Captured streamParams from each invocation — the test assertions read
 // from this so we can prove the marker shape end-to-end.
 let captured: Array<Record<string, unknown>> = [];
-let streamScript: Array<{
+const streamScript: Array<{
   text: string;
   cacheCreationInputTokens: number;
   cacheReadInputTokens: number;

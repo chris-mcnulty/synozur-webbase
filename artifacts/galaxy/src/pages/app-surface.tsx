@@ -65,6 +65,7 @@ const SURFACE_META: Record<PortalSourceApp, SurfaceMeta> = {
 function ArtifactRow({ a }: { a: PortalArtifactSummary }) {
   return (
     <Link href={`/apps/${a.sourceApp}/${a.id}`}>
+      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
       <a
         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         data-testid={`artifact-row-${a.id}`}
@@ -131,6 +132,7 @@ export default function AppSurfacePage({
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         <div className="space-y-3">
           <Link href="/apps">
+            {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
             <a className="text-xs text-muted-foreground hover:underline" data-testid="link-back-to-apps">
               ← All apps
             </a>

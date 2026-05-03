@@ -8,7 +8,6 @@ import {
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
 import { stashSpeUpload } from "../lib/storage/spe/uploadCache";
 import { requireAuth, requireRole } from "../middlewares/auth";
 

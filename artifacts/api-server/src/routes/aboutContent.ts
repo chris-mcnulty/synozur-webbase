@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import {
   db,
   aboutValuesTable,
@@ -77,6 +77,7 @@ async function ensureUniqueSlug(
   let slug = toSlug(base);
   let i = 1;
   while (true) {
+    // Generic over multiple `*Table` schemas; widening here is intentional.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t = table as any;
     const rows = await db

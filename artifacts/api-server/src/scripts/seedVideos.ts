@@ -43,13 +43,24 @@ interface VideoData {
   durationSeconds: number | null;
 }
 
+// Ricos JSON is loosely-typed third-party content; we walk it structurally.
+type RicosNode = {
+  type?: string;
+  nodes?: RicosNode[];
+  videoData?: {
+    video?: { src?: { url?: string }; duration?: number };
+    thumbnail?: { src?: { url?: string } };
+  };
+  textData?: { text?: string };
+};
+
 function extractVideoFromRicos(json: string): VideoData {
   const fallback: VideoData = { videoUrl: "", thumbnailUrl: "", durationSeconds: null };
   if (!json) return fallback;
   try {
-    const doc = JSON.parse(json) as { nodes: any[] };
+    const doc = JSON.parse(json) as { nodes: RicosNode[] };
 
-    function findVideoNode(node: any): any {
+    function findVideoNode(node: RicosNode): RicosNode["videoData"] | null {
       if (node.type === "VIDEO" && node.videoData) return node.videoData;
       for (const child of node.nodes ?? []) {
         const found = findVideoNode(child);
@@ -73,10 +84,10 @@ function extractVideoFromRicos(json: string): VideoData {
 function ricosToShortText(json: string, maxLen = 300): string {
   if (!json) return "";
   try {
-    const doc = JSON.parse(json) as { nodes: any[] };
+    const doc = JSON.parse(json) as { nodes: RicosNode[] };
     const texts: string[] = [];
 
-    function walk(node: any) {
+    function walk(node: RicosNode) {
       if (node.type === "TEXT" && node.textData?.text) {
         texts.push(node.textData.text as string);
       }

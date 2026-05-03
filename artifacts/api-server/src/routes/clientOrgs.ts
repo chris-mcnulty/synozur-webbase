@@ -76,7 +76,6 @@ function generateSecureToken(): string {
 // choices via /admin/client-orgs/_lookup/staff, but the API enforces it
 // independently so a hand-crafted POST/PATCH cannot bind an unrelated
 // user as the account manager.
-const ELIGIBLE_AM_ROLES = ["admin", "site_admin", "account_manager"] as const;
 async function assertEligibleAccountManager(userId: string): Promise<string | null> {
   const exists = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
   if (!exists) return "Unknown account manager user.";

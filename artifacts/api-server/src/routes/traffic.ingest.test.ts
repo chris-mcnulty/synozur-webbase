@@ -81,7 +81,7 @@ test.after(async () => {
 async function postIngest(
   authHeader: string | null,
   body: unknown,
-): Promise<{ status: number; json: any }> {
+): Promise<{ status: number; json: unknown }> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (authHeader) headers["Authorization"] = authHeader;
   const res = await fetch(`${baseUrl}/api/traffic/ingest`, {
@@ -89,7 +89,7 @@ async function postIngest(
     headers,
     body: JSON.stringify(body),
   });
-  let json: any = null;
+  let json: unknown = null;
   try {
     json = await res.json();
   } catch {

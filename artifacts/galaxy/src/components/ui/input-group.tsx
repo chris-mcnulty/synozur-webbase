@@ -61,6 +61,7 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- shadcn input-group: clicking the addon focuses the sibling input; the input itself remains the accessible target.
     <div
       role="group"
       data-slot="input-group-addon"

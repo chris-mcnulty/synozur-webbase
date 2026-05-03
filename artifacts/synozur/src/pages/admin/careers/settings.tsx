@@ -90,6 +90,7 @@ export default function CareersSettingsPage() {
           </p>
         </div>
         <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders a button, not a native input the rule recognises. */}
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={form.eeoEnabled}

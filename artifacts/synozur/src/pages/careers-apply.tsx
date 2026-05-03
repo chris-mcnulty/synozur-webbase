@@ -149,6 +149,7 @@ export default function CareersApplyPage({ general = false }: Props) {
     <div className="px-4 py-12 max-w-2xl mx-auto">
       <Meta title={heading} />
       <Link href={slug ? `/careers/jobs/${slug}` : "/careers"}>
+        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
         <a className="text-sm text-muted-foreground hover:text-foreground">← Back</a>
       </Link>
       <h1 className="text-3xl font-bold mt-4 mb-6" data-testid="apply-heading">{heading}</h1>
@@ -215,10 +216,12 @@ export default function CareersApplyPage({ general = false }: Props) {
         </div>
 
         <div className="flex gap-6 flex-wrap">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders a button, not a native input the rule recognises. */}
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.workAuthorized} onCheckedChange={(v) => setForm({ ...form, workAuthorized: v === true })} data-testid="input-workauth" />
             Authorized to work in country of role
           </label>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders a button, not a native input the rule recognises. */}
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={form.requireSponsorship} onCheckedChange={(v) => setForm({ ...form, requireSponsorship: v === true })} data-testid="input-sponsor" />
             Will require visa sponsorship
@@ -254,6 +257,7 @@ export default function CareersApplyPage({ general = false }: Props) {
           </details>
         )}
 
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders a button, not a native input the rule recognises. */}
         <label className="flex items-start gap-2 text-sm">
           <Checkbox
             checked={form.gdprConsent}

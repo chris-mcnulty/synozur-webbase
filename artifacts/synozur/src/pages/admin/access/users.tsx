@@ -41,8 +41,7 @@ type AssignableRole = (typeof ALL_ROLES)[number];
 // the local-registration discriminator); `unknown` catches anything else so
 // admins notice an unexpected provider value rather than seeing it silently
 // hidden by the filter.
-const PROVIDER_FILTERS = ["all", "entra", "imported", "local", "unknown"] as const;
-type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
+type ProviderFilter = "all" | "entra" | "imported" | "local" | "unknown";
 
 function classifyProvider(authProvider: string | null | undefined): Exclude<ProviderFilter, "all"> {
   if (!authProvider) return "local";

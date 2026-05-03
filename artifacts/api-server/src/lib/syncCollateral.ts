@@ -9,7 +9,6 @@ import {
   postTags,
   categoriesTable,
   tagsTable,
-  workshopsTable,
   type Event,
   type Post,
   type Video,

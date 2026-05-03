@@ -15,7 +15,7 @@
  *   pnpm --filter @workspace/insights-crawler run ingest -- --yes --slug=foo
  */
 import { readFile } from "node:fs/promises";
-import { resolve, extname, basename } from "node:path";
+import { resolve, extname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { eq, and } from "drizzle-orm";
 import {

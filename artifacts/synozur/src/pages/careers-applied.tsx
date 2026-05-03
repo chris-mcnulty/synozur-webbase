@@ -15,6 +15,7 @@ export default function CareersAppliedPage() {
       </p>
       <div className="mt-8">
         <Link href="/careers">
+          {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
           <a><Button>View other openings</Button></a>
         </Link>
       </div>

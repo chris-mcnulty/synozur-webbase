@@ -106,7 +106,7 @@ const readGuard = [requireAuth];
 async function ensureUniqueServiceSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.servicesTable.findFirst({
       where: excludeId
@@ -122,7 +122,7 @@ async function ensureUniqueServiceSlug(base: string, excludeId?: string): Promis
 async function ensureUniqueSolutionSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.solutionsTable.findFirst({
       where: excludeId

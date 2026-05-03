@@ -34,6 +34,7 @@ export default function CareersDetailPage() {
       <div className="px-4 py-16 max-w-3xl mx-auto" data-testid="career-not-found">
         <h1 className="text-2xl font-semibold">Position not found</h1>
         <p className="text-muted-foreground mt-2">
+          {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
           This role is no longer open. <Link href="/careers"><a className="text-fuchsia-300 underline">View open positions</a></Link>.
         </p>
       </div>
@@ -44,6 +45,7 @@ export default function CareersDetailPage() {
     <div className="px-4 py-12 max-w-3xl mx-auto">
       <Meta title={`${job.title} — Careers`} description={job.description.slice(0, 160) || job.title} />
       <Link href="/careers">
+        {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
         <a className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft size={14} /> All positions
         </a>
@@ -78,6 +80,7 @@ export default function CareersDetailPage() {
 
       <div className="mt-10">
         <Link href={`/careers/jobs/${job.slug}/apply`}>
+          {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
           <a>
             <Button size="lg" data-testid="button-apply">
               Apply for this role

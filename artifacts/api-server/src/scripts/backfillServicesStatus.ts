@@ -27,7 +27,7 @@ async function main() {
   const solutions = await db.execute(
     sql`update solutions set status = 'published' where status = 'draft' returning id`,
   );
-  // eslint-disable-next-line no-console
+   
   console.log(
     `Backfilled ${services.rowCount ?? 0} services and ${solutions.rowCount ?? 0} solutions to status=published.`,
   );
@@ -35,7 +35,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error(err);
   process.exit(1);
 });

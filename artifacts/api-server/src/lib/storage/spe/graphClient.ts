@@ -385,7 +385,11 @@ export class SpeGraphClient {
     containerId: string,
     path: string,
     body: Buffer,
-    contentType: string,
+    // Resumable upload chunks set Content-Range/Length per chunk, not a
+    // Content-Type for the item. Kept in the signature so callers stay
+    // symmetric with `uploadSimple`; prefixed `_` to mark intentionally
+    // unused.
+    _contentType: string,
   ): Promise<SpeFileItem> {
     const driveId = await this.getContainerDriveId(containerId);
     const safePath = encodePath(path);

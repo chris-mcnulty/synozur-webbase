@@ -77,7 +77,7 @@ async function main(): Promise<void> {
   const [{ mediaTotal }] = await db
     .select({ mediaTotal: sql<number>`count(*)::int` })
     .from(mediaTable);
-  // eslint-disable-next-line no-console
+   
   console.log(
     `Seeded ${count} asset categories. Assets: ${tagged} tagged, ${untagged} untagged. Media rows: ${mediaTotal}.`,
   );
@@ -87,7 +87,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().then(
     () => process.exit(0),
     (err) => {
-      // eslint-disable-next-line no-console
+       
       console.error(err);
       process.exit(1);
     },

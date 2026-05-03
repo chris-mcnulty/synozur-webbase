@@ -116,7 +116,6 @@ export default function OrganizationsPage() {
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [members, setMembers] = useState<Record<string, Member[]>>({});
   const [assignEmail, setAssignEmail] = useState<Record<string, string>>({});
-  const [editing, setEditing] = useState<string | null>(null);
   const [artifacts, setArtifacts] = useState<Record<string, PortalArtifact[]>>({});
   const [artifactForm, setArtifactForm] = useState<Record<string, typeof EMPTY_ARTIFACT_FORM>>({});
 

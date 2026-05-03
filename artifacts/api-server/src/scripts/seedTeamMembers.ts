@@ -123,7 +123,7 @@ async function main() {
 
   let inserted = 0;
   let updated = 0;
-  let skipped = 0;
+  const skipped = 0;
   for (const row of data) {
     const name = row[nameIdx]?.trim();
     const teamItem = row[teamItemIdx]?.trim() ?? "";

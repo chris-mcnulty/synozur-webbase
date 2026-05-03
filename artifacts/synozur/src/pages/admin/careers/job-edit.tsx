@@ -64,7 +64,7 @@ export default function CareersJobEdit({ id }: Props) {
     } else if (nextRn && isNew && !form.requisitionNumber) {
       setForm((f) => ({ ...f, requisitionNumber: nextRn.requisitionNumber }));
     }
-  }, [job, nextRn, isNew]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [job, nextRn, isNew]);  
 
   const save = useMutation({
     mutationFn: async () => {

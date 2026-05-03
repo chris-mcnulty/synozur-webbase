@@ -1,5 +1,4 @@
 import { db, wixRedirectsTable, postsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import { normalizePath } from "./util";
 
 const MAX_REDIRECT_DEPTH = 5;

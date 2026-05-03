@@ -23,6 +23,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link href="/">
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
               <a className="flex items-center gap-3" data-testid="link-home">
                 <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
                   G
@@ -43,6 +44,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                     : location === n.href || location.startsWith(`${n.href}/`);
                 return (
                   <Link key={n.href} href={n.href}>
+                    {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
                     <a
                       data-testid={`nav-${n.label.toLowerCase()}`}
                       className={`px-3 py-1.5 rounded-md text-sm ${

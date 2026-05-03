@@ -62,6 +62,7 @@ export default function CareersPage() {
               {jobs.map((j) => (
                 <li key={j.id}>
                   <Link href={`/careers/jobs/${j.slug}`}>
+                    {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
                     <a
                       className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-lg border border-border bg-card p-5 hover-elevate"
                       data-testid={`careers-job-${j.slug}`}

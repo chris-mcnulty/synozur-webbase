@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ne, asc, sql, inArray } from "drizzle-orm";
+import { and, desc, eq, ne, sql, inArray } from "drizzle-orm";
 import {
   db,
   whitePapersTable,
@@ -30,7 +30,7 @@ const readGuard = [requireAuth];
 async function ensureUniqueWhitePaperSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.whitePapersTable.findFirst({
       where: excludeId

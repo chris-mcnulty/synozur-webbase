@@ -256,7 +256,7 @@ const readGuard = [requireAuth];
 async function ensureUniqueSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.collateralTable.findFirst({
       where: excludeId

@@ -131,7 +131,7 @@ async function main() {
     inserted++;
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(
     `Backfill complete. inserted=${inserted} (media-backed=${resolvedToMedia}, external=${resolvedToExternal}); skipped=${skippedExisting} already-has-resources, ${skippedEmpty} empty download_url; total candidates=${candidates.length}.`,
   );
@@ -140,7 +140,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error(err);
   process.exit(1);
 });

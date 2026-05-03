@@ -66,7 +66,7 @@ async function main() {
     updated += 1;
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(
     `Backfill complete. updated=${updated}; skipped=${0} (already non-empty rows are not selected); candidates=${candidates.length}.`,
   );
@@ -75,7 +75,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error(err);
   process.exit(1);
 });

@@ -8,6 +8,8 @@ export interface AdminInfo {
 }
 
 declare global {
+  // Express's request augmentation pattern requires module-merging into the
+  // existing `Express` namespace; ES2015 module syntax can't replicate this.
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {

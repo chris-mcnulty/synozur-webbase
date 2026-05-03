@@ -65,7 +65,7 @@ function InputGroupAddon({
     // input. The keyboard equivalent is simply tabbing to the input
     // itself, which is already focusable, so this onClick is a pure
     // pointer affordance and a keyboard listener would be redundant.
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       role="group"
       data-slot="input-group-addon"

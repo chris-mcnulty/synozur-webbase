@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike, or, sql, isNull, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql, isNull } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -85,7 +85,7 @@ async function syncPostCollateral(post: typeof postsTable.$inferSelect): Promise
 async function ensureUniqueSlug(base: string, excludePostId?: string): Promise<string> {
   let slug = base;
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.postsTable.findFirst({
       where: excludePostId

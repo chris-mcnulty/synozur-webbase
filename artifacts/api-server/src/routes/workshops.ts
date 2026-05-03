@@ -208,7 +208,7 @@ export type WorkshopDto = ReturnType<typeof shape>;
 async function ensureUniqueSlug(base: string, excludeId?: string): Promise<string> {
   let slug = toSlug(base);
   let i = 1;
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const found = await db.query.workshopsTable.findFirst({
       where: excludeId

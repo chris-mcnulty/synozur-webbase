@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -142,6 +142,7 @@ export default function TrafficPropertiesPage() {
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href="/marketing/traffic-import">
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
               <a>Import data</a>
             </Link>
           </Button>
@@ -162,6 +163,7 @@ export default function TrafficPropertiesPage() {
               Properties are the registry of distinct Synozur web properties whose traffic is reported in this admin.
               The built-in <code>synozur</code> property captures live first-party traffic from this app.
               Add a new property for each sister app or legacy export, then either issue an API key (for live ingest
+              {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
               from a sister app) or use the <Link href="/marketing/traffic-import"><a className="underline">Import</a></Link>{" "}
               page to upload JSON / CSV exports.
             </p>

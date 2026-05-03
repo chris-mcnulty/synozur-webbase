@@ -177,7 +177,7 @@ export async function cleanupOrphans(
   const subject = filtered.slice(0, cap);
 
   let deleted = 0;
-  let skipped = filtered.length - subject.length;
+  const skipped = filtered.length - subject.length;
   const failures: Array<{ id: string; reason: string }> = [];
 
   for (const item of subject) {

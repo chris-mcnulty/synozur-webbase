@@ -57,11 +57,6 @@ function upsertMeta(attr: "name" | "property", key: string, content: string) {
   el.setAttribute("content", content);
 }
 
-function removeMeta(attr: "name" | "property", key: string) {
-  const el = document.head.querySelector(`meta[${attr}="${key}"]`);
-  if (el) el.remove();
-}
-
 function upsertLink(rel: string, href: string) {
   let el = document.head.querySelector(`link[rel="${rel}"]`);
   if (!el) {

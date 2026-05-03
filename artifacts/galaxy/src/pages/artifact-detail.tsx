@@ -40,6 +40,7 @@ export default function ArtifactDetailPage({
     <PortalShell>
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         <Link href={`/apps/${sourceApp}`}>
+          {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
           <a className="text-xs text-muted-foreground hover:underline" data-testid="link-back-to-app">
             ← Back to {sourceApp}
           </a>

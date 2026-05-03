@@ -90,7 +90,7 @@ export default function Documents() {
   // are fetched in the effect below so customers with >100 published files
   // see the complete list rather than a silently truncated first page.
   const [extraItems, setExtraItems] = useState<PortalDocument[]>([]);
-  const [paging, setPaging] = useState(false);
+  const [, setPaging] = useState(false);
 
   const forbiddenReason: PortalForbiddenReason | null = (() => {
     const err = (meQuery.error ?? docsQuery.error) as

@@ -9,15 +9,18 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck && pnpm run check:removed-identifiers",
     "check:removed-identifiers": "pnpm --filter @workspace/scripts run check:removed-identifiers",
-    "lint": "eslint \"artifacts/synozur/src/**/*.{ts,tsx,js,jsx}\"",
-    "lint:fix": "eslint \"artifacts/synozur/src/**/*.{ts,tsx,js,jsx}\" --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "lhci": "lhci autorun --config=./lighthouserc.json",
     "prepare": "husky || true"
   },
   "private": true,
   "lint-staged": {
-    "artifacts/synozur/src/**/*.{ts,tsx,js,jsx}": [
+    "{artifacts/{synozur,galaxy,mockup-sandbox}/src,lib/{api-client-react,object-storage-web,auth-sdk}/src}/**/*.{ts,tsx,js,jsx}": [
       "eslint --max-warnings=0"
+    ],
+    "{artifacts/api-server/src,scripts/src,lib/{db,api-zod,integrations-anthropic-ai}/src,tools/*/src}/**/*.{ts,js}": [
+      "eslint"
     ]
   },
   "devDependencies": {
