@@ -165,9 +165,10 @@ test("hidden exclusion: public service detail omits hidden methodologies", async
     // No hidden methodologies in seed data; skip without failing.
     return;
   }
-  const detail = await getServiceWithMethodologies(candidate[0].slug);
-  assert.ok(detail, "service detail loaded");
-  for (const m of detail!.methodologies) {
+  const result = await getServiceWithMethodologies(candidate[0].slug);
+  assert.equal(result.kind, "ok", "service detail loaded");
+  if (result.kind !== "ok") return;
+  for (const m of result.data.methodologies) {
     assert.equal(m.hidden, false, "no hidden methodology surfaced publicly");
   }
 });
@@ -185,9 +186,10 @@ test("hidden exclusion: public solution detail omits hidden capabilities", async
     )
     .limit(1);
   if (candidate.length === 0) return;
-  const detail = await getSolutionWithCapabilities(candidate[0].slug);
-  assert.ok(detail, "solution detail loaded");
-  for (const c of detail!.capabilities) {
+  const result = await getSolutionWithCapabilities(candidate[0].slug);
+  assert.equal(result.kind, "ok", "solution detail loaded");
+  if (result.kind !== "ok") return;
+  for (const c of result.data.capabilities) {
     assert.equal(c.hidden, false, "no hidden capability surfaced publicly");
   }
 });
@@ -199,10 +201,11 @@ test("solution detail returns parent service when present", async () => {
     .where(sql`${solutionsTable.parentServiceId} IS NOT NULL`)
     .limit(1);
   assert.ok(sol.length === 1, "found a solution with parent service");
-  const detail = await getSolutionWithCapabilities(sol[0].slug);
-  assert.ok(detail, "detail loaded");
-  assert.ok(detail!.parentService, "parentService present");
-  assert.ok(detail!.capabilities.length >= 0, "capabilities array present");
+  const result = await getSolutionWithCapabilities(sol[0].slug);
+  assert.equal(result.kind, "ok", "detail loaded");
+  if (result.kind !== "ok") return;
+  assert.ok(result.data.parentService, "parentService present");
+  assert.ok(result.data.capabilities.length >= 0, "capabilities array present");
 });
 
 test.after(async () => {

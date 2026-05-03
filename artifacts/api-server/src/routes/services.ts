@@ -34,6 +34,7 @@ import {
   setEntityTags,
 } from "../lib/servicesSerializer";
 import { signPreviewToken, verifyPreviewToken } from "../lib/previewToken";
+import { sendGone } from "../lib/goneResponse";
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -62,11 +63,15 @@ router.get("/services/:slug", async (req, res) => {
     preview = Boolean(row && verifyPreviewToken(previewToken, "service", row.id));
   }
   const result = await getServiceWithMethodologies(slug, { preview });
-  if (!result) {
+  if (result.kind === "not_found") {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(result);
+  if (result.kind === "gone") {
+    sendGone(res, "service");
+    return;
+  }
+  res.json(result.data);
 });
 
 router.get("/solutions/:slug", async (req, res) => {
@@ -81,11 +86,15 @@ router.get("/solutions/:slug", async (req, res) => {
     preview = Boolean(row && verifyPreviewToken(previewToken, "solution", row.id));
   }
   const result = await getSolutionWithCapabilities(slug, { preview });
-  if (!result) {
+  if (result.kind === "not_found") {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(result);
+  if (result.kind === "gone") {
+    sendGone(res, "solution");
+    return;
+  }
+  res.json(result.data);
 });
 
 // ----- Admin -------------------------------------------------------------

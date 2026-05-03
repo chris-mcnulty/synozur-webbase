@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { isGone, sendGone } from "../lib/goneResponse";
 import {
   upsertCollateralFromApplication,
   softDeleteCollateralForApplication,
@@ -112,14 +113,23 @@ router.get("/applications/:slug", async (req, res) => {
   const row = await db.query.applicationsTable.findFirst({
     where: and(
       eq(applicationsTable.slug, slug),
-      eq(applicationsTable.active, true),
-      eq(applicationsTable.status, "published"),
       sql`${applicationsTable.deletedAt} is null`,
-      sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
-      sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
     ),
   });
   if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived or past-unpublishedAt returns 410 Gone for prompt de-indexing.
+  if (isGone(row)) {
+    sendGone(res, "application");
+    return;
+  }
+  if (
+    !row.active ||
+    row.status !== "published" ||
+    (row.publishedAt && row.publishedAt > new Date())
+  ) {
     res.status(404).json({ error: "Not found" });
     return;
   }

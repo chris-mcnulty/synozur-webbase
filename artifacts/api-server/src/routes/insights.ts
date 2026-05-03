@@ -21,6 +21,7 @@ import { verifyTurnstile } from "../lib/turnstile";
 import { logger } from "../lib/logger";
 import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
 import { scoreComment } from "../lib/spamScorer";
+import { isGone, sendGone } from "../lib/goneResponse";
 
 const router: IRouter = Router();
 
@@ -165,10 +166,18 @@ router.get("/insights/:slug", async (req, res) => {
     where: and(
       eq(postsTable.slug, String(req.params.slug)),
       isNull(postsTable.deletedAt),
-      eq(postsTable.status, "published"),
     ),
   });
-  if (!post || (post.publishedAt && post.publishedAt > new Date())) {
+  if (!post) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived posts return 410 Gone so Google de-indexes promptly.
+  if (isGone(post)) {
+    sendGone(res, "post");
+    return;
+  }
+  if (post.status !== "published" || (post.publishedAt && post.publishedAt > new Date())) {
     res.status(404).json({ error: "Not found" });
     return;
   }

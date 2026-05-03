@@ -12,6 +12,8 @@ import {
   getCaseStudyBySlug as getStaticCaseStudyBySlug,
 } from "@/data/case-studies";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
+import { ApiError } from "@/lib/api";
 
 function staticAsDto(s: (typeof staticCaseStudies)[number]): CaseStudyDto {
   return {
@@ -84,6 +86,9 @@ export default function CaseStudyDetail() {
   }
 
   if (!study) {
+    if (detailQ.error instanceof ApiError && detailQ.error.status === 410) {
+      return <Gone backHref="/case-studies" backLabel="Back to Case Studies" />;
+    }
     return <NotFound />;
   }
 

@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
+import { isGone, sendGone } from "../lib/goneResponse";
 import { toSlug } from "../lib/slug";
 import {
   upsertCollateralFromModel,
@@ -107,14 +108,23 @@ router.get("/models/:slug", async (req, res) => {
   const row = await db.query.modelsTable.findFirst({
     where: and(
       eq(modelsTable.slug, slug),
-      eq(modelsTable.active, true),
-      eq(modelsTable.status, "published"),
       sql`${modelsTable.deletedAt} is null`,
-      sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
-      sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
     ),
   });
   if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived or past-unpublishedAt returns 410 Gone for prompt de-indexing.
+  if (isGone(row)) {
+    sendGone(res, "model");
+    return;
+  }
+  if (
+    !row.active ||
+    row.status !== "published" ||
+    (row.publishedAt && row.publishedAt > new Date())
+  ) {
     res.status(404).json({ error: "Not found" });
     return;
   }

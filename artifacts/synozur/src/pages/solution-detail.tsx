@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
+import Gone from "./gone";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { BookingCard } from "@/components/BookingCard";
@@ -45,6 +46,10 @@ export default function SolutionDetail() {
       return count < 2;
     },
   });
+
+  if (q.isError && q.error instanceof Error && /\b410\b/.test(q.error.message)) {
+    return <Gone backHref="/services" backLabel="Back to Services" />;
+  }
 
   if (q.isError && q.error instanceof Error && /404/.test(q.error.message)) {
     return <NotFound />;

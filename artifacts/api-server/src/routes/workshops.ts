@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, eq, isNull, ne, asc } from "drizzle-orm";
+import { sendGone } from "../lib/goneResponse";
 import { db, workshopsTable, type Workshop } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -286,8 +287,15 @@ router.get("/workshops/:slug", async (req, res) => {
   const row = await db.query.workshopsTable.findFirst({
     where: eq(workshopsTable.slug, slug),
   });
-  if (!row || row.deletedAt || !row.active) {
+  if (!row || row.deletedAt) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: a workshop that was published and then deactivated returns 410
+  // Gone so Google de-indexes promptly. Workshops have no status enum, so
+  // `!active` is the only available "unpublished" signal.
+  if (!row.active) {
+    sendGone(res, "workshop");
     return;
   }
   const booking = await loadLinkedBooking(row.bookingId ?? null);

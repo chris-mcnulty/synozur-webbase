@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { isGone, sendGone } from "../lib/goneResponse";
 import {
   upsertCollateralFromCaseStudy,
   softDeleteCollateralForCaseStudy,
@@ -116,14 +117,23 @@ router.get("/case-studies/:slug", async (req, res) => {
   const row = await db.query.caseStudiesTable.findFirst({
     where: and(
       eq(caseStudiesTable.slug, slug),
-      eq(caseStudiesTable.active, true),
-      eq(caseStudiesTable.status, "published"),
       sql`${caseStudiesTable.deletedAt} is null`,
-      sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
-      sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
     ),
   });
   if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived or past-unpublishedAt returns 410 Gone for prompt de-indexing.
+  if (isGone(row)) {
+    sendGone(res, "case study");
+    return;
+  }
+  if (
+    !row.active ||
+    row.status !== "published" ||
+    (row.publishedAt && row.publishedAt > new Date())
+  ) {
     res.status(404).json({ error: "Not found" });
     return;
   }

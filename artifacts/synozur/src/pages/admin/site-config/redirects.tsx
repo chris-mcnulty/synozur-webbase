@@ -63,10 +63,25 @@ async function listRedirects(): Promise<ListResponse> {
   return apiFetch<ListResponse>("/api/cms/wix-redirects");
 }
 
+type RedirectStatusCode = 301 | 302 | 307 | 308;
+
+const REDIRECT_STATUS_OPTIONS: { value: RedirectStatusCode; label: string }[] = [
+  { value: 301, label: "301 Permanent" },
+  { value: 302, label: "302 Temporary" },
+  { value: 307, label: "307 Temporary (preserves method)" },
+  { value: 308, label: "308 Permanent (preserves method)" },
+];
+
+function coerceStatusCode(value: unknown): RedirectStatusCode {
+  const n = Number(value);
+  if (n === 302 || n === 307 || n === 308) return n;
+  return 301;
+}
+
 interface UpsertInput {
   sourcePath: string;
   targetPath: string;
-  statusCode?: 301 | 302;
+  statusCode?: RedirectStatusCode;
   active?: boolean;
   notes?: string | null;
 }
@@ -147,7 +162,7 @@ export default function AdminWixRedirects() {
     setEditDraft({
       sourcePath: r.sourcePath,
       targetPath: r.targetPath,
-      statusCode: r.statusCode as 301 | 302,
+      statusCode: coerceStatusCode(r.statusCode),
       active: r.active,
       notes: r.notes ?? "",
     });
@@ -240,12 +255,15 @@ export default function AdminWixRedirects() {
                   onChange={(e) =>
                     setDraft((d) => ({
                       ...d,
-                      statusCode: Number(e.target.value) === 302 ? 302 : 301,
+                      statusCode: coerceStatusCode(e.target.value),
                     }))
                   }
                 >
-                  <option value={301}>301</option>
-                  <option value={302}>302</option>
+                  {REDIRECT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.value}
+                    </option>
+                  ))}
                 </select>
               </div>
               <Button onClick={onAdd} disabled={createMut.isPending}>
@@ -377,12 +395,15 @@ export default function AdminWixRedirects() {
                 onChange={(e) =>
                   setEditDraft((d) => ({
                     ...d,
-                    statusCode: Number(e.target.value) === 302 ? 302 : 301,
+                    statusCode: coerceStatusCode(e.target.value),
                   }))
                 }
               >
-                <option value={301}>301 Permanent</option>
-                <option value={302}>302 Temporary</option>
+                {REDIRECT_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

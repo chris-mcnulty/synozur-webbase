@@ -36,7 +36,14 @@ const pathShape = z
 const CreateBody = z.object({
   sourcePath: pathShape,
   targetPath: pathShape,
-  statusCode: z.union([z.literal(301), z.literal(302)]).optional(),
+  // L13: include 307/308 so editors can express temporary/permanent
+  // redirects that *preserve* the request method. 301/302 historically
+  // get rewritten to GET by some user agents; 307/308 are the modern,
+  // method-preserving equivalents and are useful for POST endpoints
+  // migrated from Wix.
+  statusCode: z
+    .union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)])
+    .optional(),
   active: z.boolean().optional(),
   notes: z.string().max(500).nullish(),
 });

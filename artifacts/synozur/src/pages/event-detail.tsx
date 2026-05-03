@@ -7,7 +7,8 @@ import {
   ArrowLeft,
   Clock,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import Gone from "@/pages/gone";
 import { Meta } from "@/lib/meta";
 import { EventJsonLd } from "@/components/event-jsonld";
 import { ShareRail } from "@/components/share-rail";
@@ -51,6 +52,9 @@ export default function EventDetail() {
   }
 
   if (error || !event) {
+    if (error instanceof ApiError && error.status === 410) {
+      return <Gone backHref="/events" backLabel="Back to Events" />;
+    }
     return (
       <div className="container mx-auto px-4 py-20 max-w-4xl text-center">
         <h1 className="text-2xl font-bold mb-4">Event not found</h1>

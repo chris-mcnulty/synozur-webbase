@@ -5,6 +5,8 @@ import { Meta } from "@/lib/meta";
 import { api, type ModelDto } from "@/lib/api";
 import { sanitizeHtml } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
+import { ApiError } from "@/lib/api";
 
 export default function ModelDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -24,7 +26,12 @@ export default function ModelDetail() {
   }
 
   const m = modelQ.data;
-  if (!m) return <NotFound />;
+  if (!m) {
+    if (modelQ.error instanceof ApiError && modelQ.error.status === 410) {
+      return <Gone backHref="/models" backLabel="Back to Models" />;
+    }
+    return <NotFound />;
+  }
 
   return (
     <div className="w-full">

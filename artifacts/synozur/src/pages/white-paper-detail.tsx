@@ -9,6 +9,8 @@ import { RichText } from "@/components/rich-text";
 import { ShareRail } from "@/components/share-rail";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
+import { ApiError } from "@/lib/api";
 
 const DOC_TYPE_LABELS: Record<WhitePaperDocType, string> = {
   whitepaper: "White Paper",
@@ -25,10 +27,15 @@ export default function WhitePaperDetail() {
   const [, params] = useRoute("/white-papers/:slug");
   const slug = params?.slug;
   const [item, setItem] = useState<PageItem | null | undefined>(undefined);
+  // 410-Gone is tracked separately so it overrides the collateral fallback.
+  // Collateral is normally the runtime authority, but a 410 from the editorial
+  // source is an explicit "this is retired" signal we must honor (#162 / L13).
+  const [isGone, setIsGone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     if (!slug) return;
+    setIsGone(false);
     // Collateral is the runtime authority for what's in the library: an
     // item appears here if and only if a matching collateral row exists.
     // We then try to hydrate richer editorial fields (bodyHtml, SEO meta)
@@ -52,8 +59,14 @@ export default function WhitePaperDetail() {
                 : { source: "collateral", data: col },
             );
           })
-          .catch(() => {
-            if (!cancelled) setItem({ source: "collateral", data: col });
+          .catch((err: unknown) => {
+            if (cancelled) return;
+            if (err instanceof ApiError && err.status === 410) {
+              setIsGone(true);
+              setItem(null);
+              return;
+            }
+            setItem({ source: "collateral", data: col });
           });
       })
       .catch(() => {
@@ -71,7 +84,10 @@ export default function WhitePaperDetail() {
       </div>
     );
   }
-  if (!item) return <NotFound />;
+  if (!item) {
+    if (isGone) return <Gone backHref="/white-papers" backLabel="Back to White Papers" />;
+    return <NotFound />;
+  }
 
   if (item.source === "white_papers") {
     const wp = item.data;

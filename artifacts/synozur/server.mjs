@@ -191,6 +191,50 @@ function isSocialBot(ua) {
   return SOCIAL_BOT_PATTERNS.some((re) => re.test(ua));
 }
 
+// ─── Publish-status probe (#162 / launch-readiness L13) ──────────────────────
+
+// SPA URLs that map 1:1 to a DB-backed artifact. We only ask the API about
+// routes shaped like `/<section>/<slug>` — anything else is static and
+// shortcuts to 200. Helpers live in `./lib/artifactPath.mjs` so they can be
+// unit-tested without starting the HTTP listener.
+import { isArtifactPath } from "./lib/artifactPath.mjs";
+
+// Ask the API server whether `pathname` is currently published. Returns
+// "ok" / "not_found" / "gone" — or "ok" on any timeout/error so a wobble
+// in the API never makes Google de-index live content.
+function fetchRouteStatus(pathname) {
+  return new Promise((resolve) => {
+    const encoded = encodeURIComponent(pathname);
+    const options = {
+      hostname: "127.0.0.1",
+      port: API_PORT,
+      path: `/api/seo/route-status?path=${encoded}`,
+      method: "GET",
+      headers: { Accept: "application/json" },
+    };
+    const req = http.request(options, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => { body += chunk; });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          const status = parsed && typeof parsed.status === "string" ? parsed.status : "ok";
+          resolve(status === "gone" || status === "not_found" ? status : "ok");
+        } catch {
+          resolve("ok");
+        }
+      });
+    });
+    req.on("error", () => resolve("ok"));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve("ok");
+    });
+    req.end();
+  });
+}
+
 // ─── API proxy for OG HTML ────────────────────────────────────────────────────
 
 function fetchOgHtml(pathname) {
@@ -265,24 +309,40 @@ function handler(req, res) {
   const pathname = rawUrl.split("?")[0].split("#")[0] || "/";
 
   // 1. Intercept social bots — proxy to the API server's /api/og endpoint.
+  //    Bots also see the publish-status verdict so unfurls of an archived
+  //    URL don't show a stale preview.
   const ua = req.headers["user-agent"] ?? "";
   if (isSocialBot(ua)) {
-    fetchOgHtml(pathname)
-      .then((html) => {
+    const statusProbe = isArtifactPath(pathname)
+      ? fetchRouteStatus(pathname)
+      : Promise.resolve("ok");
+    Promise.all([statusProbe, fetchOgHtml(pathname).catch(() => null)])
+      .then(([routeStatus, html]) => {
         applySecurityHeaders(res);
-        res.writeHead(200, {
+        const httpStatus =
+          routeStatus === "gone" ? 410 : routeStatus === "not_found" ? 404 : 200;
+        if (!html) {
+          // OG endpoint failed — fall back to the static shell so the bot
+          // still gets default OG tags. Status verdict still propagates.
+          const cached = getIndexHtml();
+          if (!cached) {
+            res.writeHead(503);
+            res.end("Service unavailable");
+            return;
+          }
+          res.writeHead(httpStatus, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Content-Length": cached.length,
+          });
+          res.end(cached.html);
+          return;
+        }
+        res.writeHead(httpStatus, {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=300, s-maxage=300",
         });
         res.end(html);
-      })
-      .catch(() => {
-        // API unavailable — fall through to serve index.html so the bot gets
-        // the default OG tags from the static shell.
-        if (!serveIndexHtml(res)) {
-          res.writeHead(503);
-          res.end("Service unavailable");
-        }
       });
     return;
   }
@@ -309,8 +369,24 @@ function handler(req, res) {
 
   if (cleaned && serveFile(filePath, res)) return;
 
-  // 3. SPA fallback — serve the cached, header-augmented index.html for all
-  //    unmatched routes.
+  // 3. SPA fallback. For canonical artifact URLs (`/insights/:slug` etc.)
+  //    consult the API to decide whether this URL is still published. The
+  //    HTML body is the same SPA shell — the React app handles rendering a
+  //    friendly Gone / Not Found page client-side — but the HTTP status is
+  //    410 / 404 / 200 so Google can de-index promptly (#162 / L13).
+  if (isArtifactPath(pathname)) {
+    fetchRouteStatus(pathname).then((routeStatus) => {
+      const httpStatus =
+        routeStatus === "gone" ? 410 : routeStatus === "not_found" ? 404 : 200;
+      if (!serveIndexHtml(res, httpStatus)) {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+    });
+    return;
+  }
+
+  // Non-artifact unmatched routes — serve the SPA shell with 200 as before.
   if (serveIndexHtml(res)) return;
 
   res.writeHead(404);

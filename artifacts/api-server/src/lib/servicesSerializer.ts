@@ -361,21 +361,33 @@ function withinPublishWindow(
   return true;
 }
 
+export type ServiceLoadResult =
+  | { kind: "ok"; data: ServiceWithMethodologies }
+  | { kind: "not_found" }
+  | { kind: "gone" };
+
 export async function getServiceWithMethodologies(
   slug: string,
   opts: { preview?: boolean } = {},
-): Promise<ServiceWithMethodologies | null> {
+): Promise<ServiceLoadResult> {
   const service = await db.query.servicesTable.findFirst({
     where: eq(servicesTable.slug, slug),
   });
-  if (!service || service.deletedAt) return null;
+  if (!service || service.deletedAt) return { kind: "not_found" };
   // #60: preview bypasses publish-status + publish-window gates but still
   // refuses soft-deleted rows — editors should never see a resurrected row.
-  if (
-    !opts.preview &&
-    (!service.active || service.status !== "published" || !withinPublishWindow(service))
-  )
-    return null;
+  if (!opts.preview) {
+    // #162: archived or past-unpublishedAt is "gone" — emit 410 at the route.
+    if (
+      service.status === "archived" ||
+      (service.unpublishedAt && service.unpublishedAt <= new Date())
+    ) {
+      return { kind: "gone" };
+    }
+    if (!service.active || service.status !== "published" || !withinPublishWindow(service)) {
+      return { kind: "not_found" };
+    }
+  }
   const methodologies = await db
     .select()
     .from(serviceMethodologiesTable)
@@ -388,32 +400,47 @@ export async function getServiceWithMethodologies(
     loadLinkedBooking(service.bookingId ?? null),
   ]);
   return {
-    ...shapeService(
-      service,
-      service.iconId ? icons.get(service.iconId) ?? null : null,
-      tags.get(service.id) ?? [],
-      booking,
-    ),
-    methodologies: visible.map((m) =>
-      shapeMethodology(m, m.iconId ? icons.get(m.iconId) ?? null : null),
-    ),
+    kind: "ok",
+    data: {
+      ...shapeService(
+        service,
+        service.iconId ? icons.get(service.iconId) ?? null : null,
+        tags.get(service.id) ?? [],
+        booking,
+      ),
+      methodologies: visible.map((m) =>
+        shapeMethodology(m, m.iconId ? icons.get(m.iconId) ?? null : null),
+      ),
+    },
   };
 }
+
+export type SolutionLoadResult =
+  | { kind: "ok"; data: SolutionWithCapabilities }
+  | { kind: "not_found" }
+  | { kind: "gone" };
 
 export async function getSolutionWithCapabilities(
   slug: string,
   opts: { preview?: boolean } = {},
-): Promise<SolutionWithCapabilities | null> {
+): Promise<SolutionLoadResult> {
   const solution = await db.query.solutionsTable.findFirst({
     where: eq(solutionsTable.slug, slug),
   });
-  if (!solution || solution.deletedAt) return null;
+  if (!solution || solution.deletedAt) return { kind: "not_found" };
   // #60: preview bypasses publish-status + publish-window gates.
-  if (
-    !opts.preview &&
-    (!solution.active || solution.status !== "published" || !withinPublishWindow(solution))
-  )
-    return null;
+  // #162: archived or past-unpublishedAt is "gone" — emit 410 at the route.
+  if (!opts.preview) {
+    if (
+      solution.status === "archived" ||
+      (solution.unpublishedAt && solution.unpublishedAt <= new Date())
+    ) {
+      return { kind: "gone" };
+    }
+    if (!solution.active || solution.status !== "published" || !withinPublishWindow(solution)) {
+      return { kind: "not_found" };
+    }
+  }
   const capabilities = await db
     .select()
     .from(solutionCapabilitiesTable)
@@ -436,26 +463,29 @@ export async function getSolutionWithCapabilities(
     loadLinkedBooking(solution.bookingId ?? null),
   ]);
   return {
-    ...shapeSolution(
-      solution,
-      solution.iconId ? icons.get(solution.iconId) ?? null : null,
-      solutionTags.get(solution.id) ?? [],
-      booking,
-    ),
-    parentService:
-      parentService &&
-      !parentService.deletedAt &&
-      parentService.active &&
-      parentService.status === "published" &&
-      withinPublishWindow(parentService)
-        ? shapeService(
-            parentService,
-            parentService.iconId ? icons.get(parentService.iconId) ?? null : null,
-            parentTags.get(parentService.id) ?? [],
-          )
-        : null,
-    capabilities: visible.map((c) =>
-      shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null),
-    ),
+    kind: "ok",
+    data: {
+      ...shapeSolution(
+        solution,
+        solution.iconId ? icons.get(solution.iconId) ?? null : null,
+        solutionTags.get(solution.id) ?? [],
+        booking,
+      ),
+      parentService:
+        parentService &&
+        !parentService.deletedAt &&
+        parentService.active &&
+        parentService.status === "published" &&
+        withinPublishWindow(parentService)
+          ? shapeService(
+              parentService,
+              parentService.iconId ? icons.get(parentService.iconId) ?? null : null,
+              parentTags.get(parentService.id) ?? [],
+            )
+          : null,
+      capabilities: visible.map((c) =>
+        shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null),
+      ),
+    },
   };
 }

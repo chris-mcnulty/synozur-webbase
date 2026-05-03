@@ -22,6 +22,7 @@ import { runAudit, applyAutofill } from "../lib/seoAudit";
 import { submitUrls } from "../lib/seoSubmit";
 import { siteOrigin } from "../lib/siteOrigin";
 import { resolveOgData, renderOgHtml } from "../lib/ogResolver";
+import { resolveRouteStatus } from "../lib/routeStatus";
 
 const router: IRouter = Router();
 
@@ -471,6 +472,30 @@ router.get("/llms.txt", handleLlmsTxt);
  * No authentication required — the response contains only public content.
  * Short Cache-Control mirrors the socialBotRenderer middleware (5 min).
  */
+/**
+ * GET /api/seo/route-status?path=/insights/my-post
+ *
+ * Lightweight publish-status probe consumed by the SPA edge layer
+ * (`artifacts/synozur/server.mjs`). Returns `{status:'ok'|'not_found'|'gone'}`
+ * so the edge can propagate the right HTTP status to crawlers/users while
+ * still serving the SPA shell. See `lib/routeStatus.ts` for the matrix.
+ *
+ * Public — only reports a publish verdict for the public path, never
+ * leaks row contents.
+ */
+router.get("/seo/route-status", async (req, res): Promise<void> => {
+  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
+  const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
+  try {
+    const status = await resolveRouteStatus(pathname);
+    res.setHeader("Cache-Control", "public, max-age=30, s-maxage=30");
+    res.json({ status });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
 router.get("/og", async (req, res): Promise<void> => {
   const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
   // Normalise: must start with /, strip query/fragment from the path itself.

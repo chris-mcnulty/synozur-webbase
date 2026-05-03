@@ -15,6 +15,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { isGone, sendGone } from "../lib/goneResponse";
 import {
   upsertCollateralFromWhitePaper,
   softDeleteCollateralForWhitePaper,
@@ -256,14 +257,23 @@ router.get("/white-papers/:slug", async (req, res) => {
   const row = await db.query.whitePapersTable.findFirst({
     where: and(
       eq(whitePapersTable.slug, slug),
-      eq(whitePapersTable.active, true),
-      eq(whitePapersTable.status, "published"),
       sql`${whitePapersTable.deletedAt} is null`,
-      sql`${whitePapersTable.publishedAt} <= ${now}`,
-      sql`(${whitePapersTable.unpublishedAt} is null OR ${whitePapersTable.unpublishedAt} > ${now})`,
     ),
   });
   if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived or past-unpublishedAt returns 410 Gone for prompt de-indexing.
+  if (isGone(row, now)) {
+    sendGone(res, "white paper");
+    return;
+  }
+  if (
+    !row.active ||
+    row.status !== "published" ||
+    (row.publishedAt && row.publishedAt > now)
+  ) {
     res.status(404).json({ error: "Not found" });
     return;
   }

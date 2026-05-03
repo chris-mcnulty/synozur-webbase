@@ -94,8 +94,6 @@ export function wixRedirectMiddleware() {
     res: import("express").Response,
     next: import("express").NextFunction,
   ) {
-    // Only intercept GET/HEAD; leave everything else alone.
-    if (req.method !== "GET" && req.method !== "HEAD") return next();
     const path = req.path || "/";
     // Never redirect API traffic.
     if (path.startsWith("/api/") || path === "/api") return next();
@@ -104,6 +102,15 @@ export function wixRedirectMiddleware() {
       if (!hit) return next();
       // Don't redirect if the target is the same as the source (loop guard).
       if (normalizePath(hit.targetPath) === normalizePath(path)) return next();
+      // 301/302 are method-rewriting per RFC 7231; honouring them on a
+      // POST/PUT/etc. would silently drop the request body. Skip those
+      // cases so the original request reaches its handler. 307/308 are
+      // method- and body-preserving (RFC 7231 §6.4.7 / RFC 7538), so they
+      // *do* fire on every method — this is the L13 fix that lets editors
+      // migrate POST endpoints from Wix without losing the body.
+      const safe = req.method === "GET" || req.method === "HEAD";
+      const methodPreserving = hit.statusCode === 307 || hit.statusCode === 308;
+      if (!safe && !methodPreserving) return next();
       // Fire-and-forget hit counter so redirect latency stays minimal.
       void recordHit(hit.id);
       const qs = req.originalUrl.includes("?")

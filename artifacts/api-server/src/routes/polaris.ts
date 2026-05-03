@@ -20,6 +20,7 @@ import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
 import { siteOrigin } from "../lib/siteOrigin";
+import { isGone, sendGone } from "../lib/goneResponse";
 
 const router: IRouter = Router();
 
@@ -187,9 +188,25 @@ router.get("/polaris/episodes", async (req, res) => {
 router.get("/polaris/episodes/:slug", async (req, res) => {
   const slug = String(req.params.slug);
   const row = await db.query.polarisEpisodesTable.findFirst({
-    where: and(eq(polarisEpisodesTable.slug, slug), ...publicFilterSql()),
+    where: and(
+      eq(polarisEpisodesTable.slug, slug),
+      sql`${polarisEpisodesTable.deletedAt} is null`,
+    ),
   });
   if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // #162: archived or past-unpublishedAt returns 410 Gone for prompt de-indexing.
+  if (isGone(row)) {
+    sendGone(res, "episode");
+    return;
+  }
+  if (
+    !row.active ||
+    row.status !== "published" ||
+    (row.publishedAt && row.publishedAt > new Date())
+  ) {
     res.status(404).json({ error: "Not found" });
     return;
   }

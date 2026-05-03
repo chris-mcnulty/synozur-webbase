@@ -7,6 +7,7 @@ import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
+import Gone from "./gone";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { BookingCard } from "@/components/BookingCard";
@@ -150,6 +151,10 @@ export default function ServiceDetail() {
     queryKey: ["services"],
     queryFn: () => api.listServices(),
   });
+
+  if (detail.isError && detail.error instanceof Error && /\b410\b/.test(detail.error.message)) {
+    return <Gone backHref="/services" backLabel="Back to Services" />;
+  }
 
   if (detail.isError && detail.error instanceof Error && /404/.test(detail.error.message)) {
     return <NotFound />;

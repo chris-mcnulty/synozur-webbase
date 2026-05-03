@@ -13,6 +13,7 @@ import {
   User,
 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
 import type { PolarisLinkedPostDto } from "@/lib/api";
 import { VideoJsonLd } from "@/components/video-jsonld";
 import { SITE_ORIGIN } from "@/lib/seo-config";
@@ -100,9 +101,19 @@ const SHOW_LINKS = [
   },
 ];
 
+class PolarisEpisodeError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "PolarisEpisodeError";
+    this.status = status;
+  }
+}
+
 async function fetchEpisode(slug: string): Promise<PolarisEpisodeDto> {
   const res = await fetch(`${BASE_PATH}/api/polaris/episodes/${encodeURIComponent(slug)}`);
-  if (res.status === 404) throw new Error("not-found");
+  if (res.status === 404) throw new PolarisEpisodeError(404, "not-found");
+  if (res.status === 410) throw new PolarisEpisodeError(410, "gone");
   if (!res.ok) throw new Error(`Failed to fetch episode: ${res.status}`);
   return (await res.json()) as PolarisEpisodeDto;
 }
@@ -147,6 +158,9 @@ export default function PolarisEpisodeDetail() {
   }
 
   if (error || !episode) {
+    if (error instanceof PolarisEpisodeError && error.status === 410) {
+      return <Gone backHref="/polaris" backLabel="Back to Polaris" />;
+    }
     return <NotFound />;
   }
 

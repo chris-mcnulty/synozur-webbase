@@ -26,6 +26,7 @@ import {
   DeleteEventParams,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { sendGone } from "../lib/goneResponse";
 import {
   upsertCollateralFromEvent,
   softDeleteCollateralForEvent,
@@ -285,6 +286,15 @@ router.get("/events/:slug", async (req, res): Promise<void> => {
     .where(eq(eventsTable.slug, slug));
   if (!event) {
     res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  // L13: events use a free-form text status (default "UPCOMING"). Editors
+  // who set status to "ARCHIVED"/"archived" want the URL out of Google;
+  // 410 is the right de-index signal there. Past events whose status is
+  // still "PAST" or "UPCOMING" stay 200 — they have legitimate ongoing
+  // recap value.
+  if ((event.status ?? "").toLowerCase() === "archived") {
+    sendGone(res, "event");
     return;
   }
   const enriched = await loadEventEnriched(event);

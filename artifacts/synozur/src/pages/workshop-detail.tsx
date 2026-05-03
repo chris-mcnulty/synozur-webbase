@@ -16,6 +16,7 @@ import {
 import { workshopsApi, WorkshopsApiError, type WorkshopCTA as CTA } from "@/lib/api-workshops";
 import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
 import { BookingCard } from "@/components/BookingCard";
 
 function isExternal(href: string) {
@@ -115,9 +116,10 @@ export default function WorkshopDetail() {
   }
 
   if (detailQ.isError) {
-    const is404 =
-      detailQ.error instanceof WorkshopsApiError && detailQ.error.status === 404;
-    if (is404) return <NotFound />;
+    const status =
+      detailQ.error instanceof WorkshopsApiError ? detailQ.error.status : null;
+    if (status === 410) return <Gone backHref="/workshops" backLabel="Back to Workshops" />;
+    if (status === 404) return <NotFound />;
     return (
       <div className="w-full py-24 text-center text-destructive">
         Failed to load workshop. Please try again.

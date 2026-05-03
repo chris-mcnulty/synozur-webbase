@@ -11,6 +11,8 @@ import {
   getActiveApplications,
 } from "@/data/applications";
 import NotFound from "@/pages/not-found";
+import Gone from "@/pages/gone";
+import { ApiError } from "@/lib/api";
 
 function staticAsDto(
   s: ReturnType<typeof getActiveApplications>[number],
@@ -81,6 +83,9 @@ export default function ApplicationDetail() {
   }
 
   if (!app) {
+    if (detailQ.error instanceof ApiError && detailQ.error.status === 410) {
+      return <Gone backHref="/applications" backLabel="Back to Applications" />;
+    }
     return <NotFound />;
   }
 

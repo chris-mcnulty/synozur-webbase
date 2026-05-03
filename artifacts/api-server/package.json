@@ -26,7 +26,9 @@
     "test:sessions": "node --import tsx --test src/lib/sessions.test.ts",
     "test:polaris-bulk-sync": "node --import tsx --test src/routes/polaris.bulkSync.test.ts",
     "test:auth-rate-limit": "node --import tsx --test src/routes/auth.rateLimit.test.ts",
-    "test:traffic-ingest": "node --import tsx --test src/routes/traffic.ingest.test.ts"
+    "test:traffic-ingest": "node --import tsx --test src/routes/traffic.ingest.test.ts",
+    "test:insights-gone": "node --import tsx --test src/routes/insights.gone.test.ts",
+    "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",
