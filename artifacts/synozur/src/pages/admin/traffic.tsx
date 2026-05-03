@@ -182,9 +182,16 @@ export default function AdminTraffic() {
     queryFn: () => trafficApi.overview(filters),
     enabled,
   });
+  // #229 — The "By property" card is always full-mix: respect every other
+  // filter (range/audience/device/etc.) but force `propertySlugs=['all']`
+  // so admins can compare their portfolio at a glance without re-filtering.
+  const byPropertyFilters = useMemo<TrafficFilters>(
+    () => ({ ...filters, propertySlugs: ["all"] }),
+    [filters],
+  );
   const byPropertyQ = useQuery({
-    queryKey: ["traffic-by-property", filters],
-    queryFn: () => trafficApi.byProperty(filters),
+    queryKey: ["traffic-by-property", byPropertyFilters],
+    queryFn: () => trafficApi.byProperty(byPropertyFilters),
     enabled,
   });
   const seriesQ = useQuery({
@@ -393,40 +400,61 @@ export default function AdminTraffic() {
             <Stat label="Countries" value={overviewQ.data?.totals.countries ?? 0} icon={Globe} />
           </div>
 
-          {/* Per-property breakdown — shown whenever the active selection
-              spans more than one property (or is "all"). #228 review. */}
-          {(propertySlugs.includes("all") || propertySlugs.length > 1) &&
-            (byPropertyQ.data?.items.length ?? 0) > 0 && (
-              <div className="mb-6">
-                <div className="text-sm font-medium mb-2">By property</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {byPropertyQ.data!.items.map((row) => {
-                    const friendly =
-                      allProps.find((p) => p.slug === row.slug)?.name ?? row.slug;
-                    return (
-                      <Card key={row.slug} className="p-4">
-                        <div className="text-xs text-muted-foreground">{row.slug}</div>
-                        <div className="text-sm font-medium mb-2">{friendly}</div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div>
-                            <div className="text-xs text-muted-foreground">Sessions</div>
-                            <div className="text-base font-semibold">{row.sessions.toLocaleString()}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">Visitors</div>
-                            <div className="text-base font-semibold">{row.uniqueVisitors.toLocaleString()}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">Pageviews</div>
-                            <div className="text-base font-semibold">{row.pageviews.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
+          {/* #229 — Per-property breakdown card is always rendered. It
+              respects every other filter (range / audience / device / page
+              type) but ignores the property multi-select so admins can see
+              their full portfolio at a glance without re-filtering. */}
+          <Card className="p-5 mb-6" data-testid="card-by-property">
+            <div className="flex items-baseline justify-between mb-1">
+              <div className="text-sm font-medium">By property</div>
+              <div className="text-xs text-muted-foreground">
+                Full portfolio — ignores the property filter
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground mb-4">
+              Sessions, unique visitors, and pageviews per property for the
+              selected window.
+            </div>
+            {byPropertyQ.isLoading ? (
+              <div className="text-sm text-muted-foreground py-4 text-center">
+                Loading…
+              </div>
+            ) : (byPropertyQ.data?.items.length ?? 0) === 0 ? (
+              <div className="text-sm text-muted-foreground py-4 text-center">
+                No traffic recorded for any property in this window.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 font-medium text-muted-foreground">Property</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Sessions</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Unique visitors</th>
+                      <th className="text-right py-2 font-medium text-muted-foreground">Pageviews</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {byPropertyQ.data!.items.map((row) => {
+                      const friendly =
+                        allProps.find((p) => p.slug === row.slug)?.name ?? row.slug;
+                      return (
+                        <tr key={row.slug} data-testid={`row-by-property-${row.slug}`}>
+                          <td className="py-2">
+                            <div className="font-medium">{friendly}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{row.slug}</div>
+                          </td>
+                          <td className="py-2 text-right">{row.sessions.toLocaleString()}</td>
+                          <td className="py-2 text-right">{row.uniqueVisitors.toLocaleString()}</td>
+                          <td className="py-2 text-right">{row.pageviews.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
+          </Card>
 
           {/* Visits over time */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
