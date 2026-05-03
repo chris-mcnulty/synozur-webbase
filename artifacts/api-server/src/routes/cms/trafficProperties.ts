@@ -16,6 +16,7 @@ import {
   db,
   trafficPropertiesTable,
   trafficPropertyImportsTable,
+  usersTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { parseCsvAsObjects } from "../../lib/csv";
@@ -261,8 +262,27 @@ router.get(
   async (req, res): Promise<void> => {
     const id = String(req.params.id);
     const rows = await db
-      .select()
+      .select({
+        id: trafficPropertyImportsTable.id,
+        propertyId: trafficPropertyImportsTable.propertyId,
+        kind: trafficPropertyImportsTable.kind,
+        sourceFile: trafficPropertyImportsTable.sourceFile,
+        sourceFileSha256: trafficPropertyImportsTable.sourceFileSha256,
+        accepted: trafficPropertyImportsTable.accepted,
+        skipped: trafficPropertyImportsTable.skipped,
+        duplicates: trafficPropertyImportsTable.duplicates,
+        errors: trafficPropertyImportsTable.errors,
+        notes: trafficPropertyImportsTable.notes,
+        createdAt: trafficPropertyImportsTable.createdAt,
+        createdBy: trafficPropertyImportsTable.createdBy,
+        createdByEmail: usersTable.email,
+        createdByDisplayName: usersTable.displayName,
+      })
       .from(trafficPropertyImportsTable)
+      .leftJoin(
+        usersTable,
+        eq(usersTable.id, trafficPropertyImportsTable.createdBy),
+      )
       .where(eq(trafficPropertyImportsTable.propertyId, id))
       .orderBy(desc(trafficPropertyImportsTable.createdAt))
       .limit(50);

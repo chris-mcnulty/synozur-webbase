@@ -60,6 +60,8 @@ export interface TrafficPropertyImport {
   notes: string | null;
   createdAt: string;
   createdBy: string | null;
+  createdByEmail: string | null;
+  createdByDisplayName: string | null;
 }
 
 export interface ImportResult {

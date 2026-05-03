@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,6 +126,29 @@ export default function TrafficImportPage() {
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState<string>("");
   const [result, setResult] = useState<ImportResult | null>(null);
+  // Pre-fill from query string when admins click "Re-upload" in the
+  // import-history dialog on the Properties page. The original file content
+  // is never persisted server-side (only its sha256), so we cannot restore
+  // the bytes — but we can at least put them on the right form, with the
+  // right format and a hint about the file name they previously used.
+  const [reuploadHint, setReuploadHint] = useState<{
+    fileName: string;
+    sha256: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("property");
+    const kind = params.get("kind");
+    const file = params.get("file");
+    const sha = params.get("sha256");
+    if (slug) setPropertySlug(slug);
+    if (kind === "json" || kind === "csv") setMode(kind);
+    if (file) {
+      setFileName(file);
+      setReuploadHint({ fileName: file, sha256: sha });
+    }
+  }, []);
   // CSV column mapping — recomputed whenever the CSV content changes.
   const [columnMap, setColumnMap] = useState<Record<string, string>>({});
 
@@ -262,6 +285,33 @@ export default function TrafficImportPage() {
             (a stable per-session identifier). Re-uploading the same file is safe — duplicates are
             de-duped by <code>(sessionKey, path, viewedAt)</code>.
           </Card>
+
+          {reuploadHint && (
+            <Card
+              className="p-4 text-sm border-primary/40 bg-primary/5"
+              data-testid="card-reupload-hint"
+            >
+              <div className="font-medium mb-1">Re-importing a previous file</div>
+              <div className="text-muted-foreground">
+                Property and format are pre-selected from the previous import of{" "}
+                <code className="font-mono text-xs">{reuploadHint.fileName}</code>. The original
+                file is not stored, so pick the same file from your machine below.
+                {reuploadHint.sha256 && (
+                  <>
+                    {" "}
+                    For reference, the previous upload had sha256{" "}
+                    <code className="font-mono text-xs">
+                      {reuploadHint.sha256.slice(0, 16)}…
+                    </code>{" "}
+                    — you can verify locally with <code>shasum -a 256</code> if you want to be
+                    sure it&apos;s the same file.
+                  </>
+                )}{" "}
+                Imports are idempotent: rows already ingested are counted as duplicates rather
+                than re-inserted, so re-importing is always safe.
+              </div>
+            </Card>
+          )}
 
           <Card className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

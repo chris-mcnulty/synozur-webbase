@@ -27,12 +27,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Check, Plus, RefreshCw, ShieldOff, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Copy, Check, Plus, RefreshCw, ShieldOff, ShieldCheck, Eye, EyeOff, History, Upload } from "lucide-react";
 import {
   trafficPropertiesApi,
   type TrafficProperty,
+  type TrafficPropertyImport,
 } from "@/lib/traffic-properties-api";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -77,6 +78,7 @@ export default function TrafficPropertiesPage() {
   const enabled = !!access?.hasCapability("content.moderate");
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const propsQ = useQuery({
     queryKey: ["traffic-properties"],
@@ -121,6 +123,13 @@ export default function TrafficPropertiesPage() {
       setRotatingId(null);
       toast({ title: "Rotate failed", description: e.message, variant: "destructive" });
     },
+  });
+
+  const [importsFor, setImportsFor] = useState<TrafficProperty | null>(null);
+  const importsQ = useQuery({
+    queryKey: ["traffic-property-imports", importsFor?.id],
+    queryFn: () => trafficPropertiesApi.imports(importsFor!.id),
+    enabled: !!importsFor,
   });
 
   const [confirmDeactivate, setConfirmDeactivate] = useState<TrafficProperty | null>(null);
@@ -211,8 +220,17 @@ export default function TrafficPropertiesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {!p.isDefault && (
-                        <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setImportsFor(p)}
+                          data-testid={`btn-imports-${p.slug}`}
+                        >
+                          <History className="h-3.5 w-3.5 mr-1" /> Imports
+                        </Button>
+                        {!p.isDefault && (
+                          <>
                           <Button
                             size="sm"
                             variant="outline"
@@ -243,8 +261,9 @@ export default function TrafficPropertiesPage() {
                               <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Reactivate
                             </Button>
                           )}
-                        </div>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -336,6 +355,124 @@ export default function TrafficPropertiesPage() {
           {revealedKey && <SecretDisplay secret={revealedKey.key} />}
           <DialogFooter>
             <Button onClick={() => setRevealedKey(null)}>I&apos;ve saved it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Imports history dialog */}
+      <Dialog open={!!importsFor} onOpenChange={(open) => { if (!open) setImportsFor(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Import history — {importsFor?.slug}</DialogTitle>
+            <DialogDescription>
+              The most recent import batches recorded for this property. Re-running the same file is
+              idempotent: rows already ingested (matched by sha256 of the source file or by row
+              fingerprint) are counted as duplicates rather than re-inserted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            {importsQ.isLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+            ) : importsQ.error ? (
+              <p className="text-sm text-destructive py-6 text-center">
+                Failed to load imports: {(importsQ.error as Error).message}
+              </p>
+            ) : (importsQ.data?.items.length ?? 0) === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center" data-testid="text-no-imports">
+                No imports recorded yet for this property.
+              </p>
+            ) : (
+              <table className="w-full text-xs" data-testid="table-imports">
+                <thead className="bg-muted/40 uppercase text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2">When</th>
+                    <th className="text-left px-3 py-2">Kind</th>
+                    <th className="text-left px-3 py-2">File</th>
+                    <th className="text-right px-3 py-2">Accepted</th>
+                    <th className="text-right px-3 py-2">Duplicates</th>
+                    <th className="text-right px-3 py-2">Errors</th>
+                    <th className="text-left px-3 py-2">By</th>
+                    <th className="text-right px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importsQ.data!.items.map((imp: TrafficPropertyImport) => {
+                    const actor =
+                      imp.createdByDisplayName ||
+                      imp.createdByEmail ||
+                      (imp.createdBy ? imp.createdBy : null);
+                    const propertySlug = importsFor?.slug ?? "";
+                    const reuploadHref = `/marketing/traffic-import?property=${encodeURIComponent(
+                      propertySlug,
+                    )}&kind=${encodeURIComponent(imp.kind)}${
+                      imp.sourceFile ? `&file=${encodeURIComponent(imp.sourceFile)}` : ""
+                    }${
+                      imp.sourceFileSha256
+                        ? `&sha256=${encodeURIComponent(imp.sourceFileSha256)}`
+                        : ""
+                    }`;
+                    return (
+                    <tr key={imp.id} className="border-t border-border" data-testid={`row-import-${imp.id}`}>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {new Date(imp.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 font-mono">{imp.kind}</td>
+                      <td className="px-3 py-2 break-all">
+                        {imp.sourceFile ?? <span className="text-muted-foreground">—</span>}
+                        {imp.sourceFileSha256 && (
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            sha256: {imp.sourceFileSha256.slice(0, 12)}…
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{imp.accepted}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{imp.duplicates}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {imp.errors > 0 ? (
+                          <span className="text-destructive font-medium">{imp.errors}</span>
+                        ) : (
+                          imp.errors
+                        )}
+                      </td>
+                      <td className="px-3 py-2" data-testid={`text-actor-${imp.id}`}>
+                        {actor ? (
+                          <div className="flex flex-col">
+                            <span>{actor}</span>
+                            {imp.createdByEmail && imp.createdByDisplayName && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {imp.createdByEmail}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {!importsFor?.isDefault && importsFor?.isActive && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setImportsFor(null);
+                              navigate(reuploadHref);
+                            }}
+                            data-testid={`btn-reupload-${imp.id}`}
+                            title="Open the import form with this property and format pre-selected"
+                          >
+                            <Upload className="h-3.5 w-3.5 mr-1" /> Re-import
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportsFor(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
