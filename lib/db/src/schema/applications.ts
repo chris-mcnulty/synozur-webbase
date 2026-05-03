@@ -7,6 +7,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import {
   artifactIdentity,
   artifactLifecycle,
@@ -15,6 +16,7 @@ import {
 } from "./_artifactBase";
 import { servicesTable, solutionsTable } from "./services";
 import { bookingsTable } from "./bookings";
+import { tsvector } from "./_searchTsv";
 
 // Applications (#103). Moves the 143-line static TS file at
 // `artifacts/synozur/src/data/applications.ts` into a DB table built on
@@ -57,6 +59,10 @@ export const applicationsTable = pgTable(
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '') || ' ' || coalesce(name, '')), 'A') || setweight(to_tsvector('english', coalesce(tagline, '') || ' ' || coalesce(short_summary, '')), 'B') || setweight(to_tsvector('english', translate(coalesce(description_paragraphs::text, ''), '<>"[]{},', '        ')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("applications_slug_key").on(t.slug),

@@ -50,6 +50,7 @@ import AdminPostsList from "@/pages/admin/insights/posts-list";
 import PostEditor from "@/pages/admin/insights/post-editor";
 import PostPreview from "@/pages/admin/insights/post-preview";
 import PostAnalytics from "@/pages/admin/insights/post-analytics";
+import SearchAnalytics from "@/pages/admin/insights/search-analytics";
 import TaxonomyPage from "@/pages/admin/insights/taxonomy";
 import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/access/users";
@@ -128,6 +129,7 @@ import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import Library from "@/pages/library";
+import SearchPage from "@/pages/search";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
 import WebinarDetail from "@/pages/webinar-detail";
@@ -165,6 +167,7 @@ function AdminRoutes() {
         <Route path="/insights/media"><Redirect to="/library/assets" /></Route>
         <Route path="/insights/taxonomy" component={TaxonomyPage} />
         <Route path="/insights/comments" component={CommentsModeration} />
+        <Route path="/insights/search-analytics" component={SearchAnalytics} />
 
         {/* Redirects from pre-reorg flat paths */}
         <Route path="/posts"><Redirect to="/insights/posts" /></Route>
@@ -477,6 +480,7 @@ function Router() {
             <Route path="/workshops" component={Workshops} />
             <Route path="/workshops/:slug" component={WorkshopDetail} />
             <Route path="/library" component={Library} />
+            <Route path="/search" component={SearchPage} />
             <Route path="/library/:slug" component={LibraryDetail} />
             <Route path="/webinars" component={Webinars} />
             <Route path="/webinars/:slug" component={WebinarDetail} />

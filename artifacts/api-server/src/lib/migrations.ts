@@ -1975,6 +1975,203 @@ export async function runMigrations(): Promise<void> {
         ON insights_questions (low_confidence);
     `);
 
+    // -----------------------------------------------------------
+    // #170 — Public-site search via Postgres FTS.
+    //
+    // Each indexed artifact table gets a generated `search_tsv tsvector`
+    // column (title A / excerpt B / body C) plus a GIN index, so the
+    // /api/search endpoint can run plainto_tsquery + ts_rank_cd against
+    // every kind in parallel without an app-side trigger or backfill.
+    // Generated columns can't be modeled via drizzle-kit push today, so
+    // we own the DDL here and keep `IF NOT EXISTS` guards on every step.
+    //
+    // The body expression strips HTML tags via a regex (immutable, so it
+    // works in a STORED generated column) before tokenization. JSON-typed
+    // narrative fields (case_studies.challenge etc., applications
+    // .description_paragraphs) are cast to text and have their JSON
+    // punctuation collapsed to spaces by the same regex.
+    // -----------------------------------------------------------
+
+    const searchTsvSpecs: Array<{ table: string; expr: string }> = [
+      {
+        table: "posts",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(excerpt, '')), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(
+              coalesce(body_html, '') || ' ' ||
+              coalesce(body_markdown, '') || ' ' ||
+              coalesce(subtitle, ''),
+              '<[^>]+>', ' ', 'g'
+            )
+          ), 'C')`,
+      },
+      {
+        table: "case_studies",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english',
+            coalesce(headline, '') || ' ' || coalesce(summary, '')
+          ), 'B') ||
+          setweight(to_tsvector('english',
+            translate(
+              coalesce(challenge::text, '') || ' ' ||
+              coalesce(approach::text, '') || ' ' ||
+              coalesce(outcome::text, '') || ' ' ||
+              coalesce(quote_text, ''),
+              '<>"[]{},',
+              '        '
+            )
+          ), 'C')`,
+      },
+      {
+        table: "white_papers",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english',
+            coalesce(short_description, '') || ' ' || coalesce(subtitle, '')
+          ), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(coalesce(body_html, ''), '<[^>]+>', ' ', 'g')
+          ), 'C')`,
+      },
+      {
+        table: "services",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english',
+            regexp_replace(coalesce(blurb_html, ''), '<[^>]+>', ' ', 'g')
+          ), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(
+              coalesce(hero_text_html, '') || ' ' ||
+              coalesce(secondary_text_html, '') || ' ' ||
+              coalesce(tertiary_text_html, ''),
+              '<[^>]+>', ' ', 'g'
+            )
+          ), 'C')`,
+      },
+      {
+        table: "solutions",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english',
+            coalesce(blurb_copy, '') || ' ' ||
+            regexp_replace(coalesce(blurb_html, ''), '<[^>]+>', ' ', 'g')
+          ), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(
+              coalesce(hero_text_html, '') || ' ' ||
+              coalesce(secondary_text_html, '') || ' ' ||
+              coalesce(our_approach_text_html, '') || ' ' ||
+              coalesce(accelerators_html, ''),
+              '<[^>]+>', ' ', 'g'
+            )
+          ), 'C')`,
+      },
+      {
+        table: "faq_items",
+        expr: `
+          setweight(to_tsvector('english', coalesce(question, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(seo_description, '')), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(coalesce(answer_html, ''), '<[^>]+>', ' ', 'g')
+          ), 'C')`,
+      },
+      {
+        table: "polaris_episodes",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(summary, '')), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(coalesce(transcript_html, ''), '<[^>]+>', ' ', 'g')
+          ), 'C')`,
+      },
+      {
+        table: "applications",
+        expr: `
+          setweight(to_tsvector('english',
+            coalesce(title, '') || ' ' || coalesce(name, '')
+          ), 'A') ||
+          setweight(to_tsvector('english',
+            coalesce(tagline, '') || ' ' || coalesce(short_summary, '')
+          ), 'B') ||
+          setweight(to_tsvector('english',
+            translate(
+              coalesce(description_paragraphs::text, ''),
+              '<>"[]{},',
+              '        '
+            )
+          ), 'C')`,
+      },
+      {
+        table: "models",
+        expr: `
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(short_description, '')), 'B') ||
+          setweight(to_tsvector('english',
+            regexp_replace(
+              coalesce(long_description_html, '') || ' ' ||
+              coalesce(dimensions_html, ''),
+              '<[^>]+>', ' ', 'g'
+            )
+          ), 'C')`,
+      },
+    ];
+
+    for (const { table, expr } of searchTsvSpecs) {
+      // ALTER TABLE ... ADD COLUMN IF NOT EXISTS guarded so re-runs are
+      // free; the GENERATED expression itself can't be redefined without
+      // DROP COLUMN, which we deliberately don't do here — schema edits
+      // must drop and re-add via a follow-up migration.
+      await db.execute(
+        sql.raw(
+          `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS search_tsv tsvector
+             GENERATED ALWAYS AS (${expr.trim()}) STORED;`,
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          `CREATE INDEX IF NOT EXISTS ${table}_search_tsv_idx
+             ON ${table} USING GIN (search_tsv);`,
+        ),
+      );
+    }
+
+    // search_kind_boosts column (jsonb) on site_settings. Editorially
+    // tuned per-kind multipliers; null = use the hard-coded defaults.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS search_kind_boosts jsonb;
+    `);
+
+    // search_queries telemetry table (#170).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS search_queries (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        query text NOT NULL,
+        query_normalized text NOT NULL,
+        result_count integer NOT NULL DEFAULT 0,
+        clicked_kind text,
+        clicked_rank integer,
+        clicked_slug text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS search_queries_normalized_idx
+        ON search_queries (query_normalized);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS search_queries_created_at_idx
+        ON search_queries (created_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS search_queries_zero_result_idx
+        ON search_queries (result_count, created_at);
+    `);
+
     // #128 — OAuth public clients (PKCE-only SPAs like Galaxy). Adds an
     // `is_public` flag to oauth_clients so the token endpoint can authenticate
     // these clients by client_id alone.

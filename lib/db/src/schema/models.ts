@@ -6,7 +6,7 @@ import {
   index,
   uuid,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { servicesTable, solutionsTable } from "./services";
 import {
   artifactIdentity,
@@ -15,6 +15,7 @@ import {
   artifactTimestamps,
   collateralPillarEnum,
 } from "./_artifactBase";
+import { tsvector } from "./_searchTsv";
 
 // Maturity models (#106). Replaces the Wix CMS rows and the single
 // hand-entered collateral row with a dedicated artifact table. Each row
@@ -52,6 +53,10 @@ export const modelsTable = pgTable(
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(short_description, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(long_description_html, '') || ' ' || coalesce(dimensions_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("models_slug_key").on(t.slug),

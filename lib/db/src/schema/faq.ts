@@ -7,12 +7,13 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   artifactIdentity,
   artifactLifecycle,
   artifactTimestamps,
 } from "./_artifactBase";
+import { tsvector } from "./_searchTsv";
 
 // #107 / #108: DB-backed FAQ for /faq.
 //
@@ -58,6 +59,10 @@ export const faqItemsTable = pgTable(
     seoDescription: text("seo_description"),
     ...artifactLifecycle,
     ...artifactTimestamps,
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(question, '')), 'A') || setweight(to_tsvector('english', coalesce(seo_description, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(answer_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     // Question slugs are only required to be unique within a category,

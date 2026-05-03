@@ -10,11 +10,12 @@ import {
   index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { mediaTable } from "./media";
 import { usersTable } from "./users";
 import { artifactStatusEnum, collateralPillarEnum } from "./_artifactBase";
 import { bookingsTable } from "./bookings";
+import { tsvector } from "./_searchTsv";
 
 export const servicesTable = pgTable(
   "services",
@@ -57,6 +58,10 @@ export const servicesTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', regexp_replace(coalesce(blurb_html, ''), '<[^>]+>', ' ', 'g')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(hero_text_html, '') || ' ' || coalesce(secondary_text_html, '') || ' ' || coalesce(tertiary_text_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("services_slug_key").on(t.slug),
@@ -114,6 +119,10 @@ export const solutionsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(blurb_copy, '') || ' ' || regexp_replace(coalesce(blurb_html, ''), '<[^>]+>', ' ', 'g')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(hero_text_html, '') || ' ' || coalesce(secondary_text_html, '') || ' ' || coalesce(our_approach_text_html, '') || ' ' || coalesce(accelerators_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("solutions_slug_key").on(t.slug),

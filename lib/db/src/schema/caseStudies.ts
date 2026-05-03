@@ -6,7 +6,7 @@ import {
   index,
   uuid,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { servicesTable, solutionsTable } from "./services";
 import {
   artifactIdentity,
@@ -14,6 +14,7 @@ import {
   artifactSeo,
   artifactTimestamps,
 } from "./_artifactBase";
+import { tsvector } from "./_searchTsv";
 
 // Case studies (#102). Moves the 633-line static TS file at
 // `artifacts/synozur/src/data/case-studies.ts` into a DB table built on the
@@ -70,6 +71,10 @@ export const caseStudiesTable = pgTable(
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(headline, '') || ' ' || coalesce(summary, '')), 'B') || setweight(to_tsvector('english', translate(coalesce(challenge::text, '') || ' ' || coalesce(approach::text, '') || ' ' || coalesce(outcome::text, '') || ' ' || coalesce(quote_text, ''), '<>"[]{},', '        ')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("case_studies_slug_key").on(t.slug),

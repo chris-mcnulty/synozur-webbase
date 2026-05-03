@@ -1,8 +1,24 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  fetchSearch,
+  reportSearchClick,
+  KIND_LABELS,
+  SEARCH_KINDS,
+  type SearchKind,
+  type SearchResult,
+} from "@/lib/search-api";
 import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
@@ -195,31 +211,122 @@ export function Header() {
   const isHome = location === "/" || location === "";
   const { isSignedIn, user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // #170 — Cmd-K command palette. Live results from `/api/search` while
+  // the user types; ⌘K / Ctrl-K opens it from anywhere on the page, "/"
+  // also opens (when not already typing in an input). Selecting a result
+  // navigates and reports a click for the search-analytics dashboard.
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchId, setSearchId] = useState<string | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
+  // ⌘K / Ctrl-K (and "/" when not in a text input) open the palette.
   useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      const isMeta = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+      const isSlash =
+        e.key === "/" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target as HTMLElement | null)?.isContentEditable;
+      if (isMeta || isSlash) {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Debounced search-as-you-type. Aborts the in-flight request when the
+  // term changes so a fast typist doesn't see stale results race in.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setSearchId(null);
+      setSearchLoading(false);
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      searchAbortRef.current?.abort();
+      const ctrl = new AbortController();
+      searchAbortRef.current = ctrl;
+      setSearchLoading(true);
+      fetchSearch({ q, limit: 8, signal: ctrl.signal })
+        .then((res) => {
+          if (ctrl.signal.aborted) return;
+          setSearchResults(res.items);
+          setSearchId(res.searchId);
+        })
+        .catch((err: unknown) => {
+          if ((err as { name?: string })?.name === "AbortError") return;
+          setSearchResults([]);
+        })
+        .finally(() => {
+          if (!ctrl.signal.aborted) setSearchLoading(false);
+        });
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery, searchOpen]);
+
+  // Reset state when the dialog closes so a re-open starts fresh.
+  useEffect(() => {
+    if (!searchOpen) {
+      setSearchQuery("");
+      setSearchResults([]);
+      setSearchId(null);
+      searchAbortRef.current?.abort();
+    }
   }, [searchOpen]);
 
-  function handleSearchSubmit(e: FormEvent) {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) return;
+  function selectResult(result: SearchResult, indexInPage: number) {
+    if (searchId) {
+      void reportSearchClick({
+        searchId,
+        clickedKind: result.kind,
+        clickedRank: indexInPage,
+        clickedSlug: result.slug,
+      });
+    }
     setSearchOpen(false);
-    setSearchQuery("");
-    navigate(`/library?q=${encodeURIComponent(q)}`);
+    navigate(result.url);
+  }
+
+  function goToFullSearch() {
+    const q = searchQuery.trim();
+    setSearchOpen(false);
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+    else navigate("/search");
   }
 
   function handleMobileSearchSubmit(e: FormEvent) {
     e.preventDefault();
     const q = searchQuery.trim();
-    if (!q) return;
     setMobileMenuOpen(false);
     setSearchQuery("");
-    navigate(`/library?q=${encodeURIComponent(q)}`);
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+    else navigate("/search");
   }
+
+  // Group results by kind for the CommandList; preserves the order
+  // returned by the backend (already ranked).
+  const groupedResults = (() => {
+    const groups: Record<SearchKind, Array<{ result: SearchResult; index: number }>> = {
+      post: [], case_study: [], white_paper: [], service: [], solution: [],
+      faq: [], polaris_episode: [], application: [], model: [],
+    };
+    searchResults.forEach((r, i) => {
+      groups[r.kind].push({ result: r, index: i });
+    });
+    return groups;
+  })();
 
   const servicesQuery = useQuery({
     queryKey: ["services"],
@@ -422,34 +529,21 @@ export function Header() {
         {/* ── Right-side controls (desktop + mobile share this group) ── */}
         <div className="ml-auto flex items-center gap-2">
 
-          {/* Desktop expandable search */}
+          {/* Desktop search trigger — opens the Cmd-K command palette */}
           <div className="hidden lg:flex items-center">
-            {searchOpen ? (
-              <form onSubmit={handleSearchSubmit} className="flex items-center gap-1">
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search library…"
-                  aria-label="Search library"
-                  className="h-9 w-48 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
-                  }}
-                />
-                <button type="submit" aria-label="Submit search" className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                  <Search className="h-4 w-4" />
-                </button>
-                <button type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </form>
-            ) : (
-              <button type="button" aria-label="Open search" onClick={() => setSearchOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <Search className="h-4 w-4" />
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label="Open search (⌘K)"
+              onClick={() => setSearchOpen(true)}
+              data-testid="header-search-button"
+              className="h-9 inline-flex items-center gap-2 rounded-md border border-border/60 px-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Search className="h-4 w-4" />
+              <span className="hidden xl:inline">Search…</span>
+              <kbd className="hidden xl:inline-flex h-5 select-none items-center gap-1 rounded border border-border/50 bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </button>
           </div>
 
           {/* Theme toggle */}
@@ -492,11 +586,12 @@ export function Header() {
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search library…"
-                aria-label="Search library"
+                placeholder="Search…"
+                aria-label="Search the site"
                 className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="mobile-search-input"
               />
-              <button type="submit" aria-label="Submit search" className="h-10 w-10 inline-flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors">
+              <button type="submit" aria-label="Submit search" data-testid="mobile-search-submit" className="h-10 w-10 inline-flex items-center justify-center rounded-md bg-muted text-foreground hover:bg-muted/80 transition-colors">
                 <Search className="h-4 w-4" />
               </button>
             </form>
@@ -573,6 +668,68 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* #170 — Cmd-K command palette overlay */}
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput
+          placeholder="Search Synozur — insights, services, case studies…"
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+          data-testid="command-search-input"
+        />
+        <CommandList>
+          {searchLoading && (
+            <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Searching…
+            </div>
+          )}
+          {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+            <CommandEmpty>No matches. Press Enter to open full search.</CommandEmpty>
+          )}
+          {!searchLoading && searchQuery.trim().length < 2 && (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              Type at least 2 characters to search.
+            </div>
+          )}
+          {SEARCH_KINDS.map((kind) => {
+            const items = groupedResults[kind];
+            if (!items.length) return null;
+            return (
+              <CommandGroup key={kind} heading={KIND_LABELS[kind]}>
+                {items.map(({ result, index }) => (
+                  <CommandItem
+                    key={`${result.kind}-${result.id}`}
+                    value={`${result.title} ${result.slug} ${result.kind}`}
+                    onSelect={() => selectResult(result, index)}
+                    data-testid={`command-result-${index}`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate">{result.title}</span>
+                      {result.excerpt && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {result.excerpt}
+                        </span>
+                      )}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            );
+          })}
+          {searchQuery.trim().length >= 2 && (
+            <CommandGroup heading="More">
+              <CommandItem
+                value="__open-full-search__"
+                onSelect={goToFullSearch}
+                data-testid="command-open-full-search"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                See all results for "{searchQuery.trim()}"
+              </CommandItem>
+            </CommandGroup>
+          )}
+        </CommandList>
+      </CommandDialog>
     </header>
   );
 }

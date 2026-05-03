@@ -10,10 +10,11 @@ import {
   index,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { mediaTable } from "./media";
 import { solutionsTable } from "./services";
+import { tsvector } from "./_searchTsv";
 
 export const POST_STATUSES = ["draft", "scheduled", "published", "archived"] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
@@ -54,6 +55,12 @@ export const postsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // #170: full-text search vector. Owned by api-server startup migrations
+    // (DDL with regexp_replace). Declared here as a stored generated column
+    // so drizzle-kit sees it and doesn't try to drop it on push.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(excerpt, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(body_html, '') || ' ' || coalesce(body_markdown, '') || ' ' || coalesce(subtitle, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("posts_slug_key").on(t.slug),

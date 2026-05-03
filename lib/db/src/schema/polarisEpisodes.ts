@@ -8,7 +8,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   artifactIdentity,
   artifactLifecycle,
@@ -17,6 +17,7 @@ import {
 } from "./_artifactBase";
 import { servicesTable, solutionsTable } from "./services";
 import { postsTable } from "./posts";
+import { tsvector } from "./_searchTsv";
 
 // Polaris podcast episodes (#101). Built on the shared #98 artifact-type
 // pattern: identity + lifecycle + SEO + timestamps reused from
@@ -43,6 +44,10 @@ export const polarisEpisodesTable = pgTable(
     ...artifactLifecycle,
     ...artifactSeo,
     ...artifactTimestamps,
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(summary, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(transcript_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("polaris_episodes_slug_key").on(t.slug),

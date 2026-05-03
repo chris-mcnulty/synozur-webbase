@@ -10,8 +10,10 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { mediaTable } from "./media";
 import { servicesTable, solutionsTable } from "./services";
+import { tsvector } from "./_searchTsv";
 
 export const WHITE_PAPER_DOC_TYPES = ["whitepaper", "ebook", "report", "guide"] as const;
 export type WhitePaperDocType = (typeof WHITE_PAPER_DOC_TYPES)[number];
@@ -72,6 +74,10 @@ export const whitePapersTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // #170: full-text search vector — see posts.ts comment.
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(short_description, '') || ' ' || coalesce(subtitle, '')), 'B') || setweight(to_tsvector('english', regexp_replace(coalesce(body_html, ''), '<[^>]+>', ' ', 'g')), 'C')`,
+    ),
   },
   (t) => [
     uniqueIndex("white_papers_slug_key").on(t.slug),

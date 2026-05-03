@@ -56,3 +56,4 @@ export * from "./careers";
 export * from "./subscribers";
 export * from "./emailMessages";
 export * from "./emailEvents";
+export * from "./searchQueries";

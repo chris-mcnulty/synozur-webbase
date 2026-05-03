@@ -214,6 +214,16 @@ export const siteSettingsTable = pgTable("site_settings", {
   aiChatDailyTokenCapPerSession: integer("ai_chat_daily_token_cap_per_session"),
   aiChatDailyTokenCapGlobal: integer("ai_chat_daily_token_cap_global"),
 
+  // #170 — Per-kind ranking multipliers for the public search endpoint.
+  // Postgres FTS produces a `ts_rank_cd` score in [0, ~1]; this map is
+  // multiplied into that score so commercial pages (services, solutions)
+  // can outrank blog posts on equal-relevance ties without baking the
+  // weights into application code. Keys are search kinds: `post`,
+  // `case_study`, `white_paper`, `service`, `solution`, `faq`,
+  // `polaris_episode`, `application`, `model`. When null, the route
+  // falls back to a hard-coded default map.
+  searchKindBoosts: jsonb("search_kind_boosts").$type<Record<string, number>>(),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
