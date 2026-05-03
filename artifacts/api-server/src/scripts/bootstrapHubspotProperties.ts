@@ -431,7 +431,11 @@ async function main(): Promise<void> {
 }
 
 // Only auto-run when invoked directly (e.g. `tsx src/scripts/...`).
-const isDirectRun = import.meta.url === `file://${process.argv[1]}`;
+// NOTE: import.meta.url is NOT reliable inside an esbuild bundle —
+// every module in the bundle shares the same URL (the entry point).
+// Instead we check process.argv[1] for the script's own filename,
+// which is only present when the script is invoked via tsx directly.
+const isDirectRun = Boolean(process.argv[1]?.includes("bootstrapHubspotProperties"));
 if (isDirectRun) {
   main().catch((err) => {
     console.error(err);

@@ -164,7 +164,11 @@ async function main(): Promise<void> {
   if (CLOSE_POOL) await pool.end();
 }
 
-const isDirectRun = import.meta.url === `file://${process.argv[1]}`;
+// NOTE: import.meta.url is NOT reliable inside an esbuild bundle —
+// every module in the bundle shares the same URL (the entry point).
+// Instead we check process.argv[1] for the script's own filename,
+// which is only present when the script is invoked via tsx directly.
+const isDirectRun = Boolean(process.argv[1]?.includes("migrateSubmissionsToHubspot"));
 if (isDirectRun) {
   main().catch(async (err) => {
     console.error(err);

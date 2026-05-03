@@ -2584,6 +2584,17 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS hide_history_from_customer boolean NOT NULL DEFAULT false;
     `);
 
+    // #223 — Careers section site_settings columns. These were added to the
+    // Drizzle schema but never received a migrations.ts ADD COLUMN block, so
+    // environments that were bootstrapped before #223 shipped are missing them.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS careers_mode text NOT NULL DEFAULT 'native',
+        ADD COLUMN IF NOT EXISTS careers_external_url text,
+        ADD COLUMN IF NOT EXISTS careers_eeo_enabled boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS careers_default_hiring_manager text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
