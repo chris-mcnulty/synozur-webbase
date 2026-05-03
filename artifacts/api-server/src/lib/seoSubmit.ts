@@ -37,6 +37,25 @@ export interface SubmitBundle {
   results: SubmitResult[];
 }
 
+// #254 — submission mode. "publish" uses Google's URL_UPDATED notification
+// (the existing happy-path semantic). "delete" uses URL_DELETED so Google
+// drops the URL from its index promptly when content transitions to a
+// "gone" state. IndexNow and Bing's batch API have no delete mode — they
+// receive the URL and the engine refetches, sees 410, and de-indexes.
+export type SubmitMode = "publish" | "delete";
+
+export interface SubmitOptions {
+  mode?: SubmitMode;
+}
+
+/**
+ * Build the Google Indexing API request body for a single URL. Exported so
+ * unit tests can pin the payload without spinning up a real Google client.
+ */
+export function googleNotifyPayload(url: string, mode: SubmitMode = "publish") {
+  return { url, type: mode === "delete" ? "URL_DELETED" : "URL_UPDATED" } as const;
+}
+
 function indexNowKey(): string | null {
   const raw = process.env.INDEXNOW_KEY?.trim();
   if (!raw) return null;
@@ -96,6 +115,18 @@ async function submitIndexNow(
 /** Maximum number of concurrent requests to the Google Indexing API. */
 const GOOGLE_INDEXING_CONCURRENCY = 5;
 
+// #254 — testing seam. Tests can replace the Google client factory with a
+// stub so assertions about request payloads (notably URL_DELETED for the
+// unpublish path) don't require live credentials or HTTP traffic.
+type GoogleClient = Awaited<ReturnType<GoogleAuth["getClient"]>>;
+type GoogleClientFactory = (saJson: string) => Promise<GoogleClient>;
+let googleClientFactory: GoogleClientFactory | null = null;
+export function __setGoogleClientFactoryForTesting(
+  factory: GoogleClientFactory | null,
+): void {
+  googleClientFactory = factory;
+}
+
 /**
  * Submit `urls` to the Google Indexing API with bounded concurrency.
  * Returns the number of successfully submitted URLs.
@@ -103,6 +134,7 @@ const GOOGLE_INDEXING_CONCURRENCY = 5;
 async function submitGoogleIndexingWithConcurrency(
   client: Awaited<ReturnType<GoogleAuth["getClient"]>>,
   urls: string[],
+  mode: SubmitMode,
 ): Promise<number> {
   let ok = 0;
   const queue = [...urls];
@@ -114,7 +146,7 @@ async function submitGoogleIndexingWithConcurrency(
         await client.request({
           url: "https://indexing.googleapis.com/v3/urlNotifications:publish",
           method: "POST",
-          data: { url: u, type: "URL_UPDATED" },
+          data: googleNotifyPayload(u, mode),
         });
         ok += 1;
       } catch {
@@ -127,7 +159,10 @@ async function submitGoogleIndexingWithConcurrency(
   return ok;
 }
 
-async function submitGoogleIndexing(urls: string[]): Promise<SubmitResult> {
+async function submitGoogleIndexing(
+  urls: string[],
+  mode: SubmitMode,
+): Promise<SubmitResult> {
   const sa = process.env.GOOGLE_INDEXING_SA_JSON?.trim();
   if (!sa) {
     return {
@@ -149,12 +184,17 @@ async function submitGoogleIndexing(urls: string[]): Promise<SubmitResult> {
     };
   }
   try {
-    const auth = new GoogleAuth({
-      credentials: credentials as ConstructorParameters<typeof GoogleAuth>[0]["credentials"],
-      scopes: ["https://www.googleapis.com/auth/indexing"],
-    });
-    const client = await auth.getClient();
-    const ok = await submitGoogleIndexingWithConcurrency(client, urls);
+    let client: GoogleClient;
+    if (googleClientFactory) {
+      client = await googleClientFactory(sa);
+    } else {
+      const auth = new GoogleAuth({
+        credentials: credentials as ConstructorParameters<typeof GoogleAuth>[0]["credentials"],
+        scopes: ["https://www.googleapis.com/auth/indexing"],
+      });
+      client = await auth.getClient();
+    }
+    const ok = await submitGoogleIndexingWithConcurrency(client, urls, mode);
     return {
       target: "google-indexing",
       ok: ok === urls.length,
@@ -207,14 +247,16 @@ async function submitBing(urls: string[]): Promise<SubmitResult> {
 export async function submitUrls(
   origin: string,
   urls: string[],
+  options: SubmitOptions = {},
 ): Promise<SubmitBundle> {
+  const mode: SubmitMode = options.mode ?? "publish";
   const unique = Array.from(new Set(urls.filter((u) => /^https?:\/\//i.test(u))));
   if (unique.length === 0) {
     return { origin, urls: [], results: [] };
   }
   const results = await Promise.all([
     submitIndexNow(origin, unique),
-    submitGoogleIndexing(unique),
+    submitGoogleIndexing(unique, mode),
     submitBing(unique),
   ]);
   for (const r of results) {

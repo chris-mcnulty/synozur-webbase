@@ -1759,6 +1759,29 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (slug) DO NOTHING;
     `);
 
+    // #254 — SEO unpublish-submission audit table. Records per-channel
+    // IndexNow / Google Indexing / Bing Webmaster ping results when content
+    // transitions to a "gone" state, surfaced on /admin/site-config/launch-readiness.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_unpublish_submissions (
+        id serial PRIMARY KEY,
+        entity_type text NOT NULL,
+        entity_id text NOT NULL,
+        slug text NOT NULL,
+        url text NOT NULL,
+        channel text NOT NULL,
+        ok boolean NOT NULL,
+        http_status integer,
+        submitted integer NOT NULL DEFAULT 0,
+        error text,
+        submitted_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_unpublish_submissions_channel_submitted_at_idx
+        ON seo_unpublish_submissions (channel, submitted_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

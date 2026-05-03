@@ -11,6 +11,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import {
   upsertCollateralFromApplication,
   softDeleteCollateralForApplication,
@@ -314,6 +315,19 @@ router.patch("/cms/applications/:id", ...adminGuard, async (req, res) => {
     .where(eq(applicationsTable.id, id))
     .returning();
 
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "application",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/applications/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/applications/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
+
   await upsertCollateralFromApplication(updated);
 
   await audit({
@@ -339,6 +353,8 @@ router.delete("/cms/applications/:id", ...adminGuard, async (req, res) => {
     .update(applicationsTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(applicationsTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for applications,
+  // not 410 Gone, so we deliberately do not submit a removal here.
   await softDeleteCollateralForApplication(id);
   await audit({
     actorId: req.authedUser!.id,

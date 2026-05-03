@@ -35,6 +35,7 @@ import {
 } from "../lib/servicesSerializer";
 import { signPreviewToken, verifyPreviewToken } from "../lib/previewToken";
 import { sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -323,6 +324,18 @@ router.patch("/cms/services/:id", ...adminGuard, async (req, res) => {
   if (d.tagIds !== undefined) {
     await setEntityTags("service", id, d.tagIds);
   }
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "service",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/services/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/services/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "service.update",
@@ -343,6 +356,8 @@ router.delete("/cms/services/:id", ...adminGuard, async (req, res) => {
     .update(servicesTable)
     .set({ deletedAt: new Date(), active: false, updatedAt: new Date() })
     .where(eq(servicesTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for services,
+  // not 410 Gone, so we deliberately do not submit a removal here.
   await audit({
     actorId: req.authedUser!.id,
     action: "service.delete",
@@ -465,6 +480,18 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   if (d.tagIds !== undefined) {
     await setEntityTags("solution", id, d.tagIds);
   }
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "solution",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/solutions/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/solutions/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "solution.update",
@@ -485,6 +512,8 @@ router.delete("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     .update(solutionsTable)
     .set({ deletedAt: new Date(), active: false, updatedAt: new Date() })
     .where(eq(solutionsTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for solutions,
+  // not 410 Gone, so we deliberately do not submit a removal here.
   await audit({
     actorId: req.authedUser!.id,
     action: "solution.delete",

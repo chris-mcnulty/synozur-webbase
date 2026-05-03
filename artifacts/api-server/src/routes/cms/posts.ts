@@ -20,6 +20,7 @@ import {
   softDeleteCollateralForPost,
 } from "../../lib/syncCollateral";
 import { trimPostRevisions } from "../../lib/revisionRetention";
+import { submitIfTransitionedToGone } from "../../lib/seoUnpublishSubmit";
 
 const router: IRouter = Router();
 
@@ -337,6 +338,17 @@ router.delete("/cms/posts/:id", requireAuth, async (req, res) => {
     .update(postsTable)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(eq(postsTable.id, post.id));
+  // #254: a soft-delete also removes the URL from the public site, so ping
+  // the search engines to drop it from their indexes.
+  await submitIfTransitionedToGone({
+    entityType: "post",
+    entityId: post.id,
+    slug: post.slug,
+    publicPath: `/insights/${post.slug}`,
+    before: { status: post.status, unpublishedAt: null, active: true },
+    after: { status: "archived", unpublishedAt: null, active: false },
+    log: req.log,
+  });
   try {
     await softDeleteCollateralForPost(post.id);
   } catch (err) {
@@ -650,6 +662,19 @@ router.post("/cms/posts/:id/archive", requireAuth, async (req, res) => {
     .where(eq(postsTable.id, post.id))
     .returning();
   await syncPostCollateral(updated);
+  // #254: archive transition — push the URL to IndexNow / Google Indexing /
+  // Bing Webmaster so it gets de-indexed promptly.
+  await submitIfTransitionedToGone({
+    entityType: "post",
+    entityId: post.id,
+    slug: post.slug,
+    publicPath: `/insights/${post.slug}`,
+    alsoSubmitPath:
+      updated.slug !== post.slug ? `/insights/${updated.slug}` : undefined,
+    before: { status: post.status },
+    after: { status: updated.status },
+    log: req.log,
+  });
   await audit({ actorId: user.id, action: "post.archive", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });

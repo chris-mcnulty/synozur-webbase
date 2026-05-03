@@ -1,6 +1,9 @@
-import { sql } from "drizzle-orm";
+import { sql, desc, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { siteSettingsTable } from "@workspace/db/schema";
+import {
+  siteSettingsTable,
+  seoUnpublishSubmissionsTable,
+} from "@workspace/db/schema";
 import { logger } from "./logger";
 import { siteOrigin } from "./siteOrigin";
 
@@ -27,6 +30,16 @@ export interface ChannelStatus {
   configured: boolean;
   source?: string;
   detail?: string;
+  // #254 — latest "gone" submission attempt for this channel, if any.
+  // Surfaced on /admin/site-config/launch-readiness so an operator can
+  // confirm a recent unpublish actually pinged the search engine.
+  lastUnpublishSubmission?: {
+    submittedAt: string;
+    ok: boolean;
+    httpStatus: number | null;
+    url: string;
+    error: string | null;
+  } | null;
 }
 
 export interface LaunchReadinessGroup {
@@ -106,6 +119,37 @@ async function checkVerificationMetaTags(): Promise<ChannelStatus[]> {
       detail: probeError ?? undefined,
     },
   ];
+}
+
+// #254: most-recent unpublish-submission row per channel, so the L3
+// readiness panel can show "last pinged X ago — ok/failed" alongside the
+// configured/not-configured state.
+async function loadLatestUnpublishSubmissions(): Promise<
+  Map<string, NonNullable<ChannelStatus["lastUnpublishSubmission"]>>
+> {
+  const out = new Map<string, NonNullable<ChannelStatus["lastUnpublishSubmission"]>>();
+  try {
+    for (const channel of ["indexnow", "google-indexing", "bing-webmaster"]) {
+      const [row] = await db
+        .select()
+        .from(seoUnpublishSubmissionsTable)
+        .where(eq(seoUnpublishSubmissionsTable.channel, channel))
+        .orderBy(desc(seoUnpublishSubmissionsTable.submittedAt))
+        .limit(1);
+      if (row) {
+        out.set(channel, {
+          submittedAt: row.submittedAt.toISOString(),
+          ok: row.ok,
+          httpStatus: row.httpStatus ?? null,
+          url: row.url,
+          error: row.error ?? null,
+        });
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "loadLatestUnpublishSubmissions failed");
+  }
+  return out;
 }
 
 function checkSubmissionChannels(): ChannelStatus[] {
@@ -216,7 +260,22 @@ export async function getLaunchReadinessReport(): Promise<LaunchReadinessReport>
     {
       tier: "L3",
       label: "Search engine submission credentials",
-      channels: checkSubmissionChannels(),
+      channels: await (async () => {
+        const channels = checkSubmissionChannels();
+        const latest = await loadLatestUnpublishSubmissions();
+        // Map UI channel names back to the seoSubmit `target` keys so the
+        // readout pairs each row with its most-recent unpublish attempt.
+        const keyByName: Record<string, string> = {
+          "IndexNow (Bing/Yandex/Seznam/Naver/Yep)": "indexnow",
+          "Google Indexing API": "google-indexing",
+          "Bing Webmaster Tools": "bing-webmaster",
+        };
+        for (const c of channels) {
+          const key = keyByName[c.name];
+          c.lastUnpublishSubmission = key ? (latest.get(key) ?? null) : null;
+        }
+        return channels;
+      })(),
     },
     {
       tier: "L5",

@@ -11,6 +11,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import { toSlug } from "../lib/slug";
 import {
   upsertCollateralFromModel,
@@ -312,6 +313,18 @@ router.patch("/cms/models/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(modelsTable.id, id))
     .returning();
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "model",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/models/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/models/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "model.update",
@@ -343,6 +356,8 @@ router.delete("/cms/models/:id", ...adminGuard, async (req, res) => {
     .update(modelsTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(modelsTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for models,
+  // not 410 Gone, so we deliberately do not submit a removal here.
   await audit({
     actorId: req.authedUser!.id,
     action: "model.delete",

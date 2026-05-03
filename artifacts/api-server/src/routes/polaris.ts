@@ -21,6 +21,7 @@ import { toSlug } from "../lib/slug";
 import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
 import { siteOrigin } from "../lib/siteOrigin";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 
 const router: IRouter = Router();
 
@@ -540,6 +541,18 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(polarisEpisodesTable.id, id))
     .returning();
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "polaris_episode",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/polaris/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/polaris/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "polaris_episode.update",
@@ -654,6 +667,8 @@ router.delete("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     .update(polarisEpisodesTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(polarisEpisodesTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for polaris
+  // episodes, not 410 Gone, so we deliberately do not submit a removal here.
   await audit({
     actorId: req.authedUser!.id,
     action: "polaris_episode.delete",

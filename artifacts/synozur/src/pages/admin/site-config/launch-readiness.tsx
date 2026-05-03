@@ -17,6 +17,29 @@ interface ChannelStatus {
   configured: boolean;
   source?: string;
   detail?: string;
+  // #254 — most-recent unpublish-submission attempt for this channel,
+  // surfaced so an operator can confirm IndexNow / Google Indexing /
+  // Bing Webmaster were actually pinged after archiving content.
+  lastUnpublishSubmission?: {
+    submittedAt: string;
+    ok: boolean;
+    httpStatus: number | null;
+    url: string;
+    error: string | null;
+  } | null;
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return iso;
+  const diffMs = Date.now() - then;
+  if (diffMs < 60_000) return "just now";
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return `${days}d ago`;
 }
 
 interface LaunchReadinessGroup {
@@ -198,6 +221,37 @@ function GroupCard({ group }: { group: LaunchReadinessGroup }) {
               {channel.detail && (
                 <div className="text-xs text-amber-400 mt-1">{channel.detail}</div>
               )}
+              {channel.lastUnpublishSubmission ? (
+                <div
+                  className={`text-xs mt-1 ${
+                    channel.lastUnpublishSubmission.ok
+                      ? "text-zinc-400"
+                      : "text-amber-400"
+                  }`}
+                  data-testid={`launch-readiness-channel-${channel.name}-last-unpublish`}
+                >
+                  Last unpublish ping:{" "}
+                  {channel.lastUnpublishSubmission.ok ? "ok" : "failed"}
+                  {channel.lastUnpublishSubmission.httpStatus != null && (
+                    <> ({channel.lastUnpublishSubmission.httpStatus})</>
+                  )}
+                  {" · "}
+                  {formatRelative(channel.lastUnpublishSubmission.submittedAt)}
+                  {" · "}
+                  <span className="text-zinc-500 break-all">
+                    {channel.lastUnpublishSubmission.url}
+                  </span>
+                  {channel.lastUnpublishSubmission.error && (
+                    <div className="text-amber-400/80 mt-0.5">
+                      {channel.lastUnpublishSubmission.error}
+                    </div>
+                  )}
+                </div>
+              ) : channel.lastUnpublishSubmission === null && channel.configured ? (
+                <div className="text-xs text-zinc-500 mt-1">
+                  No unpublish pings recorded yet.
+                </div>
+              ) : null}
             </div>
           </div>
         ))}

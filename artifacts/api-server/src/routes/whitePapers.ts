@@ -16,6 +16,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import {
   upsertCollateralFromWhitePaper,
   softDeleteCollateralForWhitePaper,
@@ -536,6 +537,18 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(whitePapersTable.id, id))
     .returning();
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "white_paper",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/library/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/library/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "white_paper.update",
@@ -571,6 +584,9 @@ router.delete("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
     .update(whitePapersTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(whitePapersTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for white papers,
+  // not 410 Gone, so we deliberately do not submit a removal here. Use the
+  // archive flow if you need search engines to drop the URL.
   await audit({
     actorId: req.authedUser!.id,
     action: "white_paper.delete",

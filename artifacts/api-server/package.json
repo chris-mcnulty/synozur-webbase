@@ -28,6 +28,7 @@
     "test:auth-rate-limit": "node --import tsx --test src/routes/auth.rateLimit.test.ts",
     "test:traffic-ingest": "node --import tsx --test src/routes/traffic.ingest.test.ts",
     "test:insights-gone": "node --import tsx --test src/routes/insights.gone.test.ts",
+    "test:seo-unpublish": "node --import tsx --test src/routes/seoUnpublishSubmit.test.ts",
     "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts"
   },
   "dependencies": {

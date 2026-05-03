@@ -11,6 +11,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import {
   upsertCollateralFromCaseStudy,
   softDeleteCollateralForCaseStudy,
@@ -338,6 +339,18 @@ router.patch("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(caseStudiesTable.id, id))
     .returning();
+  // #254: ping search engines if this save flipped the row into a "gone" state.
+  await submitIfTransitionedToGone({
+    entityType: "case_study",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/case-studies/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/case-studies/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "case_study.update",
@@ -370,6 +383,10 @@ router.delete("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
     .update(caseStudiesTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(caseStudiesTable.id, id));
+  // #254: soft-delete (active=false) returns 404 Not Found for case studies,
+  // not 410 Gone, so we deliberately do not submit a removal here. If the
+  // editor archives the row instead (status='archived') the update handler
+  // already submits.
   await audit({
     actorId: req.authedUser!.id,
     action: "case_study.delete",

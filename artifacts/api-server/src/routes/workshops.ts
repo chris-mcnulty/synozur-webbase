@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, eq, isNull, ne, asc } from "drizzle-orm";
 import { sendGone } from "../lib/goneResponse";
+import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import { db, workshopsTable, type Workshop } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
@@ -404,6 +405,22 @@ router.patch("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(workshopsTable.id, id))
     .returning();
+  // #254: workshops have no status enum, so an active=true → false flip is
+  // the only "unpublish" signal. Ping the search engines on that transition,
+  // submitting the pre-transition (indexed) URL as primary, plus the new
+  // slug if it changed in the same save.
+  await submitIfTransitionedToGone({
+    entityType: "workshop",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/workshops/${existing.slug}`,
+    alsoSubmitPath:
+      updated.slug !== existing.slug ? `/workshops/${updated.slug}` : undefined,
+    before: existing,
+    after: updated,
+    treatInactiveAsGone: true,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "workshop.update",
@@ -431,6 +448,18 @@ router.delete("/cms/workshops/:id", ...adminGuard, async (req, res) => {
     .update(workshopsTable)
     .set({ deletedAt: new Date(), active: false, updatedAt: new Date() })
     .where(eq(workshopsTable.id, id));
+  // #254: soft-delete also removes the URL from the public site (workshops
+  // return 410 Gone for inactive rows).
+  await submitIfTransitionedToGone({
+    entityType: "workshop",
+    entityId: id,
+    slug: existing.slug,
+    publicPath: `/workshops/${existing.slug}`,
+    before: existing,
+    after: { ...existing, active: false },
+    treatInactiveAsGone: true,
+    log: req.log,
+  });
   await audit({
     actorId: req.authedUser!.id,
     action: "workshop.delete",

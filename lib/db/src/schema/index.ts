@@ -38,6 +38,7 @@ export * from "./faq";
 export * from "./contentParentPages";
 export * from "./bookings";
 export * from "./hubspotSync";
+export * from "./seoUnpublishSubmissions";
 export * from "./cwvSamples";
 export * from "./cspViolations";
 export * from "./publishBlocks";
