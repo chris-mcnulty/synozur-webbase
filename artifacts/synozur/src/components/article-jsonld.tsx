@@ -21,6 +21,13 @@ export interface ArticleJsonLdProps {
   updatedAt?: string | null;
   authorName?: string | null;
   authorUrl?: string | null;
+  /**
+   * When true, emit `@type: NewsArticle` instead of `Article`. Insights
+   * tagged `news` (or filed under a News category) opt into the NewsArticle
+   * schema so Google can route them to the news carousel and Top Stories
+   * surfaces.
+   */
+  isNews?: boolean;
 }
 
 export function ArticleJsonLd({
@@ -32,6 +39,7 @@ export function ArticleJsonLd({
   updatedAt,
   authorName,
   authorUrl,
+  isNews,
 }: ArticleJsonLdProps) {
   useEffect(() => {
     const canonical = `${SITE_ORIGIN}/insights/${slug}`;
@@ -46,7 +54,7 @@ export function ArticleJsonLd({
 
     const data: Record<string, unknown> = {
       "@context": "https://schema.org",
-      "@type": "Article",
+      "@type": isNews ? "NewsArticle" : "Article",
       headline: title,
       mainEntityOfPage: {
         "@type": "WebPage",
@@ -80,7 +88,7 @@ export function ArticleJsonLd({
       const el = document.getElementById(ID);
       if (el) el.remove();
     };
-  }, [slug, title, description, image, publishedAt, updatedAt, authorName, authorUrl]);
+  }, [slug, title, description, image, publishedAt, updatedAt, authorName, authorUrl, isNews]);
 
   return null;
 }

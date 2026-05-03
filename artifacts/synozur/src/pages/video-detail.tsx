@@ -6,6 +6,8 @@ import { api, type VideoCategory, type VideoDto } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 import { toEmbedUrl } from "@/lib/video-embed";
+import { VideoJsonLd } from "@/components/video-jsonld";
+import { SITE_ORIGIN } from "@/lib/seo-config";
 
 const CATEGORY_LABELS: Record<VideoCategory, string> = {
   interview: "Interview",
@@ -57,6 +59,16 @@ export default function VideoDetail() {
         image={item.ogImage || item.heroImage}
         path={`/videos/${item.slug}`}
         type="article"
+      />
+      <VideoJsonLd
+        canonicalUrl={`${SITE_ORIGIN}/videos/${item.slug}`}
+        name={item.title}
+        description={item.seoDescription || item.shortDescription}
+        thumbnailUrl={item.thumbnailUrl ?? item.heroImage}
+        uploadDate={publishedDate}
+        durationSeconds={item.durationSeconds}
+        contentUrl={item.videoUrl}
+        embedUrl={embedUrl}
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-16">

@@ -1,4 +1,5 @@
 import { Meta } from "@/lib/meta";
+import { LocalBusinessJsonLd } from "@/components/local-business-jsonld";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -86,6 +87,7 @@ export default function Contact() {
         title="Contact"
         description="Tell us where you are headed. We will tell you where Synozur can help."
       />
+      <LocalBusinessJsonLd />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
         <div className="absolute inset-0 nebula-gradient opacity-25" />

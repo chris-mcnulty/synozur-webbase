@@ -24,6 +24,20 @@ import type { PublicPost } from "@workspace/api-client-react";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
+/**
+ * A post is treated as a NewsArticle (rather than an Article) when it carries
+ * a `news` tag or sits in a category whose slug or name reads as news. This is
+ * a tag-driven opt-in so editors can route a post into Top Stories simply by
+ * adding the tag — no schema migration needed.
+ */
+function isNewsPost(post: PublicPost): boolean {
+  const matches = (s: string | null | undefined) =>
+    !!s && /^news$/i.test(s.trim());
+  if (post.tags?.some((t) => matches(t.slug) || matches(t.name))) return true;
+  if (post.categories?.some((c) => matches(c.slug) || matches(c.name))) return true;
+  return false;
+}
+
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
@@ -203,6 +217,7 @@ export default function InsightDetail() {
         image={ogImage ?? null}
         publishedAt={post.publishedAt ?? null}
         authorName={post.author?.displayName ?? null}
+        isNews={isNewsPost(post)}
       />
 
       <article className="bg-background">

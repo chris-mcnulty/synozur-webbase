@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import type { PolarisLinkedPostDto } from "@/lib/api";
+import { VideoJsonLd } from "@/components/video-jsonld";
+import { SITE_ORIGIN } from "@/lib/seo-config";
 
 interface PolarisEpisodeDto {
   id: string;
@@ -168,6 +170,15 @@ export default function PolarisEpisodeDetail() {
           ) ||
           undefined
         }
+      />
+      <VideoJsonLd
+        canonicalUrl={`${SITE_ORIGIN}/polaris/${episode.slug}`}
+        name={episode.title}
+        description={summaryLines[0] ?? null}
+        thumbnailUrl={episode.artworkUrl}
+        uploadDate={episode.publishedAt}
+        durationSeconds={episode.durationSeconds}
+        contentUrl={episode.audioUrl}
       />
 
       {/* Hero */}

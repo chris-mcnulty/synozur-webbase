@@ -6,6 +6,7 @@ import { ArrowLeft, Linkedin, Mail, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
+import { PersonJsonLd } from "@/components/person-jsonld";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -91,6 +92,16 @@ export default function TeamDetail() {
   return (
     <div className="w-full">
       <Meta title={person.name} description={metaDescription} />
+      <PersonJsonLd
+        slug={person.slug}
+        name={person.name}
+        jobTitle={person.jobTitle}
+        description={metaDescription}
+        image={imageSrc ?? null}
+        email={person.email ?? null}
+        linkedinUrl={person.linkedinUrl ?? null}
+        website={person.website ?? null}
+      />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-20">
         <div className="absolute inset-0 nebula-gradient opacity-20" />

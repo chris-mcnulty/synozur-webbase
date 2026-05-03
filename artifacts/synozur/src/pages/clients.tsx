@@ -8,6 +8,8 @@ import { api, type CaseStudyDto } from "@/lib/api";
 import { caseStudies as staticCaseStudies } from "@/data/case-studies";
 import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
+import { ReviewJsonLd } from "@/components/review-jsonld";
+import { SITE_ORIGIN } from "@/lib/seo-config";
 
 type DisplayQuote = { quote: string; name: string; org: string };
 
@@ -75,6 +77,15 @@ export default function Clients() {
       <Meta
         title="Our Clients"
         description="Synozur partners with global enterprises and breakout growth companies. With years of experience working with global customers across various industries, we have the insights to tackle complex challenges and drive meaningful change."
+      />
+      <ReviewJsonLd
+        canonicalUrl={`${SITE_ORIGIN}/clients`}
+        reviews={(testimonialsQ.data?.items ?? []).map((t) => ({
+          quote: t.quote,
+          authorName: t.authorName,
+          authorRole: t.authorRole,
+          organization: t.organization,
+        }))}
       />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] py-32">

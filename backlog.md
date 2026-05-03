@@ -53,7 +53,7 @@ Each row links to the canonical backlog entry below where the implementation det
 - [x] ~~**L16.** Share rail on insight / case-study / white-paper detail pages → #164.~~ **Shipped May 2026.**
 - [ ] **L17.** Quality-gates warn → block flip → BACKLOG.md "Quality gates" #3, #4 (once warn-mode metrics are clean).
 - [x] ~~**L18.** Robots meta + discovery-friendly 404 page → #163.~~ **Shipped May 2026.**
-- [ ] **L19.** Expanded JSON-LD coverage (LocalBusiness, Person, Review, VideoObject) → #159.
+- [x] ~~**L19.** Expanded JSON-LD coverage (LocalBusiness, Person, Review, VideoObject) → #159.~~ **Shipped May 2026.**
 - [ ] **L20.** CI broken-link checker → #157.
 
 ### Owner / cadence
@@ -422,10 +422,10 @@ There is no CI step that crawls the built site and verifies that internal links,
 
 The codebase has axe-core integration in the Playwright suite but no static a11y linting. `eslint-plugin-jsx-a11y` would catch the bulk of the same issues at edit time — missing alt text, invalid ARIA, label-input mismatches, anchor-without-href — long before Lighthouse or axe can. This task: (a) installs the plugin in the workspace ESLint config, (b) sets the rules at `error` for the must-haves and `warn` for the stylistic ones, (c) adds a Husky pre-commit hook (or lint-staged) that runs `eslint` on staged TSX files, (d) fixes the existing violations the new rules surface. Pairs with the publish-block warn-mode work in BACKLOG.md "Quality gates" #1 — author-time linting catches issues the heading-order check today only catches at publish time.
 
-### #159 · Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject)
+### ~~#159 · Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject)~~ **— Shipped May 2026**
 **Depends on:** —
 
-The site emits Organization, Article, FAQPage, BreadcrumbList, and Event JSON-LD today, but several artifact types still rank weaker than they could because their structured data is incomplete. This task adds: **LocalBusiness** schema on `/contact` and the office detail card (address, phone, opening hours, geo), **Person** schema on team-member detail surfaces (job title, image, sameAs links to LinkedIn), **VideoObject** schema on collateral video items and Polaris episodes (uploadDate, duration, thumbnailUrl, contentUrl), and **Review/AggregateRating** wrappers on testimonials so SERPs can render the rating star treatment. NewsArticle vs Article distinction is also handled here: insights tagged as `news` emit `NewsArticle`, the rest stay `Article`. Verify each schema with the Google Rich Results Test before merge.
+~~The site emits Organization, Article, FAQPage, BreadcrumbList, and Event JSON-LD today, but several artifact types still rank weaker than they could because their structured data is incomplete.~~ **Shipped:** four new components in `artifacts/synozur/src/components/` — `local-business-jsonld.tsx` (emitted on `/contact`, sourced from `site_settings` org address fields with hard-coded geo/opening-hours defaults for the Mill Creek WA office), `person-jsonld.tsx` (emitted on `/team/:slug` with jobTitle, image, and `sameAs` LinkedIn / website links from the existing team profile fields), `video-jsonld.tsx` (emitted on `/videos/:slug` and `/polaris/:slug` with `uploadDate`, ISO-8601 `duration` via `secondsToIsoDuration`, `thumbnailUrl`, `contentUrl`, and `embedUrl`), and `review-jsonld.tsx` (Review + AggregateRating wrapper on the `/clients` testimonials block). The existing `article-jsonld.tsx` learned an `isNews` prop and `insight-detail.tsx` opts a post into `NewsArticle` when its tags or categories include `news`. Each schema renders a single managed `<script id>` so no stacking occurs across SPA navigations.
 
 ### #160 · Search Console domain-property verification + indexing dashboard
 **Depends on:** #102 (live search-engine submission credentials)
@@ -605,7 +605,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #156 | Make Lighthouse CI block PRs instead of running on manual trigger | Marketing & Lifecycle | — |
 | #157 | CI broken-link checker over the published site | Marketing & Lifecycle | #156 |
 | #158 | Add `eslint-plugin-jsx-a11y` and a pre-commit a11y/SEO gate | Marketing & Lifecycle | — |
-| #159 | Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject) | Marketing & Lifecycle | — |
+| ~~#159~~ | ~~Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject)~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | #160 | Search Console domain-property verification + indexing dashboard | Marketing & Lifecycle | #102 |
 | ~~#161~~ | ~~Dynamic OG image generation for insights, case studies, and Polaris episodes~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | #162 | Use 410 Gone and 308 Permanent Redirect for unpublished and moved content | Public Site UX | — |
