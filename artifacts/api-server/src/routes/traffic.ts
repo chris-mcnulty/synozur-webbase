@@ -54,6 +54,10 @@ const EventBody = z.object({
 const NotFoundBody = z.object({
   path: z.string().min(1).max(2048),
   referrer: z.string().max(2048).optional().nullable(),
+  // #163: visitor-supplied context from the "report this missing page" form.
+  // Editorial reviews these in the admin 404 log.
+  note: z.string().max(500).optional().nullable(),
+  reported: z.boolean().optional(),
 });
 
 function ipKey(req: { headers: Record<string, unknown>; ip?: string }): string {
@@ -294,6 +298,16 @@ router.post("/traffic/not-found", notFoundLimiter, async (req, res) => {
       ((req.headers["user-agent"] as string | undefined) ?? "").slice(0, 1024) ||
       null;
 
+    // #163: when the visitor explicitly submits the "report this missing
+    // page" form on the 404 surface, persist their note onto the log row so
+    // editorial sees the context. We append (with a timestamp) rather than
+    // overwrite so multiple reports on the same path accumulate.
+    const trimmedNote = parsed.data.note?.trim() || null;
+    const reportedNote =
+      parsed.data.reported && trimmedNote
+        ? `[${new Date().toISOString()}] ${trimmedNote.slice(0, 500)}`
+        : null;
+
     await db
       .insert(notFoundLogsTable)
       .values({
@@ -302,15 +316,26 @@ router.post("/traffic/not-found", notFoundLimiter, async (req, res) => {
         hitCount: 1,
         lastReferrer: referrer,
         lastUserAgent: ua,
+        notes: reportedNote,
       })
       .onConflictDoUpdate({
         target: notFoundLogsTable.normalizedPath,
         set: {
           path: pathname,
-          hitCount: sql`${notFoundLogsTable.hitCount} + 1`,
+          // Only bump hitCount on automatic beacons. Explicit "report this
+          // missing page" submissions annotate the existing row without
+          // double-counting the same visitor/path.
+          ...(parsed.data.reported
+            ? {}
+            : { hitCount: sql`${notFoundLogsTable.hitCount} + 1` }),
           lastSeenAt: new Date(),
           lastReferrer: referrer,
           lastUserAgent: ua,
+          ...(reportedNote
+            ? {
+                notes: sql`coalesce(${notFoundLogsTable.notes} || E'\n', '') || ${reportedNote}`,
+              }
+            : {}),
         },
       });
 

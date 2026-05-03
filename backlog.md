@@ -52,7 +52,7 @@ Each row links to the canonical backlog entry below where the implementation det
 - [x] ~~**L15.** Honor `prefers-color-scheme` for first-time visitors → #165.~~ **Shipped May 2026.**
 - [ ] **L16.** Share rail on insight / case-study / white-paper detail pages → #164.
 - [ ] **L17.** Quality-gates warn → block flip → BACKLOG.md "Quality gates" #3, #4 (once warn-mode metrics are clean).
-- [ ] **L18.** Robots meta + discovery-friendly 404 page → #163.
+- [x] ~~**L18.** Robots meta + discovery-friendly 404 page → #163.~~ **Shipped May 2026.**
 - [ ] **L19.** Expanded JSON-LD coverage (LocalBusiness, Person, Review, VideoObject) → #159.
 - [ ] **L20.** CI broken-link checker → #157.
 
@@ -410,10 +410,10 @@ Production verification with Google Search Console and Bing Webmaster Tools is c
 
 When a published artifact is unpublished today, the route returns 200 with a `noindex` meta tag rather than the more correct 410 Gone — which is the explicit signal Google uses to drop the URL from the index quickly. Similarly, the Wix redirect middleware emits 301 / 302 only, never 308 (the version of 301 that preserves the request method, which matters when migrated POST endpoints are involved). This task: (a) updates the public artifact loaders to return HTTP 410 with a friendly body when the row has `status = 'archived'` or `unpublished_at < now()`, (b) extends the Wix redirect schema with a `status_code` column that supports 301 / 302 / 307 / 308 and surfaces the choice in the redirect admin UI, (c) tightens the sitemap exclusion logic so unpublished URLs are also actively removed from the sitemap on the next regeneration.
 
-### #163 · Tune robots meta directives and add a discovery-friendly 404 page
+### ~~#163 · Tune robots meta directives and add a discovery-friendly 404 page~~ **— Shipped May 2026**
 **Depends on:** —
 
-Two related improvements that share a single PR. (a) The `Meta` component does not emit `max-snippet`, `max-image-preview`, or `max-video-preview` directives — the defaults Google applies are conservative and clip the rich SERP previews insights and case studies could otherwise earn. Adding `max-snippet:-1, max-image-preview:large, max-video-preview:-1` on indexable artifact pages is a one-line win. (b) `pages/not-found.tsx` is `noindex` but offers no escape route — no search box, no top-categories list, no "popular insights" tile. Visitors who land here from a stale link bounce. Add a small surface that surfaces the sitemap top-level sections, a search input that hits `/api/search`, and a "report this missing page" form that writes to the existing `not_found_logs` table for editor review.
+~~Two related improvements that share a single PR. (a) The `Meta` component does not emit `max-snippet`, `max-image-preview`, or `max-video-preview` directives — the defaults Google applies are conservative and clip the rich SERP previews insights and case studies could otherwise earn. Adding `max-snippet:-1, max-image-preview:large, max-video-preview:-1` on indexable artifact pages is a one-line win. (b) `pages/not-found.tsx` is `noindex` but offers no escape route — no search box, no top-categories list, no "popular insights" tile. Visitors who land here from a stale link bounce. Add a small surface that surfaces the sitemap top-level sections, a search input that hits `/api/search`, and a "report this missing page" form that writes to the existing `not_found_logs` table for editor review.~~ **Shipped:** `artifacts/synozur/src/lib/meta.tsx` now emits `max-snippet:-1, max-image-preview:large, max-video-preview:-1` on every indexable page while preserving `noindex,nofollow` on auth/admin/unpublished routes. `artifacts/synozur/src/pages/not-found.tsx` was rebuilt as a discovery surface: top-section sitemap grid, popular-insights cards (via `useInsightsList`), a "report this missing page" form that re-posts to `/api/traffic/not-found`, and a search input that probes `/api/search` and hides itself when #170 hasn't shipped. Playwright coverage in `artifacts/synozur/tests/not-found.spec.ts` asserts the sitemap, popular-insights card, and the indexable-page robots directive.
 
 ### #164 · Extend the event-detail share rail to insights, case studies, and white papers
 **Depends on:** —
@@ -577,7 +577,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | #160 | Search Console domain-property verification + indexing dashboard | Marketing & Lifecycle | #102 |
 | #161 | Dynamic OG image generation for insights, case studies, and Polaris episodes | Marketing & Lifecycle | — |
 | #162 | Use 410 Gone and 308 Permanent Redirect for unpublished and moved content | Public Site UX | — |
-| #163 | Tune robots meta directives and add a discovery-friendly 404 page | Public Site UX | — |
+| ~~#163~~ | ~~Tune robots meta directives and add a discovery-friendly 404 page~~ **Shipped** | Public Site UX | — |
 | #164 | Extend the event-detail share rail to insights, case studies, and white papers | Marketing & Lifecycle | — |
 | #165 | Honor `prefers-color-scheme` for first-time visitors | Public Site UX | — |
 | #166 | Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget | Public Site UX | — |

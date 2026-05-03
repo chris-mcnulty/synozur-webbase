@@ -189,7 +189,15 @@ export function Meta({
     if (resolvedNoindex) {
       upsertMeta("name", "robots", "noindex,nofollow");
     } else {
-      removeMeta("name", "robots");
+      // L18 / #163: emit explicit preview directives so Google doesn't clip
+      // rich SERP previews on indexable pages. `max-snippet:-1` allows the
+      // full description, `max-image-preview:large` opts into the large image
+      // card, `max-video-preview:-1` allows full video preview duration.
+      upsertMeta(
+        "name",
+        "robots",
+        "max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+      );
     }
 
     // RSS autodiscovery (per-page). Always remove first so navigation away
