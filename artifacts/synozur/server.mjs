@@ -235,6 +235,62 @@ function fetchRouteStatus(pathname) {
   });
 }
 
+// ─── API proxy for SEO surfaces ───────────────────────────────────────────────
+
+// `/sitemap.xml`, `/robots.txt`, and `/llms.txt` are produced dynamically by
+// the api-server (see artifacts/api-server/src/routes/seo.ts) but the shared
+// reverse proxy routes the synozur artifact's `paths = ["/"]` catch-all
+// before any api-server-owned prefix could claim them, so the api-server's
+// handlers were unreachable from end users (and from the CI link-check
+// workflow which points LINK_CHECK_BASE_URL at this server). Forward those
+// three paths to the api-server so crawlers and the broken-link checker
+// receive the real sitemap instead of the SPA shell. Surfaced by task #271
+// while running the link-check against a content-populated environment for
+// the first time.
+const SEO_PROXY_PATHS = new Set(["/sitemap.xml", "/robots.txt", "/llms.txt"]);
+
+function proxySeoPath(req, res, pathname) {
+  const options = {
+    hostname: "127.0.0.1",
+    port: API_PORT,
+    path: pathname,
+    method: req.method,
+    headers: {
+      Accept: req.headers["accept"] ?? "*/*",
+      "User-Agent": req.headers["user-agent"] ?? "synozur-seo-proxy",
+      Host: req.headers["host"] ?? `127.0.0.1:${API_PORT}`,
+    },
+  };
+  const upstream = http.request(options, (upRes) => {
+    const headers = { ...upRes.headers };
+    // Strip hop-by-hop headers that node would otherwise echo back to the
+    // client and that don't make sense across this internal hop.
+    delete headers["transfer-encoding"];
+    delete headers["connection"];
+    res.writeHead(upRes.statusCode ?? 502, headers);
+    upRes.pipe(res);
+  });
+  upstream.on("error", (err) => {
+    console.warn(`SPA: SEO proxy ${pathname} -> api-server failed: ${err.message}`);
+    if (!res.headersSent) {
+      res.writeHead(502, { "Content-Type": "text/plain" });
+      res.end("Bad gateway");
+    } else {
+      res.end();
+    }
+  });
+  upstream.setTimeout(4000, () => {
+    upstream.destroy();
+    if (!res.headersSent) {
+      res.writeHead(504, { "Content-Type": "text/plain" });
+      res.end("Gateway timeout");
+    } else {
+      res.end();
+    }
+  });
+  upstream.end();
+}
+
 // ─── API proxy for OG HTML ────────────────────────────────────────────────────
 
 function fetchOgHtml(pathname) {
@@ -332,7 +388,16 @@ function handler(req, res) {
   const rawUrl = req.url ?? "/";
   const pathname = rawUrl.split("?")[0].split("#")[0] || "/";
 
-  // 1. Intercept social bots — proxy to the API server's /api/og endpoint.
+  // 1. SEO surfaces (sitemap.xml / robots.txt / llms.txt) live on the
+  //    api-server but the shared reverse proxy gives this artifact's
+  //    `paths = ["/"]` catch-all priority over the api-server, so we
+  //    forward those three paths internally.
+  if (SEO_PROXY_PATHS.has(pathname)) {
+    proxySeoPath(req, res, pathname);
+    return;
+  }
+
+  // 2. Intercept social bots — proxy to the API server's /api/og endpoint.
   //    Bots also see the publish-status verdict so unfurls of an archived
   //    URL don't show a stale preview.
   const ua = req.headers["user-agent"] ?? "";
@@ -371,7 +436,7 @@ function handler(req, res) {
     return;
   }
 
-  // 2. Exact static file match.
+  // 3. Exact static file match.
   const cleaned = pathname.replace(/^\/+/, "");
   const filePath = path.join(DIST_DIR, cleaned);
 
@@ -393,7 +458,7 @@ function handler(req, res) {
 
   if (cleaned && serveFile(filePath, res)) return;
 
-  // 3. SPA fallback. For canonical artifact URLs (`/insights/:slug` etc.)
+  // 4. SPA fallback. For canonical artifact URLs (`/insights/:slug` etc.)
   //    consult the API to decide whether this URL is still published. The
   //    HTML body is the same SPA shell — the React app handles rendering a
   //    friendly Gone / Not Found page client-side — but the HTTP status is

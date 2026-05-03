@@ -417,7 +417,7 @@ export const caseStudies: CaseStudy[] = [
     },
   },
   {
-    slug: "ai-&-governance-acceleration-for-private-equity",
+    slug: "ai-and-governance-acceleration-for-private-equity",
     title: "AI & Governance Acceleration for Private Equity",
     client: "US Private Equity",
     clientLabel: "US Private Equity",
@@ -570,7 +570,7 @@ export const caseStudies: CaseStudy[] = [
     },
   },
   {
-    slug: "go‑to‑market-transformation-for-a-microsoft‑aligned-software-company",
+    slug: "go-to-market-transformation-for-a-microsoft-aligned-software-company",
     title: "Go‑to‑Market Transformation for a Microsoft‑Aligned Software Company",
     client: "US Enterprise Software Company",
     clientLabel: "US Enterprise Software Company",

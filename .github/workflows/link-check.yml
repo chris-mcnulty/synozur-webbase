@@ -84,6 +84,12 @@ jobs:
         env:
           PORT: "8000"
           NODE_ENV: production
+          # Make the api-server's sitemap / robots.txt / llms.txt absolute
+          # URLs match the same origin the link checker is crawling so the
+          # script's same-origin filter doesn't drop every <loc> entry as
+          # "foreign". Without this they default to https://www.synozur.com
+          # and sitemap discovery silently returns 0 URLs.
+          SITE_URL: "http://localhost:5000"
         run: |
           pnpm --filter "@workspace/api-server" run build
           pnpm --filter "@workspace/api-server" run start &
