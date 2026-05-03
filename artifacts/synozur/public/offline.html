@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0a19" />
+    <title>Offline — The Synozur Alliance</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg: #0a0a19;
+        --fg: #f5f5f7;
+        --muted: rgba(245, 245, 247, 0.7);
+        --accent: #8a7cff;
+        --border: rgba(245, 245, 247, 0.15);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; min-height: 100%; }
+      body {
+        background: radial-gradient(circle at 20% 0%, #1a1740 0%, var(--bg) 55%);
+        color: var(--fg);
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        line-height: 1.55;
+      }
+      main {
+        max-width: 32rem;
+        width: 100%;
+        text-align: center;
+      }
+      img.mark {
+        width: 4.5rem;
+        height: auto;
+        margin-bottom: 1.5rem;
+        opacity: 0.95;
+      }
+      h1 {
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
+        margin: 0 0 0.75rem;
+        letter-spacing: -0.01em;
+      }
+      p {
+        color: var(--muted);
+        margin: 0 0 1.5rem;
+      }
+      button {
+        appearance: none;
+        background: var(--accent);
+        color: #0a0a19;
+        border: none;
+        border-radius: 999px;
+        font: inherit;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        transition: transform 120ms ease, opacity 120ms ease;
+      }
+      button:hover { transform: translateY(-1px); }
+      button:active { transform: translateY(0); opacity: 0.9; }
+      .meta {
+        margin-top: 2rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f7f7fb;
+          --fg: #0a0a19;
+          --muted: rgba(10, 10, 25, 0.65);
+          --border: rgba(10, 10, 25, 0.12);
+        }
+        body {
+          background: radial-gradient(circle at 20% 0%, #ece9ff 0%, var(--bg) 55%);
+        }
+        button { color: #ffffff; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="mark" src="/images/synozur-mark-color.png" alt="The Synozur Alliance" />
+      <h1>You're offline</h1>
+      <p>
+        It looks like your connection dropped. Once you're back online, the
+        site will pick up right where you left off.
+      </p>
+      <button type="button" onclick="window.location.reload()">Try again</button>
+      <div class="meta">The Synozur Alliance — strategy, AI, and Microsoft 365 advisory.</div>
+    </main>
+    <script>
+      // Auto-retry once the browser tells us we're back online.
+      window.addEventListener("online", () => window.location.reload());
+    </script>
+  </body>
+</html>

@@ -264,19 +264,43 @@ function fetchOgHtml(pathname) {
 
 // ─── Static file helper ───────────────────────────────────────────────────────
 
+// Files that must always be re-validated by the browser even though they
+// aren't HTML. Service workers in particular MUST NOT be cached for long
+// or users get stuck on an old SW after a deploy (task #246). The web
+// manifest and offline fallback are revalidated for the same reason.
+const REVALIDATE_BASENAMES = new Set([
+  "sw.js",
+  "manifest.webmanifest",
+  "offline.html",
+]);
+
 function serveFile(filePath, res, statusCode = 200) {
   const ext = path.extname(filePath).toLowerCase();
   const mime = MIME[ext] ?? "application/octet-stream";
   const stat = fs.statSync(filePath, { throwIfNoEntry: false });
   if (!stat || !stat.isFile()) return false;
 
-  res.writeHead(statusCode, {
+  const basename = path.basename(filePath);
+  let cacheControl;
+  if (ext === ".html" || REVALIDATE_BASENAMES.has(basename)) {
+    cacheControl = "no-cache";
+  } else {
+    cacheControl = "public, max-age=31536000, immutable";
+  }
+
+  const headers = {
     "Content-Type": mime,
-    "Cache-Control": ext === ".html"
-      ? "no-cache"
-      : "public, max-age=31536000, immutable",
+    "Cache-Control": cacheControl,
     "Content-Length": stat.size,
-  });
+  };
+  // Service workers require an explicit Service-Worker-Allowed header to
+  // claim a scope broader than their own path; here it's same-level as the
+  // SW itself but we set it explicitly for clarity.
+  if (basename === "sw.js") {
+    headers["Service-Worker-Allowed"] = "/";
+  }
+
+  res.writeHead(statusCode, headers);
   fs.createReadStream(filePath).pipe(res);
   return true;
 }
