@@ -2369,7 +2369,7 @@ export async function runMigrations(): Promise<void> {
           SELECT 1 FROM information_schema.columns
           WHERE table_name = 'conversations'
             AND column_name = 'id'
-            AND data_type = 'integer'
+            AND data_type != 'uuid'
         ) THEN
           INSERT INTO ai_chat_sessions
             (token_hash, ip_at_creation, user_agent, expires_at, revoked_at)
