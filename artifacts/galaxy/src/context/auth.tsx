@@ -7,13 +7,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { getOauthClient } from "@/lib/oauthClient";
 
-// Galaxy reuses the Synozur native auth contract: same session cookie (`sid`)
-// resolves identity through the api-server's /api/auth/session endpoint, and
-// sign-in is delegated to the existing /sign-in page on the Synozur surface.
-// Sharing the cookie means a customer who already signed in on synozur lands
-// straight onto the portal without a second auth round-trip; sign-out clears
-// the cookie everywhere it's accepted.
+// Galaxy authenticates via the central Synozur OAuth 2.0 / OIDC provider
+// (#128). On sign-in we redirect the user through /oauth/authorize with
+// PKCE; the resulting access + refresh tokens are stored in localStorage
+// under the `galaxy-oauth:*` namespace and presented as Bearer tokens on
+// every API call. Replaces the same-host `sid` cookie bridge that earlier
+// versions of Galaxy used — Galaxy is now a fully decoupled OAuth client
+// that could move to a different origin without a re-architecture.
 
 type RoleName =
   | "admin"
@@ -51,12 +54,27 @@ export interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-// The Galaxy app is mounted at /galaxy/ and the api-server lives at /api on
-// the same origin behind the shared proxy, so absolute /api/* paths work for
-// both auth and portal data without a Vite proxy config.
+// Wire the api-client-react fetch helper to pull a fresh access token (with
+// transparent refresh) for every API call. Must run before any query fires.
+let _tokenGetterInstalled = false;
+function installTokenGetter() {
+  if (_tokenGetterInstalled) return;
+  _tokenGetterInstalled = true;
+  setAuthTokenGetter(() => getOauthClient().getAccessToken());
+}
+
+// `/api/auth/session` is no longer used; Galaxy now derives identity from
+// the OAuth provider. We still hit `/api/auth/session` after a successful
+// OAuth handshake to hydrate the full server-shaped `AuthedUser` (roles,
+// capabilities) — the userinfo endpoint deliberately exposes only the
+// identity claims (sub / email / name / picture), not authorization claims.
 async function fetchMe(): Promise<AuthedUser | null> {
   try {
-    const res = await fetch(`/api/auth/session`, { credentials: "include" });
+    const token = await getOauthClient().getAccessToken();
+    if (!token) return null;
+    const res = await fetch(`/api/auth/session`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) return null;
     const json = (await res.json()) as { signedIn: boolean; user?: AuthedUser };
     if (!json.signedIn) return null;
@@ -70,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthedUser | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  installTokenGetter();
+
   const refresh = useCallback(async () => {
     const fresh = await fetchMe();
     setUser(fresh);
@@ -80,32 +100,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const signIn = useCallback((returnTo?: string) => {
+  const signIn = useCallback(async (returnTo?: string) => {
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
     const target =
       returnTo ?? window.location.pathname + window.location.search;
-    const url = new URL(`/sign-in`, window.location.origin);
-    url.searchParams.set("returnTo", target);
-    window.location.assign(url.toString());
+    // Strip the Galaxy base path so callback can route relative to wouter.
+    const stripped = target.startsWith(base + "/")
+      ? target.slice(base.length)
+      : target;
+    const url = await getOauthClient().buildAuthorizeUrl({
+      returnTo: stripped || "/",
+    });
+    window.location.assign(url);
   }, []);
 
   const signOut = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/auth/sign-out`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) {
-        const json = (await res.json()) as { redirect?: string };
-        setUser(null);
-        if (json.redirect) {
-          window.location.assign(json.redirect);
-          return;
-        }
-      }
-    } catch {
-      setUser(null);
-    }
-    window.location.assign(`/`);
+    getOauthClient().clearTokens();
+    setUser(null);
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+    window.location.assign(`${base}/`);
   }, []);
 
   const value = useMemo<AuthState>(
@@ -113,7 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoaded,
       isSignedIn: !!user,
       user,
-      signIn,
+      signIn: (returnTo) => {
+        void signIn(returnTo);
+      },
       signOut,
       refresh,
     }),

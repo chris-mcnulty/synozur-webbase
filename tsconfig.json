@@ -17,6 +17,9 @@
     },
     {
       "path": "./lib/integrations-anthropic-ai"
+    },
+    {
+      "path": "./lib/auth-sdk"
     }
   ]
 }

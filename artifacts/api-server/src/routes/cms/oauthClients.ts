@@ -74,6 +74,7 @@ router.get(
           allowedScopes: c.allowedScopes,
           allowedGrantTypes: c.allowedGrantTypes,
           pkceRequired: c.pkceRequired,
+          isPublic: c.isPublic,
           isActive: c.isActive,
           lastUsedAt: c.lastUsedAt,
           createdAt: c.createdAt,
@@ -110,6 +111,7 @@ router.get(
       allowedScopes: row.allowedScopes,
       allowedGrantTypes: row.allowedGrantTypes,
       pkceRequired: row.pkceRequired,
+      isPublic: row.isPublic,
       isActive: row.isActive,
       lastUsedAt: row.lastUsedAt,
       createdAt: row.createdAt,
@@ -134,6 +136,7 @@ const CreateBody = z.object({
     .array(z.enum(ALLOWED_GRANT_TYPES as readonly [string, ...string[]]))
     .min(1),
   pkceRequired: z.boolean().optional(),
+  isPublic: z.boolean().optional(),
 });
 
 router.post(
@@ -162,6 +165,7 @@ router.post(
         allowedScopes: Array.from(new Set(parsed.data.allowedScopes)),
         allowedGrantTypes: Array.from(new Set(parsed.data.allowedGrantTypes)),
         pkceRequired: parsed.data.pkceRequired ?? true,
+        isPublic: parsed.data.isPublic ?? false,
         createdBy: req.authedUser!.id,
       })
       .returning();
@@ -186,6 +190,7 @@ router.post(
       allowedScopes: inserted!.allowedScopes,
       allowedGrantTypes: inserted!.allowedGrantTypes,
       pkceRequired: inserted!.pkceRequired,
+      isPublic: inserted!.isPublic,
       isActive: inserted!.isActive,
       createdAt: inserted!.createdAt,
     });
@@ -211,6 +216,7 @@ const UpdateBody = z.object({
     .min(1)
     .optional(),
   pkceRequired: z.boolean().optional(),
+  isPublic: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -245,6 +251,7 @@ router.patch(
       patch.allowedGrantTypes = Array.from(new Set(parsed.data.allowedGrantTypes));
     }
     if (parsed.data.pkceRequired !== undefined) patch.pkceRequired = parsed.data.pkceRequired;
+    if (parsed.data.isPublic !== undefined) patch.isPublic = parsed.data.isPublic;
     if (parsed.data.isActive !== undefined) patch.isActive = parsed.data.isActive;
 
     const [updated] = await db
@@ -270,6 +277,7 @@ router.patch(
       allowedScopes: updated!.allowedScopes,
       allowedGrantTypes: updated!.allowedGrantTypes,
       pkceRequired: updated!.pkceRequired,
+      isPublic: updated!.isPublic,
       isActive: updated!.isActive,
       lastUsedAt: updated!.lastUsedAt,
       createdAt: updated!.createdAt,

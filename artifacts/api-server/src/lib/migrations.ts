@@ -1948,6 +1948,14 @@ export async function runMigrations(): Promise<void> {
         ON insights_questions (low_confidence);
     `);
 
+    // #128 — OAuth public clients (PKCE-only SPAs like Galaxy). Adds an
+    // `is_public` flag to oauth_clients so the token endpoint can authenticate
+    // these clients by client_id alone.
+    await db.execute(sql`
+      ALTER TABLE oauth_clients
+        ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT false;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

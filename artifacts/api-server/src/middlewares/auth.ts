@@ -17,6 +17,7 @@ import {
   resolveSession,
   setSessionCookie,
 } from "../lib/sessions";
+import { verifyOAuthAccessToken } from "../lib/oauthBearer";
 
 export type AuthedUser = {
   id: string;
@@ -81,20 +82,43 @@ export async function loadUserById(userId: string): Promise<AuthedUser | null> {
 //      clear the cookie so we don't repeatedly look up a phantom user.
 export const attachUserIfPresent: RequestHandler = async (req, res, next) => {
   try {
+    // 1. Cookie-bound session (Synozur native auth — Entra-backed).
     const token = readSessionToken(req);
-    if (!token) return next();
-    const session = await resolveSession(token);
-    if (!session) return next();
-    const user = await loadUserById(session.userId);
-    if (!user) {
-      await destroySession(token);
-      clearSessionCookie(req, res);
-      return next();
+    if (token) {
+      const session = await resolveSession(token);
+      if (session) {
+        const user = await loadUserById(session.userId);
+        if (!user) {
+          await destroySession(token);
+          clearSessionCookie(req, res);
+        } else {
+          req.session = session;
+          req.authedUser = user;
+          if (session.renewed) {
+            setSessionCookie(req, res, token, session.expiresAt);
+          }
+          return next();
+        }
+      }
     }
-    req.session = session;
-    req.authedUser = user;
-    if (session.renewed) {
-      setSessionCookie(req, res, token, session.expiresAt);
+
+    // 2. OAuth Bearer token (#128) — downstream apps (Galaxy, partner portal,
+    //    future internal tools) authenticate by presenting an access token
+    //    issued by /oauth/token. Verified against the local JWKS and the
+    //    user is hydrated from `usersTable`.
+    const authHeader = req.headers["authorization"];
+    if (authHeader && typeof authHeader === "string" && authHeader.toLowerCase().startsWith("bearer ")) {
+      const bearer = authHeader.slice(7).trim();
+      if (bearer) {
+        const claims = await verifyOAuthAccessToken(bearer);
+        if (claims) {
+          const user = await loadUserById(claims.sub);
+          if (user) {
+            req.authedUser = user;
+            req.oauthClaims = claims;
+          }
+        }
+      }
     }
   } catch (err) {
     req.log?.warn({ err }, "attachUserIfPresent failed");

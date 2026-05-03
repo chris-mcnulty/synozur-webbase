@@ -50,6 +50,11 @@ export const oauthClientsTable = pgTable(
     // PKCE code_challenge. Confidential clients MAY opt out, but PKCE is the
     // recommended default and enforced for all public clients.
     pkceRequired: boolean("pkce_required").notNull().default(true),
+    // When true, the token endpoint accepts this client without a
+    // client_secret (public client / SPA pattern). PKCE must still pass.
+    // Confidential clients (server-side apps) leave this false and present
+    // a secret on /oauth/token.
+    isPublic: boolean("is_public").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdBy: uuid("created_by").references(() => usersTable.id, {
       onDelete: "set null",

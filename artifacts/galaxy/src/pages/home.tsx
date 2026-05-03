@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "wouter";
 import { useAuth } from "@/context/auth";
 import NotCustomer from "./not-customer";
 import { PortalShell } from "@/components/portal-shell";

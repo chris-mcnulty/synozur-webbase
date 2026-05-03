@@ -26,6 +26,18 @@ declare global {
     interface Request {
       authedUser?: AuthedUser;
       session?: SessionContext;
+      // Set when authentication came from an OAuth Bearer token (#128) so
+      // handlers can scope behavior — e.g. only honor scopes/capabilities
+      // present on the token, even when the linked user has more.
+      oauthClaims?: {
+        sub: string;
+        aud: string;
+        scope: string;
+        scopes: string[];
+        capabilities: string[];
+        roles: string[];
+        expiresAt: number;
+      };
     }
   }
 }

@@ -12,6 +12,7 @@ import ArtifactDetailPage from "@/pages/artifact-detail";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
 import AcceptInvitePage from "@/pages/accept-invite";
+import OAuthCallback from "@/pages/oauth-callback";
 import {
   PortalSourceApp,
   type PortalSourceApp as PortalSourceAppType,
@@ -55,6 +56,7 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/accept-invite" component={AcceptInvitePage} />
+      <Route path="/oauth-callback" component={OAuthCallback} />
       <Route path="/">
         <Gated><Home /></Gated>
       </Route>

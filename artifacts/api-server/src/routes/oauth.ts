@@ -509,6 +509,9 @@ async function issueAuthorizationCode(args: {
 // ─── Token endpoint ───────────────────────────────────────────────────────────
 
 // Authenticate the calling client via HTTP Basic or form-field credentials.
+// Public clients (e.g. browser SPAs, `is_public = true`) authenticate by
+// `client_id` alone and rely on PKCE for proof-of-possession of the
+// authorization code. Confidential clients must present a `client_secret`.
 async function authenticateOAuthClient(
   req: Request,
 ): Promise<(typeof oauthClientsTable.$inferSelect) | null> {
@@ -532,7 +535,7 @@ async function authenticateOAuthClient(
       : undefined;
   }
 
-  if (!clientId || !clientSecret) return null;
+  if (!clientId) return null;
 
   const [client] = await db
     .select()
@@ -541,6 +544,15 @@ async function authenticateOAuthClient(
     .limit(1);
 
   if (!client || !client.isActive) return null;
+
+  if (client.isPublic) {
+    // Public clients are authenticated by client_id alone. PKCE on the
+    // authorization code (enforced separately at /oauth/token) provides
+    // proof-of-possession.
+    return client;
+  }
+
+  if (!clientSecret) return null;
 
   const secretMatches = await bcrypt.compare(
     clientSecret,

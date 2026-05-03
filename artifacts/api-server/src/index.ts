@@ -8,6 +8,7 @@ import { pruneExpiredAuthStates } from "./lib/authStateStore";
 import { warnIfMisconfigured } from "./lib/entraOidc";
 import { runMigrations } from "./lib/migrations";
 import { ensureSigningKey } from "./lib/oauthKeys";
+import { ensureGalaxyOAuthClient } from "./lib/galaxyOauthSeed";
 import { logSecurityHeaderConfig } from "./lib/securityHeaders";
 import { logLaunchReadiness } from "./lib/launchReadiness";
 import { seedTestAdminIfConfigured } from "./lib/testAdminSeed";
@@ -28,6 +29,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 await runMigrations();
 await ensureSigningKey();
+await ensureGalaxyOAuthClient();
 await seedTestAdminIfConfigured();
 
 const server = app.listen(port, (err) => {

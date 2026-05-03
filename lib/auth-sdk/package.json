@@ -1,0 +1,22 @@
+{
+  "name": "@workspace/auth-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "jose": "^6.2.2"
+  },
+  "peerDependencies": {
+    "express": "^5"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    }
+  }
+}
