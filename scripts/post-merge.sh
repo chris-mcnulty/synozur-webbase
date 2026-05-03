@@ -10,6 +10,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pnpm install --frozen-lockfile
 pnpm --filter db push
 
+# Seed Zenith callout and FAQ enrichments for solution pages.
+# Idempotent — safe to re-run. Failures are reported (no `|| true`)
+# so a broken seed surfaces in the post-merge log instead of silently
+# leaving the solution pages without their accelerator/FAQ content.
+pnpm --filter api-server run seed:solution-enrichments
+
 # Seed required CMS roles so the first-user auto-promotion always works.
 psql "$DATABASE_URL" -c "
 INSERT INTO roles (id, name, description) VALUES

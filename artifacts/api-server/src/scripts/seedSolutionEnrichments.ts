@@ -1,15 +1,27 @@
 /**
- * Idempotent seed — enriches the following solutions with Zenith/accelerators
- * callout content and solution-specific FAQs:
+ * Idempotent seed — enriches solution pages with the Zenith / accelerators
+ * callout (where relevant) and a solution-specific FAQ.
  *
+ * Solutions with a Zenith callout AND an FAQ:
  *   - Microsoft Partner Development  (slug: microsoft-partner-development)
  *   - AI Strategy and Design         (slug: ai-strategy-and-design)
  *   - Employee Effectiveness         (slug: employee-effectiveness)
  *   - Company OS                     (slug: company-os)
  *   - Employee Strategies            (slug: employee-strategies)
  *
- * Communication Strategies and Delivery Management are intentionally not
- * enriched: their connection to Zenith is too indirect to justify a callout.
+ * Solutions with FAQ-only enrichment (no Zenith callout — these practices
+ * don't sit on the Microsoft 365 stack, but each page still benefits from
+ * answering the questions buyers actually ask):
+ *   - Brand and Messaging            (slug: brand-and-messaging)
+ *   - Design Strategies              (slug: design-strategies)
+ *   - Fractional Leadership          (slug: fractional-leadership)
+ *   - GTM Strategy and Execution     (slug: gtm-strategy-and-execution)
+ *   - Strategic Roadmaps             (slug: strategic-roadmaps)
+ *   - Communication Strategies       (slug: communication-strategies)
+ *   - Delivery Management            (slug: delivery-management)
+ *
+ * For FAQ-only enrichments acceleratorsHtml is left untouched (null/empty)
+ * so the page renders the FAQ block without an out-of-place tool callout.
  *
  * These solutions already exist in the database (seeded by ingestServices.ts).
  * This script only updates the acceleratorsHtml and faqHtml columns; all other
@@ -204,13 +216,150 @@ const EMPLOYEE_STRATEGIES_FAQ_HTML = [
 ].join("\n");
 
 // ---------------------------------------------------------------------------
+// FAQ-only enrichments (no Zenith callout — non-M365 practices)
+// ---------------------------------------------------------------------------
+
+const BRAND_FAQ_HTML = [
+  p("<strong>How do you approach brand work without throwing out what we already have?</strong>"),
+  p(
+    "We start by auditing the assets, voice, and equity you\u2019ve already built and identifying what\u2019s working. Most engagements evolve a brand rather than replace it\u2014sharpening positioning, tightening the messaging hierarchy, and modernizing visual expression while preserving the recognition you\u2019ve earned. A full rebrand is reserved for situations where the existing brand actively misrepresents the business.",
+  ),
+  p("<strong>Do you deliver visual identity, messaging, or both?</strong>"),
+  p(
+    "Both, and they\u2019re developed together. Messaging without a visual system tends to drift in execution; a visual system without underlying messaging is decoration. Engagements typically produce a positioning statement, messaging hierarchy, voice and tone guidance, and the visual identity components (typography, color, imagery direction) needed to apply them consistently.",
+  ),
+  p("<strong>How do you make sure the brand actually gets used?</strong>"),
+  p(
+    "Brand assets only earn their cost when teams can apply them without a creative review on every artifact. We deliver enablement materials\u2014templates, examples, and quick-reference guidance\u2014so marketing, sales, and product teams can produce on-brand work independently. Where helpful, we run working sessions with the teams who will use the system day to day.",
+  ),
+  p("<strong>How long does a brand engagement take?</strong>"),
+  p(
+    "A focused positioning and messaging refresh runs four to six weeks. A broader engagement that includes visual identity work and enablement materials typically runs eight to twelve weeks depending on the number of stakeholder reviews and the breadth of channels involved.",
+  ),
+].join("\n");
+
+const DESIGN_FAQ_HTML = [
+  p("<strong>What kinds of design problems do you take on?</strong>"),
+  p(
+    "We work on design problems where strategy and craft intersect: information architecture for content-heavy products, design systems that make a growing team consistent, end-to-end flows for complex tasks, and the design language that ties marketing and product together. We\u2019re less suited to high-volume production design work where the brief is already settled.",
+  ),
+  p("<strong>Do you work alongside our in-house design team or replace it?</strong>"),
+  p(
+    "Alongside, in almost every case. Our highest-impact engagements augment an internal team with senior strategic capacity for a specific initiative\u2014launching a new product surface, rebuilding a key flow, or establishing a design system. We hand off cleanly so the internal team owns the work going forward.",
+  ),
+  p("<strong>How do you balance design quality with delivery timelines?</strong>"),
+  p(
+    "By scoping ruthlessly and shipping in slices. We identify the smallest design unit that proves the strategy, ship it, learn from real usage, and iterate. That keeps quality high where it matters and prevents the perfectionism cycle that tends to stall design work in larger organizations.",
+  ),
+  p("<strong>Will we get design files we can edit?</strong>"),
+  p(
+    "Yes. Source files, components, and tokens are delivered in the tool your team already uses (Figma in nearly every case). We document component behavior and usage so handoff to engineering is clean and the system is maintainable after the engagement closes.",
+  ),
+].join("\n");
+
+const FRACTIONAL_FAQ_HTML = [
+  p("<strong>What kinds of fractional roles do you take on?</strong>"),
+  p(
+    "We place experienced operators into fractional executive roles\u2014typically Chief of Staff, Head of Operations, Head of Strategy, or domain-specific leadership in product, marketing, or technology. Engagements run anywhere from one to three days a week depending on the cadence of the work, with clear deliverables and a defined endpoint.",
+  ),
+  p("<strong>How is this different from hiring a consultant?</strong>"),
+  p(
+    "A fractional leader operates inside the business: attending leadership meetings, owning outcomes, managing or mentoring people, and being accountable for a function. Consultants advise; fractional leaders run things. The arrangement is best suited to situations where the role is real but the workload doesn\u2019t yet justify a full-time hire, or where you need a known-quantity operator while you recruit.",
+  ),
+  p("<strong>How do we know when to transition out of a fractional arrangement?</strong>"),
+  p(
+    "We define exit criteria at the start of every engagement\u2014typically a combination of milestones (a function established, a system in place, a hire onboarded) and operating metrics. When those are met, we transition out cleanly, often after helping recruit and onboard the permanent hire who replaces us.",
+  ),
+  p("<strong>Will the same person stay with us throughout, or does it rotate?</strong>"),
+  p(
+    "The same person. Continuity is what makes fractional leadership work\u2014trust, context, and the ability to move quickly all depend on the same operator being in the room week after week. Synozur stands behind the engagement with peer review and backup capacity, but the lead is consistent.",
+  ),
+].join("\n");
+
+const GTM_FAQ_HTML = [
+  p("<strong>Where does GTM strategy work begin\u2014with the product, the customer, or the channels?</strong>"),
+  p(
+    "With the customer. A GTM motion that doesn\u2019t start from a clear-eyed view of the buyer\u2014who they are, what they\u2019re trying to accomplish, what they\u2019re willing to pay for, and how they make decisions\u2014ends up being a list of tactics in search of a story. We anchor every engagement in customer research first, then work backward to product positioning, channel mix, and operating cadence.",
+  ),
+  p("<strong>How do you handle GTM for a product that\u2019s new versus one that\u2019s already in market?</strong>"),
+  p(
+    "For new products the work focuses on positioning, ideal customer profile, and the smallest viable launch motion that produces evidence. For products already in market the work shifts to diagnosing where the funnel is leaking, sharpening segmentation, and reallocating spend to the channels that are actually producing pipeline. The methods overlap; the entry point is different.",
+  ),
+  p("<strong>Do you build the marketing and sales materials, or just the strategy?</strong>"),
+  p(
+    "Both, and they should be developed in lockstep. A strategy that doesn\u2019t produce concrete artifacts (positioning, sales narrative, demand-gen plan, enablement) tends to die in a slide deck. We deliver the strategy alongside the artifacts your team needs to act on it, then pair with marketing and sales leadership through the first execution cycle.",
+  ),
+  p("<strong>How do you measure whether the GTM motion is working?</strong>"),
+  p(
+    "We define a small set of leading indicators at the start\u2014pipeline created, conversion at the right stages, sales-cycle length, segment-level efficiency\u2014and put a review cadence in place to interpret them. The point is to make the difference between a soft month and a structurally broken motion visible early, so you can correct course before the lagging indicators catch up.",
+  ),
+].join("\n");
+
+const ROADMAPS_FAQ_HTML = [
+  p("<strong>What\u2019s the difference between a roadmap and a backlog?</strong>"),
+  p(
+    "A backlog is a list of work; a roadmap is a sequenced narrative about how the business gets from where it is to where it intends to be. Good roadmaps connect strategy to outcomes, group work into themes that fit together, sequence the themes around the dependencies that actually exist, and explain the trade-offs leadership chose. Roadmaps that read as a feature list with dates attached are usually the symptom of skipping that translation step.",
+  ),
+  p("<strong>How far out should a roadmap actually plan?</strong>"),
+  p(
+    "Specific commitments belong in the next quarter. The next two quarters should describe themes and intent rather than features. Anything beyond that is direction\u2014useful for alignment, but presented as such, not as a plan. The instinct to publish a detailed multi-year roadmap usually backfires; the further out the dates extend, the less the roadmap is trusted by the people executing it.",
+  ),
+  p("<strong>Who should own the roadmap inside the company?</strong>"),
+  p(
+    "A single executive owner accountable for outcomes\u2014typically the head of product or the GM of the relevant business unit. The roadmap is built collaboratively (engineering, design, marketing, sales, finance all contribute), but ownership of the trade-offs and the resulting commitments has to sit in one place. Roadmaps that are owned by a committee are roadmaps that drift.",
+  ),
+  p("<strong>How do we keep the roadmap honest as conditions change?</strong>"),
+  p(
+    "By instituting a quarterly review where the roadmap is re-evaluated against what\u2019s been learned, what\u2019s shipped, and what\u2019s changed in the market. Items earn their place by continuing to be the right next investment, not by inertia. The review should also surface assumptions that didn\u2019t hold so the team builds the muscle of revising plans without treating revision as failure.",
+  ),
+].join("\n");
+
+const COMMS_FAQ_HTML = [
+  p("<strong>What kinds of communication problems do you typically work on?</strong>"),
+  p(
+    "Internal communications that aren\u2019t landing\u2014strategy memos that don\u2019t move behavior, all-hands content that doesn\u2019t carry, leadership voices that lack a consistent narrative\u2014and external moments that require careful framing, such as repositioning, restructuring, or major product news. The common thread is communications that need to do real work rather than fill an airtime slot.",
+  ),
+  p("<strong>How do you make sure communications change behavior, not just inform?</strong>"),
+  p(
+    "By starting from the behavior we want and working backward to the message, the messenger, and the cadence. Information delivery alone rarely changes behavior; what changes behavior is the right person, saying the right thing, repeated in the right places, reinforced by what leaders actually do. We design communications as systems, not single events.",
+  ),
+  p("<strong>Do you write the communications, or coach the leaders who deliver them?</strong>"),
+  p(
+    "Both, depending on the engagement. We draft communications when speed and craft matter; we coach leaders when the long-term goal is for them to own their voice. Most engagements blend the two\u2014we draft the early artifacts to set the bar, then transition to coaching as the leadership team builds confidence.",
+  ),
+  p("<strong>How do you handle sensitive announcements\u2014restructuring, leadership change, strategic pivots?</strong>"),
+  p(
+    "Carefully and in tight collaboration with leadership, HR, and legal. The work centers on sequencing the audiences correctly, choosing language that\u2019s honest without being clumsy, anticipating the questions that will follow, and preparing the leaders who will field them. Done well, sensitive announcements protect trust; done poorly, they erode it for years.",
+  ),
+].join("\n");
+
+const DELIVERY_FAQ_HTML = [
+  p("<strong>When does an engagement actually need delivery management support?</strong>"),
+  p(
+    "When the work is cross-functional, the timeline is tight, and the cost of a missed handoff is higher than the cost of a coordinator. Delivery management earns its keep on initiatives where multiple teams need to converge on a date, where dependencies aren\u2019t all visible from any one team\u2019s vantage point, and where leadership needs a single source of truth on status without sitting in every standup.",
+  ),
+  p("<strong>Are you running the project, or supporting our internal project leads?</strong>"),
+  p(
+    "Either model works. On greenfield initiatives we often run the program end to end, including stakeholder cadence, risk management, and reporting. When an internal lead exists, we operate as a force multiplier\u2014owning the discipline (status, risks, dependencies, decisions) so the internal lead can focus on the substantive work and the people. We agree on the model at kickoff.",
+  ),
+  p("<strong>How do you avoid the trap of becoming a status-meeting machine?</strong>"),
+  p(
+    "By treating status as a byproduct of well-run delivery, not the product. The artifacts we maintain (decision log, dependency map, risk register, milestone view) are designed to make status fall out of the work rather than requiring people to assemble it. Standing meetings exist only when a forcing function is needed; when the artifact is enough, the meeting goes away.",
+  ),
+  p("<strong>What happens when the engagement ends?</strong>"),
+  p(
+    "The artifacts and operating cadence transfer to your internal owner. Where the engagement establishes a new program management practice, we document the patterns, run a knowledge-transfer session, and stay available for a defined wind-down period to answer questions. The goal is for delivery discipline to outlast our involvement, not to embed a permanent dependency.",
+  ),
+].join("\n");
+
+// ---------------------------------------------------------------------------
 // Enrichments registry
 // ---------------------------------------------------------------------------
 
 interface Enrichment {
   slug: string;
   label: string;
-  acceleratorsHtml: string;
+  acceleratorsHtml: string | null;
   faqHtml: string;
 }
 
@@ -245,6 +394,51 @@ const ENRICHMENTS: Enrichment[] = [
     acceleratorsHtml: EMPLOYEE_STRATEGIES_ACCELERATORS_HTML,
     faqHtml: EMPLOYEE_STRATEGIES_FAQ_HTML,
   },
+  // FAQ-only enrichments (no Zenith callout). acceleratorsHtml is left
+  // untouched so the page renders the FAQ section without an irrelevant
+  // tool spotlight.
+  {
+    slug: "brand-and-messaging",
+    label: "Brand and Messaging",
+    acceleratorsHtml: null,
+    faqHtml: BRAND_FAQ_HTML,
+  },
+  {
+    slug: "design-strategies",
+    label: "Design Strategies",
+    acceleratorsHtml: null,
+    faqHtml: DESIGN_FAQ_HTML,
+  },
+  {
+    slug: "fractional-leadership",
+    label: "Fractional Leadership",
+    acceleratorsHtml: null,
+    faqHtml: FRACTIONAL_FAQ_HTML,
+  },
+  {
+    slug: "gtm-strategy-and-execution",
+    label: "GTM Strategy and Execution",
+    acceleratorsHtml: null,
+    faqHtml: GTM_FAQ_HTML,
+  },
+  {
+    slug: "strategic-roadmaps",
+    label: "Strategic Roadmaps",
+    acceleratorsHtml: null,
+    faqHtml: ROADMAPS_FAQ_HTML,
+  },
+  {
+    slug: "communication-strategies",
+    label: "Communication Strategies",
+    acceleratorsHtml: null,
+    faqHtml: COMMS_FAQ_HTML,
+  },
+  {
+    slug: "delivery-management",
+    label: "Delivery Management",
+    acceleratorsHtml: null,
+    faqHtml: DELIVERY_FAQ_HTML,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -268,13 +462,25 @@ async function main() {
       continue;
     }
 
+    // For FAQ-only enrichments (acceleratorsHtml === null) we deliberately
+    // skip the accelerators column so we don't blow away anything a future
+    // solution-specific seed has placed there. The faqHtml column is the
+    // only field we always own.
+    const updateSet: {
+      faqHtml: string;
+      updatedAt: Date;
+      acceleratorsHtml?: string;
+    } = {
+      faqHtml: enrichment.faqHtml,
+      updatedAt: new Date(),
+    };
+    if (enrichment.acceleratorsHtml !== null) {
+      updateSet.acceleratorsHtml = enrichment.acceleratorsHtml;
+    }
+
     await db
       .update(solutionsTable)
-      .set({
-        acceleratorsHtml: enrichment.acceleratorsHtml,
-        faqHtml: enrichment.faqHtml,
-        updatedAt: new Date(),
-      })
+      .set(updateSet)
       .where(eq(solutionsTable.id, solution.id));
 
     console.log(`  [OK] Updated "${enrichment.label}" (${solution.id})`);
