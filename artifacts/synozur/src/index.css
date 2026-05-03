@@ -525,6 +525,35 @@ html.theme-aurora .dark .nebula-shimmer {
   }
 }
 
+/* ── Reduced motion ────────────────────────────────────────────────────────
+   Honor `prefers-reduced-motion: reduce`. We disable purely decorative
+   motion — looping background animations, parallax-style transforms,
+   and entrance/scroll-reveal effects — while leaving short, essential
+   transitions (focus rings, color/opacity feedback, hover state changes)
+   intact. Framer Motion animations are handled separately via
+   <MotionConfig reducedMotion="always"> in App.tsx.                       */
+@media (prefers-reduced-motion: reduce) {
+  html.theme-aurora .animate-blob,
+  html.theme-aurora .animate-fade-in-up,
+  html.theme-aurora .dark .nebula-card::before,
+  html.theme-aurora .nebula-shimmer {
+    animation: none !important;
+  }
+  /* Cap any lingering decorative animations and long transforms at a
+     short, reduced duration so screens never sit mid-keyframe. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  /* Pause autoplaying decorative video backgrounds. */
+  video[data-decorative="true"] {
+    display: none !important;
+  }
+}
+
 /* Embed wrapper — podcast players, video embeds inserted via the rich text editor */
 .embed-wrapper {
   position: relative;

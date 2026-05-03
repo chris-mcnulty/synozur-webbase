@@ -7,6 +7,7 @@ import { ArrowRight, Clock, Monitor, Lock, Settings2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/auth";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -42,6 +43,7 @@ export function FromTheFeedCarousel() {
   const [current, setCurrent] = useState(0);
   const [items, setItems] = useState<Collateral[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -62,12 +64,19 @@ export function FromTheFeedCarousel() {
     setCurrent(api.selectedScrollSnap());
     const onSelect = () => setCurrent(api.selectedScrollSnap());
     api.on("select", onSelect);
+    // Honor prefers-reduced-motion: skip the auto-advance timer so the
+    // carousel only moves when the user explicitly requests it.
+    if (reducedMotion) {
+      return () => {
+        api.off("select", onSelect);
+      };
+    }
     const id = window.setInterval(() => api.scrollNext(), 6000);
     return () => {
       api.off("select", onSelect);
       window.clearInterval(id);
     };
-  }, [api]);
+  }, [api, reducedMotion]);
 
   if (error) {
     return (
@@ -227,6 +236,9 @@ export default function Home() {
   const [videoReady, setVideoReady] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const reducedMotion = useReducedMotion();
+  const useHeroVideo =
+    settings?.homeHeroBackgroundType === "video" && !reducedMotion;
 
   useEffect(() => {
     if (videoReady && videoRef.current) {
@@ -272,7 +284,7 @@ export default function Home() {
       <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
-          {settings?.homeHeroBackgroundType === "video" ? (
+          {useHeroVideo ? (
             <video
               ref={videoRef}
               autoPlay
@@ -282,6 +294,7 @@ export default function Home() {
               poster={heroBg}
               className="w-full h-full object-cover"
               data-testid="video-home-hero-bg"
+              data-decorative="true"
             >
               {videoReady && (
                 customVideoSrc ? (

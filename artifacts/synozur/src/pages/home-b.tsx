@@ -10,6 +10,7 @@ import { LogoRotator } from "@/components/logo-rotator";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FromTheFeedCarousel, HomeShortcuts } from "@/pages/home";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -221,6 +222,7 @@ export default function HomeB() {
   const closingHeadline = override(settings?.homeBClosingHeadline, DEFAULTS.closingHeadline);
   const closingBody = override(settings?.homeBClosingBody, DEFAULTS.closingBody);
 
+  const reducedMotion = useReducedMotion();
   const [videoReady, setVideoReady] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -258,7 +260,7 @@ export default function HomeB() {
       <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
-          {effectiveHeroBgType === "video" ? (
+          {effectiveHeroBgType === "video" && !reducedMotion ? (
             <video
               ref={videoRef}
               autoPlay
@@ -267,6 +269,7 @@ export default function HomeB() {
               playsInline
               poster={heroBg}
               className="w-full h-full object-cover"
+              data-decorative="true"
             >
               {videoReady && (
                 customVideoSrc ? (

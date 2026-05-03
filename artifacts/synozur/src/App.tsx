@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { MotionConfig } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { ThemeProvider } from "@/context/theme";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { captureAttributionOnLoad } from "@/lib/attribution";
 import { api } from "@/lib/api";
 
@@ -535,6 +537,19 @@ function Router() {
   );
 }
 
+function AppShell() {
+  const reduced = useReducedMotion();
+  return (
+    <MotionConfig reducedMotion={reduced ? "always" : "never"}>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <Router />
+      </WouterRouter>
+      <Toaster />
+      <IdleWarningDialog />
+    </MotionConfig>
+  );
+}
+
 function App() {
   useEffect(() => {
     captureAttributionOnLoad();
@@ -543,11 +558,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-          <IdleWarningDialog />
+          <AppShell />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
