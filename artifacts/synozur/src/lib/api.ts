@@ -1309,6 +1309,10 @@ export interface PolarisCollateralLinkDto {
   active: boolean;
   publishedAt: string | null;
   updatedAt: string;
+  // Tags currently set on the collateral row. May drift from the episode's
+  // own tags if the episode was edited but never re-synced.
+  serviceId: string | null;
+  solutionId: string | null;
 }
 
 export interface PolarisLinkedPostDto {

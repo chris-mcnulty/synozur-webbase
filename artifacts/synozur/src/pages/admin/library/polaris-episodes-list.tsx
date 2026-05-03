@@ -1,7 +1,23 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink, Download, RefreshCw } from "lucide-react";
+import {
+  useQuery,
+  useQueries,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Download,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -12,11 +28,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { PolarisLibsynImportDialog } from "@/components/admin/PolarisLibsynImportDialog";
 import { useToast } from "@/hooks/use-toast";
-import { api, type PolarisEpisodeDto } from "@/lib/api";
+import {
+  api,
+  type PolarisEpisodeDto,
+  type PolarisCollateralLinkDto,
+} from "@/lib/api";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -24,6 +50,157 @@ const STATUS_LABELS: Record<string, string> = {
   published: "Published",
   archived: "Archived",
 };
+
+type SyncStatus =
+  | "missing"
+  | "missing-tags"
+  | "stale"
+  | "ok"
+  | "loading"
+  | "error";
+
+interface SyncEvaluation {
+  status: Exclude<SyncStatus, "loading" | "error">;
+  reasons: string[];
+}
+
+function syncStatusFor(
+  episode: PolarisEpisodeDto,
+  collateral: PolarisCollateralLinkDto | null,
+): SyncEvaluation {
+  if (!collateral) {
+    return {
+      status: "missing",
+      reasons: ["No collateral record exists in the library."],
+    };
+  }
+  // Episode itself is missing tags → re-syncing won't help; the editor needs
+  // to set them on the episode first.
+  const episodeMissing: string[] = [];
+  if (!episode.serviceId) episodeMissing.push("service");
+  if (!episode.solutionId) episodeMissing.push("solution");
+  if (episodeMissing.length > 0) {
+    return {
+      status: "missing-tags",
+      reasons: [
+        `Episode is missing ${episodeMissing.join(" and ")} tag${
+          episodeMissing.length > 1 ? "s" : ""
+        }. Edit the episode to set them.`,
+      ],
+    };
+  }
+  // Episode has both tags → check whether the collateral row matches.
+  const reasons: string[] = [];
+  if (collateral.serviceId !== episode.serviceId) {
+    reasons.push(
+      collateral.serviceId
+        ? "Collateral's service tag does not match the episode."
+        : "Collateral is missing the service tag.",
+    );
+  }
+  if (collateral.solutionId !== episode.solutionId) {
+    reasons.push(
+      collateral.solutionId
+        ? "Collateral's solution tag does not match the episode."
+        : "Collateral is missing the solution tag.",
+    );
+  }
+  return { status: reasons.length > 0 ? "stale" : "ok", reasons };
+}
+
+function SyncStatusBadge({
+  status,
+  onClick,
+  disabled,
+  syncing,
+  testId,
+  reason,
+}: {
+  status: SyncStatus;
+  onClick?: () => void;
+  disabled?: boolean;
+  syncing?: boolean;
+  testId: string;
+  reason?: string;
+}) {
+  const config: Record<
+    SyncStatus,
+    { icon: ReactNode; label: string; className: string; tooltip: string }
+  > = {
+    loading: {
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+      label: "Checking…",
+      className: "text-muted-foreground",
+      tooltip: "Checking library sync status…",
+    },
+    error: {
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "Unknown",
+      className: "text-muted-foreground",
+      tooltip: "Could not load sync status.",
+    },
+    missing: {
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      label: "Missing",
+      className: "text-destructive",
+      tooltip:
+        reason ??
+        "No collateral record exists in the library. Click to create one.",
+    },
+    "missing-tags": {
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "Missing tags",
+      className: "text-amber-600 dark:text-amber-500",
+      tooltip:
+        reason ??
+        "Episode is missing service or solution tags. Edit the episode to set them — re-syncing alone won't fix it.",
+    },
+    stale: {
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "Stale tags",
+      className: "text-amber-600 dark:text-amber-500",
+      tooltip:
+        reason ??
+        "Collateral exists but its service/solution tags do not match the episode. Click to re-sync.",
+    },
+    ok: {
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      label: "Synced",
+      className: "text-emerald-600 dark:text-emerald-500",
+      tooltip:
+        "Collateral record is in sync. Click to force a re-sync if fields have changed.",
+    },
+  };
+
+  const c = config[status];
+  const clickable = !!onClick && !disabled && status !== "loading";
+
+  const inner = (
+    <button
+      type="button"
+      onClick={clickable ? onClick : undefined}
+      disabled={!clickable || syncing}
+      data-testid={testId}
+      className={`inline-flex items-center gap-1 text-xs font-medium ${c.className} ${
+        clickable ? "hover:underline cursor-pointer" : "cursor-default"
+      } disabled:opacity-60`}
+    >
+      {syncing ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        c.icon
+      )}
+      <span>{syncing ? "Syncing…" : c.label}</span>
+    </button>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{inner}</TooltipTrigger>
+      <TooltipContent>{c.tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function AdminPolarisEpisodesList() {
   const qc = useQueryClient();
@@ -57,6 +234,46 @@ export default function AdminPolarisEpisodesList() {
     return m;
   }, [services]);
 
+  // Per-row library sync status. We fetch the linked collateral record for
+  // each episode in parallel so editors can spot missing or stale records at
+  // a glance. Enabled only after the list query has loaded.
+  const collateralQs = useQueries({
+    queries: items.map((e) => ({
+      queryKey: ["admin-polaris-episode-collateral", e.id],
+      queryFn: () => api.getPolarisCollateralLink(e.id),
+      enabled: !!e.id,
+      staleTime: 30_000,
+    })),
+  });
+  const collateralByEpisodeId = useMemo(() => {
+    const m = new Map<
+      string,
+      {
+        status: SyncStatus;
+        reasons: string[];
+        collateral: PolarisCollateralLinkDto | null;
+      }
+    >();
+    items.forEach((e, i) => {
+      const q = collateralQs[i];
+      if (!q) return;
+      if (q.isLoading) {
+        m.set(e.id, { status: "loading", reasons: [], collateral: null });
+      } else if (q.isError) {
+        m.set(e.id, { status: "error", reasons: [], collateral: null });
+      } else {
+        const collateral = q.data?.collateral ?? null;
+        const evalResult = syncStatusFor(e, collateral);
+        m.set(e.id, {
+          status: evalResult.status,
+          reasons: evalResult.reasons,
+          collateral,
+        });
+      }
+    });
+    return m;
+  }, [items, collateralQs]);
+
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updatePolarisEpisode>[1] }) =>
       api.updatePolarisEpisode(id, data),
@@ -83,9 +300,28 @@ export default function AdminPolarisEpisodesList() {
         description: `${data.updated} updated, ${data.created} created (${data.total} episodes total).`,
       });
       qc.invalidateQueries({ queryKey: ["admin-polaris-episodes"] });
+      qc.invalidateQueries({
+        queryKey: ["admin-polaris-episode-collateral"],
+      });
     },
     onError: (e: Error) =>
       toast({ title: "Bulk re-sync failed", description: e.message, variant: "destructive" }),
+  });
+
+  const singleSyncMut = useMutation({
+    mutationFn: (id: string) => api.syncPolarisToCollateral(id),
+    onSuccess: (_data, id) => {
+      toast({ title: "Library entry synced" });
+      qc.invalidateQueries({
+        queryKey: ["admin-polaris-episode-collateral", id],
+      });
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "Sync failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const onToggleActive = (e: PolarisEpisodeDto, active: boolean) => {
@@ -102,7 +338,13 @@ export default function AdminPolarisEpisodesList() {
     deleteMut.mutate(e.id);
   };
 
+  const onSyncOne = (e: PolarisEpisodeDto) => {
+    if (!canWrite) return;
+    singleSyncMut.mutate(e.id);
+  };
+
   return (
+    <TooltipProvider delayDuration={200}>
     <AdminLayout
       title="Polaris Episodes"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Polaris" }]}
@@ -146,6 +388,7 @@ export default function AdminPolarisEpisodesList() {
               <TableHead className="w-32">Service</TableHead>
               <TableHead className="w-40">Solution</TableHead>
               <TableHead className="w-28">Status</TableHead>
+              <TableHead className="w-32">Library</TableHead>
               <TableHead className="w-36">Published</TableHead>
               <TableHead className="w-20">Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -154,18 +397,28 @@ export default function AdminPolarisEpisodesList() {
           <TableBody>
             {listQ.isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   No Polaris episodes yet.
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((e) => (
+              items.map((e) => {
+                const sync = collateralByEpisodeId.get(e.id);
+                const status: SyncStatus = sync?.status ?? "loading";
+                const reason =
+                  sync && sync.reasons.length > 0
+                    ? sync.reasons.join(" ")
+                    : undefined;
+                const isSyncingThis =
+                  singleSyncMut.isPending &&
+                  singleSyncMut.variables === e.id;
+                return (
                 <TableRow key={e.id} data-testid={`row-polaris-${e.id}`}>
                   <TableCell className="font-mono">{e.episodeNumber}</TableCell>
                   <TableCell className="font-medium">
@@ -186,6 +439,16 @@ export default function AdminPolarisEpisodesList() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {STATUS_LABELS[e.status] ?? e.status}
+                  </TableCell>
+                  <TableCell>
+                    <SyncStatusBadge
+                      status={status}
+                      onClick={canWrite ? () => onSyncOne(e) : undefined}
+                      disabled={!canWrite || bulkSyncMut.isPending}
+                      syncing={isSyncingThis}
+                      testId={`badge-polaris-sync-${e.id}`}
+                      reason={reason}
+                    />
                   </TableCell>
                   <TableCell className="text-sm">
                     {e.publishedAt
@@ -231,12 +494,14 @@ export default function AdminPolarisEpisodesList() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
       </div>
       <PolarisLibsynImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </AdminLayout>
+    </TooltipProvider>
   );
 }

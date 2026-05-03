@@ -661,6 +661,10 @@ function serializeCollateralLink(row: typeof collateralTable.$inferSelect) {
     active: row.active,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString().split("T")[0] : null,
     updatedAt: row.updatedAt.toISOString(),
+    // Tag state on the collateral row itself, exposed so editors can spot
+    // collateral that drifted from the episode's current service/solution.
+    serviceId: row.serviceId ?? null,
+    solutionId: row.solutionId ?? null,
   };
 }
 
