@@ -298,15 +298,37 @@ router.get(
 // `portal_document.download` audit event so account teams can see who
 // retrieved what. The `inline` query toggle lets the preview drawer render
 // PDFs/images without forcing a download.
+//
+// Denial contract for this endpoint (#244): a signed-in customer who
+// is in the customer audience but is not entitled to a real document
+// — because the doc is unpublished or belongs to another client org —
+// receives a 403, not a 404. Soft-deleted rows and unknown ids still
+// return 404 (the row is in tombstone state or doesn't exist at all).
+// The metadata `/:id` route uses 404 for all of these conditions to
+// avoid leaking whether an id exists, but the download route is the
+// gate the audit log records as `portal_document.download`, so we
+// distinguish "you can't have this" from "no such id" explicitly
+// here.
 router.get(
   "/portal/documents/:id/content",
   requireAuth,
   requireCustomerAudience,
   async (req, res) => {
     const orgId = portalOrgId(req);
-    const found = await findOwnedDocument(req.params["id"] as string, orgId);
-    if (!found) {
+    const documentId = req.params["id"] as string;
+    // Look the row up unconditionally first so we can tell the
+    // difference between "no row at all" (404) and "row exists but
+    // you don't own it / it's not published" (403).
+    const rawDoc = await db.query.portalDocumentsTable.findFirst({
+      where: eq(portalDocumentsTable.id, documentId),
+    });
+    if (!rawDoc || rawDoc.deletedAt) {
       res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const found = await findOwnedDocument(documentId, orgId);
+    if (!found) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
     const { doc } = found;
