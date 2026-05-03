@@ -7,10 +7,14 @@
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:removed-identifiers": "tsx ./src/check-removed-identifiers.ts",
-    "lighthouse:pr-summary": "tsx ./src/lighthouse-pr-summary.ts"
+    "lighthouse:pr-summary": "tsx ./src/lighthouse-pr-summary.ts",
+    "link-check": "tsx ./src/link-check.ts",
+    "link-check:smoke": "tsx ./src/link-check.smoke.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "tsx": "catalog:"
+    "linkinator": "^7.6.1",
+    "tsx": "catalog:",
+    "yaml": "^2.8.4"
   }
 }

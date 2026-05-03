@@ -1,0 +1,22 @@
+# Broken-link checker allowlist (#157 / launch-readiness L20)
+#
+# Each entry tolerates a URL that the link checker would otherwise flag.
+# Entries expire — once `expires` is in the past the CI build fails until
+# the entry is removed or the underlying link is fixed.
+#
+# Schema:
+#   - pattern: a JavaScript regular expression matched against the broken
+#       URL via `RegExp.test()`. `.test()` returns true when the regex
+#       matches anywhere in the string, so a bare substring like
+#       `example\.com/foo` works without explicit `.*` anchors. If you
+#       want a stricter match, write your own `^…$` anchors.
+#     reason:  short human note explaining why this is tolerated.
+#     expires: YYYY-MM-DD. Required. After this date the entry is
+#       treated as expired and the build fails.
+#     added:   YYYY-MM-DD (optional). For audit history.
+#
+# Keep this list short. Allowlisting is a last resort — prefer fixing the
+# link or removing it. Internal (same-origin) links should never be
+# allowlisted; fix them instead.
+
+entries: []

@@ -1,0 +1,280 @@
+name: Broken-link check
+
+# #157 / launch-readiness L20.
+#
+# Crawls the synozur public site (sitemap-driven + a hand-curated list
+# of well-known surfaces) on every PR and on a nightly cron schedule
+# and reports any 4xx / 5xx links found.
+#
+# PR runs:   sticky comment with broken-link table; gates the PR on
+#            *new* broken links vs. the baseline produced by the most
+#            recent successful run on `main`. Pre-existing breakage in
+#            the baseline is reported but does not block merge — that
+#            keeps the gate scoped to the diff per the task spec.
+# Push:main: same crawl, and the resulting `results.json` is uploaded
+#            as the `link-check-baseline` artifact for PRs to compare
+#            against.
+# Nightly:   opens (or refreshes) a tracking GitHub issue with the
+#            current broken-link table.
+#
+# Allowlist external URLs at .github/link-check-allowlist.yml. Entries
+# whose expiry date has passed always fail the build.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly run at 07:00 UTC (00:00 PT) so the broken-link issue is
+    # waiting for the team at the start of the work day.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: link-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link-check:
+    name: Crawl + report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: synozur
+          POSTGRES_PASSWORD: synozur
+          POSTGRES_DB: synozur
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://synozur:synozur@localhost:5432/synozur
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision database
+        run: pnpm --filter "@workspace/db" run push
+
+      - name: Boot api-server
+        env:
+          PORT: "8000"
+          NODE_ENV: production
+        run: |
+          pnpm --filter "@workspace/api-server" run build
+          pnpm --filter "@workspace/api-server" run start &
+          for i in {1..30}; do
+            if curl -sf http://localhost:8000/api/healthz >/dev/null; then
+              echo "api-server up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "api-server did not start in time" >&2
+          exit 1
+
+      - name: Build synozur
+        env:
+          BASE_PATH: "/"
+        run: pnpm --filter "@workspace/synozur" run build
+
+      - name: Boot synozur production server
+        # Crawl the production server (artifacts/synozur/server.mjs)
+        # rather than `vite preview` so the link checker observes the
+        # same HTTP behavior that ships to users — including the
+        # route-status gating that returns 404 / 410 for unpublished
+        # artifact URLs (#162 / L13). `vite preview` would mask those
+        # as 200 SPA-shell responses and let stale internal links
+        # slip through the gate. API_PORT points the SPA server's
+        # internal /api/seo/route-status + /api/og bot proxy at the
+        # api-server we booted above so the wix_redirects middleware
+        # and route-status gating are both reachable.
+        env:
+          PORT: "5000"
+          API_PORT: "8000"
+        run: |
+          node artifacts/synozur/server.mjs &
+          for i in {1..30}; do
+            if curl -sf http://localhost:5000/ >/dev/null; then
+              echo "synozur up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "synozur did not start in time" >&2
+          exit 1
+
+      # On PRs, fetch the most recent successful main-branch baseline so
+      # the script can scope the gate to newly-broken links. The action
+      # is best-effort: if there's no main baseline yet (first run), the
+      # gate falls back to "fail on any non-allowlisted broken link".
+      - name: Download main-branch baseline
+        if: github.event_name == 'pull_request'
+        id: baseline
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: link-check.yml
+          workflow_conclusion: success
+          branch: main
+          name: link-check-baseline
+          path: .link-check-baseline
+          if_no_artifact_found: warn
+
+      - name: Run link checker
+        id: link_check
+        # Don't fail the step yet — we want the summary + artifact upload
+        # + sticky comment / nightly issue update to run even when the
+        # gate would block. The dedicated gate step below converts the
+        # saved exit code into the job result.
+        env:
+          LINK_CHECK_BASE_URL: "http://localhost:5000"
+          # Pin path-bearing env vars to repo-root-relative locations
+          # via LINK_CHECK_ROOT so the script's cwd (the `scripts/`
+          # package directory under `pnpm --filter`) doesn't affect
+          # where the allowlist is read from or the report is written.
+          LINK_CHECK_ROOT: ${{ github.workspace }}
+          LINK_CHECK_BASELINE: ${{ github.event_name == 'pull_request' && '.link-check-baseline/results.json' || '' }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          set +e
+          pnpm --filter "@workspace/scripts" run link-check
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Upload link-check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-report
+          path: |
+            .link-check/results.json
+            .link-check/summary.md
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Publish a separate `link-check-baseline` artifact on push:main
+      # so the PR job above can pick it up via dawidd6/action-download-
+      # artifact. Kept as its own artifact name so downstream baseline
+      # consumers don't accidentally pull a PR's report.
+      - name: Upload main-branch baseline
+        if: >-
+          always() &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-baseline
+          path: .link-check/results.json
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Post sticky PR comment
+        # Skip on fork PRs — `GITHUB_TOKEN` doesn't get write access to
+        # pull-request conversations from forks. Same-repo PRs still
+        # get the sticky comment.
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: link-check
+          path: .link-check/summary.md
+
+      - name: Post nightly summary to tracking issue
+        # Runs on every scheduled / dispatched run regardless of
+        # outcome. The body of the tracking issue always reflects
+        # the most recent crawl. When the run is clean the issue is
+        # auto-closed; when broken links return it is reopened so
+        # the team gets a notification.
+        if: >-
+          always() &&
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/github-script@v7
+        env:
+          LINK_CHECK_EXIT_CODE: ${{ steps.link_check.outputs.exit_code }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const body = fs.readFileSync('.link-check/summary.md', 'utf8');
+            const title = 'Nightly broken-link check';
+            const label = 'link-rot';
+            const failing = process.env.LINK_CHECK_EXIT_CODE !== '0';
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label,
+                color: 'b60205',
+                description: 'Tracks the nightly broken-link checker output',
+              });
+            } catch (err) {
+              if (err.status !== 422) throw err;
+            }
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: label,
+              per_page: 20,
+            });
+            const open = existing.data.find((i) => i.title === title);
+            const fullBody = `${body}\n\n_Run ${context.runId} — status: ${failing ? '❌ broken links present' : '✅ clean'}._`;
+            if (open) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: open.number,
+                body: fullBody,
+                state: failing ? 'open' : 'closed',
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: open.number,
+                body: `Refreshed by run ${context.runId}: ${failing ? '❌ broken links present.' : '✅ clean — closing.'}`,
+              });
+            } else if (failing) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body: fullBody,
+                labels: [label],
+              });
+            }
+
+      - name: Enforce link-check result
+        if: always()
+        run: |
+          code="${{ steps.link_check.outputs.exit_code }}"
+          if [ "$code" != "0" ]; then
+            echo "Broken-link check failed (exit $code). See .link-check/summary.md" >&2
+            exit "$code"
+          fi

@@ -1,0 +1,112 @@
+{
+  "baseUrl": "http://127.0.0.1:5123",
+  "startedAt": "2026-05-03T11:27:46.162Z",
+  "finishedAt": "2026-05-03T11:27:46.199Z",
+  "baseline": {
+    "used": false,
+    "brokenInBaseline": 0
+  },
+  "totals": {
+    "total": 13,
+    "ok": 3,
+    "redirect": 0,
+    "client_error": 10,
+    "server_error": 0,
+    "skipped": 0,
+    "allowlisted": 0,
+    "preExisting": 0,
+    "new": 10
+  },
+  "perPage": {
+    "http://127.0.0.1:5123": {
+      "ok": 3,
+      "redirect": 0,
+      "client_error": 10,
+      "server_error": 0,
+      "skipped": 0
+    }
+  },
+  "broken": [
+    {
+      "url": "http://127.0.0.1:5123/about",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/services",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/solutions",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/applications",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/case-studies",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/insights",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/library",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/contact",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/privacy",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    },
+    {
+      "url": "http://127.0.0.1:5123/terms",
+      "status": 404,
+      "parent": "",
+      "state": "BROKEN",
+      "bucket": "client_error",
+      "preExisting": false
+    }
+  ],
+  "expiredAllowlistEntries": []
+}
