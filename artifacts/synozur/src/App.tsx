@@ -55,6 +55,7 @@ import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/access/users";
 import EntraMappingsPage from "@/pages/admin/access/entra";
 import OrganizationsPage from "@/pages/admin/access/organizations";
+import EngagementDocumentsPage from "@/pages/admin/access/engagement-documents";
 import SecurityLogPage from "@/pages/admin/access/security-log";
 import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import OAuthClientsPage from "@/pages/admin/access/oauth-clients";
@@ -364,6 +365,7 @@ function AdminRoutes() {
         <Route path="/access/users" component={UsersAndRoles} />
         <Route path="/access/entra" component={EntraMappingsPage} />
         <Route path="/access/organizations" component={OrganizationsPage} />
+        <Route path="/access/engagement-documents" component={EngagementDocumentsPage} />
         <Route path="/access/security-log" component={SecurityLogPage} />
         <Route path="/access/capabilities" component={CapabilitiesPage} />
         <Route path="/access/oauth-clients" component={OAuthClientsPage} />

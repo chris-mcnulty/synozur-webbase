@@ -5,6 +5,7 @@ import {
   type PortalEngagement,
   type PortalForbiddenReason,
 } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -154,6 +155,21 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <nav className="flex items-center gap-1 text-sm">
+              <Link
+                href="/"
+                className="px-3 py-1.5 rounded-md font-medium hover-elevate"
+              >
+                Home
+              </Link>
+              <Link
+                href="/documents"
+                className="px-3 py-1.5 rounded-md text-muted-foreground hover-elevate"
+                data-testid="nav-documents"
+              >
+                Documents
+              </Link>
+            </nav>
             {user?.email ? (
               <span className="text-xs text-muted-foreground hidden sm:inline">
                 {user.email}

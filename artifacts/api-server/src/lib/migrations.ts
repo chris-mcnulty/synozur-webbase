@@ -1515,6 +1515,55 @@ export async function runMigrations(): Promise<void> {
         ON engagements (status);
     `);
 
+    // #227 — Galaxy deliverables document browser
+    // -----------------------------------------------------------
+    // engagements gains an optional spe_path so the document
+    // indexer knows which folder inside the active SPE container
+    // to walk for each engagement. NULL means deliverables haven't
+    // been wired up yet — the indexer skips those engagements.
+    await db.execute(sql`
+      ALTER TABLE engagements
+        ADD COLUMN IF NOT EXISTS spe_path text;
+    `);
+
+    // portal_documents — one row per file an account manager has
+    // indexed (and optionally published) from the engagement's
+    // SPE folder. Galaxy clients only see published, non-deleted
+    // rows. The unique (engagement, space_item_id) index makes
+    // re-indexing idempotent.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS portal_documents (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        engagement_id uuid NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+        spe_path text NOT NULL,
+        space_item_id text NOT NULL,
+        filename text NOT NULL,
+        content_type text NOT NULL DEFAULT '',
+        size_bytes bigint NOT NULL DEFAULT 0,
+        last_modified_at timestamptz,
+        published_at timestamptz,
+        published_by uuid REFERENCES users(id) ON DELETE SET NULL,
+        indexed_at timestamptz NOT NULL DEFAULT now(),
+        deleted_at timestamptz,
+        web_url text
+      );
+    `);
+    // Existing deployments may have created the table before web_url
+    // landed — add it idempotently so the Office "Open in browser"
+    // affordance works without a manual migration.
+    await db.execute(sql`
+      ALTER TABLE portal_documents
+        ADD COLUMN IF NOT EXISTS web_url text;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS portal_documents_engagement_item_key
+        ON portal_documents (engagement_id, space_item_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS portal_documents_engagement_published_idx
+        ON portal_documents (engagement_id, published_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

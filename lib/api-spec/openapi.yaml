@@ -3143,6 +3143,143 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortalForbidden'
+  /portal/documents:
+    get:
+      operationId: listPortalDocuments
+      tags:
+        - Portal
+      summary: Published deliverables for the signed-in customer's organization.
+      parameters:
+        - in: query
+          name: engagementId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paginated documents list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalDocumentList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+  /portal/documents/{id}:
+    get:
+      operationId: getPortalDocument
+      tags:
+        - Portal
+      summary: Single deliverable metadata.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalDocument'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /portal/documents/{id}/content:
+    get:
+      operationId: downloadPortalDocument
+      tags:
+        - Portal
+      summary: Stream the deliverable file from SharePoint Embedded.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: inline
+          schema:
+            type: string
+            enum: ['0', '1', 'true', 'false']
+      responses:
+        '200':
+          description: File bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /portal/documents/{id}/preview:
+    get:
+      operationId: previewPortalDocument
+      tags:
+        - Portal
+      summary: Audited 302 redirect to the M365 web viewer for the deliverable.
+      description: Audits a `portal_document.preview` event and redirects to the underlying SPE/M365 viewer URL. Used by the portal UI to open Office documents in the browser without exposing the raw SharePoint URL in JSON payloads.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '302':
+          description: Redirect to the M365 web viewer.
+          headers:
+            Location:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /portal/engagements:
     get:
       operationId: listPortalEngagements
@@ -3289,6 +3426,60 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PortalAccountTeamMember'
+    PortalDocument:
+      type: object
+      required:
+        - id
+        - engagementId
+        - engagementTitle
+        - engagementSlug
+        - filename
+        - contentType
+        - sizeBytes
+      properties:
+        id:
+          type: string
+          format: uuid
+        engagementId:
+          type: string
+          format: uuid
+        engagementTitle:
+          type: string
+        engagementSlug:
+          type: string
+        filename:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        lastModifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        hasPreview:
+          type: boolean
+          description: True when the document has an in-browser viewer available via GET /portal/documents/{id}/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.
+    PortalDocumentList:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortalDocument'
+        page:
+          type: integer
+        pageSize:
+          type: integer
     PortalEngagement:
       type: object
       required:

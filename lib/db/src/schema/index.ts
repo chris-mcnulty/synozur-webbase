@@ -2,6 +2,7 @@ export * from "./_artifactBase";
 export * from "./clientOrganizations";
 export * from "./clientOrganizationUsers";
 export * from "./engagements";
+export * from "./portalDocuments";
 export * from "./events";
 export * from "./formSubmissions";
 export * from "./users";

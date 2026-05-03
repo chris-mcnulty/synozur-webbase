@@ -60,6 +60,26 @@ export interface PortalMe {
   accountTeam: PortalAccountTeamMember[];
 }
 
+export interface PortalDocument {
+  id: string;
+  engagementId: string;
+  engagementTitle: string;
+  engagementSlug: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  lastModifiedAt?: string | null;
+  publishedAt?: string | null;
+  /** True when the document has an in-browser viewer available via GET /portal/documents/{id}/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl. */
+  hasPreview?: boolean;
+}
+
+export interface PortalDocumentList {
+  items: PortalDocument[];
+  page: number;
+  pageSize: number;
+}
+
 export type PortalEngagementStatus =
   (typeof PortalEngagementStatus)[keyof typeof PortalEngagementStatus];
 
@@ -2800,6 +2820,33 @@ export type PreviewPolarisLibsynFeedParams = {
    */
   feedUrl?: string;
 };
+
+export type ListPortalDocumentsParams = {
+  engagementId?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type DownloadPortalDocumentParams = {
+  inline?: DownloadPortalDocumentInline;
+};
+
+export type DownloadPortalDocumentInline =
+  (typeof DownloadPortalDocumentInline)[keyof typeof DownloadPortalDocumentInline];
+
+export const DownloadPortalDocumentInline = {
+  NUMBER_0: "0",
+  NUMBER_1: "1",
+  true: "true",
+  false: "false",
+} as const;
 
 export type ListPortalEngagements200 = {
   items: PortalEngagement[];

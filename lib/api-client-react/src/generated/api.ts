@@ -51,6 +51,7 @@ import type {
   CreatePostBody,
   CurrentUser,
   CwvSampleInput,
+  DownloadPortalDocumentParams,
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
@@ -72,6 +73,7 @@ import type {
   ListPolarisEpisodesParams,
   ListPolarisLinkablePosts200,
   ListPolarisLinkablePostsParams,
+  ListPortalDocumentsParams,
   ListPortalEngagements200,
   MediaItem,
   MediaListResponse,
@@ -88,6 +90,8 @@ import type {
   PolarisLibsynImportBody,
   PolarisLibsynImportSummary,
   PolarisLibsynPreviewResponse,
+  PortalDocument,
+  PortalDocumentList,
   PortalForbidden,
   PortalMe,
   Post,
@@ -10862,6 +10866,411 @@ export function useGetPortalMe<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetPortalMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Published deliverables for the signed-in customer's organization.
+ */
+export const getListPortalDocumentsUrl = (
+  params?: ListPortalDocumentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/portal/documents?${stringifiedParams}`
+    : `/api/portal/documents`;
+};
+
+export const listPortalDocuments = async (
+  params?: ListPortalDocumentsParams,
+  options?: RequestInit,
+): Promise<PortalDocumentList> => {
+  return customFetch<PortalDocumentList>(getListPortalDocumentsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPortalDocumentsQueryKey = (
+  params?: ListPortalDocumentsParams,
+) => {
+  return [`/api/portal/documents`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPortalDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortalDocuments>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(
+  params?: ListPortalDocumentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPortalDocumentsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPortalDocuments>>
+  > = ({ signal }) =>
+    listPortalDocuments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortalDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortalDocuments>>
+>;
+export type ListPortalDocumentsQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden
+>;
+
+/**
+ * @summary Published deliverables for the signed-in customer's organization.
+ */
+
+export function useListPortalDocuments<
+  TData = Awaited<ReturnType<typeof listPortalDocuments>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(
+  params?: ListPortalDocumentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortalDocumentsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Single deliverable metadata.
+ */
+export const getGetPortalDocumentUrl = (id: string) => {
+  return `/api/portal/documents/${id}`;
+};
+
+export const getPortalDocument = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PortalDocument> => {
+  return customFetch<PortalDocument>(getGetPortalDocumentUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPortalDocumentQueryKey = (id: string) => {
+  return [`/api/portal/documents/${id}`] as const;
+};
+
+export const getGetPortalDocumentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPortalDocument>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPortalDocumentQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPortalDocument>>
+  > = ({ signal }) => getPortalDocument(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalDocument>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPortalDocumentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPortalDocument>>
+>;
+export type GetPortalDocumentQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Single deliverable metadata.
+ */
+
+export function useGetPortalDocument<
+  TData = Awaited<ReturnType<typeof getPortalDocument>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPortalDocumentQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Stream the deliverable file from SharePoint Embedded.
+ */
+export const getDownloadPortalDocumentUrl = (
+  id: string,
+  params?: DownloadPortalDocumentParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/portal/documents/${id}/content?${stringifiedParams}`
+    : `/api/portal/documents/${id}/content`;
+};
+
+export const downloadPortalDocument = async (
+  id: string,
+  params?: DownloadPortalDocumentParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadPortalDocumentUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadPortalDocumentQueryKey = (
+  id: string,
+  params?: DownloadPortalDocumentParams,
+) => {
+  return [
+    `/api/portal/documents/${id}/content`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getDownloadPortalDocumentQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadPortalDocument>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  params?: DownloadPortalDocumentParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadPortalDocumentQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadPortalDocument>>
+  > = ({ signal }) =>
+    downloadPortalDocument(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadPortalDocument>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadPortalDocumentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadPortalDocument>>
+>;
+export type DownloadPortalDocumentQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Stream the deliverable file from SharePoint Embedded.
+ */
+
+export function useDownloadPortalDocument<
+  TData = Awaited<ReturnType<typeof downloadPortalDocument>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  params?: DownloadPortalDocumentParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadPortalDocumentQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Audits a `portal_document.preview` event and redirects to the underlying SPE/M365 viewer URL. Used by the portal UI to open Office documents in the browser without exposing the raw SharePoint URL in JSON payloads.
+ * @summary Audited 302 redirect to the M365 web viewer for the deliverable.
+ */
+export const getPreviewPortalDocumentUrl = (id: string) => {
+  return `/api/portal/documents/${id}/preview`;
+};
+
+export const previewPortalDocument = async (
+  id: string,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getPreviewPortalDocumentUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPreviewPortalDocumentQueryKey = (id: string) => {
+  return [`/api/portal/documents/${id}/preview`] as const;
+};
+
+export const getPreviewPortalDocumentQueryOptions = <
+  TData = Awaited<ReturnType<typeof previewPortalDocument>>,
+  TError = ErrorType<
+    void | UnauthorizedResponse | PortalForbidden | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPreviewPortalDocumentQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof previewPortalDocument>>
+  > = ({ signal }) => previewPortalDocument(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof previewPortalDocument>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PreviewPortalDocumentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof previewPortalDocument>>
+>;
+export type PreviewPortalDocumentQueryError = ErrorType<
+  void | UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Audited 302 redirect to the M365 web viewer for the deliverable.
+ */
+
+export function usePreviewPortalDocument<
+  TData = Awaited<ReturnType<typeof previewPortalDocument>>,
+  TError = ErrorType<
+    void | UnauthorizedResponse | PortalForbidden | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewPortalDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPreviewPortalDocumentQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

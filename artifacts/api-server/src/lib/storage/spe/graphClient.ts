@@ -454,6 +454,30 @@ export class SpeGraphClient {
     return this.requestRaw(`${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/content`);
   }
 
+  // Mint a short-lived, tokenized embed URL for the M365 web viewer.
+  // This is the canonical Graph "preview" action — it returns a URL
+  // distinct from the canonical SharePoint webUrl, scoped to a single
+  // viewing session, so customers never receive the raw item webUrl.
+  // Docs: https://learn.microsoft.com/en-us/graph/api/driveitem-preview
+  async getPreviewUrl(
+    containerId: string,
+    itemId: string,
+  ): Promise<{ getUrl: string | null; postUrl: string | null }> {
+    const driveId = await this.getContainerDriveId(containerId);
+    const data = await this.request<{
+      getUrl?: string;
+      postUrl?: string;
+    }>(`${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    return {
+      getUrl: data.getUrl ?? null,
+      postUrl: data.postUrl ?? null,
+    };
+  }
+
   async getItem(containerId: string, itemId: string): Promise<SpeFileItem> {
     const driveId = await this.getContainerDriveId(containerId);
     const item = await this.request<RawDriveItem>(

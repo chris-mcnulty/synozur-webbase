@@ -4336,6 +4336,92 @@ export const GetPortalMeResponse = zod.object({
 });
 
 /**
+ * @summary Published deliverables for the signed-in customer's organization.
+ */
+export const listPortalDocumentsQueryPageDefault = 1;
+
+export const listPortalDocumentsQueryPageSizeDefault = 50;
+export const listPortalDocumentsQueryPageSizeMax = 100;
+
+export const ListPortalDocumentsQueryParams = zod.object({
+  engagementId: zod.coerce.string().uuid().optional(),
+  page: zod.coerce.number().min(1).default(listPortalDocumentsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listPortalDocumentsQueryPageSizeMax)
+    .default(listPortalDocumentsQueryPageSizeDefault),
+});
+
+export const ListPortalDocumentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      engagementId: zod.string().uuid(),
+      engagementTitle: zod.string(),
+      engagementSlug: zod.string(),
+      filename: zod.string(),
+      contentType: zod.string(),
+      sizeBytes: zod.number(),
+      lastModifiedAt: zod.coerce.date().nullish(),
+      publishedAt: zod.coerce.date().nullish(),
+      hasPreview: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when the document has an in-browser viewer available via GET \/portal\/documents\/{id}\/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.",
+        ),
+    }),
+  ),
+  page: zod.number(),
+  pageSize: zod.number(),
+});
+
+/**
+ * @summary Single deliverable metadata.
+ */
+export const GetPortalDocumentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetPortalDocumentResponse = zod.object({
+  id: zod.string().uuid(),
+  engagementId: zod.string().uuid(),
+  engagementTitle: zod.string(),
+  engagementSlug: zod.string(),
+  filename: zod.string(),
+  contentType: zod.string(),
+  sizeBytes: zod.number(),
+  lastModifiedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  hasPreview: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when the document has an in-browser viewer available via GET \/portal\/documents\/{id}\/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.",
+    ),
+});
+
+/**
+ * @summary Stream the deliverable file from SharePoint Embedded.
+ */
+export const DownloadPortalDocumentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadPortalDocumentQueryParams = zod.object({
+  inline: zod.enum(["0", "1", "true", "false"]).optional(),
+});
+
+/**
+ * Audits a `portal_document.preview` event and redirects to the underlying SPE/M365 viewer URL. Used by the portal UI to open Office documents in the browser without exposing the raw SharePoint URL in JSON payloads.
+ * @summary Audited 302 redirect to the M365 web viewer for the deliverable.
+ */
+export const PreviewPortalDocumentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
  * @summary Active engagements for the signed-in customer's organization.
  */
 export const ListPortalEngagementsResponse = zod.object({

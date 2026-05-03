@@ -1,9 +1,11 @@
+import * as React from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/auth";
 import Home from "@/pages/home";
+import Documents from "@/pages/documents";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
 
@@ -22,7 +24,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function Gated() {
+function Gated({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) {
     return (
@@ -32,13 +34,18 @@ function Gated() {
     );
   }
   if (!isSignedIn) return <SignInRequired />;
-  return <Home />;
+  return <>{children}</>;
 }
 
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/" component={Gated} />
+      <Route path="/">
+        <Gated><Home /></Gated>
+      </Route>
+      <Route path="/documents">
+        <Gated><Documents /></Gated>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

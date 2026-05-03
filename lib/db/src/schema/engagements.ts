@@ -40,6 +40,12 @@ export const engagementsTable = pgTable(
     // SharePoint URL, Jira project key, etc.). Not validated here; the
     // calling surface is responsible for shape.
     externalRef: text("external_ref"),
+    // Folder path inside the active SPE container that this engagement's
+    // deliverables live in (e.g. `/engagements/acme-roadmap`). The
+    // portal-document indexer walks this path; null means deliverables
+    // haven't been wired up yet. Stored as text so admins can correct
+    // typos without a migration.
+    spePath: text("spe_path"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

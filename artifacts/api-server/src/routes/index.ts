@@ -52,6 +52,7 @@ import cspRouter from "./csp";
 import cspViolationsRouter from "./cms/cspViolations";
 import launchReadinessRouter from "./cms/launchReadiness";
 import portalRouter from "./portal";
+import portalDocumentsAdminRouter from "./portalDocumentsAdmin";
 
 const router: IRouter = Router();
 
@@ -108,5 +109,6 @@ router.use(cspRouter);
 router.use(cspViolationsRouter);
 router.use(launchReadinessRouter);
 router.use(portalRouter);
+router.use(portalDocumentsAdminRouter);
 
 export default router;

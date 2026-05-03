@@ -172,6 +172,7 @@ const SECTIONS: NavSection[] = [
       { href: "/access/users", label: "Users & Roles", icon: Users, capability: "users.manage", testId: "nav-admin-users" },
       { href: "/access/capabilities", label: "Capabilities", icon: KeyRound, capability: "users.manage", testId: "nav-admin-capabilities" },
       { href: "/access/organizations", label: "Organizations", icon: UsersRound, capability: "users.manage", testId: "nav-admin-organizations" },
+      { href: "/access/engagement-documents", label: "Engagement Documents", icon: FileText, capability: "users.manage", testId: "nav-admin-engagement-documents" },
       { href: "/access/entra", label: "Entra Mappings", icon: ShieldCheck, capability: "users.manage", testId: "nav-admin-entra" },
       { href: "/access/security-log", label: "Security Log", icon: Activity, capability: "users.manage", testId: "nav-admin-security-log" },
       { href: "/access/oauth-clients", label: "OAuth Clients", icon: AppWindow, capability: "oauth.manage", testId: "nav-admin-oauth-clients" },
