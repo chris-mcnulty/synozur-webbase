@@ -76,7 +76,7 @@ export default function AdminModelsList() {
   };
   const onDelete = (m: ModelDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${m.title}"?`)) return;
+    if (!confirm(`Archive "${m.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(m.id);
   };
 

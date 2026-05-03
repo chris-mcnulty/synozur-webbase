@@ -82,7 +82,7 @@ export default function AdminApplicationsList() {
   };
   const onDelete = (a: ApplicationDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${a.title}"?`)) return;
+    if (!confirm(`Archive "${a.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(a.id);
   };
 

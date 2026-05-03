@@ -364,7 +364,7 @@ export default function PostEditor({ id }: Props) {
   };
   const onArchive = async () => {
     if (!postId) return;
-    if (!confirm("Archive this post?")) return;
+    if (!confirm("Archive this post? This will remove it from the public site.")) return;
     await archiveMut.mutateAsync({ id: postId });
   };
 

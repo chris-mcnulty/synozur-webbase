@@ -147,7 +147,7 @@ export default function MediaLibrary() {
                 toast({ title: "URL copied" });
               }}
               onDelete={() => {
-                if (confirm("Delete this media?")) del.mutate({ id: m.id });
+                if (confirm("Delete this media? This cannot be undone and any posts referencing it will break.")) del.mutate({ id: m.id });
               }}
               onSaveAlt={async (altText) => {
                 await update.mutateAsync({ id: m.id, data: { altText } });

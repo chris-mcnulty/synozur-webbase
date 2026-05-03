@@ -88,7 +88,7 @@ export default function AdminServicesList() {
 
   const onDelete = (s: Service) => {
     if (!canWrite) return;
-    if (!confirm(`Archive service "${s.title}"?`)) return;
+    if (!confirm(`Archive service "${s.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate({ id: s.id });
   };
 

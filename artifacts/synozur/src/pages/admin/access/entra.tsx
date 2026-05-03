@@ -91,6 +91,9 @@ export default function EntraMappingsPage() {
   }
 
   async function remove(id: string) {
+    const target = items.find((m) => m.id === id);
+    const label = target?.entraGroupName ?? target?.entraGroupId ?? "this mapping";
+    if (!confirm(`Remove Entra group mapping "${label}"? Members of that group will lose their assigned role.`)) return;
     try {
       await apiFetch(`/admin/entra/group-mappings/${id}`, { method: "DELETE" });
       toast({ title: "Mapping removed" });

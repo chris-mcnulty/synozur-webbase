@@ -133,7 +133,7 @@ export default function AdminBookingsList() {
                   size="icon"
                   className="h-8 w-8 text-destructive hover:text-destructive"
                   onClick={() => {
-                    if (confirm(`Delete booking "${b.title}"?`)) {
+                    if (confirm(`Delete booking "${b.title}"? This cannot be undone.`)) {
                       deleteMutation.mutate(b.id);
                     }
                   }}

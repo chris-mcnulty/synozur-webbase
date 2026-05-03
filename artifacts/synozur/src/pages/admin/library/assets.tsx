@@ -183,7 +183,7 @@ export default function AssetsLibrary() {
   };
 
   const handleDelete = (item: LibraryAssetItem) => {
-    if (!confirm(`Delete "${displayName(item)}"?`)) return;
+    if (!confirm(`Delete "${displayName(item)}"? This cannot be undone.`)) return;
     if (item.source === "media") {
       deleteMedia.mutate({ id: item.id });
     } else {

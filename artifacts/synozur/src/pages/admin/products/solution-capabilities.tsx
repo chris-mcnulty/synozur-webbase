@@ -115,6 +115,8 @@ export default function SolutionCapabilitiesPage({ id }: { id: string }) {
           });
         }}
         onDelete={async (cid) => {
+          const target = items.find((i) => i.id === cid);
+          if (!confirm(`Delete capability "${target?.title ?? ""}"? This will remove it from the public site.`)) return;
           await deleteMut.mutateAsync({ id: cid });
         }}
         onReorder={async (entries) => {

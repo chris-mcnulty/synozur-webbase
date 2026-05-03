@@ -57,7 +57,7 @@ export default function AdminWorkshopsList() {
 
   const onDelete = (w: WorkshopDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive workshop "${w.title}"?`)) return;
+    if (!confirm(`Archive workshop "${w.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(w.id);
   };
 

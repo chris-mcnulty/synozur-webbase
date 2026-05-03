@@ -119,6 +119,7 @@ export default function CommentsModeration() {
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
+    if (!confirm(`Permanently delete ${selected.size} spam comment${selected.size === 1 ? "" : "s"}? This cannot be undone.`)) return;
     setBulkDeleting(true);
     try {
       const res = await fetch(`${BASE_PATH}/api/cms/comments/bulk-delete-spam`, {
@@ -325,12 +326,13 @@ export default function CommentsModeration() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() =>
+                    onClick={() => {
+                      if (!confirm(`Delete this comment by ${c.authorName ?? "anonymous"}? This cannot be undone.`)) return;
                       moderate.mutate({
                         id: c.id,
                         data: { action: "delete", notify: false } as ModerateBody,
-                      })
-                    }
+                      });
+                    }}
                     data-testid={`delete-${c.id}`}
                   >
                     <Trash2 className="h-4 w-4 mr-1 text-destructive" /> Delete

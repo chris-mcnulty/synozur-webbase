@@ -111,7 +111,7 @@ export default function AdminSolutionsList() {
 
   const onDelete = (s: Solution) => {
     if (!canWrite) return;
-    if (!confirm(`Archive solution "${s.title}"?`)) return;
+    if (!confirm(`Archive solution "${s.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate({ id: s.id });
   };
 

@@ -178,7 +178,7 @@ export default function AdminEventsList() {
                   size="icon"
                   className="h-8 w-8 text-destructive hover:text-destructive"
                   onClick={() => {
-                    if (confirm(`Delete event "${e.title}"?`)) {
+                    if (confirm(`Delete event "${e.title}"? This will remove it from the public site.`)) {
                       deleteMutation.mutate(e.id);
                     }
                   }}

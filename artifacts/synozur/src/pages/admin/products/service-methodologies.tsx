@@ -108,6 +108,8 @@ export default function ServiceMethodologiesPage({ id }: { id: string }) {
           await updateMut.mutateAsync({ id: mid, data: { ...data, serviceId: id, title: data.title ?? items.find((i) => i.id === mid)?.title ?? "" } });
         }}
         onDelete={async (mid) => {
+          const target = items.find((i) => i.id === mid);
+          if (!confirm(`Delete methodology block "${target?.title ?? ""}"? This will remove it from the public site.`)) return;
           await deleteMut.mutateAsync({ id: mid });
         }}
         onReorder={async (entries) => {

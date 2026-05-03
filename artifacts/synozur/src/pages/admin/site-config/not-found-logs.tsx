@@ -327,7 +327,7 @@ export default function AdminNotFoundLogs() {
                             title="Delete log entry"
                             aria-label={`Delete log entry for ${r.path}`}
                             onClick={() => {
-                              if (!confirm(`Delete log entry for ${r.path}?`)) return;
+                              if (!confirm(`Delete log entry for ${r.path}? This cannot be undone.`)) return;
                               deleteMut.mutate(r.id);
                             }}
                           >

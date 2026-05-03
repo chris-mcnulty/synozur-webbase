@@ -95,7 +95,7 @@ export default function AdminTeamList() {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          if (confirm(`Delete team member "${m.name}"?`)) {
+                          if (confirm(`Delete team member "${m.name}"? This will remove them from the public site.`)) {
                             deleteMutation.mutate(m.id);
                           }
                         }}

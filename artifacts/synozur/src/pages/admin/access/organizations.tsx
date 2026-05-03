@@ -188,6 +188,7 @@ export default function OrganizationsPage() {
   }
 
   async function removeUser(orgId: string, userId: string) {
+    if (!confirm("Remove this user from the organization? They will lose any access granted via this org.")) return;
     try {
       await apiFetch(`/admin/client-orgs/${orgId}/members/${userId}`, { method: "DELETE" });
       toast({ title: "User removed from organization" });

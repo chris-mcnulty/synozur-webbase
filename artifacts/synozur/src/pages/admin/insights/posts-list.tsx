@@ -172,7 +172,7 @@ export default function AdminPostsList() {
   };
 
   const bulkArchive = async () => {
-    if (!confirm(`Archive ${selected.size} post(s)?`)) return;
+    if (!confirm(`Archive ${selected.size} post(s)? This will remove them from the public site.`)) return;
     for (const id of selected) {
       await archivePost.mutateAsync({ id });
     }
@@ -379,7 +379,7 @@ export default function AdminPostsList() {
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            if (confirm(`Delete "${p.title}"?`)) {
+                            if (confirm(`Delete "${p.title}"? This cannot be undone.`)) {
                               deletePost.mutate({ id: p.id });
                             }
                           }}

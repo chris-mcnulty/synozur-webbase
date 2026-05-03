@@ -111,7 +111,7 @@ function CategoriesPanel() {
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(c.id); setEditName(c.name); setEditSlug(c.slug); }} data-testid={`edit-cat-${c.id}`}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => confirm(`Delete category "${c.name}"?`) && del.mutate({ id: c.id })} data-testid={`delete-cat-${c.id}`}>
+                  <Button size="icon" variant="ghost" onClick={() => confirm(`Delete category "${c.name}"? Posts will lose this category.`) && del.mutate({ id: c.id })} data-testid={`delete-cat-${c.id}`}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </>
@@ -188,7 +188,7 @@ function TagsPanel() {
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(t.id); setEditName(t.name); setEditSlug(t.slug); }}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => confirm(`Delete tag "${t.name}"?`) && del.mutate({ id: t.id })}>
+                  <Button size="icon" variant="ghost" onClick={() => confirm(`Delete tag "${t.name}"? Posts will lose this tag.`) && del.mutate({ id: t.id })}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </>

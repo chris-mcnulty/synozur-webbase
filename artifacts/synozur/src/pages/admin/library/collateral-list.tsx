@@ -476,7 +476,7 @@ export default function AdminCollateralList() {
 
   const onDelete = (item: CollateralRow) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${item.title}"?`)) return;
+    if (!confirm(`Archive "${item.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate({ id: item.id });
   };
 

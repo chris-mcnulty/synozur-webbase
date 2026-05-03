@@ -326,7 +326,7 @@ export default function AdminWixRedirects() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              if (!confirm(`Delete redirect ${r.sourcePath} → ${r.targetPath}?`)) {
+                              if (!confirm(`Delete redirect ${r.sourcePath} → ${r.targetPath}? Visitors hitting that URL will get a 404.`)) {
                                 return;
                               }
                               deleteMut.mutate(r.id);

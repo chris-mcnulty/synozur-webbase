@@ -527,7 +527,7 @@ function ItemsPanel({
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  if (confirm(`Delete question "${it.question}"?`)) {
+                  if (confirm(`Delete question "${it.question}"? This cannot be undone.`)) {
                     deleteMutation.mutate(it.id);
                   }
                 }}

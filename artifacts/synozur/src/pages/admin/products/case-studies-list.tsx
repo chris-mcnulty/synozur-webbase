@@ -77,7 +77,7 @@ export default function AdminCaseStudiesList() {
   };
   const onDelete = (c: CaseStudyDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${c.title}"?`)) return;
+    if (!confirm(`Archive "${c.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(c.id);
   };
 

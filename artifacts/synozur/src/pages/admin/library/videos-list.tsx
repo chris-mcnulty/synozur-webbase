@@ -73,7 +73,7 @@ export default function AdminVideosList() {
 
   const onDelete = (v: VideoDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${v.title}"?`)) return;
+    if (!confirm(`Archive "${v.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(v.id);
   };
 

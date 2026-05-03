@@ -71,7 +71,7 @@ export default function AdminWhitePapersList() {
 
   const onDelete = (w: WhitePaperDto) => {
     if (!canWrite) return;
-    if (!confirm(`Archive "${w.title}"?`)) return;
+    if (!confirm(`Archive "${w.title}"? This will remove it from the public site.`)) return;
     deleteMut.mutate(w.id);
   };
 
