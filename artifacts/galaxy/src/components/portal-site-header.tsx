@@ -232,14 +232,6 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
   const navGroups: NavGroup[] = [
     {
-      title: "Portal",
-      links: [
-        { label: "Dashboard", href: "/galaxy/" },
-        { label: "Documents", href: "/galaxy/documents" },
-        { label: "Apps", href: "/galaxy/apps" },
-      ],
-    },
-    {
       title: "Our Story",
       links: [
         { label: "About", href: "/about" },
@@ -284,6 +276,14 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
           href: "/applications",
           children: navApps.map((a) => ({ label: a.name, href: `/applications/${a.slug}` })),
         },
+      ],
+    },
+    {
+      title: "Portal",
+      links: [
+        { label: "Dashboard", href: "/galaxy/" },
+        { label: "Documents", href: "/galaxy/documents" },
+        { label: "Apps", href: "/galaxy/apps" },
       ],
     },
   ];
