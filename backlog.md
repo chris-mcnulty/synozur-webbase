@@ -1,7 +1,7 @@
 # Synozur Alliance — Product Backlog
 
 > Last updated: May 3, 2026  
-> 20 tracked tasks · 3 strategic roadmap items · 37 merged · 0 cancelled (older merged / cancelled rows rolled over per the convention noted below)
+> 11 tracked tasks · 3 strategic roadmap items · 53 merged · 0 cancelled (older merged / cancelled rows rolled over per the convention noted below)
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
 
@@ -134,6 +134,26 @@ Shipped: drag-handle reorder mode in `artifacts/synozur/src/pages/admin/library/
 Editors filling out collateral fields have to navigate away to the public Library page or home carousel to see how the item renders. This task adds an inline preview panel to the collateral editor that shows a faithful replica of the public card and carousel tile as the editor updates fields, without requiring a page navigation.
 
 Shipped: live grid + carousel previews in `artifacts/synozur/src/pages/admin/library/collateral-edit.tsx` render `CollateralCard` against the in-flight form state via `toPreviewItem(form)` so editors see card and carousel tiles update as they type.
+
+### ~~#185 · Add Playwright coverage for the Polaris collateral sync flow~~ **— Shipped May 2026**
+**Depends on:** #69 (collateral library admin), Polaris episode admin
+
+The "Add to library" / "Sync to library" buttons on the Polaris episode editor's Collateral Library sidebar card were previously only covered by manual e2e testing. Shipped: serial Playwright suite at `artifacts/synozur/tests/polaris-collateral-sync.spec.ts` signs in via `POST /api/auth/login`, creates a unique draft episode through the CMS API, persists the storage state, and exercises both `btn-collateral-add` (asserts the "Added to library" toast plus the "In library" copy and the sync/remove buttons) and `btn-collateral-sync` (asserts the "Library entry synced" toast). `afterAll` cleans up the collateral link and the test episode.
+
+### ~~#190 · Extend Zenith solution-enrichment seed to Company OS and Employee Strategies~~ **— Shipped May 2026**
+**Depends on:** #56 (services/solutions admin)
+
+The `seedSolutionEnrichments.ts` script only covered three solutions and several other Zenith-relevant solutions had no `acceleratorsHtml` / `faqHtml` content. Shipped: `artifacts/api-server/src/scripts/seedSolutionEnrichments.ts` extended to seed Company OS (slug `company-os`, with Vega framing) and Employee Strategies (slug `employee-strategies`, with Zenith as a digital-workplace signal) using the established 2–3 paragraph callout + 3-Q&A FAQ pattern. Communication Strategies and Delivery Management are intentionally left unenriched — the script header documents the rationale.
+
+### ~~#207 · Show per-episode library sync status in the Polaris episode list~~ **— Shipped May 2026**
+**Depends on:** #69 (collateral library admin), Polaris episode admin
+
+Editors had no per-row signal in the admin Polaris list to spot collateral that drifted out of sync after an episode was edited. Shipped: a new "Library" column on the admin Polaris episodes list with a clickable badge per row — `Synced` (collateral exists and `serviceId`/`solutionId` match), `Stale tags` (collateral exists but tags drifted, with tooltip explaining the mismatch), or `Missing` (no collateral row yet). Clicking the badge runs a single-episode sync against the existing `POST /cms/polaris/episodes/:id/sync-collateral` endpoint with spinner + toast UX; `serializeCollateralLink` in `artifacts/api-server/src/routes/polaris.ts` now returns `serviceId`/`solutionId` so the comparison runs client-side, and `PolarisCollateralLinkDto` in `artifacts/synozur/src/lib/api.ts` was extended to match.
+
+### ~~#209 · Apply the confirmation step to other destructive admin actions~~ **— Shipped May 2026**
+**Depends on:** —
+
+Most destructive admin actions either had no confirmation or only an unhelpful "Are you sure?" prompt. Shipped: the Polaris-style `confirm()` pattern (with consequence text) is now applied across every destructive admin list/edit page — `library/{workshops,white-papers,videos,collateral}-list`, `products/{solutions,services,applications,models,case-studies}-list`, `products/faq.tsx`, `people/{bookings,team,events}-list`, `insights/{posts-list,post-editor archive,taxonomy,media,comments}`, `library/assets`, and `site-config/{redirects,not-found-logs}`. Missing confirms were also added in `products/service-methodologies` + `solution-capabilities`, `access/entra` (group-mapping removal), and `access/organizations` (user-removal). Message conventions distinguish soft-archive ("…this will remove it from the public site…") from hard-delete copy.
 
 ### ~~#151 · Show spam comment count badge on the moderation navigation item~~ **— Shipped May 2026**
 **Depends on:** #54 (Insights comments)
@@ -360,6 +380,11 @@ This task adds **double opt-in (DOI)**:
 
 Out of scope: per-list DOI (newsletter / insights digest / event invites all share one confirmation today; revisit when #132 SendGrid lists materialize). Follow-up: surface the per-source confirm-rate funnel inside #140 so we can compare DOI conversion across landing pages.
 
+### ~~#220 · Send branded transactional email through SendGrid~~ **— Shipped May 2026**
+**Depends on:** — (precursor to #132 / #221 deliverability work)
+
+Transactional email previously went through Resend via a thin direct-REST call. Shipped: the API server's transport in `artifacts/api-server/src/lib/email.ts` was rewritten to use `@sendgrid/mail` via the new `getUncachableSendGridClient()` helper in `artifacts/api-server/src/lib/sendgridClient.ts`, which reads credentials per-call from the Replit SendGrid connector (`connectors.replit.com/api/v2/connection?connector_names=sendgrid`) and throws a typed `SendGridNotConfiguredError` when the connector is unbound — mapped to `{ status: "skipped" }` so missing-connector environments stay graceful. The branded purple-gradient shell, preheader handling, plain-text fallbacks, unsubscribe-token flow, and every call site (`routes/forms.ts`, `routes/auth.ts`, `routes/cms/comments.ts`) are unchanged. `EMAIL_FROM` remains an optional `"Display Name <addr@example.com>"` override; the unused `RESEND_API_KEY` constant was dropped.
+
 ---
 
 ## Public Site UX
@@ -471,6 +496,16 @@ Production verification with Google Search Console and Bing Webmaster Tools is c
 **Depends on:** —
 
 ~~Dark mode itself is shipped: `context/theme.tsx` exposes `useTheme()`, `components/ui/theme-toggle.tsx` renders the toggle, and the user's choice persists in `localStorage` under `synozur-theme`. The remaining gap is system-preference detection: `getInitialTheme()` only reads localStorage and falls back to a hard-coded `"dark"`, so a first-time visitor on a system set to light receives the dark canvas regardless of their OS preference.~~ **Shipped:** `getInitialTheme()` in `artifacts/synozur/src/context/theme.tsx` now reads `window.matchMedia("(prefers-color-scheme: light)")` when localStorage has no value, and `ThemeProvider` subscribes to the same media query's `change` event (using `addEventListener` with a Safari-compat `addListener` fallback) so the theme follows OS changes until the user explicitly toggles — once `synozur-theme` is set, the explicit choice wins. The pre-hydration script in `artifacts/synozur/index.html` mirrors the same precedence so first paint matches React's initial state, and a `<meta name="color-scheme" content="light dark">` tag is emitted so default form-control and scrollbar colors render correctly. The toggle stays binary — no tri-state.
+
+### ~~#215 · Make the Alt Home (`/home-b`) hero, pillars, and closing CTA copy admin-editable~~ **— Shipped May 2026**
+**Depends on:** —
+
+The `/home-b` variant copy was hard-coded so editors could not test alternate headlines without a redeploy. Shipped: 17 new nullable `homeB*` text columns on `site_settings` (hero prefix/accent/suffix + subheadline, pillars eyebrow + headline, four pillar headline/body pairs, closing eyebrow/headline/body) defined in `lib/db/src/schema/siteSettings.ts` with idempotent startup migration #40 in `artifacts/api-server/src/lib/migrations.ts`. `routes/siteSettings.ts` round-trips the fields through public GET, admin GET, and PATCH (with trim/null-check); `lib/api-spec/openapi.yaml` exposes them on `PublicSiteSettings`, `SiteSettings`, and `SiteSettingsInput`. `pages/home-b.tsx` consumes the values via an `override(value, fallback)` helper so blank/null reverts to the original editorial copy and the hero splits prefix/accent/suffix to preserve the nebula-text accent. The admin Site Settings page gained an "Alt home page copy" section with grouped Hero / Pillars / Closing inputs, a single "Save Alt Home copy" button, and a "Reset all to defaults" action.
+
+### ~~#216 · Admin-controlled homepage variant at `/`~~ **— Shipped May 2026**
+**Depends on:** #215 (Alt Home copy fields)
+
+`/home-b` was reachable but the root URL was wired to `Home` only, so promoting the alternate variant required a code deploy. Shipped: a new `home_root_variant` text column on `site_settings` (default `'a'`, constrained to `'a' | 'b'`) added via idempotent startup migration #41 in `artifacts/api-server/src/lib/migrations.ts`; `homeRootVariant` enum field plumbed through `lib/api-spec/openapi.yaml`, public + admin GETs, and PATCH `/admin/site-settings`. `App.tsx` introduces `RootHomeRoute` that renders `<Home/>` for `'a'` or `<HomeB/>` for `'b'`, with a dedicated `/home-a` route alongside the existing `/home-b`. The header's Home nav reads the same React Query cache and labels the alt link "Alt Home (A)" → `/home-a` or "Alt Home (B)" → `/home-b` based on which variant is active at `/`. The admin Site Settings page gained a "Homepage variant at /" two-button picker (`home-root-variant-a` / `home-root-variant-b`). Public site-settings response was switched to `Cache-Control: no-cache` so toggles propagate to visitors immediately.
 
 ### #139 · Internationalization foundation (English baseline + one launch locale)
 **Depends on:** — (architecture); pairs with #110 (some audience classes will skew geographically), #130 (theme assets may need locale variants)
@@ -628,6 +663,13 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#168~~ | ~~Double opt-in confirmation for newsletter subscribers~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | #169 | Admin audit-log viewer with entity-scoped activity tab and 365-day retention | Admin Access & People | — |
 | ~~#170~~ | ~~Public-site search endpoint and `/search` page powered by Postgres FTS~~ — Shipped May 2026 | Public Site UX | — |
+| ~~#185~~ | ~~Add Playwright coverage for the Polaris collateral sync flow~~ — **Shipped May 2026** | Content Library | #69 |
+| ~~#190~~ | ~~Extend Zenith solution-enrichment seed to Company OS and Employee Strategies~~ — **Shipped May 2026** | Content Library | #56 |
+| ~~#207~~ | ~~Show per-episode library sync status in the Polaris episode list~~ — **Shipped May 2026** | Content Library | #69 |
+| ~~#209~~ | ~~Apply the confirmation step to other destructive admin actions~~ — **Shipped May 2026** | Content Library | — |
+| ~~#215~~ | ~~Make the Alt Home (`/home-b`) hero, pillars, and closing CTA copy admin-editable~~ — **Shipped May 2026** | Public Site UX | — |
+| ~~#216~~ | ~~Admin-controlled homepage variant at `/`~~ — **Shipped May 2026** | Public Site UX | #215 |
+| ~~#220~~ | ~~Send branded transactional email through SendGrid~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
 | — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
