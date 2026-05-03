@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
-import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { api, type ApplicationDto } from "@/lib/api";
@@ -96,79 +95,92 @@ export default function Applications() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {apps.map((app, i) => (
-              <motion.article
-                key={app.slug}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-                className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors flex flex-col"
-                data-testid={`app-card-${app.slug}`}
-              >
-                <Link
-                  href={`/applications/${app.slug}`}
-                  className="block aspect-[16/10] overflow-hidden bg-[#0B0B1A]"
+            {apps.map((app, i) => {
+              // Top row of cards is above the fold on a 1350x940 desktop
+              // Lighthouse run, so eager-load + high-priority hint those
+              // screenshots — keeps them out of the `lcp-lazy-loaded` and
+              // `prioritize-lcp-image` audits. Remaining rows stay lazy.
+              const aboveFold = i < 3;
+              return (
+                <article
+                  key={app.slug}
+                  className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors flex flex-col"
+                  data-testid={`app-card-${app.slug}`}
                 >
-                  <img
-                    src={app.screenshot}
-                    alt={`${app.name} screenshot`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                </Link>
-                <div className="p-7 flex-1 flex flex-col">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-12 w-12 rounded-lg overflow-hidden bg-card border border-border shrink-0">
-                      <img
-                        src={app.logo}
-                        alt={`${app.name} logo`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                  <Link
+                    href={`/applications/${app.slug}`}
+                    className="block aspect-[16/10] overflow-hidden bg-[#0B0B1A]"
+                    aria-label={`View details for ${app.name}`}
+                  >
+                    <img
+                      src={app.screenshot}
+                      alt={`${app.name} screenshot`}
+                      width={1280}
+                      height={800}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading={aboveFold ? "eager" : "lazy"}
+                      decoding="async"
+                      fetchPriority={aboveFold ? "high" : "auto"}
+                    />
+                  </Link>
+                  <div className="p-7 flex-1 flex flex-col">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-12 w-12 rounded-lg overflow-hidden bg-card border border-border shrink-0">
+                        <img
+                          src={app.logo}
+                          alt=""
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold leading-snug group-hover:text-primary transition-colors">
+                          {app.name}
+                        </h2>
+                        {app.version && (
+                          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                            v{app.version}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold leading-snug group-hover:text-primary transition-colors">
-                        {app.name}
-                      </h2>
-                      {app.version && (
-                        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                          v{app.version}
-                        </p>
+                    <p className="text-sm font-medium text-primary mb-3">
+                      {app.tagline}
+                    </p>
+                    <p className="text-muted-foreground mb-6 leading-relaxed text-sm flex-1">
+                      {app.shortSummary}
+                    </p>
+                    <div className="flex items-center justify-between pt-4 border-t border-border/50 gap-3">
+                      <Link
+                        href={`/applications/${app.slug}`}
+                        className="text-sm font-semibold text-foreground hover:text-primary inline-flex items-center"
+                        data-testid={`app-learn-more-${app.slug}`}
+                        aria-label={`Learn more about ${app.name}`}
+                      >
+                        Learn more
+                        <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </Link>
+                      {app.websiteUrl && (
+                        <a
+                          href={app.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-muted-foreground hover:text-primary inline-flex items-center"
+                          data-testid={`app-open-${app.slug}`}
+                          aria-label={`Open ${app.name} website (opens in new tab)`}
+                        >
+                          Open
+                          <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                        </a>
                       )}
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-primary mb-3">
-                    {app.tagline}
-                  </p>
-                  <p className="text-muted-foreground mb-6 leading-relaxed text-sm flex-1">
-                    {app.shortSummary}
-                  </p>
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50 gap-3">
-                    <Link
-                      href={`/applications/${app.slug}`}
-                      className="text-sm font-semibold text-foreground hover:text-primary inline-flex items-center"
-                      data-testid={`app-learn-more-${app.slug}`}
-                    >
-                      Learn more
-                      <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                    {app.websiteUrl && (
-                      <a
-                        href={app.websiteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-muted-foreground hover:text-primary inline-flex items-center"
-                        data-testid={`app-open-${app.slug}`}
-                      >
-                        Open
-                        <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </motion.article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -80,8 +80,15 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy" }
         srcSet={heroSrcSet ?? undefined}
         sizes={heroSizes}
         alt={item.title}
+        // Explicit intrinsic dimensions (4/5 ratio) so the browser can
+        // reserve layout space before the image loads — keeps the card off
+        // the `unsized-images` Lighthouse best-practices audit and improves
+        // CLS while the srcset variant is being chosen.
+        width={960}
+        height={1200}
         loading={imageLoading}
         decoding="async"
+        fetchPriority={imageLoading === "eager" ? "high" : "auto"}
         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 z-10" />

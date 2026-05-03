@@ -5,17 +5,12 @@
     "the CI workflow runs both configs and merges the results into the PR",
     "summary. Desktop is the merge-blocking gate today; mobile starts at",
     "'warn' until the first clean rollout.",
-    "Two assertMatrix entries:",
-    "  1. Clean routes (/, /about, /services, /insights, /contact) gate at",
-    "     'error' for performance/accessibility/best-practices/SEO",
-    "     categories AND for the LCP/CLS/TBT metric budgets, so any",
-    "     regression below the configured budgets blocks PR merge.",
-    "  2. Noisy routes (/library, /applications) stay at 'warn' until",
-    "     their perf/SEO debt is cleaned up. Tracked as follow-up #247",
-    "     (parent task #233, which shipped #156 / launch-readiness L10)",
-    "     — flip those entries to 'error' once both routes pass cleanly.",
-    "     Do NOT add new routes here at 'warn' without a tracked cleanup",
-    "     task."
+    "All listed routes gate at 'error' for performance, accessibility,",
+    "best-practices, and SEO categories AND for the LCP/CLS/TBT metric",
+    "budgets, so any regression below the configured budgets blocks PR",
+    "merge. Do NOT add new routes here at 'warn' without a tracked",
+    "cleanup task — perf/SEO debt should be fixed at the page level,",
+    "not papered over in this config."
   ],
   "ci": {
     "collect": {
@@ -38,32 +33,15 @@
       }
     },
     "assert": {
-      "assertMatrix": [
-        {
-          "matchingUrlPattern": "^http://localhost:5000/(|about|services|insights|contact)$",
-          "assertions": {
-            "categories:performance": ["error", { "minScore": 0.85 }],
-            "categories:accessibility": ["error", { "minScore": 0.9 }],
-            "categories:best-practices": ["error", { "minScore": 0.9 }],
-            "categories:seo": ["error", { "minScore": 0.9 }],
-            "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "total-blocking-time": ["error", { "maxNumericValue": 300 }]
-          }
-        },
-        {
-          "matchingUrlPattern": "^http://localhost:5000/(library|applications)$",
-          "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.85 }],
-            "categories:accessibility": ["warn", { "minScore": 0.9 }],
-            "categories:best-practices": ["warn", { "minScore": 0.9 }],
-            "categories:seo": ["warn", { "minScore": 0.9 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
-            "cumulative-layout-shift": ["warn", { "maxNumericValue": 0.1 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 300 }]
-          }
-        }
-      ]
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.85 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.9 }],
+        "categories:seo": ["error", { "minScore": 0.9 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["error", { "maxNumericValue": 300 }]
+      }
     },
     "upload": {
       "target": "temporary-public-storage"
