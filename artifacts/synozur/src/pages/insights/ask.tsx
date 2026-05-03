@@ -4,6 +4,12 @@ import { Send, Sparkles, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Meta } from "@/lib/meta";
+import {
+  Turnstile,
+  TURNSTILE_SITE_KEY,
+  type TurnstileHandle,
+} from "@/components/turnstile";
+import { BotCheckCallout } from "@/components/bot-check-callout";
 
 interface AskSource {
   kind: string;
@@ -65,7 +71,16 @@ export default function InsightsAskPage() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [botCheckFailed, setBotCheckFailed] = useState(false);
+  // #282 — Once the server has accepted a Turnstile token for this session,
+  // it caches that decision per (sessionId, ip) and no longer requires a
+  // fresh token on follow-up turns. Mirror that on the client so the UI
+  // doesn't disable the Ask button just because the (single-use) token
+  // isn't around any more.
+  const [botCheckSatisfied, setBotCheckSatisfied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const sessionIdRef = useRef<string>("");
 
   useEffect(() => {
@@ -89,6 +104,13 @@ export default function InsightsAskPage() {
   async function ask(q: string) {
     const trimmed = q.trim();
     if (!trimmed || loading) return;
+    // #282 — when Turnstile is configured we require a token before the
+    // *first* question; subsequent follow-ups are accepted by the server's
+    // (sessionId, ip) cache so we no longer block on token presence.
+    if (TURNSTILE_SITE_KEY && !botCheckSatisfied && !turnstileToken) {
+      setError("Please complete the bot check before asking.");
+      return;
+    }
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -116,6 +138,7 @@ export default function InsightsAskPage() {
     setQuestion("");
     setLoading(true);
     setError(null);
+    setBotCheckFailed(false);
 
     const updateTurn = (patch: Partial<Turn>) =>
       setTurns((prev) => {
@@ -133,12 +156,38 @@ export default function InsightsAskPage() {
           question: trimmed,
           sessionId: sessionIdRef.current,
           history,
+          turnstileToken,
         }),
         signal: controller.signal,
       });
+      if (res.status === 403) {
+        // #282 — bot check failed. Surface the existing callout, reset the
+        // widget, and drop the optimistic turn so the visitor can retry.
+        let code: string | null = null;
+        try {
+          const data = (await res.json()) as { code?: string };
+          code = data.code ?? null;
+        } catch {
+          /* ignore */
+        }
+        if (code === "bot_check_failed") {
+          setBotCheckFailed(true);
+          // Server cache may have expired (or restarted); fall back to
+          // requiring a fresh token before the next attempt.
+          setBotCheckSatisfied(false);
+          setTurnstileToken(null);
+          turnstileRef.current?.reset();
+          setTurns((prev) => prev.filter((_, i) => i !== turnIndex));
+          return;
+        }
+        throw new Error(`Request failed (${res.status})`);
+      }
       if (!res.ok || !res.body) {
         throw new Error(`Request failed (${res.status})`);
       }
+      // Server accepted the request → bot check passed for this session.
+      // Subsequent follow-ups can omit the token (server-side cache).
+      setBotCheckSatisfied(true);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -196,6 +245,12 @@ export default function InsightsAskPage() {
     setTurns([]);
     setQuestion("");
     setError(null);
+    setBotCheckFailed(false);
+    // New conversation = new session id will be generated next ask cycle
+    // by the route's session logic, so re-arm the bot-check gate.
+    setBotCheckSatisfied(false);
+    setTurnstileToken(null);
+    turnstileRef.current?.reset();
   }
 
   return (
@@ -339,32 +394,42 @@ export default function InsightsAskPage() {
             e.preventDefault();
             ask(question);
           }}
-          className="flex gap-2"
+          className="flex flex-col gap-3"
           data-testid="form-ask"
         >
-          <Input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={
-              turns.length > 0 ? "Ask a follow-up…" : "Ask a question…"
-            }
-            disabled={loading}
-            data-testid="input-ask-question"
-            className="flex-1"
-            maxLength={2000}
-          />
-          <Button
-            type="submit"
-            disabled={loading || question.trim().length < 3}
-            data-testid="button-ask-submit"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            <span className="ml-2">Ask</span>
-          </Button>
+          <div className="flex gap-2">
+            <Input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder={
+                turns.length > 0 ? "Ask a follow-up…" : "Ask a question…"
+              }
+              disabled={loading}
+              data-testid="input-ask-question"
+              className="flex-1"
+              maxLength={2000}
+            />
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                question.trim().length < 3 ||
+                (TURNSTILE_SITE_KEY && !botCheckSatisfied
+                  ? !turnstileToken
+                  : false)
+              }
+              data-testid="button-ask-submit"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              <span className="ml-2">Ask</span>
+            </Button>
+          </div>
+          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+          {botCheckFailed && <BotCheckCallout className="text-left" />}
         </form>
 
         {turns.length > 0 && !loading && (

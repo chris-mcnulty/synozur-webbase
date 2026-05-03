@@ -13,6 +13,15 @@ import {
 } from "../lib/ai/searchEditorialCorpus";
 import { reindexEditorialCorpus } from "../lib/ai/editorialIndex";
 import { requireAuth, requireCapability } from "../middlewares/auth";
+import { verifyTurnstile, isTurnstileActive } from "../lib/turnstile";
+import { audit } from "../lib/audit";
+import { recordTokenUsage } from "../lib/aiChatSession";
+import {
+  emptyCacheUsage,
+  mergeMessageStartUsage,
+  mergeMessageDeltaUsage,
+  type CacheUsage,
+} from "../lib/ai/promptCache";
 
 // Public Ask Synozur surface (#262). Implements an FTS-backed RAG flow:
 // retrieve top chunks → compose a system prompt that combines admin
@@ -45,13 +54,63 @@ const AskRequestSchema = z.object({
   model: z.enum(ALLOWED_MODELS).optional(),
   sessionId: z.string().min(1).max(100).optional(),
   history: z.array(HistoryTurnSchema).max(6).optional(),
+  // #282 — Cloudflare Turnstile token. Required when TURNSTILE_SECRET_KEY
+  // is configured; ignored otherwise so local dev keeps working.
+  turnstileToken: z.string().optional().nullable(),
 });
 
-function ipKey(req: import("express").Request): string {
+function rawIp(req: import("express").Request): string | null {
   const xff = (req.headers["x-forwarded-for"] as string | undefined)
     ?.split(",")[0]
     ?.trim();
-  return ipKeyGenerator(xff || req.ip || "0.0.0.0");
+  return xff || req.ip || null;
+}
+
+function ipKey(req: import("express").Request): string {
+  return ipKeyGenerator(rawIp(req) ?? "0.0.0.0");
+}
+
+// #282 — Per-session bot-check cache. Turnstile tokens are single-use, so
+// the UI can't legitimately reuse one across follow-up turns. The task
+// only requires a token "before the first question", so once a (session,
+// ip) pair has solved one challenge we trust subsequent turns from the
+// same pair within a short TTL. Keyed on (sessionId|ipKey) to keep a
+// leaked sessionId from being usable from another network. Per-instance
+// memory is fine: worst case a visitor re-solves on a new server.
+const BOT_CHECK_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const BOT_CHECK_MAX_ENTRIES = 5000;
+const botCheckPassed = new Map<string, number>();
+
+function botCheckKey(sessionId: string | undefined, ip: string): string {
+  return `${sessionId ?? ""}|${ip}`;
+}
+
+function hasPassedBotCheck(sessionId: string | undefined, ip: string): boolean {
+  if (!sessionId) return false;
+  const key = botCheckKey(sessionId, ip);
+  const expiresAt = botCheckPassed.get(key);
+  if (!expiresAt) return false;
+  if (expiresAt < Date.now()) {
+    botCheckPassed.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function markBotCheckPassed(sessionId: string | undefined, ip: string): void {
+  if (!sessionId) return;
+  // Cheap LRU-ish bound: drop the oldest insertion when full. JS Map
+  // preserves insertion order so the first key is the oldest.
+  if (botCheckPassed.size >= BOT_CHECK_MAX_ENTRIES) {
+    const firstKey = botCheckPassed.keys().next().value;
+    if (firstKey) botCheckPassed.delete(firstKey);
+  }
+  botCheckPassed.set(botCheckKey(sessionId, ip), Date.now() + BOT_CHECK_TTL_MS);
+}
+
+// Test-only helper so the bot-check cache can be cleared between tests.
+export function __resetAskBotCheckCache(): void {
+  botCheckPassed.clear();
 }
 
 const askLimiter = rateLimit({
@@ -131,7 +190,61 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
     model = DEFAULT_MODEL,
     sessionId,
     history = [],
+    turnstileToken,
   } = parsed.data;
+
+  // #282 — Bot check. Mirrors the comment-submit / forms pattern: a no-op
+  // when TURNSTILE_SECRET_KEY is unset (so local dev / preview keep working)
+  // and a hard 403 with `bot_check_failed` so the UI's existing handler
+  // (BotCheckCallout + Turnstile reset) lights up. We block *before* the
+  // corpus search and Claude call so a bot pool can't burn AI spend just
+  // by rotating IPs past the per-IP rate limiter.
+  //
+  // Turnstile tokens are single-use server-side, so we only require a token
+  // for the *first* question per (sessionId, ip); subsequent follow-up
+  // turns from the same pair within BOT_CHECK_TTL_MS are accepted without
+  // a fresh token. This matches the task's "required before the first
+  // question" wording without making the UI re-solve on every follow-up.
+  const ipForCheck = ipKey(req);
+  const ipForVerify = rawIp(req);
+  if (isTurnstileActive() && !hasPassedBotCheck(sessionId, ipForCheck)) {
+    const turnstileOk = await verifyTurnstile(turnstileToken, ipForVerify);
+    if (!turnstileOk) {
+      void audit({
+        action: "ai.ask.turnstile_failed",
+        entity: "ip",
+        entityId: ipForCheck,
+      });
+      // #166 — count rejections in the daily rollup too so the
+      // observability layer sees every /ai/ask call (not just the ones
+      // that reach the model). Token deltas are zero; only callCount
+      // bumps via recordTokenUsage's upsert.
+      const rejectScopeKey = sessionId ? `s:${sessionId}` : `ip:${ipForCheck}`;
+      void recordTokenUsage(rejectScopeKey, ipForCheck, {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheCreation: 0,
+      });
+      req.log?.info(
+        {
+          event: "ai-ask.usage",
+          model,
+          inputTokens: 0,
+          outputTokens: 0,
+          sourceCount: 0,
+          botCheckFailed: true,
+        },
+        "ai-ask: usage rollup (bot-check rejected)",
+      );
+      res.status(403).json({
+        error: "Bot check failed. Please reload and try again.",
+        code: "bot_check_failed",
+      });
+      return;
+    }
+    markBotCheckPassed(sessionId, ipForCheck);
+  }
 
   let hits: CorpusHit[] = [];
   try {
@@ -184,6 +297,29 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
         userAgent: req.headers["user-agent"]?.toString().slice(0, 500) ?? null,
       })
       .returning({ id: insightsQuestionsTable.id });
+    // #166 — even refused calls need to bump the daily-call-count rollup so
+    // that "every /ai/ask call" is observable. Token deltas are zero (no
+    // model call), but callCount increments via recordTokenUsage's upsert.
+    const refusalScopeKey = sessionId ? `s:${sessionId}` : `ip:${ipForCheck}`;
+    void recordTokenUsage(refusalScopeKey, ipForCheck, {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheCreation: 0,
+    });
+    req.log?.info(
+      {
+        event: "ai-ask.usage",
+        questionId: inserted?.id ?? null,
+        model,
+        inputTokens: 0,
+        outputTokens: 0,
+        sourceCount: 0,
+        lowConfidence: true,
+        refused: true,
+      },
+      "ai-ask: usage rollup (refused)",
+    );
     res.write(
       `data: ${JSON.stringify({
         meta: {
@@ -199,6 +335,7 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
   }
 
   let fullResponse = "";
+  let usage: CacheUsage = emptyCacheUsage();
   try {
     const groundingPrompt = await buildSystemPrompt({});
     const contextBlock = buildContextBlock(hits);
@@ -219,7 +356,11 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
       messages,
     });
     for await (const event of stream) {
-      if (
+      if (event.type === "message_start") {
+        usage = mergeMessageStartUsage(usage, event.message.usage);
+      } else if (event.type === "message_delta") {
+        usage = mergeMessageDeltaUsage(usage, event.usage);
+      } else if (
         event.type === "content_block_delta" &&
         event.delta.type === "text_delta"
       ) {
@@ -261,6 +402,30 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
   } catch (err) {
     req.log?.warn({ err }, "Failed to persist insights question telemetry");
   }
+
+  // #166 — daily cost rollup. Ask Synozur shares the same budget envelope
+  // as /ai/chat: scope by the per-tab sessionId when present (so a single
+  // visitor can be tracked across follow-ups) plus IP and global rows.
+  // Fire-and-forget; rollup failure must never break the response.
+  const scopeKey = sessionId ? `s:${sessionId}` : `ip:${ipForCheck}`;
+  void recordTokenUsage(scopeKey, ipForCheck, {
+    input: usage.inputTokens,
+    output: usage.outputTokens,
+    cacheRead: usage.cacheReadInputTokens,
+    cacheCreation: usage.cacheCreationInputTokens,
+  });
+  req.log?.info(
+    {
+      event: "ai-ask.usage",
+      questionId,
+      model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      sourceCount: sources.length,
+      lowConfidence,
+    },
+    "ai-ask: usage rollup",
+  );
 
   res.write(
     `data: ${JSON.stringify({
