@@ -55,6 +55,7 @@ import portalRouter from "./portal";
 import portalDocumentsAdminRouter from "./portalDocumentsAdmin";
 import portalAppsRouter from "./portalApps";
 import cmsPortalArtifactsRouter from "./cmsPortalArtifacts";
+import ogRouter from "./og";
 
 const router: IRouter = Router();
 
@@ -114,5 +115,6 @@ router.use(portalRouter);
 router.use(portalDocumentsAdminRouter);
 router.use(portalAppsRouter);
 router.use(cmsPortalArtifactsRouter);
+router.use(ogRouter);
 
 export default router;

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
@@ -92,7 +93,17 @@ export default function CaseStudyDetail() {
 
   return (
     <div className="w-full">
-      <Meta title={study.title} description={study.summary} />
+      <Meta
+        title={study.title}
+        description={study.summary}
+        type="article"
+        image={
+          study.ogImage ||
+          study.heroImage ||
+          dynamicOgImageUrl("case-study", study.id, study.updatedAt) ||
+          undefined
+        }
+      />
 
       <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-20">
         <div className="absolute inset-0 nebula-gradient opacity-15" />

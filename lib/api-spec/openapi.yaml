@@ -4529,6 +4529,10 @@ components:
           type: string
           format: date-time
           nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
         author:
           $ref: '#/components/schemas/AuthorSummary'
         categories:

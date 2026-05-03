@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { api, type WhitePaperDocType, type WhitePaperDto } from "@/lib/api";
 import { trackEvent } from "@/lib/traffic-tracker";
 import { RichText } from "@/components/rich-text";
@@ -86,7 +87,12 @@ export default function WhitePaperDetail() {
         <Meta
           title={wp.seoTitle || wp.title}
           description={wp.seoDescription || wp.shortDescription}
-          image={wp.ogImage || wp.heroImage}
+          image={
+            wp.ogImage ||
+            wp.heroImage ||
+            dynamicOgImageUrl("white-paper", wp.id, wp.updatedAt) ||
+            undefined
+          }
           path={`/white-papers/${wp.slug}`}
           type="article"
         />

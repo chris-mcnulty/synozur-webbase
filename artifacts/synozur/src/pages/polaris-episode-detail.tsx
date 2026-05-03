@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Meta } from "@/lib/meta";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -26,7 +27,9 @@ interface PolarisEpisodeDto {
   spotifyUrl: string | null;
   durationSeconds: number | null;
   artworkUrl: string;
+  ogImage: string | null;
   publishedAt: string | null;
+  updatedAt: string | null;
   linkedPost: PolarisLinkedPostDto | null;
 }
 
@@ -154,6 +157,17 @@ export default function PolarisEpisodeDetail() {
       <Meta
         title={`${episode.title} — Polaris Pathways`}
         description={summaryLines[0] ?? "Listen to this Polaris Pathways episode from Synozur."}
+        type="article"
+        image={
+          episode.ogImage ||
+          episode.artworkUrl ||
+          dynamicOgImageUrl(
+            "polaris",
+            episode.id,
+            episode.updatedAt ?? episode.publishedAt,
+          ) ||
+          undefined
+        }
       />
 
       {/* Hero */}

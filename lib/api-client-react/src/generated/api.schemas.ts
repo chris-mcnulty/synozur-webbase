@@ -490,6 +490,7 @@ export interface PublicPost {
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
   publishedAt: string | null;
+  updatedAt?: string | null;
   author?: AuthorSummary;
   categories?: Category[];
   tags?: Tag[];

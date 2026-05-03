@@ -22,6 +22,7 @@ import {
   whitePapersTable,
   mediaTable,
   siteSettingsTable,
+  polarisEpisodesTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
 
@@ -56,6 +57,23 @@ export function absUrl(raw: string | null | undefined, origin: string): string |
   if (!raw) return null;
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
   return `${origin}${raw.startsWith("/") ? "" : "/"}${raw}`;
+}
+
+/**
+ * Build the dynamic-OG-image URL for an artifact (#161). The endpoint
+ * caches by `(kind, id, lastModified)`, so we encode the row's
+ * `updated_at` epoch in a `v=` query param — this both busts upstream
+ * caches when an editor saves a change and lets crawlers treat the URL
+ * as immutable for as long as the artifact hasn't changed.
+ */
+export function dynamicOgImageUrl(
+  kind: "insight" | "case-study" | "white-paper" | "polaris",
+  id: string,
+  lastModified: Date | null | undefined,
+  origin: string,
+): string {
+  const v = lastModified ? lastModified.getTime() : 0;
+  return `${origin}/api/og/image?kind=${kind}&id=${encodeURIComponent(id)}&v=${v}`;
 }
 
 async function resolveMediaUrl(
@@ -137,12 +155,14 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       case "insights": {
         const [post] = await db
           .select({
+            id: postsTable.id,
             title: postsTable.title,
             seoTitle: postsTable.seoTitle,
             excerpt: postsTable.excerpt,
             seoDescription: postsTable.seoDescription,
             ogImageId: postsTable.ogImageId,
             heroImageId: postsTable.heroImageId,
+            updatedAt: postsTable.updatedAt,
           })
           .from(postsTable)
           .where(and(eq(postsTable.slug, slug), isNull(postsTable.deletedAt)))
@@ -153,7 +173,9 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
         return {
           title: post.seoTitle || post.title,
           description: post.seoDescription || post.excerpt || defaults.description,
-          image: img ?? defaults.image,
+          image:
+            img ??
+            dynamicOgImageUrl("insight", post.id, post.updatedAt, origin),
           ogType: "article",
           url: fallback.url,
         };
@@ -198,19 +220,26 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       case "case-studies": {
         const [row] = await db
           .select({
+            id: caseStudiesTable.id,
             headline: caseStudiesTable.headline,
             summary: caseStudiesTable.summary,
             heroImage: caseStudiesTable.heroImage,
+            ogImage: caseStudiesTable.ogImage,
+            updatedAt: caseStudiesTable.updatedAt,
           })
           .from(caseStudiesTable)
           .where(and(eq(caseStudiesTable.slug, slug), isNull(caseStudiesTable.deletedAt)))
           .limit(1);
         if (!row) break;
+        const editorImage =
+          (row.ogImage && row.ogImage.trim()) || (row.heroImage && row.heroImage.trim()) || null;
         return {
           ...fallback,
           title: row.headline || SITE_NAME,
           description: row.summary || defaults.description,
-          image: absUrl(row.heroImage, origin) ?? defaults.image,
+          image:
+            absUrl(editorImage, origin) ??
+            dynamicOgImageUrl("case-study", row.id, row.updatedAt, origin),
           ogType: "article",
         };
       }
@@ -290,19 +319,63 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       case "white-papers": {
         const [row] = await db
           .select({
+            id: whitePapersTable.id,
             title: whitePapersTable.title,
             shortDescription: whitePapersTable.shortDescription,
             heroImage: whitePapersTable.heroImage,
+            ogImage: whitePapersTable.ogImage,
+            updatedAt: whitePapersTable.updatedAt,
           })
           .from(whitePapersTable)
           .where(and(eq(whitePapersTable.slug, slug), isNull(whitePapersTable.deletedAt)))
           .limit(1);
         if (!row) break;
+        const editorImage =
+          (row.ogImage && row.ogImage.trim()) || (row.heroImage && row.heroImage.trim()) || null;
         return {
           ...fallback,
           title: row.title || SITE_NAME,
           description: row.shortDescription || defaults.description,
-          image: absUrl(row.heroImage, origin) ?? defaults.image,
+          image:
+            absUrl(editorImage, origin) ??
+            dynamicOgImageUrl("white-paper", row.id, row.updatedAt, origin),
+        };
+      }
+
+      case "polaris": {
+        const [row] = await db
+          .select({
+            id: polarisEpisodesTable.id,
+            title: polarisEpisodesTable.title,
+            seoTitle: polarisEpisodesTable.seoTitle,
+            summary: polarisEpisodesTable.summary,
+            seoDescription: polarisEpisodesTable.seoDescription,
+            artworkUrl: polarisEpisodesTable.artworkUrl,
+            ogImage: polarisEpisodesTable.ogImage,
+            updatedAt: polarisEpisodesTable.updatedAt,
+          })
+          .from(polarisEpisodesTable)
+          .where(
+            and(
+              eq(polarisEpisodesTable.slug, slug),
+              isNull(polarisEpisodesTable.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (!row) break;
+        const editorImage =
+          (row.ogImage && row.ogImage.trim()) ||
+          (row.artworkUrl && row.artworkUrl.trim()) ||
+          null;
+        return {
+          ...fallback,
+          title: row.seoTitle || row.title,
+          description:
+            row.seoDescription || row.summary || defaults.description,
+          image:
+            absUrl(editorImage, origin) ??
+            dynamicOgImageUrl("polaris", row.id, row.updatedAt, origin),
+          ogType: "article",
         };
       }
 

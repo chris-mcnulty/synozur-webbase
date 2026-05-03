@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Link, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { Button } from "@/components/ui/button";
 import { ArticleJsonLd } from "@/components/article-jsonld";
 import {
@@ -142,7 +143,14 @@ export default function InsightDetail() {
   const heroSrcSet = buildMediaSrcSet(post?.heroImageUrl, HERO_WIDTHS);
   // OG/social previews are consumed by external scrapers (Slack, X, FB) —
   // keep them at full resolution so unfurls don't pick a downscaled crop.
-  const ogImage = resolveMediaUrl(post?.ogImageUrl) || resolveMediaUrl(post?.heroImageUrl) || undefined;
+  const editorOgImage = resolveMediaUrl(post?.ogImageUrl) || resolveMediaUrl(post?.heroImageUrl);
+  // Fall back to the dynamic OG image generator (#161) when editorial hasn't
+  // uploaded an OG / hero image. Versioned by `updatedAt` so crawler caches
+  // bust on edits; `Meta` resolves the relative URL against SITE_ORIGIN.
+  const ogImage =
+    editorOgImage ||
+    dynamicOgImageUrl("insight", post?.id, post?.updatedAt) ||
+    undefined;
 
   if (isLoading) {
     return (

@@ -982,6 +982,7 @@ export const ListInsightsResponse = zod.object({
       seoCanonicalUrl: zod.string().nullish(),
       readingTimeMin: zod.number().nullish(),
       publishedAt: zod.coerce.date().nullable(),
+      updatedAt: zod.coerce.date().nullish(),
       author: zod
         .object({
           id: zod.string().uuid(),
@@ -1033,6 +1034,7 @@ export const GetInsightResponse = zod.object({
   seoCanonicalUrl: zod.string().nullish(),
   readingTimeMin: zod.number().nullish(),
   publishedAt: zod.coerce.date().nullable(),
+  updatedAt: zod.coerce.date().nullish(),
   author: zod
     .object({
       id: zod.string().uuid(),

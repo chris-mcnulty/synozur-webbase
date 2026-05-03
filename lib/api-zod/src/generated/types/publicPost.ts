@@ -23,6 +23,7 @@ export interface PublicPost {
   seoCanonicalUrl?: string | null;
   readingTimeMin?: number | null;
   publishedAt: Date | null;
+  updatedAt?: Date | null;
   author?: AuthorSummary;
   categories?: Category[];
   tags?: Tag[];
