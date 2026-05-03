@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
+import { careersRedirectMiddleware } from "./lib/careersRedirect";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { socialBotRendererMiddleware } from "./middlewares/socialBotRenderer";
 import { attachUserIfPresent } from "./middlewares/auth";
@@ -58,6 +59,11 @@ app.use(attachUserIfPresent);
 // Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
 // 301 to their new home without ever reaching the SPA shell. Skips /api/*.
 app.use(wixRedirectMiddleware());
+// #223 — Careers host-vs-redirect toggle. Mounted after the wix legacy
+// redirector so its 301s win when a /careers tail also has a wix mapping,
+// but before the SPA shell so the user never lands on the in-app careers
+// pages while the admin has flipped the section to redirect mode.
+app.use(careersRedirectMiddleware());
 
 // Social-bot OG renderer — intercepts link-preview crawlers (LinkedIn, Slack,
 // Twitter/X, Facebook, Discord, etc.) and returns a minimal HTML document with

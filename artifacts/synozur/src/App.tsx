@@ -109,6 +109,15 @@ import MarketingContentAnalytics from "@/pages/admin/marketing/traffic";
 import AdminTraffic from "@/pages/admin/traffic";
 import TrafficPropertiesPage from "@/pages/admin/marketing/traffic-properties";
 import TrafficImportPage from "@/pages/admin/marketing/traffic-import";
+import AdminCareersJobs from "@/pages/admin/careers/jobs-list";
+import CareersJobEdit from "@/pages/admin/careers/job-edit";
+import AdminCareersApplications from "@/pages/admin/careers/applications-list";
+import CareersApplicationDetail from "@/pages/admin/careers/application-detail";
+import CareersSettingsPage from "@/pages/admin/careers/settings";
+import CareersList from "@/pages/careers";
+import CareersDetail from "@/pages/careers-detail";
+import CareersApply from "@/pages/careers-apply";
+import CareersApplied from "@/pages/careers-applied";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import { AdminGate } from "@/components/admin/AdminGate";
@@ -346,6 +355,20 @@ function AdminRoutes() {
         <Route path="/audience/submissions" component={AdminSubmissionsList} />
         <Route path="/submissions"><Redirect to="/audience/submissions" /></Route>
 
+        {/* Careers section */}
+        <Route path="/careers/jobs" component={AdminCareersJobs} />
+        <Route path="/careers/jobs/new">
+          <CareersJobEdit />
+        </Route>
+        <Route path="/careers/jobs/:id/edit">
+          {(params) => <CareersJobEdit id={params.id} />}
+        </Route>
+        <Route path="/careers/applications" component={AdminCareersApplications} />
+        <Route path="/careers/applications/:id">
+          {(params) => <CareersApplicationDetail id={params.id} />}
+        </Route>
+        <Route path="/careers/settings" component={CareersSettingsPage} />
+
         {/* Site config section */}
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
@@ -461,6 +484,15 @@ function Router() {
             <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />
             <Route path="/contact" component={Contact} />
+            <Route path="/careers" component={CareersList} />
+            <Route path="/careers/general-application">
+              {() => <CareersApply general />}
+            </Route>
+            <Route path="/careers/applied" component={CareersApplied} />
+            <Route path="/careers/jobs/:slug/apply">
+              {() => <CareersApply />}
+            </Route>
+            <Route path="/careers/jobs/:slug" component={CareersDetail} />
             <Route path="/join" component={Join} />
             <Route path="/start" component={Start} />
             <Route path="/start/brief" component={StartBrief} />

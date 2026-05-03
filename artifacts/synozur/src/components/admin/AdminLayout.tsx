@@ -146,6 +146,16 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    id: "careers",
+    label: "Careers",
+    icon: Briefcase,
+    items: [
+      { href: "/careers/jobs", label: "Job Postings", icon: Briefcase, capability: "careers.jobs.read", testId: "nav-admin-careers-jobs" },
+      { href: "/careers/applications", label: "Applications", icon: Inbox, capability: "careers.applications.read", testId: "nav-admin-careers-applications" },
+      { href: "/careers/settings", label: "Settings", icon: Settings, capability: "careers.settings.manage", testId: "nav-admin-careers-settings" },
+    ],
+  },
+  {
     id: "marketing",
     label: "Marketing",
     icon: Megaphone,

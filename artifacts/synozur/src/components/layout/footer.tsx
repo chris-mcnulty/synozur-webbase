@@ -172,6 +172,7 @@ export function Footer() {
               <li><Link href="/team" className="hover:text-primary transition-colors">Leadership</Link></li>
               <li><Link href="/partners" className="hover:text-primary transition-colors">Partners</Link></li>
               <li><Link href="/clients" className="hover:text-primary transition-colors">Clients</Link></li>
+              <li><Link href="/careers" className="hover:text-primary transition-colors" data-testid="footer-careers-link">Careers</Link></li>
               <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
             </ul>
           </div>

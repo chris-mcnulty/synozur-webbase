@@ -190,6 +190,19 @@ export const siteSettingsTable = pgTable("site_settings", {
   // fall back to iframe per-row even when the global mode is "native".
   bookingsRenderMode: text("bookings_render_mode").notNull().default("iframe"),
 
+  // #223 — Careers section. `careersMode` controls whether `/careers/*` is
+  // hosted natively from this site or 301-redirected to an external careers
+  // host (preserving the path tail). `careersExternalUrl` is the redirect
+  // target — required when mode is "redirect" but stored unconditionally so
+  // admins can prep the URL before flipping the switch. `careersEeoEnabled`
+  // governs whether the EEO demographic questions appear on the apply form.
+  // `careersDefaultHiringManager` is the fallback notification address when
+  // a job posting has no explicit hiring-manager email set.
+  careersMode: text("careers_mode").notNull().default("native"),
+  careersExternalUrl: text("careers_external_url"),
+  careersEeoEnabled: boolean("careers_eeo_enabled").notNull().default(true),
+  careersDefaultHiringManager: text("careers_default_hiring_manager"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
