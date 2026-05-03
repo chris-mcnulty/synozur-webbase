@@ -2354,16 +2354,17 @@ export async function runMigrations(): Promise<void> {
     `);
 
     // 3. Migrate conversations + messages from integer-serial PKs to
-    //    UUIDv7 PKs while *preserving* every existing row. Existing rows
-    //    have no recoverable owner (the pre-#166 schema didn't track
-    //    one), so we stamp them onto a single sentinel ai_chat_sessions
-    //    row whose token_hash is non-resolvable and whose revoked_at is
-    //    set in the past — meaning the rows are owned (passing the ACL
-    //    NOT NULL invariant) but unreachable by any real caller.
+    //    uuid PKs. Existing rows are left with owner_session_id = NULL
+    //    (orphaned). Every route-layer ACL check rejects null owners so
+    //    these rows are unreachable by any real caller and will be pruned
+    //    by the periodic GC. We deliberately do NOT insert a sentinel
+    //    row into ai_chat_sessions here: that would require the
+    //    token_hash UNIQUE constraint to exist beforehand, creating a
+    //    fragile ordering dependency that has repeatedly caused
+    //    "there is no unique or exclusion constraint matching the ON
+    //    CONFLICT specification" in production.
     await db.execute(sql`
       DO $mig$
-      DECLARE
-        legacy_session uuid;
       BEGIN
         IF EXISTS (
           SELECT 1 FROM information_schema.columns
@@ -2371,28 +2372,15 @@ export async function runMigrations(): Promise<void> {
             AND column_name = 'id'
             AND data_type != 'uuid'
         ) THEN
-          INSERT INTO ai_chat_sessions
-            (token_hash, ip_at_creation, user_agent, expires_at, revoked_at)
-          VALUES (
-            'legacy-pre-166-backfill-sentinel',
-            NULL,
-            'legacy-pre-166-backfill',
-            now() + interval '100 years',
-            now()
-          )
-          ON CONFLICT (token_hash) DO UPDATE
-            SET token_hash = EXCLUDED.token_hash
-          RETURNING id INTO legacy_session;
-
+          -- Add uuid side-column and new ownership columns
           ALTER TABLE conversations
             ADD COLUMN IF NOT EXISTS id_uuid uuid NOT NULL DEFAULT gen_random_uuid(),
             ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
             ADD COLUMN IF NOT EXISTS owner_session_id uuid;
+          -- owner_session_id stays NULL — pre-#166 rows have no
+          -- recoverable session; they will be GC'd.
 
-          UPDATE conversations
-             SET owner_session_id = legacy_session
-             WHERE owner_session_id IS NULL AND owner_user_id IS NULL;
-
+          -- Prepare messages for the new uuid conversation FK
           ALTER TABLE messages
             ADD COLUMN IF NOT EXISTS conversation_id_uuid uuid,
             ADD COLUMN IF NOT EXISTS input_tokens integer,
@@ -2406,23 +2394,27 @@ export async function runMigrations(): Promise<void> {
              WHERE m.conversation_id_uuid IS NULL
                AND m.conversation_id = c.id;
 
+          -- Swap messages FK integer → uuid
           ALTER TABLE messages
             DROP CONSTRAINT IF EXISTS messages_conversation_id_fkey;
           ALTER TABLE messages DROP COLUMN conversation_id;
           ALTER TABLE messages RENAME COLUMN conversation_id_uuid TO conversation_id;
           ALTER TABLE messages ALTER COLUMN conversation_id SET NOT NULL;
 
+          -- Swap messages PK integer → uuid
           ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_pkey;
           ALTER TABLE messages DROP COLUMN id;
           ALTER TABLE messages
             ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();
 
+          -- Swap conversations PK integer → uuid
           ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_pkey;
           ALTER TABLE conversations DROP COLUMN id;
           ALTER TABLE conversations RENAME COLUMN id_uuid TO id;
           ALTER TABLE conversations ALTER COLUMN id SET DEFAULT gen_random_uuid();
           ALTER TABLE conversations ADD PRIMARY KEY (id);
 
+          -- Restore FK now that both sides are uuid
           ALTER TABLE messages
             ADD CONSTRAINT messages_conversation_id_fkey
             FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
