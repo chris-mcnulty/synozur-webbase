@@ -32,8 +32,23 @@ export const GALAXY_OAUTH_SCOPES = [
 ];
 
 function galaxyRedirectUris(): string[] {
-  const origin = siteOrigin();
-  return [`${origin}${GALAXY_BASE_PATH}/oauth-callback`];
+  const uris = new Set<string>();
+
+  // Canonical production origin (from SITE_URL env or hardcoded fallback)
+  uris.add(`${siteOrigin()}${GALAXY_BASE_PATH}/oauth-callback`);
+
+  // All Replit-provided domains: covers the dev preview URL and the
+  // *.replit.app production URL so the registered redirect list stays
+  // current across environments without manual admin intervention.
+  const replitDomains = (process.env["REPLIT_DOMAINS"] ?? "")
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+  for (const domain of replitDomains) {
+    uris.add(`https://${domain}${GALAXY_BASE_PATH}/oauth-callback`);
+  }
+
+  return Array.from(uris);
 }
 
 export async function ensureGalaxyOAuthClient(): Promise<void> {
