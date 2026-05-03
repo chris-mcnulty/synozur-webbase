@@ -640,6 +640,77 @@ export async function sendClientOrgInvite(args: {
   });
 }
 
+// #242 — Customer notification when an account manager publishes one or
+// more deliverables on an engagement. The flusher coalesces multiple
+// publishes into a single digest per engagement (~15 min throttle) so
+// rapid back-to-back publishes don't spam the recipient.
+export async function sendPortalDocumentsPublishedEmail(args: {
+  to: string;
+  recipientName: string | null;
+  engagementTitle: string;
+  filenames: string[];
+}): Promise<SendEmailResult> {
+  const galaxyOrigin = (process.env["GALAXY_URL"] ?? SITE_URL).replace(/\/$/, "");
+  const link = `${galaxyOrigin}/galaxy/documents`;
+  const greeting =
+    args.recipientName && args.recipientName.trim().length > 0
+      ? `Hi ${escapeHtml(args.recipientName.trim())},`
+      : "Hello,";
+  const count = args.filenames.length;
+  const headline =
+    count === 1
+      ? `A new deliverable is ready on ${args.engagementTitle}`
+      : `${count} new deliverables are ready on ${args.engagementTitle}`;
+  const intro =
+    count === 1
+      ? `A new deliverable has been published on your <strong>${escapeHtml(args.engagementTitle)}</strong> engagement and is ready for review:`
+      : `${count} new deliverables have been published on your <strong>${escapeHtml(args.engagementTitle)}</strong> engagement and are ready for review:`;
+  const list = args.filenames
+    .map((f) => `<li style="margin:4px 0;">${escapeHtml(f)}</li>`)
+    .join("");
+  const html = brandedShell({
+    preheader: headline,
+    heading: count === 1 ? "New deliverable available" : "New deliverables available",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 12px;">${intro}</p>
+      <ul style="margin:0 0 20px;padding-left:22px;color:#1a1a2e;">${list}</ul>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(link)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Open Documents</a>
+      </p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const textIntro =
+    count === 1
+      ? `A new deliverable has been published on your ${args.engagementTitle} engagement and is ready for review:`
+      : `${count} new deliverables have been published on your ${args.engagementTitle} engagement and are ready for review:`;
+  const text = [
+    args.recipientName && args.recipientName.trim().length > 0
+      ? `Hi ${args.recipientName.trim()},`
+      : "Hello,",
+    "",
+    textIntro,
+    "",
+    ...args.filenames.map((f) => `  - ${f}`),
+    "",
+    `Open Documents: ${link}`,
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  const subject =
+    count === 1
+      ? `New deliverable on ${args.engagementTitle} — Synozur Galaxy`
+      : `${count} new deliverables on ${args.engagementTitle} — Synozur Galaxy`;
+  return sendEmail({
+    to: args.to,
+    subject,
+    html,
+    text,
+    template: "portal-documents-published",
+  });
+}
+
 export async function sendPasswordReset(args: {
   to: string;
   name: string | null;

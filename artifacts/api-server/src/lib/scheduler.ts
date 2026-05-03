@@ -2,11 +2,18 @@ import { and, eq, lte, isNull, lt, not, or, like, sql } from "drizzle-orm";
 import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable } from "@workspace/db";
 import { audit } from "./audit";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
+import { flushPortalDocumentNotifications } from "./portalDocumentNotifications";
 import type { Logger } from "pino";
 
 const TICK_INTERVAL_MS = 60_000;
 const PORTAL_DOCS_RECONCILE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const PORTAL_DOCS_RECONCILE_INITIAL_DELAY_MS = 10 * 60 * 1000;
+// #242 — customer publish-notification flush. Runs roughly every minute
+// so a freshly-published row is observed quickly; the THROTTLE_MS
+// inside the flusher coalesces back-to-back publishes into a single
+// digest per engagement.
+const PORTAL_DOCS_NOTIFY_INTERVAL_MS = 60_000;
+const PORTAL_DOCS_NOTIFY_INITIAL_DELAY_MS = 15_000;
 const SUBSCRIBERS_PENDING_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIBERS_PENDING_CLEANUP_INITIAL_DELAY_MS = 15 * 60 * 1000;
 const SUBSCRIBERS_PENDING_TTL_DAYS = 30;
@@ -76,6 +83,30 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
   }
   const reconcileInitial = setTimeout(reconcileTick, PORTAL_DOCS_RECONCILE_INITIAL_DELAY_MS);
   const reconcileInterval = setInterval(reconcileTick, PORTAL_DOCS_RECONCILE_INTERVAL_MS);
+
+  // #242 — flush queued customer notifications for newly-published portal
+  // documents. Throttled inside the flusher so back-to-back publishes
+  // coalesce into a single per-engagement digest.
+  let notifyRunning = false;
+  async function notifyTick() {
+    if (stopping || notifyRunning) return;
+    notifyRunning = true;
+    try {
+      const flushed = await flushPortalDocumentNotifications();
+      if (flushed.engagementsClaimed > 0 || flushed.emailsFailed > 0) {
+        logger.info(
+          flushed,
+          "portal-document publish notifications flushed",
+        );
+      }
+    } catch (err) {
+      logger.error({ err }, "portal-document notification tick failed");
+    } finally {
+      notifyRunning = false;
+    }
+  }
+  const notifyInitial = setTimeout(notifyTick, PORTAL_DOCS_NOTIFY_INITIAL_DELAY_MS);
+  const notifyInterval = setInterval(notifyTick, PORTAL_DOCS_NOTIFY_INTERVAL_MS);
 
   // #259 — daily cleanup of pending DOI subscribers older than the TTL.
   // Pending rows that never confirmed within 30 days are deleted so the
@@ -194,6 +225,8 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
       clearInterval(interval);
       clearTimeout(reconcileInitial);
       clearInterval(reconcileInterval);
+      clearTimeout(notifyInitial);
+      clearInterval(notifyInterval);
       clearTimeout(pendingCleanupInitial);
       clearInterval(pendingCleanupInterval);
       clearTimeout(auditPruneInitial);

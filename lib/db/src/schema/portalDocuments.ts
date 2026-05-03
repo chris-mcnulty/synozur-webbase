@@ -45,6 +45,14 @@ export const portalDocumentsTable = pgTable(
       .notNull()
       .defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // #242 — timestamp of the most recent customer-facing publish
+    // notification email that included this document. Null means a
+    // notification is still owed (either because the row was just
+    // published, or because it was unpublished/republished and is
+    // pending fresh notification). The flusher uses (publishedAt
+    // IS NOT NULL AND notifiedAt IS NULL) as the work queue and
+    // throttles on a per-engagement basis.
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     // Microsoft Graph `webUrl` for the underlying SPE driveItem. Used
     // by the Galaxy preview drawer to surface an "Open in browser"
     // link for Office documents (the only reliable way to render

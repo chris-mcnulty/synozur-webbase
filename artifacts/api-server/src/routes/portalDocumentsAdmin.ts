@@ -183,11 +183,21 @@ router.post(
       res.status(404).json({ error: "Not found" });
       return;
     }
-    const now = new Date();
-    await db
-      .update(portalDocumentsTable)
-      .set({ publishedAt: now, publishedBy: req.admin!.userId })
-      .where(eq(portalDocumentsTable.id, id));
+    // Idempotent: if the row is already published, leave publishedAt /
+    // publishedBy / notifiedAt untouched so a repeated publish call
+    // doesn't re-queue a customer notification. We only reset
+    // notifiedAt on a real unpublished -> published transition. (#242)
+    if (before.publishedAt === null) {
+      const now = new Date();
+      await db
+        .update(portalDocumentsTable)
+        .set({
+          publishedAt: now,
+          publishedBy: req.admin!.userId,
+          notifiedAt: null,
+        })
+        .where(eq(portalDocumentsTable.id, id));
+    }
     await audit({
       actorId: req.admin!.userId,
       action: "portal_document.publish",

@@ -2515,6 +2515,43 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS org_geo_longitude double precision,
         ADD COLUMN IF NOT EXISTS org_opening_hours jsonb;
     `);
+
+    // #242 — Customer publish notifications. `notified_at` records the
+    // timestamp of the digest email that last included this row; the
+    // flusher uses (published_at IS NOT NULL AND notified_at IS NULL)
+    // as the work queue and throttles per engagement.
+    //
+    // IMPORTANT: rows that were already published *before* this feature
+    // shipped must be treated as "already notified" so the first
+    // scheduler tick after deploy doesn't blast customers with
+    // catch-up digests for legacy deliverables. We detect "first time
+    // adding the column" by checking column existence in
+    // information_schema, and inside the same DO block we backfill
+    // notified_at = published_at for any row whose publish predates
+    // this rollout. The conditional guard makes the migration safe to
+    // re-run (no-op on environments that already have the column).
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'portal_documents' AND column_name = 'notified_at'
+        ) THEN
+          ALTER TABLE portal_documents ADD COLUMN notified_at timestamptz;
+          UPDATE portal_documents
+            SET notified_at = published_at
+            WHERE published_at IS NOT NULL;
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS portal_documents_pending_notify_idx
+        ON portal_documents (engagement_id)
+        WHERE published_at IS NOT NULL
+          AND notified_at IS NULL
+          AND deleted_at IS NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
