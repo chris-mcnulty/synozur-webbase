@@ -3,6 +3,7 @@ import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable } fr
 import { audit } from "./audit";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
 import { flushPortalDocumentNotifications } from "./portalDocumentNotifications";
+import { reindexEditorialSourceSafe } from "./ai/reindexHook";
 import type { Logger } from "pino";
 
 const TICK_INTERVAL_MS = 60_000;
@@ -55,6 +56,9 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
           entity: "post",
           entityId: post.id,
         });
+        // Auto-publish from the worker must also refresh the Ask Synozur
+        // corpus so the post becomes answerable without a manual rebuild.
+        await reindexEditorialSourceSafe("post", post.id, logger);
         logger.info({ postId: post.id, slug: post.slug }, "Promoted scheduled post to published");
       }
     } catch (err) {

@@ -29,6 +29,9 @@ export interface ImportSummary {
   updated: number;
   skipped: number;
   errors: Array<{ guid: string; message: string }>;
+  // Episode IDs that were created or updated during this import. Callers
+  // use these to refresh the Ask Synozur corpus without a manual rebuild.
+  affectedIds: string[];
 }
 
 // -- RSS parsing ----------------------------------------------------------
@@ -299,19 +302,22 @@ function isUniqueViolation(err: unknown): boolean {
 async function insertWithAutoEpisodeNumber(
   base: Omit<typeof polarisEpisodesTable.$inferInsert, "episodeNumber" | "slug" | "title">,
   titleFallback: (n: number) => string,
-): Promise<void> {
+): Promise<string> {
   const maxAttempts = 5;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const episodeNumber = await nextAutoEpisodeNumber();
     const slug = await ensureUniqueSlug(titleFallback(episodeNumber), null);
     try {
-      await db.insert(polarisEpisodesTable).values({
-        ...base,
-        episodeNumber,
-        slug,
-        title: titleFallback(episodeNumber),
-      });
-      return;
+      const [row] = await db
+        .insert(polarisEpisodesTable)
+        .values({
+          ...base,
+          episodeNumber,
+          slug,
+          title: titleFallback(episodeNumber),
+        })
+        .returning({ id: polarisEpisodesTable.id });
+      return row.id;
     } catch (err) {
       if (isUniqueViolation(err) && attempt < maxAttempts) continue;
       throw err;
@@ -333,7 +339,7 @@ export async function importFromFeed(
   selectedGuids: string[],
   options: ImportOptions = {},
 ): Promise<ImportSummary> {
-  const summary: ImportSummary = { created: 0, updated: 0, skipped: 0, errors: [] };
+  const summary: ImportSummary = { created: 0, updated: 0, skipped: 0, errors: [], affectedIds: [] };
   const want = new Set(selectedGuids);
   if (want.size === 0) return summary;
 
@@ -373,6 +379,7 @@ export async function importFromFeed(
           .set(updates)
           .where(eq(polarisEpisodesTable.id, existing.id));
         summary.updated += 1;
+        summary.affectedIds.push(existing.id);
       } else {
         const baseValues = {
           summary: item.summary,
@@ -384,20 +391,24 @@ export async function importFromFeed(
           active: true,
           sourceId: sourceIdForGuid(item.guid),
         };
+        let createdId: string;
         if (typeof item.episodeNumber === "number") {
           const episodeNumber = item.episodeNumber;
           const title = item.title || `Episode ${episodeNumber}`;
           const slug = await ensureUniqueSlug(title, null);
-          await db
+          const [row] = await db
             .insert(polarisEpisodesTable)
-            .values({ ...baseValues, episodeNumber, title, slug });
+            .values({ ...baseValues, episodeNumber, title, slug })
+            .returning({ id: polarisEpisodesTable.id });
+          createdId = row.id;
         } else {
-          await insertWithAutoEpisodeNumber(
+          createdId = await insertWithAutoEpisodeNumber(
             baseValues,
             (n) => item.title || `Episode ${n}`,
           );
         }
         summary.created += 1;
+        summary.affectedIds.push(createdId);
       }
     } catch (err) {
       summary.errors.push({

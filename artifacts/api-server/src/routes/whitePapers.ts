@@ -17,6 +17,7 @@ import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
+import { reindexEditorialSourceSafe } from "../lib/ai/reindexHook";
 import {
   upsertCollateralFromWhitePaper,
   softDeleteCollateralForWhitePaper,
@@ -445,6 +446,7 @@ router.post("/cms/white-papers", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper create",
     );
   }
+  await reindexEditorialSourceSafe("white_paper", row.id, req.log);
   const [documentAsset, documentMedia] = await Promise.all([
     loadDocumentAsset(row.documentAssetId),
     loadDocumentMedia(row.documentMediaId),
@@ -563,6 +565,7 @@ router.patch("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after white paper update",
     );
   }
+  await reindexEditorialSourceSafe("white_paper", id, req.log);
   const [documentAsset, documentMedia] = await Promise.all([
     loadDocumentAsset(updated.documentAssetId),
     loadDocumentMedia(updated.documentMediaId),
@@ -601,6 +604,7 @@ router.delete("/cms/white-papers/:id", ...adminGuard, async (req, res) => {
       "Failed to soft-delete collateral after white paper delete",
     );
   }
+  await reindexEditorialSourceSafe("white_paper", id, req.log);
   res.status(204).end();
 });
 

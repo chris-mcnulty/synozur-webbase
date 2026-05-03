@@ -22,6 +22,7 @@ import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
 import { siteOrigin } from "../lib/siteOrigin";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
+import { reindexEditorialSourceSafe } from "../lib/ai/reindexHook";
 
 const router: IRouter = Router();
 
@@ -479,6 +480,7 @@ router.post("/cms/polaris/episodes", ...adminGuard, async (req, res) => {
       linkedPostId: d.linkedPostId ?? null,
     })
     .returning();
+  await reindexEditorialSourceSafe("polaris", row.id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "polaris_episode.create",
@@ -553,6 +555,7 @@ router.patch("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     after: updated,
     log: req.log,
   });
+  await reindexEditorialSourceSafe("polaris", id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "polaris_episode.update",
@@ -630,6 +633,12 @@ router.post("/cms/polaris/libsyn/import", ...adminGuard, async (req, res) => {
     const summary = await importFromFeed(feedUrl, parsed.data.guids, {
       allowResync: parsed.data.allowResync ?? false,
     });
+    // Refresh the Ask Synozur corpus for every episode the import touched
+    // (created or updated). Best-effort: failures are swallowed inside
+    // reindexEditorialSourceSafe so they cannot abort the import response.
+    for (const id of summary.affectedIds) {
+      await reindexEditorialSourceSafe("polaris", id, req.log);
+    }
     await audit({
       actorId: req.authedUser!.id,
       action: "polaris_episode.libsyn_import",
@@ -669,6 +678,7 @@ router.delete("/cms/polaris/episodes/:id", ...adminGuard, async (req, res) => {
     .where(eq(polarisEpisodesTable.id, id));
   // #254: soft-delete (active=false) returns 404 Not Found for polaris
   // episodes, not 410 Gone, so we deliberately do not submit a removal here.
+  await reindexEditorialSourceSafe("polaris", id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "polaris_episode.delete",

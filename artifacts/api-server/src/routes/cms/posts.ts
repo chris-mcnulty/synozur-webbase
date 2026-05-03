@@ -21,6 +21,7 @@ import {
 } from "../../lib/syncCollateral";
 import { trimPostRevisions } from "../../lib/revisionRetention";
 import { submitIfTransitionedToGone } from "../../lib/seoUnpublishSubmit";
+import { reindexEditorialSourceSafe } from "../../lib/ai/reindexHook";
 
 const router: IRouter = Router();
 
@@ -317,6 +318,7 @@ router.patch("/cms/posts/:id", requireAuth, async (req, res) => {
 
   await syncTaxonomy(post.id, d.categoryIds, d.tagIds);
   await syncPostCollateral(updated);
+  await reindexEditorialSourceSafe("post", post.id, req.log);
   await audit({ actorId: user.id, action: "post.update", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });
@@ -354,6 +356,7 @@ router.delete("/cms/posts/:id", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("softDeleteCollateralForPost failed", { postId: post.id, err });
   }
+  await reindexEditorialSourceSafe("post", post.id, req.log);
   await audit({ actorId: user.id, action: "post.delete", entity: "post", entityId: post.id });
   res.status(204).end();
 });
@@ -382,6 +385,7 @@ router.post("/cms/posts/:id/publish", requireAuth, async (req, res) => {
     .where(eq(postsTable.id, post.id))
     .returning();
   await syncPostCollateral(updated);
+  await reindexEditorialSourceSafe("post", post.id, req.log);
   await audit({ actorId: user.id, action: "post.publish", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });
@@ -422,6 +426,7 @@ router.post("/cms/posts/:id/schedule", requireAuth, async (req, res) => {
     .where(eq(postsTable.id, post.id))
     .returning();
   await syncPostCollateral(updated);
+  await reindexEditorialSourceSafe("post", post.id, req.log);
   await audit({
     actorId: user.id,
     action: "post.schedule",
@@ -632,6 +637,7 @@ router.post(
       req.log.error({ err, postId: post.id }, "trimPostRevisions failed");
     }
 
+    await reindexEditorialSourceSafe("post", post.id, req.log);
     await audit({
       actorId: user.id,
       action: "post.revision.restore",
@@ -675,6 +681,7 @@ router.post("/cms/posts/:id/archive", requireAuth, async (req, res) => {
     after: { status: updated.status },
     log: req.log,
   });
+  await reindexEditorialSourceSafe("post", post.id, req.log);
   await audit({ actorId: user.id, action: "post.archive", entity: "post", entityId: post.id });
   res.json(await serializePost(updated));
 });

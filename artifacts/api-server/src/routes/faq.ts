@@ -13,6 +13,10 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 import { siteOrigin } from "../lib/siteOrigin";
+import {
+  reindexEditorialSourceSafe,
+  reindexEditorialFaqCategorySafe,
+} from "../lib/ai/reindexHook";
 
 const router: IRouter = Router();
 
@@ -346,6 +350,9 @@ router.patch("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(faqCategoriesTable.id, id))
     .returning();
+  // Category visibility (status / active / publish window) cascades to
+  // every FAQ item beneath it, so refresh each item's chunks.
+  await reindexEditorialFaqCategorySafe(id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_category.update",
@@ -386,6 +393,9 @@ router.delete("/cms/faq/categories/:id", ...adminGuard, async (req, res) => {
     .update(faqCategoriesTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(faqCategoriesTable.id, id));
+  // All items beneath this category were just soft-deleted in bulk above;
+  // prune their chunks from the corpus so Ask Synozur stops returning them.
+  await reindexEditorialFaqCategorySafe(id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_category.delete",
@@ -487,6 +497,7 @@ router.post("/cms/faq/items", ...adminGuard, async (req, res) => {
       seoDescription: d.seoDescription ?? null,
     })
     .returning();
+  await reindexEditorialSourceSafe("faq", row.id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_item.create",
@@ -548,6 +559,7 @@ router.patch("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
     .set(updates)
     .where(eq(faqItemsTable.id, id))
     .returning();
+  await reindexEditorialSourceSafe("faq", id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_item.update",
@@ -571,6 +583,7 @@ router.delete("/cms/faq/items/:id", ...adminGuard, async (req, res) => {
     .update(faqItemsTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(faqItemsTable.id, id));
+  await reindexEditorialSourceSafe("faq", id, req.log);
   await audit({
     actorId: req.authedUser!.id,
     action: "faq_item.delete",

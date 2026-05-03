@@ -16,6 +16,7 @@ import {
   upsertCollateralFromCaseStudy,
   softDeleteCollateralForCaseStudy,
 } from "../lib/syncCollateral";
+import { reindexEditorialSourceSafe } from "../lib/ai/reindexHook";
 
 const router: IRouter = Router();
 
@@ -274,6 +275,7 @@ router.post("/cms/case-studies", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after case study create",
     );
   }
+  await reindexEditorialSourceSafe("case_study", row.id, req.log);
   res.status(201).json(serialize(row));
 });
 
@@ -366,6 +368,7 @@ router.patch("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
       "Failed to sync collateral after case study update",
     );
   }
+  await reindexEditorialSourceSafe("case_study", id, req.log);
   res.json(serialize(updated));
 });
 
@@ -402,6 +405,7 @@ router.delete("/cms/case-studies/:id", ...adminGuard, async (req, res) => {
       "Failed to soft-delete collateral after case study delete",
     );
   }
+  await reindexEditorialSourceSafe("case_study", id, req.log);
   res.status(204).end();
 });
 
