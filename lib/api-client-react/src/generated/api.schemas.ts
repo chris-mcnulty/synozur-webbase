@@ -14,6 +14,73 @@ export interface ErrorEnvelope {
   details?: unknown;
 }
 
+export type PortalForbiddenReason =
+  (typeof PortalForbiddenReason)[keyof typeof PortalForbiddenReason];
+
+export const PortalForbiddenReason = {
+  not_a_customer: "not_a_customer",
+  no_organization: "no_organization",
+  organization_inactive: "organization_inactive",
+} as const;
+
+export interface PortalForbidden {
+  error: string;
+  reason: PortalForbiddenReason;
+}
+
+export interface PortalUserSummary {
+  id: string;
+  displayName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+}
+
+export type PortalAccountTeamMemberRole =
+  (typeof PortalAccountTeamMemberRole)[keyof typeof PortalAccountTeamMemberRole];
+
+export const PortalAccountTeamMemberRole = {
+  account_manager: "account_manager",
+  primary_contact: "primary_contact",
+} as const;
+
+export type PortalAccountTeamMember = PortalUserSummary & {
+  role: PortalAccountTeamMemberRole;
+};
+
+export interface PortalOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+}
+
+export interface PortalMe {
+  user: PortalUserSummary;
+  organization: PortalOrganization;
+  accountTeam: PortalAccountTeamMember[];
+}
+
+export type PortalEngagementStatus =
+  (typeof PortalEngagementStatus)[keyof typeof PortalEngagementStatus];
+
+export const PortalEngagementStatus = {
+  active: "active",
+  paused: "paused",
+  completed: "completed",
+  archived: "archived",
+} as const;
+
+export interface PortalEngagement {
+  id: string;
+  title: string;
+  slug: string;
+  status: PortalEngagementStatus;
+  summary?: string | null;
+  startedAt?: string | null;
+  accountLead?: PortalUserSummary | null;
+  createdAt: string;
+}
+
 export type RoleName = (typeof RoleName)[keyof typeof RoleName];
 
 export const RoleName = {
@@ -2732,4 +2799,8 @@ export type PreviewPolarisLibsynFeedParams = {
    * Optional override URL. When omitted the URL stored in site_settings.polarisFeedUrl is used.
    */
   feedUrl?: string;
+};
+
+export type ListPortalEngagements200 = {
+  items: PortalEngagement[];
 };

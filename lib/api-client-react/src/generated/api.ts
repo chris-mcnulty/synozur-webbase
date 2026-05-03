@@ -72,6 +72,7 @@ import type {
   ListPolarisEpisodesParams,
   ListPolarisLinkablePosts200,
   ListPolarisLinkablePostsParams,
+  ListPortalEngagements200,
   MediaItem,
   MediaListResponse,
   Methodology,
@@ -87,6 +88,8 @@ import type {
   PolarisLibsynImportBody,
   PolarisLibsynImportSummary,
   PolarisLibsynPreviewResponse,
+  PortalForbidden,
+  PortalMe,
   Post,
   PostAnalytics,
   PostListResponse,
@@ -10791,3 +10794,155 @@ export const useRemovePolarisEpisodeCollateral = <
 > => {
   return useMutation(getRemovePolarisEpisodeCollateralMutationOptions(options));
 };
+
+/**
+ * @summary Customer portal greeting payload — current user, org, account team.
+ */
+export const getGetPortalMeUrl = () => {
+  return `/api/portal/me`;
+};
+
+export const getPortalMe = async (options?: RequestInit): Promise<PortalMe> => {
+  return customFetch<PortalMe>(getGetPortalMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPortalMeQueryKey = () => {
+  return [`/api/portal/me`] as const;
+};
+
+export const getGetPortalMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPortalMe>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPortalMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalMe>>> = ({
+    signal,
+  }) => getPortalMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPortalMeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPortalMe>>
+>;
+export type GetPortalMeQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden
+>;
+
+/**
+ * @summary Customer portal greeting payload — current user, org, account team.
+ */
+
+export function useGetPortalMe<
+  TData = Awaited<ReturnType<typeof getPortalMe>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPortalMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPortalMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Active engagements for the signed-in customer's organization.
+ */
+export const getListPortalEngagementsUrl = () => {
+  return `/api/portal/engagements`;
+};
+
+export const listPortalEngagements = async (
+  options?: RequestInit,
+): Promise<ListPortalEngagements200> => {
+  return customFetch<ListPortalEngagements200>(getListPortalEngagementsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPortalEngagementsQueryKey = () => {
+  return [`/api/portal/engagements`] as const;
+};
+
+export const getListPortalEngagementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortalEngagements>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalEngagements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPortalEngagementsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPortalEngagements>>
+  > = ({ signal }) => listPortalEngagements({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalEngagements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortalEngagementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortalEngagements>>
+>;
+export type ListPortalEngagementsQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden
+>;
+
+/**
+ * @summary Active engagements for the signed-in customer's organization.
+ */
+
+export function useListPortalEngagements<
+  TData = Awaited<ReturnType<typeof listPortalEngagements>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalEngagements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortalEngagementsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

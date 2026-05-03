@@ -55,6 +55,8 @@ tags:
     description: Public Polaris podcast episode endpoints.
   - name: CmsPolaris
     description: Admin Polaris podcast episode management.
+  - name: Portal
+    description: Galaxy customer portal — same-host session bridge.
 paths:
   /healthz:
     get:
@@ -3120,6 +3122,55 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /portal/me:
+    get:
+      operationId: getPortalMe
+      tags:
+        - Portal
+      summary: Customer portal greeting payload — current user, org, account team.
+      responses:
+        '200':
+          description: Portal me payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalMe'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+  /portal/engagements:
+    get:
+      operationId: listPortalEngagements
+      tags:
+        - Portal
+      summary: Active engagements for the signed-in customer's organization.
+      responses:
+        '200':
+          description: Engagements list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalEngagement'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
 
 components:
   responses:
@@ -3163,6 +3214,118 @@ components:
         error:
           type: string
         details: {}
+    PortalForbidden:
+      type: object
+      required:
+        - error
+        - reason
+      properties:
+        error:
+          type: string
+        reason:
+          type: string
+          enum:
+            - not_a_customer
+            - no_organization
+            - organization_inactive
+    PortalUserSummary:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+    PortalAccountTeamMember:
+      allOf:
+        - $ref: '#/components/schemas/PortalUserSummary'
+        - type: object
+          required:
+            - role
+          properties:
+            role:
+              type: string
+              enum:
+                - account_manager
+                - primary_contact
+    PortalOrganization:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+    PortalMe:
+      type: object
+      required:
+        - user
+        - organization
+        - accountTeam
+      properties:
+        user:
+          $ref: '#/components/schemas/PortalUserSummary'
+        organization:
+          $ref: '#/components/schemas/PortalOrganization'
+        accountTeam:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortalAccountTeamMember'
+    PortalEngagement:
+      type: object
+      required:
+        - id
+        - title
+        - slug
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - paused
+            - completed
+            - archived
+        summary:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        accountLead:
+          allOf:
+            - $ref: '#/components/schemas/PortalUserSummary'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     RoleName:
       type: string
       enum:

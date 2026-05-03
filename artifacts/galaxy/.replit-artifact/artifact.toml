@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/galaxy/"
+title = "Galaxy"
+version = "1.0.0"
+id = "artifacts/galaxy"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/galaxy/" ]
+localPort = 23665
+
+[services.development]
+run = "pnpm --filter @workspace/galaxy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/galaxy", "run", "build" ]
+publicDir = "artifacts/galaxy/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23665"
+BASE_PATH = "/galaxy/"

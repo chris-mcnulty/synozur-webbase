@@ -41,6 +41,7 @@ Key features include:
 
 - **Deployment Policy**: Pre-release mode with development (Replit) as the primary content entry point. Production is a read-only preview, kept in sync by periodically re-syncing the development database.
 - **Insights Crawler**: A standalone, build-time crawler (`tools/insights-crawler`) mirrors the public Wix-hosted blog into a typed JSON dataset for database ingestion. It's idempotent and outputs discovered posts, sorted posts with local image paths, resized images, and a report.
+- **Galaxy Customer Portal** (`artifacts/galaxy`, mounted at `/galaxy/`): v0 customer-facing portal that shares the api-server session cookie (`sid`) with the Synozur SPA. Authenticated customers (role `customer` + linked, active `clientOrganization`) see a greeting, account team card (account manager + primary contacts via `client_organization_users`), and active engagements (`engagements` table). Backed by the `Portal` tag in the OpenAPI spec (`/portal/me`, `/portal/engagements`) and gated by `requireCustomerAudience` middleware which returns structured 403 reasons (`not_a_customer`, `no_organization`, `organization_inactive`).
 - **HubSpot Integration**: Successful form submissions are enqueued and processed by an in-process worker to upsert Contacts and emit custom timeline events in HubSpot. This ensures resilience against HubSpot outages and includes retry mechanisms. Token resolution uses Replit Connections or a static environment variable. Supports GDPR erasure and first-touch attribution.
 
 # Reference Repositories

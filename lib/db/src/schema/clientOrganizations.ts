@@ -41,9 +41,20 @@ export const clientOrganizationsTable = pgTable(
     // Entra tenant's first sign-in. Used to distinguish "pending approval"
     // (autoCreated + !isActive) from "deliberately deactivated" (!isActive).
     autoCreated: boolean("auto_created").notNull().default(false),
+    // Internal account manager who owns the client relationship. Surfaced on
+    // the customer portal "your account team" card. The FK is declared in
+    // the startup migration (not via Drizzle's `.references()`) to avoid the
+    // circular import between users ↔ clientOrganizations.
+    accountManagerUserId: uuid("account_manager_user_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Soft-delete marker. Active orgs have NULL; deleted orgs are filtered
+    // out of the portal but the row is preserved for engagement history.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("client_orgs_slug_key").on(t.slug)],
 );

@@ -1436,6 +1436,85 @@ export async function runMigrations(): Promise<void> {
         ON solution_capability_revisions (capability_id, edited_at);
     `);
 
+    // 44. Galaxy customer portal v0 (#224).
+    //     - client_organizations: account_manager_user_id, updated_at,
+    //       deleted_at columns. The FK on account_manager_user_id is declared
+    //       here (not via Drizzle's `.references()`) to avoid the circular
+    //       import between users ↔ clientOrganizations.
+    //     - client_organization_users: explicit membership join with a
+    //       member|primary_contact role.
+    //     - engagements: per-org workstream rows surfaced on the portal home.
+    await db.execute(sql`
+      ALTER TABLE client_organizations
+        ADD COLUMN IF NOT EXISTS account_manager_user_id uuid,
+        ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'client_organizations'
+            AND constraint_name = 'client_organizations_account_manager_user_id_fk'
+        ) THEN
+          ALTER TABLE client_organizations
+            ADD CONSTRAINT client_organizations_account_manager_user_id_fk
+            FOREIGN KEY (account_manager_user_id)
+            REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS client_organization_users (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_organization_id uuid NOT NULL REFERENCES client_organizations(id) ON DELETE CASCADE,
+        role text NOT NULL DEFAULT 'member',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS client_org_users_unique
+        ON client_organization_users (user_id, client_organization_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS client_org_users_org_idx
+        ON client_organization_users (client_organization_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS client_org_users_user_idx
+        ON client_organization_users (user_id);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS engagements (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_organization_id uuid NOT NULL REFERENCES client_organizations(id) ON DELETE CASCADE,
+        title text NOT NULL,
+        slug text NOT NULL,
+        status text NOT NULL DEFAULT 'active',
+        summary text,
+        started_at timestamptz,
+        account_lead_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        external_ref text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        deleted_at timestamptz
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS engagements_org_slug_key
+        ON engagements (client_organization_id, slug);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS engagements_org_idx
+        ON engagements (client_organization_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS engagements_status_idx
+        ON engagements (status);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

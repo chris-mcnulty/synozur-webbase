@@ -4302,3 +4302,60 @@ export const SyncPolarisEpisodeCollateralResponse = zod.object({
 export const RemovePolarisEpisodeCollateralParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
+
+/**
+ * @summary Customer portal greeting payload — current user, org, account team.
+ */
+export const GetPortalMeResponse = zod.object({
+  user: zod.object({
+    id: zod.string().uuid(),
+    displayName: zod.string().nullish(),
+    email: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
+  }),
+  organization: zod.object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    slug: zod.string(),
+    isActive: zod.boolean(),
+  }),
+  accountTeam: zod.array(
+    zod
+      .object({
+        id: zod.string().uuid(),
+        displayName: zod.string().nullish(),
+        email: zod.string().nullish(),
+        avatarUrl: zod.string().nullish(),
+      })
+      .and(
+        zod.object({
+          role: zod.enum(["account_manager", "primary_contact"]),
+        }),
+      ),
+  ),
+});
+
+/**
+ * @summary Active engagements for the signed-in customer's organization.
+ */
+export const ListPortalEngagementsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      title: zod.string(),
+      slug: zod.string(),
+      status: zod.enum(["active", "paused", "completed", "archived"]),
+      summary: zod.string().nullish(),
+      startedAt: zod.coerce.date().nullish(),
+      accountLead: zod
+        .object({
+          id: zod.string().uuid(),
+          displayName: zod.string().nullish(),
+          email: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+        })
+        .nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
