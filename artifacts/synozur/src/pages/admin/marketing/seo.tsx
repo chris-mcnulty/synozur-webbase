@@ -13,6 +13,7 @@ import {
   Map,
   Building2,
   Activity,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,6 +208,12 @@ export default function MarketingSeo() {
   const [orgPostal, setOrgPostal] = useState<string>("");
   const [orgCountry, setOrgCountry] = useState<string>("");
   const [orgSameAs, setOrgSameAs] = useState<string[]>([]);
+  const [orgTelephone, setOrgTelephone] = useState<string>("");
+  const [orgGeoLat, setOrgGeoLat] = useState<string>("");
+  const [orgGeoLng, setOrgGeoLng] = useState<string>("");
+  const [orgOpeningHours, setOrgOpeningHours] = useState<
+    { days: string[]; opens: string; closes: string }[]
+  >([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -231,6 +238,20 @@ export default function MarketingSeo() {
       setOrgPostal(data.orgPostalCode ?? "");
       setOrgCountry(data.orgAddressCountry ?? "");
       setOrgSameAs(data.orgSameAs ?? []);
+      setOrgTelephone(data.orgTelephone ?? "");
+      setOrgGeoLat(
+        typeof data.orgGeoLatitude === "number" ? String(data.orgGeoLatitude) : "",
+      );
+      setOrgGeoLng(
+        typeof data.orgGeoLongitude === "number" ? String(data.orgGeoLongitude) : "",
+      );
+      setOrgOpeningHours(
+        (data.orgOpeningHours ?? []).map((row) => ({
+          days: [...(row.days ?? [])],
+          opens: row.opens ?? "",
+          closes: row.closes ?? "",
+        })),
+      );
       setInitialized(true);
     }
   }, [data, initialized]);
@@ -280,6 +301,29 @@ export default function MarketingSeo() {
       orgPostalCode: orgPostal.trim() || null,
       orgAddressCountry: orgCountry.trim() || null,
       orgSameAs: orgSameAs.map((value) => value.trim()).filter(Boolean),
+      orgTelephone: orgTelephone.trim() || null,
+      orgGeoLatitude: (() => {
+        const t = orgGeoLat.trim();
+        if (t === "") return null;
+        const n = Number(t);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      orgGeoLongitude: (() => {
+        const t = orgGeoLng.trim();
+        if (t === "") return null;
+        const n = Number(t);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      orgOpeningHours:
+        orgOpeningHours.length > 0
+          ? orgOpeningHours
+              .map((r) => ({
+                days: r.days.filter(Boolean),
+                opens: r.opens,
+                closes: r.closes,
+              }))
+              .filter((r) => r.days.length > 0 && r.opens && r.closes)
+          : null,
       tagGa4Id: ga4Id.trim() || null,
       tagLinkedinPartnerId: liPartnerId.trim() || null,
       tagMetaPixelId: metaPixelId.trim() || null,
@@ -714,6 +758,191 @@ export default function MarketingSeo() {
                   data-testid="button-add-same-as"
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add URL
+                </Button>
+              </div>
+            </Field>
+          </SectionCard>
+
+          {/* ── 6b. Office contact ─────────────────────────────────────── */}
+          <SectionCard
+            icon={Phone}
+            title="Office contact"
+            description="Phone, geo coordinates, and opening hours used by the LocalBusiness JSON-LD on /contact. Empty fields fall back to the built-in Mill Creek defaults."
+          >
+            <Field
+              label="Telephone"
+              helper="E.164 preferred (e.g. +1-425-555-0100). Leave blank to fall back to the built-in default phone in the LocalBusiness markup."
+            >
+              <Input
+                type="tel"
+                placeholder="+1-425-555-0100"
+                value={orgTelephone}
+                onChange={(e) => setOrgTelephone(e.target.value)}
+                disabled={disabled}
+                data-testid="input-org-telephone"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Latitude" helper="Decimal degrees (-90 to 90).">
+                <Input
+                  type="number"
+                  step="any"
+                  min={-90}
+                  max={90}
+                  placeholder="47.8606"
+                  value={orgGeoLat}
+                  onChange={(e) => setOrgGeoLat(e.target.value)}
+                  disabled={disabled}
+                  data-testid="input-org-geo-latitude"
+                />
+              </Field>
+              <Field label="Longitude" helper="Decimal degrees (-180 to 180).">
+                <Input
+                  type="number"
+                  step="any"
+                  min={-180}
+                  max={180}
+                  placeholder="-122.2042"
+                  value={orgGeoLng}
+                  onChange={(e) => setOrgGeoLng(e.target.value)}
+                  disabled={disabled}
+                  data-testid="input-org-geo-longitude"
+                />
+              </Field>
+            </div>
+            <Field
+              label="Opening hours"
+              helper="Each row covers a contiguous block of days. Times are 24-hour HH:MM."
+            >
+              <div className="space-y-3">
+                {orgOpeningHours.map((row, i) => (
+                  <div
+                    key={i}
+                    className="rounded-md border border-border p-3 space-y-2"
+                    data-testid={`opening-hours-row-${i}`}
+                  >
+                    <div className="grid grid-cols-7 gap-1">
+                      {(
+                        [
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ] as const
+                      ).map((day) => {
+                        const checked = row.days.includes(day);
+                        return (
+                          <label
+                            key={day}
+                            className="flex flex-col items-center gap-1 text-xs cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={(e) => {
+                                setOrgOpeningHours((prev) => {
+                                  const next = [...prev];
+                                  const days = new Set(next[i].days);
+                                  if (e.target.checked) days.add(day);
+                                  else days.delete(day);
+                                  next[i] = {
+                                    ...next[i],
+                                    days: [
+                                      "Monday",
+                                      "Tuesday",
+                                      "Wednesday",
+                                      "Thursday",
+                                      "Friday",
+                                      "Saturday",
+                                      "Sunday",
+                                    ].filter((d) => days.has(d)),
+                                  };
+                                  return next;
+                                });
+                              }}
+                              data-testid={`opening-hours-day-${i}-${day}`}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            {day.slice(0, 3)}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={row.opens}
+                        onChange={(e) =>
+                          setOrgOpeningHours((prev) => {
+                            const next = [...prev];
+                            next[i] = { ...next[i], opens: e.target.value };
+                            return next;
+                          })
+                        }
+                        disabled={disabled}
+                        data-testid={`opening-hours-opens-${i}`}
+                        className="w-32"
+                      />
+                      <span className="text-muted-foreground text-sm">to</span>
+                      <Input
+                        type="time"
+                        value={row.closes}
+                        onChange={(e) =>
+                          setOrgOpeningHours((prev) => {
+                            const next = [...prev];
+                            next[i] = { ...next[i], closes: e.target.value };
+                            return next;
+                          })
+                        }
+                        disabled={disabled}
+                        data-testid={`opening-hours-closes-${i}`}
+                        className="w-32"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setOrgOpeningHours((prev) =>
+                            prev.filter((_, j) => j !== i),
+                          )
+                        }
+                        disabled={disabled}
+                        data-testid={`button-remove-opening-hours-${i}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setOrgOpeningHours((prev) => [
+                      ...prev,
+                      {
+                        days: [
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                        ],
+                        opens: "09:00",
+                        closes: "17:00",
+                      },
+                    ])
+                  }
+                  disabled={disabled}
+                  data-testid="button-add-opening-hours"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add hours
                 </Button>
               </div>
             </Field>

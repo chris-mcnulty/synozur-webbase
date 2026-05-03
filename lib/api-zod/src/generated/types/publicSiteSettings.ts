@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OpeningHoursSpec } from "./openingHoursSpec";
 import type { PublicSiteSettingsBookingsRenderMode } from "./publicSiteSettingsBookingsRenderMode";
 import type { PublicSiteSettingsHomeBHeroBackgroundType } from "./publicSiteSettingsHomeBHeroBackgroundType";
 import type { PublicSiteSettingsHomeHeroBackgroundType } from "./publicSiteSettingsHomeHeroBackgroundType";
@@ -86,6 +87,14 @@ export interface PublicSiteSettings {
   orgAddressCountry?: string | null;
   /** @nullable */
   orgSameAs?: string[] | null;
+  /** @nullable */
+  orgTelephone?: string | null;
+  /** @nullable */
+  orgGeoLatitude?: number | null;
+  /** @nullable */
+  orgGeoLongitude?: number | null;
+  /** @nullable */
+  orgOpeningHours?: OpeningHoursSpec[] | null;
   /** @nullable */
   homeBHeroHeadlinePrefix?: string | null;
   /** @nullable */

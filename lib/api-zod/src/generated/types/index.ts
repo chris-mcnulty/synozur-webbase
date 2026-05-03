@@ -110,6 +110,8 @@ export * from "./methodologyItemsResponse";
 export * from "./moderateCmsCommentBody";
 export * from "./moderateCmsCommentBodyAction";
 export * from "./notFoundResponse";
+export * from "./openingHoursSpec";
+export * from "./openingHoursSpecDaysItem";
 export * from "./polarisBulkSyncCollateralResponse";
 export * from "./polarisCollateralLink";
 export * from "./polarisCollateralLinkResponse";

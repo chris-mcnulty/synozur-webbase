@@ -170,6 +170,10 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     orgPostalCode: settings.orgPostalCode,
     orgAddressCountry: settings.orgAddressCountry,
     orgSameAs: settings.orgSameAs,
+    orgTelephone: settings.orgTelephone,
+    orgGeoLatitude: settings.orgGeoLatitude,
+    orgGeoLongitude: settings.orgGeoLongitude,
+    orgOpeningHours: settings.orgOpeningHours,
     tagGa4Id: settings.tagGa4Id,
     tagLinkedinPartnerId: settings.tagLinkedinPartnerId,
     tagMetaPixelId: settings.tagMetaPixelId,
@@ -248,6 +252,10 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       orgPostalCode: settings.orgPostalCode,
       orgAddressCountry: settings.orgAddressCountry,
       orgSameAs: settings.orgSameAs,
+      orgTelephone: settings.orgTelephone,
+      orgGeoLatitude: settings.orgGeoLatitude,
+      orgGeoLongitude: settings.orgGeoLongitude,
+      orgOpeningHours: settings.orgOpeningHours,
       homeBHeroHeadlinePrefix: settings.homeBHeroHeadlinePrefix,
       homeBHeroHeadlineAccent: settings.homeBHeroHeadlineAccent,
       homeBHeroHeadlineSuffix: settings.homeBHeroHeadlineSuffix,
@@ -429,6 +437,25 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   }
   if ("orgSameAs" in input) {
     updates.orgSameAs = input.orgSameAs ?? null;
+  }
+  if ("orgTelephone" in input) {
+    updates.orgTelephone = trimOrNull(input.orgTelephone);
+  }
+  if ("orgGeoLatitude" in input) {
+    updates.orgGeoLatitude =
+      typeof input.orgGeoLatitude === "number" ? input.orgGeoLatitude : null;
+  }
+  if ("orgGeoLongitude" in input) {
+    updates.orgGeoLongitude =
+      typeof input.orgGeoLongitude === "number" ? input.orgGeoLongitude : null;
+  }
+  if ("orgOpeningHours" in input) {
+    // Drop empty rows defensively; the schema enforces shape but admins may
+    // submit a partially-filled draft they intended to clear.
+    const rows = (input.orgOpeningHours ?? []).filter(
+      (r) => r && r.days && r.days.length > 0 && r.opens && r.closes,
+    );
+    updates.orgOpeningHours = rows.length > 0 ? rows : null;
   }
 
   if ("tagGa4Id" in input) {

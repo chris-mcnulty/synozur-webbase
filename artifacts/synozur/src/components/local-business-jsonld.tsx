@@ -16,6 +16,7 @@ const DEFAULTS = {
   postalCode: "98012",
   addressCountry: "US",
   email: "hello@synozur.com",
+  telephone: "+1-425-555-0100",
   geo: { latitude: 47.8606, longitude: -122.2042 },
   openingHours: [
     {
@@ -52,6 +53,19 @@ export function LocalBusinessJsonLd() {
         ? settings.orgSameAs
         : [...DEFAULTS.sameAs];
 
+    const latitude =
+      typeof settings?.orgGeoLatitude === "number"
+        ? settings.orgGeoLatitude
+        : DEFAULTS.geo.latitude;
+    const longitude =
+      typeof settings?.orgGeoLongitude === "number"
+        ? settings.orgGeoLongitude
+        : DEFAULTS.geo.longitude;
+    const openingHours =
+      settings?.orgOpeningHours && settings.orgOpeningHours.length > 0
+        ? settings.orgOpeningHours
+        : DEFAULTS.openingHours;
+
     const data: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
@@ -61,6 +75,7 @@ export function LocalBusinessJsonLd() {
       logo,
       image: logo,
       email: DEFAULTS.email,
+      telephone: settings?.orgTelephone ?? DEFAULTS.telephone,
       address: {
         "@type": "PostalAddress",
         streetAddress: settings?.orgStreetAddress ?? DEFAULTS.streetAddress,
@@ -71,10 +86,10 @@ export function LocalBusinessJsonLd() {
       },
       geo: {
         "@type": "GeoCoordinates",
-        latitude: DEFAULTS.geo.latitude,
-        longitude: DEFAULTS.geo.longitude,
+        latitude,
+        longitude,
       },
-      openingHoursSpecification: DEFAULTS.openingHours.map((spec) => ({
+      openingHoursSpecification: openingHours.map((spec) => ({
         "@type": "OpeningHoursSpecification",
         dayOfWeek: spec.days,
         opens: spec.opens,

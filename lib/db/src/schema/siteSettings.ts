@@ -1,4 +1,13 @@
-import { pgTable, integer, boolean, text, timestamp, jsonb, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  integer,
+  boolean,
+  text,
+  timestamp,
+  jsonb,
+  uuid,
+  doublePrecision,
+} from "drizzle-orm/pg-core";
 import { mediaTable } from "./media";
 
 // Parallel `*MediaId` UUID columns sit alongside the legacy `*AssetId`
@@ -54,6 +63,18 @@ export const siteSettingsTable = pgTable("site_settings", {
   orgPostalCode: text("org_postal_code"),
   orgAddressCountry: text("org_address_country"),
   orgSameAs: jsonb("org_same_as").$type<string[]>(),
+
+  // #269: LocalBusiness JSON-LD office contact fields. These supplement the
+  // existing address columns above so the /contact LocalBusiness blob can
+  // expose phone, geo coordinates, and opening hours without a code deploy.
+  // All fields are nullable; LocalBusinessJsonLd falls back to its hard-coded
+  // Mill Creek defaults when a column is null.
+  orgTelephone: text("org_telephone"),
+  orgGeoLatitude: doublePrecision("org_geo_latitude"),
+  orgGeoLongitude: doublePrecision("org_geo_longitude"),
+  orgOpeningHours: jsonb("org_opening_hours").$type<
+    { days: string[]; opens: string; closes: string }[]
+  >(),
 
   // Marketing tag IDs (null ⇒ fall back to VITE_* env vars in analytics.tsx)
   tagGa4Id: text("tag_ga4_id"),

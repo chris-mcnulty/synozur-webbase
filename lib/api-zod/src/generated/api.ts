@@ -1186,6 +1186,10 @@ export const getPublicSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const getPublicSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getPublicSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const getPublicSiteSettingsResponseConstellationDemoEnabledDefault = true;
+export const getPublicSiteSettingsResponseOrgOpeningHoursItemOpensRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
+export const getPublicSiteSettingsResponseOrgOpeningHoursItemClosesRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1253,6 +1257,40 @@ export const GetPublicSiteSettingsResponse = zod.object({
   orgPostalCode: zod.string().nullish(),
   orgAddressCountry: zod.string().nullish(),
   orgSameAs: zod.array(zod.string()).nullish(),
+  orgTelephone: zod.string().nullish(),
+  orgGeoLatitude: zod.number().nullish(),
+  orgGeoLongitude: zod.number().nullish(),
+  orgOpeningHours: zod
+    .array(
+      zod
+        .object({
+          days: zod
+            .array(
+              zod.enum([
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ]),
+            )
+            .min(1),
+          opens: zod
+            .string()
+            .regex(getPublicSiteSettingsResponseOrgOpeningHoursItemOpensRegExp),
+          closes: zod
+            .string()
+            .regex(
+              getPublicSiteSettingsResponseOrgOpeningHoursItemClosesRegExp,
+            ),
+        })
+        .describe(
+          "One row of the LocalBusiness `openingHoursSpecification` array. `days` is a list of `Monday`-style schema.org day names; `opens`\/`closes` are `HH:MM` 24-hour times.\n",
+        ),
+    )
+    .nullish(),
   homeBHeroHeadlinePrefix: zod.string().nullish(),
   homeBHeroHeadlineAccent: zod.string().nullish(),
   homeBHeroHeadlineSuffix: zod.string().nullish(),
@@ -1284,6 +1322,10 @@ export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
+export const getAdminSiteSettingsResponseOrgOpeningHoursItemOpensRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
+export const getAdminSiteSettingsResponseOrgOpeningHoursItemClosesRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 export const getAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
 export const getAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
@@ -1363,6 +1405,38 @@ export const GetAdminSiteSettingsResponse = zod.object({
   orgPostalCode: zod.string().nullish(),
   orgAddressCountry: zod.string().nullish(),
   orgSameAs: zod.array(zod.string().url()).nullish(),
+  orgTelephone: zod.string().nullish(),
+  orgGeoLatitude: zod.number().nullish(),
+  orgGeoLongitude: zod.number().nullish(),
+  orgOpeningHours: zod
+    .array(
+      zod
+        .object({
+          days: zod
+            .array(
+              zod.enum([
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ]),
+            )
+            .min(1),
+          opens: zod
+            .string()
+            .regex(getAdminSiteSettingsResponseOrgOpeningHoursItemOpensRegExp),
+          closes: zod
+            .string()
+            .regex(getAdminSiteSettingsResponseOrgOpeningHoursItemClosesRegExp),
+        })
+        .describe(
+          "One row of the LocalBusiness `openingHoursSpecification` array. `days` is a list of `Monday`-style schema.org day names; `opens`\/`closes` are `HH:MM` 24-hour times.\n",
+        ),
+    )
+    .nullish(),
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),
@@ -1429,6 +1503,16 @@ export const updateAdminSiteSettingsBodySeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsBodySeoDefaultDescriptionMax = 160;
 
+export const updateAdminSiteSettingsBodyOrgGeoLatitudeMin = -90;
+export const updateAdminSiteSettingsBodyOrgGeoLatitudeMax = 90;
+
+export const updateAdminSiteSettingsBodyOrgGeoLongitudeMin = -180;
+export const updateAdminSiteSettingsBodyOrgGeoLongitudeMax = 180;
+
+export const updateAdminSiteSettingsBodyOrgOpeningHoursItemOpensRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
+export const updateAdminSiteSettingsBodyOrgOpeningHoursItemClosesRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 export const updateAdminSiteSettingsBodyIdleTimeoutMsMin = 1800000;
 export const updateAdminSiteSettingsBodyIdleTimeoutMsMax = 2592000000;
 
@@ -1482,6 +1566,46 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   orgPostalCode: zod.string().nullish(),
   orgAddressCountry: zod.string().nullish(),
   orgSameAs: zod.array(zod.string().url()).nullish(),
+  orgTelephone: zod.string().nullish(),
+  orgGeoLatitude: zod
+    .number()
+    .min(updateAdminSiteSettingsBodyOrgGeoLatitudeMin)
+    .max(updateAdminSiteSettingsBodyOrgGeoLatitudeMax)
+    .nullish(),
+  orgGeoLongitude: zod
+    .number()
+    .min(updateAdminSiteSettingsBodyOrgGeoLongitudeMin)
+    .max(updateAdminSiteSettingsBodyOrgGeoLongitudeMax)
+    .nullish(),
+  orgOpeningHours: zod
+    .array(
+      zod
+        .object({
+          days: zod
+            .array(
+              zod.enum([
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ]),
+            )
+            .min(1),
+          opens: zod
+            .string()
+            .regex(updateAdminSiteSettingsBodyOrgOpeningHoursItemOpensRegExp),
+          closes: zod
+            .string()
+            .regex(updateAdminSiteSettingsBodyOrgOpeningHoursItemClosesRegExp),
+        })
+        .describe(
+          "One row of the LocalBusiness `openingHoursSpecification` array. `days` is a list of `Monday`-style schema.org day names; `opens`\/`closes` are `HH:MM` 24-hour times.\n",
+        ),
+    )
+    .nullish(),
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),
@@ -1549,6 +1673,10 @@ export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
 
+export const updateAdminSiteSettingsResponseOrgOpeningHoursItemOpensRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
+export const updateAdminSiteSettingsResponseOrgOpeningHoursItemClosesRegExp =
+  new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 export const updateAdminSiteSettingsResponseIdleTimeoutMsMin = 1800000;
 export const updateAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
@@ -1628,6 +1756,42 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   orgPostalCode: zod.string().nullish(),
   orgAddressCountry: zod.string().nullish(),
   orgSameAs: zod.array(zod.string().url()).nullish(),
+  orgTelephone: zod.string().nullish(),
+  orgGeoLatitude: zod.number().nullish(),
+  orgGeoLongitude: zod.number().nullish(),
+  orgOpeningHours: zod
+    .array(
+      zod
+        .object({
+          days: zod
+            .array(
+              zod.enum([
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ]),
+            )
+            .min(1),
+          opens: zod
+            .string()
+            .regex(
+              updateAdminSiteSettingsResponseOrgOpeningHoursItemOpensRegExp,
+            ),
+          closes: zod
+            .string()
+            .regex(
+              updateAdminSiteSettingsResponseOrgOpeningHoursItemClosesRegExp,
+            ),
+        })
+        .describe(
+          "One row of the LocalBusiness `openingHoursSpecification` array. `days` is a list of `Monday`-style schema.org day names; `opens`\/`closes` are `HH:MM` 24-hour times.\n",
+        ),
+    )
+    .nullish(),
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),

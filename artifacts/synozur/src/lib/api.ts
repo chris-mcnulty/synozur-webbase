@@ -160,6 +160,12 @@ export interface PublicSiteSettings {
   orgPostalCode?: string | null;
   orgAddressCountry?: string | null;
   orgSameAs?: string[] | null;
+  // #269: LocalBusiness office contact fields surfaced publicly so the
+  // /contact JSON-LD blob can render admin-edited values.
+  orgTelephone?: string | null;
+  orgGeoLatitude?: number | null;
+  orgGeoLongitude?: number | null;
+  orgOpeningHours?: { days: string[]; opens: string; closes: string }[] | null;
   // #215: Alt home page (`/home-b`) editorial copy overrides.
   homeBHeroHeadlinePrefix?: string | null;
   homeBHeroHeadlineAccent?: string | null;
@@ -225,6 +231,11 @@ export interface AdminSiteSettings {
   orgPostalCode?: string | null;
   orgAddressCountry?: string | null;
   orgSameAs?: string[] | null;
+  // #269
+  orgTelephone?: string | null;
+  orgGeoLatitude?: number | null;
+  orgGeoLongitude?: number | null;
+  orgOpeningHours?: { days: string[]; opens: string; closes: string }[] | null;
   tagGa4Id?: string | null;
   tagLinkedinPartnerId?: string | null;
   tagMetaPixelId?: string | null;
@@ -598,6 +609,11 @@ export interface UpdateSiteSettingsBody {
   orgPostalCode?: string | null;
   orgAddressCountry?: string | null;
   orgSameAs?: string[] | null;
+  // #269
+  orgTelephone?: string | null;
+  orgGeoLatitude?: number | null;
+  orgGeoLongitude?: number | null;
+  orgOpeningHours?: { days: string[]; opens: string; closes: string }[] | null;
   tagGa4Id?: string | null;
   tagLinkedinPartnerId?: string | null;
   tagMetaPixelId?: string | null;

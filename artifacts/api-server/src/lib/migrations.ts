@@ -2505,6 +2505,16 @@ export async function runMigrations(): Promise<void> {
         ON email_events (event_at);
     `);
 
+    // #269 — LocalBusiness JSON-LD office contact fields. Nullable so the
+    // /contact JSON-LD blob can fall back to the in-component Mill Creek
+    // defaults when an admin hasn't set a value.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS org_telephone text,
+        ADD COLUMN IF NOT EXISTS org_geo_latitude double precision,
+        ADD COLUMN IF NOT EXISTS org_geo_longitude double precision,
+        ADD COLUMN IF NOT EXISTS org_opening_hours jsonb;
+    `);
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

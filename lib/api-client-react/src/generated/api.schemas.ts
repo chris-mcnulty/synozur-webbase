@@ -690,6 +690,32 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export type OpeningHoursSpecDaysItem =
+  (typeof OpeningHoursSpecDaysItem)[keyof typeof OpeningHoursSpecDaysItem];
+
+export const OpeningHoursSpecDaysItem = {
+  Monday: "Monday",
+  Tuesday: "Tuesday",
+  Wednesday: "Wednesday",
+  Thursday: "Thursday",
+  Friday: "Friday",
+  Saturday: "Saturday",
+  Sunday: "Sunday",
+} as const;
+
+/**
+ * One row of the LocalBusiness `openingHoursSpecification` array. `days` is a list of `Monday`-style schema.org day names; `opens`/`closes` are `HH:MM` 24-hour times.
+
+ */
+export interface OpeningHoursSpec {
+  /** @minItems 1 */
+  days: OpeningHoursSpecDaysItem[];
+  /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+  opens: string;
+  /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+  closes: string;
+}
+
 export type PublicSiteSettingsHomeHeroBackgroundType =
   (typeof PublicSiteSettingsHomeHeroBackgroundType)[keyof typeof PublicSiteSettingsHomeHeroBackgroundType];
 
@@ -819,6 +845,14 @@ export interface PublicSiteSettings {
   orgAddressCountry?: string | null;
   /** @nullable */
   orgSameAs?: string[] | null;
+  /** @nullable */
+  orgTelephone?: string | null;
+  /** @nullable */
+  orgGeoLatitude?: number | null;
+  /** @nullable */
+  orgGeoLongitude?: number | null;
+  /** @nullable */
+  orgOpeningHours?: OpeningHoursSpec[] | null;
   /** @nullable */
   homeBHeroHeadlinePrefix?: string | null;
   /** @nullable */
@@ -1009,6 +1043,14 @@ export interface SiteSettings {
   orgAddressCountry?: string | null;
   /** @nullable */
   orgSameAs?: string[] | null;
+  /** @nullable */
+  orgTelephone?: string | null;
+  /** @nullable */
+  orgGeoLatitude?: number | null;
+  /** @nullable */
+  orgGeoLongitude?: number | null;
+  /** @nullable */
+  orgOpeningHours?: OpeningHoursSpec[] | null;
   /** @nullable */
   tagGa4Id?: string | null;
   /** @nullable */
@@ -1217,6 +1259,22 @@ export interface SiteSettingsInput {
   orgAddressCountry?: string | null;
   /** @nullable */
   orgSameAs?: string[] | null;
+  /** @nullable */
+  orgTelephone?: string | null;
+  /**
+   * @minimum -90
+   * @maximum 90
+   * @nullable
+   */
+  orgGeoLatitude?: number | null;
+  /**
+   * @minimum -180
+   * @maximum 180
+   * @nullable
+   */
+  orgGeoLongitude?: number | null;
+  /** @nullable */
+  orgOpeningHours?: OpeningHoursSpec[] | null;
   /** @nullable */
   tagGa4Id?: string | null;
   /** @nullable */

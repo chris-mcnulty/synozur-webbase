@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OpeningHoursSpec } from "./openingHoursSpec";
 import type { SiteSettingsInputBookingsRenderMode } from "./siteSettingsInputBookingsRenderMode";
 import type { SiteSettingsInputHomeBHeroBackgroundType } from "./siteSettingsInputHomeBHeroBackgroundType";
 import type { SiteSettingsInputHomeHeroBackgroundType } from "./siteSettingsInputHomeHeroBackgroundType";
@@ -87,6 +88,22 @@ export interface SiteSettingsInput {
   orgAddressCountry?: string | null;
   /** @nullable */
   orgSameAs?: string[] | null;
+  /** @nullable */
+  orgTelephone?: string | null;
+  /**
+   * @minimum -90
+   * @maximum 90
+   * @nullable
+   */
+  orgGeoLatitude?: number | null;
+  /**
+   * @minimum -180
+   * @maximum 180
+   * @nullable
+   */
+  orgGeoLongitude?: number | null;
+  /** @nullable */
+  orgOpeningHours?: OpeningHoursSpec[] | null;
   /** @nullable */
   tagGa4Id?: string | null;
   /** @nullable */
