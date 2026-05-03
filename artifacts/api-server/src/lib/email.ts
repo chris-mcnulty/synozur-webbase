@@ -472,6 +472,63 @@ export async function sendOrgApproved(args: {
   });
 }
 
+// #225 — invite email sent when an account manager adds a brand-new email
+// to a client organization. Reuses the password-reset visual layout but with
+// org-specific copy that mentions the organization name and links to a
+// dedicated /accept-invite landing.
+export async function sendClientOrgInvite(args: {
+  to: string;
+  name: string | null;
+  orgName: string;
+  inviterName: string | null;
+  token: string;
+}): Promise<SendEmailResult> {
+  // Galaxy is the customer portal surface; the invite landing page lives
+  // there so accepting drops the user straight into the portal experience
+  // rather than the marketing site. Galaxy is mounted at /galaxy/ behind
+  // the shared proxy on the same origin as SITE_URL. (#225)
+  const galaxyOrigin = (process.env["GALAXY_URL"] ?? SITE_URL).replace(/\/$/, "");
+  const link = `${galaxyOrigin}/galaxy/accept-invite?token=${encodeURIComponent(args.token)}`;
+  const greeting =
+    args.name && args.name.trim().length > 0
+      ? `Hi ${escapeHtml(args.name.trim())},`
+      : "Hello,";
+  const inviter =
+    args.inviterName && args.inviterName.trim().length > 0
+      ? escapeHtml(args.inviterName.trim())
+      : "Your account manager at The Synozur Alliance";
+  const html = brandedShell({
+    preheader: `You've been invited to ${args.orgName} on the Synozur Galaxy portal.`,
+    heading: `You're invited to ${args.orgName}`,
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">${inviter} has invited you to join <strong>${escapeHtml(args.orgName)}</strong> on the Synozur Galaxy portal. Click the button below to set your password — you'll be signed in automatically. This link expires in 7 days.</p>
+      <p style="margin:24px 0;">
+        <a href="${escapeHtml(link)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Accept invitation</a>
+      </p>
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">If you weren't expecting this invitation, you can safely ignore this email.</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#9999aa;word-break:break-all;">Or copy this link: ${escapeHtml(link)}</p>
+    `,
+  });
+  const text = [
+    args.name && args.name.trim().length > 0 ? `Hi ${args.name.trim()},` : "Hello,",
+    "",
+    `${args.inviterName ?? "Your account manager at The Synozur Alliance"} has invited you to join ${args.orgName} on the Synozur Galaxy portal. Visit the link below to set your password — you'll be signed in automatically. This link expires in 7 days.`,
+    "",
+    link,
+    "",
+    "If you weren't expecting this invitation, you can safely ignore this email.",
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `You're invited to ${args.orgName} — Synozur Galaxy`,
+    html,
+    text,
+  });
+}
+
 export async function sendPasswordReset(args: {
   to: string;
   name: string | null;

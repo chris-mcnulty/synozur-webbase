@@ -33,6 +33,7 @@ const ALL_ROLES = [
   "customer",
   "client",
   "registered",
+  "account_manager",
 ] as const;
 type AssignableRole = (typeof ALL_ROLES)[number];
 

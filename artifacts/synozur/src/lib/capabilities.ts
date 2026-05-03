@@ -16,6 +16,7 @@ export const CAPABILITIES = [
   "site.manage",
   "ai.grounding.manage",
   "oauth.manage",
+  "client_orgs.manage",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

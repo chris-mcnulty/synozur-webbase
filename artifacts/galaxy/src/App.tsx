@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import Documents from "@/pages/documents";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
+import AcceptInvitePage from "@/pages/accept-invite";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,7 @@ function Gated({ children }: { children: React.ReactNode }) {
 function AppRouter() {
   return (
     <Switch>
+      <Route path="/accept-invite" component={AcceptInvitePage} />
       <Route path="/">
         <Gated><Home /></Gated>
       </Route>

@@ -1515,7 +1515,7 @@ export async function runMigrations(): Promise<void> {
         ON engagements (status);
     `);
 
-    // #227 — Galaxy deliverables document browser
+    // 45. #227 — Galaxy deliverables document browser
     // -----------------------------------------------------------
     // engagements gains an optional spe_path so the document
     // indexer knows which folder inside the active SPE container
@@ -1562,6 +1562,58 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS portal_documents_engagement_published_idx
         ON portal_documents (engagement_id, published_at);
+    `);
+
+    // 46. #225 — client-org admin: add account_manager role, client_orgs.manage
+    //     capability, and client_org_invitations table.
+    await db.execute(sql`
+      INSERT INTO roles (name, description) VALUES
+        ('account_manager', 'Audience class: client-org admin who can onboard and invite client users (#225)')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('client_orgs.manage', 'Manage client organizations, their members, and invitations (#225).')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',           'client_orgs.manage'),
+          ('site_admin',      'client_orgs.manage'),
+          ('account_manager', 'client_orgs.manage')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS client_org_invitations (
+        token text PRIMARY KEY,
+        client_organization_id uuid NOT NULL REFERENCES client_organizations(id) ON DELETE CASCADE,
+        email text NOT NULL,
+        invited_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invited_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        role text NOT NULL DEFAULT 'member',
+        expires_at timestamptz NOT NULL,
+        used_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS client_org_invitations_org_idx
+        ON client_org_invitations (client_organization_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS client_org_invitations_email_idx
+        ON client_org_invitations (email);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS client_org_invitations_expires_idx
+        ON client_org_invitations (expires_at);
     `);
 
     logger.info("Startup migrations complete");

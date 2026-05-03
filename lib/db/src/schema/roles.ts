@@ -36,6 +36,9 @@ export const ROLE_NAMES = [
   "internal",
   "customer",
   "registered",
+  // #225 — account managers can manage their client organizations and
+  // invite client users without requiring full admin.
+  "account_manager",
 ] as const;
 export type RoleName = (typeof ROLE_NAMES)[number];
 

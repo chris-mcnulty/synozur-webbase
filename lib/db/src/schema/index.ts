@@ -1,6 +1,7 @@
 export * from "./_artifactBase";
 export * from "./clientOrganizations";
 export * from "./clientOrganizationUsers";
+export * from "./clientOrgInvitations";
 export * from "./engagements";
 export * from "./portalDocuments";
 export * from "./events";
