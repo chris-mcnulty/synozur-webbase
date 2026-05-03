@@ -171,6 +171,8 @@ function SiteHealthDashboard({ snapshot }: { snapshot: SiteHealthSnapshot }) {
         windowDays={snapshot.windowDays}
       />
 
+      <AiChatUsageCard data={snapshot.aiChat} windowDays={snapshot.windowDays} />
+
       <CwvTable rows={snapshot.cwv} windowDays={snapshot.windowDays} />
 
       {snapshot.redirects.chains.length > 0 && (
@@ -361,6 +363,104 @@ function AiPromptCacheCard({
           </TableBody>
         </Table>
       )}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI chat token spend (#166). Bar-style chart of input+output tokens per
+// day with a horizontal reference line at the configured global cap, plus
+// today's spend vs caps.
+// ---------------------------------------------------------------------------
+
+function AiChatUsageCard({
+  data,
+  windowDays,
+}: {
+  data: SiteHealthSnapshot["aiChat"];
+  windowDays: number;
+}) {
+  const todayTotal = data.today.inputTokens + data.today.outputTokens;
+  const cap = data.dailyCapGlobal;
+  const pct = cap > 0 ? Math.min(100, (todayTotal / cap) * 100) : 0;
+  const peak = Math.max(
+    cap,
+    ...data.days.map((d) => d.inputTokens + d.outputTokens),
+    1,
+  );
+  const fmt = (n: number) => n.toLocaleString();
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-4 py-3 border-b border-border">
+        <div className="text-sm font-semibold flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5 text-cyan-300" />
+          AI chat token spend ({windowDays === 1 ? "last 24h" : `last ${windowDays} days`})
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Daily totals across all sessions and IPs. Chart sums input + output tokens per UTC day.
+        </div>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div>
+            <div className="text-muted-foreground">Today</div>
+            <div className="text-lg font-semibold mt-1">{fmt(todayTotal)} tokens</div>
+            <div className="text-muted-foreground mt-0.5">
+              {fmt(data.today.callCount)} calls · {pct.toFixed(1)}% of global cap
+            </div>
+          </div>
+          <div>
+            <div className="text-muted-foreground">Per-session daily cap</div>
+            <div className="text-lg font-semibold mt-1">{fmt(data.dailyCapPerSession)}</div>
+            <div className="text-muted-foreground mt-0.5">tokens / session / day</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground">Global daily cap</div>
+            <div className="text-lg font-semibold mt-1">{fmt(data.dailyCapGlobal)}</div>
+            <div className="text-muted-foreground mt-0.5">tokens / day across the fleet</div>
+          </div>
+        </div>
+        {data.days.length === 0 ? (
+          <div className="text-xs text-muted-foreground py-6 text-center">
+            No AI chat usage recorded in this window.
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {data.days.map((d) => {
+              const total = d.inputTokens + d.outputTokens;
+              const widthPct = peak > 0 ? (total / peak) * 100 : 0;
+              const overCap = cap > 0 && total >= cap;
+              return (
+                <div
+                  key={d.day}
+                  className="flex items-center gap-3 text-xs"
+                  data-testid={`row-ai-chat-usage-${d.day}`}
+                >
+                  <div className="w-20 text-muted-foreground tabular-nums">{d.day}</div>
+                  <div className="flex-1 bg-muted/40 rounded h-4 relative overflow-hidden">
+                    <div
+                      className={`h-full ${overCap ? "bg-destructive/60" : "bg-cyan-500/60"}`}
+                      style={{ width: `${widthPct}%` }}
+                    />
+                    {cap > 0 && cap < peak && (
+                      <div
+                        className="absolute top-0 bottom-0 border-l border-amber-400/70"
+                        style={{ left: `${(cap / peak) * 100}%` }}
+                        title="Global cap"
+                      />
+                    )}
+                  </div>
+                  <div className="w-32 text-right tabular-nums">
+                    {fmt(total)}
+                    <span className="text-muted-foreground ml-1">/ {fmt(d.callCount)}c</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

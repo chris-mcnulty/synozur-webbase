@@ -49,6 +49,8 @@ export * from "./editorialChunks";
 export * from "./insightsQuestions";
 export * from "./conversations";
 export * from "./messages";
+export * from "./aiChatSessions";
+export * from "./aiChatTokenUsage";
 export * from "./portalArtifacts";
 export * from "./careers";
 export * from "./subscribers";

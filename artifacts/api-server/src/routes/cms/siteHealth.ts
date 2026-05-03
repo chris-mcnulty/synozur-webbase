@@ -9,6 +9,7 @@ import {
   aiChatTokenUsageTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
+import { summariseTokenUsage } from "../../lib/aiChatSession";
 
 const router: IRouter = Router();
 
@@ -335,6 +336,12 @@ router.get(
             }
           : { severity: "ok" as const, message: null }
         : { severity: "insufficient-data" as const, message: null };
+    // ---------------------------------------------------------------------
+    // AI chat token spend (#166). Aggregates the global-scope rows from
+    // `ai_chat_token_usage` for the same window and surfaces the active
+    // caps so admins can see how close we are to the daily ceiling.
+    // ---------------------------------------------------------------------
+    const aiUsage = await summariseTokenUsage(windowDays);
 
     res.json({
       generatedAt: new Date().toISOString(),
@@ -363,6 +370,12 @@ router.get(
           hitRate: ALERT_THRESHOLD,
           minRequests: ALERT_MIN_REQUESTS,
         },
+      },
+      aiChat: {
+        dailyCapPerSession: aiUsage.caps.perScope,
+        dailyCapGlobal: aiUsage.caps.global,
+        today: aiUsage.today,
+        days: aiUsage.days,
       },
     });
   },

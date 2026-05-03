@@ -3894,6 +3894,27 @@ export const CmsGetSiteHealthResponse = zod.object({
       minRequests: zod.number(),
     }),
   }),
+  aiChat: zod
+    .object({
+      dailyCapPerSession: zod.number(),
+      dailyCapGlobal: zod.number(),
+      today: zod.object({
+        inputTokens: zod.number(),
+        outputTokens: zod.number(),
+        callCount: zod.number(),
+      }),
+      days: zod.array(
+        zod.object({
+          day: zod.coerce.date(),
+          inputTokens: zod.number(),
+          outputTokens: zod.number(),
+          callCount: zod.number(),
+        }),
+      ),
+    })
+    .describe(
+      "Daily-rollup token spend for `\/ai\/chat`, plus the active per-session and global caps. Only the global scope is surfaced on the dashboard; the per-session and per-IP scopes drive enforcement only.",
+    ),
 });
 
 /**

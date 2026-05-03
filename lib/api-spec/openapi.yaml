@@ -7923,6 +7923,7 @@ components:
         - altText
         - redirects
         - aiPromptCache
+        - aiChat
       properties:
         generatedAt:
           type: string
@@ -7939,6 +7940,58 @@ components:
           $ref: '#/components/schemas/SiteHealthRedirects'
         aiPromptCache:
           $ref: '#/components/schemas/SiteHealthAiPromptCache'
+        aiChat:
+          $ref: '#/components/schemas/SiteHealthAiChat'
+    SiteHealthAiChat:
+      description: >-
+        Daily-rollup token spend for `/ai/chat`, plus the active per-session
+        and global caps. Only the global scope is surfaced on the dashboard;
+        the per-session and per-IP scopes drive enforcement only.
+      type: object
+      required:
+        - dailyCapPerSession
+        - dailyCapGlobal
+        - today
+        - days
+      properties:
+        dailyCapPerSession:
+          type: integer
+        dailyCapGlobal:
+          type: integer
+        today:
+          type: object
+          required:
+            - inputTokens
+            - outputTokens
+            - callCount
+          properties:
+            inputTokens:
+              type: integer
+            outputTokens:
+              type: integer
+            callCount:
+              type: integer
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteHealthAiChatDay'
+    SiteHealthAiChatDay:
+      type: object
+      required:
+        - day
+        - inputTokens
+        - outputTokens
+        - callCount
+      properties:
+        day:
+          type: string
+          format: date
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        callCount:
+          type: integer
     PublishBlock:
       type: object
       required:

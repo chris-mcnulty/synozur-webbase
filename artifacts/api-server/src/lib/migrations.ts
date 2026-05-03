@@ -1759,7 +1759,9 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (slug) DO NOTHING;
     `);
 
-    // #167 — ai_chat_token_usage rollup table.
+    // #167 — prompt-cache rollup table (renamed from `ai_chat_token_usage`
+    // to `ai_chat_prompt_cache_usage` during the #166 rebase to make room
+    // for the budget-enforcement table created later in this migration).
     //
     // Daily rollup of /ai/chat token usage so the Site Health dashboard
     // can chart prompt-cache hit rate, dollar savings, and page on-call
@@ -1771,8 +1773,33 @@ export async function runMigrations(): Promise<void> {
     // grounding corpus, and we don't want the Site Health writer to
     // need to think about overflow. requestCount stays integer because
     // /ai/chat is rate-limited well below 2^31 hits/day.
+    //
+    // Forward-rename: if a previous deploy created the legacy
+    // `ai_chat_token_usage` table with the rollup schema (id text PK +
+    // utc_day + model), rename it now so the budget-enforcement table
+    // below can claim the original name. Detected by the presence of the
+    // `utc_day` column, which only exists in the rollup variant.
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS ai_chat_token_usage (
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'ai_chat_token_usage'
+            AND column_name = 'utc_day'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_name = 'ai_chat_prompt_cache_usage'
+        ) THEN
+          ALTER TABLE ai_chat_token_usage RENAME TO ai_chat_prompt_cache_usage;
+          ALTER INDEX IF EXISTS ai_chat_token_usage_day_model_idx
+            RENAME TO ai_chat_prompt_cache_usage_day_model_idx;
+          ALTER INDEX IF EXISTS ai_chat_token_usage_last_seen_idx
+            RENAME TO ai_chat_prompt_cache_usage_last_seen_idx;
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_chat_prompt_cache_usage (
         id text PRIMARY KEY,
         utc_day date NOT NULL,
         model text NOT NULL,
@@ -1787,12 +1814,12 @@ export async function runMigrations(): Promise<void> {
       );
     `);
     await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS ai_chat_token_usage_day_model_idx
-        ON ai_chat_token_usage (utc_day, model);
+      CREATE UNIQUE INDEX IF NOT EXISTS ai_chat_prompt_cache_usage_day_model_idx
+        ON ai_chat_prompt_cache_usage (utc_day, model);
     `);
     await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS ai_chat_token_usage_last_seen_idx
-        ON ai_chat_token_usage (last_seen_at);
+      CREATE INDEX IF NOT EXISTS ai_chat_prompt_cache_usage_last_seen_idx
+        ON ai_chat_prompt_cache_usage (last_seen_at);
     `);
 
     // #254 — SEO unpublish-submission audit table. Records per-channel
@@ -1977,6 +2004,214 @@ export async function runMigrations(): Promise<void> {
       ALTER TABLE site_settings
         ADD COLUMN IF NOT EXISTS audit_log_retention_days integer NOT NULL DEFAULT 365;
     `);
+
+    // ------------------------------------------------------------------
+    // #166 — Lock down /ai/chat
+    // ------------------------------------------------------------------
+    // 1. Install a portable UUIDv7 generator. Postgres 18 ships uuidv7()
+    //    natively but we still target older majors, so we define our own
+    //    plpgsql function (timestamp-prefixed; sortable; collision-safe).
+    //    CREATE OR REPLACE is idempotent so re-running is harmless.
+    await db.execute(sql`
+      CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid AS $func$
+      DECLARE
+        unix_ts_ms bytea;
+        uuid_bytes bytea;
+      BEGIN
+        unix_ts_ms := substring(
+          int8send((extract(epoch from clock_timestamp()) * 1000)::bigint)
+          from 3
+        );
+        uuid_bytes := unix_ts_ms || gen_random_bytes(10);
+        -- Set version (7) in the high nibble of byte 6.
+        uuid_bytes := set_byte(uuid_bytes, 6, (112 | (get_byte(uuid_bytes, 6) & 15)));
+        -- Set RFC 4122 variant in the high two bits of byte 8.
+        uuid_bytes := set_byte(uuid_bytes, 8, (128 | (get_byte(uuid_bytes, 8) & 63)));
+        RETURN encode(uuid_bytes, 'hex')::uuid;
+      END;
+      $func$ LANGUAGE plpgsql VOLATILE;
+    `);
+
+    // 2. Create the new auxiliary tables first — the conversations
+    //    backfill below references ai_chat_sessions for its sentinel row.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+        id uuid PRIMARY KEY DEFAULT uuidv7(),
+        token_hash text NOT NULL UNIQUE,
+        ip_at_creation text,
+        user_agent text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz NOT NULL,
+        revoked_at timestamptz
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS ai_chat_sessions_expires_idx
+        ON ai_chat_sessions (expires_at);
+    `);
+
+    // Budget-enforcement rollup. Distinct from the prompt-cache rollup
+    // (`ai_chat_prompt_cache_usage`) above: this one is keyed by
+    // (day, scope_type, scope_id) so the route can short-circuit before
+    // the upstream Anthropic call when a session/IP/global daily cap is hit.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_chat_token_usage (
+        day date NOT NULL,
+        scope_type text NOT NULL,
+        scope_id text NOT NULL,
+        input_tokens integer NOT NULL DEFAULT 0,
+        output_tokens integer NOT NULL DEFAULT 0,
+        cache_read_tokens integer NOT NULL DEFAULT 0,
+        cache_creation_tokens integer NOT NULL DEFAULT 0,
+        call_count integer NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS ai_chat_token_usage_pk
+        ON ai_chat_token_usage (day, scope_type, scope_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS ai_chat_token_usage_day_idx
+        ON ai_chat_token_usage (day);
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS ai_chat_daily_token_cap_per_session integer,
+        ADD COLUMN IF NOT EXISTS ai_chat_daily_token_cap_global integer;
+    `);
+
+    // 3. Migrate conversations + messages from integer-serial PKs to
+    //    UUIDv7 PKs while *preserving* every existing row. Existing rows
+    //    have no recoverable owner (the pre-#166 schema didn't track
+    //    one), so we stamp them onto a single sentinel ai_chat_sessions
+    //    row whose token_hash is non-resolvable and whose revoked_at is
+    //    set in the past — meaning the rows are owned (passing the ACL
+    //    NOT NULL invariant) but unreachable by any real caller.
+    await db.execute(sql`
+      DO $mig$
+      DECLARE
+        legacy_session uuid;
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'conversations'
+            AND column_name = 'id'
+            AND data_type = 'integer'
+        ) THEN
+          INSERT INTO ai_chat_sessions
+            (token_hash, ip_at_creation, user_agent, expires_at, revoked_at)
+          VALUES (
+            'legacy-pre-166-backfill-sentinel',
+            NULL,
+            'legacy-pre-166-backfill',
+            now() + interval '100 years',
+            now()
+          )
+          ON CONFLICT (token_hash) DO UPDATE
+            SET token_hash = EXCLUDED.token_hash
+          RETURNING id INTO legacy_session;
+
+          ALTER TABLE conversations
+            ADD COLUMN IF NOT EXISTS id_uuid uuid NOT NULL DEFAULT uuidv7(),
+            ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS owner_session_id uuid;
+
+          UPDATE conversations
+             SET owner_session_id = legacy_session
+             WHERE owner_session_id IS NULL AND owner_user_id IS NULL;
+
+          ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS conversation_id_uuid uuid,
+            ADD COLUMN IF NOT EXISTS input_tokens integer,
+            ADD COLUMN IF NOT EXISTS output_tokens integer,
+            ADD COLUMN IF NOT EXISTS cache_read_tokens integer,
+            ADD COLUMN IF NOT EXISTS cache_creation_tokens integer;
+
+          UPDATE messages m
+             SET conversation_id_uuid = c.id_uuid
+             FROM conversations c
+             WHERE m.conversation_id_uuid IS NULL
+               AND m.conversation_id = c.id;
+
+          ALTER TABLE messages
+            DROP CONSTRAINT IF EXISTS messages_conversation_id_fkey;
+          ALTER TABLE messages DROP COLUMN conversation_id;
+          ALTER TABLE messages RENAME COLUMN conversation_id_uuid TO conversation_id;
+          ALTER TABLE messages ALTER COLUMN conversation_id SET NOT NULL;
+
+          ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_pkey;
+          ALTER TABLE messages DROP COLUMN id;
+          ALTER TABLE messages
+            ADD COLUMN id uuid PRIMARY KEY DEFAULT uuidv7();
+
+          ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_pkey;
+          ALTER TABLE conversations DROP COLUMN id;
+          ALTER TABLE conversations RENAME COLUMN id_uuid TO id;
+          ALTER TABLE conversations ALTER COLUMN id SET DEFAULT uuidv7();
+          ALTER TABLE conversations ADD PRIMARY KEY (id);
+
+          ALTER TABLE messages
+            ADD CONSTRAINT messages_conversation_id_fkey
+            FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
+        END IF;
+      END $mig$;
+    `);
+
+    // 4. Fresh-install path: if conversations doesn't exist yet at all
+    //    (a brand-new database), create it and messages directly with
+    //    the UUIDv7 schema.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id uuid PRIMARY KEY DEFAULT uuidv7(),
+        title text NOT NULL,
+        owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        owner_session_id uuid,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversations_owner_user_idx
+        ON conversations (owner_user_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversations_owner_session_idx
+        ON conversations (owner_session_id);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS messages (
+        id uuid PRIMARY KEY DEFAULT uuidv7(),
+        conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        role text NOT NULL,
+        content text NOT NULL,
+        input_tokens integer,
+        output_tokens integer,
+        cache_read_tokens integer,
+        cache_creation_tokens integer,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS messages_conversation_idx
+        ON messages (conversation_id, created_at);
+    `);
+    // Idempotent column adds for environments that already have a uuid
+    // conversations/messages schema but missed any of the new columns.
+    await db.execute(sql`
+      ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS input_tokens integer,
+        ADD COLUMN IF NOT EXISTS output_tokens integer,
+        ADD COLUMN IF NOT EXISTS cache_read_tokens integer,
+        ADD COLUMN IF NOT EXISTS cache_creation_tokens integer;
+    `);
+    await db.execute(sql`
+      ALTER TABLE conversations
+        ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS owner_session_id uuid;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

@@ -208,6 +208,12 @@ export const siteSettingsTable = pgTable("site_settings", {
   // are exempt (5-year retention regardless) — see scheduler.ts.
   auditLogRetentionDays: integer("audit_log_retention_days").notNull().default(365),
 
+  // #166 — AI chat token-budget caps. Null means "use the hard-coded default"
+  // in `lib/aiChatBudget.ts` (50k per session/IP, 5M global). Editable from
+  // the admin Site Health page so on-call can tighten limits without a deploy.
+  aiChatDailyTokenCapPerSession: integer("ai_chat_daily_token_cap_per_session"),
+  aiChatDailyTokenCapGlobal: integer("ai_chat_daily_token_cap_global"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

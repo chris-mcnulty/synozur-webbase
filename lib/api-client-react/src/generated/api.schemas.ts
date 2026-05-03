@@ -2406,6 +2406,29 @@ export interface SiteHealthAiPromptCache {
   thresholds: SiteHealthAiPromptCacheThresholds;
 }
 
+export interface SiteHealthAiChatDay {
+  day: string;
+  inputTokens: number;
+  outputTokens: number;
+  callCount: number;
+}
+
+export type SiteHealthAiChatToday = {
+  inputTokens: number;
+  outputTokens: number;
+  callCount: number;
+};
+
+/**
+ * Daily-rollup token spend for `/ai/chat`, plus the active per-session and global caps. Only the global scope is surfaced on the dashboard; the per-session and per-IP scopes drive enforcement only.
+ */
+export interface SiteHealthAiChat {
+  dailyCapPerSession: number;
+  dailyCapGlobal: number;
+  today: SiteHealthAiChatToday;
+  days: SiteHealthAiChatDay[];
+}
+
 export interface SiteHealthSnapshot {
   generatedAt: string;
   windowDays: number;
@@ -2413,6 +2436,7 @@ export interface SiteHealthSnapshot {
   altText: SiteHealthAltCoverage;
   redirects: SiteHealthRedirects;
   aiPromptCache: SiteHealthAiPromptCache;
+  aiChat: SiteHealthAiChat;
 }
 
 /**
