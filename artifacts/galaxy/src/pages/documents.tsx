@@ -4,7 +4,9 @@ import {
   useListPortalDocuments,
   listPortalDocuments,
   useGetPortalMe,
+  useListPortalDocumentVersions,
   type PortalDocument,
+  type PortalDocumentVersion,
   type PortalForbiddenReason,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +78,16 @@ function downloadUrl(id: string, inline = false): string {
   // Path-routed via the shared proxy — same origin as the Galaxy SPA, so
   // the api-server's session cookie travels with the request.
   return `/api/portal/documents/${id}/content${inline ? "?inline=1" : ""}`;
+}
+
+function versionDownloadUrl(
+  id: string,
+  versionId: string,
+  inline = false,
+): string {
+  return `/api/portal/documents/${id}/versions/${encodeURIComponent(
+    versionId,
+  )}/content${inline ? "?inline=1" : ""}`;
 }
 
 export default function Documents() {
@@ -349,14 +361,30 @@ export default function Documents() {
                                   {formatBytes(d.sizeBytes)}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  <a
-                                    href={downloadUrl(d.id)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="text-sm text-primary hover:underline"
-                                    data-testid={`download-${d.id}`}
-                                  >
-                                    Download
-                                  </a>
+                                  <div className="flex items-center justify-end gap-3">
+                                    {!d.historyHidden && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenDoc(d);
+                                        }}
+                                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                                        data-testid={`history-${d.id}`}
+                                        title="View version history"
+                                      >
+                                        History
+                                      </button>
+                                    )}
+                                    <a
+                                      href={downloadUrl(d.id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-sm text-primary hover:underline"
+                                      data-testid={`download-${d.id}`}
+                                    >
+                                      Download
+                                    </a>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -392,12 +420,100 @@ export default function Documents() {
                   </Button>
                   <Badge variant="secondary">{openDoc.contentType || "file"}</Badge>
                 </div>
+                <DocVersionHistory doc={openDoc} />
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+function DocVersionHistory({ doc }: { doc: PortalDocument }) {
+  const versionsQuery = useListPortalDocumentVersions(doc.id);
+  if (doc.historyHidden) {
+    // Admins can hide history per document. Don't render the section
+    // at all in that case — surfacing a "history hidden" notice would
+    // leak the existence of prior versions to the customer.
+    return null;
+  }
+  const items: PortalDocumentVersion[] = versionsQuery.data?.items ?? [];
+  // The newest entry from Graph mirrors the live driveItem, which the
+  // primary Download button already targets. Hide it from the version
+  // list so customers see only true "prior versions" of the deliverable.
+  const priorVersions = items.filter((v) => !v.isCurrent);
+
+  return (
+    <Card data-testid={`version-history-${doc.id}`}>
+      <CardContent className="p-5 space-y-3">
+        <div>
+          <p className="font-medium">Version history</p>
+          <p className="text-xs text-muted-foreground">
+            Earlier revisions retained by SharePoint, newest first.
+          </p>
+        </div>
+        {versionsQuery.isLoading ? (
+          <Skeleton className="h-12 w-full" />
+        ) : versionsQuery.error ? (
+          <p className="text-sm text-muted-foreground">
+            Could not load version history.
+          </p>
+        ) : priorVersions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No prior versions yet — this is the first revision.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border text-sm">
+            {priorVersions.map((v) => (
+              <li
+                key={v.versionId}
+                className="flex items-center justify-between gap-3 py-2"
+                data-testid={`version-row-${doc.id}-${v.versionId}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate">
+                    Version {v.versionId}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(v.lastModifiedAt)}
+                    {v.modifiedByDisplayName
+                      ? ` · ${v.modifiedByDisplayName}`
+                      : ""}
+                    {v.sizeBytes ? ` · ${formatBytes(v.sizeBytes)}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {/*
+                    Stream the historical version inline. PDFs/images render
+                    in the new tab; Office files (docx/xlsx/pptx) hand off to
+                    the OS-installed handler, which is the historical
+                    equivalent of the live driveItem preview (Graph's
+                    `driveItem:/preview` action does not accept a versionId).
+                  */}
+                  <a
+                    href={versionDownloadUrl(doc.id, v.versionId, true)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    data-testid={`version-preview-${doc.id}-${v.versionId}`}
+                  >
+                    Preview
+                  </a>
+                  <a
+                    href={versionDownloadUrl(doc.id, v.versionId)}
+                    className="text-sm text-primary hover:underline"
+                    data-testid={`version-download-${doc.id}-${v.versionId}`}
+                  >
+                    Download
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

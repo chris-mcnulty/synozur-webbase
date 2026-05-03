@@ -32,6 +32,7 @@ interface AdminDoc {
   publishedBy: string | null;
   indexedAt: string;
   deletedAt: string | null;
+  hideHistoryFromCustomer: boolean;
 }
 
 interface EngagementDocs {
@@ -178,6 +179,30 @@ export default function EngagementDocumentsPage() {
     }
   }
 
+  async function toggleHideHistory(doc: AdminDoc) {
+    if (!selected) return;
+    const next = !doc.hideHistoryFromCustomer;
+    try {
+      await apiFetch<void>(`/admin/portal-documents/${doc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ hideHistoryFromCustomer: next }),
+      });
+      toast({
+        title: next
+          ? "Version history hidden from customer"
+          : "Version history visible to customer",
+      });
+      await loadDocs(selected.id);
+    } catch (e) {
+      const err = e as Error;
+      toast({
+        title: "Update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -315,15 +340,33 @@ export default function EngagementDocumentsPage() {
                               )}
                             </td>
                             <td className="py-2 text-right">
-                              <Button
-                                size="sm"
-                                variant={d.publishedAt ? "outline" : "default"}
-                                disabled={!!d.deletedAt}
-                                onClick={() => togglePublish(d)}
-                                data-testid={`toggle-publish-${d.id}`}
-                              >
-                                {d.publishedAt ? "Unpublish" : "Publish"}
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={!!d.deletedAt || !d.publishedAt}
+                                  onClick={() => toggleHideHistory(d)}
+                                  data-testid={`toggle-hide-history-${d.id}`}
+                                  title={
+                                    d.hideHistoryFromCustomer
+                                      ? "Customers cannot see prior versions. Click to reveal."
+                                      : "Customers can see prior versions. Click to hide."
+                                  }
+                                >
+                                  {d.hideHistoryFromCustomer
+                                    ? "Reveal history"
+                                    : "Hide history"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={d.publishedAt ? "outline" : "default"}
+                                  disabled={!!d.deletedAt}
+                                  onClick={() => togglePublish(d)}
+                                  data-testid={`toggle-publish-${d.id}`}
+                                >
+                                  {d.publishedAt ? "Unpublish" : "Publish"}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}

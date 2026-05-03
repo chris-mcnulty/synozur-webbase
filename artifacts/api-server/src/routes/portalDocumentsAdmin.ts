@@ -131,6 +131,7 @@ router.get(
         publishedBy: r.publishedBy,
         indexedAt: r.indexedAt.toISOString(),
         deletedAt: r.deletedAt ? r.deletedAt.toISOString() : null,
+        hideHistoryFromCustomer: r.hideHistoryFromCustomer,
       })),
     });
   },
@@ -166,6 +167,56 @@ router.post(
         error: err instanceof Error ? err.message : "Reindex failed",
       });
     }
+  },
+);
+
+// PATCH /api/admin/portal-documents/:id — admin-only updates to per-document
+// flags. Today only `hideHistoryFromCustomer` is editable; the field name is
+// in the body so the same surface can grow as we add more controls (e.g. a
+// per-version allowlist) without churning the route.
+const PatchPortalDocumentBody = z.object({
+  hideHistoryFromCustomer: z.boolean().optional(),
+});
+router.patch(
+  "/admin/portal-documents/:id",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = PatchPortalDocumentBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const id: string = req.params["id"] as string;
+    const before = await db.query.portalDocumentsTable.findFirst({
+      where: eq(portalDocumentsTable.id, id),
+    });
+    if (!before) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const patch: Record<string, unknown> = {};
+    if (parsed.data.hideHistoryFromCustomer != null) {
+      patch["hideHistoryFromCustomer"] = parsed.data.hideHistoryFromCustomer;
+    }
+    if (Object.keys(patch).length === 0) {
+      res.status(204).send();
+      return;
+    }
+    await db
+      .update(portalDocumentsTable)
+      .set(patch)
+      .where(eq(portalDocumentsTable.id, id));
+    await audit({
+      actorId: req.admin!.userId,
+      action: "portal_document.update",
+      entity: "portal_document",
+      entityId: id,
+      diff: {
+        before: { hideHistoryFromCustomer: before.hideHistoryFromCustomer },
+        after: parsed.data,
+      },
+    });
+    res.status(204).send();
   },
 );
 

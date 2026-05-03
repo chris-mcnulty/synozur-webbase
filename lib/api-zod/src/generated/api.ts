@@ -4740,6 +4740,12 @@ export const ListPortalDocumentsResponse = zod.object({
         .describe(
           "True when the document has an in-browser viewer available via GET \/portal\/documents\/{id}\/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.",
         ),
+      historyHidden: zod
+        .boolean()
+        .optional()
+        .describe(
+          "True when the admin has hidden version history from the customer. The \/versions endpoint will return an empty list and per-version downloads will 404.",
+        ),
     }),
   ),
   page: zod.number(),
@@ -4769,6 +4775,12 @@ export const GetPortalDocumentResponse = zod.object({
     .describe(
       "True when the document has an in-browser viewer available via GET \/portal\/documents\/{id}\/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.",
     ),
+  historyHidden: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when the admin has hidden version history from the customer. The \/versions endpoint will return an empty list and per-version downloads will 404.",
+    ),
 });
 
 /**
@@ -4779,6 +4791,48 @@ export const DownloadPortalDocumentParams = zod.object({
 });
 
 export const DownloadPortalDocumentQueryParams = zod.object({
+  inline: zod.enum(["0", "1", "true", "false"]).optional(),
+});
+
+/**
+ * Returns historical versions of the document, newest first. The newest entry
+corresponds to the current driveItem and is flagged with `isCurrent: true`.
+When the admin has toggled `hideHistoryFromCustomer` on, this endpoint
+returns an empty list (no 403) so the UI can quietly hide the affordance.
+
+ * @summary Prior versions of a deliverable retained by SharePoint Embedded.
+ */
+export const ListPortalDocumentVersionsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListPortalDocumentVersionsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      versionId: zod
+        .string()
+        .describe(
+          'SharePoint Embedded version label (e.g. \"1.0\", \"2.0\"). Pass to the per-version download endpoint as `{versionId}`.',
+        ),
+      lastModifiedAt: zod.coerce.date().nullish(),
+      sizeBytes: zod.number(),
+      modifiedByDisplayName: zod.string().nullish(),
+      isCurrent: zod
+        .boolean()
+        .describe("True for the version that matches the live driveItem."),
+    }),
+  ),
+});
+
+/**
+ * @summary Stream the bytes of a specific historical version.
+ */
+export const DownloadPortalDocumentVersionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  versionId: zod.coerce.string(),
+});
+
+export const DownloadPortalDocumentVersionQueryParams = zod.object({
   inline: zod.enum(["0", "1", "true", "false"]).optional(),
 });
 

@@ -490,6 +490,48 @@ export class SpeGraphClient {
     return toSpeFileItem(item);
   }
 
+  // #243 — List historical versions of a driveItem. SharePoint Embedded
+  // retains versions natively per its versioning policy; each entry has
+  // a label (e.g. "1.0", "2.0", "3.0"), the timestamp it was committed,
+  // its byte size, and (when populated) the displayName of the user who
+  // committed it. The newest entry corresponds to the current driveItem
+  // and shares its size/lastModified.
+  async listItemVersions(
+    containerId: string,
+    itemId: string,
+  ): Promise<RawDriveItemVersion[]> {
+    const driveId = await this.getContainerDriveId(containerId);
+    let url: string =
+      `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/versions` +
+      `?$select=id,lastModifiedDateTime,size,lastModifiedBy`;
+    const out: RawDriveItemVersion[] = [];
+    while (url) {
+      const page = await this.request<{
+        value: RawDriveItemVersion[];
+        "@odata.nextLink"?: string;
+      }>(url);
+      for (const v of page.value ?? []) out.push(v);
+      url = page["@odata.nextLink"] ?? "";
+    }
+    return out;
+  }
+
+  // #243 — Stream the bytes for one historical version. Graph exposes
+  // `/versions/{versionId}/content` with the same shape as the live
+  // item's content endpoint.
+  async downloadItemVersion(
+    containerId: string,
+    itemId: string,
+    versionId: string,
+  ): Promise<Response> {
+    const driveId = await this.getContainerDriveId(containerId);
+    return this.requestRaw(
+      `${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/versions/${encodeURIComponent(
+        versionId,
+      )}/content`,
+    );
+  }
+
   async deleteItem(containerId: string, itemId: string): Promise<void> {
     const driveId = await this.getContainerDriveId(containerId);
     await this.request<void>(`${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}`, {
@@ -698,6 +740,16 @@ export class SpeGraphClient {
   v1Url(path: string): string {
     return `${GRAPH_V1_URL}${path}`;
   }
+}
+
+// Microsoft Graph `driveItemVersion` shape (subset we use).
+export interface RawDriveItemVersion {
+  id: string;
+  lastModifiedDateTime?: string;
+  size?: number;
+  lastModifiedBy?: {
+    user?: { displayName?: string; email?: string; id?: string };
+  };
 }
 
 interface RawDriveItem {

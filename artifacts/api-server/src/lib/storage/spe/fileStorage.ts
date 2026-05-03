@@ -187,6 +187,23 @@ export class SpeFileStorage {
     return out;
   }
 
+  // #243 — Versions API. Both helpers default to the active container
+  // since portal documents are always in the current SPE container —
+  // the override exists for symmetry with the rest of this class.
+  async listVersions(itemId: string, containerIdOverride?: string) {
+    const containerId = containerIdOverride ?? (await this.resolveContainerId());
+    return this.getGraph().listItemVersions(containerId, itemId);
+  }
+
+  async getFileVersion(
+    itemId: string,
+    versionId: string,
+    containerIdOverride?: string,
+  ): Promise<Response> {
+    const containerId = containerIdOverride ?? (await this.resolveContainerId());
+    return this.getGraph().downloadItemVersion(containerId, itemId, versionId);
+  }
+
   async getMetadata(itemId: string, containerIdOverride?: string): Promise<SpeFileItem> {
     const containerId = containerIdOverride ?? (await this.resolveContainerId());
     return this.getGraph().getItem(containerId, itemId);

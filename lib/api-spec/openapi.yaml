@@ -3387,6 +3387,82 @@ paths:
                 $ref: '#/components/schemas/PortalForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /portal/documents/{id}/versions:
+    get:
+      operationId: listPortalDocumentVersions
+      tags:
+        - Portal
+      summary: Prior versions of a deliverable retained by SharePoint Embedded.
+      description: |
+        Returns historical versions of the document, newest first. The newest entry
+        corresponds to the current driveItem and is flagged with `isCurrent: true`.
+        When the admin has toggled `hideHistoryFromCustomer` on, this endpoint
+        returns an empty list (no 403) so the UI can quietly hide the affordance.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Version history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalDocumentVersionList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /portal/documents/{id}/versions/{versionId}/content:
+    get:
+      operationId: downloadPortalDocumentVersion
+      tags:
+        - Portal
+      summary: Stream the bytes of a specific historical version.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: versionId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: inline
+          schema:
+            type: string
+            enum: ['0', '1', 'true', 'false']
+      responses:
+        '200':
+          description: File bytes for the requested version
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated user is not a customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /portal/documents/{id}/preview:
     get:
       operationId: previewPortalDocument
@@ -3894,6 +3970,41 @@ components:
         hasPreview:
           type: boolean
           description: True when the document has an in-browser viewer available via GET /portal/documents/{id}/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl.
+        historyHidden:
+          type: boolean
+          description: True when the admin has hidden version history from the customer. The /versions endpoint will return an empty list and per-version downloads will 404.
+    PortalDocumentVersion:
+      type: object
+      required:
+        - versionId
+        - sizeBytes
+        - isCurrent
+      properties:
+        versionId:
+          type: string
+          description: SharePoint Embedded version label (e.g. "1.0", "2.0"). Pass to the per-version download endpoint as `{versionId}`.
+        lastModifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sizeBytes:
+          type: integer
+          format: int64
+        modifiedByDisplayName:
+          type: string
+          nullable: true
+        isCurrent:
+          type: boolean
+          description: True for the version that matches the live driveItem.
+    PortalDocumentVersionList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortalDocumentVersion'
     PortalDocumentList:
       type: object
       required:

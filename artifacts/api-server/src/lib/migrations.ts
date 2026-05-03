@@ -2552,6 +2552,14 @@ export async function runMigrations(): Promise<void> {
           AND deleted_at IS NULL;
     `);
 
+    // #243 — portal_documents: per-document toggle so admins can hide the
+    // version history affordance from customers for sensitive deliverables.
+    // Defaults to false so existing portal docs continue to expose history.
+    await db.execute(sql`
+      ALTER TABLE portal_documents
+        ADD COLUMN IF NOT EXISTS hide_history_from_customer boolean NOT NULL DEFAULT false;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

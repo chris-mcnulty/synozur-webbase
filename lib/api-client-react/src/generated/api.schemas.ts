@@ -191,6 +191,22 @@ export interface PortalDocument {
   publishedAt?: string | null;
   /** True when the document has an in-browser viewer available via GET /portal/documents/{id}/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl. */
   hasPreview?: boolean;
+  /** True when the admin has hidden version history from the customer. The /versions endpoint will return an empty list and per-version downloads will 404. */
+  historyHidden?: boolean;
+}
+
+export interface PortalDocumentVersion {
+  /** SharePoint Embedded version label (e.g. "1.0", "2.0"). Pass to the per-version download endpoint as `{versionId}`. */
+  versionId: string;
+  lastModifiedAt?: string | null;
+  sizeBytes: number;
+  modifiedByDisplayName?: string | null;
+  /** True for the version that matches the live driveItem. */
+  isCurrent: boolean;
+}
+
+export interface PortalDocumentVersionList {
+  items: PortalDocumentVersion[];
 }
 
 export interface PortalDocumentList {
@@ -3220,6 +3236,20 @@ export type DownloadPortalDocumentInline =
   (typeof DownloadPortalDocumentInline)[keyof typeof DownloadPortalDocumentInline];
 
 export const DownloadPortalDocumentInline = {
+  NUMBER_0: "0",
+  NUMBER_1: "1",
+  true: "true",
+  false: "false",
+} as const;
+
+export type DownloadPortalDocumentVersionParams = {
+  inline?: DownloadPortalDocumentVersionInline;
+};
+
+export type DownloadPortalDocumentVersionInline =
+  (typeof DownloadPortalDocumentVersionInline)[keyof typeof DownloadPortalDocumentVersionInline];
+
+export const DownloadPortalDocumentVersionInline = {
   NUMBER_0: "0",
   NUMBER_1: "1",
   true: "true",

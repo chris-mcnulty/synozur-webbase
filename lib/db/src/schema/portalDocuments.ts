@@ -4,6 +4,7 @@ import {
   uuid,
   timestamp,
   bigint,
+  boolean,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -58,6 +59,14 @@ export const portalDocumentsTable = pgTable(
     // link for Office documents (the only reliable way to render
     // .docx/.xlsx/.pptx in the user's browser).
     webUrl: text("web_url"),
+    // #243 — When true, the customer-facing version history endpoint
+    // returns an empty list and individual prior-version downloads
+    // 404. The current document remains visible. Admins toggle this
+    // when an earlier draft contained content that should not be
+    // visible to the client.
+    hideHistoryFromCustomer: boolean("hide_history_from_customer")
+      .notNull()
+      .default(false),
   },
   (t) => [
     // Unique per engagement so re-indexing the same SPE item updates

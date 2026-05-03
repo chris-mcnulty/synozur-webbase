@@ -232,6 +232,7 @@ router.get(
         lastModifiedAt: portalDocumentsTable.lastModifiedAt,
         publishedAt: portalDocumentsTable.publishedAt,
         webUrl: portalDocumentsTable.webUrl,
+        hideHistoryFromCustomer: portalDocumentsTable.hideHistoryFromCustomer,
       })
       .from(portalDocumentsTable)
       .innerJoin(
@@ -258,6 +259,7 @@ router.get(
         lastModifiedAt: r.lastModifiedAt ? r.lastModifiedAt.toISOString() : null,
         publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
         hasPreview: Boolean(r.webUrl),
+        historyHidden: r.hideHistoryFromCustomer,
       })),
       page,
       pageSize,
@@ -289,6 +291,7 @@ router.get(
       lastModifiedAt: doc.lastModifiedAt ? doc.lastModifiedAt.toISOString() : null,
       publishedAt: doc.publishedAt ? doc.publishedAt.toISOString() : null,
       hasPreview: Boolean(doc.webUrl),
+      historyHidden: doc.hideHistoryFromCustomer,
     });
   },
 );
@@ -392,6 +395,151 @@ router.get(
     const node = Readable.fromWeb(upstream.body as never);
     node.on("error", (err) => {
       req.log.error({ err, documentId: doc.id }, "portal document stream errored");
+      if (!res.headersSent) res.status(502);
+      if (!res.writableEnded) res.destroy(err);
+    });
+    res.on("close", () => node.destroy());
+    res.on("finish", recordCompletedTransfer);
+    node.pipe(res);
+  },
+);
+
+// GET /api/portal/documents/:id/versions — list prior versions of a
+// deliverable. Returns an empty list when the admin has hidden history
+// for this document. The newest entry from Graph corresponds to the
+// current driveItem; we surface that as `isCurrent: true` so the UI
+// can label the active version distinctly.
+router.get(
+  "/portal/documents/:id/versions",
+  requireAuth,
+  requireCustomerAudience,
+  async (req, res) => {
+    const orgId = portalOrgId(req);
+    const found = await findOwnedDocument(req.params["id"] as string, orgId);
+    if (!found) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const { doc } = found;
+    if (doc.hideHistoryFromCustomer) {
+      res.json({ items: [] });
+      return;
+    }
+    let versions: Awaited<ReturnType<typeof speFileStorage.listVersions>>;
+    try {
+      versions = await speFileStorage.listVersions(doc.spaceItemId);
+    } catch (err) {
+      req.log.error(
+        { err, documentId: doc.id },
+        "portal document version listing failed",
+      );
+      res.status(502).json({ error: "Could not list versions" });
+      return;
+    }
+    versions.sort((a, b) => {
+      const at = a.lastModifiedDateTime
+        ? new Date(a.lastModifiedDateTime).getTime()
+        : 0;
+      const bt = b.lastModifiedDateTime
+        ? new Date(b.lastModifiedDateTime).getTime()
+        : 0;
+      return bt - at;
+    });
+    res.json({
+      items: versions.map((v, i) => ({
+        versionId: v.id,
+        lastModifiedAt: v.lastModifiedDateTime ?? null,
+        sizeBytes: v.size ?? 0,
+        modifiedByDisplayName: v.lastModifiedBy?.user?.displayName ?? null,
+        isCurrent: i === 0,
+      })),
+    });
+  },
+);
+
+// GET /api/portal/documents/:id/versions/:versionId/content — stream a
+// specific historical version. Mirrors the live /content route: same
+// auditing, same inline toggle. Hidden-history docs 404 here too so a
+// stale link can't bypass the admin restriction.
+router.get(
+  "/portal/documents/:id/versions/:versionId/content",
+  requireAuth,
+  requireCustomerAudience,
+  async (req, res) => {
+    const orgId = portalOrgId(req);
+    const found = await findOwnedDocument(req.params["id"] as string, orgId);
+    if (!found) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const { doc } = found;
+    if (doc.hideHistoryFromCustomer) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const versionId = req.params["versionId"] as string;
+    const inline = req.query.inline === "1" || req.query.inline === "true";
+
+    let upstream: Response;
+    try {
+      upstream = await speFileStorage.getFileVersion(doc.spaceItemId, versionId);
+    } catch (err) {
+      req.log.error(
+        { err, documentId: doc.id, versionId },
+        "portal document version download failed",
+      );
+      res.status(502).json({ error: "Upstream fetch failed" });
+      return;
+    }
+    if (!upstream.body) {
+      res.status(502).json({ error: "Upstream empty body" });
+      return;
+    }
+
+    const contentType =
+      upstream.headers.get("content-type") || doc.contentType || "application/octet-stream";
+    const safeFilename = doc.filename.replace(/"/g, "");
+    res.status(200);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `${inline ? "inline" : "attachment"}; filename="${safeFilename}"`,
+    );
+    res.setHeader("Cache-Control", "private, no-store");
+    const len = upstream.headers.get("content-length");
+    if (len) res.setHeader("Content-Length", len);
+
+    let audited = false;
+    const recordCompletedTransfer = () => {
+      if (audited) return;
+      audited = true;
+      void audit({
+        actorId: req.authedUser!.id,
+        action: inline
+          ? "portal_document.version_preview"
+          : "portal_document.version_download",
+        entity: "portal_document",
+        entityId: doc.id,
+        diff: {
+          filename: doc.filename,
+          engagementId: doc.engagementId,
+          versionId,
+          inline,
+        },
+      }).catch((err) => {
+        req.log.error(
+          { err, documentId: doc.id, versionId },
+          "portal document version transfer audit failed",
+        );
+      });
+    };
+
+    const node = Readable.fromWeb(upstream.body as never);
+    node.on("error", (err) => {
+      req.log.error(
+        { err, documentId: doc.id, versionId },
+        "portal document version stream errored",
+      );
       if (!res.headersSent) res.status(502);
       if (!res.writableEnded) res.destroy(err);
     });

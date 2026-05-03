@@ -18,4 +18,6 @@ export interface PortalDocument {
   publishedAt?: Date | null;
   /** True when the document has an in-browser viewer available via GET /portal/documents/{id}/preview (audited, server-side redirect to the M365 viewer for SPE-backed Office files). Clients should never receive the raw SPE webUrl. */
   hasPreview?: boolean;
+  /** True when the admin has hidden version history from the customer. The /versions endpoint will return an empty list and per-version downloads will 404. */
+  historyHidden?: boolean;
 }

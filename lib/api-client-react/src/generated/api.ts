@@ -52,6 +52,7 @@ import type {
   CurrentUser,
   CwvSampleInput,
   DownloadPortalDocumentParams,
+  DownloadPortalDocumentVersionParams,
   ErrorEnvelope,
   EventInput,
   ExportAdminFormSubmissionsParams,
@@ -101,6 +102,7 @@ import type {
   PortalArtifactDetail,
   PortalDocument,
   PortalDocumentList,
+  PortalDocumentVersionList,
   PortalForbidden,
   PortalMe,
   PortalSourceApp,
@@ -11378,6 +11380,237 @@ export function useDownloadPortalDocument<
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getDownloadPortalDocumentQueryOptions(
     id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns historical versions of the document, newest first. The newest entry
+corresponds to the current driveItem and is flagged with `isCurrent: true`.
+When the admin has toggled `hideHistoryFromCustomer` on, this endpoint
+returns an empty list (no 403) so the UI can quietly hide the affordance.
+
+ * @summary Prior versions of a deliverable retained by SharePoint Embedded.
+ */
+export const getListPortalDocumentVersionsUrl = (id: string) => {
+  return `/api/portal/documents/${id}/versions`;
+};
+
+export const listPortalDocumentVersions = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PortalDocumentVersionList> => {
+  return customFetch<PortalDocumentVersionList>(
+    getListPortalDocumentVersionsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPortalDocumentVersionsQueryKey = (id: string) => {
+  return [`/api/portal/documents/${id}/versions`] as const;
+};
+
+export const getListPortalDocumentVersionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPortalDocumentVersions>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalDocumentVersions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPortalDocumentVersionsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPortalDocumentVersions>>
+  > = ({ signal }) =>
+    listPortalDocumentVersions(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPortalDocumentVersions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPortalDocumentVersionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPortalDocumentVersions>>
+>;
+export type ListPortalDocumentVersionsQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Prior versions of a deliverable retained by SharePoint Embedded.
+ */
+
+export function useListPortalDocumentVersions<
+  TData = Awaited<ReturnType<typeof listPortalDocumentVersions>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPortalDocumentVersions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPortalDocumentVersionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Stream the bytes of a specific historical version.
+ */
+export const getDownloadPortalDocumentVersionUrl = (
+  id: string,
+  versionId: string,
+  params?: DownloadPortalDocumentVersionParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/portal/documents/${id}/versions/${versionId}/content?${stringifiedParams}`
+    : `/api/portal/documents/${id}/versions/${versionId}/content`;
+};
+
+export const downloadPortalDocumentVersion = async (
+  id: string,
+  versionId: string,
+  params?: DownloadPortalDocumentVersionParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(
+    getDownloadPortalDocumentVersionUrl(id, versionId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getDownloadPortalDocumentVersionQueryKey = (
+  id: string,
+  versionId: string,
+  params?: DownloadPortalDocumentVersionParams,
+) => {
+  return [
+    `/api/portal/documents/${id}/versions/${versionId}/content`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getDownloadPortalDocumentVersionQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadPortalDocumentVersion>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  versionId: string,
+  params?: DownloadPortalDocumentVersionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPortalDocumentVersion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getDownloadPortalDocumentVersionQueryKey(id, versionId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadPortalDocumentVersion>>
+  > = ({ signal }) =>
+    downloadPortalDocumentVersion(id, versionId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && versionId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadPortalDocumentVersion>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadPortalDocumentVersionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadPortalDocumentVersion>>
+>;
+export type DownloadPortalDocumentVersionQueryError = ErrorType<
+  UnauthorizedResponse | PortalForbidden | NotFoundResponse
+>;
+
+/**
+ * @summary Stream the bytes of a specific historical version.
+ */
+
+export function useDownloadPortalDocumentVersion<
+  TData = Awaited<ReturnType<typeof downloadPortalDocumentVersion>>,
+  TError = ErrorType<UnauthorizedResponse | PortalForbidden | NotFoundResponse>,
+>(
+  id: string,
+  versionId: string,
+  params?: DownloadPortalDocumentVersionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadPortalDocumentVersion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadPortalDocumentVersionQueryOptions(
+    id,
+    versionId,
     params,
     options,
   );
