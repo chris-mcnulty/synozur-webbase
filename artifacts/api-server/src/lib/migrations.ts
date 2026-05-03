@@ -2212,6 +2212,61 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS owner_session_id uuid;
     `);
 
+    // #221 — Transactional email tracking. `email_messages` records each
+    //        outbound send keyed by SendGrid's X-Message-Id; `email_events`
+    //        captures webhook events from /api/email/sendgrid-webhook and
+    //        links them back via `email_message_id` (sg_message_id prefix
+    //        match performed at ingest time).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_messages (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_id text NOT NULL,
+        to_email text NOT NULL,
+        subject text NOT NULL,
+        template text NOT NULL,
+        latest_event text,
+        latest_event_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS email_messages_message_id_key
+        ON email_messages (message_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS email_messages_created_at_idx
+        ON email_messages (created_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS email_messages_template_idx
+        ON email_messages (template);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email_message_id uuid REFERENCES email_messages(id) ON DELETE SET NULL,
+        sg_message_id text NOT NULL,
+        event text NOT NULL,
+        email_addr text,
+        reason text,
+        payload jsonb NOT NULL,
+        event_at timestamptz NOT NULL,
+        received_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS email_events_message_idx
+        ON email_events (email_message_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS email_events_sg_message_idx
+        ON email_events (sg_message_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS email_events_event_at_idx
+        ON email_events (event_at);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migration failed — server will continue but some features may not work");

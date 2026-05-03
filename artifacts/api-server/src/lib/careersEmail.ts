@@ -46,6 +46,7 @@ export async function sendApplicantConfirmation(args: {
       text: `${title}\n\nHi ${args.applicantName || "there"},\n\nWe've received your application${
         args.jobTitle ? ` for ${args.jobTitle}` : ""
       } and our team will be in touch.\n\n— The Synozur Talent Team`,
+      template: "careers-applicant-confirmation",
     });
   } catch (err) {
     logger.warn({ err }, "careersEmail: applicant confirmation failed");
@@ -69,6 +70,7 @@ export async function sendHiringManagerNotification(args: {
       subject: title,
       html: shell(title, body),
       text: `${title}\n\n${args.applicantName} just applied for ${args.jobTitle}.\nReview: ${adminUrl}`,
+      template: "careers-hiring-manager",
     });
   } catch (err) {
     logger.warn({ err }, "careersEmail: hiring manager notification failed");

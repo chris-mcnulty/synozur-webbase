@@ -50,6 +50,7 @@ import {
   UserCog,
   Brain,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -206,6 +207,7 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/health", label: "Health", icon: Activity, capability: "site.manage", testId: "nav-admin-site-health" },
       { href: "/site-config/csp-violations", label: "CSP Violations", icon: ShieldAlert, capability: "site.manage", testId: "nav-admin-csp-violations" },
       { href: "/site-config/launch-readiness", label: "Launch Readiness", icon: ShieldCheck, capability: "site.manage", testId: "nav-admin-launch-readiness" },
+      { href: "/site-config/email", label: "Email Log", icon: Mail, capability: "site.manage", testId: "nav-admin-email-log" },
       { href: "/integrations/spe", label: "SharePoint Embedded", icon: Cloud, capability: "site.manage", testId: "nav-admin-spe" },
     ],
   },

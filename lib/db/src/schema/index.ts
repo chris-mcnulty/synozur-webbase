@@ -54,3 +54,5 @@ export * from "./aiChatTokenUsage";
 export * from "./portalArtifacts";
 export * from "./careers";
 export * from "./subscribers";
+export * from "./emailMessages";
+export * from "./emailEvents";

@@ -45,7 +45,18 @@ app.use(securityHeadersMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
-app.use(express.json({ limit: "2mb" }));
+// #221 — Capture the raw body buffer alongside the parsed JSON so the
+// SendGrid event webhook can verify the ECDSA signature against the exact
+// bytes SendGrid signed. The buffer is a tiny reference attached to `req`
+// (no copy) so this is essentially free for non-webhook traffic.
+app.use(
+  express.json({
+    limit: "2mb",
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 // CSP violation reports use the application/csp-report media type per the
 // spec; modern Chromium also accepts application/reports+json. Both are
 // parsed as JSON and routed through the same body parser.

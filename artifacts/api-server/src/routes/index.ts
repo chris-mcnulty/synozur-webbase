@@ -59,6 +59,8 @@ import portalAppsRouter from "./portalApps";
 import cmsPortalArtifactsRouter from "./cmsPortalArtifacts";
 import ogRouter from "./og";
 import careersRouter from "./careers";
+import emailWebhookRouter from "./emailWebhook";
+import adminEmailRouter from "./adminEmail";
 
 const router: IRouter = Router();
 
@@ -122,5 +124,7 @@ router.use(portalAppsRouter);
 router.use(cmsPortalArtifactsRouter);
 router.use(ogRouter);
 router.use(careersRouter);
+router.use(emailWebhookRouter);
+router.use(adminEmailRouter);
 
 export default router;

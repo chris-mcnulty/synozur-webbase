@@ -4,6 +4,8 @@ import {
   getUncachableSendGridClient,
   SendGridNotConfiguredError,
 } from "./sendgridClient";
+import { db } from "@workspace/db";
+import { emailMessagesTable } from "@workspace/db/schema";
 
 // Email transport.
 //
@@ -27,11 +29,19 @@ export interface SendEmailArgs {
   html: string;
   text: string;
   replyTo?: string;
+  // #221 — template slug recorded on the email_messages row so the admin
+  // log at /admin/email can group / filter sends by template family. All
+  // call sites in this file pass a stable string (e.g. "comment-approved").
+  template: string;
 }
 
 export interface SendEmailResult {
   status: "ok" | "skipped" | "error";
   error: string | null;
+  // X-Message-Id from the SendGrid response (when accepted). Captured so
+  // callers can correlate a send with downstream webhook events without
+  // having to hit the DB.
+  messageId?: string | null;
 }
 
 // Parse "Display Name <addr@example.com>" or a bare address. Returns the
@@ -88,12 +98,41 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
       text: args.text,
       ...(args.replyTo ? { replyTo: args.replyTo } : {}),
     };
-    await handle.client.send(message);
+    const sendResult = await handle.client.send(message);
+    // #221 — `@sendgrid/mail` returns `[ClientResponse, {}]` for a single
+    // send; the X-Message-Id header is the prefix that webhook events
+    // reference in `sg_message_id`.
+    const messageId = extractMessageId(sendResult);
     logger.info(
-      { to: args.to, subject: args.subject },
+      { to: args.to, subject: args.subject, messageId, template: args.template },
       "Email sent via SendGrid",
     );
-    return { status: "ok", error: null };
+    if (messageId) {
+      try {
+        await db
+          .insert(emailMessagesTable)
+          .values({
+            messageId,
+            toEmail: args.to,
+            subject: args.subject,
+            template: args.template,
+          })
+          .onConflictDoNothing({ target: emailMessagesTable.messageId });
+      } catch (dbErr) {
+        // Logging-only failure shouldn't fail the send. Webhook ingest
+        // will still record the events; they'll just have a NULL FK.
+        logger.warn(
+          { err: dbErr, messageId },
+          "Failed to persist email_messages row",
+        );
+      }
+    } else {
+      logger.warn(
+        { to: args.to, template: args.template },
+        "SendGrid accepted send but did not return X-Message-Id",
+      );
+    }
+    return { status: "ok", error: null, messageId: messageId ?? null };
   } catch (err) {
     const e = err as { code?: number; message?: string; response?: { body?: unknown } };
     const status = typeof e.code === "number" ? e.code : undefined;
@@ -107,6 +146,21 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
       error: status ? `http_${status}: ${msg}` : msg,
     };
   }
+}
+
+// SendGrid's MailService.send() resolves with `[ClientResponse, {}]` where
+// ClientResponse exposes the upstream response headers as a plain object.
+// Some test/mocked clients return just the ClientResponse, so handle both.
+function extractMessageId(result: unknown): string | null {
+  const candidate: unknown = Array.isArray(result) ? result[0] : result;
+  if (!candidate || typeof candidate !== "object") return null;
+  const headers = (candidate as { headers?: Record<string, unknown> }).headers;
+  if (!headers || typeof headers !== "object") return null;
+  // Header names are case-insensitive; SendGrid sends lowercase. Check both
+  // common spellings to be safe.
+  const raw = headers["x-message-id"] ?? headers["X-Message-Id"] ?? headers["X-Message-ID"];
+  if (typeof raw === "string" && raw.trim().length > 0) return raw.trim();
+  return null;
 }
 
 function escapeHtml(s: string): string {
@@ -231,6 +285,7 @@ export async function sendSubscriptionConfirmation(args: {
     subject: "Confirm your subscription — The Synozur Alliance",
     html,
     text,
+    template: "subscription-confirmation",
   });
 }
 
@@ -261,7 +316,13 @@ export async function sendVisitorConfirmation(
     "— The Synozur Alliance",
     SITE_URL,
   ].join("\n");
-  return sendEmail({ to, subject: copy.subject, html, text });
+  return sendEmail({
+    to,
+    subject: copy.subject,
+    html,
+    text,
+    template: `visitor-${formType}`,
+  });
 }
 
 function renderPayloadHtml(payload: Record<string, unknown>): string {
@@ -344,6 +405,7 @@ export async function sendCommentApprovedEmail(args: {
     subject: `Your comment on "${args.postTitle}" is live`,
     html,
     text,
+    template: "comment-approved",
   });
 }
 
@@ -398,6 +460,7 @@ export async function sendCommentReplyEmail(args: {
     subject: `New reply on "${args.postTitle}"`,
     html,
     text,
+    template: "comment-reply",
   });
 }
 
@@ -432,7 +495,13 @@ export async function sendEmailVerification(args: {
     "",
     "— The Synozur Alliance",
   ].join("\n");
-  return sendEmail({ to: args.to, subject: "Verify your email — The Synozur Alliance", html, text });
+  return sendEmail({
+    to: args.to,
+    subject: "Verify your email — The Synozur Alliance",
+    html,
+    text,
+    template: "email-verification",
+  });
 }
 
 // Sent to a new Entra user whose sign-in auto-created a pending org.
@@ -470,6 +539,7 @@ export async function sendOrgPendingApproval(args: {
     subject: "Your Synozur Alliance account is registered — pending org approval",
     html,
     text,
+    template: "org-pending-approval",
   });
 }
 
@@ -508,6 +578,7 @@ export async function sendOrgApproved(args: {
     subject: `Your organization ${args.orgName} is approved — The Synozur Alliance`,
     html,
     text,
+    template: "org-approved",
   });
 }
 
@@ -565,6 +636,7 @@ export async function sendClientOrgInvite(args: {
     subject: `You're invited to ${args.orgName} — Synozur Galaxy`,
     html,
     text,
+    template: "client-org-invite",
   });
 }
 
@@ -599,7 +671,13 @@ export async function sendPasswordReset(args: {
     "",
     "— The Synozur Alliance",
   ].join("\n");
-  return sendEmail({ to: args.to, subject: "Reset your password — The Synozur Alliance", html, text });
+  return sendEmail({
+    to: args.to,
+    subject: "Reset your password — The Synozur Alliance",
+    html,
+    text,
+    template: "password-reset",
+  });
 }
 
 export async function sendInternalNotification(args: {
@@ -633,5 +711,6 @@ export async function sendInternalNotification(args: {
     html,
     text,
     replyTo: args.email ?? undefined,
+    template: `internal-${args.formType}`,
   });
 }
