@@ -295,7 +295,7 @@ html.theme-aurora {
   --chart-5: 341.49 75.2% 50.98%;
 }
 
-html.theme-aurora .dark {
+html.theme-aurora.dark {
   /* Dark mode — sourced directly from SCDP aurora.css .dark */
   --background:  268 20% 7%;
   --foreground:  268 8% 88%;
@@ -386,8 +386,8 @@ html.theme-aurora .primary-cta-glow:focus-visible {
   box-shadow: 0 0 16px 2px hsl(268.98 96.72% 52.16% / 0.35);
   transition: box-shadow 0.2s ease;
 }
-html.theme-aurora .dark .primary-cta-glow:hover,
-html.theme-aurora .dark .primary-cta-glow:focus-visible {
+html.theme-aurora.dark .primary-cta-glow:hover,
+html.theme-aurora.dark .primary-cta-glow:focus-visible {
   box-shadow: 0 0 20px 4px hsl(268.98 92% 64% / 0.4);
 }
 
@@ -396,7 +396,7 @@ html.theme-aurora .sidebar-active-item {
   position: relative;
   box-shadow: 0 0 12px 1px hsl(268.98 96.72% 52.16% / 0.25);
 }
-html.theme-aurora .dark .sidebar-active-item {
+html.theme-aurora.dark .sidebar-active-item {
   box-shadow: 0 0 16px 2px hsl(268.98 92% 64% / 0.35);
 }
 html.theme-aurora .sidebar-active-item::before {
@@ -416,19 +416,19 @@ html.theme-aurora .sidebar-hover-item:focus-visible {
   outline-offset: 1px;
   transition: box-shadow 0.15s ease, outline-color 0.15s ease;
 }
-html.theme-aurora .dark .sidebar-hover-item:hover,
-html.theme-aurora .dark .sidebar-hover-item:focus-visible {
+html.theme-aurora.dark .sidebar-hover-item:hover,
+html.theme-aurora.dark .sidebar-hover-item:focus-visible {
   box-shadow: 0 0 14px 2px hsl(268.98 92% 64% / 0.25);
   outline: 2px solid hsl(268.98 92% 64% / 0.4);
 }
 
 /* ── Nebula card: spinning violet→magenta conic border (dark mode only) */
-html.theme-aurora .dark .nebula-card {
+html.theme-aurora.dark .nebula-card {
   position: relative;
   border: none !important;
   background-clip: padding-box;
 }
-html.theme-aurora .dark .nebula-card::before {
+html.theme-aurora.dark .nebula-card::before {
   content: '';
   position: absolute;
   inset: -1px;
@@ -467,7 +467,7 @@ html.theme-aurora .nebula-shimmer {
   background-size: 200% 100%;
   animation: nebula-shimmer 1.8s ease-in-out infinite;
 }
-html.theme-aurora .dark .nebula-shimmer {
+html.theme-aurora.dark .nebula-shimmer {
   background: linear-gradient(
     90deg,
     hsl(268 15% 15% / 0.8) 0%,
@@ -535,7 +535,7 @@ html.theme-aurora .dark .nebula-shimmer {
 @media (prefers-reduced-motion: reduce) {
   html.theme-aurora .animate-blob,
   html.theme-aurora .animate-fade-in-up,
-  html.theme-aurora .dark .nebula-card::before,
+  html.theme-aurora.dark .nebula-card::before,
   html.theme-aurora .nebula-shimmer {
     animation: none !important;
   }

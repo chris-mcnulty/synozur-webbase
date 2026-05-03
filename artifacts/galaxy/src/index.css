@@ -303,7 +303,7 @@ html.theme-aurora {
   --chart-5: 341.49 75.2% 50.98%;
 }
 
-html.theme-aurora .dark {
+html.theme-aurora.dark {
   --background:  268 20% 7%;
   --foreground:  268 8% 88%;
   --border:      268 18% 17%;
