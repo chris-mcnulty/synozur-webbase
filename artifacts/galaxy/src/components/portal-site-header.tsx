@@ -24,6 +24,15 @@ type NavGroup = { title: string; links: NavLink[]; nested?: NestedSection[] };
 type ApiService = { title: string; slug: string; solutions: { title: string; slug: string }[] };
 type ApiApplication = { slug: string; name: string };
 
+const STATIC_APPLICATIONS: ApiApplication[] = [
+  { slug: "vega", name: "Vega" },
+  { slug: "nebula", name: "Nebula" },
+  { slug: "constellation", name: "Constellation" },
+  { slug: "orion", name: "Orion" },
+  { slug: "orbit", name: "Orbit" },
+  { slug: "zenith", name: "Zenith" },
+];
+
 const STATIC_SERVICE_PILLARS: ApiService[] = [
   {
     title: "Organizational Transformation", slug: "strategic-transformation",
@@ -216,7 +225,10 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
     ? apiServiceItems.filter((s) => s.slug !== "our-services")
     : STATIC_SERVICE_PILLARS;
 
-  const navApps: ApiApplication[] = applicationsQuery.data?.items ?? [];
+  const apiAppItems = applicationsQuery.data?.items;
+  const navApps: ApiApplication[] = apiAppItems && apiAppItems.length > 0
+    ? apiAppItems
+    : STATIC_APPLICATIONS;
 
   const navGroups: NavGroup[] = [
     {
