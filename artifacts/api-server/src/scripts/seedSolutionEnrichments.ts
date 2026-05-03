@@ -5,6 +5,11 @@
  *   - Microsoft Partner Development  (slug: microsoft-partner-development)
  *   - AI Strategy and Design         (slug: ai-strategy-and-design)
  *   - Employee Effectiveness         (slug: employee-effectiveness)
+ *   - Company OS                     (slug: company-os)
+ *   - Employee Strategies            (slug: employee-strategies)
+ *
+ * Communication Strategies and Delivery Management are intentionally not
+ * enriched: their connection to Zenith is too indirect to justify a callout.
  *
  * These solutions already exist in the database (seeded by ingestServices.ts).
  * This script only updates the acceleratorsHtml and faqHtml columns; all other
@@ -134,6 +139,71 @@ const EMPLOYEE_FAQ_HTML = [
 ].join("\n");
 
 // ---------------------------------------------------------------------------
+// Company OS — content
+// ---------------------------------------------------------------------------
+
+const COMPANY_OS_ACCELERATORS_HTML = [
+  p(
+    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center, and it complements Company OS engagements that rely on Microsoft 365\u2014particularly when Vega is the operating backbone.",
+  ),
+  p(
+    "A Company OS only works if the systems supporting it are trustworthy. When SharePoint, Teams, and OneDrive house the policies, processes, and decisions that run the business, governance posture directly affects how reliably the operating system performs. Zenith surfaces workspace health, ownership, sharing, and policy alignment across the tenant so the structures Company OS depends on stay clean as the organization grows.",
+  ),
+  p(
+    "For clients standardizing on Vega, Zenith provides the continuous governance signal needed to keep the operating environment well-organized, well-labeled, and ready for AI-assisted work.",
+  ),
+].join("\n");
+
+const COMPANY_OS_FAQ_HTML = [
+  p("<strong>How does Zenith fit into a Company OS engagement?</strong>"),
+  p(
+    "Company OS defines how the business runs\u2014decisions, rituals, ownership, and the systems that carry them. When those systems live in Microsoft 365, Zenith makes sure the underlying workspaces are well-governed, findable, and aligned to the policies your operating model assumes are in place. It\u2019s not required to start a Company OS engagement, but it removes a common source of friction when Microsoft 365 is the primary operating environment.",
+  ),
+  p("<strong>Do we need Zenith if we\u2019re using Vega?</strong>"),
+  p(
+    "Vega and Zenith solve different problems. Vega is the operating system for how work gets done; Zenith monitors the governance health of the Microsoft 365 environment that Vega often runs on. Many clients use both: Vega to define and run the operating model, Zenith to keep the M365 foundation healthy underneath it.",
+  ),
+  p("<strong>What signals does Zenith provide that matter for a Company OS?</strong>"),
+  p(
+    "Zenith highlights workspaces with unclear ownership, inconsistent governance, weak sensitivity labeling, or risky sharing\u2014the same conditions that create confusion about \u201cwhere does this live\u201d and \u201cwho owns this.\u201d Resolving them makes the operating model easier to follow and reduces the day-to-day friction employees feel when navigating the environment.",
+  ),
+].join("\n");
+
+// ---------------------------------------------------------------------------
+// Employee Strategies — content
+// ---------------------------------------------------------------------------
+
+const EMPLOYEE_STRATEGIES_ACCELERATORS_HTML = [
+  p(
+    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center. While Employee Strategies is fundamentally a people-and-culture practice, Zenith plays a supporting role when the strategy depends on Microsoft 365 as the day-to-day work environment.",
+  ),
+  p(
+    "Employee experience strategies often run aground on the same issue: the digital environment doesn\u2019t match the experience leadership describes. When Teams, SharePoint, and OneDrive are noisy, fragmented, or inconsistently governed, employees feel friction regardless of how strong the strategy is on paper. Zenith identifies the structural governance issues that quietly degrade the employee experience and prioritizes the fixes most likely to have the largest impact.",
+  ),
+].join("\n");
+
+const EMPLOYEE_STRATEGIES_FAQ_HTML = [
+  p(
+    "<strong>How does M365 governance connect to employee strategy?</strong>",
+  ),
+  p(
+    "Employees experience your strategy through the tools they use every day. If the digital workplace is hard to navigate\u2014too many duplicate workspaces, unclear ownership, inconsistent sharing\u2014every employee initiative has to fight that friction. Cleaning up the governance layer makes the rest of your employee strategy land more cleanly.",
+  ),
+  p(
+    "<strong>Do we need to use Zenith as part of an Employee Strategies engagement?</strong>",
+  ),
+  p(
+    "No. Employee Strategies engagements stand on their own and focus on operating model, leadership rhythms, and people practices. Zenith is relevant only when the engagement intersects with Microsoft 365\u2014for example, when leaders want to improve how employees collaborate, find information, or work with AI tools like Copilot. In those cases Zenith provides the governance evidence behind the recommendations.",
+  ),
+  p(
+    "<strong>Can Zenith help us measure progress on employee experience initiatives?</strong>",
+  ),
+  p(
+    "Zenith doesn\u2019t measure sentiment or engagement directly\u2014that comes from listening programs and qualitative feedback. What it does provide is a baseline and ongoing view of the structural conditions that make the digital workplace usable. Pairing Zenith\u2019s governance signal with the employee feedback you already collect gives a more complete picture of where to invest.",
+  ),
+].join("\n");
+
+// ---------------------------------------------------------------------------
 // Enrichments registry
 // ---------------------------------------------------------------------------
 
@@ -162,6 +232,18 @@ const ENRICHMENTS: Enrichment[] = [
     label: "Employee Effectiveness",
     acceleratorsHtml: EMPLOYEE_ACCELERATORS_HTML,
     faqHtml: EMPLOYEE_FAQ_HTML,
+  },
+  {
+    slug: "company-os",
+    label: "Company OS",
+    acceleratorsHtml: COMPANY_OS_ACCELERATORS_HTML,
+    faqHtml: COMPANY_OS_FAQ_HTML,
+  },
+  {
+    slug: "employee-strategies",
+    label: "Employee Strategies",
+    acceleratorsHtml: EMPLOYEE_STRATEGIES_ACCELERATORS_HTML,
+    faqHtml: EMPLOYEE_STRATEGIES_FAQ_HTML,
   },
 ];
 
