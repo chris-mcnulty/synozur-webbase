@@ -657,7 +657,7 @@ export default function CollateralEdit({ id }: Props) {
         <aside className="space-y-4">
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Preview card</Label>
+              <Label className="text-sm font-medium">Library card</Label>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Live
               </span>
@@ -666,7 +666,44 @@ export default function CollateralEdit({ id }: Props) {
               <CollateralCard item={toPreviewItem(form)} variant="grid" />
             </div>
             <p className="text-xs text-muted-foreground">
-              How this item will appear in the library grid. Unsaved changes shown.
+              How this item will appear in the /library grid. Unsaved changes shown.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Home carousel hero</Label>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Live
+              </span>
+            </div>
+            {/*
+              The public carousel variant renders at md:h-[min(70vh,640px)]
+              on desktop, so a 1:1 render in the 320px aside would be far
+              too tall. Render the card at its real desktop footprint
+              (~480x640) inside a scaled wrapper so proportions match what
+              users see on the home page, then clip to the wrapper's
+              shrunk box.
+            */}
+            <div
+              data-testid="preview-collateral-hero"
+              className="pointer-events-none mx-auto overflow-hidden"
+              style={{ width: 288, height: 384 }}
+            >
+              <div
+                style={{
+                  width: 480,
+                  height: 640,
+                  transform: "scale(0.6)",
+                  transformOrigin: "top left",
+                }}
+              >
+                <CollateralCard item={toPreviewItem(form)} variant="carousel" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              How this item will appear in the home page featured carousel
+              (only shown when Featured is on).
             </p>
           </Card>
 
