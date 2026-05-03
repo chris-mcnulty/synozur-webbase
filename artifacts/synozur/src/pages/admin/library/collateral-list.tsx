@@ -709,6 +709,9 @@ export default function AdminCollateralList() {
                 const isOver = overId === item.id && dragId !== item.id;
                 const draggable = canWrite && !reorderMut.isPending;
                 return (
+                  // Native HTML5 DnD reorder region; mouse-only listeners on a
+                  // non-interactive list item.
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                   <li
                     key={item.id}
                     draggable={draggable}
@@ -1042,19 +1045,16 @@ export default function AdminCollateralList() {
                           editorPathForSource(item.sourceId) ??
                           `/library/collateral/${item.id}/edit`
                         }
+                        className="hover:underline inline-flex items-center gap-1.5"
+                        data-testid={`link-edit-collateral-${item.id}`}
                       >
-                        <a
-                          className="hover:underline inline-flex items-center gap-1.5"
-                          data-testid={`link-edit-collateral-${item.id}`}
-                        >
-                          {item.sourceId && (
-                            <Lock
-                              className="h-3 w-3 text-blue-400"
-                              aria-label="Synced from source — edit at source"
-                            />
-                          )}
-                          <span>{item.title}</span>
-                        </a>
+                        {item.sourceId && (
+                          <Lock
+                            className="h-3 w-3 text-blue-400"
+                            aria-label="Synced from source — edit at source"
+                          />
+                        )}
+                        <span>{item.title}</span>
                       </Link>
                       <div className="text-xs text-muted-foreground font-mono">
                         /{item.slug}

@@ -157,10 +157,12 @@ export default function AdminServicesList() {
                 return (
                   <TableRow key={s.id} data-testid={`row-service-${s.id}`}>
                     <TableCell className="font-medium">
-                      <Link href={`/products/services/${s.id}/edit`}>
-                        <a className="hover:underline" data-testid={`link-edit-service-${s.id}`}>
-                          {s.title}
-                        </a>
+                      <Link
+                        href={`/products/services/${s.id}/edit`}
+                        className="hover:underline"
+                        data-testid={`link-edit-service-${s.id}`}
+                      >
+                        {s.title}
                       </Link>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">
@@ -168,20 +170,21 @@ export default function AdminServicesList() {
                     </TableCell>
                     <TableCell className="text-right text-sm">{s.displayOrder ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/solutions?service=${s.id}`}>
-                        <a className="hover:underline" data-testid={`link-solutions-${s.id}`}>
-                          {solutionCounts.get(s.id) ?? 0}
-                        </a>
+                      <Link
+                        href={`/solutions?service=${s.id}`}
+                        className="hover:underline"
+                        data-testid={`link-solutions-${s.id}`}
+                      >
+                        {solutionCounts.get(s.id) ?? 0}
                       </Link>
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/products/services/${s.id}/methodologies`}>
-                        <a
-                          className="hover:underline"
-                          data-testid={`link-methodologies-${s.id}`}
-                        >
-                          {mCount ?? "…"}
-                        </a>
+                      <Link
+                        href={`/products/services/${s.id}/methodologies`}
+                        className="hover:underline"
+                        data-testid={`link-methodologies-${s.id}`}
+                      >
+                        {mCount ?? "…"}
                       </Link>
                     </TableCell>
                     <TableCell>

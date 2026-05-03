@@ -422,10 +422,12 @@ export default function AdminPolarisEpisodesList() {
                 <TableRow key={e.id} data-testid={`row-polaris-${e.id}`}>
                   <TableCell className="font-mono">{e.episodeNumber}</TableCell>
                   <TableCell className="font-medium">
-                    <Link href={`/library/polaris-episodes/${e.id}/edit`}>
-                      <a className="hover:underline" data-testid={`link-edit-polaris-${e.id}`}>
-                        {e.title}
-                      </a>
+                    <Link
+                      href={`/library/polaris-episodes/${e.id}/edit`}
+                      className="hover:underline"
+                      data-testid={`link-edit-polaris-${e.id}`}
+                    >
+                      {e.title}
                     </Link>
                     <div className="text-xs text-muted-foreground font-mono">
                       /polaris/{e.slug}

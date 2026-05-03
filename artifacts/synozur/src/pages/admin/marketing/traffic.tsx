@@ -217,10 +217,11 @@ export default function MarketingTraffic() {
                     {idx + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/insights/posts/${p.id}/analytics`}>
-                      <a className="text-sm font-medium truncate hover:underline block">
-                        {p.title}
-                      </a>
+                    <Link
+                      href={`/insights/posts/${p.id}/analytics`}
+                      className="text-sm font-medium truncate hover:underline block"
+                    >
+                      {p.title}
                     </Link>
                     <div className="text-xs text-muted-foreground">
                       {formatShortDate(p.publishedAt)}

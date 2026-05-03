@@ -180,15 +180,16 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Connect</h3>
             <div className="flex gap-4 mb-6">
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn">
+              {/* TODO: wire real social URLs from site settings; render as buttons until then so they don't pretend to navigate. */}
+              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="LinkedIn">
                 <Linkedin className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Twitter">
+              </button>
+              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="Twitter">
                 <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors" aria-label="YouTube">
+              </button>
+              <button type="button" className="text-muted-foreground hover:text-primary transition-colors" aria-label="YouTube">
                 <Youtube className="h-5 w-5" />
-              </a>
+              </button>
             </div>
             <Link href="/start" className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
               Get Started <ArrowRight className="ml-1 h-4 w-4" />

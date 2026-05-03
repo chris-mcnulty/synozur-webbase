@@ -161,6 +161,13 @@ export function CollateralResourcesEditor({ collateralId, canWrite }: Props) {
           </div>
         ) : (
           items.map((r) => (
+            // Native HTML5 drag-and-drop reorder region. The drop handler is
+            // a non-interactive surface (the row itself is not a button or
+            // link); a separate drag-handle button is used for keyboard
+            // reordering. The DnD listeners here are mouse-only and the
+            // a11y rule's "needs role + keyboard" guidance does not fit
+            // HTML5 DnD APIs.
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
             <div
               key={r.id}
               draggable={canWrite && items.length > 1}

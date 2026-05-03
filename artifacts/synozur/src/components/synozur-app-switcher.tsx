@@ -230,6 +230,13 @@ export function SynozurAppSwitcher({
               const isCurrent = app.id === currentApp;
               const accentColor = index % 2 === 0 ? BRAND_PRIMARY : BRAND_SECONDARY;
               return (
+                // The current app's tile is non-navigating (it's the page
+                // you're already on) so we render an `<a>` without href and
+                // intentionally use a click handler to close the menu. This
+                // is a deliberate menu pattern — the rule's preferButton
+                // suggestion would lose the visual consistency with the
+                // other tiles in the list.
+                // eslint-disable-next-line jsx-a11y/anchor-is-valid
                 <a
                   key={app.id}
                   href={isCurrent ? undefined : app.url}

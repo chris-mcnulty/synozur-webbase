@@ -2,19 +2,37 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck && pnpm run check:removed-identifiers",
     "check:removed-identifiers": "pnpm --filter @workspace/scripts run check:removed-identifiers",
-    "lhci": "lhci autorun --config=./lighthouserc.json"
+    "lint": "eslint \"artifacts/synozur/src/**/*.{ts,tsx,js,jsx}\"",
+    "lint:fix": "eslint \"artifacts/synozur/src/**/*.{ts,tsx,js,jsx}\" --fix",
+    "lhci": "lhci autorun --config=./lighthouserc.json",
+    "prepare": "husky || true"
   },
   "private": true,
+  "lint-staged": {
+    "artifacts/synozur/src/**/*.{ts,tsx,js,jsx}": [
+      "eslint --max-warnings=0"
+    ]
+  },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@lhci/cli": "^0.15.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.59.1"
   },
   "pnpm": {
     "overrides": {

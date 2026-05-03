@@ -548,6 +548,7 @@ export default function AdminAiGrounding() {
               />
             </div>
             <div className="flex items-center gap-6">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Switch renders its own associated <button role="switch"> child. */}
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={draft.isActive}
@@ -558,6 +559,7 @@ export default function AdminAiGrounding() {
                 />
                 Active
               </label>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Switch renders its own associated <button role="switch"> child. */}
               <label className="flex items-center gap-2 text-sm">
                 <Switch
                   checked={draft.conciergeEligible}

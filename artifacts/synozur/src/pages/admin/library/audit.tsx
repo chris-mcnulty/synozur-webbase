@@ -165,11 +165,12 @@ function FindingSection({
 
 function CollateralEditLink({ id, slug }: { id: string; slug: string }) {
   return (
-    <Link href={`/library/collateral/${id}/edit`}>
-      <a className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-        <Pencil className="h-3 w-3" />
-        {slug}
-      </a>
+    <Link
+      href={`/library/collateral/${id}/edit`}
+      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+    >
+      <Pencil className="h-3 w-3" />
+      {slug}
     </Link>
   );
 }
@@ -396,13 +397,12 @@ export default function AdminCollateralAudit() {
                       <TableCell className="text-xs font-mono">
                         {f.sourceId}
                         {editorPath && (
-                          <Link href={editorPath}>
-                            <a
-                              className="ml-2 inline-flex items-center text-primary hover:underline"
-                              title="Open source editor"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                          <Link
+                            href={editorPath}
+                            className="ml-2 inline-flex items-center text-primary hover:underline"
+                            title="Open source editor"
+                          >
+                            <ExternalLink className="h-3 w-3" />
                           </Link>
                         )}
                       </TableCell>
@@ -439,11 +439,12 @@ export default function AdminCollateralAudit() {
                           return (
                             <li key={r.id} className="text-xs">
                               {editorPath ? (
-                                <Link href={editorPath}>
-                                  <a className="inline-flex items-center gap-1 font-mono text-primary hover:underline">
-                                    <Pencil className="h-3 w-3" />
-                                    {r.slug}
-                                  </a>
+                                <Link
+                                  href={editorPath}
+                                  className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  {r.slug}
                                 </Link>
                               ) : (
                                 <span className="font-mono">{r.slug}</span>

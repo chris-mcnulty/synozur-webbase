@@ -240,6 +240,7 @@ function ClientForm({
       </div>
 
       <div>
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders its own associated <button role="checkbox"> child. */}
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={state.pkceRequired}
@@ -251,6 +252,7 @@ function ClientForm({
 
       {isEdit && (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders its own associated <button role="checkbox"> child. */}
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={state.isActive}

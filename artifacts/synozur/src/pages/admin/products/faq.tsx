@@ -210,6 +210,9 @@ function CategoriesPanel({
           </div>
         ) : (
           localOrder.map((c) => (
+            // Native HTML5 DnD reorder region (mouse-only); separate keyboard
+            // drag handle below. Same exemption as other ordered editors.
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
             <div
               key={c.id}
               draggable={canWrite}
@@ -476,6 +479,9 @@ function ItemsPanel({
           </div>
         ) : (
           localOrder.map((it) => (
+            // Native HTML5 DnD reorder region (mouse-only); separate keyboard
+            // drag handle below. Same exemption as other ordered editors.
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
             <div
               key={it.id}
               draggable={canWrite}

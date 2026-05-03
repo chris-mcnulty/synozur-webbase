@@ -259,7 +259,6 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     () => (editor ? findHeadingSkips(editor) : []),
     // `docVersion` is the trigger; `editor` identity stays stable across
     // updates so it isn't a meaningful dep on its own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editor, docVersion],
   );
 

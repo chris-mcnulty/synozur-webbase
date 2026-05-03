@@ -83,6 +83,7 @@ export default function Items() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Visual label for the adjacent topic input. */}
               <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Topic</label>
               <input
                 type="text"

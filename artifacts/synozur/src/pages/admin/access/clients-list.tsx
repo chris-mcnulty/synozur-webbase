@@ -97,11 +97,9 @@ export default function ClientsListPage() {
       title="Client organizations"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Access" }, { label: "Client orgs" }]}
       actions={
-        <Link href="/access/clients/new">
-          <a>
-            <Button data-testid="button-new-client-org">New client organization</Button>
-          </a>
-        </Link>
+        <Button asChild data-testid="button-new-client-org">
+          <Link href="/access/clients/new">New client organization</Link>
+        </Button>
       }
     >
       <Card className="p-4 mb-4 flex items-center gap-3 flex-wrap">
@@ -184,13 +182,14 @@ export default function ClientsListPage() {
                       : <Badge variant="secondary">Inactive</Badge>}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/access/clients/${r.id}`}>
-                      <a>
-                        <Button variant="outline" size="sm" data-testid={`button-edit-${r.slug}`}>
-                          Manage
-                        </Button>
-                      </a>
-                    </Link>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      data-testid={`button-edit-${r.slug}`}
+                    >
+                      <Link href={`/access/clients/${r.id}`}>Manage</Link>
+                    </Button>
                   </td>
                 </tr>
               ))}

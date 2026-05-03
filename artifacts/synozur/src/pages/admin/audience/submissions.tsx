@@ -203,6 +203,7 @@ export default function AdminSubmissionsList() {
         }}
       >
         <div className="w-48">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Select renders the associated trigger inside SelectTrigger. */}
           <label className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
             Form
           </label>
@@ -226,6 +227,7 @@ export default function AdminSubmissionsList() {
           </Select>
         </div>
         <div className="flex-1 min-w-[240px]">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Wraps the sibling Input below; not auto-detected by the rule. */}
           <label className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
             Search
           </label>

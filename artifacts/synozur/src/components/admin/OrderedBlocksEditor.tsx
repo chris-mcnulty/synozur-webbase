@@ -174,6 +174,10 @@ export function OrderedBlocksEditor({
           </div>
         ) : (
           visibleBlocks.map((b) => (
+            // Native HTML5 drag-and-drop reorder region; same exemption as
+            // CollateralResourcesEditor (mouse-only DnD listeners on a
+            // non-interactive row, with a separate keyboard drag handle).
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
             <div
               key={b.id}
               draggable={canWrite && !isFiltering}

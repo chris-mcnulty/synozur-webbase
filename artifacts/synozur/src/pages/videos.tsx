@@ -25,11 +25,11 @@ const CATEGORY_LABELS: Record<VideoCategory, string> = {
 function VideoCard({ item }: { item: VideoDto }) {
   const thumbnail = item.thumbnailUrl || item.heroImage;
   return (
-    <Link href={`/videos/${item.slug}`}>
-      <a
-        className="group block rounded-2xl overflow-hidden border border-border/60 bg-card hover:border-primary/40 transition-colors"
-        data-testid={`card-video-${item.slug}`}
-      >
+    <Link
+      href={`/videos/${item.slug}`}
+      className="group block rounded-2xl overflow-hidden border border-border/60 bg-card hover:border-primary/40 transition-colors"
+      data-testid={`card-video-${item.slug}`}
+    >
         <div className="aspect-video relative overflow-hidden bg-muted">
           {thumbnail ? (
             <img
@@ -71,7 +71,6 @@ function VideoCard({ item }: { item: VideoDto }) {
             </div>
           )}
         </div>
-      </a>
     </Link>
   );
 }

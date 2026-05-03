@@ -199,8 +199,11 @@ export default function AdminSolutionsList() {
                 return (
                   <TableRow key={s.id} data-testid={`row-solution-${s.id}`}>
                     <TableCell className="font-medium">
-                      <Link href={`/products/solutions/${s.id}/edit`}>
-                        <a className="hover:underline">{s.title}</a>
+                      <Link
+                        href={`/products/solutions/${s.id}/edit`}
+                        className="hover:underline"
+                      >
+                        {s.title}
                       </Link>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">
@@ -211,13 +214,12 @@ export default function AdminSolutionsList() {
                       {s.displayOrder ?? "—"}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      <Link href={`/products/solutions/${s.id}/capabilities`}>
-                        <a
-                          className="hover:underline"
-                          data-testid={`link-capabilities-${s.id}`}
-                        >
-                          {cCount ?? "…"}
-                        </a>
+                      <Link
+                        href={`/products/solutions/${s.id}/capabilities`}
+                        className="hover:underline"
+                        data-testid={`link-capabilities-${s.id}`}
+                      >
+                        {cCount ?? "…"}
                       </Link>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">

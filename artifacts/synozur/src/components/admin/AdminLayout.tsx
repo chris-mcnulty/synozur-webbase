@@ -373,13 +373,11 @@ export function AdminLayout({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Link href="/">
-          <a className="text-sm" data-testid="link-admin-mobile-home">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              Synozur
-            </span>{" "}
-            <span className="font-semibold">Admin</span>
-          </a>
+        <Link href="/" className="text-sm" data-testid="link-admin-mobile-home">
+          <span className="text-xs uppercase tracking-widest text-muted-foreground">
+            Synozur
+          </span>{" "}
+          <span className="font-semibold">Admin</span>
         </Link>
         <div className="flex items-center gap-1">
           <SynozurAppSwitcher currentApp="synozur" />
@@ -418,13 +416,11 @@ export function AdminLayout({
           aria-hidden={drawerHidden || undefined}
         >
           <div className="p-5 border-b border-border flex items-start justify-between gap-3">
-            <Link href="/">
-              <a className="block">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Synozur
-                </div>
-                <div className="text-lg font-semibold">Admin</div>
-              </a>
+            <Link href="/" className="block">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                Synozur
+              </div>
+              <div className="text-lg font-semibold">Admin</div>
             </Link>
             <div className="flex items-center gap-1">
               <div className="hidden md:block">
@@ -446,19 +442,19 @@ export function AdminLayout({
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
-                <Link key={item.href} href={item.href}>
-                  <a
-                    className={cn(
-                      "flex items-center gap-3 px-5 py-2.5 text-sm hover-elevate",
-                      active
-                        ? "text-primary font-medium border-l-2 border-primary bg-primary/5"
-                        : "text-muted-foreground border-l-2 border-transparent",
-                    )}
-                    data-testid={item.testId}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </a>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-5 py-2.5 text-sm hover-elevate",
+                    active
+                      ? "text-primary font-medium border-l-2 border-primary bg-primary/5"
+                      : "text-muted-foreground border-l-2 border-transparent",
+                  )}
+                  data-testid={item.testId}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
                 </Link>
               );
             })}
@@ -500,31 +496,31 @@ export function AdminLayout({
                         ? () => { void refetchSpamCount(); }
                         : undefined;
                       return (
-                        <Link key={item.href} href={item.href}>
-                          <a
-                            className={cn(
-                              "flex items-center gap-3 pl-10 pr-5 py-2 text-sm hover-elevate",
-                              active
-                                ? "text-primary font-medium border-l-2 border-primary bg-primary/5"
-                                : "text-muted-foreground border-l-2 border-transparent",
-                            )}
-                            data-testid={item.testId}
-                            onMouseEnter={navRefresh}
-                            onFocus={navRefresh}
-                            onClick={navRefresh}
-                          >
-                            <Icon className="h-4 w-4" />
-                            <span className="flex-1">{item.label}</span>
-                            {showBadge && (
-                              <span
-                                className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none"
-                                aria-label={`${item.badgeCount} spam comment${item.badgeCount === 1 ? "" : "s"} pending review`}
-                                data-testid={item.badgeTestId}
-                              >
-                                {item.badgeCount! > 99 ? "99+" : item.badgeCount}
-                              </span>
-                            )}
-                          </a>
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 pl-10 pr-5 py-2 text-sm hover-elevate",
+                            active
+                              ? "text-primary font-medium border-l-2 border-primary bg-primary/5"
+                              : "text-muted-foreground border-l-2 border-transparent",
+                          )}
+                          data-testid={item.testId}
+                          onMouseEnter={navRefresh}
+                          onFocus={navRefresh}
+                          onClick={navRefresh}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="flex-1">{item.label}</span>
+                          {showBadge && (
+                            <span
+                              className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none"
+                              aria-label={`${item.badgeCount} spam comment${item.badgeCount === 1 ? "" : "s"} pending review`}
+                              data-testid={item.badgeTestId}
+                            >
+                              {item.badgeCount! > 99 ? "99+" : item.badgeCount}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
@@ -565,8 +561,8 @@ export function AdminLayout({
                     <span key={i} className="flex items-center gap-1">
                       {i > 0 && <ChevronRight className="h-3 w-3" />}
                       {c.href ? (
-                        <Link href={c.href}>
-                          <a className="hover:text-foreground">{c.label}</a>
+                        <Link href={c.href} className="hover:text-foreground">
+                          {c.label}
                         </Link>
                       ) : (
                         <span>{c.label}</span>

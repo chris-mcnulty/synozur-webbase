@@ -562,6 +562,8 @@ function SampleThumbGrid({ thumbs }: { thumbs: string[] }) {
           key={t}
           className="rounded-xl overflow-hidden border border-border/60 bg-card aspect-[4/3]"
         >
+          {/* onError is a non-interactive load-failure callback (no user gesture); a keyboard handler would not apply. */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <img
             src={t}
             alt={`Sample deliverable ${i + 1}`}

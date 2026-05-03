@@ -311,6 +311,10 @@ export default function AdminCarouselPage() {
                       const isDragging = dragId === item.id;
                       const isOver = overId === item.id && dragId !== item.id;
                       return (
+                        // Native HTML5 DnD reorder region; mouse-only listeners
+                        // on a non-interactive list item (separate keyboard
+                        // controls live elsewhere on the row).
+                        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                         <li
                           key={item.id}
                           draggable={canWrite && !reordering}
@@ -381,8 +385,8 @@ function EmptyState() {
       <h3 className="font-semibold">No featured items yet</h3>
       <p className="text-sm text-muted-foreground mt-1">
         Mark a collateral item as featured from the{" "}
-        <Link href="/library/collateral">
-          <a className="underline hover:text-foreground">Collateral list</a>
+        <Link href="/library/collateral" className="underline hover:text-foreground">
+          Collateral list
         </Link>{" "}
         to add it to the home carousel.
       </p>

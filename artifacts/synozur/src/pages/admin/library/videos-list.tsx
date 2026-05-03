@@ -120,13 +120,12 @@ export default function AdminVideosList() {
               items.map((v) => (
                 <TableRow key={v.id} data-testid={`row-video-${v.id}`}>
                   <TableCell className="font-medium">
-                    <Link href={`/library/videos/${v.id}/edit`}>
-                      <a
-                        className="hover:underline"
-                        data-testid={`link-edit-video-${v.id}`}
-                      >
-                        {v.title}
-                      </a>
+                    <Link
+                      href={`/library/videos/${v.id}/edit`}
+                      className="hover:underline"
+                      data-testid={`link-edit-video-${v.id}`}
+                    >
+                      {v.title}
                     </Link>
                     <div className="text-xs text-muted-foreground font-mono">/videos/{v.slug}</div>
                   </TableCell>

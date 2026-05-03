@@ -225,6 +225,7 @@ export default function CspViolationsPage() {
 
         {directives && directives.length > 0 && (
           <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Visual label for the adjacent Radix Select trigger. */}
             <label className="text-sm text-zinc-400 whitespace-nowrap">Filter by directive</label>
             <Select value={directive} onValueChange={(v) => { setDirective(v); setPage(0); }}>
               <SelectTrigger className="w-52 h-8 text-sm">

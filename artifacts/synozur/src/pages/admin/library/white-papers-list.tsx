@@ -118,10 +118,12 @@ export default function AdminWhitePapersList() {
               items.map((w) => (
                 <TableRow key={w.id} data-testid={`row-white-paper-${w.id}`}>
                   <TableCell className="font-medium">
-                    <Link href={`/library/white-papers/${w.id}/edit`}>
-                      <a className="hover:underline" data-testid={`link-edit-white-paper-${w.id}`}>
-                        {w.title}
-                      </a>
+                    <Link
+                      href={`/library/white-papers/${w.id}/edit`}
+                      className="hover:underline"
+                      data-testid={`link-edit-white-paper-${w.id}`}
+                    >
+                      {w.title}
                     </Link>
                     <div className="text-xs text-muted-foreground font-mono">
                       /white-papers/{w.slug}

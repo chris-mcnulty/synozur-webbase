@@ -307,11 +307,9 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Link href="/access/clients">
-            <a>
-              <Button variant="outline">Back</Button>
-            </a>
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/access/clients">Back</Link>
+          </Button>
           <Button onClick={save} disabled={saving} data-testid="button-save-client-org">
             {saving ? "Saving…" : isNew ? "Create" : "Save"}
           </Button>

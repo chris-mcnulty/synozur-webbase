@@ -343,8 +343,11 @@ export default function AdminPostsList() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      <Link href={`/insights/posts/${p.id}/edit`}>
-                        <a className="hover:underline">{p.title}</a>
+                      <Link
+                        href={`/insights/posts/${p.id}/edit`}
+                        className="hover:underline"
+                      >
+                        {p.title}
                       </Link>
                       <div className="text-xs text-muted-foreground">/{p.slug}</div>
                     </TableCell>

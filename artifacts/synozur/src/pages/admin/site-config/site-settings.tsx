@@ -5,7 +5,7 @@ import { Check, Image as ImageIcon, Video as VideoIcon, X, Plus, Trash2 } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { api, type AdminSiteSettings, type UpdateSiteSettingsBody } from "@/lib/api";
+import { api, type UpdateSiteSettingsBody } from "@/lib/api";
 import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
 import type { MediaItem } from "@workspace/api-client-react";
 
@@ -531,8 +531,8 @@ export default function AdminSiteSettings() {
               <h2 className="text-lg font-semibold mb-1">Polaris podcast</h2>
               <p className="text-sm text-muted-foreground">
                 Libsyn RSS feed URL used by the{" "}
-                <Link href="/library/polaris-episodes">
-                  <a className="underline">Polaris episodes</a>
+                <Link href="/library/polaris-episodes" className="underline">
+                  Polaris episodes
                 </Link>{" "}
                 admin's “Import from Libsyn” flow.
               </p>
@@ -826,8 +826,8 @@ export default function AdminSiteSettings() {
               <h2 className="text-lg font-semibold mb-1">Alt home page copy</h2>
               <p className="text-sm text-muted-foreground max-w-xl">
                 Editable copy for the alternate home page at{" "}
-                <Link href="/home-b">
-                  <a className="underline">/home-b</a>
+                <Link href="/home-b" className="underline">
+                  /home-b
                 </Link>
                 . Leave any field blank to fall back to the built-in default. Saving
                 applies to all 17 fields at once.

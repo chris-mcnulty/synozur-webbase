@@ -213,6 +213,7 @@ export function PolarisLibsynImportDialog({ open, onClose }: Props) {
           {previewData.length > 0 && (
             <>
               <div className="flex items-center gap-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Radix Checkbox renders an associated <button role="checkbox"> as a child. */}
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={allowResync}

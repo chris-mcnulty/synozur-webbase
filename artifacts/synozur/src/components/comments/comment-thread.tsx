@@ -140,7 +140,6 @@ function CommentItem({
           className="text-sm leading-relaxed text-foreground whitespace-pre-wrap"
           data-testid="comment-body"
           // Body sanitized in renderCommentBody (escapes HTML, allows links + line breaks only).
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: renderCommentBody(node.bodyText) }}
         />
         <div className="mt-3">

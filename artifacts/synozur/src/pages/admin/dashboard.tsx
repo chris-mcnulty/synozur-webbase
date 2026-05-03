@@ -258,10 +258,12 @@ export default function AdminDashboard() {
                   <div className="text-sm font-medium text-muted-foreground">
                     Site traffic — last {rangeDays} days
                   </div>
-                  <Link href="/marketing/traffic">
-                    <a className="text-xs text-primary hover:underline" data-testid="link-traffic-details">
-                      Details
-                    </a>
+                  <Link
+                    href="/marketing/traffic"
+                    className="text-xs text-primary hover:underline"
+                    data-testid="link-traffic-details"
+                  >
+                    Details
                   </Link>
                 </div>
                 {trafficSeries.isLoading ? (
@@ -314,10 +316,12 @@ export default function AdminDashboard() {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <h2 className="font-semibold text-sm">Top pages ({rangeDays}d)</h2>
                   </div>
-                  <Link href="/marketing/traffic">
-                    <a className="text-xs text-primary hover:underline" data-testid="link-top-pages-details">
-                      Full breakdown
-                    </a>
+                  <Link
+                    href="/marketing/traffic"
+                    className="text-xs text-primary hover:underline"
+                    data-testid="link-top-pages-details"
+                  >
+                    Full breakdown
                   </Link>
                 </div>
                 {trafficPages.isLoading ? (
@@ -459,10 +463,11 @@ export default function AdminDashboard() {
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <Link href={`/insights/posts/${p.id}/analytics`}>
-                          <a className="text-sm font-medium truncate hover:underline block">
-                            {p.title}
-                          </a>
+                        <Link
+                          href={`/insights/posts/${p.id}/analytics`}
+                          className="text-sm font-medium truncate hover:underline block"
+                        >
+                          {p.title}
                         </Link>
                         <div className="text-xs text-muted-foreground">
                           {formatShortDate(p.publishedAt)}
@@ -482,8 +487,8 @@ export default function AdminDashboard() {
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold">Your recent posts</h2>
-                <Link href="/insights/posts">
-                  <a className="text-xs text-primary hover:underline">View all</a>
+                <Link href="/insights/posts" className="text-xs text-primary hover:underline">
+                  View all
                 </Link>
               </div>
               {recent.isLoading ? (
@@ -496,13 +501,14 @@ export default function AdminDashboard() {
                 <ul className="divide-y divide-border">
                   {recent.data?.items.map((p) => (
                     <li key={p.id} className="py-2.5 flex items-center justify-between gap-3">
-                      <Link href={`/insights/posts/${p.id}/edit`}>
-                        <a className="flex-1 min-w-0 hover:underline">
-                          <div className="text-sm font-medium truncate">{p.title}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {p.status} · updated {formatDate(p.updatedAt)}
-                          </div>
-                        </a>
+                      <Link
+                        href={`/insights/posts/${p.id}/edit`}
+                        className="flex-1 min-w-0 hover:underline"
+                      >
+                        <div className="text-sm font-medium truncate">{p.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.status} · updated {formatDate(p.updatedAt)}
+                        </div>
                       </Link>
                     </li>
                   ))}
@@ -547,8 +553,8 @@ export default function AdminDashboard() {
                 <h2 className="font-semibold flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" /> Comments awaiting moderation
                 </h2>
-                <Link href="/insights/comments">
-                  <a className="text-xs text-primary hover:underline">View all</a>
+                <Link href="/insights/comments" className="text-xs text-primary hover:underline">
+                  View all
                 </Link>
               </div>
               {pendingComments.isLoading ? (

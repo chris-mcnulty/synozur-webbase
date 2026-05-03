@@ -578,7 +578,6 @@ export default function VideoEdit({ id }: Props) {
             <Label className="text-sm font-medium">Hero image</Label>
             <div className="aspect-video w-full rounded-md border border-border bg-muted overflow-hidden flex items-center justify-center">
               {form.heroImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img src={form.heroImage} alt="Hero" className="h-full w-full object-cover" />
               ) : (
                 <ImageIcon className="h-6 w-6 text-muted-foreground" />

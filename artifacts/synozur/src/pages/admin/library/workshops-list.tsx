@@ -104,13 +104,12 @@ export default function AdminWorkshopsList() {
               items.map((w) => (
                 <TableRow key={w.id} data-testid={`row-workshop-${w.id}`}>
                   <TableCell className="font-medium">
-                    <Link href={`/library/workshops/${w.id}/edit`}>
-                      <a
-                        className="hover:underline"
-                        data-testid={`link-edit-workshop-${w.id}`}
-                      >
-                        {w.title}
-                      </a>
+                    <Link
+                      href={`/library/workshops/${w.id}/edit`}
+                      className="hover:underline"
+                      data-testid={`link-edit-workshop-${w.id}`}
+                    >
+                      {w.title}
                     </Link>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">
