@@ -449,9 +449,22 @@ async function main() {
   let notFound = 0;
 
   for (const enrichment of ENRICHMENTS) {
-    const solution = await db.query.solutionsTable.findFirst({
-      where: eq(solutionsTable.slug, enrichment.slug),
-    });
+    // NB: select id only rather than `db.query.solutionsTable.findFirst()` —
+    // the latter expands to `SELECT *` and pulls the `search_tsv` generated
+    // column added by #170 (Public-site search via Postgres FTS). That
+    // column lives in the schema but is created by api-server's startup
+    // migrations, not drizzle-kit push (drizzle-kit can't model
+    // `GENERATED ALWAYS AS … STORED`). post-merge.sh runs `db push` then
+    // this seed before the api-server has had a chance to boot, so on a
+    // freshly-pulled prod DB the column is missing and the SELECT fails
+    // with `errorMissingColumn`. Selecting only `id` sidesteps the
+    // generated column entirely and keeps the seed independent of FTS
+    // setup ordering.
+    const [solution] = await db
+      .select({ id: solutionsTable.id })
+      .from(solutionsTable)
+      .where(eq(solutionsTable.slug, enrichment.slug))
+      .limit(1);
 
     if (!solution) {
       console.warn(
