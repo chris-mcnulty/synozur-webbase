@@ -10,6 +10,7 @@ import {
 import { BotCheckCallout } from "@/components/bot-check-callout";
 
 type ApiApplication = { slug: string; name: string };
+type ApiService = { slug: string; title: string; servicePath?: string | null };
 type SocialLink = { href: string; label: string; Icon: LucideIcon };
 
 const SAME_AS_FALLBACK: readonly string[] = ["https://www.linkedin.com/company/synozur"];
@@ -155,6 +156,16 @@ export function PortalSiteFooter() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const servicesQuery = useQuery({
+    queryKey: ["galaxy-footer-services"],
+    queryFn: async () => {
+      const res = await fetch("/api/services");
+      if (!res.ok) return { items: [] as ApiService[] };
+      return res.json() as Promise<{ items: ApiService[] }>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const settingsQuery = useQuery({
     queryKey: ["galaxy-footer-settings"],
     queryFn: async () => {
@@ -167,6 +178,7 @@ export function PortalSiteFooter() {
   });
 
   const footerApps = (applicationsQuery.data?.items ?? []).slice(0, 4);
+  const footerServices = servicesQuery.data?.items ?? [];
   const socialLinks = pickSocialLinks(settingsQuery.data?.orgSameAs ?? null);
 
   return (
@@ -191,10 +203,21 @@ export function PortalSiteFooter() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Services</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <li><a href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</a></li>
-              <li><a href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</a></li>
-              <li><a href="/services/experiences" className="hover:text-primary transition-colors">Experiences</a></li>
-              <li><a href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</a></li>
+              {footerServices.length > 0
+                ? footerServices.map((s) => (
+                    <li key={s.slug}>
+                      <a href={s.servicePath ?? `/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</a>
+                    </li>
+                  ))
+                : (
+                  <>
+                    <li><a href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</a></li>
+                    <li><a href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</a></li>
+                    <li><a href="/services/experiences" className="hover:text-primary transition-colors">Experiences</a></li>
+                    <li><a href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</a></li>
+                  </>
+                )
+              }
             </ul>
           </div>
 
