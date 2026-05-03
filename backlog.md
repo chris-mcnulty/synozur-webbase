@@ -41,8 +41,8 @@ Each row links to the canonical backlog entry below where the implementation det
   **Code shipped (sign-in tier):** `artifacts/synozur/tests/sign-in.spec.ts` (PR #71) covers (a) always-on render assertions on `/sign-in` plus a verified redirect from the Entra button to `login.microsoftonline.com` with `client_id` and `code_challenge` query params asserted, and (b) a full `/sign-in → Entra → /callback → /api/auth/me` round-trip gated on `E2E_ENTRA_TEST_USER_EMAIL` + `E2E_ENTRA_TEST_USER_PASSWORD` env vars so CI doesn't require an Entra test tenant by default. **Remaining gap:** provision those two secrets for the CI environment to unlock the full round-trip; the rate-limit (429) test is not yet written.
 - [ ] **L10. PR-blocking Lighthouse CI** → #156.
   Move `lhci autorun` from `workflow_dispatch` into the standard PR job and bump perf/SEO assertions from `warn` to `error` for routes that already pass cleanly. Pairs with BACKLOG.md "SEO & web-platform debt" #2. Without this, post-launch perf regressions ship invisibly.
-- [ ] **L11. PWA manifest + `theme-color`** → #154.
-  Required for the iOS Safari "Add to Home Screen" experience and for the Lighthouse PWA audit to score above zero. Disproportionate quality signal for the effort (≈1 hour).
+- [x] **L11. PWA manifest + `theme-color`** → #154. **Shipped May 2026.**
+  ~~Required for the iOS Safari "Add to Home Screen" experience and for the Lighthouse PWA audit to score above zero. Disproportionate quality signal for the effort (≈1 hour).~~
 
 ### Tier 3 — Polish, can ship in week 1 post-launch
 
@@ -365,10 +365,10 @@ Out of scope: multi-tenant grounding scope (single-tenant for now), open-ended c
 
 ~~The route `/services-overview/:slug` and `/services/:slug` render overlapping content and metadata for the same service pillar~~ **Shipped:** `artifacts/synozur/src/pages/services-overview.tsx` now emits a canonical hint pointing to the authoritative service-detail URL (lines 7–11). Residual: a Search Console Coverage report sweep to confirm Google has consolidated indexing on the canonical URL — fold into the SEO submission verification under #102.
 
-### #154 · Ship a Web App Manifest (PWA) for the public site
+### ~~#154 · Ship a Web App Manifest (PWA) for the public site~~ **— Shipped May 2026**
 **Depends on:** —
 
-The site has no `manifest.webmanifest` / `manifest.json`, so installing the site as a PWA falls back to browser defaults and the `theme-color` / `display` / app-icon set is empty. This hurts iOS Safari "Add to Home Screen" appearance and blocks future PWA features (offline cache for the home page, push notifications for content launches). This task adds a manifest at `artifacts/synozur/public/manifest.webmanifest` with the Synozur brand colors, app icons (192/512 PNG plus maskable), `display: standalone`, `start_url`, and a matching `<meta name="theme-color">` plus `<link rel="manifest">` in `index.html`. Out of scope for v1: a service worker / offline support — handle in a follow-up once the manifest itself is verified in Lighthouse PWA audits.
+~~The site has no `manifest.webmanifest` / `manifest.json`, so installing the site as a PWA falls back to browser defaults and the `theme-color` / `display` / app-icon set is empty.~~ **Shipped:** `artifacts/synozur/public/manifest.webmanifest` declares Synozur name/short name, cosmic-navy `#0a0a19` brand background + theme color, `display: standalone`, `start_url: /`, an icon set (`/icon-192.png`, `/icon-512.png`, plus `/icon-maskable-512.png` with the brand-color safe-zone padding) generated from the existing brand mark, and two wide-form-factor screenshots. `artifacts/synozur/index.html` emits `<link rel="manifest">`, `<meta name="theme-color" content="#0a0a19">` (with a `prefers-color-scheme: dark` companion), and the iOS `apple-mobile-web-app-*` meta set so Safari Add-to-Home-Screen lands a branded icon and a black-translucent status bar. The SPA static server (`server.mjs`) was extended with the `application/manifest+json` MIME type so `/manifest.webmanifest` is served with the correct content-type. Service-worker / offline support remains out of scope (deferred follow-up).
 
 ### ~~#155 · Add security headers via `helmet` in the API server~~ — **Shipped (PR #68)**
 **Depends on:** —
