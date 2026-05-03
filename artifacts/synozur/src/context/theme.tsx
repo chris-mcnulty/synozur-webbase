@@ -18,6 +18,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 const STORAGE_KEY = "synozur-theme";
+const LIGHT_MEDIA_QUERY = "(prefers-color-scheme: light)";
 
 function getInitialTheme(): Theme {
   try {
@@ -25,6 +26,17 @@ function getInitialTheme(): Theme {
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // SSR / private browsing
+  }
+  try {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(LIGHT_MEDIA_QUERY).matches
+    ) {
+      return "light";
+    }
+  } catch {
+    // matchMedia unavailable
   }
   return "dark";
 }
@@ -72,6 +84,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       html.classList.remove("dark");
     }
   }, [theme]);
+
+  // Follow OS prefers-color-scheme until the user explicitly toggles. Once
+  // localStorage has a stored choice, the explicit choice wins.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mql = window.matchMedia(LIGHT_MEDIA_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => {
+      try {
+        if (localStorage.getItem(STORAGE_KEY) !== null) return;
+      } catch {
+        return;
+      }
+      setTheme(event.matches ? "light" : "dark");
+    };
+    if (typeof mql.addEventListener === "function") {
+      mql.addEventListener("change", handleChange);
+      return () => mql.removeEventListener("change", handleChange);
+    }
+    mql.addListener(handleChange);
+    return () => mql.removeListener(handleChange);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, siteTheme }}>

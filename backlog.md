@@ -49,7 +49,7 @@ Each row links to the canonical backlog entry below where the implementation det
 - [ ] **L12.** `eslint-plugin-jsx-a11y` author-time a11y gate → #158.
 - [ ] **L13.** 410 Gone / 308 Permanent Redirect for unpublished content → #162.
 - [ ] **L14.** Dynamic OG image generation for editorial content → #161.
-- [ ] **L15.** Honor `prefers-color-scheme` for first-time visitors → #165.
+- [x] ~~**L15.** Honor `prefers-color-scheme` for first-time visitors → #165.~~ **Shipped May 2026.**
 - [ ] **L16.** Share rail on insight / case-study / white-paper detail pages → #164.
 - [ ] **L17.** Quality-gates warn → block flip → BACKLOG.md "Quality gates" #3, #4 (once warn-mode metrics are clean).
 - [ ] **L18.** Robots meta + discovery-friendly 404 page → #163.
@@ -420,10 +420,10 @@ Two related improvements that share a single PR. (a) The `Meta` component does n
 
 `event-detail.tsx` already ships a clean LinkedIn / Facebook / copy-link share rail (`facebookShare`, `share-linkedin` test id) — pure `<a href>` with pre-filled URLs, no third-party script, anchored below the hero. The same pattern is missing on `insight-detail.tsx`, `case-study-detail.tsx`, and `white-paper-detail.tsx`, which are the highest-volume editorial surfaces. This task lifts the existing share-button cluster into a small `components/share-rail.tsx` (kind, title, url props) and drops it under the hero on each editorial detail page. Includes an X/Twitter target alongside LinkedIn and Facebook, plus a `navigator.share` fallback on mobile. Pairs with #86 (already shipped) — the OG tags ensure the shared link renders a rich card.
 
-### #165 · Honor `prefers-color-scheme` for first-time visitors
+### ~~#165 · Honor `prefers-color-scheme` for first-time visitors~~ **— Shipped May 2026**
 **Depends on:** —
 
-Dark mode itself is shipped: `context/theme.tsx` exposes `useTheme()`, `components/ui/theme-toggle.tsx` renders the toggle, and the user's choice persists in `localStorage` under `synozur-theme`. The remaining gap is system-preference detection: `getInitialTheme()` only reads localStorage and falls back to a hard-coded `"dark"`, so a first-time visitor on a system set to light receives the dark canvas regardless of their OS preference. This task: (a) reads `window.matchMedia("(prefers-color-scheme: light)")` when no localStorage value exists, (b) subscribes to its `change` event so the theme follows the system preference until the user explicitly toggles, (c) emits a `<meta name="color-scheme" content="light dark">` tag so the browser's default form-control and scrollbar colors render correctly. Out of scope: a third "system" tri-state on the toggle button itself — keep the toggle binary; the system preference is just the default.
+~~Dark mode itself is shipped: `context/theme.tsx` exposes `useTheme()`, `components/ui/theme-toggle.tsx` renders the toggle, and the user's choice persists in `localStorage` under `synozur-theme`. The remaining gap is system-preference detection: `getInitialTheme()` only reads localStorage and falls back to a hard-coded `"dark"`, so a first-time visitor on a system set to light receives the dark canvas regardless of their OS preference.~~ **Shipped:** `getInitialTheme()` in `artifacts/synozur/src/context/theme.tsx` now reads `window.matchMedia("(prefers-color-scheme: light)")` when localStorage has no value, and `ThemeProvider` subscribes to the same media query's `change` event (using `addEventListener` with a Safari-compat `addListener` fallback) so the theme follows OS changes until the user explicitly toggles — once `synozur-theme` is set, the explicit choice wins. The pre-hydration script in `artifacts/synozur/index.html` mirrors the same precedence so first paint matches React's initial state, and a `<meta name="color-scheme" content="light dark">` tag is emitted so default form-control and scrollbar colors render correctly. The toggle stays binary — no tri-state.
 
 ### #139 · Internationalization foundation (English baseline + one launch locale)
 **Depends on:** — (architecture); pairs with #110 (some audience classes will skew geographically), #130 (theme assets may need locale variants)

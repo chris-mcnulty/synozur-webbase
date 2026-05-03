@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>Transform Your Business with The Synozur Alliance | Strategic Advisory Services</title>
     <link rel="icon" type="image/png" sizes="1400x1400" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
@@ -24,11 +25,22 @@
     <script>
       // Pre-hydration: apply the user's saved theme to <html> BEFORE React mounts
       // so the body background never flashes light during route transitions or
-      // initial paint. Mirrors the logic in src/context/theme.tsx.
+      // initial paint. Mirrors the logic in src/context/theme.tsx — explicit
+      // localStorage choice wins, otherwise honor the OS prefers-color-scheme.
       (function () {
         try {
           var stored = localStorage.getItem("synozur-theme");
-          var theme = stored === "light" ? "light" : "dark";
+          var theme;
+          if (stored === "light" || stored === "dark") {
+            theme = stored;
+          } else if (
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)").matches
+          ) {
+            theme = "light";
+          } else {
+            theme = "dark";
+          }
           if (theme === "dark") document.documentElement.classList.add("dark");
         } catch (_) {
           document.documentElement.classList.add("dark");
