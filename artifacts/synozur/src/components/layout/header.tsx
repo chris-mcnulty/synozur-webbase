@@ -558,6 +558,17 @@ export function Header() {
           {/* Theme toggle */}
           <ThemeToggle />
 
+          {/* Galaxy Portal link — only shown when signed in */}
+          {isSignedIn && (
+            <a
+              href="/galaxy/"
+              className="hidden lg:inline-flex items-center gap-1.5 h-9 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              Galaxy Portal
+            </a>
+          )}
+
           {/* User button (signed-in) or Get Started (signed-out) */}
           {isSignedIn && user ? (
             <UserButton user={user} signOut={signOut} />
