@@ -239,32 +239,6 @@ export default function InsightDetail() {
                   <span className="h-1 w-1 rounded-full bg-zinc-500" />
                 </>
               )}
-              {post.author?.displayName && (
-                <>
-                  <span className="inline-flex items-center gap-2 normal-case tracking-normal">
-                    {post.author.avatarUrl && (
-                      <img
-                        src={resolveMediaUrl(post.author.avatarUrl, { width: 64 }) ?? undefined}
-                        alt={post.author.displayName}
-                        width={24}
-                        height={24}
-                        className="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"
-                      />
-                    )}
-                    {(post.author as { teamMemberSlug?: string | null }).teamMemberSlug ? (
-                      <Link
-                        href={`/team/${(post.author as { teamMemberSlug?: string | null }).teamMemberSlug}`}
-                        className="uppercase tracking-widest hover:text-white transition-colors"
-                      >
-                        {post.author.displayName}
-                      </Link>
-                    ) : (
-                      <span className="uppercase tracking-widest">{post.author.displayName}</span>
-                    )}
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-zinc-500" />
-                </>
-              )}
               <span>{formatDate(post.publishedAt)}</span>
               {post.readingTimeMin && (
                 <>
@@ -305,6 +279,26 @@ export default function InsightDetail() {
         </div>
 
         <div className="container mx-auto px-4 py-16 md:py-24 max-w-3xl">
+          {post.author?.displayName && (
+            <p
+              className="mb-8 text-sm text-muted-foreground"
+              data-testid="author-byline"
+            >
+              By{" "}
+              {(post.author as { teamMemberSlug?: string | null }).teamMemberSlug ? (
+                <Link
+                  href={`/team/${(post.author as { teamMemberSlug?: string | null }).teamMemberSlug}`}
+                  className="font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  {post.author.displayName}
+                </Link>
+              ) : (
+                <span className="font-medium text-foreground">
+                  {post.author.displayName}
+                </span>
+              )}
+            </p>
+          )}
           {bodyHtml ? (
             <div
               className="prose dark:prose-invert prose-lg max-w-none prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl prose-img:border prose-img:border-border/60"
