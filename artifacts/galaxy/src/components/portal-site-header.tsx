@@ -379,6 +379,9 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
+            <a href="/" className="text-[17px] font-medium text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground transition-colors py-2">
+              Home
+            </a>
             {navGroups.map((group) => (
               <div key={group.title} className="relative group">
                 <button
@@ -480,6 +483,13 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   <Search className="h-4 w-4" />
                 </button>
               </form>
+
+              {/* Home link — back to main Synozur site */}
+              <div className="flex flex-col gap-2">
+                <a href="/" className="font-semibold text-foreground hover:text-primary text-sm py-1">
+                  Home
+                </a>
+              </div>
 
               {/* Site nav groups — skip "Portal" since the Galaxy Portal section below handles it */}
               {navGroups.filter((g) => g.title !== "Portal").map((group) => (
