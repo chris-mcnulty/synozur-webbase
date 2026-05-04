@@ -140,19 +140,54 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
+      {/* ── Desktop proof panel: metrics left 1/3 | image+quote right 2/3 ── */}
       <section className="bg-background">
         <div className="container mx-auto px-4 max-w-5xl -mt-12 relative z-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="rounded-2xl overflow-hidden border border-border shadow-2xl aspect-[16/9] bg-card"
+            className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-card flex flex-col lg:flex-row min-h-[420px]"
           >
-            <img
-              src={study.heroImage}
-              alt={study.title}
-              className="w-full h-full object-cover"
-            />
+            {/* Left: metrics chicklets — hidden when no metrics */}
+            {study.metrics.length > 0 && (
+              <div className="lg:w-1/3 flex flex-col divide-y divide-border border-b lg:border-b-0 lg:border-r border-border bg-card">
+                {study.metrics.map((m) => (
+                  <div key={m.label} className="flex-1 flex flex-col justify-center p-8">
+                    <p className="text-3xl lg:text-4xl font-bold text-primary mb-2 leading-none">
+                      {m.value}
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-snug">
+                      {m.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Right: hero image + darkening overlay + quote */}
+            <div className={`relative overflow-hidden ${study.metrics.length > 0 ? "lg:w-2/3" : "w-full"} min-h-[280px] lg:min-h-0`}>
+              <img
+                src={study.heroImage}
+                alt={study.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              {/* Darkening gradient — stronger at bottom where quote sits */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
+
+              {/* Quote overlaid on image */}
+              {study.quote.text && (
+                <div className="absolute inset-x-0 bottom-0 p-7 lg:p-9">
+                  <Quote className="h-5 w-5 text-primary mb-3 opacity-80" />
+                  <blockquote className="text-white text-base lg:text-lg font-medium leading-snug mb-3 drop-shadow">
+                    "{study.quote.text}"
+                  </blockquote>
+                  <figcaption className="text-xs text-white/60 tracking-wide">
+                    — {study.quote.attribution}
+                  </figcaption>
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       </section>
@@ -162,28 +197,6 @@ export default function CaseStudyDetail() {
           <ShareRail kind="case-study" label="case study" title={study.title} className="" />
         </div>
       </section>
-
-      {study.metrics.length > 0 && (
-        <section className="py-16 bg-background">
-          <div className="container mx-auto px-4 max-w-5xl">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
-              {study.metrics.map((m) => (
-                <div
-                  key={m.label}
-                  className="bg-card p-8 flex flex-col items-start"
-                >
-                  <p className="text-2xl md:text-3xl font-bold text-primary mb-2 leading-tight">
-                    {m.value}
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-snug">
-                    {m.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
@@ -239,22 +252,6 @@ export default function CaseStudyDetail() {
           </div>
         </div>
       </section>
-
-      {study.quote.text && (
-        <section className="py-20 bg-background">
-          <div className="container mx-auto px-4 max-w-3xl">
-            <figure className="rounded-2xl border border-border/60 bg-card p-10 md:p-12">
-              <Quote className="h-8 w-8 text-primary mb-6" />
-              <blockquote className="text-xl md:text-2xl font-medium leading-relaxed text-foreground/90 mb-6">
-                "{study.quote.text}"
-              </blockquote>
-              <figcaption className="text-sm text-muted-foreground">
-                — {study.quote.attribution}
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-      )}
 
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
