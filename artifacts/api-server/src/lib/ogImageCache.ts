@@ -1,11 +1,12 @@
 /**
  * Object-storage cache for dynamic OG images (#161).
  *
- * Cache key: `(kind, id, lastModifiedMs)` — embedding `lastModifiedMs`
- * means a row's `updated_at` bump naturally invalidates stale renders
- * without us having to delete bytes proactively. Old objects accumulate
- * but are dwarfed by the rest of the bucket; a periodic janitor can be
- * added later if it ever matters.
+ * Cache key: `(kind, id, OG_TEMPLATE_VERSION, lastModifiedMs)`. Embedding
+ * `lastModifiedMs` means a row's `updated_at` bump naturally invalidates
+ * stale renders; embedding `OG_TEMPLATE_VERSION` means a renderer-template
+ * change globally invalidates without touching every row. Old objects
+ * accumulate but are dwarfed by the rest of the bucket; a periodic
+ * janitor can be added later if it ever matters.
  *
  * Falls back to in-memory caching when `PRIVATE_OBJECT_DIR` isn't set
  * (dev environments without object storage configured), so the endpoint
@@ -14,7 +15,7 @@
 
 import { objectStorageClient } from "./storage/gcsBackend";
 import { logger } from "./logger";
-import type { OgImageKind } from "./ogImageRenderer";
+import { OG_TEMPLATE_VERSION, type OgImageKind } from "./ogImageRenderer";
 
 interface CacheKey {
   kind: OgImageKind;
@@ -23,7 +24,7 @@ interface CacheKey {
 }
 
 function objectName(key: CacheKey): string {
-  return `og-cache/${key.kind}/${key.id}/${key.lastModifiedMs}.png`;
+  return `og-cache/${key.kind}/${key.id}/v${OG_TEMPLATE_VERSION}-${key.lastModifiedMs}.png`;
 }
 
 function parsePrivateBucket(): { bucketName: string; prefix: string } | null {
@@ -84,15 +85,27 @@ export async function readCachedOgImage(key: CacheKey): Promise<Buffer | null> {
   }
 }
 
+/**
+ * Outcome of a cache write. `ok=false` means the shared-storage save
+ * failed; the in-memory copy may still be present, but other instances
+ * won't see this entry. Callers that need a strong success signal (e.g.
+ * the regenerate endpoint) should surface a 502 in that case.
+ */
+export interface CacheWriteResult {
+  ok: boolean;
+  storageConfigured: boolean;
+  error?: string;
+}
+
 export async function writeCachedOgImage(
   key: CacheKey,
   buf: Buffer,
-): Promise<void> {
+): Promise<CacheWriteResult> {
   const memKey = objectName(key);
   memSet(memKey, buf);
 
   const bucket = parsePrivateBucket();
-  if (!bucket) return;
+  if (!bucket) return { ok: true, storageConfigured: false };
 
   try {
     const fullName = bucket.prefix
@@ -104,9 +117,88 @@ export async function writeCachedOgImage(
       metadata: { contentType: "image/png" },
       resumable: false,
     });
+    return { ok: true, storageConfigured: true };
   } catch (err) {
-    // Cache write failure is non-fatal — the byte response still goes
-    // out, the next request just renders again.
+    // Existing public GET path treats a write failure as non-fatal — the
+    // byte response still goes out and the next request renders again.
+    // Returning a structured result lets the regenerate endpoint surface
+    // the failure instead of silently reporting success.
     logger.warn({ err, key }, "ogImageCache write failed");
+    return {
+      ok: false,
+      storageConfigured: true,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+/**
+ * Outcome of a cache purge. `ok=false` means a list/delete operation
+ * against shared storage failed; the in-memory cache is always purged
+ * regardless. The regenerate endpoint promotes `ok=false` to a 502 so
+ * operators don't get a false success signal in multi-instance deploys.
+ */
+export interface CacheClearResult {
+  cleared: number;
+  ok: boolean;
+  storageConfigured: boolean;
+  errors: string[];
+}
+
+/**
+ * Drop every cached PNG for `(kind, id)` regardless of `lastModifiedMs`
+ * or template version. Used by the admin regenerate endpoint when the
+ * renderer template changes — same row, same `updated_at`, but the
+ * bytes need to be re-rendered.
+ */
+export async function clearCachedOgImage(
+  kind: OgImageKind,
+  id: string,
+): Promise<CacheClearResult> {
+  let cleared = 0;
+  const errors: string[] = [];
+
+  // In-memory: every entry whose object name starts with `og-cache/{kind}/{id}/`.
+  const memPrefix = `og-cache/${kind}/${id}/`;
+  for (const k of Array.from(memCache.keys())) {
+    if (k.startsWith(memPrefix)) {
+      memCache.delete(k);
+      cleared++;
+    }
+  }
+
+  const bucket = parsePrivateBucket();
+  if (!bucket) {
+    return { cleared, ok: true, storageConfigured: false, errors };
+  }
+
+  try {
+    const fullPrefix = bucket.prefix
+      ? `${bucket.prefix}/${memPrefix}`
+      : memPrefix;
+    const [files] = await objectStorageClient
+      .bucket(bucket.bucketName)
+      .getFiles({ prefix: fullPrefix });
+    for (const file of files) {
+      try {
+        await file.delete({ ignoreNotFound: true });
+        cleared++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`delete ${file.name}: ${msg}`);
+        logger.warn({ err, name: file.name }, "ogImageCache clear: delete failed");
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`list ${memPrefix}: ${msg}`);
+    logger.warn({ err, kind, id }, "ogImageCache clear: list failed");
+  }
+
+  return {
+    cleared,
+    ok: errors.length === 0,
+    storageConfigured: true,
+    errors,
+  };
 }
