@@ -1,6 +1,7 @@
-import { pgTable, text, serial, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, jsonb, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { usersTable } from "./users";
 
 export const teamMembersTable = pgTable("team_members", {
   id: serial("id").primaryKey(),
@@ -17,6 +18,11 @@ export const teamMembersTable = pgTable("team_members", {
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
   manualSort: text("manual_sort").notNull().default(""),
+  // Optional link to a Synozur user account. When set, the team member's
+  // authored blog posts surface their job title, LinkedIn, and a link back
+  // to this profile — but only while active=true. Going inactive severs the
+  // link on live pages without touching the user record or their posts.
+  userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

@@ -228,6 +228,7 @@ export * from "./submitCommentResponse";
 export * from "./subscribeFormInput";
 export * from "./tag";
 export * from "./teamMemberInput";
+export * from "./teamMemberRecentPost";
 export * from "./trackInsightView202";
 export * from "./trackInsightViewBody";
 export * from "./unauthorizedResponse";

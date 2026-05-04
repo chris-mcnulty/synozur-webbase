@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, MessageSquare, Linkedin } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { Button } from "@/components/ui/button";
@@ -251,7 +251,16 @@ export default function InsightDetail() {
                         className="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"
                       />
                     )}
-                    <span className="uppercase tracking-widest">{post.author.displayName}</span>
+                    {(post.author as { teamMemberSlug?: string | null }).teamMemberSlug ? (
+                      <Link
+                        href={`/team/${(post.author as { teamMemberSlug?: string | null }).teamMemberSlug}`}
+                        className="uppercase tracking-widest hover:text-white transition-colors"
+                      >
+                        {post.author.displayName}
+                      </Link>
+                    ) : (
+                      <span className="uppercase tracking-widest">{post.author.displayName}</span>
+                    )}
                   </span>
                   <span className="h-1 w-1 rounded-full bg-zinc-500" />
                 </>
@@ -323,11 +332,35 @@ export default function InsightDetail() {
                 <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">
                   Written by
                 </p>
-                <p className="text-lg font-semibold">{post.author.displayName}</p>
+                {(post.author as { teamMemberSlug?: string | null }).teamMemberSlug ? (
+                  <Link
+                    href={`/team/${(post.author as { teamMemberSlug?: string | null }).teamMemberSlug}`}
+                    className="text-lg font-semibold hover:text-primary transition-colors"
+                  >
+                    {post.author.displayName}
+                  </Link>
+                ) : (
+                  <p className="text-lg font-semibold">{post.author.displayName}</p>
+                )}
+                {(post.author as { jobTitle?: string | null }).jobTitle && (
+                  <p className="text-sm text-primary mt-0.5">
+                    {(post.author as { jobTitle?: string | null }).jobTitle}
+                  </p>
+                )}
                 {(post.author as { bio?: string | null }).bio && (
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                     {(post.author as { bio?: string | null }).bio}
                   </p>
+                )}
+                {(post.author as { linkedinUrl?: string | null }).linkedinUrl && (
+                  <a
+                    href={(post.author as { linkedinUrl?: string | null }).linkedinUrl!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Linkedin className="h-3.5 w-3.5" /> LinkedIn
+                  </a>
                 )}
               </div>
             </aside>

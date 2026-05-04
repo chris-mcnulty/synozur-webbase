@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TeamMemberRecentPost } from "./teamMemberRecentPost";
 
 export interface PublicTeamMemberDetail {
   id: number;
@@ -25,4 +26,7 @@ export interface PublicTeamMemberDetail {
   email?: string | null;
   active: boolean;
   tags: string[];
+  userId?: string | null;
+  /** Up to 3 most recent published posts by this team member. */
+  recentPosts?: TeamMemberRecentPost[];
 }

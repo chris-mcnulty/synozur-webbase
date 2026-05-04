@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
-import { db, teamMembersTable, type TeamMember } from "@workspace/db";
+import { eq, asc, and, desc, lte, isNull, inArray } from "drizzle-orm";
+import {
+  db,
+  teamMembersTable,
+  postsTable,
+  postCategories,
+  categoriesTable,
+  mediaTable,
+  type TeamMember,
+} from "@workspace/db";
 import {
   ListPublicTeamMembersResponse,
   GetPublicTeamMemberParams,
@@ -78,9 +86,76 @@ function adminShape(m: TeamMember) {
     active: m.active,
     manualSort: m.manualSort,
     tags: m.tags ?? [],
+    userId: m.userId ?? null,
     createdAt: m.createdAt,
     updatedAt: m.updatedAt,
   };
+}
+
+async function fetchRecentPosts(userId: string, limit = 3) {
+  const now = new Date();
+  const posts = await db
+    .select({
+      id: postsTable.id,
+      slug: postsTable.slug,
+      title: postsTable.title,
+      excerpt: postsTable.excerpt,
+      heroImageId: postsTable.heroImageId,
+      publishedAt: postsTable.publishedAt,
+    })
+    .from(postsTable)
+    .where(
+      and(
+        eq(postsTable.authorId, userId),
+        eq(postsTable.status, "published"),
+        lte(postsTable.publishedAt, now),
+        isNull(postsTable.deletedAt),
+      ),
+    )
+    .orderBy(desc(postsTable.publishedAt))
+    .limit(limit);
+
+  if (posts.length === 0) return [];
+
+  const postIds = posts.map((p) => p.id);
+  const heroIds = posts.map((p) => p.heroImageId).filter((id): id is string => id != null);
+
+  const [catRows, heroRows] = await Promise.all([
+    db
+      .select({
+        postId: postCategories.postId,
+        id: categoriesTable.id,
+        slug: categoriesTable.slug,
+        name: categoriesTable.name,
+      })
+      .from(postCategories)
+      .innerJoin(categoriesTable, eq(postCategories.categoryId, categoriesTable.id))
+      .where(inArray(postCategories.postId, postIds)),
+    heroIds.length
+      ? db
+          .select({ id: mediaTable.id, publicUrl: mediaTable.publicUrl })
+          .from(mediaTable)
+          .where(inArray(mediaTable.id, heroIds))
+      : Promise.resolve([]),
+  ]);
+
+  const catMap = new Map<string, { id: string; slug: string; name: string }[]>();
+  for (const row of catRows) {
+    const arr = catMap.get(row.postId) ?? [];
+    arr.push({ id: row.id, slug: row.slug, name: row.name });
+    catMap.set(row.postId, arr);
+  }
+  const heroMap = new Map(heroRows.map((h) => [h.id, h.publicUrl]));
+
+  return posts.map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    title: p.title,
+    excerpt: p.excerpt ?? null,
+    heroImageUrl: p.heroImageId ? (heroMap.get(p.heroImageId) ?? null) : null,
+    publishedAt: p.publishedAt?.toISOString() ?? null,
+    categories: catMap.get(p.id) ?? [],
+  }));
 }
 
 router.get("/team-members", async (_req, res): Promise<void> => {
@@ -106,6 +181,9 @@ router.get("/team-members/:slug", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Team member not found" });
     return;
   }
+
+  const recentPosts = m.userId ? await fetchRecentPosts(m.userId) : [];
+
   res.json(
     GetPublicTeamMemberResponse.parse({
       id: m.id,
@@ -120,6 +198,8 @@ router.get("/team-members/:slug", async (req, res): Promise<void> => {
       email: m.email,
       active: m.active,
       tags: m.tags ?? [],
+      userId: m.userId ?? null,
+      recentPosts,
     }),
   );
 });
@@ -173,6 +253,7 @@ router.post("/admin/team-members", requireAdmin, async (req, res): Promise<void>
       active: parsed.data.active ?? true,
       manualSort: parsed.data.manualSort ?? "",
       tags: parsed.data.tags ?? [],
+      userId: parsed.data.userId ?? null,
     })
     .returning();
   await audit({
@@ -218,6 +299,7 @@ router.patch("/admin/team-members/:id", requireAdmin, async (req, res): Promise<
       active: parsed.data.active ?? true,
       manualSort: parsed.data.manualSort ?? "",
       tags: parsed.data.tags ?? [],
+      userId: parsed.data.userId ?? null,
     })
     .where(eq(teamMembersTable.id, params.data.id))
     .returning();

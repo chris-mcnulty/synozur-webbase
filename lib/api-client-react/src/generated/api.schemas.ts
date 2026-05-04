@@ -486,6 +486,11 @@ export interface AuthorSummary {
   displayName?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
+  jobTitle?: string | null;
+  linkedinUrl?: string | null;
+  /** Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).
+   */
+  teamMemberSlug?: string | null;
 }
 
 export interface Post {
@@ -2197,6 +2202,16 @@ export interface PublicTeamMember {
   active: boolean;
 }
 
+export interface TeamMemberRecentPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  heroImageUrl?: string | null;
+  publishedAt?: string | null;
+  categories?: Category[];
+}
+
 export interface PublicTeamMemberDetail {
   id: number;
   name: string;
@@ -2216,6 +2231,9 @@ export interface PublicTeamMemberDetail {
   email?: string | null;
   active: boolean;
   tags: string[];
+  userId?: string | null;
+  /** Up to 3 most recent published posts by this team member. */
+  recentPosts?: TeamMemberRecentPost[];
 }
 
 export interface AdminTeamMember {
@@ -2240,6 +2258,7 @@ export interface AdminTeamMember {
   active: boolean;
   manualSort: string;
   tags: string[];
+  userId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -2267,6 +2286,7 @@ export interface TeamMemberInput {
   active?: boolean;
   manualSort?: string;
   tags?: string[];
+  userId?: string | null;
 }
 
 export interface AnalyticsTopPost {

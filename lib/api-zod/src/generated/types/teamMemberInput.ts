@@ -29,4 +29,5 @@ export interface TeamMemberInput {
   active?: boolean;
   manualSort?: string;
   tags?: string[];
+  userId?: string | null;
 }

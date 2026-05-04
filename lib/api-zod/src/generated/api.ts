@@ -74,6 +74,14 @@ export const ListCmsPostsResponse = zod.object({
           displayName: zod.string().nullish(),
           avatarUrl: zod.string().nullish(),
           bio: zod.string().nullish(),
+          jobTitle: zod.string().nullish(),
+          linkedinUrl: zod.string().nullish(),
+          teamMemberSlug: zod
+            .string()
+            .nullish()
+            .describe(
+              "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+            ),
         })
         .optional(),
       status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -159,6 +167,14 @@ export const GetCmsPostResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -235,6 +251,14 @@ export const UpdateCmsPostResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -295,6 +319,14 @@ export const PublishCmsPostResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -355,6 +387,14 @@ export const ScheduleCmsPostResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -411,6 +451,14 @@ export const ArchiveCmsPostResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -463,6 +511,14 @@ export const ListCmsPostRevisionsResponseItem = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .nullish(),
   snapshotTitle: zod.string().nullish(),
@@ -490,6 +546,14 @@ export const GetCmsPostRevisionResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .nullish(),
   snapshotTitle: zod.string().nullish(),
@@ -532,6 +596,14 @@ export const RestoreCmsPostRevisionResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -1059,6 +1131,14 @@ export const ListInsightsResponse = zod.object({
           displayName: zod.string().nullish(),
           avatarUrl: zod.string().nullish(),
           bio: zod.string().nullish(),
+          jobTitle: zod.string().nullish(),
+          linkedinUrl: zod.string().nullish(),
+          teamMemberSlug: zod
+            .string()
+            .nullish()
+            .describe(
+              "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+            ),
         })
         .optional(),
       categories: zod
@@ -1112,6 +1192,14 @@ export const GetInsightResponse = zod.object({
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
       bio: zod.string().nullish(),
+      jobTitle: zod.string().nullish(),
+      linkedinUrl: zod.string().nullish(),
+      teamMemberSlug: zod
+        .string()
+        .nullish()
+        .describe(
+          "Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).\n",
+        ),
     })
     .optional(),
   categories: zod
@@ -3457,6 +3545,30 @@ export const GetPublicTeamMemberResponse = zod.object({
   email: zod.string().nullish(),
   active: zod.boolean(),
   tags: zod.array(zod.string()),
+  userId: zod.string().uuid().nullish(),
+  recentPosts: zod
+    .array(
+      zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+        excerpt: zod.string().nullish(),
+        heroImageUrl: zod.string().nullish(),
+        publishedAt: zod.coerce.date().nullish(),
+        categories: zod
+          .array(
+            zod.object({
+              id: zod.string().uuid(),
+              slug: zod.string(),
+              name: zod.string(),
+              description: zod.string().nullish(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional()
+    .describe("Up to 3 most recent published posts by this team member."),
 });
 
 /**
@@ -3477,6 +3589,7 @@ export const ListAdminTeamMembersResponseItem = zod.object({
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),
+  userId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });
@@ -3502,6 +3615,7 @@ export const CreateTeamMemberBody = zod.object({
   active: zod.boolean().optional(),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
+  userId: zod.string().uuid().nullish(),
 });
 
 export const GetAdminTeamMemberParams = zod.object({
@@ -3523,6 +3637,7 @@ export const GetAdminTeamMemberResponse = zod.object({
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),
+  userId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });
@@ -3545,6 +3660,7 @@ export const UpdateTeamMemberBody = zod.object({
   active: zod.boolean().optional(),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
+  userId: zod.string().uuid().nullish(),
 });
 
 export const UpdateTeamMemberResponse = zod.object({
@@ -3562,6 +3678,7 @@ export const UpdateTeamMemberResponse = zod.object({
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),
+  userId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
 });

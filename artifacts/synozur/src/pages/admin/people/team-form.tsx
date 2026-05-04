@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { api } from "@/lib/api";
+import { useListCmsUsers, type CmsUser } from "@workspace/api-client-react";
 import type { TeamMemberInput } from "@workspace/api-zod/types";
 
 interface Props {
@@ -29,6 +30,7 @@ const EMPTY: TeamMemberInput = {
   active: true,
   manualSort: "",
   tags: [],
+  userId: null,
 };
 
 export default function TeamForm({ id }: Props) {
@@ -47,6 +49,8 @@ export default function TeamForm({ id }: Props) {
     enabled: memberId != null,
   });
 
+  const { data: usersData } = useListCmsUsers();
+
   useEffect(() => {
     if (existing) {
       setForm({
@@ -63,6 +67,7 @@ export default function TeamForm({ id }: Props) {
         active: existing.active,
         manualSort: existing.manualSort,
         tags: existing.tags ?? [],
+        userId: (existing as { userId?: string | null }).userId ?? null,
       });
       setTagsInput((existing.tags ?? []).join(", "));
     }
@@ -94,6 +99,8 @@ export default function TeamForm({ id }: Props) {
       </AdminLayout>
     );
   }
+
+  const linkedUser = usersData?.find((u: CmsUser) => u.id === form.userId);
 
   return (
     <AdminLayout
@@ -253,6 +260,39 @@ export default function TeamForm({ id }: Props) {
               data-testid="input-linkedinUrl"
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="userId">Linked Synozur account</Label>
+          <select
+            id="userId"
+            value={form.userId ?? ""}
+            onChange={(e) => setForm({ ...form, userId: e.target.value || null })}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            data-testid="input-userId"
+          >
+            <option value="">— None —</option>
+            {(usersData ?? []).map((u: CmsUser) => (
+              <option key={u.id} value={u.id}>
+                {u.displayName ?? u.email ?? u.id}
+                {u.email && u.displayName ? ` (${u.email})` : ""}
+              </option>
+            ))}
+          </select>
+          {linkedUser && (
+            <p className="text-xs text-muted-foreground">
+              Linked to <strong>{linkedUser.displayName ?? linkedUser.email}</strong>.
+              Blog posts by this account will surface this team member's job title, LinkedIn,
+              and a link to this profile — but only while the member is active.
+            </p>
+          )}
+          {!linkedUser && (
+            <p className="text-xs text-muted-foreground">
+              Link to a Synozur account to connect blog authorship. Set this member
+              inactive when they leave — the link drops from their posts automatically,
+              the posts themselves are untouched.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

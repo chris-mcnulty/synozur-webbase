@@ -11,4 +11,9 @@ export interface AuthorSummary {
   displayName?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
+  jobTitle?: string | null;
+  linkedinUrl?: string | null;
+  /** Slug of the linked active team member profile. Null when the author has no linked team member record or when that record is inactive (e.g. they have left the organisation).
+   */
+  teamMemberSlug?: string | null;
 }

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Linkedin, Mail, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, Linkedin, Mail, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
@@ -36,6 +36,95 @@ function safeHref(url: string | null | undefined): string | undefined {
     return url.trim();
   }
   return undefined;
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+type RecentPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  heroImageUrl?: string | null;
+  publishedAt?: string | null;
+  categories?: { id: string; slug: string; name: string }[];
+};
+
+function RecentPostsRail({ posts, name }: { posts: RecentPost[]; name: string }) {
+  if (!posts.length) return null;
+  return (
+    <section className="py-20 bg-background border-t border-border">
+      <div className="container mx-auto px-4 max-w-5xl">
+        <p className="text-sm uppercase tracking-widest text-primary mb-3">
+          From the Feed
+        </p>
+        <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
+          <h2 className="text-2xl md:text-3xl font-bold">
+            Recent posts by {name.split(" ")[0]}
+          </h2>
+          <Link
+            href="/insights"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            All insights <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {posts.map((p) => {
+            const hero = resolveImageUrl(p.heroImageUrl);
+            return (
+              <Link
+                key={p.id}
+                href={`/insights/${p.slug}`}
+                className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:border-primary/40 transition-colors block"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-muted/20">
+                  {hero ? (
+                    <img
+                      src={hero}
+                      alt={p.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full nebula-gradient opacity-30" />
+                  )}
+                </div>
+                <div className="p-5">
+                  {p.categories?.[0] && (
+                    <p className="text-xs uppercase tracking-widest text-primary mb-2">
+                      {p.categories[0].name}
+                    </p>
+                  )}
+                  <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors mb-2">
+                    {p.title}
+                  </h3>
+                  {p.excerpt && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{stripHtml(p.excerpt)}</p>
+                  )}
+                  {p.publishedAt && (
+                    <p className="text-xs text-muted-foreground mt-3">{formatDate(p.publishedAt)}</p>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default function TeamDetail() {
@@ -88,6 +177,8 @@ export default function TeamDetail() {
   const others = (listQ.data ?? [])
     .filter((p) => p.slug !== person.slug)
     .slice(0, 3);
+
+  const recentPosts = (person as { recentPosts?: RecentPost[] }).recentPosts ?? [];
 
   return (
     <div className="w-full">
@@ -202,6 +293,8 @@ export default function TeamDetail() {
           </div>
         </section>
       )}
+
+      <RecentPostsRail posts={recentPosts} name={person.name} />
 
       {others.length > 0 && (
         <section className="py-20 bg-card border-t border-border">

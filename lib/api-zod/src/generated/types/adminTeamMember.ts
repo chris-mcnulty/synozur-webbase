@@ -28,6 +28,7 @@ export interface AdminTeamMember {
   active: boolean;
   manualSort: string;
   tags: string[];
+  userId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

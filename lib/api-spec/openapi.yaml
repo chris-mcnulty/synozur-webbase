@@ -4547,6 +4547,19 @@ components:
         bio:
           type: string
           nullable: true
+        jobTitle:
+          type: string
+          nullable: true
+        linkedinUrl:
+          type: string
+          nullable: true
+        teamMemberSlug:
+          type: string
+          nullable: true
+          description: >
+            Slug of the linked active team member profile. Null when the author
+            has no linked team member record or when that record is inactive
+            (e.g. they have left the organisation).
     Post:
       type: object
       required:
@@ -7549,6 +7562,35 @@ components:
         active:
           type: boolean
 
+    TeamMemberRecentPost:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        heroImageUrl:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+
     PublicTeamMemberDetail:
       type: object
       required:
@@ -7597,6 +7639,15 @@ components:
           type: array
           items:
             type: string
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        recentPosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMemberRecentPost'
+          description: Up to 3 most recent published posts by this team member.
 
     AdminTeamMember:
       type: object
@@ -7653,6 +7704,10 @@ components:
           type: array
           items:
             type: string
+        userId:
+          type: string
+          format: uuid
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -7710,6 +7765,10 @@ components:
           type: array
           items:
             type: string
+        userId:
+          type: string
+          format: uuid
+          nullable: true
 
     AnalyticsTopPost:
       type: object

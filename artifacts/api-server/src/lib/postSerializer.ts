@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -8,19 +8,28 @@ import {
   tagsTable,
   postCategories,
   postTags,
+  teamMembersTable,
 } from "@workspace/db";
 
 export type SerializedPost = ReturnType<typeof shape>;
 
+type AuthorTeamMember = {
+  jobTitle: string;
+  linkedinUrl: string | null;
+  slug: string;
+  imageUrl: string | null;
+} | null;
+
 function shape(args: {
   post: typeof postsTable.$inferSelect;
   author: { id: string; displayName: string | null; avatarUrl: string | null; bio: string | null } | null;
+  authorTeamMember: AuthorTeamMember;
   hero: { publicUrl: string } | null;
   og: { publicUrl: string } | null;
   categories: { id: string; slug: string; name: string; description: string | null }[];
   tags: { id: string; slug: string; name: string }[];
 }) {
-  const { post, author, hero, og, categories, tags } = args;
+  const { post, author, authorTeamMember, hero, og, categories, tags } = args;
   return {
     id: post.id,
     slug: post.slug,
@@ -33,8 +42,27 @@ function shape(args: {
     ogImageUrl: og?.publicUrl ?? null,
     authorId: post.authorId,
     author: author
-      ? { id: author.id, displayName: author.displayName, avatarUrl: author.avatarUrl, bio: author.bio }
-      : { id: post.authorId, displayName: null, avatarUrl: null, bio: null },
+      ? {
+          id: author.id,
+          displayName: author.displayName,
+          // Prefer the team member's professional headshot over the SSO avatar,
+          // but only when the team member record is active (link is non-null here).
+          avatarUrl: authorTeamMember?.imageUrl ?? author.avatarUrl,
+          bio: author.bio,
+          jobTitle: authorTeamMember?.jobTitle ?? null,
+          linkedinUrl: authorTeamMember?.linkedinUrl ?? null,
+          // Null when the author has no linked team member or has gone inactive.
+          teamMemberSlug: authorTeamMember?.slug ?? null,
+        }
+      : {
+          id: post.authorId,
+          displayName: null,
+          avatarUrl: null,
+          bio: null,
+          jobTitle: null,
+          linkedinUrl: null,
+          teamMemberSlug: null,
+        },
     status: post.status,
     publishedAt: post.publishedAt?.toISOString() ?? null,
     scheduledFor: post.scheduledFor?.toISOString() ?? null,
@@ -67,7 +95,7 @@ export async function serializePosts(
   );
   const postIds = posts.map((p) => p.id);
 
-  const [authors, media, pcRows, ptRows] = await Promise.all([
+  const [authors, teamMembers, media, pcRows, ptRows] = await Promise.all([
     authorIds.length
       ? db
           .select({
@@ -79,6 +107,33 @@ export async function serializePosts(
           .from(usersTable)
           .where(inArray(usersTable.id, authorIds))
       : Promise.resolve([]),
+    // Only join active team members — inactive (departed) authors lose the
+    // profile link and job title on live pages without touching their posts.
+    authorIds.length
+      ? db
+          .select({
+            userId: teamMembersTable.userId,
+            jobTitle: teamMembersTable.jobTitle,
+            linkedinUrl: teamMembersTable.linkedinUrl,
+            slug: teamMembersTable.slug,
+            imageUrl: teamMembersTable.imageUrl,
+          })
+          .from(teamMembersTable)
+          .where(
+            and(
+              inArray(teamMembersTable.userId, authorIds),
+              eq(teamMembersTable.active, true),
+            ),
+          )
+      : Promise.resolve(
+          [] as Array<{
+            userId: string | null;
+            jobTitle: string;
+            linkedinUrl: string | null;
+            slug: string;
+            imageUrl: string | null;
+          }>,
+        ),
     mediaIds.length
       ? db
           .select({ id: mediaTable.id, publicUrl: mediaTable.publicUrl })
@@ -113,6 +168,11 @@ export async function serializePosts(
   ]);
 
   const authorMap = new Map(authors.map((a) => [a.id, a]));
+  const teamMemberMap = new Map(
+    teamMembers
+      .filter((tm): tm is typeof tm & { userId: string } => tm.userId != null)
+      .map((tm) => [tm.userId, tm]),
+  );
   const mediaMap = new Map(media.map((m) => [m.id, m]));
   const catMap = new Map<string, { id: string; slug: string; name: string; description: string | null }[]>();
   for (const row of pcRows) {
@@ -131,6 +191,7 @@ export async function serializePosts(
     shape({
       post,
       author: authorMap.get(post.authorId) ?? null,
+      authorTeamMember: teamMemberMap.get(post.authorId) ?? null,
       hero: post.heroImageId ? mediaMap.get(post.heroImageId) ?? null : null,
       og: post.ogImageId ? mediaMap.get(post.ogImageId) ?? null : null,
       categories: catMap.get(post.id) ?? [],
