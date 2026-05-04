@@ -613,6 +613,9 @@ importers:
       '@workspace/object-storage-web':
         specifier: workspace:*
         version: link:../../lib/object-storage-web
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
       web-vitals:
         specifier: ^5.2.0
         version: 5.2.0
@@ -5438,6 +5441,11 @@ packages:
 
   marked@17.0.6:
     resolution: {integrity: sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
+  marked@18.0.3:
+    resolution: {integrity: sha512-7VT90JOkDeaRWpfjOReRGPEKn0ecdARBkDGL+tT1wZY0efPPqkUxLUSmzy/C7TIylQYJC9STISEsCHrqb/7VIA==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -11757,6 +11765,8 @@ snapshots:
       marked: 17.0.6
 
   marked@17.0.6: {}
+
+  marked@18.0.3: {}
 
   marky@1.3.0: {}
 

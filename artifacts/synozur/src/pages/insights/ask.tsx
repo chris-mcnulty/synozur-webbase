@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Send, Sparkles, ExternalLink, Loader2 } from "lucide-react";
+import { marked } from "marked";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Meta } from "@/lib/meta";
@@ -10,6 +11,14 @@ import {
   type TurnstileHandle,
 } from "@/components/turnstile";
 import { BotCheckCallout } from "@/components/bot-check-callout";
+
+// Convert single newlines to <br> so AI paragraph breaks render naturally.
+marked.use({ breaks: true });
+
+function renderMarkdown(text: string): string {
+  if (!text) return "";
+  return marked.parse(text, { async: false }) as string;
+}
 
 interface AskSource {
   kind: string;
@@ -329,14 +338,25 @@ export default function InsightsAskPage() {
                   {turn.refused ? (
                     <RefusalAnswer />
                   ) : (
-                    <div
-                      className="mt-2 whitespace-pre-wrap text-base leading-relaxed"
-                      data-testid={`text-answer-${i}`}
-                    >
-                      {turn.answer ||
-                        (loading && i === turns.length - 1 ? "…" : "")}
-                      {loading && i === turns.length - 1 && !turn.done && (
-                        <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current align-middle" />
+                    <div className="mt-2" data-testid={`text-answer-${i}`}>
+                      {turn.answer ? (
+                        <div
+                          className="prose prose-sm dark:prose-invert max-w-none
+                            prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-1
+                            prose-p:my-1.5 prose-p:leading-relaxed
+                            prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2
+                            prose-strong:font-semibold
+                            prose-code:text-primary prose-code:bg-muted prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
+                            prose-pre:bg-muted prose-pre:rounded-lg"
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(turn.answer) }}
+                        />
+                      ) : (
+                        loading && i === turns.length - 1 && (
+                          <span className="text-muted-foreground text-base">…</span>
+                        )
+                      )}
+                      {loading && i === turns.length - 1 && !turn.done && turn.answer && (
+                        <span className="inline-block h-4 w-2 animate-pulse bg-current align-middle ml-0.5" />
                       )}
                     </div>
                   )}
