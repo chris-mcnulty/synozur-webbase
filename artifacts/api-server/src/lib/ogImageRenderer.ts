@@ -20,6 +20,18 @@ import sharp from "sharp";
 
 export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris";
 
+/**
+ * Renderer template version. Embedded in the cache key alongside the
+ * row's `lastModifiedMs` so any template change (logo size, layout
+ * tweak, font swap) globally invalidates previously cached PNGs without
+ * touching every row's `updated_at`. Bump on every visible change.
+ *
+ * Bump history:
+ *   1 — initial release (#161, May 2026).
+ *   2 — Synozur logo doubled in size (May 2026).
+ */
+export const OG_TEMPLATE_VERSION = 2;
+
 export interface OgImageInput {
   kind: OgImageKind;
   title: string;
@@ -212,11 +224,12 @@ function buildSvg(
 
   // ── Wordmark: real logo image when available, text fallback otherwise ────────
   // Logo is the white horizontal version of the Synozur Alliance mark.
-  // Source dimensions: ~231×63 (3.67:1 aspect ratio). We render at 36px tall
-  // → width ≈ 132px, vertically centred in the 80px top stripe.
-  const LOGO_H = 36;
-  const LOGO_W = Math.round(LOGO_H * (231 / 63)); // ≈ 132
-  const LOGO_Y = Math.round((80 - LOGO_H) / 2);   // ≈ 22 — centred in top stripe
+  // Source dimensions: ~231×63 (3.67:1 aspect ratio). Rendered at 72px tall
+  // → width ≈ 264px; positioned at y=4 so the 72px-tall logo still fits
+  // inside the 80px top stripe (y=4..76, hairline at y=80).
+  const LOGO_H = 72;
+  const LOGO_W = Math.round(LOGO_H * (231 / 63)); // ≈ 264
+  const LOGO_Y = Math.round((80 - LOGO_H) / 2);   // ≈ 4 — centred in top stripe
 
   const wordmark = logoDataUri
     ? `<image href="${logoDataUri}" x="80" y="${LOGO_Y}" width="${LOGO_W}" height="${LOGO_H}"

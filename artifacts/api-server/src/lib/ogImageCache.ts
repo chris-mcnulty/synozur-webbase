@@ -1,11 +1,12 @@
 /**
  * Object-storage cache for dynamic OG images (#161).
  *
- * Cache key: `(kind, id, lastModifiedMs)` — embedding `lastModifiedMs`
- * means a row's `updated_at` bump naturally invalidates stale renders
- * without us having to delete bytes proactively. Old objects accumulate
- * but are dwarfed by the rest of the bucket; a periodic janitor can be
- * added later if it ever matters.
+ * Cache key: `(kind, id, OG_TEMPLATE_VERSION, lastModifiedMs)`. Embedding
+ * `lastModifiedMs` means a row's `updated_at` bump naturally invalidates
+ * stale renders; embedding `OG_TEMPLATE_VERSION` means a renderer-template
+ * change globally invalidates without touching every row. Old objects
+ * accumulate but are dwarfed by the rest of the bucket; a periodic
+ * janitor can be added later if it ever matters.
  *
  * Falls back to in-memory caching when `PRIVATE_OBJECT_DIR` isn't set
  * (dev environments without object storage configured), so the endpoint
@@ -14,7 +15,7 @@
 
 import { objectStorageClient } from "./storage/gcsBackend";
 import { logger } from "./logger";
-import type { OgImageKind } from "./ogImageRenderer";
+import { OG_TEMPLATE_VERSION, type OgImageKind } from "./ogImageRenderer";
 
 interface CacheKey {
   kind: OgImageKind;
@@ -23,7 +24,7 @@ interface CacheKey {
 }
 
 function objectName(key: CacheKey): string {
-  return `og-cache/${key.kind}/${key.id}/${key.lastModifiedMs}.png`;
+  return `og-cache/${key.kind}/${key.id}/v${OG_TEMPLATE_VERSION}-${key.lastModifiedMs}.png`;
 }
 
 function parsePrivateBucket(): { bucketName: string; prefix: string } | null {
