@@ -226,7 +226,7 @@ export function SynozurAppSwitcher({
           id="synozur-app-menu"
           role="menu"
           aria-label="Synozur Suite Applications"
-          className={`absolute top-full right-0 mt-2 w-[360px] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
+          className={`absolute top-full left-0 sm:left-auto sm:right-0 mt-2 w-[360px] max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
             fd
               ? "bg-gray-950 border-white/10"
               : "bg-white dark:bg-gray-950 border-gray-200 dark:border-white/10"
