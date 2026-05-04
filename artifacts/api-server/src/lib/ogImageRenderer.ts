@@ -14,6 +14,8 @@
  * conservative so longer titles never bleed past the safe area.
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import sharp from "sharp";
 
 export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris";
@@ -38,7 +40,7 @@ const WIDTH = 1200;
 const HEIGHT = 630;
 
 const KIND_LABELS: Record<OgImageKind, string> = {
-  insight: "Insight",
+  insight: "Insights",
   "case-study": "Case Study",
   "white-paper": "White Paper",
   polaris: "Polaris",
@@ -56,6 +58,41 @@ const BRAND = {
   ink: "#0B0820",
   white: "#FFFFFF",
 };
+
+// ─── White horizontal logo ────────────────────────────────────────────────────
+// The logo PNG lives in synozur's public assets. We read it from the filesystem
+// once and cache it as a base64 data URI so librsvg can embed it without
+// network access. Falls back to null gracefully — the SVG then renders the
+// text wordmark as before.
+
+let _logoDataUri: string | null | undefined = undefined; // undefined = not yet attempted
+
+function getLogoDataUri(): string | null {
+  if (_logoDataUri !== undefined) return _logoDataUri;
+  try {
+    // process.cwd() is the api-server package dir when run via pnpm --filter.
+    // The synozur public assets sit one directory up at artifacts/synozur/.
+    const candidates = [
+      resolve(process.cwd(), "../synozur/public/images/sa-logo-horizontal-white.png"),
+      resolve(process.cwd(), "../../artifacts/synozur/public/images/sa-logo-horizontal-white.png"),
+    ];
+    for (const p of candidates) {
+      try {
+        const buf = readFileSync(p);
+        _logoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
+        return _logoDataUri;
+      } catch {
+        // try next candidate
+      }
+    }
+    _logoDataUri = null;
+  } catch {
+    _logoDataUri = null;
+  }
+  return _logoDataUri;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function escapeXml(s: string): string {
   return s
@@ -147,10 +184,19 @@ async function fetchAvatarDataUri(url: string): Promise<string | null> {
   }
 }
 
-function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
+// ─── SVG builder ──────────────────────────────────────────────────────────────
+
+function buildSvg(
+  input: OgImageInput,
+  avatarDataUri: string | null,
+  logoDataUri: string | null,
+): string {
   const kindLabel = KIND_LABELS[input.kind];
-  const titleLines = wrapTitle(input.title || "Untitled", 30, 3);
-  const lineHeight = 88;
+  // maxCharsPerLine=22 is calibrated for font-size 68px bold on Liberation Sans
+  // (librsvg's system font on Linux). At ~46px/char avg, 22 chars ≈ 1012px which
+  // comfortably fits in the 1040px safe area (1200 - 2×80 margin).
+  const titleLines = wrapTitle(input.title || "Untitled", 22, 3);
+  const lineHeight = 80;
   const titleStartY = 290 - (titleLines.length - 1) * (lineHeight / 2);
 
   const byline = input.byline?.trim() || "";
@@ -163,6 +209,20 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
         `<tspan x="80" y="${titleStartY + i * lineHeight}">${escapeXml(line)}</tspan>`,
     )
     .join("");
+
+  // ── Wordmark: real logo image when available, text fallback otherwise ────────
+  // Logo is the white horizontal version of the Synozur Alliance mark.
+  // Source dimensions: ~231×63 (3.67:1 aspect ratio). We render at 36px tall
+  // → width ≈ 132px, vertically centred in the 80px top stripe.
+  const LOGO_H = 36;
+  const LOGO_W = Math.round(LOGO_H * (231 / 63)); // ≈ 132
+  const LOGO_Y = Math.round((80 - LOGO_H) / 2);   // ≈ 22 — centred in top stripe
+
+  const wordmark = logoDataUri
+    ? `<image href="${logoDataUri}" x="80" y="${LOGO_Y}" width="${LOGO_W}" height="${LOGO_H}"
+             preserveAspectRatio="xMinYMid meet"/>`
+    : `<text x="80" y="56" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="26" font-weight="700"
+             fill="${BRAND.white}" letter-spacing="0.5">THE SYNOZUR ALLIANCE</text>`;
 
   // Avatar tile: real PNG when an `avatarUrl` was provided and fetched
   // successfully, otherwise the initials disc. Both are clipped to a
@@ -179,7 +239,7 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
       <circle cx="34" cy="34" r="34" fill="none"
               stroke="${BRAND.white}" stroke-opacity="0.4" stroke-width="2"/>`
     : `<circle cx="34" cy="34" r="34" fill="${BRAND.white}" fill-opacity="0.12" stroke="${BRAND.white}" stroke-opacity="0.4" stroke-width="2"/>
-       <text x="34" y="34" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700"
+       <text x="34" y="34" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="26" font-weight="700"
              fill="${BRAND.white}" text-anchor="middle" dominant-baseline="central">${escapeXml(initials)}</text>`;
 
   // Bottom byline row: avatar tile (real or initials) plus name + optional
@@ -189,17 +249,17 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
     ? `
     <g transform="translate(80, 510)">
       ${avatarTile}
-      <text x="86" y="28" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="600" fill="${BRAND.white}">${escapeXml(byline)}</text>
+      <text x="86" y="28" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="26" font-weight="600" fill="${BRAND.white}">${escapeXml(byline)}</text>
       ${
         context
-          ? `<text x="86" y="58" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="400" fill="${BRAND.white}" fill-opacity="0.75">${escapeXml(context)}</text>`
+          ? `<text x="86" y="58" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="22" font-weight="400" fill="${BRAND.white}" fill-opacity="0.75">${escapeXml(context)}</text>`
           : ""
       }
     </g>`
     : context
       ? `
     <g transform="translate(80, 530)">
-      <text x="0" y="0" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="500" fill="${BRAND.white}" fill-opacity="0.85">${escapeXml(context)}</text>
+      <text x="0" y="0" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="26" font-weight="500" fill="${BRAND.white}" fill-opacity="0.85">${escapeXml(context)}</text>
     </g>`
       : "";
 
@@ -208,7 +268,7 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
   const badgeWidth = Math.max(160, kindLabel.length * 16 + 48);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="${BRAND.ink}"/>
@@ -230,21 +290,20 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
   <line x1="0" y1="${HEIGHT - 80}" x2="${WIDTH}" y2="${HEIGHT - 80}" stroke="${BRAND.white}" stroke-opacity="0.15" stroke-width="1"/>
 
   <!-- Wordmark, top-left -->
-  <text x="80" y="56" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700"
-        fill="${BRAND.white}" letter-spacing="0.5">THE SYNOZUR ALLIANCE</text>
+  ${wordmark}
 
   <!-- Kind badge, top-right -->
-  <g transform="translate(${WIDTH - 80 - badgeWidth}, 28)">
+  <g transform="translate(${WIDTH - 80 - badgeWidth}, 18)">
     <rect width="${badgeWidth}" height="44" rx="22" ry="22"
           fill="${BRAND.white}" fill-opacity="0.14"
           stroke="${BRAND.white}" stroke-opacity="0.5" stroke-width="1.5"/>
-    <text x="${badgeWidth / 2}" y="22" font-family="Inter, Arial, sans-serif" font-size="20"
+    <text x="${badgeWidth / 2}" y="22" font-family="Avenir Next, Inter, Arial, sans-serif" font-size="20"
           font-weight="600" fill="${BRAND.white}" text-anchor="middle"
           dominant-baseline="central" letter-spacing="0.4">${escapeXml(kindLabel.toUpperCase())}</text>
   </g>
 
   <!-- Title -->
-  <text font-family="Inter, Arial, sans-serif" font-size="76" font-weight="800" fill="${BRAND.white}">
+  <text font-family="Avenir Next, Inter, Arial, sans-serif" font-size="68" font-weight="800" fill="${BRAND.white}">
     ${titleTspans}
   </text>
 
@@ -252,15 +311,17 @@ function buildSvg(input: OgImageInput, avatarDataUri: string | null): string {
 </svg>`;
 }
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 /**
  * Render the OG image as a PNG buffer. Returns 1200×630 RGB PNG bytes.
  */
 export async function renderOgImagePng(input: OgImageInput): Promise<Buffer> {
-  const avatarDataUri =
-    input.avatarUrl && input.byline
-      ? await fetchAvatarDataUri(input.avatarUrl)
-      : null;
-  const svg = buildSvg(input, avatarDataUri);
+  const [avatarDataUri, logoDataUri] = await Promise.all([
+    input.avatarUrl && input.byline ? fetchAvatarDataUri(input.avatarUrl) : Promise.resolve(null),
+    Promise.resolve(getLogoDataUri()),
+  ]);
+  const svg = buildSvg(input, avatarDataUri, logoDataUri);
   return await sharp(Buffer.from(svg, "utf-8"), { density: 96 })
     .png({ compressionLevel: 9 })
     .toBuffer();

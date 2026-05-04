@@ -135,6 +135,10 @@ function buildFinding(args: {
     if (suggestion) suggested.seoDescription = suggestion;
   } else if (description.length < MIN_DESCRIPTION) {
     missing.push("seoDescriptionShort");
+    // Suggest a better description from body content so the wizard can fix it
+    const suggestion = suggestDescription(args.descriptionSources);
+    if (suggestion && suggestion.length >= MIN_DESCRIPTION) suggested.seoDescription = suggestion;
+    else if (suggestion) suggested.seoDescription = suggestion; // even if short, it may be all available content
   } else if (description.length > MAX_DESCRIPTION) {
     missing.push("seoDescriptionLong");
     suggested.seoDescription = clampDescription(description);
@@ -563,7 +567,10 @@ export async function applyAutofill(
     if (f.suggested.seoTitle && f.missing.includes("seoTitle")) {
       patch.seoTitle = f.suggested.seoTitle;
     }
-    if (f.suggested.seoDescription && f.missing.includes("seoDescription")) {
+    const descIssue = f.missing.some((m) =>
+      ["seoDescription", "seoDescriptionShort", "seoDescriptionLong"].includes(m),
+    );
+    if (f.suggested.seoDescription && descIssue) {
       patch.seoDescription = f.suggested.seoDescription;
     }
     if (f.suggested.ogImage && f.missing.includes("ogImage")) {
@@ -574,22 +581,24 @@ export async function applyAutofill(
     switch (f.kind) {
       case "insight": {
         if (patch.seoDescription) {
-          const updatedInsights = await db
-            .update(postsTable)
-            .set({
-              seoDescription: patch.seoDescription,
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
+          // For length issues (too short / too long), overwrite the existing
+          // value with the better suggestion. For a fully-empty description,
+          // guard against a concurrent editor write using the SQL empty check.
+          const isLengthIssue = f.missing.some((m) =>
+            ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+          );
+          const whereClause = isLengthIssue
+            ? eq(postsTable.id, f.id)
+            : and(
                 eq(postsTable.id, f.id),
                 sql`(${postsTable.seoDescription} is null or trim(${postsTable.seoDescription}) = '')`,
-              ),
-            )
+              );
+          const updatedInsights = await db
+            .update(postsTable)
+            .set({ seoDescription: patch.seoDescription, updatedAt: new Date() })
+            .where(whereClause)
             .returning({ id: postsTable.id });
-          if (updatedInsights.length > 0) {
-            touched.insight += 1;
-          }
+          if (updatedInsights.length > 0) touched.insight += 1;
         }
         break;
       }
@@ -604,9 +613,11 @@ export async function applyAutofill(
         }
         if (patch.seoDescription) {
           set.seoDescription = patch.seoDescription;
-          guards.push(
-            sql`(${servicesTable.seoDescription} is null or trim(${servicesTable.seoDescription}) = '')`,
-          );
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${servicesTable.seoDescription} is null or trim(${servicesTable.seoDescription}) = '')`,
+            );
+          }
         }
         if (Object.keys(set).length > 1) {
           const rows = await db
@@ -629,9 +640,11 @@ export async function applyAutofill(
         }
         if (patch.seoDescription) {
           set.seoDescription = patch.seoDescription;
-          guards.push(
-            sql`(${solutionsTable.seoDescription} is null or trim(${solutionsTable.seoDescription}) = '')`,
-          );
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${solutionsTable.seoDescription} is null or trim(${solutionsTable.seoDescription}) = '')`,
+            );
+          }
         }
         if (Object.keys(set).length > 1) {
           const rows = await db
@@ -654,9 +667,11 @@ export async function applyAutofill(
         }
         if (patch.seoDescription) {
           set.seoDescription = patch.seoDescription;
-          guards.push(
-            sql`(${applicationsTable.seoDescription} is null or trim(${applicationsTable.seoDescription}) = '')`,
-          );
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${applicationsTable.seoDescription} is null or trim(${applicationsTable.seoDescription}) = '')`,
+            );
+          }
         }
         if (patch.ogImage) {
           set.ogImage = patch.ogImage;
@@ -685,9 +700,11 @@ export async function applyAutofill(
         }
         if (patch.seoDescription) {
           set.seoDescription = patch.seoDescription;
-          guards.push(
-            sql`(${caseStudiesTable.seoDescription} is null or trim(${caseStudiesTable.seoDescription}) = '')`,
-          );
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${caseStudiesTable.seoDescription} is null or trim(${caseStudiesTable.seoDescription}) = '')`,
+            );
+          }
         }
         if (patch.ogImage) {
           set.ogImage = patch.ogImage;
@@ -716,9 +733,11 @@ export async function applyAutofill(
         }
         if (patch.seoDescription) {
           set.seoDescription = patch.seoDescription;
-          guards.push(
-            sql`(${modelsTable.seoDescription} is null or trim(${modelsTable.seoDescription}) = '')`,
-          );
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${modelsTable.seoDescription} is null or trim(${modelsTable.seoDescription}) = '')`,
+            );
+          }
         }
         if (patch.ogImage) {
           set.ogImage = patch.ogImage;
@@ -738,8 +757,7 @@ export async function applyAutofill(
       }
       case "workshop": {
         // Workshops keep SEO copy in a JSONB column, so we read-modify-write
-        // the `seo` object instead of patching flat columns. Only fill blanks
-        // — never overwrite a non-empty editor value.
+        // the `seo` object instead of patching flat columns.
         if (!patch.seoTitle && !patch.seoDescription) break;
         const existing = await db.query.workshopsTable.findFirst({
           where: and(eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)),
@@ -757,12 +775,17 @@ export async function applyAutofill(
           );
           changed = true;
         }
-        if (patch.seoDescription && !(seo.description ?? "").trim()) {
-          next.description = patch.seoDescription;
-          guards.push(
-            sql`(((${workshopsTable.seo} ->> 'description') is null) or trim(${workshopsTable.seo} ->> 'description') = '')`,
-          );
-          changed = true;
+        if (patch.seoDescription) {
+          const descEmpty = !(seo.description ?? "").trim();
+          if (descEmpty || isLengthIssue) {
+            next.description = patch.seoDescription;
+            if (!isLengthIssue) {
+              guards.push(
+                sql`(((${workshopsTable.seo} ->> 'description') is null) or trim(${workshopsTable.seo} ->> 'description') = '')`,
+              );
+            }
+            changed = true;
+          }
         }
         if (changed) {
           const rows = await db

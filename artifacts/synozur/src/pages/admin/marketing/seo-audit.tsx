@@ -109,8 +109,16 @@ function formatMissingLabel(field: string): string {
   return map[field] ?? field;
 }
 
-// Keys the backend autofill endpoint will actually patch (only missing/empty fields).
-const FILLABLE_KEYS = new Set(["seoTitle", "seoDescription", "ogImage"]);
+// Keys the backend autofill endpoint will actually patch.
+// Includes length-violation variants so the wand button is enabled for posts
+// with descriptions that are too short or too long.
+const FILLABLE_KEYS = new Set([
+  "seoTitle",
+  "seoDescription",
+  "seoDescriptionShort",
+  "seoDescriptionLong",
+  "ogImage",
+]);
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
