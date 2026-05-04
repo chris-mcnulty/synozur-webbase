@@ -110,3 +110,55 @@ export async function writeCachedOgImage(
     logger.warn({ err, key }, "ogImageCache write failed");
   }
 }
+
+/**
+ * Drop every cached PNG for `(kind, id)` regardless of `lastModifiedMs`.
+ *
+ * Normal cache invalidation rides on the row's `updated_at` (the URL
+ * carries `lastModifiedMs`, so a row bump produces a new URL and the
+ * old object simply ages out). This helper covers the orthogonal case
+ * where the *renderer template* has changed — same row, same
+ * `updated_at`, but the bytes need to be re-rendered.
+ *
+ * Returns the count of objects (memory + storage combined) that were
+ * dropped, primarily for log-line / API-response visibility.
+ */
+export async function clearCachedOgImage(
+  kind: OgImageKind,
+  id: string,
+): Promise<number> {
+  let cleared = 0;
+
+  // In-memory: every entry whose object name starts with `og-cache/{kind}/{id}/`.
+  const memPrefix = `og-cache/${kind}/${id}/`;
+  for (const k of Array.from(memCache.keys())) {
+    if (k.startsWith(memPrefix)) {
+      memCache.delete(k);
+      cleared++;
+    }
+  }
+
+  const bucket = parsePrivateBucket();
+  if (!bucket) return cleared;
+
+  try {
+    const fullPrefix = bucket.prefix
+      ? `${bucket.prefix}/${memPrefix}`
+      : memPrefix;
+    const [files] = await objectStorageClient
+      .bucket(bucket.bucketName)
+      .getFiles({ prefix: fullPrefix });
+    for (const file of files) {
+      try {
+        await file.delete({ ignoreNotFound: true });
+        cleared++;
+      } catch (err) {
+        logger.warn({ err, name: file.name }, "ogImageCache clear: delete failed");
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, kind, id }, "ogImageCache clear: list failed");
+  }
+
+  return cleared;
+}

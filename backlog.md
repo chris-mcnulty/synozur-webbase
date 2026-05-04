@@ -1,6 +1,6 @@
 # Synozur Alliance — Product Backlog
 
-> Last updated: May 3, 2026  
+> Last updated: May 4, 2026  
 > 11 tracked tasks · 3 strategic roadmap items · 53 merged · 0 cancelled (older merged / cancelled rows rolled over per the convention noted below)
 
 Tasks are grouped by theme. Entries with a `#` ref correspond to project task system records (PROPOSED or active). Entries in the **Strategic Roadmap** section are planned future initiatives that do not yet have a project task record. Items shown with strike-through were verified as already shipped during the May 2026 SEO audit pass and are kept here only until the next merged-tasks rollover.
@@ -30,7 +30,7 @@ Each row links to the canonical backlog entry below where the implementation det
 - [ ] **L6. Wix-redirect production sweep** → #84 residual.
   Pull the top 100 not-found URLs from `not_found_logs` after staging traffic; confirm no high-traffic legacy URL is missing a redirect rule. Better to do this once before launch than to lose two weeks of crawl budget. **Last-mile cleanup on already-shipped infrastructure.**
 - [ ] **L7. Backfill per-page OG / SEO data on production artifacts** → #86 residual.
-  The OG-serving infrastructure is shipped, but `seoTitle`, `seoDescription`, and `ogImage` are blank on most production artifact rows, so every shared link previews with the same global default. **Code shipped:** `artifacts/api-server/src/scripts/runSeoBackfill.ts` wraps the existing `runAudit()` + `applyAutofill()` helpers and is the operational entry point — dry-run by default, prints per-kind totals + per-(kind, missing-field) counts, and only fills empty columns when `--apply` is passed. Run `pnpm --filter @workspace/api-server exec tsx src/scripts/runSeoBackfill.ts` in production for a dry-run, then `… -- --apply` once editorial signs off on the suggestions; `--kinds=insight,case-study,…` restricts the operation to specific artifact types. For `ogImage`: dynamic OG image generation (#161) shipped in May 2026 so the bot middleware now falls back through the per-kind dynamic renderer before reaching the global `seoDefaultOgImageUrl`; the only remaining gap is editor-authored overrides for hero artifacts where the dynamic render is generic. **Remaining ops:** run the backfill in production with editorial sign-off, then hand-author OG copy / images for the top-30-traffic artifacts. **Without this, shared links for those flagship pages still preview with the dynamic-default card rather than a bespoke one.**
+  The OG-serving infrastructure is shipped, but `seoTitle`, `seoDescription`, and `ogImage` are blank on most production artifact rows, so every shared link previews with the same global default. **Code shipped:** `artifacts/api-server/src/scripts/runSeoBackfill.ts` wraps the existing `runAudit()` + `applyAutofill()` helpers and is the operational entry point — dry-run by default, prints per-kind totals + per-(kind, missing-field) counts, and only fills empty columns when `--apply` is passed. Run `pnpm --filter @workspace/api-server exec tsx src/scripts/runSeoBackfill.ts` in production for a dry-run, then `… -- --apply` once editorial signs off on the suggestions; `--kinds=insight,case-study,…` restricts the operation to specific artifact types. For `ogImage`: dynamic OG image generation (#161) shipped in May 2026 so the bot middleware now falls back through the per-kind dynamic renderer before reaching the global `seoDefaultOgImageUrl`; the only remaining gap is editor-authored overrides for hero artifacts where the dynamic render is generic. **OG cache regeneration:** `POST /api/og/regenerate` (admin/editor only, body `{ kind, id, prerender? }`) drops every cached PNG for `(kind, id)` regardless of `lastModifiedMs` and optionally re-renders synchronously — closes the orthogonal gap where the renderer template changes (same row, same `updated_at`) but the cached bytes need to be regenerated. Backed by `clearCachedOgImage(kind, id)` in `artifacts/api-server/src/lib/ogImageCache.ts` which clears both the in-memory LRU and every matching object in `PRIVATE_OBJECT_DIR/og-cache/{kind}/{id}/`. **Remaining ops:** run the backfill in production with editorial sign-off, then hand-author OG copy / images for the top-30-traffic artifacts. **Without this, shared links for those flagship pages still preview with the dynamic-default card rather than a bespoke one.**
 
 ### Tier 2 — Strongly recommended, ship before announcing
 
@@ -623,12 +623,12 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#110~~ | ~~Show a video thumbnail preview when a custom hero video is active~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#111~~ | ~~Validate video uploads before they reach object storage~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#119~~ | ~~Add automated browser tests for the full sign-in and sign-out flow~~ — **Shipped May 2026** | Admin Access & People | #115 |
-| #128 | OAuth 2.0 / OIDC provider for other Synozur web apps | Admin Access & People | #110 |
+| ~~#128~~ | ~~OAuth 2.0 / OIDC provider for other Synozur web apps~~ — **Shipped May 2026** | Admin Access & People | #110 |
 | #129 | Cross-app switcher (Constellation, Vega, …) for signed-in users | Admin Access & People | #128 |
 | #130 | Admin-controlled UX theme switcher (Baseline / Aurora / …) | Admin Access & People | #128, #110 |
 | #132 | SendGrid integration for marketing email and deliverability redundancy | Marketing & Lifecycle | — |
-| #133 | Constellation interactive demo sandbox on /applications/constellation | Public Site UX | — |
-| #134 | "Ask Synozur" — Vega-pattern grounding documents + retrieval over the editorial corpus | Public Site UX | — |
+| ~~#133~~ | ~~Constellation interactive demo sandbox on /applications/constellation~~ — **Shipped May 2026** | Public Site UX | — |
+| ~~#134~~ | ~~"Ask Synozur" — Vega-pattern grounding documents + retrieval over the editorial corpus~~ — **Shipped May 2026 (#262)** | Public Site UX | — |
 | ~~#135~~ | ~~Galaxy client portal — v0~~ — **Shipped May 2026 (#224 + #225 + #226 + #227)** | Admin Access & People | #110, #111, #128 |
 | ~~#224~~ | ~~Galaxy client portal — v0 foundation~~ — **Shipped May 2026** | Admin Access & People | #135 |
 | ~~#225~~ | ~~Galaxy — client-organization admin in the main site~~ — **Shipped May 2026** | Admin Access & People | #135 |
@@ -657,11 +657,11 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#163~~ | ~~Tune robots meta directives and add a discovery-friendly 404 page~~ — **Shipped May 2026** | Public Site UX | — |
 | ~~#164~~ | ~~Extend the event-detail share rail to insights, case studies, and white papers~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | ~~#165~~ | ~~Honor `prefers-color-scheme` for first-time visitors~~ — **Shipped May 2026** | Public Site UX | — |
-| #166 | Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget | Public Site UX | — |
-| #167 | Apply Anthropic prompt caching across the AI chat + grounding pipeline | Public Site UX | #166 |
+| ~~#166~~ | ~~Lock down `/ai/chat` — auth, rate limits, conversation ACL, per-identity token budget~~ — **Shipped May 2026** | Public Site UX | — |
+| ~~#167~~ | ~~Apply Anthropic prompt caching across the AI chat + grounding pipeline~~ — **Shipped May 2026** | Public Site UX | #166 |
 | ~~#131~~ | ~~HubSpot lead capture and lifecycle sync — provider abstraction, queued contact upserts + timeline events, custom Synozur properties, subscription mirroring (HubSpot ↔ local), admin health page, backlog migration, hutk identity stitching~~ — **Shipped May 2026 (#263)** | Marketing & Lifecycle | — |
 | ~~#168~~ | ~~Double opt-in confirmation for newsletter subscribers~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
-| #169 | Admin audit-log viewer with entity-scoped activity tab and 365-day retention | Admin Access & People | — |
+| ~~#169~~ | ~~Admin audit-log viewer with entity-scoped activity tab and 365-day retention~~ — **Shipped May 2026** | Admin Access & People | — |
 | ~~#170~~ | ~~Public-site search endpoint and `/search` page powered by Postgres FTS~~ — Shipped May 2026 | Public Site UX | — |
 | ~~#185~~ | ~~Add Playwright coverage for the Polaris collateral sync flow~~ — **Shipped May 2026** | Content Library | #69 |
 | ~~#190~~ | ~~Extend Zenith solution-enrichment seed to Company OS and Employee Strategies~~ — **Shipped May 2026** | Content Library | #56 |

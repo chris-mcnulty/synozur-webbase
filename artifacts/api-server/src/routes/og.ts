@@ -14,6 +14,7 @@
 
 import { Router, type IRouter } from "express";
 import { and, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import {
   db,
   postsTable,
@@ -27,7 +28,12 @@ import {
   type OgImageInput,
   type OgImageKind,
 } from "../lib/ogImageRenderer";
-import { readCachedOgImage, writeCachedOgImage } from "../lib/ogImageCache";
+import {
+  clearCachedOgImage,
+  readCachedOgImage,
+  writeCachedOgImage,
+} from "../lib/ogImageCache";
+import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -239,5 +245,69 @@ router.get("/og/image", async (req, res): Promise<void> => {
     });
   }
 });
+
+/**
+ * POST /api/og/regenerate
+ *
+ * Drops every cached PNG for `(kind, id)` and (when `prerender=true`)
+ * renders a fresh one synchronously so the next unfurl is a HIT. Used
+ * when the renderer template changes — same row, same `updated_at`,
+ * but the bytes need to be regenerated.
+ *
+ * Admin/editor only. Returns `{ ok, kind, id, cleared, prerendered }`.
+ */
+const RegenerateBodySchema = z.object({
+  kind: z.enum(["insight", "case-study", "white-paper", "polaris"]),
+  id: z.string().uuid(),
+  prerender: z.boolean().optional().default(false),
+});
+
+router.post(
+  "/og/regenerate",
+  requireAuth,
+  requireRole("admin", "editor"),
+  async (req, res): Promise<void> => {
+    const parsed = RegenerateBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: "Invalid body",
+        details: parsed.error.flatten(),
+      });
+      return;
+    }
+    const { kind, id, prerender } = parsed.data;
+
+    try {
+      const cleared = await clearCachedOgImage(kind, id);
+
+      let prerendered = false;
+      if (prerender) {
+        const resolved = await resolveArtifact(kind, id);
+        if (!resolved) {
+          res.status(404).json({ error: "Artifact not found" });
+          return;
+        }
+        const png = await renderOgImagePng(resolved.input);
+        await writeCachedOgImage(
+          {
+            kind,
+            id,
+            lastModifiedMs: resolved.lastModifiedMs,
+          },
+          png,
+        );
+        prerendered = true;
+      }
+
+      res.json({ ok: true, kind, id, cleared, prerendered });
+    } catch (err) {
+      req.log?.error?.({ err, kind, id }, "OG image regenerate failed");
+      res.status(500).json({
+        error:
+          err instanceof Error ? err.message : "Failed to regenerate OG image",
+      });
+    }
+  },
+);
 
 export default router;
