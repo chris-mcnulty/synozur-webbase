@@ -1492,6 +1492,9 @@ export interface CaseStudyDto {
   outcome: CaseStudySectionDto;
   metrics: CaseStudyMetricDto[];
   quote: { text: string; attribution: string };
+  atAGlance: string | null;
+  whatWeDid: string | null;
+  whyItWorked: string | null;
   serviceId: string | null;
   solutionId: string | null;
   status: ArtifactStatus;
@@ -1525,6 +1528,9 @@ export interface CaseStudyInput {
   outcome?: CaseStudySectionDto;
   metrics?: CaseStudyMetricDto[];
   quote?: { text: string; attribution: string };
+  atAGlance?: string | null;
+  whatWeDid?: string | null;
+  whyItWorked?: string | null;
   serviceId?: string | null;
   solutionId?: string | null;
   status?: ArtifactStatus;

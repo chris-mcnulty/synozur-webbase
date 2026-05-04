@@ -96,6 +96,9 @@ interface FormState {
   summary: string;
   heroImage: string;
   clientLogo: string;
+  atAGlance: string;
+  whatWeDid: string;
+  whyItWorked: string;
   challengeHeading: string;
   challengeBody: string;
   approach: ApproachStep[];
@@ -129,6 +132,9 @@ const EMPTY: FormState = {
   summary: "",
   heroImage: "",
   clientLogo: "",
+  atAGlance: "",
+  whatWeDid: "",
+  whyItWorked: "",
   challengeHeading: "The Challenge",
   challengeBody: "",
   approach: [],
@@ -165,6 +171,9 @@ function fromDto(c: CaseStudyDto): FormState {
     summary: c.summary,
     heroImage: c.heroImage,
     clientLogo: c.clientLogo ?? "",
+    atAGlance: c.atAGlance ?? "",
+    whatWeDid: c.whatWeDid ?? "",
+    whyItWorked: c.whyItWorked ?? "",
     challengeHeading: ch.heading,
     challengeBody: ch.body,
     approach: (c.approach ?? []).map((s) => ({
@@ -208,6 +217,9 @@ function toBody(f: FormState) {
     outcome: formToSection({ heading: f.outcomeHeading, body: f.outcomeBody }),
     metrics: f.metrics,
     quote: { text: f.quoteText, attribution: f.quoteAttribution },
+    atAGlance: f.atAGlance || null,
+    whatWeDid: f.whatWeDid || null,
+    whyItWorked: f.whyItWorked || null,
     serviceId: f.serviceId || null,
     solutionId: f.solutionId || null,
     status: f.status as CaseStudyDto["status"],
@@ -537,6 +549,48 @@ export default function CaseStudyEdit({ id }: Props) {
                   className="mt-2 h-12 w-auto rounded border border-border"
                 />
               )}
+            </div>
+          </Card>
+
+          {/* At a Glance / What We Did / Why It Worked */}
+          <Card className="p-5 space-y-4">
+            <div>
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Summary Boxes
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Short blurbs shown above the challenge section. Leave blank to hide a box.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label>At a Glance</Label>
+              <Textarea
+                value={form.atAGlance}
+                onChange={(e) => set("atAGlance", e.target.value)}
+                disabled={!canWrite}
+                rows={2}
+                placeholder="1–2 sentence context about the client or situation"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>What We Did</Label>
+              <Textarea
+                value={form.whatWeDid}
+                onChange={(e) => set("whatWeDid", e.target.value)}
+                disabled={!canWrite}
+                rows={2}
+                placeholder="Brief summary of Synozur's engagement"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Why It Worked</Label>
+              <Textarea
+                value={form.whyItWorked}
+                onChange={(e) => set("whyItWorked", e.target.value)}
+                disabled={!canWrite}
+                rows={2}
+                placeholder="Key factor that drove the outcome"
+              />
             </div>
           </Card>
 

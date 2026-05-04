@@ -61,6 +61,9 @@ export const caseStudiesTable = pgTable(
       .default([]),
     quoteText: text("quote_text").notNull().default(""),
     quoteAttribution: text("quote_attribution").notNull().default(""),
+    atAGlance: text("at_a_glance"),
+    whatWeDid: text("what_we_did"),
+    whyItWorked: text("why_it_worked"),
     // #100: FK to primary service / solution for filtered rails.
     serviceId: uuid("service_id").references(() => servicesTable.id, {
       onDelete: "set null",
