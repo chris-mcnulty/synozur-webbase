@@ -222,6 +222,17 @@ router.delete(
 // flattened blob.
 // ---------------------------------------------------------------------------
 
+/**
+ * Strip inline base64 image data URIs produced by mammoth's markdown
+ * converter. A DOCX with embedded images produces tags like:
+ *   ![](data:image/png;base64,iVBORw0KGgo...)
+ * These add nothing to a text grounding document and can be hundreds of
+ * kilobytes each — exactly what we do not want going into the AI context.
+ */
+function stripBase64Images(markdown: string): string {
+  return markdown.replace(/!\[[^\]]*\]\(data:[^)]+\)/g, "");
+}
+
 const PARSE_LIMIT = "20mb";
 
 router.post(
@@ -270,7 +281,8 @@ router.post(
         }) => Promise<{ value: string }>;
       };
       const result = await mammoth.convertToMarkdown({ buffer: body });
-      res.json({ markdown: result.value ?? "" });
+      const markdown = stripBase64Images(result.value ?? "");
+      res.json({ markdown });
     } catch (err) {
       req.log?.warn({ err }, "DOCX parse failed");
       res.status(422).json({ error: "Could not parse DOCX" });
