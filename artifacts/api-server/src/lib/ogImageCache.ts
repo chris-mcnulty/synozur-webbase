@@ -85,15 +85,27 @@ export async function readCachedOgImage(key: CacheKey): Promise<Buffer | null> {
   }
 }
 
+/**
+ * Outcome of a cache write. `ok=false` means the shared-storage save
+ * failed; the in-memory copy may still be present, but other instances
+ * won't see this entry. Callers that need a strong success signal (e.g.
+ * the regenerate endpoint) should surface a 502 in that case.
+ */
+export interface CacheWriteResult {
+  ok: boolean;
+  storageConfigured: boolean;
+  error?: string;
+}
+
 export async function writeCachedOgImage(
   key: CacheKey,
   buf: Buffer,
-): Promise<void> {
+): Promise<CacheWriteResult> {
   const memKey = objectName(key);
   memSet(memKey, buf);
 
   const bucket = parsePrivateBucket();
-  if (!bucket) return;
+  if (!bucket) return { ok: true, storageConfigured: false };
 
   try {
     const fullName = bucket.prefix
@@ -105,30 +117,46 @@ export async function writeCachedOgImage(
       metadata: { contentType: "image/png" },
       resumable: false,
     });
+    return { ok: true, storageConfigured: true };
   } catch (err) {
-    // Cache write failure is non-fatal — the byte response still goes
-    // out, the next request just renders again.
+    // Existing public GET path treats a write failure as non-fatal — the
+    // byte response still goes out and the next request renders again.
+    // Returning a structured result lets the regenerate endpoint surface
+    // the failure instead of silently reporting success.
     logger.warn({ err, key }, "ogImageCache write failed");
+    return {
+      ok: false,
+      storageConfigured: true,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
 /**
- * Drop every cached PNG for `(kind, id)` regardless of `lastModifiedMs`.
- *
- * Normal cache invalidation rides on the row's `updated_at` (the URL
- * carries `lastModifiedMs`, so a row bump produces a new URL and the
- * old object simply ages out). This helper covers the orthogonal case
- * where the *renderer template* has changed — same row, same
- * `updated_at`, but the bytes need to be re-rendered.
- *
- * Returns the count of objects (memory + storage combined) that were
- * dropped, primarily for log-line / API-response visibility.
+ * Outcome of a cache purge. `ok=false` means a list/delete operation
+ * against shared storage failed; the in-memory cache is always purged
+ * regardless. The regenerate endpoint promotes `ok=false` to a 502 so
+ * operators don't get a false success signal in multi-instance deploys.
+ */
+export interface CacheClearResult {
+  cleared: number;
+  ok: boolean;
+  storageConfigured: boolean;
+  errors: string[];
+}
+
+/**
+ * Drop every cached PNG for `(kind, id)` regardless of `lastModifiedMs`
+ * or template version. Used by the admin regenerate endpoint when the
+ * renderer template changes — same row, same `updated_at`, but the
+ * bytes need to be re-rendered.
  */
 export async function clearCachedOgImage(
   kind: OgImageKind,
   id: string,
-): Promise<number> {
+): Promise<CacheClearResult> {
   let cleared = 0;
+  const errors: string[] = [];
 
   // In-memory: every entry whose object name starts with `og-cache/{kind}/{id}/`.
   const memPrefix = `og-cache/${kind}/${id}/`;
@@ -140,7 +168,9 @@ export async function clearCachedOgImage(
   }
 
   const bucket = parsePrivateBucket();
-  if (!bucket) return cleared;
+  if (!bucket) {
+    return { cleared, ok: true, storageConfigured: false, errors };
+  }
 
   try {
     const fullPrefix = bucket.prefix
@@ -154,12 +184,21 @@ export async function clearCachedOgImage(
         await file.delete({ ignoreNotFound: true });
         cleared++;
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`delete ${file.name}: ${msg}`);
         logger.warn({ err, name: file.name }, "ogImageCache clear: delete failed");
       }
     }
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`list ${memPrefix}: ${msg}`);
     logger.warn({ err, kind, id }, "ogImageCache clear: list failed");
   }
 
-  return cleared;
+  return {
+    cleared,
+    ok: errors.length === 0,
+    storageConfigured: true,
+    errors,
+  };
 }

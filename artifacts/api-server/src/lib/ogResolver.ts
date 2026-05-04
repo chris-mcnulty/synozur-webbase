@@ -8,6 +8,7 @@
  */
 
 import { and, eq, isNull } from "drizzle-orm";
+import { OG_TEMPLATE_VERSION } from "./ogImageRenderer";
 import {
   db,
   postsTable,
@@ -60,11 +61,15 @@ export function absUrl(raw: string | null | undefined, origin: string): string |
 }
 
 /**
- * Build the dynamic-OG-image URL for an artifact (#161). The endpoint
- * caches by `(kind, id, lastModified)`, so we encode the row's
- * `updated_at` epoch in a `v=` query param — this both busts upstream
- * caches when an editor saves a change and lets crawlers treat the URL
- * as immutable for as long as the artifact hasn't changed.
+ * Build the dynamic-OG-image URL for an artifact (#161). Encodes two
+ * cache-busting params so upstream caches (LinkedIn, Slack, browsers,
+ * CDNs that honour `Cache-Control: immutable`) refetch when either
+ * signal changes:
+ *   - `v` — the row's `updated_at` epoch (per-row content bump).
+ *   - `t` — `OG_TEMPLATE_VERSION` (global renderer-template bump).
+ *
+ * Crawlers can safely treat the URL as immutable for as long as the
+ * artifact hasn't changed and the template version hasn't been bumped.
  */
 export function dynamicOgImageUrl(
   kind: "insight" | "case-study" | "white-paper" | "polaris",
@@ -73,7 +78,7 @@ export function dynamicOgImageUrl(
   origin: string,
 ): string {
   const v = lastModified ? lastModified.getTime() : 0;
-  return `${origin}/api/og/image?kind=${kind}&id=${encodeURIComponent(id)}&v=${v}`;
+  return `${origin}/api/og/image?kind=${kind}&id=${encodeURIComponent(id)}&v=${v}&t=${OG_TEMPLATE_VERSION}`;
 }
 
 async function resolveMediaUrl(

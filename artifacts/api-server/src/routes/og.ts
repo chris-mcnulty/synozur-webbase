@@ -278,7 +278,10 @@ router.post(
     const { kind, id, prerender } = parsed.data;
 
     try {
-      const cleared = await clearCachedOgImage(kind, id);
+      const clearResult = await clearCachedOgImage(kind, id);
+      // Aggregate errors so a partial-failure (clear ok, write fails) is
+      // still surfaced as 502 to operators rather than masked as success.
+      const errors = [...clearResult.errors];
 
       let prerendered = false;
       if (prerender) {
@@ -288,7 +291,7 @@ router.post(
           return;
         }
         const png = await renderOgImagePng(resolved.input);
-        await writeCachedOgImage(
+        const writeResult = await writeCachedOgImage(
           {
             kind,
             id,
@@ -296,10 +299,23 @@ router.post(
           },
           png,
         );
+        if (!writeResult.ok) {
+          errors.push(`write: ${writeResult.error ?? "unknown"}`);
+        }
         prerendered = true;
       }
 
-      res.json({ ok: true, kind, id, cleared, prerendered });
+      const ok = errors.length === 0;
+      const status = ok ? 200 : 502;
+      res.status(status).json({
+        ok,
+        kind,
+        id,
+        cleared: clearResult.cleared,
+        storageConfigured: clearResult.storageConfigured,
+        prerendered,
+        ...(errors.length > 0 ? { errors } : {}),
+      });
     } catch (err) {
       req.log?.error?.({ err, kind, id }, "OG image regenerate failed");
       res.status(500).json({
