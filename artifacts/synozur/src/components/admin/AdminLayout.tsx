@@ -216,6 +216,7 @@ const SECTIONS: NavSection[] = [
     label: "Account",
     icon: UserCog,
     items: [
+      { href: "/account/profile", label: "My Profile", icon: UserCog, testId: "nav-admin-account-profile" },
       { href: "/account/sessions", label: "Active Sessions", icon: KeyRound, testId: "nav-admin-account-sessions" },
     ],
   },

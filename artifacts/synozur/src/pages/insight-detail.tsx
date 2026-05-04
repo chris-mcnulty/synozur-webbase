@@ -241,7 +241,18 @@ export default function InsightDetail() {
               )}
               {post.author?.displayName && (
                 <>
-                  <span>{post.author.displayName}</span>
+                  <span className="inline-flex items-center gap-2 normal-case tracking-normal">
+                    {post.author.avatarUrl && (
+                      <img
+                        src={resolveMediaUrl(post.author.avatarUrl, { width: 64 }) ?? undefined}
+                        alt={post.author.displayName}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0"
+                      />
+                    )}
+                    <span className="uppercase tracking-widest">{post.author.displayName}</span>
+                  </span>
                   <span className="h-1 w-1 rounded-full bg-zinc-500" />
                 </>
               )}
@@ -296,16 +307,16 @@ export default function InsightDetail() {
           )}
 
           {post.author?.displayName && (
-            <aside className="mt-16 pt-10 border-t border-border flex items-start gap-4">
+            <aside className="mt-16 pt-10 border-t border-border flex items-start gap-5">
               {post.author.avatarUrl && (
                 <img
-                  src={resolveMediaUrl(post.author.avatarUrl, { width: 112 }) ?? undefined}
+                  src={resolveMediaUrl(post.author.avatarUrl, { width: 128 }) ?? undefined}
                   alt={post.author.displayName}
                   loading="lazy"
                   decoding="async"
-                  width={56}
-                  height={56}
-                  className="w-14 h-14 rounded-full object-cover border border-border/60"
+                  width={64}
+                  height={64}
+                  className="w-16 h-16 rounded-full object-cover border border-border/60 flex-shrink-0"
                 />
               )}
               <div>
@@ -313,6 +324,11 @@ export default function InsightDetail() {
                   Written by
                 </p>
                 <p className="text-lg font-semibold">{post.author.displayName}</p>
+                {(post.author as { bio?: string | null }).bio && (
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    {(post.author as { bio?: string | null }).bio}
+                  </p>
+                )}
               </div>
             </aside>
           )}

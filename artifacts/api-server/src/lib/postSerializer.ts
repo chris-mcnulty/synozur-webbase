@@ -14,7 +14,7 @@ export type SerializedPost = ReturnType<typeof shape>;
 
 function shape(args: {
   post: typeof postsTable.$inferSelect;
-  author: { id: string; displayName: string | null; avatarUrl: string | null } | null;
+  author: { id: string; displayName: string | null; avatarUrl: string | null; bio: string | null } | null;
   hero: { publicUrl: string } | null;
   og: { publicUrl: string } | null;
   categories: { id: string; slug: string; name: string; description: string | null }[];
@@ -33,8 +33,8 @@ function shape(args: {
     ogImageUrl: og?.publicUrl ?? null,
     authorId: post.authorId,
     author: author
-      ? { id: author.id, displayName: author.displayName, avatarUrl: author.avatarUrl }
-      : { id: post.authorId, displayName: null, avatarUrl: null },
+      ? { id: author.id, displayName: author.displayName, avatarUrl: author.avatarUrl, bio: author.bio }
+      : { id: post.authorId, displayName: null, avatarUrl: null, bio: null },
     status: post.status,
     publishedAt: post.publishedAt?.toISOString() ?? null,
     scheduledFor: post.scheduledFor?.toISOString() ?? null,
@@ -74,6 +74,7 @@ export async function serializePosts(
             id: usersTable.id,
             displayName: usersTable.displayName,
             avatarUrl: usersTable.avatarUrl,
+            bio: usersTable.bio,
           })
           .from(usersTable)
           .where(inArray(usersTable.id, authorIds))

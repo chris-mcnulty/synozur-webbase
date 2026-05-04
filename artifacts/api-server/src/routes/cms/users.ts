@@ -12,7 +12,49 @@ import {
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
 
+const ProfileBody = z.object({
+  displayName: z.string().min(1).max(120).optional(),
+  bio: z.string().max(500).nullable().optional(),
+  avatarUrl: z.string().url().nullable().optional(),
+});
+
 const router: IRouter = Router();
+
+router.put(
+  "/cms/profile",
+  requireAuth,
+  async (req, res) => {
+    const parsed = ProfileBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body" });
+      return;
+    }
+    const userId = req.authedUser!.id;
+    const updates: Partial<typeof usersTable.$inferInsert> = {};
+    if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
+    if (parsed.data.bio !== undefined) updates.bio = parsed.data.bio;
+    if (parsed.data.avatarUrl !== undefined) updates.avatarUrl = parsed.data.avatarUrl;
+
+    const [updated] = await db
+      .update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, userId))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      displayName: updated.displayName,
+      avatarUrl: updated.avatarUrl,
+      bio: updated.bio,
+    });
+  },
+);
 
 router.get(
   "/cms/users",
@@ -38,6 +80,7 @@ router.get(
         email: u.email,
         displayName: u.displayName,
         avatarUrl: u.avatarUrl,
+        bio: u.bio,
         roles: rolesByUser.get(u.id) ?? [],
         createdAt: u.createdAt.toISOString(),
       })),

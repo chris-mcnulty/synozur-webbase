@@ -4544,6 +4544,9 @@ components:
         avatarUrl:
           type: string
           nullable: true
+        bio:
+          type: string
+          nullable: true
     Post:
       type: object
       required:

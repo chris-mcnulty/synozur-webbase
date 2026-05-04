@@ -111,6 +111,7 @@ import AdminCspViolations from "@/pages/admin/site-config/csp-violations";
 import AdminLaunchReadiness from "@/pages/admin/site-config/launch-readiness";
 import AdminEmailLog from "@/pages/admin/site-config/email";
 import AdminActiveSessions from "@/pages/admin/account/sessions";
+import AdminProfile from "@/pages/admin/account/profile";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
 import MarketingContentAnalytics from "@/pages/admin/marketing/traffic";
 import AdminTraffic from "@/pages/admin/traffic";
@@ -434,6 +435,7 @@ function AdminRoutes() {
         <Route path="/integrations/spe" component={SpeAdminPage} />
 
         {/* Account section */}
+        <Route path="/account/profile" component={AdminProfile} />
         <Route path="/account/sessions" component={AdminActiveSessions} />
 
         <Route component={NotFound} />

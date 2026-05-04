@@ -485,6 +485,7 @@ export interface AuthorSummary {
   id: string;
   displayName?: string | null;
   avatarUrl?: string | null;
+  bio?: string | null;
 }
 
 export interface Post {

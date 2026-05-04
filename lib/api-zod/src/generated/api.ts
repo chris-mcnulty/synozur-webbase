@@ -73,6 +73,7 @@ export const ListCmsPostsResponse = zod.object({
           id: zod.string().uuid(),
           displayName: zod.string().nullish(),
           avatarUrl: zod.string().nullish(),
+          bio: zod.string().nullish(),
         })
         .optional(),
       status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -157,6 +158,7 @@ export const GetCmsPostResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -232,6 +234,7 @@ export const UpdateCmsPostResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -291,6 +294,7 @@ export const PublishCmsPostResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -350,6 +354,7 @@ export const ScheduleCmsPostResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -405,6 +410,7 @@ export const ArchiveCmsPostResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -456,6 +462,7 @@ export const ListCmsPostRevisionsResponseItem = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .nullish(),
   snapshotTitle: zod.string().nullish(),
@@ -482,6 +489,7 @@ export const GetCmsPostRevisionResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .nullish(),
   snapshotTitle: zod.string().nullish(),
@@ -523,6 +531,7 @@ export const RestoreCmsPostRevisionResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]),
@@ -1049,6 +1058,7 @@ export const ListInsightsResponse = zod.object({
           id: zod.string().uuid(),
           displayName: zod.string().nullish(),
           avatarUrl: zod.string().nullish(),
+          bio: zod.string().nullish(),
         })
         .optional(),
       categories: zod
@@ -1101,6 +1111,7 @@ export const GetInsightResponse = zod.object({
       id: zod.string().uuid(),
       displayName: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
+      bio: zod.string().nullish(),
     })
     .optional(),
   categories: zod
