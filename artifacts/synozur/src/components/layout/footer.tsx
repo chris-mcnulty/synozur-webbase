@@ -178,6 +178,13 @@ export function Footer() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }))
   ).slice(0, 4);
 
+  const servicesQuery = useQuery({
+    queryKey: ["services", "footer"],
+    queryFn: () => api.listServices(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const footerServices = servicesQuery.data?.items ?? [];
+
   // #268: pull social URLs from public site settings (same query key the
   // header/JSON-LD already share so this hits the cache).
   const settingsQuery = useQuery({
@@ -210,10 +217,21 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Services</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <li><Link href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</Link></li>
-              <li><Link href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</Link></li>
-              <li><Link href="/services/experiences" className="hover:text-primary transition-colors">Experiences</Link></li>
-              <li><Link href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</Link></li>
+              {footerServices.length > 0
+                ? footerServices.map((s) => (
+                    <li key={s.slug}>
+                      <Link href={s.servicePath ?? `/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</Link>
+                    </li>
+                  ))
+                : (
+                  <>
+                    <li><Link href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</Link></li>
+                    <li><Link href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</Link></li>
+                    <li><Link href="/services/experiences" className="hover:text-primary transition-colors">Experiences</Link></li>
+                    <li><Link href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</Link></li>
+                  </>
+                )
+              }
             </ul>
           </div>
 
