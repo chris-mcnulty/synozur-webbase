@@ -97,7 +97,7 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
 }
 
 const PORTAL_NAV: { href: string; label: string }[] = [
-  { href: "/", label: "Home" },
+  { href: "/", label: "Dashboard" },
   { href: "/documents", label: "Documents" },
   { href: "/apps", label: "Apps" },
 ];
@@ -372,16 +372,6 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
           <SynozurAppSwitcher currentApp="galaxy" />
 
-          {/* Mobile hamburger */}
-          <button
-            className="lg:hidden p-2 text-foreground flex-shrink-0"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-
           {/* Logo — links to main Synozur site */}
           <a href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80 flex-shrink-0" aria-label="The Synozur Alliance — main site">
             <img src={LOGO_COLOR_URL} alt="The Synozur Alliance Logo" className="h-10 w-auto" />
@@ -460,6 +450,15 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
             </div>
             <ThemeToggle />
             {user ? <UserButton user={user} signOut={signOut} /> : null}
+            {/* Mobile hamburger — right side, standard position */}
+            <button
+              className="lg:hidden p-2 text-foreground flex-shrink-0"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
 
@@ -482,26 +481,8 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                 </button>
               </form>
 
-              {/* Portal nav — hidden when showing the lightweight sign-in header */}
-              {!hidePortalNav && (
-                <div className="flex flex-col gap-3">
-                  <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
-                  <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
-                    {PORTAL_NAV.map((n) => {
-                      const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
-                      return (
-                        <Link key={n.href} href={n.href}
-                          className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
-                          onClick={() => setMobileMenuOpen(false)}>
-                          {n.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {navGroups.map((group) => (
+              {/* Site nav groups — skip "Portal" since the Galaxy Portal section below handles it */}
+              {navGroups.filter((g) => g.title !== "Portal").map((group) => (
                 <div key={group.title} className="flex flex-col gap-3">
                   <h3 className="font-semibold text-foreground">{group.title}</h3>
                   <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
@@ -530,6 +511,25 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   </div>
                 </div>
               ))}
+
+              {/* Galaxy Portal section — always last in mobile menu */}
+              {!hidePortalNav && (
+                <div className="flex flex-col gap-3 pt-2 border-t border-border/50">
+                  <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
+                  <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
+                    {PORTAL_NAV.map((n) => {
+                      const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+                      return (
+                        <Link key={n.href} href={n.href}
+                          className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
+                          onClick={() => setMobileMenuOpen(false)}>
+                          {n.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {user && (
                 <div className="pt-6 mt-2 border-t border-border">
