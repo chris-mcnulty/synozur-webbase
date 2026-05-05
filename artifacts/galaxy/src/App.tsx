@@ -12,6 +12,9 @@ import AppSurfacePage from "@/pages/app-surface";
 import ArtifactDetailPage from "@/pages/artifact-detail";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
+import { PortalSiteHeader } from "@/components/portal-site-header";
+import { PortalSiteFooter } from "@/components/portal-site-footer";
+import { Skeleton } from "@/components/ui/skeleton";
 import AcceptInvitePage from "@/pages/accept-invite";
 import OAuthCallback from "@/pages/oauth-callback";
 import {
@@ -40,15 +43,26 @@ const queryClient = new QueryClient({
   },
 });
 
+function AuthLoadingSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <PortalSiteHeader hidePortalNav />
+      <main className="flex-1 flex items-center justify-center bg-background px-6">
+        <div className="max-w-md w-full space-y-4">
+          <Skeleton className="h-6 w-1/3 mx-auto" />
+          <Skeleton className="h-10 w-2/3 mx-auto" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5 mx-auto" />
+        </div>
+      </main>
+      <PortalSiteFooter />
+    </div>
+  );
+}
+
 function Gated({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      </div>
-    );
-  }
+  if (!isLoaded) return <AuthLoadingSkeleton />;
   if (!isSignedIn) return <SignInRequired />;
   return <>{children}</>;
 }
