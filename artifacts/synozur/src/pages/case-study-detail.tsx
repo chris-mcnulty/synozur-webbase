@@ -195,12 +195,6 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      <section className="bg-background pt-10">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <ShareRail kind="case-study" label="case study" title={study.title} className="" />
-        </div>
-      </section>
-
       {(study.atAGlance || study.whatWeDid || study.whyItWorked) && (
         <section className="py-12 bg-background">
           <div className="container mx-auto px-4 max-w-5xl">
@@ -303,6 +297,12 @@ export default function CaseStudyDetail() {
               </ul>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-background py-10">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <ShareRail kind="case-study" label="case study" title={study.title} className="" />
         </div>
       </section>
 
