@@ -2595,6 +2595,53 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS careers_default_hiring_manager text;
     `);
 
+    // Careers capabilities — defined in capabilityMap.ts but never received a
+    // migrations.ts seed block. Without this, the Careers section is invisible
+    // in the admin sidebar for all roles including admin.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description) VALUES
+        ('careers.jobs.read',           'View careers job postings (admin).'),
+        ('careers.jobs.write',          'Create, edit, publish, and close job postings.'),
+        ('careers.applications.read',   'View inbound job applications and résumés.'),
+        ('careers.applications.write',  'Move applications through stages and leave notes.'),
+        ('careers.eeo.read',            'View voluntary EEO self-identification answers.'),
+        ('careers.content.manage',      'Edit careers-scoped content (pages, FAQs, careers team bios).'),
+        ('careers.settings.manage',     'Toggle careers host vs. redirect mode and the external URL.')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      WITH grants(role_name, cap_name) AS (
+        VALUES
+          ('admin',          'careers.jobs.read'),
+          ('admin',          'careers.jobs.write'),
+          ('admin',          'careers.applications.read'),
+          ('admin',          'careers.applications.write'),
+          ('admin',          'careers.eeo.read'),
+          ('admin',          'careers.content.manage'),
+          ('admin',          'careers.settings.manage'),
+          ('site_admin',     'careers.jobs.read'),
+          ('site_admin',     'careers.jobs.write'),
+          ('site_admin',     'careers.applications.read'),
+          ('site_admin',     'careers.applications.write'),
+          ('site_admin',     'careers.eeo.read'),
+          ('site_admin',     'careers.content.manage'),
+          ('site_admin',     'careers.settings.manage'),
+          ('content_author', 'careers.content.manage'),
+          ('hr',             'careers.jobs.read'),
+          ('hr',             'careers.jobs.write'),
+          ('hr',             'careers.applications.read'),
+          ('hr',             'careers.applications.write'),
+          ('hr',             'careers.eeo.read'),
+          ('hr',             'careers.content.manage')
+      )
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+        FROM grants g
+        JOIN roles r        ON r.name = g.role_name
+        JOIN capabilities c ON c.name = g.cap_name
+      ON CONFLICT DO NOTHING;
+    `);
+
     // oauth_consents primary key — the CREATE TABLE IF NOT EXISTS block that
     // defines the PK is skipped when the table pre-existed the migration, so
     // tables created before that block have no PK and the ON CONFLICT upsert
