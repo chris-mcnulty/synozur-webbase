@@ -113,7 +113,7 @@ BEGIN
 END $case4$;
 EOSQL
 
-pnpm --filter db push
+pnpm --filter db push --force
 
 # ------------------------------------------------------------------
 # Startup migrations: ordering is drizzle-kit push → startup

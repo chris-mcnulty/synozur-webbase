@@ -2612,5 +2612,8 @@ export async function runMigrations(): Promise<void> {
     `);
 
     logger.info("Startup migrations complete");
+  } catch (err) {
+    logger.error({ err }, "Startup migrations failed");
+    throw err;
   }
 }
