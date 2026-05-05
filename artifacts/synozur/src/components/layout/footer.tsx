@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Linkedin, Twitter, Youtube, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -13,6 +13,14 @@ import {
   type TurnstileHandle,
 } from "@/components/turnstile";
 import { BotCheckCallout } from "@/components/bot-check-callout";
+import {
+  pickSocialLinks,
+  FOOTER_STATIC_SERVICES,
+  FOOTER_COMPANY_LINKS,
+  FOOTER_LEGAL_LINKS,
+  ORG_ADDRESS,
+  ORG_COPYRIGHT_NAME,
+} from "@workspace/synozur-nav";
 
 function FooterSubscribeForm() {
   const [email, setEmail] = useState("");
@@ -102,65 +110,6 @@ function FooterSubscribeForm() {
   );
 }
 
-type SocialLink = { href: string; label: string; Icon: LucideIcon };
-
-// #268: derive footer social links from the same `orgSameAs` array that
-// powers the Organization JSON-LD `sameAs` field. Admins edit it once in
-// Site Settings → SEO; the footer only renders an icon when the matching
-// profile URL is present, so we never ship anchors that go nowhere.
-//
-// Mirrors the fallback list baked into `OrganizationJsonLd` so the footer
-// and JSON-LD advertise the same profiles when `orgSameAs` is unset in the
-// DB. Keep these in sync if either side gains/loses a default profile.
-const SAME_AS_FALLBACK: readonly string[] = ["https://www.linkedin.com/company/synozur"];
-
-// Strict host matchers: exact domain or one-level subdomain (e.g. `www.`),
-// not arbitrary suffix matches like `evil-linkedin.com`.
-const matchesDomain = (host: string, domain: string) =>
-  host === domain || host.endsWith(`.${domain}`);
-
-function pickSocialLinks(sameAs: readonly string[] | null | undefined): SocialLink[] {
-  const source = sameAs && sameAs.length > 0 ? sameAs : SAME_AS_FALLBACK;
-  const matchers: { test: (host: string) => boolean; label: string; Icon: LucideIcon }[] = [
-    {
-      test: (h) => matchesDomain(h, "linkedin.com"),
-      label: "LinkedIn",
-      Icon: Linkedin,
-    },
-    {
-      test: (h) => matchesDomain(h, "twitter.com") || matchesDomain(h, "x.com"),
-      label: "Twitter",
-      Icon: Twitter,
-    },
-    {
-      test: (h) => matchesDomain(h, "youtube.com") || h === "youtu.be",
-      label: "YouTube",
-      Icon: Youtube,
-    },
-  ];
-  const seen = new Set<string>();
-  const out: SocialLink[] = [];
-  for (const raw of source) {
-    const trimmed = (raw ?? "").trim();
-    if (!trimmed) continue;
-    let host: string;
-    try {
-      host = new URL(trimmed).hostname.toLowerCase();
-    } catch {
-      continue;
-    }
-    for (const m of matchers) {
-      if (seen.has(m.label)) continue;
-      if (m.test(host)) {
-        out.push({ href: trimmed, label: m.label, Icon: m.Icon });
-        seen.add(m.label);
-        break;
-      }
-    }
-  }
-  return out;
-}
-
 export function Footer() {
   // #103: applications column reads from the same API endpoint that
   // drives the header nav and the applications list page. Falls back to
@@ -223,14 +172,11 @@ export function Footer() {
                       <Link href={s.servicePath ?? `/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</Link>
                     </li>
                   ))
-                : (
-                  <>
-                    <li><Link href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</Link></li>
-                    <li><Link href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</Link></li>
-                    <li><Link href="/services/experiences" className="hover:text-primary transition-colors">Experiences</Link></li>
-                    <li><Link href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</Link></li>
-                  </>
-                )
+                : FOOTER_STATIC_SERVICES.map((s) => (
+                    <li key={s.slug}>
+                      <Link href={`/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</Link>
+                    </li>
+                  ))
               }
             </ul>
           </div>
@@ -255,12 +201,29 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Company</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-primary transition-colors">Our Story</Link></li>
-              <li><Link href="/team" className="hover:text-primary transition-colors">Leadership</Link></li>
-              <li><Link href="/partners" className="hover:text-primary transition-colors">Partners</Link></li>
-              <li><Link href="/clients" className="hover:text-primary transition-colors">Clients</Link></li>
-              <li><Link href="/careers" className="hover:text-primary transition-colors" data-testid="footer-careers-link">Careers</Link></li>
-              <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
+              {FOOTER_COMPANY_LINKS.map((link) => {
+                const isExternal = /^https?:\/\//.test(link.href);
+                const isCareers = link.label === "Careers";
+                return (
+                  <li key={link.href}>
+                    {isExternal ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary transition-colors"
+                        {...(isCareers ? { "data-testid": "footer-careers-link" } : {})}
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link href={link.href} className="hover:text-primary transition-colors">
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -290,15 +253,18 @@ export function Footer() {
 
         <div className="pt-8 border-t border-border flex flex-col gap-6 text-sm text-muted-foreground">
           <address className="not-italic text-center md:text-left">
-            13300 Bothell Everett Hwy, Suite 303, Mill Creek, WA 98012
+            {ORG_ADDRESS}
           </address>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-center md:text-left">
-              © {new Date().getFullYear()} The Synozur Alliance, LLC. All rights reserved. Synozur and The Synozur Alliance are trademarks of The Synozur Alliance, LLC.
+              © {new Date().getFullYear()} {ORG_COPYRIGHT_NAME}
             </p>
             <div className="flex gap-6 shrink-0">
-              <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              {FOOTER_LEGAL_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className="hover:text-foreground transition-colors">
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

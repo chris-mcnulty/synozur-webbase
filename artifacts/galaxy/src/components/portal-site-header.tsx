@@ -13,61 +13,18 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-
-const LOGO_COLOR_URL =
-  "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
-
-type NavLink = { label: string; href: string };
-type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
-type NavGroup = { title: string; links: NavLink[]; nested?: NestedSection[] };
-
-type ApiService = { title: string; slug: string; solutions: { title: string; slug: string }[] };
-type ApiApplication = { slug: string; name: string };
-
-const STATIC_APPLICATIONS: ApiApplication[] = [
-  { slug: "vega", name: "Vega" },
-  { slug: "nebula", name: "Nebula" },
-  { slug: "constellation", name: "Constellation" },
-  { slug: "orion", name: "Orion" },
-  { slug: "orbit", name: "Orbit" },
-  { slug: "zenith", name: "Zenith" },
-];
-
-const STATIC_SERVICE_PILLARS: ApiService[] = [
-  {
-    title: "Organizational Transformation", slug: "strategic-transformation",
-    solutions: [
-      { title: "Company OS", slug: "company-os" },
-      { title: "Fractional Leadership", slug: "fractional-leadership" },
-      { title: "Delivery Management", slug: "delivery-management" },
-    ],
-  },
-  {
-    title: "Technology Transformation", slug: "technology-transformation",
-    solutions: [
-      { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
-      { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
-      { title: "Employee Effectiveness", slug: "employee-effectiveness" },
-      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
-    ],
-  },
-  {
-    title: "Experience Transformation", slug: "experiences",
-    solutions: [
-      { title: "Employee Strategies", slug: "employee-strategies" },
-      { title: "Communication Strategies", slug: "communication-strategies" },
-      { title: "Design Strategies", slug: "design-strategies" },
-    ],
-  },
-  {
-    title: "Go-To-Market Transformation", slug: "go-to-market-transformation",
-    solutions: [
-      { title: "Brand and Messaging", slug: "brand-and-messaging" },
-      { title: "GTM Strategy and Execution", slug: "gtm-strategy-and-execution" },
-      { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
-    ],
-  },
-];
+import {
+  LOGO_COLOR_URL,
+  STATIC_SERVICE_PILLARS,
+  STATIC_APPLICATIONS,
+  STATIC_NAV_GROUPS_BASE,
+  buildServicesGroup,
+  buildApplicationsNestedSection,
+  type NavLink,
+  type NavGroup,
+  type NavService,
+  type NavApplication,
+} from "@workspace/synozur-nav";
 
 interface SearchResult {
   kind: string;
@@ -204,8 +161,8 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
     queryKey: ["galaxy-nav-services"],
     queryFn: async () => {
       const res = await fetch("/api/services");
-      if (!res.ok) return { items: [] as ApiService[] };
-      return res.json() as Promise<{ items: ApiService[] }>;
+      if (!res.ok) return { items: [] as NavService[] };
+      return res.json() as Promise<{ items: NavService[] }>;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -214,69 +171,29 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
     queryKey: ["galaxy-nav-applications"],
     queryFn: async () => {
       const res = await fetch("/api/applications?active=true");
-      if (!res.ok) return { items: [] as ApiApplication[] };
-      return res.json() as Promise<{ items: ApiApplication[] }>;
+      if (!res.ok) return { items: [] as NavApplication[] };
+      return res.json() as Promise<{ items: NavApplication[] }>;
     },
     staleTime: 5 * 60 * 1000,
   });
 
   const apiServiceItems = servicesQuery.data?.items;
-  const pillars: ApiService[] = apiServiceItems && apiServiceItems.length > 0
+  const pillars: NavService[] = apiServiceItems && apiServiceItems.length > 0
     ? apiServiceItems.filter((s) => s.slug !== "our-services")
     : STATIC_SERVICE_PILLARS;
 
   const apiAppItems = applicationsQuery.data?.items;
-  const navApps: ApiApplication[] = apiAppItems && apiAppItems.length > 0
+  const navApps: NavApplication[] = apiAppItems && apiAppItems.length > 0
     ? apiAppItems
     : STATIC_APPLICATIONS;
 
   const navGroups: NavGroup[] = [
+    STATIC_NAV_GROUPS_BASE.ourStory,
+    buildServicesGroup(pillars),
+    STATIC_NAV_GROUPS_BASE.theFeed,
     {
-      title: "Our Story",
-      links: [
-        { label: "About", href: "/about" },
-        { label: "Team", href: "/team" },
-        { label: "Clients", href: "/clients" },
-        { label: "Partners", href: "/partners" },
-        { label: "Careers", href: "https://careers.synozur.com" },
-      ],
-    },
-    {
-      title: "Services",
-      links: [{ label: "Services Overview", href: "/services-overview/default" }],
-      nested: pillars.map((p) => ({
-        label: p.title,
-        href: `/services/${p.slug}`,
-        children: p.solutions.map((s) => ({ label: s.title, href: `/solutions/${s.slug}` })),
-      })),
-    },
-    {
-      title: "The Feed",
-      links: [
-        { label: "Insights Blog", href: "/insights" },
-        { label: "Polaris Podcast", href: "/polaris" },
-        { label: "Events", href: "/events" },
-      ],
-    },
-    {
-      title: "Resources",
-      links: [
-        { label: "Case Studies", href: "/case-studies" },
-        { label: "Webinars", href: "/webinars" },
-        { label: "White Papers", href: "/white-papers" },
-        { label: "Workshops", href: "/workshops" },
-        { label: "Models", href: "/models" },
-        { label: "FAQ", href: "/faq" },
-        { label: "Browse Library", href: "/library" },
-      ],
-      nested: [
-        {
-          sectionTitle: "Applications",
-          label: "All Applications",
-          href: "/applications",
-          children: navApps.map((a) => ({ label: a.name, href: `/applications/${a.slug}` })),
-        },
-      ],
+      ...STATIC_NAV_GROUPS_BASE.resources,
+      nested: [buildApplicationsNestedSection(navApps)],
     },
     {
       title: "Portal",

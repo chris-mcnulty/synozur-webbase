@@ -1,0 +1,15 @@
+{
+  "name": "@workspace/synozur-nav",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "lucide-react": "catalog:"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=0.400.0"
+  }
+}

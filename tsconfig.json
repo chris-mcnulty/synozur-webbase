@@ -20,6 +20,9 @@
     },
     {
       "path": "./lib/auth-sdk"
+    },
+    {
+      "path": "./lib/synozur-nav"
     }
   ]
 }

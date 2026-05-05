@@ -1,4 +1,4 @@
-import { ArrowRight, Linkedin, Twitter, Youtube, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,37 +8,18 @@ import {
   type TurnstileHandle,
 } from "@/components/turnstile";
 import { BotCheckCallout } from "@/components/bot-check-callout";
+import {
+  pickSocialLinks,
+  FOOTER_STATIC_SERVICES,
+  FOOTER_STATIC_APPLICATIONS,
+  FOOTER_COMPANY_LINKS,
+  FOOTER_LEGAL_LINKS,
+  ORG_ADDRESS,
+  ORG_COPYRIGHT_NAME,
+} from "@workspace/synozur-nav";
 
 type ApiApplication = { slug: string; name: string };
 type ApiService = { slug: string; title: string; servicePath?: string | null };
-type SocialLink = { href: string; label: string; Icon: LucideIcon };
-
-const SAME_AS_FALLBACK: readonly string[] = ["https://www.linkedin.com/company/synozur"];
-
-const matchesDomain = (host: string, domain: string) =>
-  host === domain || host.endsWith(`.${domain}`);
-
-function pickSocialLinks(sameAs: readonly string[] | null | undefined): SocialLink[] {
-  const source = sameAs && sameAs.length > 0 ? sameAs : SAME_AS_FALLBACK;
-  const matchers: { test: (h: string) => boolean; label: string; Icon: LucideIcon }[] = [
-    { test: (h) => matchesDomain(h, "linkedin.com"), label: "LinkedIn", Icon: Linkedin },
-    { test: (h) => matchesDomain(h, "twitter.com") || matchesDomain(h, "x.com"), label: "Twitter", Icon: Twitter },
-    { test: (h) => matchesDomain(h, "youtube.com") || h === "youtu.be", label: "YouTube", Icon: Youtube },
-  ];
-  const seen = new Set<string>();
-  const out: SocialLink[] = [];
-  for (const raw of source) {
-    const trimmed = (raw ?? "").trim();
-    if (!trimmed) continue;
-    let host: string;
-    try { host = new URL(trimmed).hostname.toLowerCase(); } catch { continue; }
-    for (const m of matchers) {
-      if (seen.has(m.label)) continue;
-      if (m.test(host)) { out.push({ href: trimmed, label: m.label, Icon: m.Icon }); seen.add(m.label); break; }
-    }
-  }
-  return out;
-}
 
 function FooterSubscribeForm() {
   const [email, setEmail] = useState("");
@@ -209,14 +190,11 @@ export function PortalSiteFooter() {
                       <a href={s.servicePath ?? `/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</a>
                     </li>
                   ))
-                : (
-                  <>
-                    <li><a href="/services/strategic-transformation" className="hover:text-primary transition-colors">Strategic Transformation</a></li>
-                    <li><a href="/services/technology-transformation" className="hover:text-primary transition-colors">Technology Transformation</a></li>
-                    <li><a href="/services/experiences" className="hover:text-primary transition-colors">Experiences</a></li>
-                    <li><a href="/services/go-to-market-transformation" className="hover:text-primary transition-colors">Go-to-Market Transformation</a></li>
-                  </>
-                )
+                : FOOTER_STATIC_SERVICES.map((s) => (
+                    <li key={s.slug}>
+                      <a href={`/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</a>
+                    </li>
+                  ))
               }
             </ul>
           </div>
@@ -231,13 +209,11 @@ export function PortalSiteFooter() {
                       <a href={`/applications/${a.slug}`} className="hover:text-primary transition-colors">{a.name}</a>
                     </li>
                   ))
-                : (
-                  <>
-                    <li><a href="/applications/vega" className="hover:text-primary transition-colors">Vega</a></li>
-                    <li><a href="/applications/orion" className="hover:text-primary transition-colors">Orion</a></li>
-                    <li><a href="/applications/orbit" className="hover:text-primary transition-colors">Orbit</a></li>
-                  </>
-                )
+                : FOOTER_STATIC_APPLICATIONS.map((a) => (
+                    <li key={a.slug}>
+                      <a href={`/applications/${a.slug}`} className="hover:text-primary transition-colors">{a.name}</a>
+                    </li>
+                  ))
               }
             </ul>
           </div>
@@ -245,12 +221,18 @@ export function PortalSiteFooter() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Company</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <li><a href="/about" className="hover:text-primary transition-colors">Our Story</a></li>
-              <li><a href="/team" className="hover:text-primary transition-colors">Leadership</a></li>
-              <li><a href="/partners" className="hover:text-primary transition-colors">Partners</a></li>
-              <li><a href="/clients" className="hover:text-primary transition-colors">Clients</a></li>
-              <li><a href="https://careers.synozur.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Careers</a></li>
-              <li><a href="/contact" className="hover:text-primary transition-colors">Contact</a></li>
+              {FOOTER_COMPANY_LINKS.map((link) => {
+                const isExternal = /^https?:\/\//.test(link.href);
+                return (
+                  <li key={link.href}>
+                    {isExternal ? (
+                      <a href={link.href} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{link.label}</a>
+                    ) : (
+                      <a href={link.href} className="hover:text-primary transition-colors">{link.label}</a>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -274,15 +256,16 @@ export function PortalSiteFooter() {
 
         <div className="pt-8 border-t border-border flex flex-col gap-6 text-sm text-muted-foreground">
           <address className="not-italic text-center md:text-left">
-            13300 Bothell Everett Hwy, Suite 303, Mill Creek, WA 98012
+            {ORG_ADDRESS}
           </address>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-center md:text-left">
-              © {year} The Synozur Alliance, LLC. All rights reserved. Synozur and The Synozur Alliance are trademarks of The Synozur Alliance, LLC.
+              © {year} {ORG_COPYRIGHT_NAME}
             </p>
             <div className="flex gap-6 shrink-0">
-              <a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a>
-              <a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a>
+              {FOOTER_LEGAL_LINKS.map((link) => (
+                <a key={link.href} href={link.href} className="hover:text-foreground transition-colors">{link.label}</a>
+              ))}
             </div>
           </div>
         </div>

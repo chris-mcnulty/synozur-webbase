@@ -23,56 +23,20 @@ import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import { useAuth, type AuthedUser } from "@/context/auth";
+import {
+  LOGO_COLOR_URL,
+  STATIC_SERVICE_PILLARS,
+  STATIC_NAV_GROUPS_BASE,
+  buildServicesGroup,
+  buildApplicationsNestedSection,
+  type NavService,
+  type NavGroup,
+  type NavLink,
+  type NestedSection,
+} from "@workspace/synozur-nav";
 
-type NavLink = { label: string; href: string };
-type NestedSection = { sectionTitle?: string; label: string; href: string; children: NavLink[] };
-type NavGroup = { title: string; links: NavLink[]; nested?: NestedSection[] };
-
-const LOGO_COLOR_URL = "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
 const BASE_PATH_HEADER = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const MARK_URL = `${BASE_PATH_HEADER}/images/synozur-mark-color.png`;
-
-type NavService = { title: string; slug: string; solutions: { title: string; slug: string }[] };
-
-const STATIC_SERVICE_PILLARS: NavService[] = [
-  {
-    title: "Organizational Transformation",
-    slug: "strategic-transformation",
-    solutions: [
-      { title: "Company OS", slug: "company-os" },
-      { title: "Fractional Leadership", slug: "fractional-leadership" },
-      { title: "Delivery Management", slug: "delivery-management" },
-    ],
-  },
-  {
-    title: "Technology Transformation",
-    slug: "technology-transformation",
-    solutions: [
-      { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
-      { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
-      { title: "Employee Effectiveness", slug: "employee-effectiveness" },
-      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
-    ],
-  },
-  {
-    title: "Experience Transformation",
-    slug: "experiences",
-    solutions: [
-      { title: "Employee Strategies", slug: "employee-strategies" },
-      { title: "Communication Strategies", slug: "communication-strategies" },
-      { title: "Design Strategies", slug: "design-strategies" },
-    ],
-  },
-  {
-    title: "Go-To-Market Transformation",
-    slug: "go-to-market-transformation",
-    solutions: [
-      { title: "Brand and Messaging", slug: "brand-and-messaging" },
-      { title: "GTM Strategy and Execution", slug: "gtm-strategy-and-execution" },
-      { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
-    ],
-  },
-];
 
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
@@ -371,16 +335,6 @@ export function Header() {
     ? apiServiceItems.filter((s) => s.slug !== "our-services")
     : STATIC_SERVICE_PILLARS;
 
-  const servicesGroup: NavGroup = {
-    title: "Services",
-    links: [{ label: "Services Overview", href: "/services-overview/default" }],
-    nested: pillars.map((p) => ({
-      label: p.title,
-      href: `/services/${p.slug}`,
-      children: p.solutions.map((s) => ({ label: s.title, href: `/solutions/${s.slug}` })),
-    })),
-  };
-
   const navGroups: NavGroup[] = [
     {
       title: "Home",
@@ -392,47 +346,12 @@ export function Header() {
         },
       ],
     },
+    STATIC_NAV_GROUPS_BASE.ourStory,
+    buildServicesGroup(pillars),
+    STATIC_NAV_GROUPS_BASE.theFeed,
     {
-      title: "Our Story",
-      links: [
-        { label: "About", href: "/about" },
-        { label: "Team", href: "/team" },
-        { label: "Clients", href: "/clients" },
-        { label: "Partners", href: "/partners" },
-        { label: "Careers", href: "https://careers.synozur.com" },
-      ],
-    },
-    servicesGroup,
-    {
-      title: "The Feed",
-      links: [
-        { label: "Insights Blog", href: "/insights" },
-        { label: "Polaris Podcast", href: "/polaris" },
-        { label: "Events", href: "/events" },
-      ],
-    },
-    {
-      title: "Resources",
-      links: [
-        { label: "Case Studies", href: "/case-studies" },
-        { label: "Webinars", href: "/webinars" },
-        { label: "White Papers", href: "/white-papers" },
-        { label: "Workshops", href: "/workshops" },
-        { label: "Models", href: "/models" },
-        { label: "FAQ", href: "/faq" },
-        { label: "Browse Library", href: "/library" },
-      ],
-      nested: [
-        {
-          sectionTitle: "Applications",
-          label: "All Applications",
-          href: "/applications",
-          children: navApplications.map((a) => ({
-            label: a.name,
-            href: `/applications/${a.slug}`,
-          })),
-        },
-      ],
+      ...STATIC_NAV_GROUPS_BASE.resources,
+      nested: [buildApplicationsNestedSection(navApplications)],
     },
   ];
 

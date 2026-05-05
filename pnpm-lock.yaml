@@ -337,6 +337,9 @@ importers:
       '@workspace/auth-sdk':
         specifier: workspace:*
         version: link:../../lib/auth-sdk
+      '@workspace/synozur-nav':
+        specifier: workspace:*
+        version: link:../../lib/synozur-nav
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -779,6 +782,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/synozur-nav':
+        specifier: workspace:*
+        version: link:../../lib/synozur-nav
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -947,6 +953,12 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
+
+  lib/synozur-nav:
+    devDependencies:
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.545.0(react@19.1.0)
 
   scripts:
     devDependencies:
