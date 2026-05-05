@@ -139,7 +139,7 @@ export const STATIC_NAV_GROUPS_BASE = {
       { label: "Team", href: "/team" },
       { label: "Clients", href: "/clients" },
       { label: "Partners", href: "/partners" },
-      { label: "Careers", href: "https://careers.synozur.com" },
+      { label: "Careers", href: "/careers" },
     ],
   },
   theFeed: {
@@ -205,7 +205,7 @@ export const FOOTER_COMPANY_LINKS: NavLink[] = [
   { label: "Leadership", href: "/team" },
   { label: "Partners", href: "/partners" },
   { label: "Clients", href: "/clients" },
-  { label: "Careers", href: "https://careers.synozur.com" },
+  { label: "Careers", href: "/careers" },
   { label: "Contact", href: "/contact" },
 ];
 

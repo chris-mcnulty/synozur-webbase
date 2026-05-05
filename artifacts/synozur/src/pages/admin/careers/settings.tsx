@@ -38,6 +38,7 @@ export default function CareersSettingsPage() {
       setSaved(true);
       setError(null);
       qc.invalidateQueries({ queryKey: ["admin-careers-settings"] });
+      qc.invalidateQueries({ queryKey: ["careers", "settings"] });
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (e: Error) => setError(e.message),

@@ -159,7 +159,7 @@ function CareersRouter() {
   const { data, isLoading } = useQuery({
     queryKey: ["careers", "settings"],
     queryFn: () => careersApi.getSettings(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
   if (isLoading) return null;
   if (data?.mode === "redirect" && data.externalUrl) {
