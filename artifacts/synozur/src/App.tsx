@@ -122,6 +122,8 @@ import CareersJobEdit from "@/pages/admin/careers/job-edit";
 import AdminCareersApplications from "@/pages/admin/careers/applications-list";
 import CareersApplicationDetail from "@/pages/admin/careers/application-detail";
 import CareersSettingsPage from "@/pages/admin/careers/settings";
+import { careersApi } from "@/lib/careers-api";
+import CareersPage from "@/pages/careers";
 import CareersDetail from "@/pages/careers-detail";
 import CareersApply from "@/pages/careers-apply";
 import CareersApplied from "@/pages/careers-applied";
@@ -151,6 +153,19 @@ function ExternalRedirect({ to }: { to: string }) {
     window.location.replace(to);
   }, [to]);
   return null;
+}
+
+function CareersRouter() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["careers", "settings"],
+    queryFn: () => careersApi.getSettings(),
+    staleTime: 5 * 60 * 1000,
+  });
+  if (isLoading) return null;
+  if (data?.mode === "redirect" && data.externalUrl) {
+    return <ExternalRedirect to={data.externalUrl} />;
+  }
+  return <CareersPage />;
 }
 
 function AdminRoutes() {
@@ -512,9 +527,7 @@ function Router() {
             <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />
             <Route path="/contact" component={Contact} />
-            <Route path="/careers">
-              {() => <ExternalRedirect to="https://careers.synozur.com" />}
-            </Route>
+            <Route path="/careers" component={CareersRouter} />
             <Route path="/careers/general-application">
               {() => <CareersApply general />}
             </Route>
