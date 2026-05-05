@@ -613,9 +613,6 @@ importers:
       '@workspace/object-storage-web':
         specifier: workspace:*
         version: link:../../lib/object-storage-web
-      marked:
-        specifier: ^18.0.3
-        version: 18.0.3
       web-vitals:
         specifier: ^5.2.0
         version: 5.2.0
@@ -809,6 +806,9 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 0.545.0(react@19.1.0)
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
