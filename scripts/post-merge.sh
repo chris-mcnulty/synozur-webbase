@@ -140,3 +140,15 @@ INSERT INTO roles (id, name, description) VALUES
   (gen_random_uuid(), 'contributor', 'Can draft content only')
 ON CONFLICT DO NOTHING;
 " 2>/dev/null || true
+
+# ------------------------------------------------------------------
+# Regenerate static nav fallbacks from the DB so pillar / application
+# edits in admin flow through to lib/synozur-nav automatically.
+# Runs after seeds so the DB has fresh data.
+#
+# Uses `|| true` so a fresh environment (before ingestServices has run)
+# does not block the post-merge for unrelated merges. The script itself
+# still exits non-zero and prints a clear error, which appears in the
+# post-merge log for visibility without making it a hard failure.
+# ------------------------------------------------------------------
+pnpm --filter @workspace/scripts run gen-nav-statics || true

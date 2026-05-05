@@ -961,10 +961,17 @@ importers:
         version: 0.545.0(react@19.1.0)
 
   scripts:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.18.0)(pg@8.20.0)
       linkinator:
         specifier: ^7.6.1
         version: 7.6.1

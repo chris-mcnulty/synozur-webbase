@@ -9,10 +9,15 @@
     "check:removed-identifiers": "tsx ./src/check-removed-identifiers.ts",
     "lighthouse:pr-summary": "tsx ./src/lighthouse-pr-summary.ts",
     "link-check": "tsx ./src/link-check.ts",
-    "link-check:smoke": "tsx ./src/link-check.smoke.ts"
+    "link-check:smoke": "tsx ./src/link-check.smoke.ts",
+    "gen-nav-statics": "tsx ./src/gen-nav-statics.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "drizzle-orm": "catalog:",
     "linkinator": "^7.6.1",
     "tsx": "catalog:",
     "yaml": "^2.8.4"

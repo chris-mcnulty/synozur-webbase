@@ -39,10 +39,7 @@ export const STATIC_SERVICE_PILLARS: NavService[] = [
       { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
       { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
       { title: "Employee Effectiveness", slug: "employee-effectiveness" },
-      {
-        title: "Microsoft 365 Adoption, Strategy & Optimization",
-        slug: "microsoft-365-optimization",
-      },
+      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
     ],
   },
   {
@@ -63,6 +60,11 @@ export const STATIC_SERVICE_PILLARS: NavService[] = [
       { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
     ],
   },
+  {
+    title: "Our Services",
+    slug: "our-services",
+    solutions: [],
+  },
 ];
 
 export const STATIC_APPLICATIONS: NavApplication[] = [
@@ -72,6 +74,7 @@ export const STATIC_APPLICATIONS: NavApplication[] = [
   { slug: "orion", name: "Orion" },
   { slug: "orbit", name: "Orbit" },
   { slug: "zenith", name: "Zenith" },
+  { slug: "holidays-and-birthdays-web-part", name: "Holidays and Birthdays Web Part" },
 ];
 
 export const SAME_AS_FALLBACK: readonly string[] = [
