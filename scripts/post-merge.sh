@@ -115,6 +115,16 @@ EOSQL
 
 pnpm --filter db push
 
+# ------------------------------------------------------------------
+# Startup migrations: ordering is drizzle-kit push → startup
+# migrations → seeds. drizzle-kit push handles columns it can model
+# (standard types, constraints). api-server's runMigrations() handles
+# everything it cannot — notably GENERATED ALWAYS AS … STORED columns
+# (e.g. search_tsv for full-text search) and other hand-rolled DDL.
+# Seeds must run after both steps so every column they touch exists.
+# ------------------------------------------------------------------
+pnpm --filter api-server run migrate
+
 # Seed Zenith callout and FAQ enrichments for solution pages.
 # Idempotent — safe to re-run. Failures are reported (no `|| true`)
 # so a broken seed surfaces in the post-merge log instead of silently

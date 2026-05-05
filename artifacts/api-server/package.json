@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx src/scripts/runMigrations.ts",
     "ingest:services": "tsx src/scripts/ingestServices.ts",
     "seed:events": "tsx src/scripts/seedEvents.ts",
     "seed:workshops": "tsx src/scripts/seedWorkshops.ts",

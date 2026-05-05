@@ -27,7 +27,11 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-await runMigrations();
+try {
+  await runMigrations();
+} catch (err) {
+  logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
+}
 await ensureSigningKey();
 await ensureGalaxyOAuthClient();
 await seedTestAdminIfConfigured();

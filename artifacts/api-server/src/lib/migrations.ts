@@ -2612,7 +2612,5 @@ export async function runMigrations(): Promise<void> {
     `);
 
     logger.info("Startup migrations complete");
-  } catch (err) {
-    logger.error({ err }, "Startup migration failed — server will continue but some features may not work");
   }
 }
