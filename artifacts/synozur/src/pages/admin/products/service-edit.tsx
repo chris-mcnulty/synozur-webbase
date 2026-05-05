@@ -234,6 +234,7 @@ export default function ServiceEdit({ id }: Props) {
       onSuccess: (s) => {
         toast({ title: "Service created" });
         qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
+        qc.invalidateQueries({ queryKey: ["services"] });
         navigate(`/products/services/${s.id}/edit`);
       },
       onError: (e: Error) =>
@@ -245,6 +246,7 @@ export default function ServiceEdit({ id }: Props) {
       onSuccess: () => {
         toast({ title: "Service saved" });
         qc.invalidateQueries({ queryKey: ["/api/cms/services"] });
+        qc.invalidateQueries({ queryKey: ["services"] });
       },
       onError: (e: Error) =>
         toast({ title: "Save failed", description: e.message, variant: "destructive" }),
