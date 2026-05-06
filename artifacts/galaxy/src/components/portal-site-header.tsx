@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Menu, X, Search, LayoutDashboard, LogOut, Loader2 } from "lucide-react";
-import { useState, useRef, useEffect, FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
@@ -24,6 +24,7 @@ import {
   type NavGroup,
   type NavService,
   type NavApplication,
+  type NestedSection,
 } from "@workspace/synozur-nav";
 
 interface SearchResult {
@@ -61,6 +62,72 @@ const PORTAL_NAV: { href: string; label: string }[] = [
 
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
+}
+
+function NavDropdown({ group }: { group: NavGroup }) {
+  const [open, setOpen] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const enter = useCallback(() => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    setOpen(true);
+  }, []);
+
+  const leave = useCallback(() => {
+    leaveTimer.current = setTimeout(() => setOpen(false), 120);
+  }, []);
+
+  return (
+    <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
+      <button
+        className="text-[17px] font-medium transition-colors py-2 text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        {group.title}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full pt-2 z-50">
+          <div className={`bg-popover border border-border rounded-md shadow-md p-4 flex flex-col gap-2 ${group.nested && group.nested.length > 0 ? "w-[28rem]" : "w-64"}`}>
+            {group.links.map((link: NavLink) => (
+              <SiteNavLink
+                key={link.label}
+                link={link}
+                className="text-[17px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
+              />
+            ))}
+            {group.nested && group.nested.length > 0 && (
+              <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
+                {group.nested.map((section: NestedSection) => (
+                  <div key={section.label}>
+                    {section.sectionTitle && (
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">
+                        {section.sectionTitle}
+                      </p>
+                    )}
+                    <a href={section.href} className="block text-[17px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary text-popover-foreground">
+                      {section.label}
+                    </a>
+                    {section.children.length > 0 && (
+                      <ul className="pl-3 mt-1 space-y-0.5">
+                        {section.children.map((c: NavLink) => (
+                          <li key={c.href}>
+                            <a href={c.href} className="block text-[14px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 text-popover-foreground/70">
+                              {c.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SiteNavLink({ link, className }: { link: NavLink; className: string }) {
@@ -300,54 +367,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
               Home
             </a>
             {navGroups.map((group) => (
-              <div key={group.title} className="relative group">
-                <button
-                  className="text-[17px] font-medium transition-colors py-2 text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
-                  aria-haspopup="true"
-                >
-                  {group.title}
-                </button>
-                <div className="absolute left-0 top-full pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                  {/* Invisible bridge fills the pt-2 gap so the mouse doesn't leave the group */}
-                  <div className="absolute -top-2 left-0 w-full h-2" />
-                  <div className={`bg-popover border border-border rounded-md shadow-md p-4 flex flex-col gap-2 ${group.nested && group.nested.length > 0 ? "w-[28rem]" : "w-64"}`}>
-                    {group.links.map((link) => (
-                      <SiteNavLink
-                        key={link.label}
-                        link={link}
-                        className="text-[17px] text-popover-foreground/80 hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/50 px-3 py-2 rounded-md transition-colors"
-                      />
-                    ))}
-                    {group.nested && group.nested.length > 0 && (
-                      <div className="border-t border-border/60 pt-3 mt-1 flex flex-col gap-3">
-                        {group.nested.map((section) => (
-                          <div key={section.label}>
-                            {section.sectionTitle && (
-                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 pb-1">
-                                {section.sectionTitle}
-                              </p>
-                            )}
-                            <a href={section.href} className="block text-[17px] font-semibold px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary text-popover-foreground">
-                              {section.label}
-                            </a>
-                            {section.children.length > 0 && (
-                              <ul className="pl-3 mt-1 space-y-0.5">
-                                {section.children.map((c) => (
-                                  <li key={c.href}>
-                                    <a href={c.href} className="block text-[14px] px-3 py-1 rounded-md transition-colors hover:text-[#E60CB3] dark:hover:text-primary hover:bg-muted/40 text-popover-foreground/70">
-                                      {c.label}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <NavDropdown key={group.title} group={group} />
             ))}
           </nav>
 
@@ -413,10 +433,10 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                 <div key={group.title} className="flex flex-col gap-3">
                   <h3 className="font-semibold text-foreground">{group.title}</h3>
                   <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
-                    {group.links.map((link) => (
+                    {group.links.map((link: NavLink) => (
                       <SiteNavLink key={link.label} link={link} className="text-muted-foreground hover:text-primary py-1 text-sm" />
                     ))}
-                    {group.nested?.map((section) => (
+                    {group.nested?.map((section: NestedSection) => (
                       <div key={section.label} className="mt-2">
                         {section.sectionTitle && (
                           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pb-1">{section.sectionTitle}</p>
@@ -426,7 +446,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                         </a>
                         {section.children.length > 0 && (
                           <ul className="pl-4 border-l border-border/40 ml-1 mt-1 space-y-1">
-                            {section.children.map((c) => (
+                            {section.children.map((c: NavLink) => (
                               <li key={c.href}>
                                 <a href={c.href} className="block text-sm text-muted-foreground hover:text-primary py-0.5">{c.label}</a>
                               </li>
