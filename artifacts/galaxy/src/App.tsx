@@ -12,6 +12,9 @@ import AppSurfacePage from "@/pages/app-surface";
 import ArtifactDetailPage from "@/pages/artifact-detail";
 import SignInRequired from "@/pages/sign-in-required";
 import NotFound from "@/pages/not-found";
+import NebulaReportsPage from "@/pages/nebula-reports";
+import NebulaReportDetailPage from "@/pages/nebula-report-detail";
+import NebulaWorkspacesPage from "@/pages/nebula-workspaces";
 import { PortalSiteHeader } from "@/components/portal-site-header";
 import { PortalSiteFooter } from "@/components/portal-site-footer";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,6 +100,17 @@ function AppRouter() {
             </Gated>
           );
         }}
+      </Route>
+      <Route path="/reports">
+        <Gated><NebulaReportsPage /></Gated>
+      </Route>
+      <Route path="/reports/:spaceId">
+        {(params) => (
+          <Gated><NebulaReportDetailPage spaceId={params.spaceId} /></Gated>
+        )}
+      </Route>
+      <Route path="/workspaces">
+        <Gated><NebulaWorkspacesPage /></Gated>
       </Route>
       <Route component={NotFound} />
     </Switch>

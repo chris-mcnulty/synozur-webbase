@@ -58,6 +58,8 @@ const PORTAL_NAV: { href: string; label: string }[] = [
   { href: "/", label: "Dashboard" },
   { href: "/documents", label: "Documents" },
   { href: "/apps", label: "Apps" },
+  { href: "/reports", label: "Reports" },
+  { href: "/workspaces", label: "Workspaces" },
 ];
 
 function isExternal(href: string) {
@@ -268,6 +270,8 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
         { label: "Dashboard", href: "/galaxy/" },
         { label: "Documents", href: "/galaxy/documents" },
         { label: "Apps", href: "/galaxy/apps" },
+        { label: "Reports", href: "/galaxy/reports" },
+        { label: "Workspaces", href: "/galaxy/workspaces" },
       ],
     },
   ];
