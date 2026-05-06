@@ -336,7 +336,21 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
   }
   const pending = await consumeAuthPendingState(parsed.data.state);
   if (!pending) {
-    res.status(400).json({ error: "Invalid or expired auth state" });
+    // State is single-use and was already consumed by an earlier hit on this
+    // same callback URL — most commonly because the browser fired duplicate
+    // requests (link prefetch, service worker, focus refetch, back button).
+    // The first hit succeeded and set the session cookie; surface a friendly
+    // redirect instead of a JSON error so the user lands in the app.
+    logger.info(
+      { state: parsed.data.state, hasSession: !!req.authedUser },
+      "auth callback: state already consumed — redirecting",
+    );
+    if (req.authedUser) {
+      res.redirect("/");
+    } else {
+      // No session — original sign-in likely never finished. Send back to start.
+      res.redirect("/?auth_error=" + encodeURIComponent("session_expired"));
+    }
     return;
   }
 
