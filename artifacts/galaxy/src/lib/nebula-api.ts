@@ -1,7 +1,7 @@
-const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
-
+// The api-server is mounted at /api by the path-based reverse proxy, NOT
+// under the Galaxy /galaxy/ base path. Always call /api/... directly.
 async function apiFetch<T>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = new URL(`${window.location.origin}${BASE}/api${path}`);
+  const url = new URL(`${window.location.origin}/api${path}`);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
