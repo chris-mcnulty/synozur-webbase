@@ -171,32 +171,31 @@ export default function CareersPage() {
                   <Link href={`/careers/jobs/${j.slug}`}>
                     {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href. */}
                     <a
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-lg border border-border bg-card p-5 hover-elevate group"
+                      className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-6 py-5 transition-all duration-150 hover:border-fuchsia-500/50 hover:bg-fuchsia-500/5 hover:shadow-[0_0_0_1px_rgba(168,85,247,0.2)]"
                       data-testid={`careers-job-${j.slug}`}
                     >
-                      <div>
-                        <div className="text-lg font-medium text-foreground group-hover:text-fuchsia-300 transition-colors">
+                      <div className="min-w-0 space-y-2">
+                        <div className="text-base font-semibold text-foreground group-hover:text-fuchsia-300 transition-colors leading-snug">
                           {j.title}
                         </div>
-                        <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                        <div className="flex flex-wrap gap-2">
                           {j.department && (
-                            <span className="flex items-center gap-1">
-                              <Briefcase size={14} /> {j.department}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+                              <Briefcase size={11} /> {j.department}
                             </span>
                           )}
                           {j.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin size={14} /> {j.location}
+                            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+                              <MapPin size={11} /> {j.location}
                             </span>
                           )}
-                          <span className="flex items-center gap-1">
-                            <Clock size={14} />{" "}
-                            {TYPE_LABEL[j.employmentType] ?? j.employmentType}
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+                            <Clock size={11} /> {TYPE_LABEL[j.employmentType] ?? j.employmentType}
                           </span>
                         </div>
                       </div>
-                      <div className="text-sm text-fuchsia-300 group-hover:translate-x-1 transition-transform shrink-0">
-                        View role →
+                      <div className="shrink-0 text-fuchsia-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-150 text-lg">
+                        →
                       </div>
                     </a>
                   </Link>
