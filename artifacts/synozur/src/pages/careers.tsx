@@ -165,7 +165,7 @@ export default function CareersPage() {
                 : "No open positions right now — but our talent network is always open."}
             </div>
           ) : (
-            <ul className="space-y-3" data-testid="careers-job-list">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="careers-job-list">
               {filtered.map((j) => (
                 <li key={j.id}>
                   <Link href={`/careers/jobs/${j.slug}`}>
