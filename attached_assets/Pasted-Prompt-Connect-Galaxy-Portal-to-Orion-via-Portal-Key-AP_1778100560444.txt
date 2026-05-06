@@ -1,0 +1,75 @@
+Prompt: Connect Galaxy Portal to Orion via Portal Key API
+Context
+
+Galaxy (synozur-baseline) is a marketing/client portal. Orion is the Synozur maturity assessment platform at https://orion.replit.app (or the production URL). Orion now exposes a Portal Key API that Galaxy can call using a static API key — no OAuth, no user sessions required.
+
+Your task: integrate Galaxy with the Orion Portal Key API
+
+Authentication
+Every request to Orion must include one of:
+
+Authorization: ApiKey <key> header
+X-Galaxy-Key: <key> header
+The API key (gpk_…) will be provided as an environment secret named ORION_PORTAL_KEY. Never hardcode it.
+
+All data-returning endpoints also require ?domain=synozur.com (or whichever domain Galaxy is registered under in Orion). Use an env var ORION_DOMAIN defaulting to synozur.com.
+
+The Orion base URL should come from an env var ORION_BASE_URL (e.g. https://orion.replit.app).
+
+Four endpoints to integrate
+1. Assessment Models
+
+GET {ORION_BASE_URL}/api/galaxy/v1/portal/models?domain={ORION_DOMAIN}
+Authorization: ApiKey {ORION_PORTAL_KEY}
+
+Returns array of published assessment models. Each has: id, name, description, slug, dimensionCount, questionCount, avgScore (optional), tenantId.
+
+Use this to populate the "Assessments" or "Take an Assessment" section of the Galaxy portal.
+
+2. Published Courses
+
+GET {ORION_BASE_URL}/api/galaxy/v1/portal/courses?domain={ORION_DOMAIN}
+Authorization: ApiKey {ORION_PORTAL_KEY}
+
+Returns array of published courses (public ones + courses shared with the domain's tenant). Each has: id, title, slug, description, thumbnail, estimatedMinutes, moduleCount, tags[].
+
+Use this to populate a "Learning" or "Courses" section.
+
+3. Aggregate Results
+
+GET {ORION_BASE_URL}/api/galaxy/v1/portal/results?domain={ORION_DOMAIN}
+Authorization: ApiKey {ORION_PORTAL_KEY}
+
+Returns anonymized aggregate maturity scores grouped by model. Each entry has: modelId, modelName, avgScore, responseCount, scoreDistribution (breakdown by maturity level).
+
+Use this for any public benchmarking, social proof, or "How does your industry score?" display.
+
+4. Traffic / Reporting
+
+GET {ORION_BASE_URL}/api/galaxy/v1/portal/traffic?from=2026-01-01T00:00:00Z&to=2026-05-01T00:00:00Z
+Authorization: ApiKey {ORION_PORTAL_KEY}
+
+Returns app-wide traffic statistics: totalPageViews, uniqueSessions, assessmentsStarted, assessmentsCompleted, courseEnrollments. Date range defaults to last 30 days if omitted.
+
+Poll this endpoint on a schedule (e.g. every hour or daily) and store the results locally for your central reporting dashboard. Do not call it on every page load.
+
+Error handling
+HTTP status	Meaning
+401 {"error":"invalid_api_key"}	Wrong key — check ORION_PORTAL_KEY
+401 {"error":"missing_api_key"}	No auth header sent
+404 {"error":"domain_not_found"}	Domain not registered in Orion yet
+403 {"error":"key_inactive"}	Key was revoked — contact Orion admin
+Always show a graceful fallback UI (empty state, not an error page) if any Orion endpoint is unavailable, since Galaxy should function independently even if Orion is down.
+
+Implementation notes
+Create a thin lib/orion-client.ts (or .js) service that wraps all four calls, reads the env vars, and exports typed helper functions: getModels(), getCourses(), getResults(), getTraffic(from?, to?).
+For the traffic poller, use a background job / cron (whatever Galaxy's stack supports) rather than calling inline.
+Do not proxy these calls through a Galaxy backend if Galaxy is purely static/edge — call Orion directly from the server side (SSR, API routes, or edge functions) so the ORION_PORTAL_KEY secret is never exposed to the browser.
+Cache responses in-memory or in a lightweight store (Redis, KV, or even a JSON file) for at least 5 minutes to avoid hammering Orion on every page render.
+Environment secrets needed
+Ask the user to set these before you start:
+
+Secret	Value
+ORION_PORTAL_KEY	The gpk_… key from Orion Admin → Galaxy Portal → Portal Keys
+ORION_BASE_URL	Production Orion URL (e.g. https://orion.replit.app)
+ORION_DOMAIN	synozur.com (or the domain registered in Orion)

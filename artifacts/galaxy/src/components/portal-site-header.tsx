@@ -60,6 +60,9 @@ const PORTAL_NAV: { href: string; label: string }[] = [
   { href: "/apps", label: "Apps" },
   { href: "/reports", label: "Reports" },
   { href: "/workspaces", label: "Workspaces" },
+  { href: "/assessments", label: "Assessments" },
+  { href: "/learning", label: "Learning" },
+  { href: "/benchmarks", label: "Benchmarks" },
 ];
 
 function isExternal(href: string) {

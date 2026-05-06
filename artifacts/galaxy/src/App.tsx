@@ -15,6 +15,9 @@ import NotFound from "@/pages/not-found";
 import NebulaReportsPage from "@/pages/nebula-reports";
 import NebulaReportDetailPage from "@/pages/nebula-report-detail";
 import NebulaWorkspacesPage from "@/pages/nebula-workspaces";
+import OrionModelsPage from "@/pages/orion-models";
+import OrionCoursesPage from "@/pages/orion-courses";
+import OrionResultsPage from "@/pages/orion-results";
 import { PortalSiteHeader } from "@/components/portal-site-header";
 import { PortalSiteFooter } from "@/components/portal-site-footer";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,6 +114,15 @@ function AppRouter() {
       </Route>
       <Route path="/workspaces">
         <Gated><NebulaWorkspacesPage /></Gated>
+      </Route>
+      <Route path="/assessments">
+        <Gated><OrionModelsPage /></Gated>
+      </Route>
+      <Route path="/learning">
+        <Gated><OrionCoursesPage /></Gated>
+      </Route>
+      <Route path="/benchmarks">
+        <Gated><OrionResultsPage /></Gated>
       </Route>
       <Route component={NotFound} />
     </Switch>
