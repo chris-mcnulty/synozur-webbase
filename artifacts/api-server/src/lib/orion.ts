@@ -2,7 +2,12 @@ import { logger } from "./logger";
 
 const ORION_BASE = (process.env.ORION_BASE_URL ?? "").replace(/\/$/, "");
 const ORION_KEY = process.env.ORION_PORTAL_KEY ?? "";
-const ORION_DOMAIN = process.env.ORION_DOMAIN ?? "synozur.com";
+
+// ORION_DOMAIN is a last-resort fallback only (e.g. for the traffic poller
+// which has no user session). All interactive portal routes derive the domain
+// from the signed-in user's clientOrganization.approvedEmailDomains[0] so
+// that cainc.com users see CA Inc data, synozur.com users see Synozur data, etc.
+const ORION_DOMAIN_FALLBACK = process.env.ORION_DOMAIN ?? "synozur.com";
 
 // ── In-memory cache ─────────────────────────────────────────────────────────
 
@@ -31,12 +36,16 @@ export class OrionError extends Error {
   }
 }
 
-async function orionFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function orionFetch<T>(
+  path: string,
+  domain: string,
+  params?: Record<string, string>,
+): Promise<T> {
   if (!ORION_BASE || !ORION_KEY) {
     throw new OrionError(503, "Orion integration not configured (ORION_BASE_URL / ORION_PORTAL_KEY missing)");
   }
   const url = new URL(`${ORION_BASE}${path}`);
-  url.searchParams.set("domain", ORION_DOMAIN);
+  url.searchParams.set("domain", domain);
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   }
@@ -49,7 +58,7 @@ async function orionFetch<T>(path: string, params?: Record<string, string>): Pro
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      logger.warn({ status: res.status, path, body }, "orion api error");
+      logger.warn({ status: res.status, path, domain, body }, "orion api error");
       throw new OrionError(res.status, `Orion API ${res.status}`);
     }
     return res.json() as Promise<T>;
@@ -108,39 +117,45 @@ export interface OrionTrafficStats {
 
 // ── TTLs ────────────────────────────────────────────────────────────────────
 
-const TTL = 5 * 60_000; // 5 min for all Orion list endpoints
-const TTL_TRAFFIC = 60 * 60_000; // 1 hr for traffic (polled separately)
+const TTL = 5 * 60_000;           // 5 min for list endpoints
+const TTL_TRAFFIC = 60 * 60_000;  // 1 hr for traffic (polled separately)
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// ── Public API — every call takes an explicit domain ────────────────────────
+//
+// The domain comes from the signed-in user's clientOrganization.approvedEmailDomains[0],
+// resolved by the route layer. This ensures cainc.com users see CA Inc Orion
+// data and synozur.com users see Synozur data — never mixed.
 
 export const orion = {
-  getModels: async (): Promise<OrionModel[]> => {
-    const key = "models";
+  getModels: async (domain: string): Promise<OrionModel[]> => {
+    const key = `models:${domain}`;
     const hit = getCached<OrionModel[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionModel[]>("/api/galaxy/v1/portal/models");
+    const data = await orionFetch<OrionModel[]>("/api/galaxy/v1/portal/models", domain);
     setCached(key, data, TTL);
     return data;
   },
 
-  getCourses: async (): Promise<OrionCourse[]> => {
-    const key = "courses";
+  getCourses: async (domain: string): Promise<OrionCourse[]> => {
+    const key = `courses:${domain}`;
     const hit = getCached<OrionCourse[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionCourse[]>("/api/galaxy/v1/portal/courses");
+    const data = await orionFetch<OrionCourse[]>("/api/galaxy/v1/portal/courses", domain);
     setCached(key, data, TTL);
     return data;
   },
 
-  getResults: async (): Promise<OrionResultEntry[]> => {
-    const key = "results";
+  getResults: async (domain: string): Promise<OrionResultEntry[]> => {
+    const key = `results:${domain}`;
     const hit = getCached<OrionResultEntry[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionResultEntry[]>("/api/galaxy/v1/portal/results");
+    const data = await orionFetch<OrionResultEntry[]>("/api/galaxy/v1/portal/results", domain);
     setCached(key, data, TTL);
     return data;
   },
 
+  // Traffic uses the fallback domain — it is called by the background poller,
+  // not a user session, so there is no per-org context available.
   getTraffic: async (from?: string, to?: string): Promise<OrionTrafficStats> => {
     const p: Record<string, string> = {};
     if (from) p.from = from;
@@ -148,12 +163,11 @@ export const orion = {
     const key = `traffic:${from ?? ""}:${to ?? ""}`;
     const hit = getCached<OrionTrafficStats>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionTrafficStats>("/api/galaxy/v1/portal/traffic", p);
+    const data = await orionFetch<OrionTrafficStats>("/api/galaxy/v1/portal/traffic", ORION_DOMAIN_FALLBACK, p);
     setCached(key, data, TTL_TRAFFIC);
     return data;
   },
 
-  /** Bust the in-memory cache for a given key prefix (used by the traffic poller). */
   bustCache: (prefix: string) => {
     for (const k of cache.keys()) {
       if (k.startsWith(prefix)) cache.delete(k);
