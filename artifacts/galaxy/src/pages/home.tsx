@@ -117,6 +117,8 @@ function EngagementCard({ engagement }: { engagement: PortalEngagement }) {
   );
 }
 
+const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+
 export default function Home() {
   const { user } = useAuth();
   const meQuery = useGetPortalMe();
@@ -142,31 +144,45 @@ export default function Home() {
 
   return (
     <PortalShell>
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-        <section className="space-y-2">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+      {/* ── Galaxy hero banner ── */}
+      <div className="relative w-full overflow-hidden" style={{ minHeight: 220 }}>
+        <img
+          src={`${BASE}/galaxy-hero.jpg`}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ minHeight: 220 }}
+        />
+        {/* gradient: transparent top → opaque bottom so it bleeds into the page bg */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-background" />
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 pb-16 space-y-2">
+          <p className="text-xs uppercase tracking-wider text-white/60">
             {me?.organization.name ?? (isLoading ? "" : "Welcome")}
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
             {greeting()},{" "}
             <span data-testid="text-greeting-name">
               {user?.displayName?.split(" ")[0] ?? user?.email ?? "there"}
             </span>
             .
           </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl">
+          <p className="text-sm text-white/70 max-w-2xl">
             Here's where your Synozur work lives. Engagements, account team,
             and the documents your team is putting together for you all show
             up here.
           </p>
           <div className="pt-1">
             <Link href="/apps">
-              <Button variant="outline" size="sm" data-testid="link-apps">
+              <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" data-testid="link-apps">
                 Browse your apps →
               </Button>
             </Link>
           </div>
-        </section>
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+        <section className="sr-only" aria-hidden="true" />
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
