@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -21,6 +21,7 @@ export default function CareersApplicationDetail({ id }: Props) {
     queryFn: () => careersApi.adminGetApplication(id),
   });
   const [note, setNote] = useState("");
+  const [localRating, setLocalRating] = useState<number | null>(null);
 
   const patchStatus = useMutation({
     mutationFn: (status: (typeof STATUSES)[number]) =>
@@ -40,11 +41,34 @@ export default function CareersApplicationDetail({ id }: Props) {
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["admin-careers-application", id] }),
   });
+  const setRating = useMutation({
+    mutationFn: (rating: number | null) =>
+      careersApi.adminSetRecruiterRating(id, rating),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["admin-careers-application", id] }),
+  });
+
+  // Debounce the rating save so we don't fire on every slider tick
+  const ratingTimer = useState<ReturnType<typeof setTimeout> | null>(null);
+  const handleRatingChange = useCallback(
+    (val: number) => {
+      setLocalRating(val);
+      if (ratingTimer[0]) clearTimeout(ratingTimer[0]);
+      ratingTimer[1](
+        setTimeout(() => {
+          setRating.mutate(val);
+        }, 600),
+      );
+    },
+    [ratingTimer, setRating],
+  );
 
   if (isLoading || !data) {
     return <AdminLayout title="Application"><div>Loading…</div></AdminLayout>;
   }
   const a = data.application;
+
+  const displayRating = localRating ?? a.recruiterRating;
 
   return (
     <AdminLayout title={`Application — ${a.fullName}`}>
@@ -102,6 +126,7 @@ export default function CareersApplicationDetail({ id }: Props) {
         </div>
 
         <aside className="space-y-4">
+          {/* Status */}
           <div className="rounded border border-border bg-card p-4">
             <div className="text-xs uppercase text-muted-foreground mb-2">Status</div>
             <select
@@ -116,6 +141,7 @@ export default function CareersApplicationDetail({ id }: Props) {
             </select>
           </div>
 
+          {/* AI Match Score */}
           <div className="rounded border border-border bg-card p-4">
             <div className="text-xs uppercase text-muted-foreground mb-2">AI match</div>
             <div className="text-2xl font-semibold" data-testid="ai-score">
@@ -127,6 +153,39 @@ export default function CareersApplicationDetail({ id }: Props) {
             </Button>
           </div>
 
+          {/* Recruiter Rating */}
+          <div className="rounded border border-border bg-card p-4">
+            <div className="text-xs uppercase text-muted-foreground mb-2">
+              Recruiter rating
+              {setRating.isPending && <span className="ml-2 text-[10px] text-muted-foreground">Saving…</span>}
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={displayRating ?? 0}
+                onChange={(e) => handleRatingChange(Number(e.target.value))}
+                className="flex-1 accent-fuchsia-500"
+                data-testid="slider-recruiter-rating"
+              />
+              <span className="text-lg font-semibold w-10 text-right tabular-nums" data-testid="recruiter-rating-value">
+                {displayRating ?? "—"}
+              </span>
+            </div>
+            {displayRating != null && (
+              <button
+                type="button"
+                onClick={() => { setLocalRating(null); setRating.mutate(null); }}
+                className="text-xs text-muted-foreground hover:text-foreground mt-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Résumé */}
           {data.resume && (
             <div className="rounded border border-border bg-card p-4 text-sm">
               <div className="text-xs uppercase text-muted-foreground mb-2">Résumé</div>
@@ -134,8 +193,6 @@ export default function CareersApplicationDetail({ id }: Props) {
                 href={`${BASE_PATH}/api/storage${`/objects${data.resume.id}`}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  // The upload flow stores under /objects/uploads/<token>.
-                  // Linking to the storage_key directly works:
                   window.open(
                     `${BASE_PATH}/api/storage${data.resume?.publicUrl ?? ""}`,
                     "_blank",
@@ -149,6 +206,22 @@ export default function CareersApplicationDetail({ id }: Props) {
             </div>
           )}
 
+          {/* LinkedIn */}
+          {a.linkedinUrl && (
+            <div className="rounded border border-border bg-card p-4 text-sm">
+              <div className="text-xs uppercase text-muted-foreground mb-2">LinkedIn</div>
+              <a
+                href={a.linkedinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-fuchsia-300 hover:underline break-all"
+              >
+                {a.linkedinUrl}
+              </a>
+            </div>
+          )}
+
+          {/* Self-ID */}
           <div className="rounded border border-border bg-card p-4 text-xs space-y-1">
             <div className="text-xs uppercase text-muted-foreground mb-2">Self-id</div>
             <div>Race: {a.eeoRace ?? <span className="text-muted-foreground">—</span>}</div>
@@ -157,6 +230,7 @@ export default function CareersApplicationDetail({ id }: Props) {
             <div>Disability: {a.eeoDisability ?? <span className="text-muted-foreground">—</span>}</div>
           </div>
 
+          {/* Authorization */}
           {(a.workAuthorized != null || a.requireSponsorship != null) && (
             <div className="rounded border border-border bg-card p-4 text-xs space-y-1">
               <div className="text-xs uppercase text-muted-foreground mb-2">Authorization</div>

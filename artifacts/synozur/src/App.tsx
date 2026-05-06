@@ -127,6 +127,8 @@ import CareersPage from "@/pages/careers";
 import CareersDetail from "@/pages/careers-detail";
 import CareersApply from "@/pages/careers-apply";
 import CareersApplied from "@/pages/careers-applied";
+import CareersEmbedJobs from "@/pages/careers-embed-jobs";
+import CareersEmbedJob from "@/pages/careers-embed-job";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
@@ -484,6 +486,9 @@ function Router() {
       <Route path="/admin" nest>
         <AdminRoutes />
       </Route>
+      {/* Embed pages — chromeless iframe-embeddable, no Layout wrapper. */}
+      <Route path="/careers/embed/jobs" component={CareersEmbedJobs} />
+      <Route path="/careers/embed/job/:slug" component={CareersEmbedJob} />
       <Route>
         <Layout>
           <Switch>

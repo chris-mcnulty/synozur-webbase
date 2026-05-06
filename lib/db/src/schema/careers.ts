@@ -115,6 +115,7 @@ export const jobApplicationsTable = pgTable(
     aiMatchScore: integer("ai_match_score"),
     aiMatchReasoning: text("ai_match_reasoning"),
     aiScoredAt: timestamp("ai_scored_at", { withTimezone: true }),
+    recruiterRating: integer("recruiter_rating"),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

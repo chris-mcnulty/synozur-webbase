@@ -81,6 +81,7 @@ export interface CareersApplication {
   aiMatchScore: number | null;
   aiMatchReasoning: string | null;
   aiScoredAt: string | null;
+  recruiterRating: number | null;
   submittedAt: string;
   updatedAt: string;
 }
@@ -106,6 +107,15 @@ export interface ApplicationDetail {
   }[];
 }
 
+export interface ParsedResume {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  linkedinUrl?: string;
+  education?: string;
+  experience?: string;
+}
+
 export const careersApi = {
   // Public
   listJobs: () =>
@@ -119,6 +129,11 @@ export const careersApi = {
     }),
   myApplications: () =>
     jsonFetch<{ items: CareersApplication[] }>(url("/careers/my-applications")),
+  parseResume: (mediaId: string) =>
+    jsonFetch<ParsedResume>(url("/careers/resume-parse"), {
+      method: "POST",
+      body: JSON.stringify({ mediaId }),
+    }),
 
   // Admin
   adminListJobs: () =>
@@ -155,6 +170,11 @@ export const careersApi = {
     jsonFetch<CareersApplication>(url(`/cms/careers/applications/${id}`), {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+  adminSetRecruiterRating: (id: string, rating: number | null) =>
+    jsonFetch<CareersApplication>(url(`/cms/careers/applications/${id}`), {
+      method: "PATCH",
+      body: JSON.stringify({ recruiterRating: rating }),
     }),
   adminAddNote: (id: string, body: string) =>
     jsonFetch<{ id: string; body: string; createdAt: string }>(

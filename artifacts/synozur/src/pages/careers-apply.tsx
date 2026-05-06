@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Meta } from "@/lib/meta";
 import { useAuth } from "@/context/auth";
 import { careersApi } from "@/lib/careers-api";
+import { Sparkles, Loader2 } from "lucide-react";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -48,10 +49,18 @@ export default function CareersApplyPage({ general = false }: Props) {
     eeoDisability: "",
     gdprConsent: false,
   });
+
+  // Track which fields were auto-filled by AI so we can show a badge
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
+
   const [resumeMediaId, setResumeMediaId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [uploadName, setUploadName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep a ref so the parse callback always has the latest mediaId
+  const resumeMediaIdRef = useRef<string | null>(null);
 
   const submitMutation = useMutation({
     mutationFn: () =>
@@ -80,9 +89,9 @@ export default function CareersApplyPage({ general = false }: Props) {
   async function uploadResume(file: File) {
     setUploading(true);
     setError(null);
+    setAiFilledFields(new Set());
     try {
       const contentType = file.type || "application/pdf";
-      // 1. Ask the server for a presigned URL.
       const startRes = await fetch(`${BASE_PATH}/api/careers/resume-upload-url`, {
         method: "POST",
         credentials: "include",
@@ -91,20 +100,18 @@ export default function CareersApplyPage({ general = false }: Props) {
       });
       if (!startRes.ok) {
         const j = await startRes.json().catch(() => ({}));
-        throw new Error(j.error || "Could not start résumé upload");
+        throw new Error((j as { error?: string }).error || "Could not start résumé upload");
       }
       const { uploadURL } = (await startRes.json()) as { uploadURL: string };
       const absURL = uploadURL.startsWith("/")
         ? `${window.location.origin}${uploadURL}`
         : uploadURL;
-      // 2. PUT the bytes.
       const putRes = await fetch(absURL, {
         method: "PUT",
         headers: { "Content-Type": contentType },
         body: file,
       });
       if (!putRes.ok) throw new Error("Résumé upload failed");
-      // 3. Derive the canonical /objects/uploads/<token> path.
       const pathOnly = uploadURL.startsWith("http")
         ? new URL(uploadURL).pathname
         : uploadURL.split("?")[0] ?? uploadURL;
@@ -112,7 +119,6 @@ export default function CareersApplyPage({ general = false }: Props) {
       const token = tokenMatch?.[1];
       if (!token) throw new Error("Unexpected upload URL format");
       const storageKey = `/objects/uploads/${token}`;
-      // 4. Register the media row.
       const regRes = await fetch(`${BASE_PATH}/api/careers/resume-register`, {
         method: "POST",
         credentials: "include",
@@ -127,11 +133,56 @@ export default function CareersApplyPage({ general = false }: Props) {
       if (!regRes.ok) throw new Error("Could not save résumé");
       const reg = (await regRes.json()) as { id: string };
       setResumeMediaId(reg.id);
+      resumeMediaIdRef.current = reg.id;
       setUploadName(file.name);
+
+      // AI parse — runs immediately after upload registers the media row
+      void parseResumeAi(reg.id);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function parseResumeAi(mediaId: string) {
+    setParsing(true);
+    try {
+      const parsed = await careersApi.parseResume(mediaId);
+      const filled = new Set<string>();
+      setForm((prev) => {
+        const next = { ...prev };
+        if (parsed.fullName && !prev.fullName) {
+          next.fullName = parsed.fullName;
+          filled.add("fullName");
+        }
+        if (parsed.email && !prev.email) {
+          next.email = parsed.email;
+          filled.add("email");
+        }
+        if (parsed.phone && !prev.phone) {
+          next.phone = parsed.phone;
+          filled.add("phone");
+        }
+        if (parsed.linkedinUrl && !prev.linkedinUrl) {
+          next.linkedinUrl = parsed.linkedinUrl;
+          filled.add("linkedinUrl");
+        }
+        if (parsed.education && !prev.education) {
+          next.education = parsed.education;
+          filled.add("education");
+        }
+        if (parsed.experience && !prev.experience) {
+          next.experience = parsed.experience;
+          filled.add("experience");
+        }
+        return next;
+      });
+      setAiFilledFields(filled);
+    } catch {
+      // Parse failure is silent — the form still works, just not pre-filled
+    } finally {
+      setParsing(false);
     }
   }
 
@@ -144,6 +195,15 @@ export default function CareersApplyPage({ general = false }: Props) {
   const heading = general
     ? "Join our talent network"
     : `Apply for ${job?.title ?? "this position"}`;
+
+  function AiBadge({ field }: { field: string }) {
+    if (!aiFilledFields.has(field)) return null;
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-violet-400 ml-2">
+        <Sparkles size={10} /> Auto-filled from résumé
+      </span>
+    );
+  }
 
   return (
     <div className="px-4 py-12 max-w-2xl mx-auto">
@@ -167,34 +227,23 @@ export default function CareersApplyPage({ general = false }: Props) {
         data-testid="apply-form"
       >
         <div>
-          <Label htmlFor="apply-name">Full name</Label>
+          <Label htmlFor="apply-name">Full name <AiBadge field="fullName" /></Label>
           <Input id="apply-name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} data-testid="input-fullname" />
         </div>
         <div>
-          <Label htmlFor="apply-email">Email</Label>
+          <Label htmlFor="apply-email">Email <AiBadge field="email" /></Label>
           <Input id="apply-email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="input-email" />
         </div>
         <div>
-          <Label htmlFor="apply-phone">Phone (optional)</Label>
+          <Label htmlFor="apply-phone">Phone (optional) <AiBadge field="phone" /></Label>
           <Input id="apply-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="input-phone" />
         </div>
         <div>
-          <Label htmlFor="apply-linkedin">LinkedIn URL (optional)</Label>
+          <Label htmlFor="apply-linkedin">LinkedIn URL (optional) <AiBadge field="linkedinUrl" /></Label>
           <Input id="apply-linkedin" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} data-testid="input-linkedin" />
         </div>
-        <div>
-          <Label htmlFor="apply-education">Education</Label>
-          <Textarea id="apply-education" rows={2} value={form.education} onChange={(e) => setForm({ ...form, education: e.target.value })} data-testid="input-education" />
-        </div>
-        <div>
-          <Label htmlFor="apply-experience">Experience</Label>
-          <Textarea id="apply-experience" rows={4} value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} data-testid="input-experience" />
-        </div>
-        <div>
-          <Label htmlFor="apply-cover">Cover letter</Label>
-          <Textarea id="apply-cover" rows={5} value={form.coverLetter} onChange={(e) => setForm({ ...form, coverLetter: e.target.value })} data-testid="input-cover" />
-        </div>
 
+        {/* Résumé upload — first so AI can pre-fill the fields below */}
         <div>
           <Label>Résumé (PDF or DOCX)</Label>
           <input
@@ -208,11 +257,32 @@ export default function CareersApplyPage({ general = false }: Props) {
             className="block mt-2 text-sm"
           />
           {uploading && <div className="text-xs text-muted-foreground mt-1">Uploading…</div>}
-          {uploadName && resumeMediaId && (
-            <div className="text-xs text-emerald-400 mt-1" data-testid="resume-uploaded">
-              ✓ {uploadName} attached
+          {parsing && (
+            <div className="flex items-center gap-1.5 text-xs text-violet-400 mt-1">
+              <Loader2 size={11} className="animate-spin" /> Parsing résumé with AI…
             </div>
           )}
+          {uploadName && resumeMediaId && !parsing && (
+            <div className="text-xs text-emerald-400 mt-1" data-testid="resume-uploaded">
+              ✓ {uploadName} attached
+              {aiFilledFields.size > 0 && (
+                <span className="text-violet-400 ml-2">· {aiFilledFields.size} field{aiFilledFields.size !== 1 ? "s" : ""} auto-filled</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="apply-education">Education <AiBadge field="education" /></Label>
+          <Textarea id="apply-education" rows={2} value={form.education} onChange={(e) => setForm({ ...form, education: e.target.value })} data-testid="input-education" />
+        </div>
+        <div>
+          <Label htmlFor="apply-experience">Experience <AiBadge field="experience" /></Label>
+          <Textarea id="apply-experience" rows={4} value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} data-testid="input-experience" />
+        </div>
+        <div>
+          <Label htmlFor="apply-cover">Cover letter</Label>
+          <Textarea id="apply-cover" rows={5} value={form.coverLetter} onChange={(e) => setForm({ ...form, coverLetter: e.target.value })} data-testid="input-cover" />
         </div>
 
         <div className="flex gap-6 flex-wrap">

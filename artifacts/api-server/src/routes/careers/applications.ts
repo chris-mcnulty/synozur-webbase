@@ -25,6 +25,10 @@ import {
   runScoring,
 } from "../../lib/careersAi";
 import {
+  extractTextFromBuffer,
+  parseResumeText,
+} from "../../lib/careersResumeParser";
+import {
   sendApplicantConfirmation,
   sendHiringManagerNotification,
 } from "../../lib/careersEmail";
@@ -63,6 +67,7 @@ function serialize(a: JobApplication) {
     aiMatchScore: a.aiMatchScore,
     aiMatchReasoning: a.aiMatchReasoning,
     aiScoredAt: a.aiScoredAt ? a.aiScoredAt.toISOString() : null,
+    recruiterRating: a.recruiterRating,
     submittedAt: a.submittedAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
   };
@@ -95,6 +100,42 @@ const SubmitBody = z.object({
   eeoDisability: z.string().max(120).nullish(),
   gdprConsent: z.boolean(),
   resumeMediaId: z.string().uuid().nullish(),
+});
+
+// ---- AI résumé parse (Gap 1) ---------------------------------------------
+//
+// Takes a previously-uploaded mediaId, downloads the file from object storage,
+// extracts text, and asks Anthropic to return structured candidate data.
+
+const ParseResumeBody = z.object({
+  mediaId: z.string().uuid(),
+});
+
+router.post("/careers/resume-parse", requireAuth, async (req, res) => {
+  const parsed = ParseResumeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const media = await db.query.mediaTable.findFirst({
+    where: eq(mediaTable.id, parsed.data.mediaId),
+  });
+  if (!media) {
+    res.status(404).json({ error: "Media not found" });
+    return;
+  }
+  try {
+    const ref = await objectStorage.getObjectEntityFile(media.storageKey);
+    const dlRes = await objectStorage.downloadObject(ref);
+    const arrayBuf = await dlRes.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+    const text = await extractTextFromBuffer(buf, media.mime, media.originalName);
+    const result = await parseResumeText(text);
+    res.json(result);
+  } catch (err) {
+    logger.warn({ err, mediaId: parsed.data.mediaId }, "careers resume-parse failed");
+    res.status(500).json({ error: "Failed to parse résumé" });
+  }
 });
 
 // ---- Applicant résumé upload ---------------------------------------------
@@ -380,6 +421,7 @@ router.get("/cms/careers/applications/:id", ...readGuard, async (req, res) => {
 
 const PatchBody = z.object({
   status: z.enum(APPLICATION_STATUSES).optional(),
+  recruiterRating: z.number().int().min(0).max(100).nullable().optional(),
 });
 
 router.patch("/cms/careers/applications/:id", ...writeGuard, async (req, res) => {
@@ -398,6 +440,7 @@ router.patch("/cms/careers/applications/:id", ...writeGuard, async (req, res) =>
   }
   const updates: Partial<typeof jobApplicationsTable.$inferInsert> = {};
   if (parsed.data.status) updates.status = parsed.data.status;
+  if (parsed.data.recruiterRating !== undefined) updates.recruiterRating = parsed.data.recruiterRating;
   const [row] = await db
     .update(jobApplicationsTable)
     .set(updates)

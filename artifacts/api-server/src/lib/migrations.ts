@@ -2658,6 +2658,12 @@ export async function runMigrations(): Promise<void> {
       END $pk$;
     `);
 
+    // Gap 3 — recruiter_rating on job_applications (idempotent).
+    await db.execute(sql`
+      ALTER TABLE job_applications
+        ADD COLUMN IF NOT EXISTS recruiter_rating integer;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
