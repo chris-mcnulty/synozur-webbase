@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { PortalShell } from "@/components/portal-shell";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { orionApi, type OrionModel } from "@/lib/orion-api";
 import { AlertCircle, ClipboardList, ExternalLink } from "lucide-react";
@@ -87,7 +86,7 @@ export default function OrionModelsPage() {
         {isError && (
           <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" data-testid="orion-models-error">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            {(error as Error).message}
+            {error instanceof Error ? error.message : "Could not load assessment data. Please try again later."}
           </div>
         )}
 

@@ -92,7 +92,7 @@ export default function OrionResultsPage() {
         {isError && (
           <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" data-testid="orion-results-error">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            {(error as Error).message}
+            {error instanceof Error ? error.message : "Could not load benchmark data. Please try again later."}
           </div>
         )}
 
