@@ -52,9 +52,32 @@ interface ClientOrg {
   entraTenantName: string | null;
   approvedEmailDomains: string[] | null;
   notes: string | null;
+  constellationClientId: string | null;
   members: Member[];
   pendingInvitations: PendingInvite[];
 }
+
+const PORTAL_SOURCE_APPS = ["vega", "nebula", "constellation", "orion", "orbit", "zenith"] as const;
+type PortalSourceApp = (typeof PORTAL_SOURCE_APPS)[number];
+
+interface PortalArtifact {
+  id: string;
+  clientOrganizationId: string;
+  sourceApp: PortalSourceApp;
+  artifactKind: string;
+  title: string;
+  summary: string | null;
+  externalUrl: string | null;
+  archivedAt: string | null;
+}
+
+const EMPTY_ARTIFACT_FORM = {
+  sourceApp: "constellation" as PortalSourceApp,
+  artifactKind: "",
+  title: "",
+  summary: "",
+  externalUrl: "",
+};
 
 interface AdminUserListItem {
   id: string;
@@ -108,6 +131,12 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
   const [domainsCsv, setDomainsCsv] = useState("");
   const [notes, setNotes] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [constellationClientId, setConstellationClientId] = useState("");
+
+  // Portal artifacts
+  const [artifacts, setArtifacts] = useState<PortalArtifact[]>([]);
+  const [artifactForm, setArtifactForm] = useState({ ...EMPTY_ARTIFACT_FORM });
+  const [artifactSaving, setArtifactSaving] = useState(false);
 
   // Invite form state.
   const [inviteEmail, setInviteEmail] = useState("");
@@ -149,6 +178,8 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
       setDomainsCsv((data.approvedEmailDomains ?? []).join(", "));
       setNotes(data.notes ?? "");
       setIsActive(data.isActive);
+      setConstellationClientId(data.constellationClientId ?? "");
+      await loadArtifacts(id);
     } catch (e) {
       toast({
         title: "Load failed",
@@ -172,9 +203,63 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
       approvedEmailDomains: domainsCsv.split(",").map((d) => d.trim()).filter(Boolean),
       notes: notes.trim() || null,
       isActive,
+      constellationClientId: constellationClientId.trim() || null,
     }),
-    [name, slug, defaultRole, accountManagerUserId, entraTenantId, entraTenantName, domainsCsv, notes, isActive],
+    [name, slug, defaultRole, accountManagerUserId, entraTenantId, entraTenantName, domainsCsv, notes, isActive, constellationClientId],
   );
+
+  async function loadArtifacts(orgId: string) {
+    try {
+      const data = await apiFetch<{ items: PortalArtifact[] }>(`/cms/portal-artifacts?clientOrganizationId=${orgId}`);
+      setArtifacts(data.items);
+    } catch { /* non-fatal */ }
+  }
+
+  async function createArtifact() {
+    if (!id || !artifactForm.title.trim() || !artifactForm.artifactKind.trim()) return;
+    setArtifactSaving(true);
+    try {
+      await apiFetch("/cms/portal-artifacts", {
+        method: "POST",
+        body: JSON.stringify({
+          clientOrganizationId: id,
+          sourceApp: artifactForm.sourceApp,
+          artifactKind: artifactForm.artifactKind.trim(),
+          title: artifactForm.title.trim(),
+          summary: artifactForm.summary.trim() || null,
+          externalUrl: artifactForm.externalUrl.trim() || null,
+        }),
+      });
+      setArtifactForm({ ...EMPTY_ARTIFACT_FORM });
+      toast({ title: "Artifact published" });
+      await loadArtifacts(id);
+    } catch (e) {
+      toast({ title: "Publish failed", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setArtifactSaving(false);
+    }
+  }
+
+  async function archiveArtifact(artifactId: string) {
+    if (!id) return;
+    try {
+      await apiFetch(`/cms/portal-artifacts/${artifactId}/archive`, { method: "POST" });
+      await loadArtifacts(id);
+    } catch (e) {
+      toast({ title: "Update failed", description: (e as Error).message, variant: "destructive" });
+    }
+  }
+
+  async function deleteArtifact(artifactId: string) {
+    if (!id) return;
+    if (!confirm("Delete this artifact? It will be hidden from the customer portal.")) return;
+    try {
+      await apiFetch(`/cms/portal-artifacts/${artifactId}`, { method: "DELETE" });
+      await loadArtifacts(id);
+    } catch (e) {
+      toast({ title: "Delete failed", description: (e as Error).message, variant: "destructive" });
+    }
+  }
 
   async function save() {
     if (!orgPayload.name || !orgPayload.slug) {
@@ -303,7 +388,7 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
       crumbs={[
         { label: "Admin", href: "/" },
         { label: "Access" },
-        { label: "Client orgs", href: "/access/clients" },
+        { label: "Organizations", href: "/access/clients" },
         { label: isNew ? "New" : (org?.name ?? "…") },
       ]}
       actions={
@@ -413,6 +498,21 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
                   onChange={(e) => setDomainsCsv(e.target.value)}
                   placeholder="acmecorp.com, acme.io"
                 />
+              </div>
+              <div>
+                <Label htmlFor="org-constellation-id">Constellation client ID</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="org-constellation-id"
+                    value={constellationClientId}
+                    onChange={(e) => setConstellationClientId(e.target.value)}
+                    placeholder="SCDP client UUID, optional"
+                    className="font-mono text-xs"
+                  />
+                  {constellationClientId.trim() && (
+                    <span className="shrink-0 text-xs text-emerald-600 font-medium">✓ linked</span>
+                  )}
+                </div>
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="org-notes">Notes</Label>
@@ -591,6 +691,137 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Portal artifacts */}
+          {!isNew && org && (
+            <Card className="p-6 lg:col-span-3 space-y-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Portal artifacts
+              </h2>
+
+              {/* Add new artifact form */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pb-4 border-b">
+                <div>
+                  <Label>Source app</Label>
+                  <select
+                    value={artifactForm.sourceApp}
+                    onChange={(e) => setArtifactForm((f) => ({ ...f, sourceApp: e.target.value as PortalSourceApp }))}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {PORTAL_SOURCE_APPS.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Kind</Label>
+                  <Input
+                    value={artifactForm.artifactKind}
+                    onChange={(e) => setArtifactForm((f) => ({ ...f, artifactKind: e.target.value }))}
+                    placeholder="e.g. project, invoice, report"
+                  />
+                </div>
+                <div>
+                  <Label>Title</Label>
+                  <Input
+                    value={artifactForm.title}
+                    onChange={(e) => setArtifactForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="Artifact title"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Summary (optional)</Label>
+                  <Input
+                    value={artifactForm.summary}
+                    onChange={(e) => setArtifactForm((f) => ({ ...f, summary: e.target.value }))}
+                    placeholder="Short description shown in the portal"
+                  />
+                </div>
+                <div>
+                  <Label>External URL (optional)</Label>
+                  <Input
+                    value={artifactForm.externalUrl}
+                    onChange={(e) => setArtifactForm((f) => ({ ...f, externalUrl: e.target.value }))}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <Button
+                    onClick={createArtifact}
+                    disabled={artifactSaving || !artifactForm.title.trim() || !artifactForm.artifactKind.trim()}
+                    data-testid="button-publish-artifact"
+                  >
+                    {artifactSaving ? "Publishing…" : "Publish artifact"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Artifact list */}
+              {artifacts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No artifacts yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-3 py-2">Title</th>
+                        <th className="text-left px-3 py-2">Kind</th>
+                        <th className="text-left px-3 py-2">Source</th>
+                        <th className="text-left px-3 py-2">Status</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {artifacts.map((a) => (
+                        <tr key={a.id} className="border-t border-border">
+                          <td className="px-3 py-2">
+                            <div className="font-medium">{a.title}</div>
+                            {a.summary && <div className="text-xs text-muted-foreground">{a.summary}</div>}
+                            {a.externalUrl && (
+                              <a
+                                href={a.externalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary underline"
+                              >
+                                {a.externalUrl}
+                              </a>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{a.artifactKind}</td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline">{a.sourceApp}</Badge>
+                          </td>
+                          <td className="px-3 py-2">
+                            {a.archivedAt
+                              ? <Badge variant="secondary">Archived</Badge>
+                              : <Badge>Live</Badge>}
+                          </td>
+                          <td className="px-3 py-2 text-right space-x-1">
+                            {!a.archivedAt && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => archiveArtifact(a.id)}
+                              >
+                                Archive
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              onClick={() => deleteArtifact(a.id)}
+                            >
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </Card>

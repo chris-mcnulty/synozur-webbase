@@ -95,7 +95,7 @@ export default function ClientsListPage() {
   return (
     <AdminLayout
       title="Client organizations"
-      crumbs={[{ label: "Admin", href: "/" }, { label: "Access" }, { label: "Client orgs" }]}
+      crumbs={[{ label: "Admin", href: "/" }, { label: "Access" }, { label: "Organizations" }]}
       actions={
         <Button asChild data-testid="button-new-client-org">
           <AppLink href="/access/clients/new" unstyled>New client organization</AppLink>
