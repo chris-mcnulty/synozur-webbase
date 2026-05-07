@@ -47,6 +47,7 @@ const CreateOrgBody = z.object({
   notes: z.string().max(2000).nullish(),
   // #225
   accountManagerUserId: z.string().uuid().nullish(),
+  constellationClientId: z.string().max(255).nullish(),
 });
 
 const UpdateOrgBody = CreateOrgBody.partial();
@@ -126,6 +127,7 @@ router.get("/admin/client-orgs", requireAuth, requireManage, async (_req, res): 
       defaultRoleName: rolesTable.name,
       notes: clientOrganizationsTable.notes,
       accountManagerUserId: clientOrganizationsTable.accountManagerUserId,
+      constellationClientId: clientOrganizationsTable.constellationClientId,
       createdAt: clientOrganizationsTable.createdAt,
     })
     .from(clientOrganizationsTable)
@@ -308,7 +310,7 @@ router.post("/admin/client-orgs", requireAuth, requireManage, async (req, res): 
   }
   const {
     name, slug, entraTenantId, entraTenantName, approvedEmailDomains,
-    isActive, defaultRole, notes, accountManagerUserId,
+    isActive, defaultRole, notes, accountManagerUserId, constellationClientId,
   } = parsed.data;
 
   let defaultRoleId: string | null = null;
@@ -341,6 +343,7 @@ router.post("/admin/client-orgs", requireAuth, requireManage, async (req, res): 
       defaultRoleId,
       notes: notes ?? null,
       accountManagerUserId: accountManagerUserId ?? null,
+      constellationClientId: constellationClientId ?? null,
     })
     .onConflictDoNothing()
     .returning();
@@ -401,6 +404,9 @@ router.patch("/admin/client-orgs/:id", requireAuth, requireManage, async (req, r
   if (data.notes !== undefined) updatePayload.notes = data.notes ?? null;
   if (data.accountManagerUserId !== undefined) {
     updatePayload.accountManagerUserId = data.accountManagerUserId ?? null;
+  }
+  if (data.constellationClientId !== undefined) {
+    updatePayload.constellationClientId = data.constellationClientId ?? null;
   }
 
   if (Object.keys(updatePayload).length === 0) {

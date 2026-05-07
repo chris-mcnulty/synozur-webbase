@@ -26,6 +26,7 @@ interface Org {
   defaultRoleId: string | null;
   defaultRoleName: string | null;
   notes: string | null;
+  constellationClientId: string | null;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ const EMPTY_FORM = {
   isActive: true,
   defaultRole: "client" as RoleName | "",
   notes: "",
+  constellationClientId: "",
 };
 
 export default function OrganizationsPage() {
@@ -118,6 +120,8 @@ export default function OrganizationsPage() {
   const [assignEmail, setAssignEmail] = useState<Record<string, string>>({});
   const [artifacts, setArtifacts] = useState<Record<string, PortalArtifact[]>>({});
   const [artifactForm, setArtifactForm] = useState<Record<string, typeof EMPTY_ARTIFACT_FORM>>({});
+  const [constellationIdEdit, setConstellationIdEdit] = useState<Record<string, string>>({});
+  const [constellationIdSaving, setConstellationIdSaving] = useState<Record<string, boolean>>({});
 
   function getArtifactForm(orgId: string) {
     return artifactForm[orgId] ?? EMPTY_ARTIFACT_FORM;
@@ -231,6 +235,24 @@ export default function OrganizationsPage() {
       setExpandedOrg(orgId);
       void loadMembers(orgId);
       void loadArtifacts(orgId);
+      const org = orgs.find((o) => o.id === orgId);
+      setConstellationIdEdit((m) => ({ ...m, [orgId]: org?.constellationClientId ?? "" }));
+    }
+  }
+
+  async function saveConstellationId(orgId: string) {
+    setConstellationIdSaving((m) => ({ ...m, [orgId]: true }));
+    try {
+      await apiFetch(`/admin/client-orgs/${orgId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ constellationClientId: constellationIdEdit[orgId]?.trim() || null }),
+      });
+      toast({ title: "Constellation client ID saved" });
+      await refresh();
+    } catch (e) {
+      toast({ title: "Save failed", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setConstellationIdSaving((m) => ({ ...m, [orgId]: false }));
     }
   }
 
@@ -249,6 +271,7 @@ export default function OrganizationsPage() {
           isActive: form.isActive,
           defaultRole: form.defaultRole || null,
           notes: form.notes.trim() || null,
+          constellationClientId: form.constellationClientId.trim() || null,
         }),
       });
       setForm({ ...EMPTY_FORM });
@@ -386,6 +409,15 @@ export default function OrganizationsPage() {
               {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
+          <div>
+            <Label htmlFor="org-constellation-id">Constellation client ID</Label>
+            <Input
+              id="org-constellation-id"
+              value={form.constellationClientId}
+              onChange={(e) => setForm((f) => ({ ...f, constellationClientId: e.target.value }))}
+              placeholder="e.g. clt_abc123 — links this org to a Constellation client"
+            />
+          </div>
           <div className="md:col-span-2">
             <Label htmlFor="org-notes">Notes</Label>
             <Input
@@ -449,6 +481,28 @@ export default function OrganizationsPage() {
 
               {expandedOrg === org.id && (
                 <div className="border-t pt-3 space-y-2">
+                  <div className="pb-2 border-b border-border/50 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Constellation</p>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Constellation client ID (e.g. clt_abc123)"
+                        value={constellationIdEdit[org.id] ?? org.constellationClientId ?? ""}
+                        onChange={(e) => setConstellationIdEdit((m) => ({ ...m, [org.id]: e.target.value }))}
+                        className="max-w-sm text-sm font-mono"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={constellationIdSaving[org.id]}
+                        onClick={() => saveConstellationId(org.id)}
+                      >
+                        Save
+                      </Button>
+                      {org.constellationClientId && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ connected</span>
+                      )}
+                    </div>
+                  </div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Members</p>
                   {(members[org.id] ?? []).length === 0 ? (
                     <p className="text-sm text-muted-foreground">No members yet.</p>
