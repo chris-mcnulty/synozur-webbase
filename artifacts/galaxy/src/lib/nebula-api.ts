@@ -1,19 +1,4 @@
-// The api-server is mounted at /api by the path-based reverse proxy, NOT
-// under the Galaxy /galaxy/ base path. Always call /api/... directly.
-async function apiFetch<T>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = new URL(`${window.location.origin}/api${path}`);
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
-    }
-  }
-  const res = await fetch(url.toString(), { credentials: "include" });
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
-    throw Object.assign(new Error(json.error ?? `HTTP ${res.status}`), { status: res.status });
-  }
-  return res.json() as Promise<T>;
-}
+import { portalFetch } from "@/lib/portal-fetch";
 
 export interface NebulaReportSummary {
   spaceId: string;
@@ -80,9 +65,9 @@ export interface NebulaWorkspacesResponse {
 
 export const nebulaApi = {
   listReports: (page = 1, limit = 20) =>
-    apiFetch<NebulaReportsPage>("/portal/nebula/reports", { page, limit }),
+    portalFetch<NebulaReportsPage>("/portal/nebula/reports", { page, limit }),
   getReport: (spaceId: string) =>
-    apiFetch<NebulaReport>(`/portal/nebula/reports/${spaceId}`),
+    portalFetch<NebulaReport>(`/portal/nebula/reports/${spaceId}`),
   listWorkspaces: () =>
-    apiFetch<NebulaWorkspacesResponse>("/portal/nebula/workspaces"),
+    portalFetch<NebulaWorkspacesResponse>("/portal/nebula/workspaces"),
 };
