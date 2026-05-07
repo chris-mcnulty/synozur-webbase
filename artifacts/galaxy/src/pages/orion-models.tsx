@@ -30,7 +30,7 @@ function ModelCard({ model }: { model: OrionModel }) {
             <p className="text-sm text-muted-foreground line-clamp-2">{model.description}</p>
           )}
         </div>
-        {model.avgScore !== undefined && (
+        {model.avgScore != null && (
           <div className={`text-right shrink-0 ${scoreColor(model.avgScore)}`}>
             <div className="text-xl font-bold leading-none">{model.avgScore.toFixed(1)}</div>
             <div className="text-xs text-muted-foreground mt-0.5">avg score</div>

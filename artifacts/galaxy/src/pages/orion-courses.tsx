@@ -93,7 +93,7 @@ export default function OrionCoursesPage() {
     return data.filter(
       (c) =>
         c.title.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
+        (c.description ?? "").toLowerCase().includes(q) ||
         c.tags.some((t) => t.toLowerCase().includes(q)),
     );
   }, [data, search]);

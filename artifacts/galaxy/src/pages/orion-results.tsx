@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { orionApi, type OrionResultEntry, type OrionScoreDistributionEntry } from "@/lib/orion-api";
 import { AlertCircle, BarChart3 } from "lucide-react";
 
-function scoreColor(score: number) {
+function scoreColor(score: number | null | undefined) {
+  if (score == null) return "text-muted-foreground";
   if (score >= 4) return "text-emerald-400";
   if (score >= 3) return "text-amber-400";
   return "text-rose-400";
@@ -18,11 +19,11 @@ function DistributionBar({ entry }: { entry: OrionScoreDistributionEntry }) {
       <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
         <div
           className="h-2 rounded-full bg-violet-500 transition-all"
-          style={{ width: `${Math.min(100, entry.percentage)}%` }}
+          style={{ width: `${Math.min(100, entry.percentage ?? 0)}%` }}
         />
       </div>
       <span className="w-10 text-right text-xs text-muted-foreground shrink-0">
-        {entry.percentage.toFixed(0)}%
+        {(entry.percentage ?? 0).toFixed(0)}%
       </span>
       <span className="w-8 text-right text-xs text-muted-foreground shrink-0">
         {entry.count}
@@ -38,12 +39,14 @@ function ResultCard({ entry }: { entry: OrionResultEntry }) {
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <CardTitle className="text-base font-semibold leading-snug">{entry.modelName}</CardTitle>
           <div className={`text-right shrink-0 ${scoreColor(entry.avgScore)}`}>
-            <div className="text-2xl font-bold leading-none">{entry.avgScore.toFixed(2)}</div>
+            <div className="text-2xl font-bold leading-none">
+              {entry.avgScore != null ? entry.avgScore.toFixed(2) : "—"}
+            </div>
             <div className="text-xs text-muted-foreground mt-0.5">avg / 5</div>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Based on {entry.responseCount.toLocaleString()} response{entry.responseCount !== 1 ? "s" : ""}
+          Based on {(entry.responseCount ?? 0).toLocaleString()} response{(entry.responseCount ?? 0) !== 1 ? "s" : ""}
         </p>
       </CardHeader>
 
