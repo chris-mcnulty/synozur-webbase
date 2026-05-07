@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { orionApi, type OrionCourse } from "@/lib/orion-api";
 import { AlertCircle, BookOpen, Clock, ExternalLink, Search } from "lucide-react";
 
-const ORION_BASE = import.meta.env.VITE_ORION_BASE_URL ?? "";
+const ORION_BASE = (import.meta.env.VITE_ORION_BASE_URL ?? "https://orion.synozur.com").replace(/\/$/, "");
 
 function durationLabel(minutes: number) {
   if (minutes < 60) return `${minutes}m`;
@@ -16,18 +16,29 @@ function durationLabel(minutes: number) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+function resolveUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${ORION_BASE}${url}`;
+}
+
 function CourseCard({ course }: { course: OrionCourse }) {
-  const href = ORION_BASE ? `${ORION_BASE}/courses/${course.slug}` : undefined;
+  const href = `${ORION_BASE}/courses/${course.slug}`;
+  const thumbnail = resolveUrl(course.thumbnail);
   return (
-    <div
-      className="group rounded-xl border border-border bg-card overflow-hidden hover:border-violet-500/50 hover:bg-violet-500/5 transition-all flex flex-col"
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group rounded-xl border border-border bg-card overflow-hidden hover:border-violet-500/50 hover:bg-violet-500/5 transition-all flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       data-testid={`orion-course-${course.id}`}
     >
-      {course.thumbnail ? (
+      {thumbnail ? (
         <img
-          src={course.thumbnail}
+          src={thumbnail}
           alt={course.title}
           className="w-full h-36 object-cover bg-muted"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
         />
       ) : (
         <div className="w-full h-36 bg-gradient-to-br from-violet-950/60 to-fuchsia-950/60 flex items-center justify-center">
@@ -61,19 +72,14 @@ function CourseCard({ course }: { course: OrionCourse }) {
           </div>
         )}
 
-        {href && (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-auto self-start inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
-            data-testid={`link-course-${course.id}`}
-          >
-            Start course <ExternalLink size={11} />
-          </a>
-        )}
+        <span
+          className="mt-auto self-start inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 group-hover:text-violet-300 transition-colors"
+          data-testid={`link-course-${course.id}`}
+        >
+          Start course <ExternalLink size={11} />
+        </span>
       </div>
-    </div>
+    </a>
   );
 }
 
@@ -105,14 +111,33 @@ export default function OrionCoursesPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Learning</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Courses and learning paths available to your organisation via Orion.
+              Courses and learning paths available to your organisation via{" "}
+              <a
+                href={ORION_BASE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-violet-400 hover:text-violet-300 inline-flex items-center gap-1 transition-colors"
+              >
+                Orion <ExternalLink size={11} />
+              </a>
+              .
             </p>
           </div>
-          {data && (
-            <span className="text-sm text-muted-foreground">
-              {data.length} course{data.length !== 1 ? "s" : ""}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {data && (
+              <span className="text-sm text-muted-foreground">
+                {data.length} course{data.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            <a
+              href={ORION_BASE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 border border-violet-500/40 hover:border-violet-500/70 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Open Orion <ExternalLink size={11} />
+            </a>
+          </div>
         </div>
 
         <div className="relative max-w-sm">

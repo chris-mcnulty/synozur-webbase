@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { orionApi, type OrionModel } from "@/lib/orion-api";
 import { AlertCircle, ClipboardList, ExternalLink } from "lucide-react";
 
-const ORION_BASE = import.meta.env.VITE_ORION_BASE_URL ?? "";
+const ORION_BASE = (import.meta.env.VITE_ORION_BASE_URL ?? "https://orion.synozur.com").replace(/\/$/, "");
 
 function scoreColor(score?: number) {
   if (score === undefined) return "text-muted-foreground";
