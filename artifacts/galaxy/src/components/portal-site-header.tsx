@@ -56,6 +56,8 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
 
 const PORTAL_NAV: { href: string; label: string }[] = [
   { href: "/", label: "Dashboard" },
+  { href: "/projects", label: "Projects" },
+  { href: "/invoices", label: "Invoices" },
   { href: "/documents", label: "Documents" },
   { href: "/apps", label: "Apps" },
   { href: "/reports", label: "Reports" },
@@ -271,6 +273,8 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
       title: "Portal",
       links: [
         { label: "Dashboard", href: "/galaxy/" },
+        { label: "Projects", href: "/galaxy/projects" },
+        { label: "Invoices", href: "/galaxy/invoices" },
         { label: "Documents", href: "/galaxy/documents" },
         { label: "Apps", href: "/galaxy/apps" },
         { label: "Reports", href: "/galaxy/reports" },
