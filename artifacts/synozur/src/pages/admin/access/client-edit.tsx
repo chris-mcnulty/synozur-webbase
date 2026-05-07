@@ -500,19 +500,24 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
                 />
               </div>
               <div>
-                <Label htmlFor="org-constellation-id">Constellation client ID</Label>
+                <Label htmlFor="org-constellation-id">Constellation portal client ID</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="org-constellation-id"
                     value={constellationClientId}
                     onChange={(e) => setConstellationClientId(e.target.value)}
-                    placeholder="SCDP client UUID, optional"
+                    placeholder="e.g. 4bf431b6-9bf1-46a3-93a4-e86551bcccd7"
                     className="font-mono text-xs"
                   />
                   {constellationClientId.trim() && (
                     <span className="shrink-0 text-xs text-emerald-600 font-medium">✓ linked</span>
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The UUID of this organisation's <strong>client record in SCDP</strong> — the <code className="bg-muted px-1 rounded">target_client_id</code> used when fetching Constellation tokens.
+                  This is <strong>not</strong> the Galaxy app's own OAuth client ID (that lives in the server environment, not here).
+                  Find it in SCDP under the client's settings.
+                </p>
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="org-notes">Notes</Label>
