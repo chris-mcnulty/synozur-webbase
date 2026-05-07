@@ -32,6 +32,8 @@ import {
   type PortalSourceApp as PortalSourceAppType,
 } from "@workspace/api-client-react";
 
+const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+
 const SOURCE_APPS = Object.values(PortalSourceApp) as PortalSourceAppType[];
 
 function isSourceApp(s: string | undefined): s is PortalSourceAppType {
@@ -150,6 +152,15 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <ThemeProvider>
+            {/* Fixed galaxy background — sits behind all pages, never remounts on navigation */}
+            <div className="fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+              <img
+                src={`${BASE}/galaxy-hero.jpg`}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-black/70" />
+            </div>
             <AuthProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <AppRouter />

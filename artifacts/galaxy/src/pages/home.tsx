@@ -117,8 +117,6 @@ function EngagementCard({ engagement }: { engagement: PortalEngagement }) {
   );
 }
 
-const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
-
 export default function Home() {
   const { user } = useAuth();
   const meQuery = useGetPortalMe();
@@ -144,17 +142,9 @@ export default function Home() {
 
   return (
     <PortalShell>
-      {/* ── Galaxy hero banner ── */}
-      <div className="relative w-full overflow-hidden" style={{ minHeight: 220 }}>
-        <img
-          src={`${BASE}/galaxy-hero.jpg`}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          style={{ minHeight: 220 }}
-        />
-        {/* gradient: transparent top → opaque bottom so it bleeds into the page bg */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-background" />
+      {/* ── Galaxy hero banner — image comes from the fixed app-level background ── */}
+      <div className="relative w-full" style={{ minHeight: 220 }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
         <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 pb-16 space-y-2">
           <p className="text-xs uppercase tracking-wider text-white/60">
             {me?.organization.name ?? (isLoading ? "" : "Welcome")}

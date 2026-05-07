@@ -4,7 +4,7 @@ import { PortalSiteFooter } from "@/components/portal-site-footer";
 
 export function PortalShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col">
+    <div className="min-h-screen w-full flex flex-col">
       <PortalSiteHeader />
       <div className="flex-1 flex flex-col w-full">
         {children}
