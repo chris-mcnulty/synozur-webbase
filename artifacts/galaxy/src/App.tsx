@@ -19,6 +19,9 @@ import NebulaWorkspacesPage from "@/pages/nebula-workspaces";
 import OrionModelsPage from "@/pages/orion-models";
 import OrionCoursesPage from "@/pages/orion-courses";
 import OrionResultsPage from "@/pages/orion-results";
+import ConstellationProjectsPage from "@/pages/constellation-projects";
+import ConstellationProjectPage from "@/pages/constellation-project";
+import ConstellationInvoicesPage from "@/pages/constellation-invoices";
 import { PortalSiteHeader } from "@/components/portal-site-header";
 import { PortalSiteFooter } from "@/components/portal-site-footer";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -124,6 +127,17 @@ function AppRouter() {
       </Route>
       <Route path="/benchmarks">
         <Gated><OrionResultsPage /></Gated>
+      </Route>
+      <Route path="/projects">
+        <Gated><ConstellationProjectsPage /></Gated>
+      </Route>
+      <Route path="/projects/:id">
+        {(params) => (
+          <Gated><ConstellationProjectPage id={params.id!} /></Gated>
+        )}
+      </Route>
+      <Route path="/invoices">
+        <Gated><ConstellationInvoicesPage /></Gated>
       </Route>
       <Route component={NotFound} />
     </Switch>

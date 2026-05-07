@@ -66,6 +66,7 @@ import emailWebhookRouter from "./emailWebhook";
 import adminEmailRouter from "./adminEmail";
 import searchRouter from "./search";
 import constellationDemoRouter from "./constellationDemo";
+import portalConstellationRouter from "./portalConstellation";
 
 const router: IRouter = Router();
 
@@ -136,5 +137,6 @@ router.use(emailWebhookRouter);
 router.use(adminEmailRouter);
 router.use(searchRouter);
 router.use(constellationDemoRouter);
+router.use(portalConstellationRouter);
 
 export default router;

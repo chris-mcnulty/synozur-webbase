@@ -46,6 +46,12 @@ export const clientOrganizationsTable = pgTable(
     // the startup migration (not via Drizzle's `.references()`) to avoid the
     // circular import between users ↔ clientOrganizations.
     accountManagerUserId: uuid("account_manager_user_id"),
+    // Constellation client ID for Galaxy API integration. Maps this Synozur
+    // client org to the corresponding client record in Constellation so
+    // project data (projects, milestones, estimates, invoices, RAIDD) can be
+    // fetched via the Galaxy API and surfaced in the customer portal.
+    // NULL means the Constellation integration is not configured for this org.
+    constellationClientId: text("constellation_client_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
