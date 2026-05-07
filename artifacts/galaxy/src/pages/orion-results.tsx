@@ -50,7 +50,7 @@ function ResultCard({ entry }: { entry: OrionResultEntry }) {
         </p>
       </CardHeader>
 
-      {entry.scoreDistribution.length > 0 && (
+      {(entry.scoreDistribution ?? []).length > 0 && (
         <CardContent className="space-y-2 pt-0">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1 px-0">
             <span>Score distribution</span>
@@ -59,7 +59,7 @@ function ResultCard({ entry }: { entry: OrionResultEntry }) {
               <span className="w-8 text-right">n</span>
             </div>
           </div>
-          {entry.scoreDistribution.map((d) => (
+          {(entry.scoreDistribution ?? []).map((d) => (
             <DistributionBar key={d.level} entry={d} />
           ))}
         </CardContent>
@@ -85,7 +85,7 @@ export default function OrionResultsPage() {
               Anonymised aggregate maturity scores across your organisation's assessments.
             </p>
           </div>
-          {data && (
+          {Array.isArray(data) && data.length > 0 && (
             <span className="text-sm text-muted-foreground">
               {data.length} model{data.length !== 1 ? "s" : ""}
             </span>
@@ -105,14 +105,14 @@ export default function OrionResultsPage() {
               <Skeleton key={i} className="h-48 w-full rounded-xl" />
             ))}
           </div>
-        ) : !isError && (!data || data.length === 0) ? (
+        ) : !isError && (!Array.isArray(data) || data.length === 0) ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               <BarChart3 size={32} className="mx-auto mb-3 opacity-30" />
               No benchmark data available yet. Results appear once assessments have been completed.
             </CardContent>
           </Card>
-        ) : data && (
+        ) : Array.isArray(data) && (
           <div className="space-y-4" data-testid="orion-results-list">
             {data.map((entry) => (
               <ResultCard key={entry.modelId} entry={entry} />

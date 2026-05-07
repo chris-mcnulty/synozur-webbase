@@ -126,12 +126,28 @@ const TTL_TRAFFIC = 60 * 60_000;  // 1 hr for traffic (polled separately)
 // resolved by the route layer. This ensures cainc.com users see CA Inc Orion
 // data and synozur.com users see Synozur data — never mixed.
 
+// Normalize whatever envelope shape the Orion API returns into a plain array.
+// Handles: bare array, { data: [] }, { items: [] }, { models/courses/results: [] }.
+function toArray<T>(raw: unknown, ...fieldHints: string[]): T[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw as T[];
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    for (const key of [...fieldHints, "data", "items", "results"]) {
+      if (Array.isArray(obj[key])) return obj[key] as T[];
+    }
+  }
+  logger.warn({ raw }, "orion: unexpected non-array response — returning []");
+  return [];
+}
+
 export const orion = {
   getModels: async (domain: string): Promise<OrionModel[]> => {
     const key = `models:${domain}`;
     const hit = getCached<OrionModel[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionModel[]>("/api/galaxy/v1/portal/models", domain);
+    const raw = await orionFetch<unknown>("/api/galaxy/v1/portal/models", domain);
+    const data = toArray<OrionModel>(raw, "models");
     setCached(key, data, TTL);
     return data;
   },
@@ -140,7 +156,11 @@ export const orion = {
     const key = `courses:${domain}`;
     const hit = getCached<OrionCourse[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionCourse[]>("/api/galaxy/v1/portal/courses", domain);
+    const raw = await orionFetch<unknown>("/api/galaxy/v1/portal/courses", domain);
+    const data = toArray<OrionCourse>(raw, "courses").map((c) => ({
+      ...c,
+      tags: Array.isArray(c.tags) ? c.tags : [],
+    }));
     setCached(key, data, TTL);
     return data;
   },
@@ -149,7 +169,11 @@ export const orion = {
     const key = `results:${domain}`;
     const hit = getCached<OrionResultEntry[]>(key);
     if (hit) return hit;
-    const data = await orionFetch<OrionResultEntry[]>("/api/galaxy/v1/portal/results", domain);
+    const raw = await orionFetch<unknown>("/api/galaxy/v1/portal/results", domain);
+    const data = toArray<OrionResultEntry>(raw, "results").map((r) => ({
+      ...r,
+      scoreDistribution: Array.isArray(r.scoreDistribution) ? r.scoreDistribution : [],
+    }));
     setCached(key, data, TTL);
     return data;
   },

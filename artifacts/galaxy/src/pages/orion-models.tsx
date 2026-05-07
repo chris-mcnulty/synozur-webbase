@@ -76,7 +76,7 @@ export default function OrionModelsPage() {
               Maturity assessment models available to your organisation via Orion.
             </p>
           </div>
-          {data && (
+          {Array.isArray(data) && data.length > 0 && (
             <span className="text-sm text-muted-foreground">
               {data.length} model{data.length !== 1 ? "s" : ""}
             </span>
@@ -96,14 +96,14 @@ export default function OrionModelsPage() {
               <Skeleton key={i} className="h-36 w-full rounded-xl" />
             ))}
           </div>
-        ) : !isError && (!data || data.length === 0) ? (
+        ) : !isError && (!Array.isArray(data) || data.length === 0) ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               <ClipboardList size={32} className="mx-auto mb-3 opacity-30" />
               No assessment models available yet. Check back once Orion has published models for your domain.
             </CardContent>
           </Card>
-        ) : data && (
+        ) : Array.isArray(data) && (
           <div className="grid gap-4 sm:grid-cols-2" data-testid="orion-models-list">
             {data.map((model) => (
               <ModelCard key={model.id} model={model} />

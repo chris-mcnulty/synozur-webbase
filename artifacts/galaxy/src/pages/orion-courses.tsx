@@ -51,9 +51,9 @@ function CourseCard({ course }: { course: OrionCourse }) {
           <span>{course.moduleCount} module{course.moduleCount !== 1 ? "s" : ""}</span>
         </div>
 
-        {course.tags.length > 0 && (
+        {(course.tags ?? []).length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            {course.tags.slice(0, 4).map((tag) => (
+            {(course.tags ?? []).slice(0, 4).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
                 {tag}
               </Badge>
@@ -87,14 +87,14 @@ export default function OrionCoursesPage() {
   });
 
   const courses = useMemo(() => {
-    if (!data) return [];
-    if (!search.trim()) return data;
+    const arr = Array.isArray(data) ? data : [];
+    if (!search.trim()) return arr;
     const q = search.toLowerCase();
-    return data.filter(
+    return arr.filter(
       (c) =>
         c.title.toLowerCase().includes(q) ||
         (c.description ?? "").toLowerCase().includes(q) ||
-        c.tags.some((t) => t.toLowerCase().includes(q)),
+        (c.tags ?? []).some((t) => t.toLowerCase().includes(q)),
     );
   }, [data, search]);
 
