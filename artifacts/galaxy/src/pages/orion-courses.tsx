@@ -23,7 +23,7 @@ function resolveUrl(url: string | null): string | null {
 }
 
 function CourseCard({ course }: { course: OrionCourse }) {
-  const href = `${ORION_BASE}/courses/${course.slug}`;
+  const href = ORION_BASE;
   const thumbnail = resolveUrl(course.thumbnail);
   return (
     <a
