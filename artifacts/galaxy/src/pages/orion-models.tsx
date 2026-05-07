@@ -15,10 +15,13 @@ function scoreColor(score?: number) {
 }
 
 function ModelCard({ model }: { model: OrionModel }) {
-  const href = ORION_BASE ? `${ORION_BASE}/assessment/${model.slug}` : undefined;
+  const href = `${ORION_BASE}/${model.slug}`;
   return (
-    <div
-      className="group rounded-xl border border-border bg-card p-5 flex flex-col gap-3 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group rounded-xl border border-border bg-card p-5 flex flex-col gap-3 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       data-testid={`orion-model-${model.id}`}
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -44,18 +47,13 @@ function ModelCard({ model }: { model: OrionModel }) {
         <span>{model.questionCount} question{model.questionCount !== 1 ? "s" : ""}</span>
       </div>
 
-      {href && (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto self-start inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
-          data-testid={`link-model-${model.id}`}
-        >
-          Take assessment <ExternalLink size={11} />
-        </a>
-      )}
-    </div>
+      <span
+        className="mt-auto self-start inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 group-hover:text-violet-300 transition-colors"
+        data-testid={`link-model-${model.id}`}
+      >
+        Take assessment <ExternalLink size={11} />
+      </span>
+    </a>
   );
 }
 
