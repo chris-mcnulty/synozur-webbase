@@ -281,3 +281,9 @@ id = "9geBfNj3OBCTpdLhPec3Q"
 uri = "file://backlog.md"
 type = "text"
 title = "Synozur Alliance — Product Backlog"
+
+[[outputs]]
+id = "XzvY9YX7l3yDsmDDx5PIv"
+uri = "file://research/entra-multitenant-auth-architecture.md"
+type = "text"
+title = "Entra Multi-Tenant Auth Architecture — Research Brief"
