@@ -57,7 +57,6 @@ import TaxonomyPage from "@/pages/admin/insights/taxonomy";
 import CommentsModeration from "@/pages/admin/insights/comments";
 import UsersAndRoles from "@/pages/admin/access/users";
 import EntraMappingsPage from "@/pages/admin/access/entra";
-import OrganizationsPage from "@/pages/admin/access/organizations";
 import EngagementDocumentsPage from "@/pages/admin/access/engagement-documents";
 import ClientsListPage from "@/pages/admin/access/clients-list";
 import ClientEditPage from "@/pages/admin/access/client-edit";
@@ -436,7 +435,6 @@ function AdminRoutes() {
         {/* Access section */}
         <Route path="/access/users" component={UsersAndRoles} />
         <Route path="/access/entra" component={EntraMappingsPage} />
-        <Route path="/access/organizations" component={OrganizationsPage} />
         <Route path="/access/engagement-documents" component={EngagementDocumentsPage} />
         <Route path="/access/clients" component={ClientsListPage} />
         <Route path="/access/clients/new">
