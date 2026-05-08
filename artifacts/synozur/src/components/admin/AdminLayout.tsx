@@ -52,6 +52,7 @@ import {
   Sparkles,
   Mail,
   FlaskConical,
+  LayoutTemplate,
 } from "lucide-react";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
@@ -200,6 +201,7 @@ const SECTIONS: NavSection[] = [
     icon: PanelTop,
     items: [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/alt-home", label: "Alt Home", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-alt-home" },
       { href: "/site-config/experiments", label: "Experiments", icon: FlaskConical, capability: "site.manage", testId: "nav-admin-experiments" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },

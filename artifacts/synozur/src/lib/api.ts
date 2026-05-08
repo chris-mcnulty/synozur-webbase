@@ -657,6 +657,7 @@ export interface UpdateSiteSettingsBody {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  constellationDemoEnabled?: boolean;
 }
 
 export interface BulkCollateralBody {

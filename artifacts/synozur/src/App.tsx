@@ -111,6 +111,7 @@ import AdminInsightsQuestions from "@/pages/admin/insights/questions";
 import InsightsAskPage from "@/pages/insights/ask";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminAltHome from "@/pages/admin/site-config/alt-home";
 import AdminExperimentsList from "@/pages/admin/site-config/experiments";
 import AdminExperimentDetail from "@/pages/admin/site-config/experiment-detail";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
@@ -412,6 +413,7 @@ function AdminRoutes() {
 
         {/* Site config section */}
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
+        <Route path="/site-config/alt-home" component={AdminAltHome} />
         <Route path="/site-config/experiments" component={AdminExperimentsList} />
         <Route path="/site-config/experiments/:id">
           {(params) => <AdminExperimentDetail id={params.id} />}

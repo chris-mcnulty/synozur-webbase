@@ -197,106 +197,11 @@ router.get("/admin/bookings", requireAdmin, async (_req, res): Promise<void> => 
   res.json({ items: rows.map(serialize) });
 });
 
-router.get("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = String(req.params.id);
-  const [row] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
-  if (!row) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  res.json(serialize(row));
-});
-
-router.post("/admin/bookings", requireAdmin, async (req, res): Promise<void> => {
-  const parsed = Body.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
-  const slug = await ensureUniqueSlug(slugBase);
-  const [row] = await db
-    .insert(bookingsTable)
-    .values({
-      slug,
-      title: parsed.data.title,
-      teaser: parsed.data.teaser ?? null,
-      descriptionHtml: parsed.data.descriptionHtml ?? null,
-      embedUrl: parsed.data.embedUrl,
-      scope: parsed.data.scope,
-      startsAt: parsed.data.startsAt ?? null,
-      endsAt: parsed.data.endsAt ?? null,
-      displayOrder: parsed.data.displayOrder ?? 0,
-      active: parsed.data.active ?? true,
-      seoTitle: parsed.data.seoTitle ?? null,
-      seoDescription: parsed.data.seoDescription ?? null,
-      msBusinessId: parsed.data.msBusinessId ?? null,
-      msDefaultServiceId: parsed.data.msDefaultServiceId ?? null,
-    })
-    .returning();
-  res.status(201).json(serialize(row));
-});
-
-router.patch("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = String(req.params.id);
-  const parsed = Body.partial().safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const existing = await db.query.bookingsTable.findFirst({
-    where: eq(bookingsTable.id, id),
-  });
-  if (!existing) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  const d = parsed.data;
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (d.title !== undefined) updates.title = d.title;
-  if (d.teaser !== undefined) updates.teaser = d.teaser ?? null;
-  if (d.descriptionHtml !== undefined) updates.descriptionHtml = d.descriptionHtml ?? null;
-  if (d.embedUrl !== undefined) updates.embedUrl = d.embedUrl;
-  if (d.scope !== undefined) updates.scope = d.scope;
-  if (d.startsAt !== undefined) updates.startsAt = d.startsAt ?? null;
-  if (d.endsAt !== undefined) updates.endsAt = d.endsAt ?? null;
-  if (d.displayOrder !== undefined) updates.displayOrder = d.displayOrder;
-  if (d.active !== undefined) updates.active = d.active;
-  if (d.seoTitle !== undefined) updates.seoTitle = d.seoTitle ?? null;
-  if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
-  if (d.msBusinessId !== undefined) updates.msBusinessId = d.msBusinessId ?? null;
-  if (d.msDefaultServiceId !== undefined) updates.msDefaultServiceId = d.msDefaultServiceId ?? null;
-
-  if (d.slug !== undefined && d.slug !== null) {
-    const slugBase = d.slug.trim() || slugify(d.title ?? existing.title);
-    updates.slug = await ensureUniqueSlug(slugBase, id);
-  } else if (d.title !== undefined && !existing.slug) {
-    updates.slug = await ensureUniqueSlug(slugify(d.title), id);
-  }
-
-  const [row] = await db
-    .update(bookingsTable)
-    .set(updates)
-    .where(eq(bookingsTable.id, id))
-    .returning();
-  res.json(serialize(row));
-});
-
-router.delete("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = String(req.params.id);
-  const [row] = await db
-    .delete(bookingsTable)
-    .where(eq(bookingsTable.id, id))
-    .returning();
-  if (!row) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  res.sendStatus(204);
-});
-
 // ---------------------------------------------------------------------------
 // Admin — Microsoft Graph OAuth consent flow.
+//
+// IMPORTANT: these named routes MUST be registered before /admin/bookings/:id
+// so Express doesn't treat "graph-authorize" etc. as an ID param.
 //
 // The Bookings API requires delegated (user-based) authentication — confirmed
 // by Microsoft support. This flow lets an admin connect a service account once;
@@ -459,12 +364,91 @@ router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Pr
     res.status(503).json({ error: "Graph credentials not configured (ENTRA_* env vars missing)." });
     return;
   }
-  const result = await listBusinesses();
-  if (!result.ok) {
-    res.status(result.status).json({ error: result.message });
+  const parsed = Body.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
     return;
   }
-  res.json({ businesses: result.businesses });
+  const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.title);
+  const slug = await ensureUniqueSlug(slugBase);
+  const [row] = await db
+    .insert(bookingsTable)
+    .values({
+      slug,
+      title: parsed.data.title,
+      teaser: parsed.data.teaser ?? null,
+      descriptionHtml: parsed.data.descriptionHtml ?? null,
+      embedUrl: parsed.data.embedUrl,
+      scope: parsed.data.scope,
+      startsAt: parsed.data.startsAt ?? null,
+      endsAt: parsed.data.endsAt ?? null,
+      displayOrder: parsed.data.displayOrder ?? 0,
+      active: parsed.data.active ?? true,
+      seoTitle: parsed.data.seoTitle ?? null,
+      seoDescription: parsed.data.seoDescription ?? null,
+      msBusinessId: parsed.data.msBusinessId ?? null,
+      msDefaultServiceId: parsed.data.msDefaultServiceId ?? null,
+    })
+    .returning();
+  res.status(201).json(serialize(row));
+});
+
+router.patch("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  const parsed = Body.partial().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const existing = await db.query.bookingsTable.findFirst({
+    where: eq(bookingsTable.id, id),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  const d = parsed.data;
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (d.title !== undefined) updates.title = d.title;
+  if (d.teaser !== undefined) updates.teaser = d.teaser ?? null;
+  if (d.descriptionHtml !== undefined) updates.descriptionHtml = d.descriptionHtml ?? null;
+  if (d.embedUrl !== undefined) updates.embedUrl = d.embedUrl;
+  if (d.scope !== undefined) updates.scope = d.scope;
+  if (d.startsAt !== undefined) updates.startsAt = d.startsAt ?? null;
+  if (d.endsAt !== undefined) updates.endsAt = d.endsAt ?? null;
+  if (d.displayOrder !== undefined) updates.displayOrder = d.displayOrder;
+  if (d.active !== undefined) updates.active = d.active;
+  if (d.seoTitle !== undefined) updates.seoTitle = d.seoTitle ?? null;
+  if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
+  if (d.msBusinessId !== undefined) updates.msBusinessId = d.msBusinessId ?? null;
+  if (d.msDefaultServiceId !== undefined) updates.msDefaultServiceId = d.msDefaultServiceId ?? null;
+
+  if (d.slug !== undefined && d.slug !== null) {
+    const slugBase = d.slug.trim() || slugify(d.title ?? existing.title);
+    updates.slug = await ensureUniqueSlug(slugBase, id);
+  } else if (d.title !== undefined && !existing.slug) {
+    updates.slug = await ensureUniqueSlug(slugify(d.title), id);
+  }
+
+  const [row] = await db
+    .update(bookingsTable)
+    .set(updates)
+    .where(eq(bookingsTable.id, id))
+    .returning();
+  res.json(serialize(row));
+});
+
+router.delete("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  const [row] = await db
+    .delete(bookingsTable)
+    .where(eq(bookingsTable.id, id))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 // ---------------------------------------------------------------------------
