@@ -3,3 +3,9 @@
 // from @workspace/api-client-react/api.schemas for client-side usage.
 export * from "./generated/api";
 export * from "./constants";
+// Hand-written schemas for shared types (OverrideMap, ConversionPath,
+// PartnerItem, BookingLink, ExperimentStatus, AdminExperiment, ...).
+// orval inlines per-operation, so shared schemas don't get standalone
+// exports — this file keeps them callable from server/client and
+// MUST mirror the matching components.schemas in openapi.yaml.
+export * from "./experiments";

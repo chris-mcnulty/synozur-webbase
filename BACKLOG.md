@@ -428,6 +428,41 @@ Owner/tracking: file a ticket referencing this section once
 #154–#163 are scheduled into a sprint and the audit findings are
 acknowledged by marketing leadership.
 
+## A/B experiments — deferred items (follow-up to PR #74)
+
+PR #74 shipped Phase 1 + immediate hardening (Phase 2 items #1–9). The
+following are scoped out for a later phase because each one touches
+either bucketing semantics, request/response shape, or rendering
+architecture in ways that warrant their own PR.
+
+1. **Multi-experiment per page.** The partial unique index
+   `experiments_one_running_per_page_uidx` enforces one running
+   experiment per `pageKey`. To support overlapping experiments
+   (e.g. hero + below-fold), drop the partial unique index, introduce
+   an `experiment_groups` table for mutual-exclusion enforcement
+   (visitors can only be in one experiment per group), and update
+   `useOverride` to merge overrides across multiple active assignments
+   with a deterministic precedence rule.
+
+2. **SSR-time bucketing.** Today the experiments runtime is
+   client-only, so the SSR'd HTML always renders defaults and swaps
+   on hydration. For SEO-sensitive pages (`/services/*`,
+   `/case-studies/*`), resolve the assignment server-side from the
+   `syn_vid` cookie at first request and inline the chosen variant's
+   overrides into the rendered HTML. Requires: making `visitor-id` a
+   cookie (not just localStorage), adding a server-side bucketing
+   helper that mirrors `cyrb53(visitorId + ":" + key)`, and handing
+   the resolved assignments to the SSR layer.
+
+3. **Per-segment targeting.** Limit who enters each experiment by
+   device class (mobile/desktop), UTM source, geo, or referrer. Adds
+   a `targeting` JSONB column on `experiments`, evaluated client-side
+   against the same signals the traffic tracker already captures
+   (utmSource on the session, navigator.userAgent for device class,
+   Accept-Language as a coarse geo proxy). Out-of-segment visitors
+   are treated like out-of-test under #9 — no assignment row, fallback
+   rendering.
+
 ---
 
 ## Galaxy portal lifecycle redesign (follow-up to May 2026 portal IA refactor)

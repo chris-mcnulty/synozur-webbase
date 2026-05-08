@@ -848,6 +848,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
       turndown:
         specifier: ^7.2.4
         version: 7.2.4

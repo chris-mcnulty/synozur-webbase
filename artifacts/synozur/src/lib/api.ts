@@ -877,6 +877,83 @@ export const api = {
       method: "DELETE",
     }),
   getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
+  // A/B experiments — public read for the visitor runtime.
+  getActiveExperiments: () =>
+    jsonFetch<import("@workspace/api-zod/types").GetActiveExperimentsResponse>(
+      url("/experiments/active"),
+    ),
+  postExperimentAssignment: (
+    body: import("@workspace/api-zod/types").PostAssignmentBody,
+  ) =>
+    jsonFetch<{ ok: boolean }>(url("/experiments/assignments"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  // Admin CRUD for experiments.
+  listAdminExperiments: () =>
+    jsonFetch<import("@workspace/api-zod/types").ListAdminExperimentsResponse>(
+      url("/admin/experiments"),
+    ),
+  getAdminExperiment: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}`),
+    ),
+  createAdminExperiment: (body: import("@workspace/api-zod/types").CreateExperimentBody) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url("/admin/experiments"),
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  updateAdminExperiment: (
+    id: string,
+    body: import("@workspace/api-zod/types").UpdateExperimentBody,
+  ) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  startAdminExperiment: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}/start`),
+      { method: "POST" },
+    ),
+  pauseAdminExperiment: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}/pause`),
+      { method: "POST" },
+    ),
+  endAdminExperiment: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}/end`),
+      { method: "POST" },
+    ),
+  deleteAdminExperiment: (id: string) =>
+    jsonFetch<void>(url(`/admin/experiments/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+    }),
+  createAdminVariant: (
+    experimentId: string,
+    body: import("@workspace/api-zod/types").CreateVariantBody,
+  ) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperimentVariant>(
+      url(`/admin/experiments/${encodeURIComponent(experimentId)}/variants`),
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  updateAdminVariant: (
+    variantId: string,
+    body: import("@workspace/api-zod/types").UpdateVariantBody,
+  ) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperimentVariant>(
+      url(`/admin/variants/${encodeURIComponent(variantId)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteAdminVariant: (variantId: string) =>
+    jsonFetch<void>(url(`/admin/variants/${encodeURIComponent(variantId)}`), {
+      method: "DELETE",
+    }),
+  getAdminExperimentResults: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").GetExperimentResultsResponse>(
+      url(`/admin/experiments/${encodeURIComponent(id)}/results`),
+    ),
   getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),
   updateAdminSiteSettings: (body: UpdateSiteSettingsBody) =>
     jsonFetch<AdminSiteSettings>(url("/admin/site-settings"), {

@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { api, type ApplicationDto } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
+import { useOverride } from "@/lib/experiments";
 
 function staticAsDto(
   s: ReturnType<typeof getActiveApplications>[number],
@@ -61,6 +62,18 @@ export default function Applications() {
     seoDescription:
       "Synozur's portfolio of AI-powered applications — Vega, Nebula, Constellation, Orion, Orbit, Zenith, and more.",
   });
+  const heroEyebrow = useOverride<string>(
+    "applications.hero.eyebrow",
+    copy.heroEyebrow,
+  );
+  const heroHeadline = useOverride<string>(
+    "applications.hero.headline",
+    copy.heroHeadline,
+  );
+  const heroBody = useOverride<string>(
+    "applications.hero.body",
+    copy.heroSubhead,
+  );
 
   return (
     <div className="w-full">
@@ -75,13 +88,13 @@ export default function Applications() {
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            {copy.heroEyebrow}
+            {heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            {copy.heroHeadline}
+            {heroHeadline}
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            {copy.heroSubhead}
+            {heroBody}
           </p>
           {copy.introHtml && (
             <div

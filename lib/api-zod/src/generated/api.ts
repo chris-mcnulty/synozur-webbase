@@ -5286,3 +5286,3314 @@ export const IngestTrafficBatchBody = zod
   .describe(
     "Batch envelope. At least one of `rows`, `pageviews`, `sessions`,\nor `events` must be present. `rows` is a deprecated alias for\n`pageviews` retained for backward compatibility.\n",
   );
+
+/**
+ * @summary Active experiments for the visitor runtime
+ */
+export const getActiveExperimentsResponseExperimentsItemTrafficPercentageMin = 0;
+export const getActiveExperimentsResponseExperimentsItemTrafficPercentageMax = 100;
+
+export const getActiveExperimentsResponseExperimentsItemHoldbackPercentageDefault = 0;
+export const getActiveExperimentsResponseExperimentsItemHoldbackPercentageMin = 0;
+export const getActiveExperimentsResponseExperimentsItemHoldbackPercentageMax = 100;
+
+export const getActiveExperimentsResponseExperimentsItemConversionPathsItemValueMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemConversionPathsItemLabelMax = 120;
+
+export const getActiveExperimentsResponseExperimentsItemConversionPathsMax = 20;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemWeightMin = 0;
+export const getActiveExperimentsResponseExperimentsItemVariantsItemWeightMax = 100;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const GetActiveExperimentsResponse = zod.object({
+  experiments: zod.array(
+    zod.object({
+      key: zod.string(),
+      pageKey: zod.string(),
+      trafficPercentage: zod
+        .number()
+        .min(getActiveExperimentsResponseExperimentsItemTrafficPercentageMin)
+        .max(getActiveExperimentsResponseExperimentsItemTrafficPercentageMax),
+      holdbackPercentage: zod
+        .number()
+        .min(getActiveExperimentsResponseExperimentsItemHoldbackPercentageMin)
+        .max(getActiveExperimentsResponseExperimentsItemHoldbackPercentageMax)
+        .default(
+          getActiveExperimentsResponseExperimentsItemHoldbackPercentageDefault,
+        ),
+      conversionPaths: zod
+        .array(
+          zod.object({
+            kind: zod.enum(["cta", "booking", "path"]),
+            value: zod
+              .string()
+              .min(1)
+              .max(
+                getActiveExperimentsResponseExperimentsItemConversionPathsItemValueMax,
+              ),
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                getActiveExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
+              ),
+          }),
+        )
+        .max(getActiveExperimentsResponseExperimentsItemConversionPathsMax),
+      variants: zod
+        .array(
+          zod.object({
+            key: zod.string(),
+            name: zod.string(),
+            isControl: zod.boolean(),
+            weight: zod
+              .number()
+              .min(
+                getActiveExperimentsResponseExperimentsItemVariantsItemWeightMin,
+              )
+              .max(
+                getActiveExperimentsResponseExperimentsItemVariantsItemWeightMax,
+              ),
+            overrides: zod
+              .object({
+                "home.hero.positioning.visible": zod.boolean().optional(),
+                "home.hero.positioning.text": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningTextMax,
+                  )
+                  .optional(),
+                "home.hero.positioning.accentWord": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+                  )
+                  .optional(),
+                "home.hero.tagline.text": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroTaglineTextMax,
+                  )
+                  .optional(),
+                "home.hero.narrative.text": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroNarrativeTextMax,
+                  )
+                  .optional(),
+                "home.hero.cta.visible": zod.boolean().optional(),
+                "home.hero.cta.label": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaLabelMax,
+                  )
+                  .optional(),
+                "home.hero.cta.href": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaHrefMax,
+                  )
+                  .optional(),
+                "home.partners.visible": zod.boolean().optional(),
+                "home.partners.heading": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersHeadingMax,
+                  )
+                  .optional(),
+                "home.partners.subtext": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersSubtextMax,
+                  )
+                  .optional(),
+                "home.partners.items": zod
+                  .array(
+                    zod.object({
+                      src: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                        ),
+                      alt: zod
+                        .string()
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltMax,
+                        )
+                        .default(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                        ),
+                      href: zod
+                        .string()
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                        )
+                        .nullish(),
+                    }),
+                  )
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsMax,
+                  )
+                  .optional(),
+                "home.booking.visible": zod.boolean().optional(),
+                "home.booking.heading": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingHeadingMax,
+                  )
+                  .optional(),
+                "home.booking.links": zod
+                  .array(
+                    zod.object({
+                      label: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                        ),
+                      href: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                        ),
+                      eventId: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                        ),
+                    }),
+                  )
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksMax,
+                  )
+                  .optional(),
+                "header.cta.visible": zod.boolean().optional(),
+                "header.cta.label": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaLabelMax,
+                  )
+                  .optional(),
+                "header.cta.href": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaHrefMax,
+                  )
+                  .optional(),
+                "services.hero.eyebrow": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroEyebrowMax,
+                  )
+                  .optional(),
+                "services.hero.headline": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroHeadlineMax,
+                  )
+                  .optional(),
+                "services.hero.body": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroBodyMax,
+                  )
+                  .optional(),
+                "applications.hero.eyebrow": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroEyebrowMax,
+                  )
+                  .optional(),
+                "applications.hero.headline": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroHeadlineMax,
+                  )
+                  .optional(),
+                "applications.hero.body": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroBodyMax,
+                  )
+                  .optional(),
+                "case-studies.hero.eyebrow": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+                  )
+                  .optional(),
+                "case-studies.hero.headline": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+                  )
+                  .optional(),
+                "case-studies.hero.body": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax,
+                  )
+                  .optional(),
+              })
+              .describe(
+                "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+              ),
+          }),
+        )
+        .min(1),
+    }),
+  ),
+  generatedAt: zod.string(),
+});
+
+/**
+ * @summary Persist a visitor's experiment assignment (idempotent)
+ */
+export const postExperimentAssignmentBodyExperimentKeyMax = 80;
+
+export const postExperimentAssignmentBodyVariantKeyMax = 40;
+
+export const postExperimentAssignmentBodyVisitorIdMax = 64;
+
+export const PostExperimentAssignmentBody = zod.object({
+  experimentKey: zod
+    .string()
+    .min(1)
+    .max(postExperimentAssignmentBodyExperimentKeyMax),
+  variantKey: zod
+    .string()
+    .min(1)
+    .max(postExperimentAssignmentBodyVariantKeyMax),
+  visitorId: zod.string().min(1).max(postExperimentAssignmentBodyVisitorIdMax),
+  forcedBy: zod
+    .union([
+      zod.literal("url"),
+      zod.literal("admin_preview"),
+      zod.literal(null),
+    ])
+    .nullish(),
+});
+
+export const PostExperimentAssignmentResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List experiments (admin)
+ */
+export const listAdminExperimentsResponseExperimentsItemTrafficPercentageMin = 0;
+export const listAdminExperimentsResponseExperimentsItemTrafficPercentageMax = 100;
+
+export const listAdminExperimentsResponseExperimentsItemHoldbackPercentageDefault = 0;
+export const listAdminExperimentsResponseExperimentsItemHoldbackPercentageMin = 0;
+export const listAdminExperimentsResponseExperimentsItemHoldbackPercentageMax = 100;
+
+export const listAdminExperimentsResponseExperimentsItemConversionPathsItemValueMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemConversionPathsItemLabelMax = 120;
+
+export const listAdminExperimentsResponseExperimentsItemConversionPathsMax = 20;
+
+export const listAdminExperimentsResponseExperimentsItemAutoStopAfterDaysMax = 365;
+
+export const listAdminExperimentsResponseExperimentsItemAutoStopOnSignificanceDefault = false;
+export const listAdminExperimentsResponseExperimentsItemMinVisitorsForAutoStopDefault = 1000;
+export const listAdminExperimentsResponseExperimentsItemMinVisitorsForAutoStopMin = 0;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemWeightMin = 0;
+export const listAdminExperimentsResponseExperimentsItemVariantsItemWeightMax = 100;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const ListAdminExperimentsResponse = zod.object({
+  experiments: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      description: zod.string().nullable(),
+      pageKey: zod.string(),
+      status: zod.enum(["draft", "running", "paused", "ended"]),
+      trafficPercentage: zod
+        .number()
+        .min(listAdminExperimentsResponseExperimentsItemTrafficPercentageMin)
+        .max(listAdminExperimentsResponseExperimentsItemTrafficPercentageMax),
+      holdbackPercentage: zod
+        .number()
+        .min(listAdminExperimentsResponseExperimentsItemHoldbackPercentageMin)
+        .max(listAdminExperimentsResponseExperimentsItemHoldbackPercentageMax)
+        .default(
+          listAdminExperimentsResponseExperimentsItemHoldbackPercentageDefault,
+        ),
+      conversionPaths: zod
+        .array(
+          zod.object({
+            kind: zod.enum(["cta", "booking", "path"]),
+            value: zod
+              .string()
+              .min(1)
+              .max(
+                listAdminExperimentsResponseExperimentsItemConversionPathsItemValueMax,
+              ),
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                listAdminExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
+              ),
+          }),
+        )
+        .max(listAdminExperimentsResponseExperimentsItemConversionPathsMax),
+      autoStopAfterDays: zod
+        .number()
+        .min(1)
+        .max(listAdminExperimentsResponseExperimentsItemAutoStopAfterDaysMax)
+        .nullable(),
+      autoStopOnSignificance: zod
+        .boolean()
+        .default(
+          listAdminExperimentsResponseExperimentsItemAutoStopOnSignificanceDefault,
+        ),
+      minVisitorsForAutoStop: zod
+        .number()
+        .min(
+          listAdminExperimentsResponseExperimentsItemMinVisitorsForAutoStopMin,
+        )
+        .default(
+          listAdminExperimentsResponseExperimentsItemMinVisitorsForAutoStopDefault,
+        ),
+      startedAt: zod.string().nullable(),
+      endedAt: zod.string().nullable(),
+      createdBy: zod.string().uuid().nullable(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+      variants: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          experimentId: zod.string().uuid(),
+          key: zod.string(),
+          name: zod.string(),
+          isControl: zod.boolean(),
+          weight: zod
+            .number()
+            .min(
+              listAdminExperimentsResponseExperimentsItemVariantsItemWeightMin,
+            )
+            .max(
+              listAdminExperimentsResponseExperimentsItemVariantsItemWeightMax,
+            ),
+          overrides: zod
+            .object({
+              "home.hero.positioning.visible": zod.boolean().optional(),
+              "home.hero.positioning.text": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningTextMax,
+                )
+                .optional(),
+              "home.hero.positioning.accentWord": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+                )
+                .optional(),
+              "home.hero.tagline.text": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroTaglineTextMax,
+                )
+                .optional(),
+              "home.hero.narrative.text": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroNarrativeTextMax,
+                )
+                .optional(),
+              "home.hero.cta.visible": zod.boolean().optional(),
+              "home.hero.cta.label": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaLabelMax,
+                )
+                .optional(),
+              "home.hero.cta.href": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeHeroCtaHrefMax,
+                )
+                .optional(),
+              "home.partners.visible": zod.boolean().optional(),
+              "home.partners.heading": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersHeadingMax,
+                )
+                .optional(),
+              "home.partners.subtext": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersSubtextMax,
+                )
+                .optional(),
+              "home.partners.items": zod
+                .array(
+                  zod.object({
+                    src: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                      ),
+                    alt: zod
+                      .string()
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltMax,
+                      )
+                      .default(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                      ),
+                    href: zod
+                      .string()
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                      )
+                      .nullish(),
+                  }),
+                )
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomePartnersItemsMax,
+                )
+                .optional(),
+              "home.booking.visible": zod.boolean().optional(),
+              "home.booking.heading": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingHeadingMax,
+                )
+                .optional(),
+              "home.booking.links": zod
+                .array(
+                  zod.object({
+                    label: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                      ),
+                    href: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                      ),
+                    eventId: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                      ),
+                  }),
+                )
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeBookingLinksMax,
+                )
+                .optional(),
+              "header.cta.visible": zod.boolean().optional(),
+              "header.cta.label": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaLabelMax,
+                )
+                .optional(),
+              "header.cta.href": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHeaderCtaHrefMax,
+                )
+                .optional(),
+              "services.hero.eyebrow": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroEyebrowMax,
+                )
+                .optional(),
+              "services.hero.headline": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroHeadlineMax,
+                )
+                .optional(),
+              "services.hero.body": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesServicesHeroBodyMax,
+                )
+                .optional(),
+              "applications.hero.eyebrow": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroEyebrowMax,
+                )
+                .optional(),
+              "applications.hero.headline": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroHeadlineMax,
+                )
+                .optional(),
+              "applications.hero.body": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesApplicationsHeroBodyMax,
+                )
+                .optional(),
+              "case-studies.hero.eyebrow": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+                )
+                .optional(),
+              "case-studies.hero.headline": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+                )
+                .optional(),
+              "case-studies.hero.body": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax,
+                )
+                .optional(),
+            })
+            .describe(
+              "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+            ),
+          createdAt: zod.string(),
+          updatedAt: zod.string(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a draft experiment
+ */
+export const createAdminExperimentBodyKeyMax = 80;
+
+export const createAdminExperimentBodyKeyRegExp = new RegExp(
+  "^[a-z0-9][a-z0-9_-]\*$",
+);
+export const createAdminExperimentBodyNameMax = 200;
+
+export const createAdminExperimentBodyDescriptionMax = 2000;
+
+export const createAdminExperimentBodyPageKeyMax = 80;
+
+export const createAdminExperimentBodyTrafficPercentageDefault = 100;
+export const createAdminExperimentBodyTrafficPercentageMin = 0;
+export const createAdminExperimentBodyTrafficPercentageMax = 100;
+
+export const createAdminExperimentBodyHoldbackPercentageDefault = 0;
+export const createAdminExperimentBodyHoldbackPercentageMin = 0;
+export const createAdminExperimentBodyHoldbackPercentageMax = 100;
+
+export const createAdminExperimentBodyConversionPathsItemValueMax = 200;
+
+export const createAdminExperimentBodyConversionPathsItemLabelMax = 120;
+
+export const createAdminExperimentBodyConversionPathsDefault = [];
+export const createAdminExperimentBodyConversionPathsMax = 20;
+
+export const CreateAdminExperimentBody = zod.object({
+  key: zod
+    .string()
+    .min(1)
+    .max(createAdminExperimentBodyKeyMax)
+    .regex(createAdminExperimentBodyKeyRegExp),
+  name: zod.string().min(1).max(createAdminExperimentBodyNameMax),
+  description: zod
+    .string()
+    .max(createAdminExperimentBodyDescriptionMax)
+    .nullish(),
+  pageKey: zod.string().min(1).max(createAdminExperimentBodyPageKeyMax),
+  trafficPercentage: zod
+    .number()
+    .min(createAdminExperimentBodyTrafficPercentageMin)
+    .max(createAdminExperimentBodyTrafficPercentageMax)
+    .default(createAdminExperimentBodyTrafficPercentageDefault),
+  holdbackPercentage: zod
+    .number()
+    .min(createAdminExperimentBodyHoldbackPercentageMin)
+    .max(createAdminExperimentBodyHoldbackPercentageMax)
+    .default(createAdminExperimentBodyHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(createAdminExperimentBodyConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(createAdminExperimentBodyConversionPathsItemLabelMax),
+      }),
+    )
+    .max(createAdminExperimentBodyConversionPathsMax)
+    .default(createAdminExperimentBodyConversionPathsDefault),
+});
+
+export const GetAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const getAdminExperimentResponseTrafficPercentageMin = 0;
+export const getAdminExperimentResponseTrafficPercentageMax = 100;
+
+export const getAdminExperimentResponseHoldbackPercentageDefault = 0;
+export const getAdminExperimentResponseHoldbackPercentageMin = 0;
+export const getAdminExperimentResponseHoldbackPercentageMax = 100;
+
+export const getAdminExperimentResponseConversionPathsItemValueMax = 200;
+
+export const getAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const getAdminExperimentResponseConversionPathsMax = 20;
+
+export const getAdminExperimentResponseAutoStopAfterDaysMax = 365;
+
+export const getAdminExperimentResponseAutoStopOnSignificanceDefault = false;
+export const getAdminExperimentResponseMinVisitorsForAutoStopDefault = 1000;
+export const getAdminExperimentResponseMinVisitorsForAutoStopMin = 0;
+
+export const getAdminExperimentResponseVariantsItemWeightMin = 0;
+export const getAdminExperimentResponseVariantsItemWeightMax = 100;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const getAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const getAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const GetAdminExperimentResponse = zod.object({
+  id: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  pageKey: zod.string(),
+  status: zod.enum(["draft", "running", "paused", "ended"]),
+  trafficPercentage: zod
+    .number()
+    .min(getAdminExperimentResponseTrafficPercentageMin)
+    .max(getAdminExperimentResponseTrafficPercentageMax),
+  holdbackPercentage: zod
+    .number()
+    .min(getAdminExperimentResponseHoldbackPercentageMin)
+    .max(getAdminExperimentResponseHoldbackPercentageMax)
+    .default(getAdminExperimentResponseHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(getAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(getAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(getAdminExperimentResponseConversionPathsMax),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(getAdminExperimentResponseAutoStopAfterDaysMax)
+    .nullable(),
+  autoStopOnSignificance: zod
+    .boolean()
+    .default(getAdminExperimentResponseAutoStopOnSignificanceDefault),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(getAdminExperimentResponseMinVisitorsForAutoStopMin)
+    .default(getAdminExperimentResponseMinVisitorsForAutoStopDefault),
+  startedAt: zod.string().nullable(),
+  endedAt: zod.string().nullable(),
+  createdBy: zod.string().uuid().nullable(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  variants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      experimentId: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      weight: zod
+        .number()
+        .min(getAdminExperimentResponseVariantsItemWeightMin)
+        .max(getAdminExperimentResponseVariantsItemWeightMax),
+      overrides: zod
+        .object({
+          "home.hero.positioning.visible": zod.boolean().optional(),
+          "home.hero.positioning.text": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax,
+            )
+            .optional(),
+          "home.hero.positioning.accentWord": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+            )
+            .optional(),
+          "home.hero.tagline.text": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax,
+            )
+            .optional(),
+          "home.hero.narrative.text": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax,
+            )
+            .optional(),
+          "home.hero.cta.visible": zod.boolean().optional(),
+          "home.hero.cta.label": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax,
+            )
+            .optional(),
+          "home.hero.cta.href": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax,
+            )
+            .optional(),
+          "home.partners.visible": zod.boolean().optional(),
+          "home.partners.heading": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax,
+            )
+            .optional(),
+          "home.partners.subtext": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax,
+            )
+            .optional(),
+          "home.partners.items": zod
+            .array(
+              zod.object({
+                src: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                  ),
+                alt: zod
+                  .string()
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax,
+                  )
+                  .default(
+                    getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                  ),
+                href: zod
+                  .string()
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                  )
+                  .nullish(),
+              }),
+            )
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax,
+            )
+            .optional(),
+          "home.booking.visible": zod.boolean().optional(),
+          "home.booking.heading": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax,
+            )
+            .optional(),
+          "home.booking.links": zod
+            .array(
+              zod.object({
+                label: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                  ),
+                href: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                  ),
+                eventId: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                  ),
+              }),
+            )
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax,
+            )
+            .optional(),
+          "header.cta.visible": zod.boolean().optional(),
+          "header.cta.label": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax,
+            )
+            .optional(),
+          "header.cta.href": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax,
+            )
+            .optional(),
+          "services.hero.eyebrow": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax,
+            )
+            .optional(),
+          "services.hero.headline": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax,
+            )
+            .optional(),
+          "services.hero.body": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax,
+            )
+            .optional(),
+          "applications.hero.eyebrow": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax,
+            )
+            .optional(),
+          "applications.hero.headline": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax,
+            )
+            .optional(),
+          "applications.hero.body": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax,
+            )
+            .optional(),
+          "case-studies.hero.eyebrow": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+            )
+            .optional(),
+          "case-studies.hero.headline": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+            )
+            .optional(),
+          "case-studies.hero.body": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
+            )
+            .optional(),
+        })
+        .describe(
+          "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+        ),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const UpdateAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const updateAdminExperimentBodyNameMax = 200;
+
+export const updateAdminExperimentBodyDescriptionMax = 2000;
+
+export const updateAdminExperimentBodyTrafficPercentageMin = 0;
+export const updateAdminExperimentBodyTrafficPercentageMax = 100;
+
+export const updateAdminExperimentBodyHoldbackPercentageMin = 0;
+export const updateAdminExperimentBodyHoldbackPercentageMax = 100;
+
+export const updateAdminExperimentBodyConversionPathsItemValueMax = 200;
+
+export const updateAdminExperimentBodyConversionPathsItemLabelMax = 120;
+
+export const updateAdminExperimentBodyConversionPathsMax = 20;
+
+export const updateAdminExperimentBodyAutoStopAfterDaysMax = 365;
+
+export const updateAdminExperimentBodyMinVisitorsForAutoStopMin = 0;
+
+export const UpdateAdminExperimentBody = zod.object({
+  name: zod.string().min(1).max(updateAdminExperimentBodyNameMax).optional(),
+  description: zod
+    .string()
+    .max(updateAdminExperimentBodyDescriptionMax)
+    .nullish(),
+  trafficPercentage: zod
+    .number()
+    .min(updateAdminExperimentBodyTrafficPercentageMin)
+    .max(updateAdminExperimentBodyTrafficPercentageMax)
+    .optional(),
+  holdbackPercentage: zod
+    .number()
+    .min(updateAdminExperimentBodyHoldbackPercentageMin)
+    .max(updateAdminExperimentBodyHoldbackPercentageMax)
+    .optional(),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentBodyConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentBodyConversionPathsItemLabelMax),
+      }),
+    )
+    .max(updateAdminExperimentBodyConversionPathsMax)
+    .optional(),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(updateAdminExperimentBodyAutoStopAfterDaysMax)
+    .nullish(),
+  autoStopOnSignificance: zod.boolean().optional(),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(updateAdminExperimentBodyMinVisitorsForAutoStopMin)
+    .optional(),
+});
+
+export const updateAdminExperimentResponseTrafficPercentageMin = 0;
+export const updateAdminExperimentResponseTrafficPercentageMax = 100;
+
+export const updateAdminExperimentResponseHoldbackPercentageDefault = 0;
+export const updateAdminExperimentResponseHoldbackPercentageMin = 0;
+export const updateAdminExperimentResponseHoldbackPercentageMax = 100;
+
+export const updateAdminExperimentResponseConversionPathsItemValueMax = 200;
+
+export const updateAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const updateAdminExperimentResponseConversionPathsMax = 20;
+
+export const updateAdminExperimentResponseAutoStopAfterDaysMax = 365;
+
+export const updateAdminExperimentResponseAutoStopOnSignificanceDefault = false;
+export const updateAdminExperimentResponseMinVisitorsForAutoStopDefault = 1000;
+export const updateAdminExperimentResponseMinVisitorsForAutoStopMin = 0;
+
+export const updateAdminExperimentResponseVariantsItemWeightMin = 0;
+export const updateAdminExperimentResponseVariantsItemWeightMax = 100;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const UpdateAdminExperimentResponse = zod.object({
+  id: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  pageKey: zod.string(),
+  status: zod.enum(["draft", "running", "paused", "ended"]),
+  trafficPercentage: zod
+    .number()
+    .min(updateAdminExperimentResponseTrafficPercentageMin)
+    .max(updateAdminExperimentResponseTrafficPercentageMax),
+  holdbackPercentage: zod
+    .number()
+    .min(updateAdminExperimentResponseHoldbackPercentageMin)
+    .max(updateAdminExperimentResponseHoldbackPercentageMax)
+    .default(updateAdminExperimentResponseHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(updateAdminExperimentResponseConversionPathsMax),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(updateAdminExperimentResponseAutoStopAfterDaysMax)
+    .nullable(),
+  autoStopOnSignificance: zod
+    .boolean()
+    .default(updateAdminExperimentResponseAutoStopOnSignificanceDefault),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(updateAdminExperimentResponseMinVisitorsForAutoStopMin)
+    .default(updateAdminExperimentResponseMinVisitorsForAutoStopDefault),
+  startedAt: zod.string().nullable(),
+  endedAt: zod.string().nullable(),
+  createdBy: zod.string().uuid().nullable(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  variants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      experimentId: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      weight: zod
+        .number()
+        .min(updateAdminExperimentResponseVariantsItemWeightMin)
+        .max(updateAdminExperimentResponseVariantsItemWeightMax),
+      overrides: zod
+        .object({
+          "home.hero.positioning.visible": zod.boolean().optional(),
+          "home.hero.positioning.text": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax,
+            )
+            .optional(),
+          "home.hero.positioning.accentWord": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+            )
+            .optional(),
+          "home.hero.tagline.text": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax,
+            )
+            .optional(),
+          "home.hero.narrative.text": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax,
+            )
+            .optional(),
+          "home.hero.cta.visible": zod.boolean().optional(),
+          "home.hero.cta.label": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax,
+            )
+            .optional(),
+          "home.hero.cta.href": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax,
+            )
+            .optional(),
+          "home.partners.visible": zod.boolean().optional(),
+          "home.partners.heading": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax,
+            )
+            .optional(),
+          "home.partners.subtext": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax,
+            )
+            .optional(),
+          "home.partners.items": zod
+            .array(
+              zod.object({
+                src: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                  ),
+                alt: zod
+                  .string()
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax,
+                  )
+                  .default(
+                    updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                  ),
+                href: zod
+                  .string()
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                  )
+                  .nullish(),
+              }),
+            )
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax,
+            )
+            .optional(),
+          "home.booking.visible": zod.boolean().optional(),
+          "home.booking.heading": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax,
+            )
+            .optional(),
+          "home.booking.links": zod
+            .array(
+              zod.object({
+                label: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                  ),
+                href: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                  ),
+                eventId: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                  ),
+              }),
+            )
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax,
+            )
+            .optional(),
+          "header.cta.visible": zod.boolean().optional(),
+          "header.cta.label": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax,
+            )
+            .optional(),
+          "header.cta.href": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax,
+            )
+            .optional(),
+          "services.hero.eyebrow": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax,
+            )
+            .optional(),
+          "services.hero.headline": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax,
+            )
+            .optional(),
+          "services.hero.body": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax,
+            )
+            .optional(),
+          "applications.hero.eyebrow": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax,
+            )
+            .optional(),
+          "applications.hero.headline": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax,
+            )
+            .optional(),
+          "applications.hero.body": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax,
+            )
+            .optional(),
+          "case-studies.hero.eyebrow": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+            )
+            .optional(),
+          "case-studies.hero.headline": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+            )
+            .optional(),
+          "case-studies.hero.body": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
+            )
+            .optional(),
+        })
+        .describe(
+          "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+        ),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const DeleteAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const StartAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const startAdminExperimentResponseTrafficPercentageMin = 0;
+export const startAdminExperimentResponseTrafficPercentageMax = 100;
+
+export const startAdminExperimentResponseHoldbackPercentageDefault = 0;
+export const startAdminExperimentResponseHoldbackPercentageMin = 0;
+export const startAdminExperimentResponseHoldbackPercentageMax = 100;
+
+export const startAdminExperimentResponseConversionPathsItemValueMax = 200;
+
+export const startAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const startAdminExperimentResponseConversionPathsMax = 20;
+
+export const startAdminExperimentResponseAutoStopAfterDaysMax = 365;
+
+export const startAdminExperimentResponseAutoStopOnSignificanceDefault = false;
+export const startAdminExperimentResponseMinVisitorsForAutoStopDefault = 1000;
+export const startAdminExperimentResponseMinVisitorsForAutoStopMin = 0;
+
+export const startAdminExperimentResponseVariantsItemWeightMin = 0;
+export const startAdminExperimentResponseVariantsItemWeightMax = 100;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const startAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const startAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const StartAdminExperimentResponse = zod.object({
+  id: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  pageKey: zod.string(),
+  status: zod.enum(["draft", "running", "paused", "ended"]),
+  trafficPercentage: zod
+    .number()
+    .min(startAdminExperimentResponseTrafficPercentageMin)
+    .max(startAdminExperimentResponseTrafficPercentageMax),
+  holdbackPercentage: zod
+    .number()
+    .min(startAdminExperimentResponseHoldbackPercentageMin)
+    .max(startAdminExperimentResponseHoldbackPercentageMax)
+    .default(startAdminExperimentResponseHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(startAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(startAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(startAdminExperimentResponseConversionPathsMax),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(startAdminExperimentResponseAutoStopAfterDaysMax)
+    .nullable(),
+  autoStopOnSignificance: zod
+    .boolean()
+    .default(startAdminExperimentResponseAutoStopOnSignificanceDefault),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(startAdminExperimentResponseMinVisitorsForAutoStopMin)
+    .default(startAdminExperimentResponseMinVisitorsForAutoStopDefault),
+  startedAt: zod.string().nullable(),
+  endedAt: zod.string().nullable(),
+  createdBy: zod.string().uuid().nullable(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  variants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      experimentId: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      weight: zod
+        .number()
+        .min(startAdminExperimentResponseVariantsItemWeightMin)
+        .max(startAdminExperimentResponseVariantsItemWeightMax),
+      overrides: zod
+        .object({
+          "home.hero.positioning.visible": zod.boolean().optional(),
+          "home.hero.positioning.text": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax,
+            )
+            .optional(),
+          "home.hero.positioning.accentWord": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+            )
+            .optional(),
+          "home.hero.tagline.text": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax,
+            )
+            .optional(),
+          "home.hero.narrative.text": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax,
+            )
+            .optional(),
+          "home.hero.cta.visible": zod.boolean().optional(),
+          "home.hero.cta.label": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax,
+            )
+            .optional(),
+          "home.hero.cta.href": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax,
+            )
+            .optional(),
+          "home.partners.visible": zod.boolean().optional(),
+          "home.partners.heading": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax,
+            )
+            .optional(),
+          "home.partners.subtext": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax,
+            )
+            .optional(),
+          "home.partners.items": zod
+            .array(
+              zod.object({
+                src: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                  ),
+                alt: zod
+                  .string()
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax,
+                  )
+                  .default(
+                    startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                  ),
+                href: zod
+                  .string()
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                  )
+                  .nullish(),
+              }),
+            )
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax,
+            )
+            .optional(),
+          "home.booking.visible": zod.boolean().optional(),
+          "home.booking.heading": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax,
+            )
+            .optional(),
+          "home.booking.links": zod
+            .array(
+              zod.object({
+                label: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                  ),
+                href: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                  ),
+                eventId: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                  ),
+              }),
+            )
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax,
+            )
+            .optional(),
+          "header.cta.visible": zod.boolean().optional(),
+          "header.cta.label": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax,
+            )
+            .optional(),
+          "header.cta.href": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax,
+            )
+            .optional(),
+          "services.hero.eyebrow": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax,
+            )
+            .optional(),
+          "services.hero.headline": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax,
+            )
+            .optional(),
+          "services.hero.body": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax,
+            )
+            .optional(),
+          "applications.hero.eyebrow": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax,
+            )
+            .optional(),
+          "applications.hero.headline": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax,
+            )
+            .optional(),
+          "applications.hero.body": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax,
+            )
+            .optional(),
+          "case-studies.hero.eyebrow": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+            )
+            .optional(),
+          "case-studies.hero.headline": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+            )
+            .optional(),
+          "case-studies.hero.body": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
+            )
+            .optional(),
+        })
+        .describe(
+          "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+        ),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const PauseAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const pauseAdminExperimentResponseTrafficPercentageMin = 0;
+export const pauseAdminExperimentResponseTrafficPercentageMax = 100;
+
+export const pauseAdminExperimentResponseHoldbackPercentageDefault = 0;
+export const pauseAdminExperimentResponseHoldbackPercentageMin = 0;
+export const pauseAdminExperimentResponseHoldbackPercentageMax = 100;
+
+export const pauseAdminExperimentResponseConversionPathsItemValueMax = 200;
+
+export const pauseAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const pauseAdminExperimentResponseConversionPathsMax = 20;
+
+export const pauseAdminExperimentResponseAutoStopAfterDaysMax = 365;
+
+export const pauseAdminExperimentResponseAutoStopOnSignificanceDefault = false;
+export const pauseAdminExperimentResponseMinVisitorsForAutoStopDefault = 1000;
+export const pauseAdminExperimentResponseMinVisitorsForAutoStopMin = 0;
+
+export const pauseAdminExperimentResponseVariantsItemWeightMin = 0;
+export const pauseAdminExperimentResponseVariantsItemWeightMax = 100;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const PauseAdminExperimentResponse = zod.object({
+  id: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  pageKey: zod.string(),
+  status: zod.enum(["draft", "running", "paused", "ended"]),
+  trafficPercentage: zod
+    .number()
+    .min(pauseAdminExperimentResponseTrafficPercentageMin)
+    .max(pauseAdminExperimentResponseTrafficPercentageMax),
+  holdbackPercentage: zod
+    .number()
+    .min(pauseAdminExperimentResponseHoldbackPercentageMin)
+    .max(pauseAdminExperimentResponseHoldbackPercentageMax)
+    .default(pauseAdminExperimentResponseHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(pauseAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(pauseAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(pauseAdminExperimentResponseConversionPathsMax),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(pauseAdminExperimentResponseAutoStopAfterDaysMax)
+    .nullable(),
+  autoStopOnSignificance: zod
+    .boolean()
+    .default(pauseAdminExperimentResponseAutoStopOnSignificanceDefault),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(pauseAdminExperimentResponseMinVisitorsForAutoStopMin)
+    .default(pauseAdminExperimentResponseMinVisitorsForAutoStopDefault),
+  startedAt: zod.string().nullable(),
+  endedAt: zod.string().nullable(),
+  createdBy: zod.string().uuid().nullable(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  variants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      experimentId: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      weight: zod
+        .number()
+        .min(pauseAdminExperimentResponseVariantsItemWeightMin)
+        .max(pauseAdminExperimentResponseVariantsItemWeightMax),
+      overrides: zod
+        .object({
+          "home.hero.positioning.visible": zod.boolean().optional(),
+          "home.hero.positioning.text": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax,
+            )
+            .optional(),
+          "home.hero.positioning.accentWord": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+            )
+            .optional(),
+          "home.hero.tagline.text": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax,
+            )
+            .optional(),
+          "home.hero.narrative.text": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax,
+            )
+            .optional(),
+          "home.hero.cta.visible": zod.boolean().optional(),
+          "home.hero.cta.label": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax,
+            )
+            .optional(),
+          "home.hero.cta.href": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax,
+            )
+            .optional(),
+          "home.partners.visible": zod.boolean().optional(),
+          "home.partners.heading": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax,
+            )
+            .optional(),
+          "home.partners.subtext": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax,
+            )
+            .optional(),
+          "home.partners.items": zod
+            .array(
+              zod.object({
+                src: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                  ),
+                alt: zod
+                  .string()
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax,
+                  )
+                  .default(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                  ),
+                href: zod
+                  .string()
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                  )
+                  .nullish(),
+              }),
+            )
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax,
+            )
+            .optional(),
+          "home.booking.visible": zod.boolean().optional(),
+          "home.booking.heading": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax,
+            )
+            .optional(),
+          "home.booking.links": zod
+            .array(
+              zod.object({
+                label: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                  ),
+                href: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                  ),
+                eventId: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                  ),
+              }),
+            )
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax,
+            )
+            .optional(),
+          "header.cta.visible": zod.boolean().optional(),
+          "header.cta.label": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax,
+            )
+            .optional(),
+          "header.cta.href": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax,
+            )
+            .optional(),
+          "services.hero.eyebrow": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax,
+            )
+            .optional(),
+          "services.hero.headline": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax,
+            )
+            .optional(),
+          "services.hero.body": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax,
+            )
+            .optional(),
+          "applications.hero.eyebrow": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax,
+            )
+            .optional(),
+          "applications.hero.headline": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax,
+            )
+            .optional(),
+          "applications.hero.body": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax,
+            )
+            .optional(),
+          "case-studies.hero.eyebrow": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+            )
+            .optional(),
+          "case-studies.hero.headline": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+            )
+            .optional(),
+          "case-studies.hero.body": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
+            )
+            .optional(),
+        })
+        .describe(
+          "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+        ),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+export const EndAdminExperimentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const endAdminExperimentResponseTrafficPercentageMin = 0;
+export const endAdminExperimentResponseTrafficPercentageMax = 100;
+
+export const endAdminExperimentResponseHoldbackPercentageDefault = 0;
+export const endAdminExperimentResponseHoldbackPercentageMin = 0;
+export const endAdminExperimentResponseHoldbackPercentageMax = 100;
+
+export const endAdminExperimentResponseConversionPathsItemValueMax = 200;
+
+export const endAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const endAdminExperimentResponseConversionPathsMax = 20;
+
+export const endAdminExperimentResponseAutoStopAfterDaysMax = 365;
+
+export const endAdminExperimentResponseAutoStopOnSignificanceDefault = false;
+export const endAdminExperimentResponseMinVisitorsForAutoStopDefault = 1000;
+export const endAdminExperimentResponseMinVisitorsForAutoStopMin = 0;
+
+export const endAdminExperimentResponseVariantsItemWeightMin = 0;
+export const endAdminExperimentResponseVariantsItemWeightMax = 100;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax = 500;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax = 1000;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax = 500;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault = ``;
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax = 50;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax = 10;
+
+export const endAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax = 2000;
+
+export const endAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax = 2000;
+
+export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const EndAdminExperimentResponse = zod.object({
+  id: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  pageKey: zod.string(),
+  status: zod.enum(["draft", "running", "paused", "ended"]),
+  trafficPercentage: zod
+    .number()
+    .min(endAdminExperimentResponseTrafficPercentageMin)
+    .max(endAdminExperimentResponseTrafficPercentageMax),
+  holdbackPercentage: zod
+    .number()
+    .min(endAdminExperimentResponseHoldbackPercentageMin)
+    .max(endAdminExperimentResponseHoldbackPercentageMax)
+    .default(endAdminExperimentResponseHoldbackPercentageDefault),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(endAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(endAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(endAdminExperimentResponseConversionPathsMax),
+  autoStopAfterDays: zod
+    .number()
+    .min(1)
+    .max(endAdminExperimentResponseAutoStopAfterDaysMax)
+    .nullable(),
+  autoStopOnSignificance: zod
+    .boolean()
+    .default(endAdminExperimentResponseAutoStopOnSignificanceDefault),
+  minVisitorsForAutoStop: zod
+    .number()
+    .min(endAdminExperimentResponseMinVisitorsForAutoStopMin)
+    .default(endAdminExperimentResponseMinVisitorsForAutoStopDefault),
+  startedAt: zod.string().nullable(),
+  endedAt: zod.string().nullable(),
+  createdBy: zod.string().uuid().nullable(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  variants: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      experimentId: zod.string().uuid(),
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      weight: zod
+        .number()
+        .min(endAdminExperimentResponseVariantsItemWeightMin)
+        .max(endAdminExperimentResponseVariantsItemWeightMax),
+      overrides: zod
+        .object({
+          "home.hero.positioning.visible": zod.boolean().optional(),
+          "home.hero.positioning.text": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningTextMax,
+            )
+            .optional(),
+          "home.hero.positioning.accentWord": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroPositioningAccentWordMax,
+            )
+            .optional(),
+          "home.hero.tagline.text": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroTaglineTextMax,
+            )
+            .optional(),
+          "home.hero.narrative.text": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroNarrativeTextMax,
+            )
+            .optional(),
+          "home.hero.cta.visible": zod.boolean().optional(),
+          "home.hero.cta.label": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroCtaLabelMax,
+            )
+            .optional(),
+          "home.hero.cta.href": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeHeroCtaHrefMax,
+            )
+            .optional(),
+          "home.partners.visible": zod.boolean().optional(),
+          "home.partners.heading": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomePartnersHeadingMax,
+            )
+            .optional(),
+          "home.partners.subtext": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomePartnersSubtextMax,
+            )
+            .optional(),
+          "home.partners.items": zod
+            .array(
+              zod.object({
+                src: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemSrcMax,
+                  ),
+                alt: zod
+                  .string()
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltMax,
+                  )
+                  .default(
+                    endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemAltDefault,
+                  ),
+                href: zod
+                  .string()
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsItemHrefMax,
+                  )
+                  .nullish(),
+              }),
+            )
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomePartnersItemsMax,
+            )
+            .optional(),
+          "home.booking.visible": zod.boolean().optional(),
+          "home.booking.heading": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeBookingHeadingMax,
+            )
+            .optional(),
+          "home.booking.links": zod
+            .array(
+              zod.object({
+                label: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemLabelMax,
+                  ),
+                href: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemHrefMax,
+                  ),
+                eventId: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksItemEventIdMax,
+                  ),
+              }),
+            )
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeBookingLinksMax,
+            )
+            .optional(),
+          "header.cta.visible": zod.boolean().optional(),
+          "header.cta.label": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHeaderCtaLabelMax,
+            )
+            .optional(),
+          "header.cta.href": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHeaderCtaHrefMax,
+            )
+            .optional(),
+          "services.hero.eyebrow": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesServicesHeroEyebrowMax,
+            )
+            .optional(),
+          "services.hero.headline": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesServicesHeroHeadlineMax,
+            )
+            .optional(),
+          "services.hero.body": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesServicesHeroBodyMax,
+            )
+            .optional(),
+          "applications.hero.eyebrow": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesApplicationsHeroEyebrowMax,
+            )
+            .optional(),
+          "applications.hero.headline": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesApplicationsHeroHeadlineMax,
+            )
+            .optional(),
+          "applications.hero.body": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesApplicationsHeroBodyMax,
+            )
+            .optional(),
+          "case-studies.hero.eyebrow": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebrowMax,
+            )
+            .optional(),
+          "case-studies.hero.headline": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax,
+            )
+            .optional(),
+          "case-studies.hero.body": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
+            )
+            .optional(),
+        })
+        .describe(
+          "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+        ),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Per-variant visitor + conversion counts and z-test
+ */
+export const GetAdminExperimentResultsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const getAdminExperimentResultsResponseVariantsItemVisitorsMin = 0;
+
+export const getAdminExperimentResultsResponseVariantsItemConversionsItemCountMin = 0;
+
+export const getAdminExperimentResultsResponseVariantsItemConversionsItemRateMin = 0;
+export const getAdminExperimentResultsResponseVariantsItemConversionsItemRateMax = 1;
+
+export const getAdminExperimentResultsResponseVariantsItemOverallCountMin = 0;
+
+export const getAdminExperimentResultsResponseVariantsItemOverallRateMin = 0;
+export const getAdminExperimentResultsResponseVariantsItemOverallRateMax = 1;
+
+export const GetAdminExperimentResultsResponse = zod.object({
+  experimentId: zod.string().uuid(),
+  variants: zod.array(
+    zod.object({
+      key: zod.string(),
+      name: zod.string(),
+      isControl: zod.boolean(),
+      visitors: zod
+        .number()
+        .min(getAdminExperimentResultsResponseVariantsItemVisitorsMin),
+      conversions: zod.array(
+        zod.object({
+          label: zod.string(),
+          kind: zod.enum(["cta", "booking", "path"]),
+          value: zod.string(),
+          count: zod
+            .number()
+            .min(
+              getAdminExperimentResultsResponseVariantsItemConversionsItemCountMin,
+            ),
+          rate: zod
+            .number()
+            .min(
+              getAdminExperimentResultsResponseVariantsItemConversionsItemRateMin,
+            )
+            .max(
+              getAdminExperimentResultsResponseVariantsItemConversionsItemRateMax,
+            ),
+        }),
+      ),
+      overall: zod.object({
+        count: zod
+          .number()
+          .min(getAdminExperimentResultsResponseVariantsItemOverallCountMin),
+        rate: zod
+          .number()
+          .min(getAdminExperimentResultsResponseVariantsItemOverallRateMin)
+          .max(getAdminExperimentResultsResponseVariantsItemOverallRateMax),
+      }),
+      significance: zod
+        .object({
+          vsControl: zod.number(),
+          pValue: zod.number(),
+        })
+        .optional(),
+    }),
+  ),
+});
+
+export const CreateAdminExperimentVariantParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const createAdminExperimentVariantBodyKeyMax = 40;
+
+export const createAdminExperimentVariantBodyKeyRegExp = new RegExp(
+  "^[a-z0-9][a-z0-9_-]\*$",
+);
+export const createAdminExperimentVariantBodyNameMax = 120;
+
+export const createAdminExperimentVariantBodyIsControlDefault = false;
+export const createAdminExperimentVariantBodyWeightMin = 0;
+export const createAdminExperimentVariantBodyWeightMax = 100;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroPositioningTextMax = 500;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroTaglineTextMax = 1000;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroCtaLabelMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHomeHeroCtaHrefMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersHeadingMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersSubtextMax = 500;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltDefault = ``;
+export const createAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesHomePartnersItemsMax = 50;
+
+export const createAdminExperimentVariantBodyOverridesHomeBookingHeadingMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const createAdminExperimentVariantBodyOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHomeBookingLinksMax = 10;
+
+export const createAdminExperimentVariantBodyOverridesHeaderCtaLabelMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHeaderCtaHrefMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesServicesHeroEyebrowMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesServicesHeroHeadlineMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesServicesHeroBodyMax = 2000;
+
+export const createAdminExperimentVariantBodyOverridesApplicationsHeroEyebrowMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesApplicationsHeroHeadlineMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesApplicationsHeroBodyMax = 2000;
+
+export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const CreateAdminExperimentVariantBody = zod.object({
+  key: zod
+    .string()
+    .min(1)
+    .max(createAdminExperimentVariantBodyKeyMax)
+    .regex(createAdminExperimentVariantBodyKeyRegExp),
+  name: zod.string().min(1).max(createAdminExperimentVariantBodyNameMax),
+  isControl: zod
+    .boolean()
+    .default(createAdminExperimentVariantBodyIsControlDefault),
+  weight: zod
+    .number()
+    .min(createAdminExperimentVariantBodyWeightMin)
+    .max(createAdminExperimentVariantBodyWeightMax),
+  overrides: zod
+    .object({
+      "home.hero.positioning.visible": zod.boolean().optional(),
+      "home.hero.positioning.text": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesHomeHeroPositioningTextMax,
+        )
+        .optional(),
+      "home.hero.positioning.accentWord": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesHomeHeroPositioningAccentWordMax,
+        )
+        .optional(),
+      "home.hero.tagline.text": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeHeroTaglineTextMax)
+        .optional(),
+      "home.hero.narrative.text": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeHeroNarrativeTextMax)
+        .optional(),
+      "home.hero.cta.visible": zod.boolean().optional(),
+      "home.hero.cta.label": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeHeroCtaLabelMax)
+        .optional(),
+      "home.hero.cta.href": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeHeroCtaHrefMax)
+        .optional(),
+      "home.partners.visible": zod.boolean().optional(),
+      "home.partners.heading": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomePartnersHeadingMax)
+        .optional(),
+      "home.partners.subtext": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomePartnersSubtextMax)
+        .optional(),
+      "home.partners.items": zod
+        .array(
+          zod.object({
+            src: zod
+              .string()
+              .min(1)
+              .max(
+                createAdminExperimentVariantBodyOverridesHomePartnersItemsItemSrcMax,
+              ),
+            alt: zod
+              .string()
+              .max(
+                createAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltMax,
+              )
+              .default(
+                createAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltDefault,
+              ),
+            href: zod
+              .string()
+              .max(
+                createAdminExperimentVariantBodyOverridesHomePartnersItemsItemHrefMax,
+              )
+              .nullish(),
+          }),
+        )
+        .max(createAdminExperimentVariantBodyOverridesHomePartnersItemsMax)
+        .optional(),
+      "home.booking.visible": zod.boolean().optional(),
+      "home.booking.heading": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeBookingHeadingMax)
+        .optional(),
+      "home.booking.links": zod
+        .array(
+          zod.object({
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                createAdminExperimentVariantBodyOverridesHomeBookingLinksItemLabelMax,
+              ),
+            href: zod
+              .string()
+              .min(1)
+              .max(
+                createAdminExperimentVariantBodyOverridesHomeBookingLinksItemHrefMax,
+              ),
+            eventId: zod
+              .string()
+              .min(1)
+              .max(
+                createAdminExperimentVariantBodyOverridesHomeBookingLinksItemEventIdMax,
+              ),
+          }),
+        )
+        .max(createAdminExperimentVariantBodyOverridesHomeBookingLinksMax)
+        .optional(),
+      "header.cta.visible": zod.boolean().optional(),
+      "header.cta.label": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHeaderCtaLabelMax)
+        .optional(),
+      "header.cta.href": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHeaderCtaHrefMax)
+        .optional(),
+      "services.hero.eyebrow": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesServicesHeroEyebrowMax)
+        .optional(),
+      "services.hero.headline": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesServicesHeroHeadlineMax)
+        .optional(),
+      "services.hero.body": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesServicesHeroBodyMax)
+        .optional(),
+      "applications.hero.eyebrow": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesApplicationsHeroEyebrowMax,
+        )
+        .optional(),
+      "applications.hero.headline": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesApplicationsHeroHeadlineMax,
+        )
+        .optional(),
+      "applications.hero.body": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesApplicationsHeroBodyMax)
+        .optional(),
+      "case-studies.hero.eyebrow": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax)
+        .optional(),
+      "case-studies.hero.headline": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax,
+        )
+        .optional(),
+      "case-studies.hero.body": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax)
+        .optional(),
+    })
+    .optional()
+    .describe(
+      "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+    ),
+});
+
+export const UpdateAdminExperimentVariantParams = zod.object({
+  variantId: zod.coerce.string().uuid(),
+});
+
+export const updateAdminExperimentVariantBodyNameMax = 120;
+
+export const updateAdminExperimentVariantBodyWeightMin = 0;
+export const updateAdminExperimentVariantBodyWeightMax = 100;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroPositioningTextMax = 500;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroTaglineTextMax = 1000;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHomeHeroCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersHeadingMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersSubtextMax = 500;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltDefault = ``;
+export const updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesHomePartnersItemsMax = 50;
+
+export const updateAdminExperimentVariantBodyOverridesHomeBookingHeadingMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHomeBookingLinksMax = 10;
+
+export const updateAdminExperimentVariantBodyOverridesHeaderCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHeaderCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesServicesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesServicesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesServicesHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantBodyOverridesApplicationsHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesApplicationsHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesApplicationsHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const UpdateAdminExperimentVariantBody = zod.object({
+  name: zod
+    .string()
+    .min(1)
+    .max(updateAdminExperimentVariantBodyNameMax)
+    .optional(),
+  isControl: zod.boolean().optional(),
+  weight: zod
+    .number()
+    .min(updateAdminExperimentVariantBodyWeightMin)
+    .max(updateAdminExperimentVariantBodyWeightMax)
+    .optional(),
+  overrides: zod
+    .object({
+      "home.hero.positioning.visible": zod.boolean().optional(),
+      "home.hero.positioning.text": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesHomeHeroPositioningTextMax,
+        )
+        .optional(),
+      "home.hero.positioning.accentWord": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesHomeHeroPositioningAccentWordMax,
+        )
+        .optional(),
+      "home.hero.tagline.text": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeHeroTaglineTextMax)
+        .optional(),
+      "home.hero.narrative.text": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeHeroNarrativeTextMax)
+        .optional(),
+      "home.hero.cta.visible": zod.boolean().optional(),
+      "home.hero.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeHeroCtaLabelMax)
+        .optional(),
+      "home.hero.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeHeroCtaHrefMax)
+        .optional(),
+      "home.partners.visible": zod.boolean().optional(),
+      "home.partners.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomePartnersHeadingMax)
+        .optional(),
+      "home.partners.subtext": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomePartnersSubtextMax)
+        .optional(),
+      "home.partners.items": zod
+        .array(
+          zod.object({
+            src: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemSrcMax,
+              ),
+            alt: zod
+              .string()
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltMax,
+              )
+              .default(
+                updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemAltDefault,
+              ),
+            href: zod
+              .string()
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomePartnersItemsItemHrefMax,
+              )
+              .nullish(),
+          }),
+        )
+        .max(updateAdminExperimentVariantBodyOverridesHomePartnersItemsMax)
+        .optional(),
+      "home.booking.visible": zod.boolean().optional(),
+      "home.booking.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeBookingHeadingMax)
+        .optional(),
+      "home.booking.links": zod
+        .array(
+          zod.object({
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemLabelMax,
+              ),
+            href: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemHrefMax,
+              ),
+            eventId: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantBodyOverridesHomeBookingLinksItemEventIdMax,
+              ),
+          }),
+        )
+        .max(updateAdminExperimentVariantBodyOverridesHomeBookingLinksMax)
+        .optional(),
+      "header.cta.visible": zod.boolean().optional(),
+      "header.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHeaderCtaLabelMax)
+        .optional(),
+      "header.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHeaderCtaHrefMax)
+        .optional(),
+      "services.hero.eyebrow": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesServicesHeroEyebrowMax)
+        .optional(),
+      "services.hero.headline": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesServicesHeroHeadlineMax)
+        .optional(),
+      "services.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesServicesHeroBodyMax)
+        .optional(),
+      "applications.hero.eyebrow": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesApplicationsHeroEyebrowMax,
+        )
+        .optional(),
+      "applications.hero.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesApplicationsHeroHeadlineMax,
+        )
+        .optional(),
+      "applications.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesApplicationsHeroBodyMax)
+        .optional(),
+      "case-studies.hero.eyebrow": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax)
+        .optional(),
+      "case-studies.hero.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax,
+        )
+        .optional(),
+      "case-studies.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax)
+        .optional(),
+    })
+    .optional()
+    .describe(
+      "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+    ),
+});
+
+export const updateAdminExperimentVariantResponseWeightMin = 0;
+export const updateAdminExperimentVariantResponseWeightMax = 100;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroPositioningTextMax = 500;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroPositioningAccentWordMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroTaglineTextMax = 1000;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroNarrativeTextMax = 4000;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHomeHeroCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersHeadingMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersSubtextMax = 500;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemSrcMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemAltDefault = ``;
+export const updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemAltMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemHrefMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesHomePartnersItemsMax = 50;
+
+export const updateAdminExperimentVariantResponseOverridesHomeBookingHeadingMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemLabelMax = 120;
+
+export const updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemHrefMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemEventIdMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHomeBookingLinksMax = 10;
+
+export const updateAdminExperimentVariantResponseOverridesHeaderCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHeaderCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesServicesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesServicesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesServicesHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantResponseOverridesApplicationsHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesApplicationsHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesApplicationsHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const UpdateAdminExperimentVariantResponse = zod.object({
+  id: zod.string().uuid(),
+  experimentId: zod.string().uuid(),
+  key: zod.string(),
+  name: zod.string(),
+  isControl: zod.boolean(),
+  weight: zod
+    .number()
+    .min(updateAdminExperimentVariantResponseWeightMin)
+    .max(updateAdminExperimentVariantResponseWeightMax),
+  overrides: zod
+    .object({
+      "home.hero.positioning.visible": zod.boolean().optional(),
+      "home.hero.positioning.text": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeHeroPositioningTextMax,
+        )
+        .optional(),
+      "home.hero.positioning.accentWord": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeHeroPositioningAccentWordMax,
+        )
+        .optional(),
+      "home.hero.tagline.text": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeHeroTaglineTextMax,
+        )
+        .optional(),
+      "home.hero.narrative.text": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeHeroNarrativeTextMax,
+        )
+        .optional(),
+      "home.hero.cta.visible": zod.boolean().optional(),
+      "home.hero.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHomeHeroCtaLabelMax)
+        .optional(),
+      "home.hero.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHomeHeroCtaHrefMax)
+        .optional(),
+      "home.partners.visible": zod.boolean().optional(),
+      "home.partners.heading": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomePartnersHeadingMax,
+        )
+        .optional(),
+      "home.partners.subtext": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomePartnersSubtextMax,
+        )
+        .optional(),
+      "home.partners.items": zod
+        .array(
+          zod.object({
+            src: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemSrcMax,
+              ),
+            alt: zod
+              .string()
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemAltMax,
+              )
+              .default(
+                updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemAltDefault,
+              ),
+            href: zod
+              .string()
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomePartnersItemsItemHrefMax,
+              )
+              .nullish(),
+          }),
+        )
+        .max(updateAdminExperimentVariantResponseOverridesHomePartnersItemsMax)
+        .optional(),
+      "home.booking.visible": zod.boolean().optional(),
+      "home.booking.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHomeBookingHeadingMax)
+        .optional(),
+      "home.booking.links": zod
+        .array(
+          zod.object({
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemLabelMax,
+              ),
+            href: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemHrefMax,
+              ),
+            eventId: zod
+              .string()
+              .min(1)
+              .max(
+                updateAdminExperimentVariantResponseOverridesHomeBookingLinksItemEventIdMax,
+              ),
+          }),
+        )
+        .max(updateAdminExperimentVariantResponseOverridesHomeBookingLinksMax)
+        .optional(),
+      "header.cta.visible": zod.boolean().optional(),
+      "header.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHeaderCtaLabelMax)
+        .optional(),
+      "header.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHeaderCtaHrefMax)
+        .optional(),
+      "services.hero.eyebrow": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesServicesHeroEyebrowMax,
+        )
+        .optional(),
+      "services.hero.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesServicesHeroHeadlineMax,
+        )
+        .optional(),
+      "services.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesServicesHeroBodyMax)
+        .optional(),
+      "applications.hero.eyebrow": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesApplicationsHeroEyebrowMax,
+        )
+        .optional(),
+      "applications.hero.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesApplicationsHeroHeadlineMax,
+        )
+        .optional(),
+      "applications.hero.body": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesApplicationsHeroBodyMax,
+        )
+        .optional(),
+      "case-studies.hero.eyebrow": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesCaseStudiesHeroEyebrowMax,
+        )
+        .optional(),
+      "case-studies.hero.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesCaseStudiesHeroHeadlineMax,
+        )
+        .optional(),
+      "case-studies.hero.body": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesCaseStudiesHeroBodyMax,
+        )
+        .optional(),
+    })
+    .describe(
+      "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
+    ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+export const DeleteAdminExperimentVariantParams = zod.object({
+  variantId: zod.coerce.string().uuid(),
+});

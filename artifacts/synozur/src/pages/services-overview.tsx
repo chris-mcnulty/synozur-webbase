@@ -8,6 +8,7 @@ import { RichText } from "@/components/rich-text";
 import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
+import { useOverride } from "@/lib/experiments";
 
 const OVERVIEW_HERO_SLUG = "our-services";
 
@@ -63,6 +64,18 @@ function DefaultOverview() {
     queryKey: ["services"],
     queryFn: () => api.listServices(),
   });
+  const heroEyebrow = useOverride<string>(
+    "services.hero.eyebrow",
+    "Our Services",
+  );
+  const heroHeadlineOverride = useOverride<string | null>(
+    "services.hero.headline",
+    null,
+  );
+  const heroBodyOverride = useOverride<string | null>(
+    "services.hero.body",
+    null,
+  );
 
   const heroService = list.data?.items.find((s) => s.slug === OVERVIEW_HERO_SLUG);
   const pillars = (list.data?.items ?? []).filter((s) => s.slug !== OVERVIEW_HERO_SLUG);
@@ -118,12 +131,18 @@ function DefaultOverview() {
           <div className="absolute inset-0 nebula-gradient opacity-25" />
           <div className="container relative z-10 mx-auto px-4 max-w-4xl">
             <p className="text-sm uppercase tracking-widest text-primary mb-4">
-              Our Services
+              {heroEyebrow}
             </p>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8">
-              {heroService?.title ?? "Four pillars. One destination."}
+              {heroHeadlineOverride ??
+                heroService?.title ??
+                "Four pillars. One destination."}
             </h1>
-            {heroService?.heroTextHtml ? (
+            {heroBodyOverride ? (
+              <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
+                {heroBodyOverride}
+              </p>
+            ) : heroService?.heroTextHtml ? (
               <RichText
                 html={heroService.heroTextHtml}
                 invert

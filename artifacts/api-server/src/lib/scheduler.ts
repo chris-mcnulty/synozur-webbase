@@ -4,6 +4,8 @@ import { audit } from "./audit";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
 import { flushPortalDocumentNotifications } from "./portalDocumentNotifications";
 import { reindexEditorialSourceSafe } from "./ai/reindexHook";
+import { runAutoStopSweep } from "./experimentsAutoStop";
+import { invalidateActiveExperimentsCache } from "../routes/experiments";
 import type { Logger } from "pino";
 
 const TICK_INTERVAL_MS = 60_000;
@@ -20,6 +22,10 @@ const SUBSCRIBERS_PENDING_CLEANUP_INITIAL_DELAY_MS = 15 * 60 * 1000;
 const SUBSCRIBERS_PENDING_TTL_DAYS = 30;
 const AUDIT_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const AUDIT_PRUNE_INITIAL_DELAY_MS = 15 * 60 * 1000;
+// Experiment auto-stop sweep runs hourly so a configured duration or
+// significance threshold is honored within an hour of crossing.
+const EXPERIMENT_AUTOSTOP_INTERVAL_MS = 60 * 60 * 1000;
+const EXPERIMENT_AUTOSTOP_INITIAL_DELAY_MS = 5 * 60 * 1000;
 // Auth/oauth/session events are kept for 5 years regardless of the admin's
 // retention setting — these are the rows compliance teams actually need.
 const AUTH_RETENTION_DAYS = 365 * 5;
@@ -222,6 +228,33 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
   const auditPruneInitial = setTimeout(auditPruneTick, AUDIT_PRUNE_INITIAL_DELAY_MS);
   const auditPruneInterval = setInterval(auditPruneTick, AUDIT_PRUNE_INTERVAL_MS);
 
+  let autoStopRunning = false;
+  async function autoStopTick() {
+    if (stopping || autoStopRunning) return;
+    autoStopRunning = true;
+    try {
+      const { stopped } = await runAutoStopSweep({
+        invalidateCache: invalidateActiveExperimentsCache,
+        audit,
+      });
+      if (stopped > 0) {
+        logger.info({ stopped }, "experiment auto-stop sweep ended experiments");
+      }
+    } catch (err) {
+      logger.error({ err }, "experiment auto-stop tick failed");
+    } finally {
+      autoStopRunning = false;
+    }
+  }
+  const autoStopInitial = setTimeout(
+    autoStopTick,
+    EXPERIMENT_AUTOSTOP_INITIAL_DELAY_MS,
+  );
+  const autoStopInterval = setInterval(
+    autoStopTick,
+    EXPERIMENT_AUTOSTOP_INTERVAL_MS,
+  );
+
   return {
     stop() {
       stopping = true;
@@ -235,6 +268,8 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
       clearInterval(pendingCleanupInterval);
       clearTimeout(auditPruneInitial);
       clearInterval(auditPruneInterval);
+      clearTimeout(autoStopInitial);
+      clearInterval(autoStopInterval);
     },
   };
 }

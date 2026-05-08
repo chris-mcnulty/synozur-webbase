@@ -17,10 +17,10 @@
   "private": true,
   "lint-staged": {
     "{artifacts/{synozur,galaxy,mockup-sandbox}/src,lib/{api-client-react,object-storage-web,auth-sdk}/src}/**/*.{ts,tsx,js,jsx}": [
-      "eslint --max-warnings=0"
+      "eslint --max-warnings=0 --no-warn-ignored"
     ],
     "{artifacts/api-server/src,scripts/src,lib/{db,api-zod,integrations-anthropic-ai}/src,tools/*/src}/**/*.{ts,js}": [
-      "eslint"
+      "eslint --no-warn-ignored"
     ]
   },
   "devDependencies": {
