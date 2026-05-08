@@ -1,0 +1,54 @@
+Let me pull the production logs for the debug lines and query the DB for the Galaxy app record simultaneously.
+
+
+2 actions
+The debug code hasn't reached production yet (not redeployed). Let me answer both questions directly from the DB and the code right now.
+
+
+5 actions
+Good — I can now answer both questions definitively. But first let me check one more thing: the exact column names in the production galaxy_app_grants table versus what Drizzle maps them to, in case there's a schema mismatch causing the query to silently return nothing.
+
+
+3 actions
+The grep shows no galaxyAppGrants in shared/schema.ts — it's in shared/galaxy-schema.ts. Let me check the Drizzle column mapping there and where the token endpoint imports galaxyAppGrants from.
+
+
+3 actions
+Found the critical lead: the token endpoint imports galaxyAppGrants from "@shared/schema" (line 18), but the grep just showed galaxyAppGrants is only defined in shared/galaxy-schema.ts. Let me check whether schema.ts re-exports it and what the unique constraint on grants looks like.
+
+
+8 actions
+The ON CONFLICT (app_id, client_user_id) at line 205 is interesting — if the admin already had an existing grant record for this app from a previous auth-code flow, the upsert would update that same row. Let me check what the actual grant row's client_user_id is, and also check upsertGalaxyAppGrant to understand if there could be two competing grant rows.
+
+
+3 actions
+Now I have the full picture. Let me check one more thing — whether a Galaxy app exists with id = 4bf431b6 (in case their env var is pointing at the portal client UUID instead of the app UUID), and simultaneously look at upsertGalaxyAppGrant for context.
+
+
+3 actions
+I have all the data I need. Let me also quickly check what the production-deployed token endpoint actually looks like by checking the git diff between the two deployment checkpoints.
+
+
+2 actions
+The diff confirms the client_credentials grant-check logic was not changed in da218a7a — it was already in production. The admin consent commit only added the three grant management routes. So the logic is correct; the mystery is why it's returning no grants.
+
+The most likely remaining explanation: their CONSTELLATION_GALAXY_CLIENT_ID might be pointing at a different app ID. Let me check whether any other Galaxy apps exist that might intercept the lookup.
+
+
+3 actions
+That's the root cause. There are two Galaxy apps registered:
+
+App	ID	Scoped to client	Active grants
+Galaxy Portal Staging	72b1a4ac-587e-4cbe-8d04-8355a6da460b	(none — open)	0
+Galaxy - Synozur	a9800b22-6ccf-431c-86ac-ed59cb84d5df	4bf431b6 (Synozur Demo)	1
+Here's exactly what's happening:
+
+Your CONSTELLATION_GALAXY_CLIENT_ID is 72b1a4ac (Galaxy Portal Staging), not a9800b22 (Galaxy - Synozur). Because "Galaxy Portal Staging" has no clientId scoping restriction, the scope-mismatch check is skipped entirely — any target_client_id you send is accepted. But that app has zero grants, so the consent check immediately returns no_client_consent.
+
+The grant we created is for Galaxy - Synozur (a9800b22), which is why it never helps: the token request never touches that app.
+
+You have two options:
+
+Option A — Use the correct app (recommended): Change CONSTELLATION_GALAXY_CLIENT_ID to a9800b22-6ccf-431c-86ac-ed59cb84d5df and use its corresponding secret. The grant is already in place — the first token request after that change will succeed.
+
+Option B — Grant consent for the Staging app: Keep using 72b1a4ac but I can create a grant for that app against client 4bf431b6 right now. Choose this if "Galaxy Portal Staging" is intentionally your integration app and you have its secret configured correctly.

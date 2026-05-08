@@ -506,7 +506,7 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
                     id="org-constellation-id"
                     value={constellationClientId}
                     onChange={(e) => setConstellationClientId(e.target.value)}
-                    placeholder="e.g. 4bf431b6-9bf1-46a3-93a4-e86551bcccd7"
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     className="font-mono text-xs"
                   />
                   {constellationClientId.trim() && (
