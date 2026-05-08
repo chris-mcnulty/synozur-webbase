@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AppLink } from "@/components/ui/app-link";
 import { useAuth } from "@/context/auth";
@@ -301,6 +301,8 @@ export function AdminLayout({
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   // Track whether we're at the md breakpoint or above so the drawer's a11y
   // hiding (inert/aria-hidden) only applies on mobile, where the drawer is
   // actually translated off-canvas.
@@ -357,6 +359,18 @@ export function AdminLayout({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mobileMenuOpen]);
 
+  // Close the user menu when clicking outside it.
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [userMenuOpen]);
+
   // When the drawer is closed on mobile, hide it from a11y/keyboard so its
   // links aren't tab-reachable or announced by screen readers.
   const drawerHidden = !isMdUp && !mobileMenuOpen;
@@ -364,38 +378,86 @@ export function AdminLayout({
   const toggleSection = (id: string) =>
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  const userInitial = (access?.signedInEmail ?? "?")[0].toUpperCase();
+
   return (
     <div className={cn("min-h-screen bg-background text-foreground", theme)}>
-      {/* Mobile top bar — only visible below md breakpoint. */}
-      <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md hover-elevate"
-          aria-label="Open admin menu"
-          aria-expanded={mobileMenuOpen}
-          data-testid="button-admin-mobile-menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <AppLink href="/" asChild unstyled className="text-sm" data-testid="link-admin-mobile-home">
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">
-            Synozur
-          </span>{" "}
-          <span className="font-semibold">Admin</span>
-        </AppLink>
-        <div className="flex items-center gap-1">
-          <SynozurAppSwitcher currentApp="synozur" />
+      {/* Full-width top bar — always visible on all screen sizes. */}
+      <header className="sticky top-0 z-30 h-12 flex items-center justify-between border-b border-border bg-background px-3 gap-2">
+        {/* Left: hamburger (mobile) + wayfinder mark + Admin label + view site */}
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate shrink-0"
+            aria-label="Open admin menu"
+            aria-expanded={mobileMenuOpen}
+            data-testid="button-admin-mobile-menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <AppLink href="/" asChild unstyled className="flex items-center gap-2 shrink-0" data-testid="link-admin-top-home">
+            <img
+              src={`${baseUrl || ""}/images/synozur-mark-color.png`}
+              alt="Synozur"
+              className="h-6 w-auto"
+            />
+            <span className="hidden sm:inline text-sm font-semibold">Admin</span>
+          </AppLink>
+          <span className="hidden md:inline text-border/60 select-none mx-1">|</span>
           <a
             href={`${baseUrl || ""}/`}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover-elevate"
-            aria-label="View website"
-            data-testid="link-admin-mobile-view-site"
+            className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="link-view-website"
           >
-            <ExternalLink className="h-5 w-5" />
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+            <span>View site</span>
           </a>
         </div>
-      </div>
+        {/* Right: app switcher + user avatar dropdown */}
+        <div className="flex items-center gap-1 shrink-0">
+          <SynozurAppSwitcher currentApp="synozur" />
+          <div className="relative" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((o) => !o)}
+              aria-expanded={userMenuOpen}
+              aria-haspopup="true"
+              className="flex items-center gap-1 rounded-full pl-0.5 pr-2 py-0.5 text-xs hover:bg-muted transition-colors"
+              data-testid="button-user-menu"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
+                {userInitial}
+              </span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </button>
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-border bg-popover shadow-lg z-50 overflow-hidden">
+                <div className="px-3 py-2.5 text-xs text-muted-foreground truncate border-b border-border bg-muted/40">
+                  {access?.signedInEmail ?? ""}
+                </div>
+                <a
+                  href={`${baseUrl || ""}/`}
+                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors md:hidden"
+                  data-testid="link-view-website-mobile"
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  View site
+                </a>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                  onClick={() => { setUserMenuOpen(false); void signOut(); }}
+                  data-testid="button-sign-out"
+                >
+                  <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
 
       {/* Backdrop for mobile drawer. */}
       {mobileMenuOpen && (
@@ -415,32 +477,27 @@ export function AdminLayout({
             "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
             // Desktop: in-flow sticky sidebar (overrides the mobile classes above).
-            "md:translate-x-0 md:sticky md:top-0 md:left-auto md:bottom-auto md:z-auto md:min-h-screen",
+            "md:translate-x-0 md:sticky md:top-12 md:left-auto md:bottom-auto md:z-auto md:h-[calc(100vh-3rem)]",
           )}
           inert={drawerHidden || undefined}
           aria-hidden={drawerHidden || undefined}
         >
-          <div className="p-5 border-b border-border flex items-start justify-between gap-3">
+          <div className="p-5 border-b border-border flex items-center justify-between gap-3">
             <AppLink href="/" asChild unstyled className="block">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
                 Synozur
               </div>
               <div className="text-lg font-semibold">Admin</div>
             </AppLink>
-            <div className="flex items-center gap-1">
-              <div className="hidden md:block">
-                <SynozurAppSwitcher currentApp="synozur" />
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate"
-                aria-label="Close admin menu"
-                data-testid="button-admin-mobile-close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover-elevate"
+              aria-label="Close admin menu"
+              data-testid="button-admin-mobile-close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
           <nav className="flex-1 py-3 overflow-y-auto" data-testid="admin-sidebar">
             {TOP_LEVEL.map((item) => {
@@ -537,28 +594,6 @@ export function AdminLayout({
               );
             })}
           </nav>
-          <div className="p-4 border-t border-border text-xs text-muted-foreground space-y-1">
-            <a
-              href={`${baseUrl || ""}/`}
-              className="flex items-center gap-2 px-1 py-1.5 rounded hover:text-foreground transition-colors w-full"
-              data-testid="link-view-website"
-            >
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              <span>View website</span>
-            </a>
-            <div className="truncate pt-1 border-t border-border/50 mt-1" title={access?.signedInEmail ?? ""}>
-              {access?.signedInEmail ?? ""}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-1 w-full justify-start px-1"
-              onClick={() => { void signOut(); }}
-              data-testid="button-sign-out"
-            >
-              <LogOut className="h-3.5 w-3.5 mr-2" /> Sign out
-            </Button>
-          </div>
         </aside>
 
         <main className="flex-1 min-w-0">
