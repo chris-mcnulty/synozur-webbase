@@ -74,24 +74,29 @@ export default function AdminAltHome() {
     }
   }, [data, homeBDraft]);
 
-  const updateMutation = useMutation({
-    mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
-    onSuccess: (result) => {
-      qc.setQueryData(["admin-site-settings"], result);
-      qc.invalidateQueries({ queryKey: ["public-site-settings"] });
-      const nextHomeB = {} as Record<HomeBKey, string>;
-      for (const k of HOME_B_KEYS) nextHomeB[k] = result[k] ?? "";
-      setHomeBDraft(nextHomeB);
-      setShowSaved(true);
-      setTimeout(() => setShowSaved(false), 2000);
-    },
-  });
+  const currentHomeRootVariant: HomeRootVariant =
+    (data?.homeRootVariant as HomeRootVariant | null | undefined) === "b" ? "b" : "a";
 
-  // Build a full payload that passes through all fields the site-settings page
-  // owns, so a save here doesn't accidentally null out site-wide settings.
+  const currentHeroBgType: HeroBackgroundType =
+    (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) === "video"
+      ? "video"
+      : "image";
+
+  const currentHomeBHeroBgType: HeroBackgroundType | null =
+    data?.homeBHeroBackgroundType === "video"
+      ? "video"
+      : data?.homeBHeroBackgroundType === "image"
+        ? "image"
+        : null;
+
+  // This page owns only the Alt Home fields. The only required field in
+  // UpdateSiteSettingsBody is requireCookieConsent; all others are optional,
+  // so we omit non-owned fields entirely and let the server keep their
+  // current values. This avoids coupling to site-wide settings that are
+  // managed on the Site Settings page.
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody>): UpdateSiteSettingsBody => ({
-    // Fields this page owns — use current data or overrides
-    homeRootVariant: (data?.homeRootVariant as HomeRootVariant | null | undefined) ?? "a",
+    requireCookieConsent: data?.requireCookieConsent ?? false,
+    homeRootVariant: currentHomeRootVariant,
     homeBHeroBackgroundType: data?.homeBHeroBackgroundType ?? null,
     homeBHeroImageMediaId: data?.homeBHeroImageMediaId ?? null,
     homeBHeroVideoMediaId: data?.homeBHeroVideoMediaId ?? null,
@@ -112,25 +117,20 @@ export default function AdminAltHome() {
     homeBClosingEyebrow: data?.homeBClosingEyebrow ?? null,
     homeBClosingHeadline: data?.homeBClosingHeadline ?? null,
     homeBClosingBody: data?.homeBClosingBody ?? null,
-    // Pass through site-settings-owned fields unchanged
-    requireCookieConsent: data?.requireCookieConsent ?? false,
-    siteTheme: data?.siteTheme ?? "cosmic",
-    bookingsRenderMode: data?.bookingsRenderMode ?? "iframe",
-    homeHeroBackgroundType: (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) ?? "image",
-    homeHeroImageAssetId: data?.homeHeroImageAssetId ?? null,
-    homeHeroImageMediaId: data?.homeHeroImageMediaId ?? null,
-    homeHeroVideoAssetId: data?.homeHeroVideoAssetId ?? null,
-    homeHeroVideoMediaId: data?.homeHeroVideoMediaId ?? null,
-    homeEditorialImageAssetId: data?.homeEditorialImageAssetId ?? null,
-    homeEditorialImageMediaId: data?.homeEditorialImageMediaId ?? null,
-    polarisFeedUrl: data?.polarisFeedUrl ?? null,
-    idleTimeoutMs: data?.idleTimeoutMs ?? null,
-    spamLinkThreshold: data?.spamLinkThreshold ?? null,
-    spamKeywords: data?.spamKeywords ?? [],
-    spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
-    auditLogRetentionDays: data?.auditLogRetentionDays ?? 365,
-    constellationDemoEnabled: data?.constellationDemoEnabled ?? true,
     ...overrides,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
+    onSuccess: (result) => {
+      qc.setQueryData(["admin-site-settings"], result);
+      qc.invalidateQueries({ queryKey: ["public-site-settings"] });
+      const nextHomeB = {} as Record<HomeBKey, string>;
+      for (const k of HOME_B_KEYS) nextHomeB[k] = result[k] ?? "";
+      setHomeBDraft(nextHomeB);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
+    },
   });
 
   const handlePickMedia = (m: MediaItem) => {
@@ -141,21 +141,6 @@ export default function AdminAltHome() {
     }
     setPickerOpen(null);
   };
-
-  const currentHomeBHeroBgType: HeroBackgroundType | null =
-    data?.homeBHeroBackgroundType === "video"
-      ? "video"
-      : data?.homeBHeroBackgroundType === "image"
-        ? "image"
-        : null;
-
-  const currentHeroBgType: HeroBackgroundType =
-    (data?.homeHeroBackgroundType as HeroBackgroundType | null | undefined) === "video"
-      ? "video"
-      : "image";
-
-  const currentHomeRootVariant: HomeRootVariant =
-    (data?.homeRootVariant as HomeRootVariant | null | undefined) === "b" ? "b" : "a";
 
   return (
     <AdminLayout
@@ -438,18 +423,21 @@ export default function AdminAltHome() {
       <MediaPickerModal
         open={pickerOpen !== null}
         onClose={() => setPickerOpen(null)}
-        onSelect={handlePickMedia}
-        selectedId={
-          pickerOpen === "homeb-hero"
-            ? data?.homeBHeroImageMediaId ?? null
-            : pickerOpen === "homeb-video"
-              ? data?.homeBHeroVideoMediaId ?? null
-              : null
-        }
-        categorySlug={pickerOpen === "homeb-hero" ? "north-star" : undefined}
-        kind={pickerOpen === "homeb-video" ? "video" : "image"}
+        onPick={handlePickMedia}
+        filter={pickerOpen === "homeb-video" ? "video" : "image"}
       />
+
+      {/* Floating save indicator for the copy section (shown via showSaved above) */}
+      {showSaved && (
+        <div
+          aria-live="polite"
+          className="sr-only"
+          data-testid="aria-saved"
+        >
+          Saved
+        </div>
+      )}
+
     </AdminLayout>
   );
 }
-

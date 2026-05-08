@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 // Shared UI helpers used by both site-settings.tsx (main home) and
 // alt-home.tsx (home-b overrides).
 // ---------------------------------------------------------------------------
-
 export interface ImagePickerProps {
   label: string;
   helper: string;
@@ -200,12 +199,13 @@ export function AltHomeSection(props: AltHomeSectionProps) {
   return (
     <div className="rounded-md border border-border p-6 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Hero background</h2>
+        <h2 className="text-lg font-semibold mb-1">Alt Home (/home-b) hero</h2>
         <p className="text-sm text-muted-foreground max-w-2xl">
           Optional overrides for the /home-b hero. Leave any control on{" "}
-          <em>Inherit from Home</em> to keep that piece in sync with the original homepage
-          settings. Use this when you want /home-b to diverge visually without touching
-          the original page.
+          <em>Inherit from Home</em> to keep that piece in sync with the
+          original homepage settings above. Use this when you want /home-b to
+          diverge visually — for example, a different cosmic still or a
+          different background video — without touching the original page.
         </p>
       </div>
 

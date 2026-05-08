@@ -135,6 +135,7 @@ export default function AdminSiteSettings() {
     homeBHeroBackgroundType: data?.homeBHeroBackgroundType ?? null,
     homeBHeroImageMediaId: data?.homeBHeroImageMediaId ?? null,
     homeBHeroVideoMediaId: data?.homeBHeroVideoMediaId ?? null,
+    // Alt home page copy: round-trip from data so saves here don't clear them.
     homeBHeroHeadlinePrefix: data?.homeBHeroHeadlinePrefix ?? null,
     homeBHeroHeadlineAccent: data?.homeBHeroHeadlineAccent ?? null,
     homeBHeroHeadlineSuffix: data?.homeBHeroHeadlineSuffix ?? null,
@@ -429,6 +430,7 @@ export default function AdminSiteSettings() {
               </span>
             </div>
           </Link>
+
 
           <div className="rounded-md border border-border p-6 space-y-4">
             <div>
@@ -781,9 +783,9 @@ export default function AdminSiteSettings() {
         onSelect={handlePickMedia}
         selectedId={
           pickerOpen === "hero"
-            ? data?.homeHeroImageMediaId ?? null
+            ? (data?.homeHeroImageMediaId ?? null)
             : pickerOpen === "editorial"
-              ? data?.homeEditorialImageMediaId ?? null
+              ? (data?.homeEditorialImageMediaId ?? null)
               : pickerOpen === "video"
                 ? data?.homeHeroVideoMediaId ?? null
                 : null
