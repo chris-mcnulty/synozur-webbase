@@ -8,8 +8,8 @@ import {
 } from "@workspace/db";
 import {
   GetActiveExperimentsResponse,
-  PostAssignmentBody,
-  PostAssignmentResponse,
+  PostExperimentAssignmentBody,
+  PostExperimentAssignmentResponse,
   OverrideMap,
 } from "@workspace/api-zod";
 
@@ -137,7 +137,7 @@ router.get("/experiments/active", async (_req, res): Promise<void> => {
 // experiment by key (not id) so the client doesn't have to expose UUIDs.
 
 router.post("/experiments/assignments", async (req, res): Promise<void> => {
-  const parsed = PostAssignmentBody.safeParse(req.body);
+  const parsed = PostExperimentAssignmentBody.safeParse(req.body);
   if (!parsed.success) {
     res
       .status(400)
@@ -153,13 +153,13 @@ router.post("/experiments/assignments", async (req, res): Promise<void> => {
   if (!exp) {
     // Unknown key. Don't tell the client whether the experiment ever
     // existed — clients shouldn't be retrying anyway.
-    res.json(PostAssignmentResponse.parse({ ok: true }));
+    res.json(PostExperimentAssignmentResponse.parse({ ok: true }));
     return;
   }
   // Only accept assignments for experiments currently running. Stale
   // clients writing into ended experiments would skew reporting.
   if (exp.status !== "running") {
-    res.json(PostAssignmentResponse.parse({ ok: true }));
+    res.json(PostExperimentAssignmentResponse.parse({ ok: true }));
     return;
   }
 
@@ -178,7 +178,7 @@ router.post("/experiments/assignments", async (req, res): Promise<void> => {
         ),
       );
     if (!variant) {
-      res.json(PostAssignmentResponse.parse({ ok: true }));
+      res.json(PostExperimentAssignmentResponse.parse({ ok: true }));
       return;
     }
   }
@@ -198,7 +198,7 @@ router.post("/experiments/assignments", async (req, res): Promise<void> => {
       ],
     });
 
-  res.json(PostAssignmentResponse.parse({ ok: true }));
+  res.json(PostExperimentAssignmentResponse.parse({ ok: true }));
 });
 
 export default router;

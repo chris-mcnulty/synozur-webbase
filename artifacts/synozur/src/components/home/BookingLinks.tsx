@@ -3,7 +3,7 @@
 import { Link } from "wouter";
 import { ArrowRight, Calendar } from "lucide-react";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
-import type { BookingLink as BookingLinkType } from "@workspace/api-zod";
+import type { BookingLink as BookingLinkType } from "@workspace/api-zod/types";
 
 const DEFAULT_LINKS: BookingLinkType[] = [];
 

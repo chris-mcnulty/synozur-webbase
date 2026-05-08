@@ -3732,6 +3732,400 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /experiments/active:
+    get:
+      tags: [Experiments]
+      operationId: getActiveExperiments
+      summary: Active experiments for the visitor runtime
+      responses:
+        '200':
+          description: Running experiments + variants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetActiveExperimentsResponse'
+
+  /experiments/assignments:
+    post:
+      tags: [Experiments]
+      operationId: postExperimentAssignment
+      summary: Persist a visitor's experiment assignment (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostAssignmentBody'
+      responses:
+        '200':
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAssignmentResponse'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments:
+    get:
+      tags: [AdminExperiments]
+      operationId: listAdminExperiments
+      summary: List experiments (admin)
+      responses:
+        '200':
+          description: Experiments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAdminExperimentsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [AdminExperiments]
+      operationId: createAdminExperiment
+      summary: Create a draft experiment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExperimentBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Key already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [AdminExperiments]
+      operationId: getAdminExperiment
+      responses:
+        '200':
+          description: Experiment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [AdminExperiments]
+      operationId: updateAdminExperiment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExperimentBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Experiment ended (immutable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [AdminExperiments]
+      operationId: deleteAdminExperiment
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Only drafts can be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments/{id}/start:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [AdminExperiments]
+      operationId: startAdminExperiment
+      responses:
+        '200':
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '400':
+          description: Variant set invalid (weights, control)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Another experiment is running for this pageKey, or experiment ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments/{id}/pause:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [AdminExperiments]
+      operationId: pauseAdminExperiment
+      responses:
+        '200':
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Only running experiments can be paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments/{id}/end:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [AdminExperiments]
+      operationId: endAdminExperiment
+      responses:
+        '200':
+          description: Ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperiment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Drafts can't be ended (delete instead)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/experiments/{id}/results:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [AdminExperiments]
+      operationId: getAdminExperimentResults
+      summary: Per-variant visitor + conversion counts and z-test
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetExperimentResultsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/experiments/{id}/variants:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [AdminExperiments]
+      operationId: createAdminExperimentVariant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVariantBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperimentVariant'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Variant key exists, or experiment running/ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /admin/variants/{variantId}:
+    parameters:
+      - name: variantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [AdminExperiments]
+      operationId: updateAdminExperimentVariant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVariantBody'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminExperimentVariant'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: While running, only overrides may change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [AdminExperiments]
+      operationId: deleteAdminExperimentVariant
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Variants can be deleted only while draft
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   securitySchemes:
     trafficPropertyApiKey:
@@ -8947,3 +9341,549 @@ components:
           type: integer
         updated:
           type: integer
+
+    # ----- A/B experiments ---------------------------------------------
+
+    ExperimentStatus:
+      type: string
+      enum: [draft, running, paused, ended]
+
+    ConversionPath:
+      type: object
+      required: [kind, value, label]
+      properties:
+        kind:
+          type: string
+          enum: [cta, booking, path]
+        value:
+          type: string
+          minLength: 1
+          maxLength: 200
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+
+    PartnerItem:
+      type: object
+      required: [src]
+      properties:
+        src:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        alt:
+          type: string
+          maxLength: 200
+          default: ''
+        href:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+
+    BookingLink:
+      type: object
+      required: [label, href, eventId]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        href:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        eventId:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    OverrideMap:
+      description: >
+        Keyed override map. Documented well-known keys are listed below;
+        unknown keys pass through so a deploy that doesn't know about a
+        newer key can still serve the variant.
+      type: object
+      additionalProperties: true
+      properties:
+        home.hero.positioning.visible:
+          type: boolean
+        home.hero.positioning.text:
+          type: string
+          maxLength: 500
+        home.hero.positioning.accentWord:
+          type: string
+          maxLength: 80
+        home.hero.tagline.text:
+          type: string
+          maxLength: 1000
+        home.hero.narrative.text:
+          type: string
+          maxLength: 4000
+        home.hero.cta.visible:
+          type: boolean
+        home.hero.cta.label:
+          type: string
+          maxLength: 80
+        home.hero.cta.href:
+          type: string
+          maxLength: 2048
+        home.partners.visible:
+          type: boolean
+        home.partners.heading:
+          type: string
+          maxLength: 200
+        home.partners.subtext:
+          type: string
+          maxLength: 500
+        home.partners.items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PartnerItem'
+        home.booking.visible:
+          type: boolean
+        home.booking.heading:
+          type: string
+          maxLength: 200
+        home.booking.links:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/BookingLink'
+        header.cta.visible:
+          type: boolean
+        header.cta.label:
+          type: string
+          maxLength: 80
+        header.cta.href:
+          type: string
+          maxLength: 2048
+        services.hero.eyebrow:
+          type: string
+          maxLength: 80
+        services.hero.headline:
+          type: string
+          maxLength: 200
+        services.hero.body:
+          type: string
+          maxLength: 2000
+        applications.hero.eyebrow:
+          type: string
+          maxLength: 80
+        applications.hero.headline:
+          type: string
+          maxLength: 200
+        applications.hero.body:
+          type: string
+          maxLength: 2000
+        case-studies.hero.eyebrow:
+          type: string
+          maxLength: 80
+        case-studies.hero.headline:
+          type: string
+          maxLength: 200
+        case-studies.hero.body:
+          type: string
+          maxLength: 2000
+
+    PublicExperimentVariant:
+      type: object
+      required: [key, name, isControl, weight, overrides]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        isControl:
+          type: boolean
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+        overrides:
+          $ref: '#/components/schemas/OverrideMap'
+
+    PublicExperiment:
+      type: object
+      required: [key, pageKey, trafficPercentage, conversionPaths, variants]
+      properties:
+        key:
+          type: string
+        pageKey:
+          type: string
+        trafficPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        holdbackPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 0
+        conversionPaths:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversionPath'
+        variants:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PublicExperimentVariant'
+
+    GetActiveExperimentsResponse:
+      type: object
+      required: [experiments, generatedAt]
+      properties:
+        experiments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicExperiment'
+        generatedAt:
+          type: string
+
+    PostAssignmentBody:
+      type: object
+      required: [experimentKey, variantKey, visitorId]
+      properties:
+        experimentKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        variantKey:
+          type: string
+          minLength: 1
+          maxLength: 40
+        visitorId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        forcedBy:
+          type:
+            - string
+            - 'null'
+          enum: [url, admin_preview, null]
+
+    PostAssignmentResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+
+    AdminExperimentVariant:
+      type: object
+      required:
+        - id
+        - experimentId
+        - key
+        - name
+        - isControl
+        - weight
+        - overrides
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        experimentId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        isControl:
+          type: boolean
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+        overrides:
+          $ref: '#/components/schemas/OverrideMap'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    AdminExperiment:
+      type: object
+      required:
+        - id
+        - key
+        - name
+        - description
+        - pageKey
+        - status
+        - trafficPercentage
+        - conversionPaths
+        - autoStopAfterDays
+        - autoStopOnSignificance
+        - minVisitorsForAutoStop
+        - startedAt
+        - endedAt
+        - createdBy
+        - createdAt
+        - updatedAt
+        - variants
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        pageKey:
+          type: string
+        status:
+          $ref: '#/components/schemas/ExperimentStatus'
+        trafficPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        holdbackPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 0
+        conversionPaths:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversionPath'
+        autoStopAfterDays:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 365
+        autoStopOnSignificance:
+          type: boolean
+          default: false
+        minVisitorsForAutoStop:
+          type: integer
+          minimum: 0
+          default: 1000
+        startedAt:
+          type:
+            - string
+            - 'null'
+        endedAt:
+          type:
+            - string
+            - 'null'
+        createdBy:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminExperimentVariant'
+
+    ListAdminExperimentsResponse:
+      type: object
+      required: [experiments]
+      properties:
+        experiments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminExperiment'
+
+    CreateExperimentBody:
+      type: object
+      required: [key, name, pageKey]
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '^[a-z0-9][a-z0-9_-]*$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+        pageKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        trafficPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 100
+        holdbackPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 0
+        conversionPaths:
+          type: array
+          default: []
+          items:
+            $ref: '#/components/schemas/ConversionPath'
+
+    UpdateExperimentBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+        trafficPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        holdbackPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        conversionPaths:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversionPath'
+        autoStopAfterDays:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 365
+        autoStopOnSignificance:
+          type: boolean
+        minVisitorsForAutoStop:
+          type: integer
+          minimum: 0
+
+    CreateVariantBody:
+      type: object
+      required: [key, name, weight]
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: '^[a-z0-9][a-z0-9_-]*$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        isControl:
+          type: boolean
+          default: false
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+        overrides:
+          $ref: '#/components/schemas/OverrideMap'
+
+    UpdateVariantBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        isControl:
+          type: boolean
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 100
+        overrides:
+          $ref: '#/components/schemas/OverrideMap'
+
+    VariantResultConversion:
+      type: object
+      required: [label, kind, value, count, rate]
+      properties:
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [cta, booking, path]
+        value:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        rate:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    VariantResultOverall:
+      type: object
+      required: [count, rate]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        rate:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    VariantResultSignificance:
+      type: object
+      required: [vsControl, pValue]
+      properties:
+        vsControl:
+          type: number
+        pValue:
+          type: number
+
+    VariantResult:
+      type: object
+      required: [key, name, isControl, visitors, conversions, overall]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        isControl:
+          type: boolean
+        visitors:
+          type: integer
+          minimum: 0
+        conversions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantResultConversion'
+        overall:
+          $ref: '#/components/schemas/VariantResultOverall'
+        significance:
+          $ref: '#/components/schemas/VariantResultSignificance'
+
+    GetExperimentResultsResponse:
+      type: object
+      required: [experimentId, variants]
+      properties:
+        experimentId:
+          type: string
+          format: uuid
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantResult'

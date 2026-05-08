@@ -10,13 +10,13 @@ import {
   type ExperimentVariant,
 } from "@workspace/db";
 import {
-  CreateExperimentBody,
-  UpdateExperimentBody,
-  CreateVariantBody,
-  UpdateVariantBody,
+  CreateAdminExperimentBody,
+  UpdateAdminExperimentBody,
+  CreateAdminExperimentVariantBody,
+  UpdateAdminExperimentVariantBody,
   AdminExperiment,
   ListAdminExperimentsResponse,
-  GetExperimentResultsResponse,
+  GetAdminExperimentResultsResponse,
   OverrideMap,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
@@ -149,7 +149,7 @@ router.post(
   "/admin/experiments",
   requireAdmin,
   async (req, res): Promise<void> => {
-    const parsed = CreateExperimentBody.safeParse(req.body);
+    const parsed = CreateAdminExperimentBody.safeParse(req.body);
     if (!parsed.success) {
       res
         .status(400)
@@ -197,7 +197,7 @@ router.patch(
   "/admin/experiments/:id",
   requireAdmin,
   async (req, res): Promise<void> => {
-    const parsed = UpdateExperimentBody.safeParse(req.body);
+    const parsed = UpdateAdminExperimentBody.safeParse(req.body);
     if (!parsed.success) {
       res
         .status(400)
@@ -425,7 +425,7 @@ router.post(
   "/admin/experiments/:id/variants",
   requireAdmin,
   async (req, res): Promise<void> => {
-    const parsed = CreateVariantBody.safeParse(req.body);
+    const parsed = CreateAdminExperimentVariantBody.safeParse(req.body);
     if (!parsed.success) {
       res
         .status(400)
@@ -483,7 +483,7 @@ router.patch(
   "/admin/variants/:variantId",
   requireAdmin,
   async (req, res): Promise<void> => {
-    const parsed = UpdateVariantBody.safeParse(req.body);
+    const parsed = UpdateAdminExperimentVariantBody.safeParse(req.body);
     if (!parsed.success) {
       res
         .status(400)
@@ -778,7 +778,7 @@ router.get(
     });
 
     res.json(
-      GetExperimentResultsResponse.parse({
+      GetAdminExperimentResultsResponse.parse({
         experimentId: exp.id,
         variants: variantResults,
       }),

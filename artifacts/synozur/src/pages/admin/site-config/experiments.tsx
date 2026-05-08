@@ -15,7 +15,7 @@ import type {
   AdminExperiment,
   CreateExperimentBody,
   ExperimentStatus,
-} from "@workspace/api-zod";
+} from "@workspace/api-zod/types";
 
 function StatusPill({ status }: { status: ExperimentStatus }) {
   const styles: Record<ExperimentStatus, string> = {

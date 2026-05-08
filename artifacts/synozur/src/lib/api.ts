@@ -879,11 +879,11 @@ export const api = {
   getPublicSiteSettings: () => jsonFetch<PublicSiteSettings>(url("/site-settings")),
   // A/B experiments — public read for the visitor runtime.
   getActiveExperiments: () =>
-    jsonFetch<import("@workspace/api-zod").GetActiveExperimentsResponse>(
+    jsonFetch<import("@workspace/api-zod/types").GetActiveExperimentsResponse>(
       url("/experiments/active"),
     ),
   postExperimentAssignment: (
-    body: import("@workspace/api-zod").PostAssignmentBody,
+    body: import("@workspace/api-zod/types").PostAssignmentBody,
   ) =>
     jsonFetch<{ ok: boolean }>(url("/experiments/assignments"), {
       method: "POST",
@@ -891,38 +891,38 @@ export const api = {
     }),
   // Admin CRUD for experiments.
   listAdminExperiments: () =>
-    jsonFetch<import("@workspace/api-zod").ListAdminExperimentsResponse>(
+    jsonFetch<import("@workspace/api-zod/types").ListAdminExperimentsResponse>(
       url("/admin/experiments"),
     ),
   getAdminExperiment: (id: string) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url(`/admin/experiments/${encodeURIComponent(id)}`),
     ),
-  createAdminExperiment: (body: import("@workspace/api-zod").CreateExperimentBody) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+  createAdminExperiment: (body: import("@workspace/api-zod/types").CreateExperimentBody) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url("/admin/experiments"),
       { method: "POST", body: JSON.stringify(body) },
     ),
   updateAdminExperiment: (
     id: string,
-    body: import("@workspace/api-zod").UpdateExperimentBody,
+    body: import("@workspace/api-zod/types").UpdateExperimentBody,
   ) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url(`/admin/experiments/${encodeURIComponent(id)}`),
       { method: "PATCH", body: JSON.stringify(body) },
     ),
   startAdminExperiment: (id: string) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url(`/admin/experiments/${encodeURIComponent(id)}/start`),
       { method: "POST" },
     ),
   pauseAdminExperiment: (id: string) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url(`/admin/experiments/${encodeURIComponent(id)}/pause`),
       { method: "POST" },
     ),
   endAdminExperiment: (id: string) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperiment>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
       url(`/admin/experiments/${encodeURIComponent(id)}/end`),
       { method: "POST" },
     ),
@@ -932,17 +932,17 @@ export const api = {
     }),
   createAdminVariant: (
     experimentId: string,
-    body: import("@workspace/api-zod").CreateVariantBody,
+    body: import("@workspace/api-zod/types").CreateVariantBody,
   ) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperimentVariant>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperimentVariant>(
       url(`/admin/experiments/${encodeURIComponent(experimentId)}/variants`),
       { method: "POST", body: JSON.stringify(body) },
     ),
   updateAdminVariant: (
     variantId: string,
-    body: import("@workspace/api-zod").UpdateVariantBody,
+    body: import("@workspace/api-zod/types").UpdateVariantBody,
   ) =>
-    jsonFetch<import("@workspace/api-zod").AdminExperimentVariant>(
+    jsonFetch<import("@workspace/api-zod/types").AdminExperimentVariant>(
       url(`/admin/variants/${encodeURIComponent(variantId)}`),
       { method: "PATCH", body: JSON.stringify(body) },
     ),
@@ -951,7 +951,7 @@ export const api = {
       method: "DELETE",
     }),
   getAdminExperimentResults: (id: string) =>
-    jsonFetch<import("@workspace/api-zod").GetExperimentResultsResponse>(
+    jsonFetch<import("@workspace/api-zod/types").GetExperimentResultsResponse>(
       url(`/admin/experiments/${encodeURIComponent(id)}/results`),
     ),
   getAdminSiteSettings: () => jsonFetch<AdminSiteSettings>(url("/admin/site-settings")),

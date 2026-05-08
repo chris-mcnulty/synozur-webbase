@@ -18,6 +18,8 @@ import type {
 
 import type {
   AdminEvent,
+  AdminExperiment,
+  AdminExperimentVariant,
   AdminFormSubmission,
   AdminFormSubmissionsPage,
   AdminTeamMember,
@@ -48,7 +50,9 @@ import type {
   ContactFormInput,
   CreateAssetCategoryBody,
   CreateCollateralResourceBody,
+  CreateExperimentBody,
   CreatePostBody,
+  CreateVariantBody,
   CurrentUser,
   CwvSampleInput,
   DownloadPortalDocumentParams,
@@ -59,13 +63,16 @@ import type {
   ExportAuditLogCsvParams,
   ForbiddenResponse,
   FormSubmissionAck,
+  GetActiveExperimentsResponse,
   GetCmsAnalyticsOverviewParams,
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
+  GetExperimentResultsResponse,
   HealthStatus,
   IngestTrafficBatch202,
   IngestTrafficBatchBody,
   LibraryAssetListResponse,
+  ListAdminExperimentsResponse,
   ListAdminFormSubmissionsParams,
   ListAssetsParams,
   ListAuditLog200,
@@ -108,6 +115,8 @@ import type {
   PortalSourceApp,
   Post,
   PostAnalytics,
+  PostAssignmentBody,
+  PostAssignmentResponse,
   PostListResponse,
   PostRevision,
   PostRevisionDetail,
@@ -152,8 +161,10 @@ import type {
   UpdateAssetBody,
   UpdateAssetCategoryBody,
   UpdateCollateralResourceBody,
+  UpdateExperimentBody,
   UpdateMediaBody,
   UpdatePostBody,
+  UpdateVariantBody,
   UpsertCapabilityBody,
   UpsertCategoryBody,
   UpsertCollateralBody,
@@ -12177,4 +12188,1209 @@ export const useIngestTrafficBatch = <
   TContext
 > => {
   return useMutation(getIngestTrafficBatchMutationOptions(options));
+};
+
+/**
+ * @summary Active experiments for the visitor runtime
+ */
+export const getGetActiveExperimentsUrl = () => {
+  return `/api/experiments/active`;
+};
+
+export const getActiveExperiments = async (
+  options?: RequestInit,
+): Promise<GetActiveExperimentsResponse> => {
+  return customFetch<GetActiveExperimentsResponse>(
+    getGetActiveExperimentsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetActiveExperimentsQueryKey = () => {
+  return [`/api/experiments/active`] as const;
+};
+
+export const getGetActiveExperimentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActiveExperiments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getActiveExperiments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetActiveExperimentsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getActiveExperiments>>
+  > = ({ signal }) => getActiveExperiments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActiveExperiments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActiveExperimentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActiveExperiments>>
+>;
+export type GetActiveExperimentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Active experiments for the visitor runtime
+ */
+
+export function useGetActiveExperiments<
+  TData = Awaited<ReturnType<typeof getActiveExperiments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getActiveExperiments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActiveExperimentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Persist a visitor's experiment assignment (idempotent)
+ */
+export const getPostExperimentAssignmentUrl = () => {
+  return `/api/experiments/assignments`;
+};
+
+export const postExperimentAssignment = async (
+  postAssignmentBody: PostAssignmentBody,
+  options?: RequestInit,
+): Promise<PostAssignmentResponse> => {
+  return customFetch<PostAssignmentResponse>(getPostExperimentAssignmentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postAssignmentBody),
+  });
+};
+
+export const getPostExperimentAssignmentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postExperimentAssignment>>,
+    TError,
+    { data: BodyType<PostAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postExperimentAssignment>>,
+  TError,
+  { data: BodyType<PostAssignmentBody> },
+  TContext
+> => {
+  const mutationKey = ["postExperimentAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postExperimentAssignment>>,
+    { data: BodyType<PostAssignmentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postExperimentAssignment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostExperimentAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postExperimentAssignment>>
+>;
+export type PostExperimentAssignmentMutationBody = BodyType<PostAssignmentBody>;
+export type PostExperimentAssignmentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Persist a visitor's experiment assignment (idempotent)
+ */
+export const usePostExperimentAssignment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postExperimentAssignment>>,
+    TError,
+    { data: BodyType<PostAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postExperimentAssignment>>,
+  TError,
+  { data: BodyType<PostAssignmentBody> },
+  TContext
+> => {
+  return useMutation(getPostExperimentAssignmentMutationOptions(options));
+};
+
+/**
+ * @summary List experiments (admin)
+ */
+export const getListAdminExperimentsUrl = () => {
+  return `/api/admin/experiments`;
+};
+
+export const listAdminExperiments = async (
+  options?: RequestInit,
+): Promise<ListAdminExperimentsResponse> => {
+  return customFetch<ListAdminExperimentsResponse>(
+    getListAdminExperimentsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminExperimentsQueryKey = () => {
+  return [`/api/admin/experiments`] as const;
+};
+
+export const getListAdminExperimentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminExperiments>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExperiments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminExperimentsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminExperiments>>
+  > = ({ signal }) => listAdminExperiments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExperiments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminExperimentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminExperiments>>
+>;
+export type ListAdminExperimentsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List experiments (admin)
+ */
+
+export function useListAdminExperiments<
+  TData = Awaited<ReturnType<typeof listAdminExperiments>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminExperiments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminExperimentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a draft experiment
+ */
+export const getCreateAdminExperimentUrl = () => {
+  return `/api/admin/experiments`;
+};
+
+export const createAdminExperiment = async (
+  createExperimentBody: CreateExperimentBody,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getCreateAdminExperimentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createExperimentBody),
+  });
+};
+
+export const getCreateAdminExperimentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminExperiment>>,
+    TError,
+    { data: BodyType<CreateExperimentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminExperiment>>,
+  TError,
+  { data: BodyType<CreateExperimentBody> },
+  TContext
+> => {
+  const mutationKey = ["createAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminExperiment>>,
+    { data: BodyType<CreateExperimentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAdminExperiment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminExperiment>>
+>;
+export type CreateAdminExperimentMutationBody = BodyType<CreateExperimentBody>;
+export type CreateAdminExperimentMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a draft experiment
+ */
+export const useCreateAdminExperiment = <
+  TError = ErrorType<ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminExperiment>>,
+    TError,
+    { data: BodyType<CreateExperimentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminExperiment>>,
+  TError,
+  { data: BodyType<CreateExperimentBody> },
+  TContext
+> => {
+  return useMutation(getCreateAdminExperimentMutationOptions(options));
+};
+
+export const getGetAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}`;
+};
+
+export const getAdminExperiment = async (
+  id: string,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getGetAdminExperimentUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminExperimentQueryKey = (id: string) => {
+  return [`/api/admin/experiments/${id}`] as const;
+};
+
+export const getGetAdminExperimentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminExperiment>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExperiment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminExperimentQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminExperiment>>
+  > = ({ signal }) => getAdminExperiment(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminExperiment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminExperimentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminExperiment>>
+>;
+export type GetAdminExperimentQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export function useGetAdminExperiment<
+  TData = Awaited<ReturnType<typeof getAdminExperiment>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExperiment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminExperimentQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}`;
+};
+
+export const updateAdminExperiment = async (
+  id: string,
+  updateExperimentBody: UpdateExperimentBody,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getUpdateAdminExperimentUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateExperimentBody),
+  });
+};
+
+export const getUpdateAdminExperimentMutationOptions = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExperiment>>,
+    TError,
+    { id: string; data: BodyType<UpdateExperimentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminExperiment>>,
+  TError,
+  { id: string; data: BodyType<UpdateExperimentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminExperiment>>,
+    { id: string; data: BodyType<UpdateExperimentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAdminExperiment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminExperiment>>
+>;
+export type UpdateAdminExperimentMutationBody = BodyType<UpdateExperimentBody>;
+export type UpdateAdminExperimentMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useUpdateAdminExperiment = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExperiment>>,
+    TError,
+    { id: string; data: BodyType<UpdateExperimentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminExperiment>>,
+  TError,
+  { id: string; data: BodyType<UpdateExperimentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminExperimentMutationOptions(options));
+};
+
+export const getDeleteAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}`;
+};
+
+export const deleteAdminExperiment = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAdminExperimentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminExperimentMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminExperiment>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAdminExperiment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminExperiment>>
+>;
+
+export type DeleteAdminExperimentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+export const useDeleteAdminExperiment = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAdminExperimentMutationOptions(options));
+};
+
+export const getStartAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}/start`;
+};
+
+export const startAdminExperiment = async (
+  id: string,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getStartAdminExperimentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStartAdminExperimentMutationOptions = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["startAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startAdminExperiment>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return startAdminExperiment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startAdminExperiment>>
+>;
+
+export type StartAdminExperimentMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useStartAdminExperiment = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getStartAdminExperimentMutationOptions(options));
+};
+
+export const getPauseAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}/pause`;
+};
+
+export const pauseAdminExperiment = async (
+  id: string,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getPauseAdminExperimentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPauseAdminExperimentMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof pauseAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof pauseAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["pauseAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof pauseAdminExperiment>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return pauseAdminExperiment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PauseAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof pauseAdminExperiment>>
+>;
+
+export type PauseAdminExperimentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+export const usePauseAdminExperiment = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof pauseAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof pauseAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getPauseAdminExperimentMutationOptions(options));
+};
+
+export const getEndAdminExperimentUrl = (id: string) => {
+  return `/api/admin/experiments/${id}/end`;
+};
+
+export const endAdminExperiment = async (
+  id: string,
+  options?: RequestInit,
+): Promise<AdminExperiment> => {
+  return customFetch<AdminExperiment>(getEndAdminExperimentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEndAdminExperimentMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof endAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["endAdminExperiment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof endAdminExperiment>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return endAdminExperiment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EndAdminExperimentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof endAdminExperiment>>
+>;
+
+export type EndAdminExperimentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+export const useEndAdminExperiment = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endAdminExperiment>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof endAdminExperiment>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getEndAdminExperimentMutationOptions(options));
+};
+
+/**
+ * @summary Per-variant visitor + conversion counts and z-test
+ */
+export const getGetAdminExperimentResultsUrl = (id: string) => {
+  return `/api/admin/experiments/${id}/results`;
+};
+
+export const getAdminExperimentResults = async (
+  id: string,
+  options?: RequestInit,
+): Promise<GetExperimentResultsResponse> => {
+  return customFetch<GetExperimentResultsResponse>(
+    getGetAdminExperimentResultsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAdminExperimentResultsQueryKey = (id: string) => {
+  return [`/api/admin/experiments/${id}/results`] as const;
+};
+
+export const getGetAdminExperimentResultsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminExperimentResults>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExperimentResults>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminExperimentResultsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminExperimentResults>>
+  > = ({ signal }) =>
+    getAdminExperimentResults(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminExperimentResults>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminExperimentResultsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminExperimentResults>>
+>;
+export type GetAdminExperimentResultsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Per-variant visitor + conversion counts and z-test
+ */
+
+export function useGetAdminExperimentResults<
+  TData = Awaited<ReturnType<typeof getAdminExperimentResults>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminExperimentResults>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminExperimentResultsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateAdminExperimentVariantUrl = (id: string) => {
+  return `/api/admin/experiments/${id}/variants`;
+};
+
+export const createAdminExperimentVariant = async (
+  id: string,
+  createVariantBody: CreateVariantBody,
+  options?: RequestInit,
+): Promise<AdminExperimentVariant> => {
+  return customFetch<AdminExperimentVariant>(
+    getCreateAdminExperimentVariantUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createVariantBody),
+    },
+  );
+};
+
+export const getCreateAdminExperimentVariantMutationOptions = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminExperimentVariant>>,
+    TError,
+    { id: string; data: BodyType<CreateVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminExperimentVariant>>,
+  TError,
+  { id: string; data: BodyType<CreateVariantBody> },
+  TContext
+> => {
+  const mutationKey = ["createAdminExperimentVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminExperimentVariant>>,
+    { id: string; data: BodyType<CreateVariantBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createAdminExperimentVariant(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdminExperimentVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminExperimentVariant>>
+>;
+export type CreateAdminExperimentVariantMutationBody =
+  BodyType<CreateVariantBody>;
+export type CreateAdminExperimentVariantMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useCreateAdminExperimentVariant = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminExperimentVariant>>,
+    TError,
+    { id: string; data: BodyType<CreateVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminExperimentVariant>>,
+  TError,
+  { id: string; data: BodyType<CreateVariantBody> },
+  TContext
+> => {
+  return useMutation(getCreateAdminExperimentVariantMutationOptions(options));
+};
+
+export const getUpdateAdminExperimentVariantUrl = (variantId: string) => {
+  return `/api/admin/variants/${variantId}`;
+};
+
+export const updateAdminExperimentVariant = async (
+  variantId: string,
+  updateVariantBody: UpdateVariantBody,
+  options?: RequestInit,
+): Promise<AdminExperimentVariant> => {
+  return customFetch<AdminExperimentVariant>(
+    getUpdateAdminExperimentVariantUrl(variantId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateVariantBody),
+    },
+  );
+};
+
+export const getUpdateAdminExperimentVariantMutationOptions = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExperimentVariant>>,
+    TError,
+    { variantId: string; data: BodyType<UpdateVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminExperimentVariant>>,
+  TError,
+  { variantId: string; data: BodyType<UpdateVariantBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminExperimentVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminExperimentVariant>>,
+    { variantId: string; data: BodyType<UpdateVariantBody> }
+  > = (props) => {
+    const { variantId, data } = props ?? {};
+
+    return updateAdminExperimentVariant(variantId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminExperimentVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminExperimentVariant>>
+>;
+export type UpdateAdminExperimentVariantMutationBody =
+  BodyType<UpdateVariantBody>;
+export type UpdateAdminExperimentVariantMutationError = ErrorType<
+  ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+export const useUpdateAdminExperimentVariant = <
+  TError = ErrorType<
+    ErrorEnvelope | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminExperimentVariant>>,
+    TError,
+    { variantId: string; data: BodyType<UpdateVariantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminExperimentVariant>>,
+  TError,
+  { variantId: string; data: BodyType<UpdateVariantBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminExperimentVariantMutationOptions(options));
+};
+
+export const getDeleteAdminExperimentVariantUrl = (variantId: string) => {
+  return `/api/admin/variants/${variantId}`;
+};
+
+export const deleteAdminExperimentVariant = async (
+  variantId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAdminExperimentVariantUrl(variantId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminExperimentVariantMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExperimentVariant>>,
+    TError,
+    { variantId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminExperimentVariant>>,
+  TError,
+  { variantId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminExperimentVariant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminExperimentVariant>>,
+    { variantId: string }
+  > = (props) => {
+    const { variantId } = props ?? {};
+
+    return deleteAdminExperimentVariant(variantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminExperimentVariantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminExperimentVariant>>
+>;
+
+export type DeleteAdminExperimentVariantMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+export const useDeleteAdminExperimentVariant = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminExperimentVariant>>,
+    TError,
+    { variantId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminExperimentVariant>>,
+  TError,
+  { variantId: string },
+  TContext
+> => {
+  return useMutation(getDeleteAdminExperimentVariantMutationOptions(options));
 };

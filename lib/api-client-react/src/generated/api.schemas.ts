@@ -2908,6 +2908,416 @@ export interface PolarisBulkSyncCollateralResponse {
   updated: number;
 }
 
+export type ExperimentStatus =
+  (typeof ExperimentStatus)[keyof typeof ExperimentStatus];
+
+export const ExperimentStatus = {
+  draft: "draft",
+  running: "running",
+  paused: "paused",
+  ended: "ended",
+} as const;
+
+export type ConversionPathKind =
+  (typeof ConversionPathKind)[keyof typeof ConversionPathKind];
+
+export const ConversionPathKind = {
+  cta: "cta",
+  booking: "booking",
+  path: "path",
+} as const;
+
+export interface ConversionPath {
+  kind: ConversionPathKind;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  value: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  label: string;
+}
+
+export interface PartnerItem {
+  /**
+   * @minLength 1
+   * @maxLength 2048
+   */
+  src: string;
+  /** @maxLength 200 */
+  alt?: string;
+  /**
+   * @maxLength 2048
+   * @nullable
+   */
+  href?: string | null;
+}
+
+export interface BookingLink {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  label: string;
+  /**
+   * @minLength 1
+   * @maxLength 2048
+   */
+  href: string;
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  eventId: string;
+}
+
+/**
+ * Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.
+
+ */
+export interface OverrideMap {
+  "home.hero.positioning.visible"?: boolean;
+  /** @maxLength 500 */
+  "home.hero.positioning.text"?: string;
+  /** @maxLength 80 */
+  "home.hero.positioning.accentWord"?: string;
+  /** @maxLength 1000 */
+  "home.hero.tagline.text"?: string;
+  /** @maxLength 4000 */
+  "home.hero.narrative.text"?: string;
+  "home.hero.cta.visible"?: boolean;
+  /** @maxLength 80 */
+  "home.hero.cta.label"?: string;
+  /** @maxLength 2048 */
+  "home.hero.cta.href"?: string;
+  "home.partners.visible"?: boolean;
+  /** @maxLength 200 */
+  "home.partners.heading"?: string;
+  /** @maxLength 500 */
+  "home.partners.subtext"?: string;
+  /** @maxItems 50 */
+  "home.partners.items"?: PartnerItem[];
+  "home.booking.visible"?: boolean;
+  /** @maxLength 200 */
+  "home.booking.heading"?: string;
+  /** @maxItems 10 */
+  "home.booking.links"?: BookingLink[];
+  "header.cta.visible"?: boolean;
+  /** @maxLength 80 */
+  "header.cta.label"?: string;
+  /** @maxLength 2048 */
+  "header.cta.href"?: string;
+  /** @maxLength 80 */
+  "services.hero.eyebrow"?: string;
+  /** @maxLength 200 */
+  "services.hero.headline"?: string;
+  /** @maxLength 2000 */
+  "services.hero.body"?: string;
+  /** @maxLength 80 */
+  "applications.hero.eyebrow"?: string;
+  /** @maxLength 200 */
+  "applications.hero.headline"?: string;
+  /** @maxLength 2000 */
+  "applications.hero.body"?: string;
+  /** @maxLength 80 */
+  "case-studies.hero.eyebrow"?: string;
+  /** @maxLength 200 */
+  "case-studies.hero.headline"?: string;
+  /** @maxLength 2000 */
+  "case-studies.hero.body"?: string;
+  [key: string]: unknown;
+}
+
+export interface PublicExperimentVariant {
+  key: string;
+  name: string;
+  isControl: boolean;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  weight: number;
+  overrides: OverrideMap;
+}
+
+export interface PublicExperiment {
+  key: string;
+  pageKey: string;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  trafficPercentage: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  holdbackPercentage?: number;
+  conversionPaths: ConversionPath[];
+  /** @minItems 1 */
+  variants: PublicExperimentVariant[];
+}
+
+export interface GetActiveExperimentsResponse {
+  experiments: PublicExperiment[];
+  generatedAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type PostAssignmentBodyForcedBy =
+  | (typeof PostAssignmentBodyForcedBy)[keyof typeof PostAssignmentBodyForcedBy]
+  | null;
+
+export const PostAssignmentBodyForcedBy = {
+  url: "url",
+  admin_preview: "admin_preview",
+} as const;
+
+export interface PostAssignmentBody {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  experimentKey: string;
+  /**
+   * @minLength 1
+   * @maxLength 40
+   */
+  variantKey: string;
+  /**
+   * @minLength 1
+   * @maxLength 64
+   */
+  visitorId: string;
+  /** @nullable */
+  forcedBy?: PostAssignmentBodyForcedBy;
+}
+
+export interface PostAssignmentResponse {
+  ok: boolean;
+}
+
+export interface AdminExperimentVariant {
+  id: string;
+  experimentId: string;
+  key: string;
+  name: string;
+  isControl: boolean;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  weight: number;
+  overrides: OverrideMap;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminExperiment {
+  id: string;
+  key: string;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  pageKey: string;
+  status: ExperimentStatus;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  trafficPercentage: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  holdbackPercentage?: number;
+  conversionPaths: ConversionPath[];
+  /**
+   * @minimum 1
+   * @maximum 365
+   * @nullable
+   */
+  autoStopAfterDays: number | null;
+  autoStopOnSignificance: boolean;
+  /** @minimum 0 */
+  minVisitorsForAutoStop: number;
+  /** @nullable */
+  startedAt: string | null;
+  /** @nullable */
+  endedAt: string | null;
+  /** @nullable */
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  variants: AdminExperimentVariant[];
+}
+
+export interface ListAdminExperimentsResponse {
+  experiments: AdminExperiment[];
+}
+
+export interface CreateExperimentBody {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   * @pattern ^[a-z0-9][a-z0-9_-]*$
+   */
+  key: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  description?: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  pageKey: string;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  trafficPercentage?: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  holdbackPercentage?: number;
+  conversionPaths?: ConversionPath[];
+}
+
+export interface UpdateExperimentBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name?: string;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  description?: string | null;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  trafficPercentage?: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  holdbackPercentage?: number;
+  conversionPaths?: ConversionPath[];
+  /**
+   * @minimum 1
+   * @maximum 365
+   * @nullable
+   */
+  autoStopAfterDays?: number | null;
+  autoStopOnSignificance?: boolean;
+  /** @minimum 0 */
+  minVisitorsForAutoStop?: number;
+}
+
+export interface CreateVariantBody {
+  /**
+   * @minLength 1
+   * @maxLength 40
+   * @pattern ^[a-z0-9][a-z0-9_-]*$
+   */
+  key: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  isControl?: boolean;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  weight: number;
+  overrides?: OverrideMap;
+}
+
+export interface UpdateVariantBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name?: string;
+  isControl?: boolean;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  weight?: number;
+  overrides?: OverrideMap;
+}
+
+export type VariantResultConversionKind =
+  (typeof VariantResultConversionKind)[keyof typeof VariantResultConversionKind];
+
+export const VariantResultConversionKind = {
+  cta: "cta",
+  booking: "booking",
+  path: "path",
+} as const;
+
+export interface VariantResultConversion {
+  label: string;
+  kind: VariantResultConversionKind;
+  value: string;
+  /** @minimum 0 */
+  count: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  rate: number;
+}
+
+export interface VariantResultOverall {
+  /** @minimum 0 */
+  count: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  rate: number;
+}
+
+export interface VariantResultSignificance {
+  vsControl: number;
+  pValue: number;
+}
+
+export interface VariantResult {
+  key: string;
+  name: string;
+  isControl: boolean;
+  /** @minimum 0 */
+  visitors: number;
+  conversions: VariantResultConversion[];
+  overall: VariantResultOverall;
+  significance?: VariantResultSignificance;
+}
+
+export interface GetExperimentResultsResponse {
+  experimentId: string;
+  variants: VariantResult[];
+}
+
 /**
  * Unauthorized
  */

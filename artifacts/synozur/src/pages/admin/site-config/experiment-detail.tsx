@@ -31,7 +31,7 @@ import type {
   PartnerItem,
   BookingLink,
   ExperimentStatus,
-} from "@workspace/api-zod";
+} from "@workspace/api-zod/types";
 import { OverrideMap } from "@workspace/api-zod";
 
 interface Props {

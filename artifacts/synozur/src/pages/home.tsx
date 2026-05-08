@@ -37,7 +37,7 @@ import { clientLogos, type LogoEntry } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { BookingLinks } from "@/components/home/BookingLinks";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
-import type { PartnerItem } from "@workspace/api-zod";
+import type { PartnerItem } from "@workspace/api-zod/types";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
 
