@@ -42,6 +42,10 @@ export type BookingLink = z.infer<typeof BookingLink>;
 // Flat keyed map. Keys are namespace.dot.path.
 export const OverrideMap = z
   .object({
+    // Home page layout selector. true renders Home B at /;
+    // false or absent follows the site-settings homeRootVariant toggle.
+    "home.layout": z.boolean().optional(),
+
     // Hero — positioning headline
     "home.hero.positioning.visible": z.boolean().optional(),
     "home.hero.positioning.text": z.string().max(500).optional(),

@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import {
   ExperimentsProvider,
   useExperimentsContext,
+  useOverride,
   useRouteConversionTracker,
 } from "@/lib/experiments";
 
@@ -484,14 +485,21 @@ function AdminRoutes() {
 // If we render Home before experiments resolve, an in-test visitor would
 // see default copy briefly, then it would swap to the variant text on
 // the next render.
+//
+// Priority: home.layout experiment override > site-settings homeRootVariant.
 function RootHomeRoute() {
   const { data, isLoading } = useQuery({
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
   const { isReady: experimentsReady } = useExperimentsContext();
+  // "home.layout" override from a running experiment (true = Home B, undefined = follow site settings).
+  const layoutOverride = useOverride<boolean | undefined>("home.layout", undefined);
   if ((isLoading && !data) || !experimentsReady) return null;
-  return data?.homeRootVariant === "b" ? <HomeB /> : <Home />;
+  const showB =
+    layoutOverride === true ||
+    (layoutOverride === undefined && data?.homeRootVariant === "b");
+  return showB ? <HomeB /> : <Home />;
 }
 
 function Router() {

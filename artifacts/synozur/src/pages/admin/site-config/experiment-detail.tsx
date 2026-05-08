@@ -703,6 +703,18 @@ type FieldDef =
 
 const OVERRIDE_GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
   {
+    title: "Home page layout",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.layout",
+        label: "Show Home B layout",
+        help: 'When set to "Show", visitors on / see the Home B layout. Absent or "Hide" follows the site-settings toggle. Experiment overrides site settings.',
+        siteDefault: false,
+      },
+    ],
+  },
+  {
     title: "Hero — Positioning",
     fields: [
       {
