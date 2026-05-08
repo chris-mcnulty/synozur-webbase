@@ -74,11 +74,18 @@ function url(path: string): string {
 export class ApiError extends Error {
   status: number;
   code: string | null;
-  constructor(message: string, status: number, code: string | null) {
+  details: Record<string, string[]> | null;
+  constructor(
+    message: string,
+    status: number,
+    code: string | null,
+    details: Record<string, string[]> | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -98,7 +105,15 @@ async function jsonFetch<T>(input: string, init: RequestInit = {}): Promise<T> {
     const obj = (body && typeof body === "object") ? (body as Record<string, unknown>) : null;
     const detail = obj && "error" in obj ? String(obj["error"]) : res.statusText;
     const code = obj && typeof obj["code"] === "string" ? (obj["code"] as string) : null;
-    throw new ApiError(`${res.status} ${detail}`, res.status, code);
+    const rawDetails =
+      obj && "details" in obj && obj["details"] && typeof obj["details"] === "object"
+        ? (obj["details"] as Record<string, unknown>)
+        : null;
+    const fieldErrors =
+      rawDetails && "fieldErrors" in rawDetails
+        ? (rawDetails["fieldErrors"] as Record<string, string[]>)
+        : null;
+    throw new ApiError(`${res.status} ${detail}`, res.status, code, fieldErrors);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

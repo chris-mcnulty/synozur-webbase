@@ -10,12 +10,14 @@ import { Plus, Play, Pause, Square, Trash2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type {
   AdminExperiment,
   CreateExperimentBody,
   ExperimentStatus,
 } from "@workspace/api-zod/types";
+
+const KEY_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
 function StatusPill({ status }: { status: ExperimentStatus }) {
   const styles: Record<ExperimentStatus, string> = {
@@ -57,7 +59,14 @@ export default function AdminExperimentsList() {
       setErrorMessage(null);
     },
     onError: (err) => {
-      setErrorMessage(err instanceof Error ? err.message : "Create failed");
+      if (err instanceof ApiError && err.details) {
+        const fieldMsgs = Object.entries(err.details)
+          .map(([field, msgs]) => `${field}: ${msgs.join(", ")}`)
+          .join("; ");
+        setErrorMessage(`Validation failed — ${fieldMsgs}`);
+      } else {
+        setErrorMessage(err instanceof Error ? err.message : "Create failed");
+      }
     },
   });
 
@@ -83,11 +92,28 @@ export default function AdminExperimentsList() {
   function submitCreate(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage(null);
+    const keyVal = draftKey.trim();
+    const nameVal = draftName.trim();
+    const pageKeyVal = draftPageKey.trim();
+    if (!KEY_RE.test(keyVal)) {
+      setErrorMessage(
+        "Key must start with a lowercase letter or digit, and may only contain lowercase letters, digits, hyphens, and underscores.",
+      );
+      return;
+    }
+    if (!nameVal) {
+      setErrorMessage("Name is required.");
+      return;
+    }
+    if (!pageKeyVal) {
+      setErrorMessage("Page key is required.");
+      return;
+    }
     createMutation.mutate({
-      key: draftKey.trim(),
-      name: draftName.trim(),
+      key: keyVal,
+      name: nameVal,
       description: null,
-      pageKey: draftPageKey.trim(),
+      pageKey: pageKeyVal,
       trafficPercentage: 100,
       holdbackPercentage: 0,
       conversionPaths: [],

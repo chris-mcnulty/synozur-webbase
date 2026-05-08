@@ -157,6 +157,10 @@ router.post(
   async (req, res): Promise<void> => {
     const parsed = CreateAdminExperimentBody.safeParse(req.body);
     if (!parsed.success) {
+      req.log.warn(
+        { zodError: parsed.error.flatten(), body: req.body },
+        "experiment create body validation failed",
+      );
       res
         .status(400)
         .json({ error: "Invalid body", details: parsed.error.flatten() });
