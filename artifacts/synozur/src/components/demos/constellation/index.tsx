@@ -139,7 +139,7 @@ export function ConstellationDemo() {
               Walk through Constellation, no booking required
             </h2>
             <p className="text-muted-foreground mt-2 max-w-2xl">
-              Four moments, fictional client data, real product behaviour. Takes about
+              Four moments, fictional client data, real product behavior. Takes about
               two minutes.
             </p>
           </div>

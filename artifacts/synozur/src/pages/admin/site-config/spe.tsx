@@ -916,7 +916,7 @@ export default function SpeAdminPage() {
                 </div>
                 {orphans.skippedByAge > 0 && (
                   <div className="text-xs text-amber-600 dark:text-amber-400">
-                    {orphans.skippedByAge} unrecognised file
+                    {orphans.skippedByAge} unrecognized file
                     {orphans.skippedByAge === 1 ? "" : "s"} skipped — younger
                     than 2 h or no timestamp from Graph. Re-scan after 2 hours
                     to include them.

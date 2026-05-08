@@ -177,7 +177,7 @@ export default function NebulaReportDetailPage({ spaceId }: Props) {
                   ))}
                   {data.uncategorisedNoteCount > 0 && (
                     <p className="text-xs text-muted-foreground px-1">
-                      +{data.uncategorisedNoteCount} uncategorised idea{data.uncategorisedNoteCount !== 1 ? "s" : ""}
+                      +{data.uncategorisedNoteCount} uncategorized idea{data.uncategorisedNoteCount !== 1 ? "s" : ""}
                     </p>
                   )}
                 </div>
