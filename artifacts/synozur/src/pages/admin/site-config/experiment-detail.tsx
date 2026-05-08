@@ -653,6 +653,11 @@ function VariantCard({
           overrides={overrides}
           onChange={setOverrides}
           issues={validationIssues}
+          controlOverrides={
+            variant.isControl
+              ? null
+              : (experiment.variants.find((v) => v.isControl)?.overrides ?? null)
+          }
         />
 
         {hasIssues ? (
@@ -685,169 +690,183 @@ function VariantCard({
 
 // ---------- OverridesEditor --------------------------------------------
 
+type FieldDef =
+  | {
+      kind: "text" | "boolean" | "url" | "longtext";
+      key: string;
+      label: string;
+      help?: string;
+      siteDefault?: string | boolean;
+    }
+  | { kind: "partners" }
+  | { kind: "booking-links" };
+
+const OVERRIDE_GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
+  {
+    title: "Hero — Positioning",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.hero.positioning.visible",
+        label: "Show positioning headline",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "home.hero.positioning.text",
+        label: "Headline text",
+        help: "The full headline. Word matching `accentWord` will be styled with the nebula accent.",
+        siteDefault: "The Transformation Company",
+      },
+      {
+        kind: "text",
+        key: "home.hero.positioning.accentWord",
+        label: "Accent word",
+        siteDefault: "Transformation",
+      },
+    ],
+  },
+  {
+    title: "Hero — Copy",
+    fields: [
+      {
+        kind: "longtext",
+        key: "home.hero.tagline.text",
+        label: "Tagline / narrative",
+        siteDefault:
+          "We help organizations move from intent to measurable progress—guiding leaders to their North Star with human\u2011centered, AI\u2011augmented transformation that\u2019s built for real\u2011world adoption.",
+      },
+      {
+        kind: "longtext",
+        key: "home.hero.narrative.text",
+        label: "Narrative (additional)",
+      },
+    ],
+  },
+  {
+    title: "Hero — Get Started CTA",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.hero.cta.visible",
+        label: "Show hero CTA",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "home.hero.cta.label",
+        label: "Button label",
+        siteDefault: "Get Started",
+      },
+      {
+        kind: "url",
+        key: "home.hero.cta.href",
+        label: "Button href",
+        siteDefault: "/start",
+      },
+    ],
+  },
+  {
+    title: "Partners area",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.partners.visible",
+        label: "Show partners section",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "home.partners.heading",
+        label: "Heading",
+        siteDefault: "Trusted by",
+      },
+      {
+        kind: "longtext",
+        key: "home.partners.subtext",
+        label: "Sub-text (optional)",
+      },
+      { kind: "partners" },
+    ],
+  },
+  {
+    title: "Booking links",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.booking.visible",
+        label: "Show booking links block",
+      },
+      {
+        kind: "text",
+        key: "home.booking.heading",
+        label: "Heading",
+      },
+      { kind: "booking-links" },
+    ],
+  },
+  {
+    title: "Site header",
+    fields: [
+      {
+        kind: "boolean",
+        key: "header.cta.visible",
+        label: "Show upper-right Get Started",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "header.cta.label",
+        label: "Header CTA label",
+        siteDefault: "Get Started",
+      },
+      {
+        kind: "url",
+        key: "header.cta.href",
+        label: "Header CTA href",
+        siteDefault: "/start",
+      },
+    ],
+  },
+  {
+    title: "Services overview hero (page key: services)",
+    fields: [
+      { kind: "text", key: "services.hero.eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "services.hero.headline", label: "Headline" },
+      { kind: "longtext", key: "services.hero.body", label: "Body" },
+    ],
+  },
+  {
+    title: "Applications hero (page key: applications)",
+    fields: [
+      { kind: "text", key: "applications.hero.eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "applications.hero.headline", label: "Headline" },
+      { kind: "longtext", key: "applications.hero.body", label: "Body" },
+    ],
+  },
+  {
+    title: "Case studies hero (page key: case-studies)",
+    fields: [
+      { kind: "text", key: "case-studies.hero.eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "case-studies.hero.headline", label: "Headline" },
+      { kind: "longtext", key: "case-studies.hero.body", label: "Body" },
+    ],
+  },
+];
+
 function OverridesEditor({
   overrides,
   onChange,
   issues,
+  controlOverrides,
 }: {
   overrides: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
-  // Per-key validation messages from OverrideMap.safeParse — when
-  // present, FieldRow renders a red ring and the message inline.
   issues: Record<string, string>;
+  // null = this IS the control variant (no reference shown).
+  // object = the control variant's saved overrides (may be empty {}).
+  controlOverrides: Record<string, unknown> | null;
 }) {
-  const groups: Array<{
-    title: string;
-    fields: Array<
-      | {
-          kind: "text" | "boolean" | "url" | "longtext";
-          key: string;
-          label: string;
-          help?: string;
-        }
-      | { kind: "partners" }
-      | { kind: "booking-links" }
-    >;
-  }> = [
-    {
-      title: "Hero — Positioning",
-      fields: [
-        {
-          kind: "boolean",
-          key: "home.hero.positioning.visible",
-          label: "Show positioning headline",
-        },
-        {
-          kind: "text",
-          key: "home.hero.positioning.text",
-          label: "Headline text",
-          help: "The full headline. Word matching `accentWord` will be styled with the nebula accent.",
-        },
-        {
-          kind: "text",
-          key: "home.hero.positioning.accentWord",
-          label: "Accent word",
-        },
-      ],
-    },
-    {
-      title: "Hero — Copy",
-      fields: [
-        {
-          kind: "longtext",
-          key: "home.hero.tagline.text",
-          label: "Tagline / narrative",
-        },
-        {
-          kind: "longtext",
-          key: "home.hero.narrative.text",
-          label: "Narrative (additional)",
-        },
-      ],
-    },
-    {
-      title: "Hero — Get Started CTA",
-      fields: [
-        {
-          kind: "boolean",
-          key: "home.hero.cta.visible",
-          label: "Show hero CTA",
-        },
-        {
-          kind: "text",
-          key: "home.hero.cta.label",
-          label: "Button label",
-        },
-        {
-          kind: "url",
-          key: "home.hero.cta.href",
-          label: "Button href",
-        },
-      ],
-    },
-    {
-      title: "Partners area",
-      fields: [
-        {
-          kind: "boolean",
-          key: "home.partners.visible",
-          label: "Show partners section",
-        },
-        {
-          kind: "text",
-          key: "home.partners.heading",
-          label: "Heading",
-        },
-        {
-          kind: "longtext",
-          key: "home.partners.subtext",
-          label: "Sub-text (optional)",
-        },
-        { kind: "partners" },
-      ],
-    },
-    {
-      title: "Booking links",
-      fields: [
-        {
-          kind: "boolean",
-          key: "home.booking.visible",
-          label: "Show booking links block",
-        },
-        {
-          kind: "text",
-          key: "home.booking.heading",
-          label: "Heading",
-        },
-        { kind: "booking-links" },
-      ],
-    },
-    {
-      title: "Site header",
-      fields: [
-        {
-          kind: "boolean",
-          key: "header.cta.visible",
-          label: "Show upper-right Get Started",
-        },
-        {
-          kind: "text",
-          key: "header.cta.label",
-          label: "Header CTA label",
-        },
-        {
-          kind: "url",
-          key: "header.cta.href",
-          label: "Header CTA href",
-        },
-      ],
-    },
-    {
-      title: "Services overview hero (page key: services)",
-      fields: [
-        { kind: "text", key: "services.hero.eyebrow", label: "Eyebrow" },
-        { kind: "text", key: "services.hero.headline", label: "Headline" },
-        { kind: "longtext", key: "services.hero.body", label: "Body" },
-      ],
-    },
-    {
-      title: "Applications hero (page key: applications)",
-      fields: [
-        { kind: "text", key: "applications.hero.eyebrow", label: "Eyebrow" },
-        { kind: "text", key: "applications.hero.headline", label: "Headline" },
-        { kind: "longtext", key: "applications.hero.body", label: "Body" },
-      ],
-    },
-    {
-      title: "Case studies hero (page key: case-studies)",
-      fields: [
-        { kind: "text", key: "case-studies.hero.eyebrow", label: "Eyebrow" },
-        { kind: "text", key: "case-studies.hero.headline", label: "Headline" },
-        { kind: "longtext", key: "case-studies.hero.body", label: "Body" },
-      ],
-    },
-  ];
-
   function setKey(key: string, value: unknown) {
     const next = { ...overrides };
     if (value === undefined || value === "") {
@@ -860,7 +879,7 @@ function OverridesEditor({
 
   return (
     <div className="border border-border rounded-md divide-y divide-border">
-      {groups.map((group) => (
+      {OVERRIDE_GROUPS.map((group) => (
         <OverrideGroup
           key={group.title}
           title={group.title}
@@ -868,6 +887,7 @@ function OverridesEditor({
           overrides={overrides}
           setKey={setKey}
           issues={issues}
+          controlOverrides={controlOverrides}
         />
       ))}
     </div>
@@ -880,20 +900,16 @@ function OverrideGroup({
   overrides,
   setKey,
   issues,
+  controlOverrides,
 }: {
   title: string;
-  fields: Array<
-    | { kind: "text" | "boolean" | "url" | "longtext"; key: string; label: string; help?: string }
-    | { kind: "partners" }
-    | { kind: "booking-links" }
-  >;
+  fields: FieldDef[];
   overrides: Record<string, unknown>;
   setKey: (key: string, value: unknown) => void;
   issues: Record<string, string>;
+  controlOverrides: Record<string, unknown> | null;
 }) {
   const [open, setOpen] = useState(false);
-  // Highlight groups that have at least one set field so the admin can
-  // see at a glance which areas this variant overrides.
   const setCount = fields.filter((f) => "key" in f && f.key in overrides).length;
 
   return (
@@ -947,6 +963,7 @@ function OverrideGroup({
                 value={overrides[field.key]}
                 onChange={(v) => setKey(field.key, v)}
                 error={issues[field.key]}
+                controlOverrides={controlOverrides}
               />
             );
           })}
@@ -961,12 +978,32 @@ function FieldRow({
   value,
   onChange,
   error,
+  controlOverrides,
 }: {
-  field: { kind: "text" | "boolean" | "url" | "longtext"; key: string; label: string; help?: string };
+  field: Extract<FieldDef, { key: string }>;
   value: unknown;
   onChange: (v: unknown) => void;
   error?: string;
+  controlOverrides: Record<string, unknown> | null;
 }) {
+  // The "effective live value" for this field:
+  //   - if controlOverrides is null → this IS the control, show nothing
+  //   - if control has an override for this key → show that
+  //   - otherwise → fall back to the hardcoded site default
+  const effectiveLive: unknown =
+    controlOverrides === null
+      ? undefined
+      : controlOverrides[field.key] !== undefined
+        ? controlOverrides[field.key]
+        : field.siteDefault;
+
+  function formatLive(v: unknown): string {
+    if (v === undefined || v === null || v === "") return "(empty — site default)";
+    if (typeof v === "boolean") return v ? "Show" : "Hide";
+    const s = String(v);
+    return s.length > 100 ? s.slice(0, 100) + "…" : s;
+  }
+
   const errorClass = error ? "border-destructive" : "";
   return (
     <div>
@@ -1007,6 +1044,27 @@ function FieldRow({
         <p className="text-xs text-destructive mt-1">{error}</p>
       ) : field.help ? (
         <p className="text-xs text-muted-foreground mt-1">{field.help}</p>
+      ) : null}
+      {effectiveLive !== undefined ? (
+        <div className="flex items-start gap-2 mt-1.5">
+          <p className="text-[11px] text-muted-foreground flex-1 leading-relaxed">
+            <span className="text-zinc-500">
+              {controlOverrides && field.key in controlOverrides
+                ? "Control: "
+                : "Site default: "}
+            </span>
+            {formatLive(effectiveLive)}
+          </p>
+          {value !== effectiveLive ? (
+            <button
+              type="button"
+              onClick={() => onChange(effectiveLive)}
+              className="text-[11px] shrink-0 text-primary hover:underline mt-0.5"
+            >
+              Copy
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
