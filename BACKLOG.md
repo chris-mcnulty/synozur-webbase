@@ -300,6 +300,62 @@ verified.
 
 ---
 
+## Galaxy portal lifecycle redesign follow-ups (follow-up to PR #73)
+
+Context: PR #73 (May 2026) reframed the Galaxy customer portal around the
+Synozur transformation lifecycle (Assess → Define → Deliver → Outcomes) and
+added five stage pages, a `JourneyStrip` home component, a CEO message card
+slot, and a shared `lifecycle.tsx` + `constellation-presentation.ts` module.
+The nav restructure collapsed the old flat ten-entry tab bar into six entries
+(`Home`, `Assess`, `Define`, `Deliver`, `Outcomes`, `Resources`) with alias
+routing so bookmarked deep-links still light up the right tab.
+
+Follow-up items, in recommended order:
+
+1. **Wire the CEO quarterly message card to a real CMS field.** Today it
+   renders static placeholder copy. Add a `portal_ceo_message` column (or
+   a dedicated settings row) to `site_settings`, expose an admin editor
+   at `/admin/settings` → "Portal / CEO message", and make the
+   `CeoMessageCard` in `artifacts/galaxy/src/pages/home.tsx` fetch from
+   `/api/portal/ceo-message`. The slot already knows its current quarter
+   (`currentQuarter()`) so the label is automatic.
+
+2. **Integrate Orbit into the Assess stage.** `stage-assess.tsx` renders
+   three `PlaceholderCard` tiles (baseline overview, competitive analysis,
+   market intelligence) under an "Integration pending" badge. When the
+   Orbit API is available, replace placeholders with live data from that
+   API. The Nebula pattern (`nebulaApi`) is the reference implementation.
+
+3. **Integrate Zenith into the Define stage.** `stage-define.tsx` renders
+   four `PlaceholderCard` tiles (state of content, AI readiness, policy
+   conformance, IA model) under an "Integration pending" badge. Same
+   pattern: introduce a `zenithApi` module and wire data.
+
+4. **Integrate Vega into the Outcomes stage.** `stage-outcomes.tsx` is
+   entirely placeholder today. Vega API TBD.
+
+5. **Update the old flat portal page links.** Pages like `/documents`,
+   `/invoices`, `/apps`, `/reports`, `/workspaces`, `/assessments`,
+   `/learning`, `/benchmarks` remain routed and functional but are no
+   longer top-level nav entries — they're surfaced via their parent stage
+   pages. Ensure internal "All → " links on each stage page point to the
+   correct deep pages, and confirm the `aliases` array in `PORTAL_NAV`
+   covers every deep route a customer might have bookmarked.
+
+6. **Suppress the "Browse your apps" button removal from existing tests.**
+   The PR removed the `/apps` button from the home hero. Any e2e test
+   asserting `data-testid="link-apps"` will now fail. Audit the test suite
+   and update or retire those assertions.
+
+7. **Add `data-testid` attributes to the stage nav items.** The desktop
+   portal nav bar now renders `data-testid="nav-assess"`, `nav-define`,
+   etc. (already present via `n.label.toLowerCase()`). Confirm coverage in
+   the e2e harness and add stage page smoke tests.
+
+Owner/tracking: file a ticket referencing this section once prioritized.
+
+---
+
 ## SEO & web-platform debt (follow-up to the May 2026 audit)
 
 Context: a May 2026 cross-codebase audit of SEO configuration and
@@ -406,3 +462,94 @@ architecture in ways that warrant their own PR.
    Accept-Language as a coarse geo proxy). Out-of-segment visitors
    are treated like out-of-test under #9 — no assignment row, fallback
    rendering.
+
+---
+
+## Galaxy portal lifecycle redesign (follow-up to May 2026 portal IA refactor)
+
+Context: the May 2026 redesign on `claude/redesign-portal-homepage-ku1rT`
+collapsed the Galaxy portal's flat 10-entry top nav into the customer
+lifecycle (`Home, Assess, Define, Deliver, Outcomes, Resources`) and
+rebuilt the homepage around that journey. To keep the diff scoped to
+the IA shift, six pieces were intentionally deferred — the structural
+slots are in place (visible placeholder cards or static content) so
+each integration is a fill-in, not a re-design.
+
+Follow-up items, in recommended order:
+
+1. **Back the CEO quarterly message slot with a CMS field.** Today
+   `CeoMessageCard` in `artifacts/galaxy/src/pages/home.tsx` renders
+   static placeholder copy. Add a small `portal_announcements` row
+   (or extend `site_settings`) keyed by quarter (`YYYY-QN`) with
+   `markdown_body`, `author_name`, `published_at`, plus an admin
+   editor under `/admin/site-config/`. Render the most recent
+   `published_at <= now()` entry; fall back to a "no message this
+   quarter" empty state instead of the placeholder text. Cache for
+   5 minutes — quarterly cadence does not need fresh-on-every-load.
+
+2. **Orbit integration — baseline overview, competitive analysis,
+   market intelligence.** `pages/stage-assess.tsx` currently renders
+   three `PlaceholderCard`s under "Market context" with the badge
+   `Integration pending`. The intended data shape per card:
+   - *Baseline company overview* — high-level positioning derived
+     from Orbit's dashboard, mapped to either the client's own
+     company or the chosen baseline org. One headline metric +
+     prose summary per Orbit "company-baseline" record.
+   - *Competitive analysis* — latest competitive landscape report
+     (peers list, threats list, daylight summary).
+   - *Market intelligence reports* — paginated quarterly market
+     signal reports curated for the engagement.
+   Backend prerequisite: an `orbit` source-app surface in the
+   portal API (mirroring the `nebula` / `orion` / `constellation`
+   patterns under `lib/api-client-react`). Until Orbit ships a
+   client-projection endpoint, leave the placeholders in place.
+
+3. **Zenith integration — readiness and policy reports.**
+   `pages/stage-define.tsx` renders four `PlaceholderCard`s under
+   "Readiness and policy". The intended top-level reports:
+   - *State of content* — content health (coverage, freshness,
+     ownership gaps).
+   - *AI readiness* — pillar-level AI maturity scoring.
+   - *Policy conformance* — adoption / drift signal across
+     published policies. (This is why Zenith belongs in **Define**
+     and not **Outcomes** — the policy view is a definitional input
+     to the strategy, not an outcome trendline.)
+   - *Information architecture* — the IA reference model the
+     engagement is being measured against.
+   Backend prerequisite: a `zenith` source-app projection in the
+   portal API exposing top-level summary cards (not full reports).
+
+4. **Vega integration — executive operations overview.**
+   `pages/stage-outcomes.tsx` renders four `PlaceholderCard`s.
+   Critical scoping constraint: surface **executive-level views
+   only** — current state of operations, outcome trendlines,
+   adoption signal, strategic-permanence summary. Do **not** expose
+   operator drill-downs, individual telemetry, or team-level
+   adoption breakdowns through the portal — those stay inside Vega
+   itself. Backend prerequisite: a `vega` source-app projection
+   that returns only the exec-summary aggregations and refuses to
+   leak the operator dataset.
+
+5. **Resources — define the shared-documents area.** The
+   "Shared workspace" section in `pages/stage-resources.tsx`
+   currently renders a single `PlaceholderCard` flagged `TBD`. The
+   open question is editorial, not technical: what cross-engagement
+   reference materials live here (templates, frameworks, reusable
+   IP)? Once decided, this can ride on the existing
+   `useListPortalDocuments` plumbing with a new "shared" engagement
+   scope, or a dedicated `portal_shared_documents` projection if
+   the access model differs from per-engagement docs.
+
+6. **Map relationship-manager details onto the homepage.** The May
+   2026 redesign explicitly punted the relationship-manager mapping
+   (`me.accountTeam` already covers account-manager / primary-
+   contact roles, but the broader RM-to-engagement-to-client mapping
+   was deferred). Once the RM data model is finalized, surface RM
+   details inline on the homepage account-team card and on each
+   `EngagementCard` (currently shows `accountLead` only). Likely
+   needs a new `PortalRelationshipManager` projection on `/api/portal/me`
+   plus per-engagement RM context.
+
+Owner/tracking: file a ticket referencing this section once Orbit /
+Zenith / Vega land their portal projections and the relationship-
+manager data model is signed off.

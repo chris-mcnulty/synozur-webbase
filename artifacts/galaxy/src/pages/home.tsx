@@ -9,11 +9,12 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth";
 import NotCustomer from "./not-customer";
 import { PortalShell } from "@/components/portal-shell";
+import { JourneyStrip } from "@/components/lifecycle";
+import { Quote } from "lucide-react";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -29,6 +30,12 @@ function initials(name: string | null | undefined, fallback: string): string {
   if (parts.length === 0) return fallback;
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+function currentQuarter(): string {
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  return `Q${q} ${now.getFullYear()}`;
 }
 
 const ROLE_LABEL: Record<PortalAccountTeamMember["role"], string> = {
@@ -83,9 +90,7 @@ function EngagementCard({ engagement }: { engagement: PortalEngagement }) {
               </p>
             ) : null}
           </div>
-          <Badge
-            variant={engagement.status === "active" ? "default" : "secondary"}
-          >
+          <Badge variant={engagement.status === "active" ? "default" : "secondary"}>
             {STATUS_LABEL[engagement.status]}
           </Badge>
         </div>
@@ -112,6 +117,34 @@ function EngagementCard({ engagement }: { engagement: PortalEngagement }) {
             </span>
           </div>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Placeholder for the CEO's recurring quarterly note. Wired as static copy
+// today; the intent is for this slot to be backed by a small CMS field that
+// the CEO updates each quarter.
+function CeoMessageCard() {
+  return (
+    <Card className="overflow-hidden border-violet-500/30 bg-gradient-to-br from-violet-500/10 via-card to-card">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-violet-300">
+            <Quote className="h-3.5 w-3.5" />
+            <span>A note from the CEO</span>
+          </div>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+            {currentQuarter()}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          A quarterly message from Synozur leadership will appear here — what
+          we're seeing across our clients, where we're investing, and how the
+          journey ahead is shaping up. Update this slot each quarter from the
+          admin console.
+        </p>
+        <p className="text-xs text-muted-foreground">— The Synozur Alliance</p>
       </CardContent>
     </Card>
   );
@@ -145,7 +178,7 @@ export default function Home() {
       {/* ── Galaxy hero banner — image comes from the fixed app-level background ── */}
       <div className="relative w-full" style={{ minHeight: 220 }}>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/60" />
-        <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 pb-16 space-y-2">
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 pb-12 space-y-2">
           <p className="text-xs uppercase tracking-wider text-white/60">
             {me?.organization.name ?? (isLoading ? "" : "Welcome")}
           </p>
@@ -157,29 +190,27 @@ export default function Home() {
             .
           </h1>
           <p className="text-sm text-white/70 max-w-2xl">
-            Here's where your Synozur work lives. Engagements, account team,
-            and the documents your team is putting together for you all show
-            up here.
+            Your Synozur work, organized by where you are in the journey:
+            assess, define, deliver, and make outcomes permanent.
           </p>
-          <div className="pt-1">
-            <Link href="/apps">
-              <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" data-testid="link-apps">
-                Browse your apps →
-              </Button>
-            </Link>
-          </div>
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-        <section className="sr-only" aria-hidden="true" />
+      <main className="max-w-5xl mx-auto px-6 py-10 space-y-12">
+        <section>
+          <CeoMessageCard />
+        </section>
+
+        <JourneyStrip />
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
             <div className="flex items-baseline justify-between">
               <h2 className="text-lg font-semibold">Active engagements</h2>
               <span className="text-xs text-muted-foreground">
-                {isLoading ? "" : `${engagements.length} total`}
+                {isLoading
+                  ? ""
+                  : `${engagements.length} active`}
               </span>
             </div>
             {isLoading ? (
@@ -190,8 +221,8 @@ export default function Home() {
             ) : engagements.length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
-                  No engagements yet. When your Synozur team kicks one off,
-                  you'll see it here.
+                  No active engagements right now. When your Synozur team kicks
+                  one off, you'll see it here.
                 </CardContent>
               </Card>
             ) : (
@@ -201,6 +232,17 @@ export default function Home() {
                 ))}
               </div>
             )}
+            <div className="pt-2">
+              <Link href="/deliver">
+                {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                <a
+                  className="text-xs font-medium text-violet-400 hover:text-violet-300 inline-flex items-center gap-1"
+                  data-testid="link-deliver"
+                >
+                  See delivery details →
+                </a>
+              </Link>
+            </div>
           </div>
 
           <div className="space-y-3">

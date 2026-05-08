@@ -54,18 +54,52 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
   }).catch(() => undefined);
 }
 
-const PORTAL_NAV: { href: string; label: string }[] = [
-  { href: "/", label: "Dashboard" },
-  { href: "/projects", label: "Projects" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/documents", label: "Documents" },
-  { href: "/apps", label: "Apps" },
-  { href: "/reports", label: "Reports" },
-  { href: "/workspaces", label: "Workspaces" },
-  { href: "/assessments", label: "Assessments" },
-  { href: "/learning", label: "Learning" },
-  { href: "/benchmarks", label: "Benchmarks" },
+// Top-level portal navigation. The middle four entries are the lifecycle
+// transformation stages (mirrored by `LIFECYCLE_STAGES` in `components/
+// lifecycle.tsx`); `Home` and `Resources` book-end them as non-stage entries.
+//
+// `aliases` lists the per-app deep-link prefixes that should still light up
+// the corresponding tab when a user lands via a saved deep link (e.g. someone
+// who bookmarked `/projects` should see `Deliver` highlighted). Per-app
+// surfaces are still reachable, just no longer top-level entries.
+interface PortalNavEntry {
+  href: string;
+  label: string;
+  aliases?: string[];
+}
+
+const PORTAL_NAV: PortalNavEntry[] = [
+  { href: "/", label: "Home" },
+  {
+    href: "/assess",
+    label: "Assess",
+    aliases: ["/assessments", "/learning", "/benchmarks"],
+  },
+  {
+    href: "/define",
+    label: "Define",
+    aliases: ["/reports", "/workspaces"],
+  },
+  {
+    href: "/deliver",
+    label: "Deliver",
+    aliases: ["/projects"],
+  },
+  { href: "/outcomes", label: "Outcomes" },
+  {
+    href: "/resources",
+    label: "Resources",
+    aliases: ["/documents", "/invoices", "/apps"],
+  },
 ];
+
+function isPortalNavActive(entry: PortalNavEntry, location: string): boolean {
+  if (entry.href === "/") return location === "/";
+  if (location === entry.href || location.startsWith(`${entry.href}/`)) return true;
+  return (entry.aliases ?? []).some(
+    (a) => location === a || location.startsWith(`${a}/`),
+  );
+}
 
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
@@ -85,11 +119,20 @@ function NavDropdown({ group }: { group: NavGroup }) {
   }, []);
 
   return (
-    <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- mouse-only handlers on a presentational wrapper around an interactive button; keyboard access is provided by the button below (toggle on click/Enter/Space, close on Escape).
+    <div
+      className="relative"
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) setOpen(false);
+      }}
+    >
       <button
         className="text-[17px] font-medium transition-colors py-2 text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
         aria-haspopup="true"
         aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
       >
         {group.title}
       </button>
@@ -272,13 +315,12 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
     {
       title: "Portal",
       links: [
-        { label: "Dashboard", href: "/galaxy/" },
-        { label: "Projects", href: "/galaxy/projects" },
-        { label: "Invoices", href: "/galaxy/invoices" },
-        { label: "Documents", href: "/galaxy/documents" },
-        { label: "Apps", href: "/galaxy/apps" },
-        { label: "Reports", href: "/galaxy/reports" },
-        { label: "Workspaces", href: "/galaxy/workspaces" },
+        { label: "Home", href: "/galaxy/" },
+        { label: "Assess", href: "/galaxy/assess" },
+        { label: "Define", href: "/galaxy/define" },
+        { label: "Deliver", href: "/galaxy/deliver" },
+        { label: "Outcomes", href: "/galaxy/outcomes" },
+        { label: "Resources", href: "/galaxy/resources" },
       ],
     },
   ];
@@ -476,7 +518,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
                   <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
                     {PORTAL_NAV.map((n) => {
-                      const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+                      const active = isPortalNavActive(n, location);
                       return (
                         <Link key={n.href} href={n.href}
                           className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
@@ -512,7 +554,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
           <span className="text-xs text-muted-foreground font-medium mr-3 hidden sm:inline">Galaxy Portal</span>
           <div className="flex items-center gap-1">
             {PORTAL_NAV.map((n) => {
-              const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+              const active = isPortalNavActive(n, location);
               return (
                 <Link
                   key={n.href}

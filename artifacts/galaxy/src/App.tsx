@@ -22,6 +22,11 @@ import OrionResultsPage from "@/pages/orion-results";
 import ConstellationProjectsPage from "@/pages/constellation-projects";
 import ConstellationProjectPage from "@/pages/constellation-project";
 import ConstellationInvoicesPage from "@/pages/constellation-invoices";
+import StageAssessPage from "@/pages/stage-assess";
+import StageDefinePage from "@/pages/stage-define";
+import StageDeliverPage from "@/pages/stage-deliver";
+import StageOutcomesPage from "@/pages/stage-outcomes";
+import StageResourcesPage from "@/pages/stage-resources";
 import { PortalSiteHeader } from "@/components/portal-site-header";
 import { PortalSiteFooter } from "@/components/portal-site-footer";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,6 +91,21 @@ function AppRouter() {
       <Route path="/oauth-callback" component={OAuthCallback} />
       <Route path="/">
         <Gated><Home /></Gated>
+      </Route>
+      <Route path="/assess">
+        <Gated><StageAssessPage /></Gated>
+      </Route>
+      <Route path="/define">
+        <Gated><StageDefinePage /></Gated>
+      </Route>
+      <Route path="/deliver">
+        <Gated><StageDeliverPage /></Gated>
+      </Route>
+      <Route path="/outcomes">
+        <Gated><StageOutcomesPage /></Gated>
+      </Route>
+      <Route path="/resources">
+        <Gated><StageResourcesPage /></Gated>
       </Route>
       <Route path="/documents">
         <Gated><Documents /></Gated>
