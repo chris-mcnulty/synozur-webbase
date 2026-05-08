@@ -3056,6 +3056,7 @@ export interface PublicExperiment {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths: ConversionPath[];
   /** @minItems 1 */
   variants: PublicExperimentVariant[];
@@ -3136,6 +3137,7 @@ export interface AdminExperiment {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths: ConversionPath[];
   /**
    * @minimum 1
@@ -3193,6 +3195,7 @@ export interface CreateExperimentBody {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths?: ConversionPath[];
 }
 
@@ -3217,6 +3220,7 @@ export interface UpdateExperimentBody {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths?: ConversionPath[];
   /**
    * @minimum 1

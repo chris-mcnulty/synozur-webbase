@@ -5301,6 +5301,8 @@ export const getActiveExperimentsResponseExperimentsItemConversionPathsItemValue
 
 export const getActiveExperimentsResponseExperimentsItemConversionPathsItemLabelMax = 120;
 
+export const getActiveExperimentsResponseExperimentsItemConversionPathsMax = 20;
+
 export const getActiveExperimentsResponseExperimentsItemVariantsItemWeightMin = 0;
 export const getActiveExperimentsResponseExperimentsItemVariantsItemWeightMax = 100;
 
@@ -5377,23 +5379,25 @@ export const GetActiveExperimentsResponse = zod.object({
         .default(
           getActiveExperimentsResponseExperimentsItemHoldbackPercentageDefault,
         ),
-      conversionPaths: zod.array(
-        zod.object({
-          kind: zod.enum(["cta", "booking", "path"]),
-          value: zod
-            .string()
-            .min(1)
-            .max(
-              getActiveExperimentsResponseExperimentsItemConversionPathsItemValueMax,
-            ),
-          label: zod
-            .string()
-            .min(1)
-            .max(
-              getActiveExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
-            ),
-        }),
-      ),
+      conversionPaths: zod
+        .array(
+          zod.object({
+            kind: zod.enum(["cta", "booking", "path"]),
+            value: zod
+              .string()
+              .min(1)
+              .max(
+                getActiveExperimentsResponseExperimentsItemConversionPathsItemValueMax,
+              ),
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                getActiveExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
+              ),
+          }),
+        )
+        .max(getActiveExperimentsResponseExperimentsItemConversionPathsMax),
       variants: zod
         .array(
           zod.object({
@@ -5649,6 +5653,8 @@ export const listAdminExperimentsResponseExperimentsItemConversionPathsItemValue
 
 export const listAdminExperimentsResponseExperimentsItemConversionPathsItemLabelMax = 120;
 
+export const listAdminExperimentsResponseExperimentsItemConversionPathsMax = 20;
+
 export const listAdminExperimentsResponseExperimentsItemAutoStopAfterDaysMax = 365;
 
 export const listAdminExperimentsResponseExperimentsItemAutoStopOnSignificanceDefault = false;
@@ -5735,23 +5741,25 @@ export const ListAdminExperimentsResponse = zod.object({
         .default(
           listAdminExperimentsResponseExperimentsItemHoldbackPercentageDefault,
         ),
-      conversionPaths: zod.array(
-        zod.object({
-          kind: zod.enum(["cta", "booking", "path"]),
-          value: zod
-            .string()
-            .min(1)
-            .max(
-              listAdminExperimentsResponseExperimentsItemConversionPathsItemValueMax,
-            ),
-          label: zod
-            .string()
-            .min(1)
-            .max(
-              listAdminExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
-            ),
-        }),
-      ),
+      conversionPaths: zod
+        .array(
+          zod.object({
+            kind: zod.enum(["cta", "booking", "path"]),
+            value: zod
+              .string()
+              .min(1)
+              .max(
+                listAdminExperimentsResponseExperimentsItemConversionPathsItemValueMax,
+              ),
+            label: zod
+              .string()
+              .min(1)
+              .max(
+                listAdminExperimentsResponseExperimentsItemConversionPathsItemLabelMax,
+              ),
+          }),
+        )
+        .max(listAdminExperimentsResponseExperimentsItemConversionPathsMax),
       autoStopAfterDays: zod
         .number()
         .min(1)
@@ -6012,6 +6020,7 @@ export const createAdminExperimentBodyConversionPathsItemValueMax = 200;
 export const createAdminExperimentBodyConversionPathsItemLabelMax = 120;
 
 export const createAdminExperimentBodyConversionPathsDefault = [];
+export const createAdminExperimentBodyConversionPathsMax = 20;
 
 export const CreateAdminExperimentBody = zod.object({
   key: zod
@@ -6049,6 +6058,7 @@ export const CreateAdminExperimentBody = zod.object({
           .max(createAdminExperimentBodyConversionPathsItemLabelMax),
       }),
     )
+    .max(createAdminExperimentBodyConversionPathsMax)
     .default(createAdminExperimentBodyConversionPathsDefault),
 });
 
@@ -6066,6 +6076,8 @@ export const getAdminExperimentResponseHoldbackPercentageMax = 100;
 export const getAdminExperimentResponseConversionPathsItemValueMax = 200;
 
 export const getAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const getAdminExperimentResponseConversionPathsMax = 20;
 
 export const getAdminExperimentResponseAutoStopAfterDaysMax = 365;
 
@@ -6149,19 +6161,21 @@ export const GetAdminExperimentResponse = zod.object({
     .min(getAdminExperimentResponseHoldbackPercentageMin)
     .max(getAdminExperimentResponseHoldbackPercentageMax)
     .default(getAdminExperimentResponseHoldbackPercentageDefault),
-  conversionPaths: zod.array(
-    zod.object({
-      kind: zod.enum(["cta", "booking", "path"]),
-      value: zod
-        .string()
-        .min(1)
-        .max(getAdminExperimentResponseConversionPathsItemValueMax),
-      label: zod
-        .string()
-        .min(1)
-        .max(getAdminExperimentResponseConversionPathsItemLabelMax),
-    }),
-  ),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(getAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(getAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(getAdminExperimentResponseConversionPathsMax),
   autoStopAfterDays: zod
     .number()
     .min(1)
@@ -6401,6 +6415,8 @@ export const updateAdminExperimentBodyConversionPathsItemValueMax = 200;
 
 export const updateAdminExperimentBodyConversionPathsItemLabelMax = 120;
 
+export const updateAdminExperimentBodyConversionPathsMax = 20;
+
 export const updateAdminExperimentBodyAutoStopAfterDaysMax = 365;
 
 export const updateAdminExperimentBodyMinVisitorsForAutoStopMin = 0;
@@ -6435,6 +6451,7 @@ export const UpdateAdminExperimentBody = zod.object({
           .max(updateAdminExperimentBodyConversionPathsItemLabelMax),
       }),
     )
+    .max(updateAdminExperimentBodyConversionPathsMax)
     .optional(),
   autoStopAfterDays: zod
     .number()
@@ -6458,6 +6475,8 @@ export const updateAdminExperimentResponseHoldbackPercentageMax = 100;
 export const updateAdminExperimentResponseConversionPathsItemValueMax = 200;
 
 export const updateAdminExperimentResponseConversionPathsItemLabelMax = 120;
+
+export const updateAdminExperimentResponseConversionPathsMax = 20;
 
 export const updateAdminExperimentResponseAutoStopAfterDaysMax = 365;
 
@@ -6541,19 +6560,21 @@ export const UpdateAdminExperimentResponse = zod.object({
     .min(updateAdminExperimentResponseHoldbackPercentageMin)
     .max(updateAdminExperimentResponseHoldbackPercentageMax)
     .default(updateAdminExperimentResponseHoldbackPercentageDefault),
-  conversionPaths: zod.array(
-    zod.object({
-      kind: zod.enum(["cta", "booking", "path"]),
-      value: zod
-        .string()
-        .min(1)
-        .max(updateAdminExperimentResponseConversionPathsItemValueMax),
-      label: zod
-        .string()
-        .min(1)
-        .max(updateAdminExperimentResponseConversionPathsItemLabelMax),
-    }),
-  ),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(updateAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(updateAdminExperimentResponseConversionPathsMax),
   autoStopAfterDays: zod
     .number()
     .min(1)
@@ -6794,6 +6815,8 @@ export const startAdminExperimentResponseConversionPathsItemValueMax = 200;
 
 export const startAdminExperimentResponseConversionPathsItemLabelMax = 120;
 
+export const startAdminExperimentResponseConversionPathsMax = 20;
+
 export const startAdminExperimentResponseAutoStopAfterDaysMax = 365;
 
 export const startAdminExperimentResponseAutoStopOnSignificanceDefault = false;
@@ -6876,19 +6899,21 @@ export const StartAdminExperimentResponse = zod.object({
     .min(startAdminExperimentResponseHoldbackPercentageMin)
     .max(startAdminExperimentResponseHoldbackPercentageMax)
     .default(startAdminExperimentResponseHoldbackPercentageDefault),
-  conversionPaths: zod.array(
-    zod.object({
-      kind: zod.enum(["cta", "booking", "path"]),
-      value: zod
-        .string()
-        .min(1)
-        .max(startAdminExperimentResponseConversionPathsItemValueMax),
-      label: zod
-        .string()
-        .min(1)
-        .max(startAdminExperimentResponseConversionPathsItemLabelMax),
-    }),
-  ),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(startAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(startAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(startAdminExperimentResponseConversionPathsMax),
   autoStopAfterDays: zod
     .number()
     .min(1)
@@ -7125,6 +7150,8 @@ export const pauseAdminExperimentResponseConversionPathsItemValueMax = 200;
 
 export const pauseAdminExperimentResponseConversionPathsItemLabelMax = 120;
 
+export const pauseAdminExperimentResponseConversionPathsMax = 20;
+
 export const pauseAdminExperimentResponseAutoStopAfterDaysMax = 365;
 
 export const pauseAdminExperimentResponseAutoStopOnSignificanceDefault = false;
@@ -7207,19 +7234,21 @@ export const PauseAdminExperimentResponse = zod.object({
     .min(pauseAdminExperimentResponseHoldbackPercentageMin)
     .max(pauseAdminExperimentResponseHoldbackPercentageMax)
     .default(pauseAdminExperimentResponseHoldbackPercentageDefault),
-  conversionPaths: zod.array(
-    zod.object({
-      kind: zod.enum(["cta", "booking", "path"]),
-      value: zod
-        .string()
-        .min(1)
-        .max(pauseAdminExperimentResponseConversionPathsItemValueMax),
-      label: zod
-        .string()
-        .min(1)
-        .max(pauseAdminExperimentResponseConversionPathsItemLabelMax),
-    }),
-  ),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(pauseAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(pauseAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(pauseAdminExperimentResponseConversionPathsMax),
   autoStopAfterDays: zod
     .number()
     .min(1)
@@ -7456,6 +7485,8 @@ export const endAdminExperimentResponseConversionPathsItemValueMax = 200;
 
 export const endAdminExperimentResponseConversionPathsItemLabelMax = 120;
 
+export const endAdminExperimentResponseConversionPathsMax = 20;
+
 export const endAdminExperimentResponseAutoStopAfterDaysMax = 365;
 
 export const endAdminExperimentResponseAutoStopOnSignificanceDefault = false;
@@ -7538,19 +7569,21 @@ export const EndAdminExperimentResponse = zod.object({
     .min(endAdminExperimentResponseHoldbackPercentageMin)
     .max(endAdminExperimentResponseHoldbackPercentageMax)
     .default(endAdminExperimentResponseHoldbackPercentageDefault),
-  conversionPaths: zod.array(
-    zod.object({
-      kind: zod.enum(["cta", "booking", "path"]),
-      value: zod
-        .string()
-        .min(1)
-        .max(endAdminExperimentResponseConversionPathsItemValueMax),
-      label: zod
-        .string()
-        .min(1)
-        .max(endAdminExperimentResponseConversionPathsItemLabelMax),
-    }),
-  ),
+  conversionPaths: zod
+    .array(
+      zod.object({
+        kind: zod.enum(["cta", "booking", "path"]),
+        value: zod
+          .string()
+          .min(1)
+          .max(endAdminExperimentResponseConversionPathsItemValueMax),
+        label: zod
+          .string()
+          .min(1)
+          .max(endAdminExperimentResponseConversionPathsItemLabelMax),
+      }),
+    )
+    .max(endAdminExperimentResponseConversionPathsMax),
   autoStopAfterDays: zod
     .number()
     .min(1)

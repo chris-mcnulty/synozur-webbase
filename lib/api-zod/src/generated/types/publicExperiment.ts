@@ -21,6 +21,7 @@ export interface PublicExperiment {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths: ConversionPath[];
   /** @minItems 1 */
   variants: PublicExperimentVariant[];

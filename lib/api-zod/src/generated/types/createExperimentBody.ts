@@ -39,5 +39,6 @@ export interface CreateExperimentBody {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths?: ConversionPath[];
 }

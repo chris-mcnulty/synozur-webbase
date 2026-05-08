@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, sql, desc } from "drizzle-orm";
+import { asc, eq, sql, desc } from "drizzle-orm";
 import {
   db,
   experimentsTable,
@@ -512,16 +512,22 @@ router.patch(
       res.status(404).json({ error: "Not found" });
       return;
     }
-    // While running, only override values may change. Weight/control
-    // changes mid-flight would invalidate the experiment.
-    if (exp.status === "running") {
-      const onlyOverrides =
-        parsed.data.weight === undefined &&
-        parsed.data.isControl === undefined;
-      if (!onlyOverrides) {
+    // weight + isControl are frozen once an experiment has ever been
+    // started (running or paused) — only `draft` allows them to
+    // change. Persisted assignments are first-seen-only (ON CONFLICT
+    // DO NOTHING) and the client re-buckets deterministically, so
+    // changing weights or which arm is "control" mid-experiment (even
+    // while paused, before resume) would leave already-recorded
+    // visitors attributed to a variant_key that no longer matches
+    // what they'd see now.
+    if (exp.status !== "draft") {
+      const wantsImmutableChange =
+        parsed.data.weight !== undefined ||
+        parsed.data.isControl !== undefined;
+      if (wantsImmutableChange) {
         res.status(409).json({
           error:
-            "Only the overrides field may change while the experiment is running.",
+            "weight and isControl are frozen once the experiment has been started; only `name` and `overrides` may change after first start.",
         });
         return;
       }
@@ -612,24 +618,8 @@ router.get(
     }
     const { exp, variants } = loaded;
 
-    const visitorRows = await db
-      .select({
-        variantKey: experimentAssignmentsTable.variantKey,
-        n: sql<number>`COUNT(DISTINCT ${experimentAssignmentsTable.visitorId})::int`,
-      })
-      .from(experimentAssignmentsTable)
-      .where(
-        and(
-          eq(experimentAssignmentsTable.experimentId, exp.id),
-          sql`${experimentAssignmentsTable.forcedBy} IS NULL`,
-        ),
-      )
-      .groupBy(experimentAssignmentsTable.variantKey);
-    const visitorsByVariant = new Map<string, number>(
-      visitorRows.map((r) => [r.variantKey, Number(r.n)]),
-    );
-
     const conversions = exp.conversionPaths ?? [];
+
     // Build a per-conversion-path SQL match clause. Joined to
     // experiment_assignments below so the cohort matches the visitor
     // count: only naturally-bucketed visitors (forced_by IS NULL) and
@@ -648,62 +638,66 @@ router.get(
       return sql`${trafficEventsTable.eventName} = ${cp.value}`;
     }
 
-    // Per-path: count distinct visitors per variant whose assignment is
-    // natural and who fired the conversion event. We trust the assignment
-    // row's variant_key (the first observed bucket), not the event's
-    // variant_key — re-bucketing mid-flight would otherwise smear a
-    // visitor across two variants.
-    const conversionRows = await Promise.all(
-      conversions.map(async (cp) => {
-        const result = await db.execute<{
-          variant_key: string;
-          c: number;
-        }>(sql`
-          SELECT a.variant_key AS variant_key,
-                 COUNT(DISTINCT a.visitor_id)::int AS c
-          FROM ${experimentAssignmentsTable} a
-          INNER JOIN ${trafficEventsTable} e
-            ON e.properties->>'visitor_id' = a.visitor_id
-            AND e.occurred_at >= a.assigned_at
-            AND ${matchClauseFor(cp)}
-          WHERE a.experiment_id = ${exp.id}
-            AND a.forced_by IS NULL
-          GROUP BY a.variant_key
-        `);
-        const map = new Map<string, number>();
-        for (const r of result.rows) map.set(r.variant_key, Number(r.c));
-        return { cp, map };
-      }),
+    // Single query: visitors per variant + overall + per-conversion
+    // counts via Postgres FILTER aggregates. Replaces the previous
+    // N+2 round-trips (one per conversion path + an overall + a
+    // visitor count). All counts honor (forced_by IS NULL) and the
+    // assignment row's variant_key as the source of truth, so
+    // re-bucketing mid-flight can't smear a visitor across variants.
+    const filterColumns = conversions.map(
+      (cp, i) =>
+        sql`COUNT(DISTINCT a.visitor_id) FILTER (WHERE ${matchClauseFor(
+          cp,
+        )})::int AS ${sql.raw(`conv_${i}`)}`,
     );
+    const overallColumn =
+      conversions.length > 0
+        ? sql`, COUNT(DISTINCT a.visitor_id) FILTER (WHERE ${sql.join(
+            conversions.map((cp) => sql`(${matchClauseFor(cp)})`),
+            sql` OR `,
+          )})::int AS overall_conv`
+        : sql`, 0::int AS overall_conv`;
+    const filterColumnList =
+      filterColumns.length > 0
+        ? sql`, ${sql.join(filterColumns, sql`, `)}`
+        : sql``;
 
-    // Overall conversions per variant — distinct visitors who hit ANY
-    // configured conversion target. Computed as a separate query rather
-    // than summing per-path counts so a single visitor triggering
-    // multiple targets doesn't double-count (which previously made
-    // overall.rate exceed 1 and break the schema's max-1 constraint).
+    type StatsRow = {
+      variant_key: string;
+      visitors: number;
+      overall_conv: number;
+      [k: string]: string | number;
+    };
+    const statsResult = await db.execute<StatsRow>(sql`
+      SELECT a.variant_key,
+             COUNT(DISTINCT a.visitor_id)::int AS visitors
+             ${overallColumn}
+             ${filterColumnList}
+      FROM ${experimentAssignmentsTable} a
+      LEFT JOIN ${trafficEventsTable} e
+        ON e.properties->>'visitor_id' = a.visitor_id
+        AND e.occurred_at >= a.assigned_at
+      WHERE a.experiment_id = ${exp.id}
+        AND a.forced_by IS NULL
+      GROUP BY a.variant_key
+    `);
+
+    const visitorsByVariant = new Map<string, number>();
     const overallByVariant = new Map<string, number>();
-    if (conversions.length > 0) {
-      const anyMatch = sql.join(
-        conversions.map((cp) => sql`(${matchClauseFor(cp)})`),
-        sql` OR `,
-      );
-      const overallResult = await db.execute<{
-        variant_key: string;
-        c: number;
-      }>(sql`
-        SELECT a.variant_key AS variant_key,
-               COUNT(DISTINCT a.visitor_id)::int AS c
-        FROM ${experimentAssignmentsTable} a
-        INNER JOIN ${trafficEventsTable} e
-          ON e.properties->>'visitor_id' = a.visitor_id
-          AND e.occurred_at >= a.assigned_at
-          AND (${anyMatch})
-        WHERE a.experiment_id = ${exp.id}
-          AND a.forced_by IS NULL
-        GROUP BY a.variant_key
-      `);
-      for (const r of overallResult.rows) {
-        overallByVariant.set(r.variant_key, Number(r.c));
+    // conversionRows mirrors the previous shape so the downstream
+    // shaping code keeps working unchanged.
+    const conversionRows = conversions.map((cp) => ({
+      cp,
+      map: new Map<string, number>(),
+    }));
+    for (const r of statsResult.rows) {
+      visitorsByVariant.set(r.variant_key, Number(r.visitors));
+      overallByVariant.set(r.variant_key, Number(r.overall_conv));
+      for (let i = 0; i < conversions.length; i++) {
+        const value = r[`conv_${i}`];
+        if (value !== undefined) {
+          conversionRows[i]!.map.set(r.variant_key, Number(value));
+        }
       }
     }
 

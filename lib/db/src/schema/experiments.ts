@@ -16,7 +16,11 @@ import { relations, sql } from "drizzle-orm";
 import { usersTable } from "./users";
 
 // Status state machine: draft → running → paused ⇄ running → ended.
-// Once `ended` is set the row is immutable except for description tweaks.
+// Once `ended` is set the row is fully immutable — the admin API
+// rejects every PATCH with 409 because changing copy on a finished
+// experiment retroactively rewrites what historic visitors "saw"
+// according to reporting joins. Use a follow-up experiment for any
+// post-mortem editorial changes.
 export const experimentStatusEnum = pgEnum("experiment_status", [
   "draft",
   "running",

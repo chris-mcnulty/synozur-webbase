@@ -28,6 +28,7 @@ export interface UpdateExperimentBody {
    * @maximum 100
    */
   holdbackPercentage?: number;
+  /** @maxItems 20 */
   conversionPaths?: ConversionPath[];
   /**
    * @minimum 1

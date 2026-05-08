@@ -9524,6 +9524,7 @@ components:
           default: 0
         conversionPaths:
           type: array
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ConversionPath'
         variants:
@@ -9655,6 +9656,7 @@ components:
           default: 0
         conversionPaths:
           type: array
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ConversionPath'
         autoStopAfterDays:
@@ -9736,6 +9738,7 @@ components:
         conversionPaths:
           type: array
           default: []
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ConversionPath'
 
@@ -9761,6 +9764,7 @@ components:
           maximum: 100
         conversionPaths:
           type: array
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ConversionPath'
         autoStopAfterDays:

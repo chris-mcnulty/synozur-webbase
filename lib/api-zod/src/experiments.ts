@@ -1,7 +1,15 @@
-// Hand-written Zod schemas for the experiments / A/B testing API. Sits
-// alongside the orval-generated schemas; not regenerated. The OpenAPI
-// spec doesn't yet describe these endpoints — when it does, this file
-// can be replaced with the generated equivalents.
+// Shared Zod sub-schemas for the experiments / A/B testing API.
+// The endpoints themselves now live in openapi.yaml and orval emits
+// per-operation schemas under ./generated/api (e.g.
+// GetActiveExperimentsResponse, PostExperimentAssignmentBody, etc.);
+// this file exists because orval inlines shared component schemas
+// rather than emitting them as standalone exports, so reusable
+// pieces like OverrideMap, ConversionPath, PartnerItem, BookingLink,
+// PublicExperiment(Variant), AdminExperiment(Variant) are kept here
+// and re-exported alongside the generated barrel via fix-zod-index.mjs.
+// MUST stay in sync with the matching components.schemas in
+// openapi.yaml; the spec is the contract, this file is the
+// runtime mirror.
 import { z } from "zod";
 
 // -- Status & state machine ------------------------------------------------
