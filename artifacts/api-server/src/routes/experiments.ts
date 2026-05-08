@@ -83,6 +83,7 @@ async function buildActivePayload() {
         key: exp.key,
         pageKey: exp.pageKey,
         trafficPercentage: exp.trafficPercentage,
+        holdbackPercentage: exp.holdbackPercentage ?? 0,
         conversionPaths: exp.conversionPaths ?? [],
         variants: list.map((v) => ({
           key: v.key,
@@ -162,19 +163,24 @@ router.post("/experiments/assignments", async (req, res): Promise<void> => {
     return;
   }
 
-  // Confirm the variant key is real for this experiment.
-  const [variant] = await db
-    .select({ key: experimentVariantsTable.key })
-    .from(experimentVariantsTable)
-    .where(
-      and(
-        eq(experimentVariantsTable.experimentId, exp.id),
-        eq(experimentVariantsTable.key, variantKey),
-      ),
-    );
-  if (!variant) {
-    res.json(PostAssignmentResponse.parse({ ok: true }));
-    return;
+  // "_holdback" is a synthetic bucket — visitors held back from any
+  // treatment so we can compare a baseline cohort over time. It's
+  // never persisted in experiment_variants but IS a valid assignment
+  // value, so accept it without the lookup.
+  if (variantKey !== "_holdback") {
+    const [variant] = await db
+      .select({ key: experimentVariantsTable.key })
+      .from(experimentVariantsTable)
+      .where(
+        and(
+          eq(experimentVariantsTable.experimentId, exp.id),
+          eq(experimentVariantsTable.key, variantKey),
+        ),
+      );
+    if (!variant) {
+      res.json(PostAssignmentResponse.parse({ ok: true }));
+      return;
+    }
   }
 
   await db

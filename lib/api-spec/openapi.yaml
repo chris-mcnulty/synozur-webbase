@@ -61,6 +61,10 @@ tags:
     description: Galaxy per-application cockpit surfaces (#226).
   - name: Traffic
     description: Multi-property traffic ingest (#228).
+  - name: Experiments
+    description: Public A/B experiments runtime endpoints.
+  - name: AdminExperiments
+    description: Admin A/B experiments CRUD, lifecycle, and results.
 paths:
   /healthz:
     get:

@@ -89,6 +89,7 @@ export default function AdminExperimentsList() {
       description: null,
       pageKey: draftPageKey.trim(),
       trafficPercentage: 100,
+      holdbackPercentage: 0,
       conversionPaths: [],
     });
   }

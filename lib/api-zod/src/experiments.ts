@@ -63,6 +63,21 @@ export const OverrideMap = z
     "header.cta.visible": z.boolean().optional(),
     "header.cta.label": z.string().max(80).optional(),
     "header.cta.href": z.string().max(2048).optional(),
+
+    // /services-overview hero (page key: "services")
+    "services.hero.eyebrow": z.string().max(80).optional(),
+    "services.hero.headline": z.string().max(200).optional(),
+    "services.hero.body": z.string().max(2000).optional(),
+
+    // /applications hero (page key: "applications")
+    "applications.hero.eyebrow": z.string().max(80).optional(),
+    "applications.hero.headline": z.string().max(200).optional(),
+    "applications.hero.body": z.string().max(2000).optional(),
+
+    // /case-studies hero (page key: "case-studies")
+    "case-studies.hero.eyebrow": z.string().max(80).optional(),
+    "case-studies.hero.headline": z.string().max(200).optional(),
+    "case-studies.hero.body": z.string().max(2000).optional(),
   })
   .catchall(z.unknown());
 export type OverrideMap = z.infer<typeof OverrideMap>;
@@ -94,6 +109,8 @@ export const PublicExperiment = z.object({
   key: z.string(),
   pageKey: z.string(),
   trafficPercentage: z.number().int().min(0).max(100),
+  // Of in-test visitors, the % routed to a synthetic "_holdback" bucket.
+  holdbackPercentage: z.number().int().min(0).max(100).default(0),
   conversionPaths: z.array(ConversionPath),
   variants: z.array(PublicExperimentVariant).min(1),
 });
@@ -138,7 +155,11 @@ export const AdminExperiment = z.object({
   pageKey: z.string(),
   status: ExperimentStatus,
   trafficPercentage: z.number().int().min(0).max(100),
+  holdbackPercentage: z.number().int().min(0).max(100).default(0),
   conversionPaths: z.array(ConversionPath),
+  autoStopAfterDays: z.number().int().min(1).max(365).nullable(),
+  autoStopOnSignificance: z.boolean().default(false),
+  minVisitorsForAutoStop: z.number().int().min(0).default(1000),
   startedAt: z.string().nullable(),
   endedAt: z.string().nullable(),
   createdBy: z.string().uuid().nullable(),
@@ -165,6 +186,7 @@ export const CreateExperimentBody = z.object({
   description: z.string().max(2000).optional().nullable(),
   pageKey: z.string().min(1).max(80),
   trafficPercentage: z.number().int().min(0).max(100).default(100),
+  holdbackPercentage: z.number().int().min(0).max(100).default(0),
   conversionPaths: z.array(ConversionPath).default([]),
 });
 export type CreateExperimentBody = z.infer<typeof CreateExperimentBody>;
@@ -173,7 +195,11 @@ export const UpdateExperimentBody = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   trafficPercentage: z.number().int().min(0).max(100).optional(),
+  holdbackPercentage: z.number().int().min(0).max(100).optional(),
   conversionPaths: z.array(ConversionPath).optional(),
+  autoStopAfterDays: z.number().int().min(1).max(365).nullable().optional(),
+  autoStopOnSignificance: z.boolean().optional(),
+  minVisitorsForAutoStop: z.number().int().min(0).optional(),
 });
 export type UpdateExperimentBody = z.infer<typeof UpdateExperimentBody>;
 

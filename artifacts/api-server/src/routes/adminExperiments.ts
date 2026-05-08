@@ -20,6 +20,7 @@ import {
   OverrideMap,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { audit, buildAuditDiff } from "../lib/audit";
 import { invalidateActiveExperimentsCache } from "./experiments";
 
 const router: IRouter = Router();
@@ -38,7 +39,11 @@ function shapeAdminExperiment(
     pageKey: exp.pageKey,
     status: exp.status,
     trafficPercentage: exp.trafficPercentage,
+    holdbackPercentage: exp.holdbackPercentage ?? 0,
     conversionPaths: exp.conversionPaths ?? [],
+    autoStopAfterDays: exp.autoStopAfterDays,
+    autoStopOnSignificance: exp.autoStopOnSignificance ?? false,
+    minVisitorsForAutoStop: exp.minVisitorsForAutoStop ?? 1000,
     startedAt: exp.startedAt ? exp.startedAt.toISOString() : null,
     endedAt: exp.endedAt ? exp.endedAt.toISOString() : null,
     createdBy: exp.createdBy,
@@ -161,12 +166,20 @@ router.post(
           description: input.description ?? null,
           pageKey: input.pageKey,
           trafficPercentage: input.trafficPercentage,
+          holdbackPercentage: input.holdbackPercentage,
           conversionPaths: input.conversionPaths,
           status: "draft",
           createdBy: req.admin?.userId ?? null,
         })
         .returning();
       invalidateActiveExperimentsCache();
+      await audit({
+        actorId: req.admin?.userId ?? null,
+        action: "experiment.create",
+        entity: "experiment",
+        entityId: created!.id,
+        diff: { after: { key: created!.key, name: created!.name, pageKey: created!.pageKey } },
+      });
       res.status(201).json(shapeAdminExperiment(created!, []));
     } catch (err) {
       // Postgres unique-violation = 23505. Most likely the `key` collision.
@@ -208,8 +221,20 @@ router.patch(
     if (parsed.data.trafficPercentage !== undefined) {
       updates.trafficPercentage = parsed.data.trafficPercentage;
     }
+    if (parsed.data.holdbackPercentage !== undefined) {
+      updates.holdbackPercentage = parsed.data.holdbackPercentage;
+    }
     if (parsed.data.conversionPaths !== undefined) {
       updates.conversionPaths = parsed.data.conversionPaths;
+    }
+    if (parsed.data.autoStopAfterDays !== undefined) {
+      updates.autoStopAfterDays = parsed.data.autoStopAfterDays;
+    }
+    if (parsed.data.autoStopOnSignificance !== undefined) {
+      updates.autoStopOnSignificance = parsed.data.autoStopOnSignificance;
+    }
+    if (parsed.data.minVisitorsForAutoStop !== undefined) {
+      updates.minVisitorsForAutoStop = parsed.data.minVisitorsForAutoStop;
     }
     const [updated] = await db
       .update(experimentsTable)
@@ -222,6 +247,19 @@ router.patch(
       .where(eq(experimentVariantsTable.experimentId, loaded.exp.id))
       .orderBy(asc(experimentVariantsTable.key));
     invalidateActiveExperimentsCache();
+    const diff = buildAuditDiff(
+      loaded.exp as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
+    if (diff) {
+      await audit({
+        actorId: req.admin?.userId ?? null,
+        action: "experiment.update",
+        entity: "experiment",
+        entityId: loaded.exp.id,
+        diff,
+      });
+    }
     res.json(shapeAdminExperiment(updated!, variants));
   },
 );
@@ -260,6 +298,13 @@ router.post(
         .where(eq(experimentsTable.id, loaded.exp.id))
         .returning();
       invalidateActiveExperimentsCache();
+      await audit({
+        actorId: req.admin?.userId ?? null,
+        action: "experiment.start",
+        entity: "experiment",
+        entityId: loaded.exp.id,
+        diff: { from: loaded.exp.status, to: "running" },
+      });
       res.json(shapeAdminExperiment(updated!, loaded.variants));
     } catch (err) {
       // Partial unique index — another experiment is already running for
@@ -297,6 +342,13 @@ router.post(
       .where(eq(experimentsTable.id, loaded.exp.id))
       .returning();
     invalidateActiveExperimentsCache();
+    await audit({
+      actorId: req.admin?.userId ?? null,
+      action: "experiment.pause",
+      entity: "experiment",
+      entityId: loaded.exp.id,
+      diff: { from: "running", to: "paused" },
+    });
     res.json(shapeAdminExperiment(updated!, loaded.variants));
   },
 );
@@ -326,6 +378,13 @@ router.post(
       .where(eq(experimentsTable.id, loaded.exp.id))
       .returning();
     invalidateActiveExperimentsCache();
+    await audit({
+      actorId: req.admin?.userId ?? null,
+      action: "experiment.end",
+      entity: "experiment",
+      entityId: loaded.exp.id,
+      diff: { from: loaded.exp.status, to: "ended" },
+    });
     res.json(shapeAdminExperiment(updated!, loaded.variants));
   },
 );
@@ -349,6 +408,13 @@ router.delete(
       .delete(experimentsTable)
       .where(eq(experimentsTable.id, loaded.exp.id));
     invalidateActiveExperimentsCache();
+    await audit({
+      actorId: req.admin?.userId ?? null,
+      action: "experiment.delete",
+      entity: "experiment",
+      entityId: loaded.exp.id,
+      diff: { before: { key: loaded.exp.key, name: loaded.exp.name } },
+    });
     res.status(204).end();
   },
 );
@@ -391,6 +457,16 @@ router.post(
         })
         .returning();
       invalidateActiveExperimentsCache();
+      await audit({
+        actorId: req.admin?.userId ?? null,
+        action: "experiment.variant.create",
+        entity: "experiment_variant",
+        entityId: created!.id,
+        diff: {
+          experimentId: loaded.exp.id,
+          after: { key: created!.key, name: created!.name, weight: created!.weight, isControl: created!.isControl },
+        },
+      });
       res.status(201).json(created);
     } catch (err) {
       const e = err as { code?: string };
@@ -463,6 +539,19 @@ router.patch(
       .where(eq(experimentVariantsTable.id, variant.id))
       .returning();
     invalidateActiveExperimentsCache();
+    const diff = buildAuditDiff(
+      variant as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
+    if (diff) {
+      await audit({
+        actorId: req.admin?.userId ?? null,
+        action: "experiment.variant.update",
+        entity: "experiment_variant",
+        entityId: variant.id,
+        diff,
+      });
+    }
     res.json(updated);
   },
 );
@@ -493,6 +582,13 @@ router.delete(
       .delete(experimentVariantsTable)
       .where(eq(experimentVariantsTable.id, variant.id));
     invalidateActiveExperimentsCache();
+    await audit({
+      actorId: req.admin?.userId ?? null,
+      action: "experiment.variant.delete",
+      entity: "experiment_variant",
+      entityId: variant.id,
+      diff: { experimentId: variant.experimentId, before: { key: variant.key, name: variant.name } },
+    });
     res.status(204).end();
   },
 );
@@ -613,7 +709,26 @@ router.get(
       ? overallByVariant.get(controlKey) ?? 0
       : 0;
 
-    const variantResults = variants.map((v) => {
+    // Include the synthetic holdback bucket as a row in results when
+    // the experiment configures one or any visitors landed there. It
+    // doesn't have an entry in `variants`, but its assignments and
+    // conversions are persisted under variant_key = "_holdback".
+    const HOLDBACK_KEY = "_holdback";
+    const reportableVariants: Array<
+      Pick<ExperimentVariant, "key" | "name" | "isControl">
+    > = [...variants];
+    if (
+      (exp.holdbackPercentage ?? 0) > 0 ||
+      visitorsByVariant.has(HOLDBACK_KEY)
+    ) {
+      reportableVariants.push({
+        key: HOLDBACK_KEY,
+        name: "Holdback",
+        isControl: false,
+      });
+    }
+
+    const variantResults = reportableVariants.map((v) => {
       const visitors = visitorsByVariant.get(v.key) ?? 0;
       const conv = conversions.map((cp, i) => {
         const count = conversionRows[i]!.map.get(v.key) ?? 0;

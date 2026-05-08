@@ -3,13 +3,24 @@
    used elsewhere in the admin UI) rather than wrapping or `htmlFor`-ing
    them. Form inputs all have visible labels and are usable; this rule's
    strict structural requirement is at odds with the inline-form layout. */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Save, Trash2, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Save,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Image as ImageIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { MediaPickerModal } from "@/components/admin/MediaPickerModal";
+import { resolveStoragePath } from "@/lib/media-url";
+import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
 import type {
   AdminExperiment,
@@ -21,6 +32,7 @@ import type {
   BookingLink,
   ExperimentStatus,
 } from "@workspace/api-zod";
+import { OverrideMap } from "@workspace/api-zod";
 
 interface Props {
   id: string;
@@ -169,6 +181,18 @@ function OverviewTab({
   const [trafficPercentage, setTrafficPercentage] = useState(
     experiment.trafficPercentage,
   );
+  const [holdbackPercentage, setHoldbackPercentage] = useState(
+    experiment.holdbackPercentage ?? 0,
+  );
+  const [autoStopAfterDays, setAutoStopAfterDays] = useState<number | null>(
+    experiment.autoStopAfterDays ?? null,
+  );
+  const [autoStopOnSignificance, setAutoStopOnSignificance] = useState(
+    experiment.autoStopOnSignificance ?? false,
+  );
+  const [minVisitorsForAutoStop, setMinVisitorsForAutoStop] = useState(
+    experiment.minVisitorsForAutoStop ?? 1000,
+  );
 
   const updateMutation = useMutation({
     mutationFn: () =>
@@ -176,6 +200,10 @@ function OverviewTab({
         name,
         description: description.trim() ? description : null,
         trafficPercentage,
+        holdbackPercentage,
+        autoStopAfterDays,
+        autoStopOnSignificance,
+        minVisitorsForAutoStop,
       }),
     onSuccess: () => {
       onError(null);
@@ -231,7 +259,8 @@ function OverviewTab({
             Traffic percentage
             <span className="text-muted-foreground font-normal">
               {" "}
-              (% of visitors entered into the experiment; the rest see control)
+              (% of visitors entered into the experiment; the rest are
+              out-of-test and see defaults with no assignment recorded)
             </span>
           </label>
           <Input
@@ -245,6 +274,26 @@ function OverviewTab({
             disabled={!editable}
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Holdback percentage
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              (of in-test visitors, the % held back from any treatment;
+              they see defaults but ARE recorded for baseline comparison)
+            </span>
+          </label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={holdbackPercentage}
+            onChange={(e) =>
+              setHoldbackPercentage(Math.max(0, Math.min(100, +e.target.value || 0)))
+            }
+            disabled={!editable}
+          />
+        </div>
         <Button
           onClick={() => updateMutation.mutate()}
           disabled={!editable || updateMutation.isPending}
@@ -252,6 +301,57 @@ function OverviewTab({
           <Save className="h-4 w-4 mr-2" />
           Save
         </Button>
+      </div>
+
+      <div className="rounded-md border border-border p-6 space-y-4">
+        <h3 className="font-semibold">Auto-stop policy</h3>
+        <p className="text-sm text-muted-foreground">
+          The scheduler sweeps running experiments hourly and ends any that
+          satisfy the policy below. An audit_log entry records the reason.
+        </p>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Stop after N days
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              (blank = no time limit)
+            </span>
+          </label>
+          <Input
+            type="number"
+            min={1}
+            max={365}
+            value={autoStopAfterDays ?? ""}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setAutoStopAfterDays(v === "" ? null : Math.max(1, +v || 1));
+            }}
+            disabled={!editable}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={autoStopOnSignificance}
+            onChange={(e) => setAutoStopOnSignificance(e.target.checked)}
+            disabled={!editable}
+          />
+          Stop when a non-control variant reaches p&lt;0.05 vs control
+        </label>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Minimum visitors per variant for significance auto-stop
+          </label>
+          <Input
+            type="number"
+            min={0}
+            value={minVisitorsForAutoStop}
+            onChange={(e) =>
+              setMinVisitorsForAutoStop(Math.max(0, +e.target.value || 0))
+            }
+            disabled={!editable || !autoStopOnSignificance}
+          />
+        </div>
       </div>
 
       <div className="rounded-md border border-border p-6">
@@ -453,6 +553,19 @@ function VariantCard({
     setOverrides(variant.overrides ?? {});
   }, [variant.id, variant.name, variant.weight, variant.isControl, variant.overrides]);
 
+  // Local validation issues per override key. Recomputed on each
+  // change so admins see a red ring immediately, not after hitting save.
+  const validationIssues = useMemo<Record<string, string>>(() => {
+    const result = OverrideMap.safeParse(overrides);
+    if (result.success) return {};
+    const issues: Record<string, string> = {};
+    for (const issue of result.error.issues) {
+      const path = issue.path.join(".");
+      if (!issues[path]) issues[path] = issue.message;
+    }
+    return issues;
+  }, [overrides]);
+
   const saveMutation = useMutation({
     mutationFn: (body: UpdateVariantBody) =>
       api.updateAdminVariant(variant.id, body),
@@ -473,6 +586,7 @@ function VariantCard({
 
   const isRunning = experiment.status === "running";
   const editableMeta = experiment.status === "draft" || experiment.status === "paused";
+  const hasIssues = Object.keys(validationIssues).length > 0;
 
   return (
     <div className="rounded-md border border-border">
@@ -534,7 +648,19 @@ function VariantCard({
           </div>
         </div>
 
-        <OverridesEditor overrides={overrides} onChange={setOverrides} />
+        <OverridesEditor
+          overrides={overrides}
+          onChange={setOverrides}
+          issues={validationIssues}
+        />
+
+        {hasIssues ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Fix {Object.keys(validationIssues).length} validation issue
+            {Object.keys(validationIssues).length === 1 ? "" : "s"} above
+            before saving.
+          </div>
+        ) : null}
 
         <div className="flex justify-end gap-2">
           <Button
@@ -545,7 +671,7 @@ function VariantCard({
                   : { name, weight, isControl, overrides },
               )
             }
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || hasIssues}
           >
             <Save className="h-4 w-4 mr-2" />
             Save variant
@@ -561,9 +687,13 @@ function VariantCard({
 function OverridesEditor({
   overrides,
   onChange,
+  issues,
 }: {
   overrides: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
+  // Per-key validation messages from OverrideMap.safeParse — when
+  // present, FieldRow renders a red ring and the message inline.
+  issues: Record<string, string>;
 }) {
   const groups: Array<{
     title: string;
@@ -691,6 +821,30 @@ function OverridesEditor({
         },
       ],
     },
+    {
+      title: "Services overview hero (page key: services)",
+      fields: [
+        { kind: "text", key: "services.hero.eyebrow", label: "Eyebrow" },
+        { kind: "text", key: "services.hero.headline", label: "Headline" },
+        { kind: "longtext", key: "services.hero.body", label: "Body" },
+      ],
+    },
+    {
+      title: "Applications hero (page key: applications)",
+      fields: [
+        { kind: "text", key: "applications.hero.eyebrow", label: "Eyebrow" },
+        { kind: "text", key: "applications.hero.headline", label: "Headline" },
+        { kind: "longtext", key: "applications.hero.body", label: "Body" },
+      ],
+    },
+    {
+      title: "Case studies hero (page key: case-studies)",
+      fields: [
+        { kind: "text", key: "case-studies.hero.eyebrow", label: "Eyebrow" },
+        { kind: "text", key: "case-studies.hero.headline", label: "Headline" },
+        { kind: "longtext", key: "case-studies.hero.body", label: "Body" },
+      ],
+    },
   ];
 
   function setKey(key: string, value: unknown) {
@@ -712,6 +866,7 @@ function OverridesEditor({
           fields={group.fields}
           overrides={overrides}
           setKey={setKey}
+          issues={issues}
         />
       ))}
     </div>
@@ -723,6 +878,7 @@ function OverrideGroup({
   fields,
   overrides,
   setKey,
+  issues,
 }: {
   title: string;
   fields: Array<
@@ -732,6 +888,7 @@ function OverrideGroup({
   >;
   overrides: Record<string, unknown>;
   setKey: (key: string, value: unknown) => void;
+  issues: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   // Highlight groups that have at least one set field so the admin can
@@ -788,6 +945,7 @@ function OverrideGroup({
                 field={field}
                 value={overrides[field.key]}
                 onChange={(v) => setKey(field.key, v)}
+                error={issues[field.key]}
               />
             );
           })}
@@ -801,11 +959,14 @@ function FieldRow({
   field,
   value,
   onChange,
+  error,
 }: {
   field: { kind: "text" | "boolean" | "url" | "longtext"; key: string; label: string; help?: string };
   value: unknown;
   onChange: (v: unknown) => void;
+  error?: string;
 }) {
+  const errorClass = error ? "border-destructive" : "";
   return (
     <div>
       <label className="flex items-center justify-between text-sm font-medium mb-1">
@@ -821,7 +982,7 @@ function FieldRow({
             const v = e.target.value;
             onChange(v === "" ? undefined : v === "true");
           }}
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          className={`rounded-md border border-input bg-background px-3 py-1.5 text-sm ${errorClass}`}
         >
           <option value="">— inherit default —</option>
           <option value="true">Show</option>
@@ -832,15 +993,18 @@ function FieldRow({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value || undefined)}
           rows={3}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${errorClass}`}
         />
       ) : (
         <Input
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value || undefined)}
+          className={errorClass}
         />
       )}
-      {field.help ? (
+      {error ? (
+        <p className="text-xs text-destructive mt-1">{error}</p>
+      ) : field.help ? (
         <p className="text-xs text-muted-foreground mt-1">{field.help}</p>
       ) : null}
     </div>
@@ -855,6 +1019,7 @@ function PartnersEditor({
   onChange: (v: PartnerItem[] | undefined) => void;
 }) {
   const items = value ?? [];
+  const [pickerForRow, setPickerForRow] = useState<number | null>(null);
 
   function update(i: number, patch: Partial<PartnerItem>) {
     const next = items.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
@@ -866,6 +1031,16 @@ function PartnersEditor({
   function removeRow(i: number) {
     const next = items.filter((_, idx) => idx !== i);
     onChange(next.length === 0 ? undefined : next);
+  }
+  function handleMediaPicked(media: MediaItem) {
+    if (pickerForRow === null) return;
+    update(pickerForRow, {
+      src: resolveStoragePath(media.publicUrl ?? media.storageKey ?? ""),
+      // Pre-fill alt text from the asset's alt field when present and
+      // the row has no alt of its own, so admins don't have to retype.
+      alt: items[pickerForRow]?.alt || media.altText || "",
+    });
+    setPickerForRow(null);
   }
 
   return (
@@ -882,11 +1057,22 @@ function PartnersEditor({
             <label className="block text-xs text-muted-foreground mb-1">
               Image URL
             </label>
-            <Input
-              value={item.src}
-              onChange={(e) => update(i, { src: e.target.value })}
-              placeholder="/images/logos/example.png"
-            />
+            <div className="flex gap-1">
+              <Input
+                value={item.src}
+                onChange={(e) => update(i, { src: e.target.value })}
+                placeholder="/images/logos/example.png"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setPickerForRow(i)}
+                title="Pick from media library"
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <div className="col-span-3">
             <label className="block text-xs text-muted-foreground mb-1">
@@ -924,6 +1110,13 @@ function PartnersEditor({
         <Plus className="h-3.5 w-3.5 mr-1" />
         Add partner
       </Button>
+      <MediaPickerModal
+        open={pickerForRow !== null}
+        onClose={() => setPickerForRow(null)}
+        onSelect={handleMediaPicked}
+        kind="image"
+        title="Pick partner logo"
+      />
     </div>
   );
 }
@@ -1176,14 +1369,47 @@ function ConversionsTab({
 
 // ---------- Results tab -------------------------------------------------
 
+// Required sample size per variant for a two-proportion z-test at
+// α=0.05 two-tailed and power=0.80, given a baseline rate p and a
+// relative MDE (e.g. 0.05 = "detect a 5% lift over baseline").
+//
+// Formula: n = (z_a/2 + z_b)^2 * (p1*(1-p1) + p2*(1-p2)) / (p1 - p2)^2
+// with z_a/2 ≈ 1.96, z_b ≈ 0.8416.
+function requiredSamplePerVariant(p: number, mdeRelative: number): number {
+  if (p <= 0 || p >= 1 || mdeRelative <= 0) return Infinity;
+  const p1 = p;
+  const p2 = Math.min(0.999, p * (1 + mdeRelative));
+  const numerator = (1.96 + 0.8416) ** 2 * (p1 * (1 - p1) + p2 * (1 - p2));
+  const denominator = (p1 - p2) ** 2;
+  return Math.ceil(numerator / denominator);
+}
+
 function ResultsTab({ experimentId }: { experimentId: string }) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-experiment-results", experimentId],
     queryFn: () => api.getAdminExperimentResults(experimentId),
   });
+  // Default MDE: 5% relative lift over baseline. Editor can dial it
+  // up or down to see the required-N tradeoff in real time.
+  const [mdePct, setMdePct] = useState(5);
 
   if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
   if (!data) return null;
+
+  const control = data.variants.find((v) => v.isControl);
+  const baseline = control && control.visitors > 0 ? control.overall.rate : 0;
+  const required =
+    baseline > 0
+      ? requiredSamplePerVariant(baseline, mdePct / 100)
+      : Infinity;
+  const minVisitorsAcrossVariants =
+    data.variants.length > 0
+      ? Math.min(...data.variants.map((v) => v.visitors))
+      : 0;
+  const progressPct =
+    isFinite(required) && required > 0
+      ? Math.min(100, (minVisitorsAcrossVariants / required) * 100)
+      : 0;
 
   return (
     <div className="space-y-4">
@@ -1196,6 +1422,56 @@ function ResultsTab({ experimentId }: { experimentId: string }) {
         <Button variant="ghost" size="sm" onClick={() => refetch()}>
           Refresh
         </Button>
+      </div>
+
+      <div className="rounded-md border border-border p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="font-semibold text-sm">Sample-size estimator</h3>
+          <div className="flex items-center gap-2 text-sm">
+            <label className="text-muted-foreground">
+              MDE (relative lift over baseline):
+            </label>
+            <Input
+              type="number"
+              min={0.1}
+              max={100}
+              step={0.5}
+              value={mdePct}
+              onChange={(e) =>
+                setMdePct(Math.max(0.1, +e.target.value || 0.1))
+              }
+              className="w-24"
+            />
+            <span className="text-muted-foreground">%</span>
+          </div>
+        </div>
+        {baseline > 0 && isFinite(required) ? (
+          <div className="text-sm space-y-1">
+            <div>
+              At baseline rate <strong>{(baseline * 100).toFixed(2)}%</strong>{" "}
+              (control) and α=0.05, power=0.80, you need{" "}
+              <strong>~{required.toLocaleString()}</strong> visitors per
+              variant to detect a {mdePct}% relative lift.
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Smallest variant currently has{" "}
+              {minVisitorsAcrossVariants.toLocaleString()} visitors —{" "}
+              <strong>{progressPct.toFixed(0)}%</strong> of the way to the
+              threshold.
+            </div>
+            <div className="h-1.5 bg-muted rounded overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Need control visitors and a non-zero conversion rate to compute
+            a sample-size estimate.
+          </p>
+        )}
       </div>
       {data.variants.length === 0 ? (
         <div className="rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">

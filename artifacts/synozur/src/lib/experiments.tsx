@@ -26,26 +26,17 @@ import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { getVisitorId } from "@/lib/visitor-id";
 import { trackEvent } from "@/lib/traffic-tracker";
+import {
+  pickVariant,
+  pageScopeForKey,
+  parseForcedFromQuery,
+  type ExperimentPublic,
+  type ExperimentVariantPublic,
+  type ForcedAssignment,
+} from "@/lib/experiments-bucket";
 
-export interface ExperimentVariantPublic {
-  key: string;
-  name: string;
-  isControl: boolean;
-  weight: number;
-  overrides: Record<string, unknown>;
-}
-
-export interface ExperimentPublic {
-  key: string;
-  pageKey: string;
-  trafficPercentage: number;
-  conversionPaths: Array<{
-    kind: "cta" | "booking" | "path";
-    value: string;
-    label: string;
-  }>;
-  variants: ExperimentVariantPublic[];
-}
+export type { ExperimentPublic, ExperimentVariantPublic } from "@/lib/experiments-bucket";
+export { HOLDBACK_VARIANT_KEY } from "@/lib/experiments-bucket";
 
 export interface ActiveAssignment {
   experiment: ExperimentPublic;
@@ -70,54 +61,6 @@ const ExperimentsContext = createContext<ExperimentsContextValue>({
   allExperiments: [],
 });
 
-// ---------- Bucketing ---------------------------------------------------
-//
-// cyrb53 — small synchronous string hash with a 53-bit output. Good
-// enough distribution for A/B bucketing (we only need uniformity over
-// 100 buckets) and fits in this file without pulling in a dependency.
-function cyrb53(str: string, seed = 0): number {
-  let h1 = 0xdeadbeef ^ seed;
-  let h2 = 0x41c6ce57 ^ seed;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-}
-
-function pickVariant(
-  visitorId: string,
-  experiment: ExperimentPublic,
-): ExperimentVariantPublic | null {
-  if (experiment.variants.length === 0) return null;
-  const bucket = cyrb53(`${visitorId}:${experiment.key}`) % 100;
-  // Visitors past the trafficPercentage cutoff are "out of test" — no
-  // assignment is recorded and useOverride falls through to the
-  // component's default fallback so they don't pollute reporting as
-  // pseudo-control. The page renders the same default content control
-  // is meant to mirror.
-  if (bucket >= experiment.trafficPercentage) return null;
-  // Weighted pick within the [0, trafficPercentage) range.
-  const inTestBucket = (bucket * 100) / experiment.trafficPercentage;
-  // Sort variants by key for stable ordering across deploys.
-  const sorted = [...experiment.variants].sort((a, b) =>
-    a.key.localeCompare(b.key),
-  );
-  let cum = 0;
-  for (const v of sorted) {
-    cum += v.weight;
-    if (inTestBucket < cum) return v;
-  }
-  // Weights are validated to sum to 100 server-side at start; a
-  // misconfigured experiment falls through to control rather than no-op.
-  return experiment.variants.find((v) => v.isControl) ?? null;
-}
-
 // ---------- URL force overrides ----------------------------------------
 //
 // `?_exp=experimentKey:variantKey` forces a specific variant for QA.
@@ -125,11 +68,6 @@ function pickVariant(
 // still shows the chosen variant. Cleared with `?_exp=clear`.
 
 const FORCE_STORAGE_KEY = "syn_force_exp";
-
-interface ForcedAssignment {
-  experimentKey: string;
-  variantKey: string;
-}
 
 function readForcedFromStorage(): ForcedAssignment[] {
   if (typeof window === "undefined") return [];
@@ -167,31 +105,11 @@ function writeForcedToStorage(list: ForcedAssignment[]): void {
 // Returns the new forced list so callers can apply it immediately.
 function syncForcedFromUrl(): ForcedAssignment[] {
   if (typeof window === "undefined") return [];
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get("_exp");
-  if (raw === null) return readForcedFromStorage();
-  if (raw === "clear" || raw === "") {
-    writeForcedToStorage([]);
-    return [];
-  }
-  // Format: experimentKey:variantKey, comma-separated for multiple.
-  const next: ForcedAssignment[] = [];
-  for (const pair of raw.split(",")) {
-    const [experimentKey, variantKey] = pair.split(":");
-    if (experimentKey && variantKey) {
-      next.push({ experimentKey, variantKey });
-    }
-  }
-  // Merge with any existing forced entries for OTHER experiments so the
-  // QA can preview multiple experiments via successive URL clicks.
   const existing = readForcedFromStorage();
-  const overriddenKeys = new Set(next.map((n) => n.experimentKey));
-  const merged = [
-    ...existing.filter((e) => !overriddenKeys.has(e.experimentKey)),
-    ...next,
-  ];
-  writeForcedToStorage(merged);
-  return merged;
+  const next = parseForcedFromQuery(window.location.search, existing);
+  if (next === null) return existing;
+  writeForcedToStorage(next);
+  return next;
 }
 
 // ---------- Provider ----------------------------------------------------
@@ -298,16 +216,7 @@ export function useExperimentsContext(): ExperimentsContextValue {
 }
 
 // ---------- Page-aware override lookup ---------------------------------
-
-// Map a page namespace prefix from an override key to the experiment's
-// pageKey. e.g. "home.hero.cta.visible" → "home"; "header.cta.visible"
-// → null (header overrides apply on every page).
-function pageScopeForKey(key: string): string | null {
-  if (key.startsWith("header.")) return null;
-  const dot = key.indexOf(".");
-  if (dot === -1) return null;
-  return key.slice(0, dot);
-}
+// pageScopeForKey is imported from experiments-bucket.
 
 // Look up the override on whatever experiment is active for the
 // matching page. If the key namespace is `header.`, we honor any

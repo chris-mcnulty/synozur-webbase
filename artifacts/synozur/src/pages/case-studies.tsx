@@ -8,6 +8,7 @@ import { ArrowRight } from "lucide-react";
 import { api, type CaseStudyDto } from "@/lib/api";
 import { caseStudies as staticCaseStudies } from "@/data/case-studies";
 import { cn } from "@/lib/utils";
+import { useOverride } from "@/lib/experiments";
 
 const ALL = "All";
 
@@ -98,6 +99,18 @@ export default function CaseStudies() {
     seoDescription:
       "Selected stories of transformation. The strategies, the work, and the outcomes.",
   });
+  const heroEyebrow = useOverride<string>(
+    "case-studies.hero.eyebrow",
+    copy.heroEyebrow,
+  );
+  const heroHeadline = useOverride<string>(
+    "case-studies.hero.headline",
+    copy.heroHeadline,
+  );
+  const heroBody = useOverride<string>(
+    "case-studies.hero.body",
+    copy.heroSubhead,
+  );
 
   return (
     <div className="w-full">
@@ -112,13 +125,13 @@ export default function CaseStudies() {
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            {copy.heroEyebrow}
+            {heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            {copy.heroHeadline}
+            {heroHeadline}
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            {copy.heroSubhead}
+            {heroBody}
           </p>
           {copy.introHtml && (
             <div
