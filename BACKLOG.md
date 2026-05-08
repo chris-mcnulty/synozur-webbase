@@ -300,6 +300,62 @@ verified.
 
 ---
 
+## Galaxy portal lifecycle redesign follow-ups (follow-up to PR #73)
+
+Context: PR #73 (May 2026) reframed the Galaxy customer portal around the
+Synozur transformation lifecycle (Assess → Define → Deliver → Outcomes) and
+added five stage pages, a `JourneyStrip` home component, a CEO message card
+slot, and a shared `lifecycle.tsx` + `constellation-presentation.ts` module.
+The nav restructure collapsed the old flat ten-entry tab bar into six entries
+(`Home`, `Assess`, `Define`, `Deliver`, `Outcomes`, `Resources`) with alias
+routing so bookmarked deep-links still light up the right tab.
+
+Follow-up items, in recommended order:
+
+1. **Wire the CEO quarterly message card to a real CMS field.** Today it
+   renders static placeholder copy. Add a `portal_ceo_message` column (or
+   a dedicated settings row) to `site_settings`, expose an admin editor
+   at `/admin/settings` → "Portal / CEO message", and make the
+   `CeoMessageCard` in `artifacts/galaxy/src/pages/home.tsx` fetch from
+   `/api/portal/ceo-message`. The slot already knows its current quarter
+   (`currentQuarter()`) so the label is automatic.
+
+2. **Integrate Orbit into the Assess stage.** `stage-assess.tsx` renders
+   three `PlaceholderCard` tiles (baseline overview, competitive analysis,
+   market intelligence) under an "Integration pending" badge. When the
+   Orbit API is available, replace placeholders with live data from that
+   API. The Nebula pattern (`nebulaApi`) is the reference implementation.
+
+3. **Integrate Zenith into the Define stage.** `stage-define.tsx` renders
+   four `PlaceholderCard` tiles (state of content, AI readiness, policy
+   conformance, IA model) under an "Integration pending" badge. Same
+   pattern: introduce a `zenithApi` module and wire data.
+
+4. **Integrate Vega into the Outcomes stage.** `stage-outcomes.tsx` is
+   entirely placeholder today. Vega API TBD.
+
+5. **Update the old flat portal page links.** Pages like `/documents`,
+   `/invoices`, `/apps`, `/reports`, `/workspaces`, `/assessments`,
+   `/learning`, `/benchmarks` remain routed and functional but are no
+   longer top-level nav entries — they're surfaced via their parent stage
+   pages. Ensure internal "All → " links on each stage page point to the
+   correct deep pages, and confirm the `aliases` array in `PORTAL_NAV`
+   covers every deep route a customer might have bookmarked.
+
+6. **Suppress the "Browse your apps" button removal from existing tests.**
+   The PR removed the `/apps` button from the home hero. Any e2e test
+   asserting `data-testid="link-apps"` will now fail. Audit the test suite
+   and update or retire those assertions.
+
+7. **Add `data-testid` attributes to the stage nav items.** The desktop
+   portal nav bar now renders `data-testid="nav-assess"`, `nav-define`,
+   etc. (already present via `n.label.toLowerCase()`). Confirm coverage in
+   the e2e harness and add stage page smoke tests.
+
+Owner/tracking: file a ticket referencing this section once prioritized.
+
+---
+
 ## SEO & web-platform debt (follow-up to the May 2026 audit)
 
 Context: a May 2026 cross-codebase audit of SEO configuration and
