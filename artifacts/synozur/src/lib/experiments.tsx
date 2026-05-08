@@ -29,6 +29,7 @@ import { trackEvent } from "@/lib/traffic-tracker";
 import {
   pickVariant,
   pageScopeForKey,
+  pageKeyMatchesLocation,
   parseForcedFromQuery,
   type ExperimentPublic,
   type ExperimentVariantPublic,
@@ -123,6 +124,11 @@ export function ExperimentsProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
     retry: false,
   });
+  // Location is consulted to gate assignment persistence to visitors
+  // who are actually on the experiment's targeted page — a deep-link
+  // visitor to /services shouldn't count as having "seen" the home
+  // experiment for reporting purposes.
+  const [location] = useLocation();
 
   const allExperiments: ExperimentPublic[] = useMemo(
     () => (data?.experiments ?? []) as ExperimentPublic[],
@@ -164,11 +170,22 @@ export function ExperimentsProvider({ children }: { children: ReactNode }) {
 
   // Fire-and-forget: persist assignment server-side and fire a
   // variant_assignment traffic event once per (visitor, experiment).
+  // Persistence is gated by `pageKeyMatchesLocation` so a visitor
+  // assigned to (say) the home experiment doesn't get recorded if
+  // they only ever land on /services — they didn't see the
+  // experiment, so they shouldn't count toward its denominator.
+  // Forced assignments persist immediately (QA preview shouldn't
+  // require navigation).
   const reportedRef = useRef(new Set<string>());
   useEffect(() => {
     if (!isFetched) return;
     if (typeof window === "undefined") return;
     for (const [expKey, a] of assignments.entries()) {
+      const onTargetPage = pageKeyMatchesLocation(
+        a.experiment.pageKey,
+        location,
+      );
+      if (!onTargetPage && a.forcedBy === null) continue;
       const dedupKey = `${expKey}:${a.variant.key}:${a.forcedBy ?? "natural"}`;
       if (reportedRef.current.has(dedupKey)) continue;
       reportedRef.current.add(dedupKey);
@@ -197,7 +214,7 @@ export function ExperimentsProvider({ children }: { children: ReactNode }) {
         forced_by: a.forcedBy,
       });
     }
-  }, [isFetched, assignments]);
+  }, [isFetched, assignments, location]);
 
   const value: ExperimentsContextValue = {
     isReady: isFetched,
@@ -223,10 +240,18 @@ export function useExperimentsContext(): ExperimentsContextValue {
 // running experiment that defines the key (header overrides are
 // site-wide); otherwise the key's namespace must match the
 // experiment's pageKey.
+//
+// Iteration order is sorted by experiment key so that when two
+// experiments define the same `header.*` key, precedence is
+// deterministic (lexicographically lowest experiment key wins)
+// rather than depending on Map insertion order from the server.
 export function useOverride<T>(key: string, fallback: T): T {
   const { assignments } = useExperimentsContext();
   const scope = pageScopeForKey(key);
-  for (const a of assignments.values()) {
+  const sorted = [...assignments.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  for (const [, a] of sorted) {
     if (scope !== null && a.experiment.pageKey !== scope) continue;
     if (key in a.variant.overrides) {
       const value = a.variant.overrides[key];

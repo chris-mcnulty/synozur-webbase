@@ -33,6 +33,7 @@ import type {
   ExperimentStatus,
 } from "@workspace/api-zod/types";
 import { OverrideMap } from "@workspace/api-zod";
+import { previewPathForPageKey } from "@/lib/experiments-bucket";
 
 interface Props {
   id: string;
@@ -105,7 +106,7 @@ export default function AdminExperimentDetail({ id }: Props) {
         </span>
         {data.status === "running" || data.status === "paused" ? (
           <Link
-            href={`/?_exp=${encodeURIComponent(data.key)}:${
+            href={`${previewPathForPageKey(data.pageKey)}?_exp=${encodeURIComponent(data.key)}:${
               encodeURIComponent(data.variants[0]?.key ?? "control")
             }`}
             target="_blank"

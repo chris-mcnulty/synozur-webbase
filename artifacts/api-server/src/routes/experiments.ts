@@ -85,16 +85,20 @@ async function buildActivePayload() {
         trafficPercentage: exp.trafficPercentage,
         holdbackPercentage: exp.holdbackPercentage ?? 0,
         conversionPaths: exp.conversionPaths ?? [],
-        variants: list.map((v) => ({
-          key: v.key,
-          name: v.name,
-          isControl: v.isControl,
-          weight: v.weight,
-          // Strip any unknown keys that fail strict validation. The schema
-          // is permissive (catchall) but defensive parsing protects clients
-          // from bad data slipping in via direct DB writes.
-          overrides: OverrideMap.parse(v.overrides ?? {}),
-        })),
+        variants: list.map((v) => {
+          // Defensive: a malformed `overrides` JSONB row (e.g. legacy
+          // shape, hand-edit, future schema we don't know yet) must
+          // not turn /experiments/active into a 500 for everyone.
+          // safeParse + empty-fallback degrades gracefully.
+          const parsed = OverrideMap.safeParse(v.overrides ?? {});
+          return {
+            key: v.key,
+            name: v.name,
+            isControl: v.isControl,
+            weight: v.weight,
+            overrides: parsed.success ? parsed.data : {},
+          };
+        }),
       },
     ];
   });
@@ -111,20 +115,26 @@ export function invalidateActiveExperimentsCache(): void {
 
 router.get("/experiments/active", async (_req, res): Promise<void> => {
   const now = Date.now();
-  let needsRebuild = !cachedResponse;
-  if (cachedResponse && now - cachedResponse.builtAt > ACTIVE_CACHE_TTL_MS) {
-    needsRebuild = true;
-  }
-  if (!needsRebuild && cachedResponse) {
+  // Hot-path cache: cache hits skip the DB entirely. Admin writes call
+  // invalidateActiveExperimentsCache() so the next request rebuilds;
+  // the TTL is a safety net for cross-instance writes that don't run
+  // through this process. computeRev was previously consulted on every
+  // hit, which negated the cache — now it's only checked when the TTL
+  // expires (and only as a no-op-detector to avoid re-parsing if
+  // nothing changed).
+  const isFresh =
+    cachedResponse !== null &&
+    now - cachedResponse.builtAt <= ACTIVE_CACHE_TTL_MS;
+  if (!isFresh) {
     const rev = await computeRev();
-    if (rev !== cachedResponse.rev) needsRebuild = true;
-  }
-  if (needsRebuild) {
-    const [payload, rev] = await Promise.all([
-      buildActivePayload(),
-      computeRev(),
-    ]);
-    cachedResponse = { builtAt: now, rev, payload };
+    if (cachedResponse && cachedResponse.rev === rev) {
+      // Nothing changed in the DB — bump builtAt to extend the TTL
+      // window and skip the rebuild work.
+      cachedResponse = { ...cachedResponse, builtAt: now };
+    } else {
+      const payload = await buildActivePayload();
+      cachedResponse = { builtAt: now, rev, payload };
+    }
   }
   res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
   res.json(cachedResponse!.payload);

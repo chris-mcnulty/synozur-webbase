@@ -49,17 +49,23 @@ function shapeAdminExperiment(
     createdBy: exp.createdBy,
     createdAt: exp.createdAt.toISOString(),
     updatedAt: exp.updatedAt.toISOString(),
-    variants: variants.map((v) => ({
-      id: v.id,
-      experimentId: v.experimentId,
-      key: v.key,
-      name: v.name,
-      isControl: v.isControl,
-      weight: v.weight,
-      overrides: OverrideMap.parse(v.overrides ?? {}),
-      createdAt: v.createdAt.toISOString(),
-      updatedAt: v.updatedAt.toISOString(),
-    })),
+    variants: variants.map((v) => {
+      // Defensive: a malformed `overrides` JSONB row mustn't break
+      // the entire admin list/detail response. safeParse + empty
+      // fallback so the UI loads and the bad row can be edited.
+      const parsed = OverrideMap.safeParse(v.overrides ?? {});
+      return {
+        id: v.id,
+        experimentId: v.experimentId,
+        key: v.key,
+        name: v.name,
+        isControl: v.isControl,
+        weight: v.weight,
+        overrides: parsed.success ? parsed.data : {},
+        createdAt: v.createdAt.toISOString(),
+        updatedAt: v.updatedAt.toISOString(),
+      };
+    }),
   });
 }
 

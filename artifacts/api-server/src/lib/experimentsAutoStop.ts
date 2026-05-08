@@ -114,11 +114,17 @@ export async function evaluateAutoStop(
 
   const minVisitors = exp.minVisitorsForAutoStop ?? 1000;
 
-  // Require every reportable variant (real + holdback if present) to
-  // meet the minimum sample size before we accept any significance.
+  // Require every reportable bucket to meet the minimum sample size
+  // before we accept any significance — that includes the synthetic
+  // _holdback bucket when the experiment configures one. Otherwise a
+  // tiny holdback cohort could trip the policy via random variance.
   for (const v of variants) {
     const s = stats.get(v.key);
     if (!s || s.visitors < minVisitors) return null;
+  }
+  if ((exp.holdbackPercentage ?? 0) > 0) {
+    const holdback = stats.get("_holdback");
+    if (!holdback || holdback.visitors < minVisitors) return null;
   }
 
   // Test each non-control variant against control. Two-proportion
@@ -176,7 +182,12 @@ export async function runAutoStopSweep(opts: {
       .where(eq(experimentVariantsTable.experimentId, exp.id));
     const decision = await evaluateAutoStop(exp, variants);
     if (!decision) continue;
-    await db
+    // Use .returning() so we can verify the UPDATE actually
+    // transitioned a row before auditing/counting. A race against a
+    // manual end (or another scheduler instance) would leave the row
+    // already non-running and the WHERE-clause guard would no-op —
+    // we mustn't emit a phony auto_stop audit entry in that case.
+    const transitioned = await db
       .update(experimentsTable)
       .set({ status: "ended", endedAt: new Date() })
       .where(
@@ -184,7 +195,9 @@ export async function runAutoStopSweep(opts: {
           eq(experimentsTable.id, exp.id),
           eq(experimentsTable.status, "running"),
         ),
-      );
+      )
+      .returning({ id: experimentsTable.id });
+    if (transitioned.length === 0) continue;
     opts.invalidateCache();
     await opts.audit({
       actorId: null,

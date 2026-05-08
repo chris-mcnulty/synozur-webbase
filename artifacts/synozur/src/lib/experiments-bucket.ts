@@ -88,6 +88,47 @@ export function pageScopeForKey(key: string): string | null {
   return key.slice(0, dot);
 }
 
+// Convention map: pageKey → URL routes that count as "the
+// experiment's page" for assignment-recording and admin preview
+// purposes. Update both halves when adding new override-instrumented
+// pages. An "*" entry means "any path" (used by site-wide pageKeys
+// like "header").
+const PAGE_KEY_PATHS: Record<string, string[] | "*"> = {
+  home: ["/"],
+  services: ["/services-overview", "/services"],
+  applications: ["/applications"],
+  "case-studies": ["/case-studies"],
+  header: "*",
+};
+
+// Whether the given location is "on" the experiment's targeted page
+// per the conventions above. Falls back to a permissive prefix check
+// (`/<pageKey>`) for unknown pageKeys so admins can introduce new
+// scopes without first updating this map.
+export function pageKeyMatchesLocation(
+  pageKey: string,
+  location: string,
+): boolean {
+  const entry = PAGE_KEY_PATHS[pageKey];
+  if (entry === "*") return true;
+  if (entry) {
+    return entry.some((p) =>
+      p === "/" ? location === "/" || location === "" : location.startsWith(p),
+    );
+  }
+  // Unknown pageKey — heuristic: location starts with "/<pageKey>".
+  return location === `/${pageKey}` || location.startsWith(`/${pageKey}/`);
+}
+
+// Suggested URL to open when previewing a forced variant for an
+// experiment with the given pageKey.
+export function previewPathForPageKey(pageKey: string): string {
+  const entry = PAGE_KEY_PATHS[pageKey];
+  if (Array.isArray(entry)) return entry[0]!;
+  if (entry === "*") return "/";
+  return `/${pageKey}`;
+}
+
 export interface ForcedAssignment {
   experimentKey: string;
   variantKey: string;
