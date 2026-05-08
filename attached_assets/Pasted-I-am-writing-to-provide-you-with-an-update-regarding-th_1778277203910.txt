@@ -1,0 +1,11 @@
+I am writing to provide you with an update regarding the issue you reported with accessing the Microsoft Graph Bookings API using application (app-only) authentication. Following a thorough investigation and escalation to our engineering team, we have received confirmation that the behavior you are experiencing is expected and by design.
+ 
+The engineering team has confirmed that Microsoft Graph Bookings APIs do not fully support app-only (client credentials) authentication for certain endpoints, including GET /solutions/bookingBusinesses. As a result, requests made using application permissions—such as Bookings.ReadWrite.All—may return HTTP 403 (UnknownError) or HTTP 401 (Unauthorized), even when the access token is valid, properly configured, and fully consented at the tenant level.
+ 
+We recognize that this outcome may be unexpected, especially considering that your tenant is correctly configured, Microsoft Bookings is actively in use, and the access token contains the appropriate roles. However, this behavior is not related to any misconfiguration, permission issue, or service health concern within your environment.
+ 
+At this time, access to these Bookings API endpoints requires delegated (user-based) authentication. Therefore, to successfully retrieve data such as the list of booking businesses, the recommended approach is to use an authentication flow that includes a signed-in user context.
+ 
+If your scenario requires unattended or background processing, we understand that this limitation may impact your implementation. Please let us know if you would like assistance exploring alternative approaches or discussing possible workarounds aligned with your requirements.
+ 
+We appreciate your patience and the detailed information you provided throughout this investigation, which significantly helped expedite the escalation process. Should you have any further questions or need assistance with the delegated authentication approach, please feel free to reach out.
