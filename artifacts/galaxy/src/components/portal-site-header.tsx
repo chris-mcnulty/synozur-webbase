@@ -54,17 +54,17 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
   }).catch(() => undefined);
 }
 
+// Lifecycle-stage navigation. Each entry maps to a customer-journey stage that
+// composes the relevant app surfaces. Per-app deep links (/projects, /reports,
+// /workspaces, etc.) still resolve, but they are reached *through* the stage
+// pages rather than being top-level entries of their own.
 const PORTAL_NAV: { href: string; label: string }[] = [
-  { href: "/", label: "Dashboard" },
-  { href: "/projects", label: "Projects" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/documents", label: "Documents" },
-  { href: "/apps", label: "Apps" },
-  { href: "/reports", label: "Reports" },
-  { href: "/workspaces", label: "Workspaces" },
-  { href: "/assessments", label: "Assessments" },
-  { href: "/learning", label: "Learning" },
-  { href: "/benchmarks", label: "Benchmarks" },
+  { href: "/", label: "Home" },
+  { href: "/assess", label: "Assess" },
+  { href: "/define", label: "Define" },
+  { href: "/deliver", label: "Deliver" },
+  { href: "/outcomes", label: "Outcomes" },
+  { href: "/resources", label: "Resources" },
 ];
 
 function isExternal(href: string) {
@@ -85,6 +85,7 @@ function NavDropdown({ group }: { group: NavGroup }) {
   }, []);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- hover wrapper around a real button; keyboard users open the dropdown via the button's focus/click.
     <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
       <button
         className="text-[17px] font-medium transition-colors py-2 text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
@@ -272,13 +273,12 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
     {
       title: "Portal",
       links: [
-        { label: "Dashboard", href: "/galaxy/" },
-        { label: "Projects", href: "/galaxy/projects" },
-        { label: "Invoices", href: "/galaxy/invoices" },
-        { label: "Documents", href: "/galaxy/documents" },
-        { label: "Apps", href: "/galaxy/apps" },
-        { label: "Reports", href: "/galaxy/reports" },
-        { label: "Workspaces", href: "/galaxy/workspaces" },
+        { label: "Home", href: "/galaxy/" },
+        { label: "Assess", href: "/galaxy/assess" },
+        { label: "Define", href: "/galaxy/define" },
+        { label: "Deliver", href: "/galaxy/deliver" },
+        { label: "Outcomes", href: "/galaxy/outcomes" },
+        { label: "Resources", href: "/galaxy/resources" },
       ],
     },
   ];
