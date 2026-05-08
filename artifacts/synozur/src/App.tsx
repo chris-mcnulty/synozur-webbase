@@ -9,6 +9,11 @@ import { ThemeProvider } from "@/context/theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { captureAttributionOnLoad } from "@/lib/attribution";
 import { api } from "@/lib/api";
+import {
+  ExperimentsProvider,
+  useExperimentsContext,
+  useRouteConversionTracker,
+} from "@/lib/experiments";
 
 import Home from "@/pages/home";
 import HomeB from "@/pages/home-b";
@@ -105,6 +110,8 @@ import AdminInsightsQuestions from "@/pages/admin/insights/questions";
 import InsightsAskPage from "@/pages/insights/ask";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
+import AdminExperimentsList from "@/pages/admin/site-config/experiments";
+import AdminExperimentDetail from "@/pages/admin/site-config/experiment-detail";
 import AdminSiteHealth from "@/pages/admin/site-config/health";
 import AdminCspViolations from "@/pages/admin/site-config/csp-violations";
 import AdminLaunchReadiness from "@/pages/admin/site-config/launch-readiness";
@@ -404,6 +411,10 @@ function AdminRoutes() {
 
         {/* Site config section */}
         <Route path="/site-config/site-settings" component={AdminSiteSettings} />
+        <Route path="/site-config/experiments" component={AdminExperimentsList} />
+        <Route path="/site-config/experiments/:id">
+          {(params) => <AdminExperimentDetail id={params.id} />}
+        </Route>
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
         <Route path="/site-config/not-found-logs" component={AdminNotFoundLogs} />
@@ -468,12 +479,18 @@ function AdminRoutes() {
 // Root URL "/" serves whichever homepage variant the admin selected in
 // Site Settings. Both variants stay reachable at /home-a and /home-b for
 // side-by-side comparison regardless of which is currently promoted.
+//
+// Anti-flicker: gate on both site settings AND the experiments runtime.
+// If we render Home before experiments resolve, an in-test visitor would
+// see default copy briefly, then it would swap to the variant text on
+// the next render.
 function RootHomeRoute() {
   const { data, isLoading } = useQuery({
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
-  if (isLoading && !data) return null;
+  const { isReady: experimentsReady } = useExperimentsContext();
+  if ((isLoading && !data) || !experimentsReady) return null;
   return data?.homeRootVariant === "b" ? <HomeB /> : <Home />;
 }
 
@@ -563,12 +580,23 @@ function Router() {
   );
 }
 
+// Mounted inside ExperimentsProvider so it can call useLocation() and
+// fire conversion.path.visit events when the visitor lands on a path
+// configured as a conversion target on a running experiment.
+function RouteConversionTracker() {
+  useRouteConversionTracker();
+  return null;
+}
+
 function AppShell() {
   const reduced = useReducedMotion();
   return (
     <MotionConfig reducedMotion={reduced ? "always" : "never"}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <Router />
+        <ExperimentsProvider>
+          <RouteConversionTracker />
+          <Router />
+        </ExperimentsProvider>
       </WouterRouter>
       <Toaster />
       <IdleWarningDialog />

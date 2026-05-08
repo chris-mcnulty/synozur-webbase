@@ -23,6 +23,7 @@ import { getActiveApplications } from "@/data/applications";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import { useAuth, type AuthedUser } from "@/context/auth";
+import { useOverride, useTrackConversion } from "@/lib/experiments";
 import {
   LOGO_COLOR_URL,
   STATIC_SERVICE_PILLARS,
@@ -32,7 +33,6 @@ import {
   type NavService,
   type NavGroup,
   type NavLink,
-  type NestedSection,
 } from "@workspace/synozur-nav";
 
 const BASE_PATH_HEADER = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -183,6 +183,12 @@ export function Header() {
   const [location, navigate] = useLocation();
   const isHome = location === "/" || location === "";
   const { isSignedIn, user, signOut } = useAuth();
+  // Experiment overrides for the upper-right CTA. The default values
+  // match today's hardcoded behavior (visible, "Get Started", → /start).
+  const headerCtaVisible = useOverride<boolean>("header.cta.visible", true);
+  const headerCtaLabel = useOverride<string>("header.cta.label", "Get Started");
+  const headerCtaHref = useOverride<string>("header.cta.href", "/start");
+  const trackConversion = useTrackConversion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // #170 — Cmd-K command palette. Live results from `/api/search` while
   // the user types; ⌘K / Ctrl-K opens it from anywhere on the page, "/"
@@ -491,15 +497,22 @@ export function Header() {
           {/* User button (signed-in) or Get Started (signed-out) */}
           {isSignedIn && user ? (
             <UserButton user={user} signOut={signOut} />
-          ) : (
+          ) : headerCtaVisible ? (
             <Link
-              href="/start"
+              href={headerCtaHref}
               className="hidden lg:inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onClick={() =>
+                trackConversion("conversion.cta.get_started", {
+                  location: "header",
+                  href: headerCtaHref,
+                  label: headerCtaLabel,
+                })
+              }
             >
-              Get Started
+              {headerCtaLabel}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-          )}
+          ) : null}
 
           {/* Mobile hamburger (only when signed-in — positioned right after user button) */}
           {isSignedIn && (

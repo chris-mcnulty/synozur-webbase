@@ -33,8 +33,11 @@ import {
 } from "@/components/ui/carousel";
 import { fetchFeatured, type Collateral } from "@/data/collateral";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
-import { clientLogos } from "@/data/logos";
+import { clientLogos, type LogoEntry } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
+import { BookingLinks } from "@/components/home/BookingLinks";
+import { useOverride, useTrackConversion } from "@/lib/experiments";
+import type { PartnerItem } from "@workspace/api-zod";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -212,11 +215,73 @@ export function HomeShortcuts() {
   );
 }
 
+// Render the hero headline, wrapping the accent word in `nebula-text`
+// styling. If the override-supplied accentWord doesn't appear in the
+// text, the whole headline renders without an accent.
+function HeroHeadline({ text, accentWord }: { text: string; accentWord: string }) {
+  if (!accentWord || !text.includes(accentWord)) {
+    return <>{text}</>;
+  }
+  const idx = text.indexOf(accentWord);
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="nebula-text">{accentWord}</span>
+      {text.slice(idx + accentWord.length)}
+    </>
+  );
+}
+
+// Adapter: PartnerItem (override shape) → LogoEntry (renderer shape).
+// The override schema doesn't carry a `variant` since the rotator
+// styling is deck-wide; we pin it to "light" to match the existing
+// homepage section.
+function partnersToLogos(items: PartnerItem[]): LogoEntry[] {
+  return items.map((p) => ({
+    name: p.alt || "",
+    src: p.src,
+    variant: "light" as const,
+    href: p.href ?? undefined,
+  }));
+}
+
 export default function Home() {
   const { data: settings } = useQuery({
     queryKey: ["public-site-settings"],
     queryFn: () => api.getPublicSiteSettings(),
   });
+  const trackConversion = useTrackConversion();
+
+  // ----- Experiment overrides -------------------------------------------
+  // Each call falls back to the existing default copy when no running
+  // experiment touches the key, so removing an experiment cleanly reverts
+  // the page to today's content with no code change.
+  const positioningVisible = useOverride<boolean>(
+    "home.hero.positioning.visible",
+    true,
+  );
+  const positioningText = useOverride<string>(
+    "home.hero.positioning.text",
+    "The Transformation Company",
+  );
+  const positioningAccent = useOverride<string>(
+    "home.hero.positioning.accentWord",
+    "Transformation",
+  );
+  const taglineText = useOverride<string>(
+    "home.hero.tagline.text",
+    "We help organizations move from intent to measurable progress—guiding leaders to their North Star with human‑centered, AI‑augmented transformation that’s built for real‑world adoption.",
+  );
+  const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
+  const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
+  const heroCtaHref = useOverride<string>("home.hero.cta.href", "/start");
+  const partnersVisible = useOverride<boolean>("home.partners.visible", true);
+  const partnersHeading = useOverride<string>("home.partners.heading", "Trusted by");
+  const partnersSubtext = useOverride<string>("home.partners.subtext", "");
+  const partnersItems = useOverride<PartnerItem[] | null>(
+    "home.partners.items",
+    null,
+  );
   const {
     data: workshopsData,
     isLoading: workshopsLoading,
@@ -339,20 +404,30 @@ export default function Home() {
                 style={{ mixBlendMode: "screen" }}
                 fetchPriority="high"
               />
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
-                The <span className="nebula-text">Transformation</span> Company
-              </h1>
+              {positioningVisible ? (
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8">
+                  <HeroHeadline text={positioningText} accentWord={positioningAccent} />
+                </h1>
+              ) : null}
               <p className="text-xl md:text-2xl text-zinc-300 mb-10 max-w-2xl leading-relaxed">
-                {/* Fallback: We guide organizations to their North Star by charting the course through transformation rooted in people, powered by technology, and driven by purpose. */}
-                We help organizations move from intent to measurable progress—guiding leaders to their North Star with human&#x2011;centered, AI&#x2011;augmented transformation that&rsquo;s built for real&#x2011;world adoption.
+                {taglineText}
               </p>
-              <Link
-                href="/start"
-                className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-              >
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              {heroCtaVisible ? (
+                <Link
+                  href={heroCtaHref}
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                  onClick={() =>
+                    trackConversion("conversion.cta.get_started", {
+                      location: "hero",
+                      href: heroCtaHref,
+                      label: heroCtaLabel,
+                    })
+                  }
+                >
+                  {heroCtaLabel}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              ) : null}
             </motion.div>
 
             <motion.div
@@ -414,15 +489,30 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trusted by — client/partner logo rotator */}
-      <section className="py-16 bg-[hsl(240_35%_10%)] border-y border-border">
-        <div className="container mx-auto px-4">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
-            Trusted by
-          </p>
-          <LogoRotator logos={clientLogos} />
-        </div>
-      </section>
+      {/* Trusted by — client/partner logo rotator. The default logo set
+          comes from data/logos.ts; experiments may swap in a different
+          set via the home.partners.items override. */}
+      {partnersVisible ? (
+        <section className="py-16 bg-[hsl(240_35%_10%)] border-y border-border">
+          <div className="container mx-auto px-4">
+            <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-6">
+              {partnersHeading}
+            </p>
+            {partnersSubtext ? (
+              <p className="text-sm text-zinc-400 text-center max-w-2xl mx-auto mb-6">
+                {partnersSubtext}
+              </p>
+            ) : null}
+            <LogoRotator
+              logos={partnersItems ? partnersToLogos(partnersItems) : clientLogos}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Booking links block — hidden by default; populated only when an
+          experiment sets home.booking.* overrides. */}
+      <BookingLinks />
 
       {/* Three-up: Services / Projects / Clients */}
       <section className="py-24 bg-card border-y border-border">

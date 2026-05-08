@@ -51,6 +51,7 @@ import {
   Brain,
   Sparkles,
   Mail,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -200,6 +201,7 @@ const SECTIONS: NavSection[] = [
     icon: PanelTop,
     items: [
       { href: "/site-config/site-settings", label: "Settings", icon: Settings, capability: "site.manage", testId: "nav-admin-site-settings" },
+      { href: "/site-config/experiments", label: "Experiments", icon: FlaskConical, capability: "site.manage", testId: "nav-admin-experiments" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
       { href: "/site-config/not-found-logs", label: "404 Log", icon: FileSearch, capability: "site.manage", testId: "nav-admin-not-found-logs" },

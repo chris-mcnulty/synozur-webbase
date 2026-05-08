@@ -7,6 +7,8 @@
  * derived server-side from IP + UA + UTC day. Skips admin routes.
  */
 
+import { getVisitorId } from "./visitor-id";
+
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const COLLECT_URL = `${BASE_PATH}/api/traffic/collect`;
 const EVENT_URL = `${BASE_PATH}/api/traffic/event`;
@@ -157,10 +159,18 @@ export async function trackEvent(
   if (typeof window === "undefined") return;
   const path = window.location.pathname || "/";
   if (shouldSkip(path)) return;
+  // Always attach visitor_id so reporting can de-dup conversions per
+  // visitor without relying on the server-derived session hash. Caller
+  // properties take precedence (lets the experiments runtime override
+  // visitor_id in tests if needed).
+  const enriched: Record<string, unknown> = {
+    visitor_id: getVisitorId(),
+    ...(properties ?? {}),
+  };
   await post(EVENT_URL, {
     eventName: name,
     path,
-    properties: properties ?? null,
+    properties: enriched,
   });
 }
 
