@@ -656,6 +656,7 @@ function normaliseGraphDateTime(dt: { dateTime?: string; timeZone?: string } | u
 interface StaffMemberRaw {
   id?: string;
   displayName?: string;
+  emailAddress?: string | null;
   timeZone?: string | null;
   workingHours?: Array<{
     day?: string;
@@ -700,32 +701,103 @@ export async function getStaffAvailability(args: {
     return { ok: true, slots: [] };
   }
 
-  // 2. Fetch staff members (for working hours + timezone) and existing appointments
-  //    in parallel — both use the delegated token.
-  const [staffResult, calViewResult] = await Promise.all([
-    graphFetch(`/solutions/bookingBusinesses/${bid}/staffMembers`),
-    graphFetch(
-      `/solutions/bookingBusinesses/${bid}/calendarView` +
-        `?start=${encodeURIComponent(args.startUtc)}&end=${encodeURIComponent(args.endUtc)}`,
-    ),
-  ]);
+  // 2. Fetch staff members (for working hours, timezone, email).
+  const staffResult = await graphFetch(`/solutions/bookingBusinesses/${bid}/staffMembers`);
   if (!staffResult.ok) return staffResult;
-  if (!calViewResult.ok) return calViewResult;
 
   const allStaff = ((staffResult.json as { value?: StaffMemberRaw[] }).value ?? [])
     .filter((s) => s.id && staffIds.includes(s.id));
-  const appts = (calViewResult.json as { value?: CalendarViewAppt[] }).value ?? [];
 
-  // 3. Compute free slots.
+  if (allStaff.length === 0) return { ok: true, slots: [] };
+
   const startMs = Date.parse(args.startUtc);
   const endMs = Date.parse(args.endUtc);
+
+  // 3. Try POST /me/calendar/getSchedule for true Outlook free/busy data.
+  //    This is more accurate than calendarView because it reflects personal
+  //    calendar events, OOO, and working-elsewhere blocks — not just Bookings
+  //    appointments. Falls back to calendarView if the permission is missing.
+  //
+  //    availabilityViewInterval: 15 min → one char per 15 min starting at startUtc.
+  //    '0' = free, '1' = tentative, '2' = busy, '3' = OOO, '4' = working elsewhere.
+  //    We treat anything other than '0' as blocked.
+  const INTERVAL_MIN = 15;
+  const intervalMs = INTERVAL_MIN * 60_000;
+
+  // email → availabilityView string (null if getSchedule not available)
+  let scheduleMap: Map<string, string> | null = null;
+
+  const staffEmails = allStaff.map((s) => s.emailAddress).filter(Boolean) as string[];
+  if (staffEmails.length > 0) {
+    // Graph expects dateTime without trailing 'Z', with timeZone specified separately.
+    const dtStart = args.startUtc.replace("Z", "");
+    const dtEnd = args.endUtc.replace("Z", "");
+    const scheduleResult = await graphFetch("/me/calendar/getSchedule", {
+      method: "POST",
+      body: {
+        schedules: staffEmails,
+        startTime: { dateTime: dtStart, timeZone: "UTC" },
+        endTime: { dateTime: dtEnd, timeZone: "UTC" },
+        availabilityViewInterval: INTERVAL_MIN,
+      },
+    });
+    if (scheduleResult.ok) {
+      scheduleMap = new Map();
+      const items = (
+        (scheduleResult.json as { value?: Array<{ scheduleId?: string; availabilityView?: string }> })
+          .value ?? []
+      );
+      for (const item of items) {
+        if (item.scheduleId && item.availabilityView !== undefined) {
+          scheduleMap.set(item.scheduleId.toLowerCase(), item.availabilityView);
+        }
+      }
+      logger.info(
+        { staffCount: allStaff.length, scheduleMapSize: scheduleMap.size },
+        "Bookings: using getSchedule for free/busy",
+      );
+    } else {
+      logger.warn(
+        { status: scheduleResult.status, message: scheduleResult.message },
+        "Bookings: getSchedule unavailable, falling back to calendarView",
+      );
+    }
+  }
+
+  // 4. If getSchedule failed, fall back to calendarView (Bookings appointments only).
+  let appts: CalendarViewAppt[] = [];
+  if (!scheduleMap) {
+    const calViewResult = await graphFetch(
+      `/solutions/bookingBusinesses/${bid}/calendarView` +
+        `?start=${encodeURIComponent(args.startUtc)}&end=${encodeURIComponent(args.endUtc)}`,
+    );
+    if (!calViewResult.ok) return calViewResult;
+    appts = (calViewResult.json as { value?: CalendarViewAppt[] }).value ?? [];
+  }
+
+  // Helper: check if a slot [slotStart, slotEnd) is free according to getSchedule data.
+  function isSlotFreeInSchedule(slotStartMs: number, slotEndMs: number, view: string): boolean {
+    const idxStart = Math.floor((slotStartMs - startMs) / intervalMs);
+    const idxEnd = Math.ceil((slotEndMs - startMs) / intervalMs);
+    for (let i = idxStart; i < idxEnd; i++) {
+      const ch = view[i] ?? "2"; // treat missing as busy
+      if (ch !== "0") return false;
+    }
+    return true;
+  }
+
+  // 5. Compute free slots.
   const byStart = new Map<string, GraphTimeSlot>();
 
   for (const staff of allStaff) {
     const staffId = staff.id!;
     const staffTz = resolveIana(staff.timeZone || args.fallbackTimezone);
 
-    // Pre-compute booked windows for this staff member (in UTC ms).
+    // Resolve availability view for this staff member (getSchedule path).
+    const email = (staff.emailAddress ?? "").toLowerCase();
+    const availView = scheduleMap?.get(email) ?? null;
+
+    // Pre-compute booked windows for this staff member (calendarView fallback path).
     const bookedMs = appts
       .filter((a) => (a.staffMemberIds ?? []).includes(staffId))
       .map((a) => ({
@@ -763,10 +835,12 @@ export async function getStaffAvailability(args: {
           const clampEnd = Math.min(winEndMs, endMs);
           if (clampEnd <= clampStart + durationMs) continue;
 
-          // Walk the window in duration-sized steps, skipping booked slots.
+          // Walk the window in duration-sized steps, skipping blocked slots.
           for (let t = clampStart; t + durationMs <= clampEnd; t += durationMs) {
             const slotEnd = t + durationMs;
-            const blocked = bookedMs.some((b) => t < b.e && slotEnd > b.s);
+            const blocked = availView !== null
+              ? !isSlotFreeInSchedule(t, slotEnd, availView)
+              : bookedMs.some((b) => t < b.e && slotEnd > b.s);
             if (blocked) continue;
 
             const slotStart = new Date(t).toISOString();

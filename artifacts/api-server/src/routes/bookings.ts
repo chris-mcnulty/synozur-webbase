@@ -218,6 +218,12 @@ router.get("/admin/bookings", requireAdmin, async (_req, res): Promise<void> => 
 const BOOKINGS_OAUTH_SCOPES = [
   "offline_access",
   "https://graph.microsoft.com/Bookings.ReadWrite.All",
+  // Calendars.Read is required for POST /me/calendar/getSchedule, which returns
+  // true free/busy from Outlook (including personal calendar blocks, OOO, etc.)
+  // and is more accurate than the Bookings calendarView endpoint (which only
+  // shows Bookings appointments). This scope is safe — it requests read-only
+  // access to calendar data; no write permission is added.
+  "https://graph.microsoft.com/Calendars.Read",
 ];
 
 function deriveBookingsCallbackUri(req: Request): string {
