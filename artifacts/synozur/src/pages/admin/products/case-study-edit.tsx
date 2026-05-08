@@ -799,6 +799,7 @@ export default function CaseStudyEdit({ id }: Props) {
                 kind="case-study"
                 id={isNew ? null : (caseStudyQ.data?.id ?? null)}
                 updatedAt={caseStudyQ.data?.updatedAt}
+                showOverrideHint
               />
             </div>
             <div className="space-y-1">

@@ -709,6 +709,7 @@ export default function WhitePaperEdit({ id }: Props) {
                 kind="white-paper"
                 id={isNew ? null : (itemQ.data?.id ?? null)}
                 updatedAt={itemQ.data?.updatedAt}
+                showOverrideHint
               />
             </div>
             <div>

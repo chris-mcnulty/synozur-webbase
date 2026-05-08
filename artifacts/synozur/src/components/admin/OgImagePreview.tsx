@@ -10,6 +10,8 @@ interface OgImagePreviewProps {
   kind: OgImageKind;
   id: string | null | undefined;
   updatedAt?: string | Date | null;
+  /** Set to true when an OG image override field appears below this preview. */
+  showOverrideHint?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ interface OgImagePreviewProps {
  * served by `/api/og/image?kind=&id=&v=<updatedAt>`. Cache-busts on the
  * artifact's `updatedAt` so changes show after each save.
  */
-export function OgImagePreview({ kind, id, updatedAt }: OgImagePreviewProps) {
+export function OgImagePreview({ kind, id, updatedAt, showOverrideHint = false }: OgImagePreviewProps) {
   const src = dynamicOgImageUrl(kind, id, updatedAt ?? null);
   const [errored, setErrored] = useState(false);
 
@@ -61,8 +63,11 @@ export function OgImagePreview({ kind, id, updatedAt }: OgImagePreviewProps) {
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Auto-generated 1200×630 share image. Used when no override is set
-        below. Updates after each save.
+        Auto-generated 1200×630 share image.{" "}
+        {showOverrideHint
+          ? "Used when no override is set below. "
+          : ""}
+        Updates after each save.
       </p>
     </div>
   );

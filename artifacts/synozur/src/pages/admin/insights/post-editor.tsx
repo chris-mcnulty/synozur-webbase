@@ -546,6 +546,7 @@ export default function PostEditor({ id }: Props) {
                     kind="insight"
                     id={postId}
                     updatedAt={existing?.updatedAt}
+                    showOverrideHint
                   />
                 </div>
                 <div>
