@@ -410,6 +410,154 @@ A concrete ordering that follows the answers above:
    audit-log forwarding alongside step 1's helper, validated through
    the rollout.
 
+## Alternative architecture: Galaxy-orchestrated provisioning + internal RBAC
+
+A pragmatic alternative to the Entra-native model, surfaced in
+discussion: keep today's BFF + static-key shape, but **automate the
+provisioning** that today is manual. The flow:
+
+1. Client setup begins in Constellation (already the system of record).
+2. Constellation offers a "publish to Galaxy" action that calls a new
+   Galaxy admin endpoint with the client's metadata.
+3. Galaxy fans out: calls Orion, Nebula, and SCDP admin endpoints to
+   instantiate per-client API keys, stores them encrypted in the
+   Galaxy database alongside the existing `client_organizations` row.
+4. Galaxy uses the stored keys to call downstream services on behalf
+   of users.
+5. Galaxy's existing RBAC (`userRoles`, `entraGroupRoleMappingsTable`)
+   gates which users see which features — Finance vs. Status Reports
+   vs. Courseware are role-scoped capabilities inside Galaxy, not
+   downstream-service-scoped.
+
+This is explicitly designed around the constraint that **not all
+clients can be required to have an Entra tenant**.
+
+### Pros
+
+1. **Universal — works for every client.** No "ask your IT admin to
+   consent" step. SMB clients, clients on Google Workspace, sole-
+   proprietor consultancies, and Entra-tenant clients all flow through
+   the same pipeline.
+2. **Aligned with the business.** Constellation is already the system
+   of record for clients; making it the entry point and fanning out
+   matches how onboarding actually works today.
+3. **Builds on existing code, not against it.** The `domain=` plumbing
+   in `lib/orion.ts:47-48` and `lib/nebula.ts:38-39` already works at
+   scale. The `target_client_id` grant in `lib/constellation.ts:18-58`
+   already works. You're automating the provisioning, not rebuilding
+   the auth model.
+4. **No service-side identity-platform work.** Orion and Nebula keep
+   their bearer-token middleware. Each service just needs one
+   admin-only `POST /admin/clients` endpoint Galaxy can call with a
+   service-to-service credential.
+5. **Faster delivery.** Probably weeks vs. quarters compared to the
+   multi-tenant Entra path. No JWKS validation, no admin-consent UX,
+   no per-service Entra app registration.
+6. **RBAC stays product-shaped.** Roles like "Finance Reader" /
+   "Project Lead" / "Course Admin" map cleanly to Galaxy capabilities.
+   This is how features are organized in the UI and how
+   `entra_group_role_mappings` already works.
+7. **Single-pane audit.** Every "user X viewed Y in service Z" event
+   is one row in Galaxy's `audit_log` table. With Entra, audit
+   splinters across the customer's sign-in logs and Synozur's
+   downstream service logs.
+
+### Cons
+
+1. **Galaxy becomes the crown jewel.** A breach of the Galaxy DB =
+   every client's keys for every downstream service. The current model
+   has this concentration risk too; automating it expands the blast
+   radius. Requires KMS-encrypted secrets, rotation schedule,
+   revocation playbook, and the discipline never to log a key.
+2. **Tenant isolation stays application-layer.** This was the second
+   bullet in the original problem statement and it doesn't go away. A
+   bug in BFF code that swaps `clientId` between in-flight requests
+   still cross-contaminates tenants. Entra `tid` validation would
+   have been *platform-enforced*; this is not. Mitigations: contract
+   tests, sampled audit, per-request integrity checks — but those are
+   guard rails, not a railroad.
+3. **You now own a credential lifecycle.** Per-service rotation,
+   per-tenant revocation, alerting on rotation failure, secret-store
+   integration. Real ongoing operational work that wasn't there
+   before. Galaxy effectively becomes a small secrets-management
+   product.
+4. **No customer-side audit or revocation.** A customer admin can't
+   see "Galaxy made N calls as us today" or unilaterally revoke
+   Galaxy. They have to email Synozur. With Entra, those are
+   self-service in their Azure portal. Irrelevant for SMB clients;
+   matters for the ~5–10 % of enterprise clients whose security teams
+   ask before signing.
+5. **Conditional Access doesn't propagate.** Customer policies
+   (require MFA, block from country X, require compliant device) on
+   their tenant don't apply to Galaxy traffic. Galaxy must enforce
+   its own MFA at login.
+6. **Per-user attribution is still application-layer.** Constellation's
+   signoff records get a Galaxy-injected `comment` field with the
+   user's name in it, not a token-bound `oid` claim. If a regulator
+   audits "did Jane actually approve this?", the proof lives in
+   Galaxy's logs, not in Constellation's. Discoverable, but more
+   fragile.
+7. **Distributed-transaction problem on provisioning.** Galaxy calls
+   Orion (ok) → Nebula (ok) → SCDP (timeout). What's the consistency
+   model? Either build a saga with compensation, or accept that some
+   clients land half-provisioned and need manual cleanup. Worth
+   designing up front, not papering over.
+8. **Doesn't fix `no_client_consent`** — automating Constellation
+   consent-record creation just moves the failure window from "first
+   user click" to "onboarding step 3." Net positive (errors surface
+   earlier), but the underlying Constellation logic is unchanged.
+
+### Recommendation: hybrid, not either/or
+
+The two architectures aren't mutually exclusive, and this is where to
+land:
+
+**Default path (the architecture above).** Constellation push →
+Galaxy → fans out and provisions API keys → Galaxy RBAC gates feature
+visibility. Works for every client. Ship this first.
+
+**Opportunistic Entra layer.** When
+`client_organizations.entra_tenant_id` is populated (already captured
+for SSO), offer a "Connect your Microsoft tenant" flow in Galaxy
+admin. On admin-consent, that org switches **only the user-attributable
+mutations** — the Constellation signoffs / approvals / comments
+identified as OBO targets in the Findings table — to Entra-issued
+tokens. Reads stay on API keys for everyone.
+
+This gives the onboarding-speed win for the long tail *and* gives
+enterprise clients platform-enforced attribution and audit trail
+where it actually matters (legally meaningful approvals), without
+doubling the migration scope. The `getDownstreamCredential(service,
+org, user)` helper from the Recommended migration sequence becomes
+the seam: it returns either an API key or an Entra token based on
+what's available, and individual service modules don't care which.
+
+### What to nail down before building
+
+- **Secret storage.** Wherever auto-provisioned keys land, that's
+  now the most security-critical surface in the stack. Decide on KMS
+  / Vault / sealed envelope encryption *and* a rotation cadence
+  before the first automated `POST /admin/clients` call goes out.
+  Retrofitting this later is painful.
+- **Provisioning saga.** Define the consistency model up front: at
+  minimum, idempotent per-service provisioning endpoints (so retries
+  don't double-issue keys), a `client_provisioning_state` table in
+  Galaxy tracking which downstream services are wired up, and a
+  reconcile job that flags partially-provisioned clients.
+- **Service-to-service credential.** Galaxy needs a privileged
+  credential to call each service's `POST /admin/clients`. Treat
+  this as a tier-0 secret — separate KMS key, narrow IP allow-list,
+  audit on every use. Rotate on a fixed schedule, not on demand.
+- **Revocation contract.** Each downstream service needs a
+  `DELETE /admin/clients/:id` (or `revoke`) endpoint. Define the
+  expected latency ("revoke takes effect within N seconds") so the
+  IR runbook can promise customers a real number.
+- **RBAC mapping.** Settle the role taxonomy now: Finance Reader,
+  Status Report Reader, Course Admin, Project Lead, etc. Map each
+  Galaxy capability to exactly one role; avoid per-feature role
+  proliferation. This becomes the contract surface for both local
+  and Entra-group-driven role assignments.
+
 ## Reference
 
 - Microsoft identity platform — On-Behalf-Of flow: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-on-behalf-of-flow
