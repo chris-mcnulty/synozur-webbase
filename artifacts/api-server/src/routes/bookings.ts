@@ -116,6 +116,7 @@ function serialize(b: Booking) {
     seoDescription: b.seoDescription,
     msBusinessId: b.msBusinessId,
     msDefaultServiceId: b.msDefaultServiceId,
+    msTimezone: b.msTimezone,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   };
@@ -141,6 +142,8 @@ const Body = z.object({
   // page renders an on-brand React flow against Graph instead of the iframe.
   msBusinessId: z.string().trim().min(1).max(200).nullish(),
   msDefaultServiceId: z.string().trim().min(1).max(200).nullish(),
+  // Fallback IANA or Windows timezone when Graph returns null timezones.
+  msTimezone: z.string().trim().min(1).max(100).nullish(),
 });
 
 // ---------------------------------------------------------------------------
@@ -388,6 +391,7 @@ router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Pr
       seoDescription: parsed.data.seoDescription ?? null,
       msBusinessId: parsed.data.msBusinessId ?? null,
       msDefaultServiceId: parsed.data.msDefaultServiceId ?? null,
+      msTimezone: parsed.data.msTimezone ?? null,
     })
     .returning();
   res.status(201).json(serialize(row));
@@ -422,6 +426,7 @@ router.patch("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void
   if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription ?? null;
   if (d.msBusinessId !== undefined) updates.msBusinessId = d.msBusinessId ?? null;
   if (d.msDefaultServiceId !== undefined) updates.msDefaultServiceId = d.msDefaultServiceId ?? null;
+  if (d.msTimezone !== undefined) updates.msTimezone = d.msTimezone ?? null;
 
   if (d.slug !== undefined && d.slug !== null) {
     const slugBase = d.slug.trim() || slugify(d.title ?? existing.title);
@@ -470,7 +475,7 @@ const SETTINGS_ID = 1;
 async function loadBookingForNative(
   slug: string,
 ): Promise<
-  | { ok: true; businessId: string; defaultServiceId: string | null }
+  | { ok: true; businessId: string; defaultServiceId: string | null; msTimezone: string | null }
   | { ok: false; status: number; message: string }
 > {
   const [settings] = await db
@@ -487,6 +492,7 @@ async function loadBookingForNative(
       endsAt: bookingsTable.endsAt,
       msBusinessId: bookingsTable.msBusinessId,
       msDefaultServiceId: bookingsTable.msDefaultServiceId,
+      msTimezone: bookingsTable.msTimezone,
     })
     .from(bookingsTable)
     .where(eq(bookingsTable.slug, slug));
@@ -511,7 +517,7 @@ async function loadBookingForNative(
       message: "Bookings provider is not configured on the server.",
     };
   }
-  return { ok: true, businessId, defaultServiceId: row.msDefaultServiceId };
+  return { ok: true, businessId, defaultServiceId: row.msDefaultServiceId, msTimezone: row.msTimezone ?? null };
 }
 
 router.get("/bookings/:slug/services", async (req, res): Promise<void> => {
@@ -597,6 +603,7 @@ router.get(
       serviceId: parsed.data.serviceId,
       startUtc: parsed.data.start,
       endUtc: parsed.data.end,
+      fallbackTimezone: ctx.msTimezone,
     });
     if (!result.ok) {
       res.status(result.status).json({ error: result.message });

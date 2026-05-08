@@ -679,6 +679,10 @@ export async function getStaffAvailability(args: {
   serviceId: string;
   startUtc: string;
   endUtc: string;
+  /** IANA or Windows timezone to use when Graph returns null for both the
+   *  staff member and business defaultTimeZone fields. Set this to the
+   *  admin-configured msTimezone on the booking row. */
+  fallbackTimezone?: string | null;
 }): Promise<{ ok: true; slots: GraphTimeSlot[] } | { ok: false; status: number; message: string }> {
   const bid = encodeURIComponent(args.businessId);
 
@@ -719,7 +723,7 @@ export async function getStaffAvailability(args: {
 
   for (const staff of allStaff) {
     const staffId = staff.id!;
-    const staffTz = resolveIana(staff.timeZone);
+    const staffTz = resolveIana(staff.timeZone || args.fallbackTimezone);
 
     // Pre-compute booked windows for this staff member (in UTC ms).
     const bookedMs = appts

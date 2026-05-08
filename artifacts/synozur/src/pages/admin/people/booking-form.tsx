@@ -51,6 +51,7 @@ export default function BookingForm({ id }: Props) {
     seoDescription: null,
     msBusinessId: null,
     msDefaultServiceId: null,
+    msTimezone: null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +78,7 @@ export default function BookingForm({ id }: Props) {
         seoDescription: existing.seoDescription,
         msBusinessId: existing.msBusinessId,
         msDefaultServiceId: existing.msDefaultServiceId,
+        msTimezone: existing.msTimezone,
       });
     }
   }, [existing]);
@@ -320,6 +322,26 @@ export default function BookingForm({ id }: Props) {
                   data-testid="input-msDefaultServiceId"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="msTimezone">Fallback timezone</Label>
+              <Input
+                id="msTimezone"
+                placeholder="e.g. America/Vancouver or America/Los_Angeles"
+                value={form.msTimezone ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, msTimezone: e.target.value || null })
+                }
+                data-testid="input-msTimezone"
+              />
+              <p className="text-xs text-muted-foreground">
+                IANA timezone used for slot computation when Microsoft Graph
+                returns no timezone for the staff member or business (common for
+                many Bookings tenants). Must match the timezone where the
+                Bookings calendar host is located, e.g.{" "}
+                <code>America/Vancouver</code> or{" "}
+                <code>America/New_York</code>.
+              </p>
             </div>
           </fieldset>
 

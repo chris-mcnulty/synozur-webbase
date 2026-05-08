@@ -1954,6 +1954,7 @@ export interface BookingDto {
   seoDescription: string | null;
   msBusinessId: string | null;
   msDefaultServiceId: string | null;
+  msTimezone: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1973,6 +1974,7 @@ export interface BookingInput {
   seoDescription?: string | null;
   msBusinessId?: string | null;
   msDefaultServiceId?: string | null;
+  msTimezone?: string | null;
 }
 
 export type BookingPatchInput = Partial<BookingInput>;

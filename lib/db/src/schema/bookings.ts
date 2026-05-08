@@ -35,6 +35,11 @@ export const bookingsTable = pgTable(
     // Optional default service id pre-selected in the native flow when the
     // business exposes more than one service. Null lets the visitor pick.
     msDefaultServiceId: text("ms_default_service_id"),
+    // Fallback IANA or Windows timezone name for slot computation when
+    // Microsoft Graph returns null for both the staff member and business
+    // defaultTimeZone fields (common for Bookings tenants that haven't
+    // explicitly set a timezone). Example: "America/Vancouver".
+    msTimezone: text("ms_timezone"),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     displayOrder: integer("display_order").notNull().default(0),

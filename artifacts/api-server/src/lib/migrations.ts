@@ -2664,6 +2664,17 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS recruiter_rating integer;
     `);
 
+    // Gap 4 — bookings: fallback timezone for native slot computation.
+    // Microsoft Graph returns null for both staff.timeZone and
+    // business.defaultTimeZone for many Bookings tenants, which caused
+    // working hours to be treated as UTC and slot times to be wrong (e.g.
+    // 1 AM PDT instead of business hours). Admins set this per-booking to
+    // the IANA/Windows timezone of the Bookings calendar host.
+    await db.execute(sql`
+      ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS ms_timezone text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
