@@ -111,7 +111,7 @@ export default function OrionCoursesPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Learning</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Courses and learning paths available to your organisation via{" "}
+              Courses and learning paths available to your organization via{" "}
               <a
                 href={ORION_BASE}
                 target="_blank"

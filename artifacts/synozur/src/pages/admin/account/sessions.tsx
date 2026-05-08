@@ -158,7 +158,7 @@ export default function AdminActiveSessions() {
     >
       <p className="text-sm text-muted-foreground mb-8 max-w-2xl">
         These are all of your currently active sign-in sessions. You can sign out any session you
-        don't recognise. To end your current session, use the{" "}
+        don't recognize. To end your current session, use the{" "}
         <strong>Sign out</strong> button in the sidebar.
       </p>
 

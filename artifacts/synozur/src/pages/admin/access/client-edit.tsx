@@ -514,7 +514,7 @@ export default function ClientEditPage({ id }: { id?: string } = {}) {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  The UUID of this organisation's <strong>client record in SCDP</strong> — the <code className="bg-muted px-1 rounded">target_client_id</code> used when fetching Constellation tokens.
+                  The UUID of this organization's <strong>client record in SCDP</strong> — the <code className="bg-muted px-1 rounded">target_client_id</code> used when fetching Constellation tokens.
                   This is <strong>not</strong> the Galaxy app's own OAuth client ID (that lives in the server environment, not here).
                   Find it in SCDP under the client's settings.
                 </p>

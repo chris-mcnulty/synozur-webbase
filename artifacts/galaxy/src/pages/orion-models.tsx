@@ -71,7 +71,7 @@ export default function OrionModelsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Assessments</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Maturity assessment models available to your organisation via Orion.
+              Maturity assessment models available to your organization via Orion.
             </p>
           </div>
           {Array.isArray(data) && data.length > 0 && (

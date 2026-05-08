@@ -46,7 +46,7 @@ export default function NebulaWorkspacesPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Nebula Workspaces</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              All envisioning sessions for your organisation.
+              All envisioning sessions for your organization.
             </p>
           </div>
           {data && (
@@ -104,7 +104,7 @@ export default function NebulaWorkspacesPage() {
               <LayoutGrid size={32} className="mx-auto mb-3 opacity-30" />
               {search.trim() || statusFilter !== "all"
                 ? "No workspaces match your filter."
-                : "No workspaces found for your organisation."}
+                : "No workspaces found for your organization."}
             </CardContent>
           </Card>
         ) : (

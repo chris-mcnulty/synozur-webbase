@@ -82,7 +82,7 @@ export default function OrionResultsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Benchmarks</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Anonymised aggregate maturity scores across your organisation's assessments.
+              Anonymized aggregate maturity scores across your organization's assessments.
             </p>
           </div>
           {Array.isArray(data) && data.length > 0 && (

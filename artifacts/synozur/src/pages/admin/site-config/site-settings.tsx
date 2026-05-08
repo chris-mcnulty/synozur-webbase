@@ -297,7 +297,7 @@ export default function AdminSiteSettings() {
             <div>
               <h2 className="text-lg font-semibold mb-1">Site theme</h2>
               <p className="text-sm text-muted-foreground max-w-xl">
-                Choose the colour palette applied across the public site and admin shell.
+                Choose the color palette applied across the public site and admin shell.
                 The change takes effect immediately for all visitors.
               </p>
             </div>
