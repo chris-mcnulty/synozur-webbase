@@ -6,38 +6,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, FolderOpen } from "lucide-react";
 import { constellationApi, type CProject } from "@/lib/constellation-api";
-
-function healthColor(status: string | null): string {
-  if (!status) return "text-muted-foreground";
-  const s = status.toLowerCase();
-  if (s === "green" || s === "on_track") return "text-emerald-400";
-  if (s === "amber" || s === "at_risk") return "text-amber-400";
-  if (s === "red" || s === "off_track") return "text-rose-400";
-  return "text-muted-foreground";
-}
-
-function healthLabel(status: string | null): string {
-  if (!status) return "—";
-  const map: Record<string, string> = {
-    green: "On track",
-    on_track: "On track",
-    amber: "At risk",
-    at_risk: "At risk",
-    red: "Off track",
-    off_track: "Off track",
-  };
-  return map[status.toLowerCase()] ?? status;
-}
-
-function statusVariant(status: string): "default" | "secondary" | "outline" {
-  if (status === "active") return "default";
-  if (status === "completed") return "secondary";
-  return "outline";
-}
+import {
+  healthColor,
+  healthLabel,
+  projectStatusVariant,
+} from "@/lib/constellation-presentation";
 
 function ProjectCard({ project }: { project: CProject }) {
   return (
     <Link href={`/projects/${project.id}`}>
+      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid -- wouter <Link> injects href into the inner <a>. */}
       <a className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
         <div className="group rounded-xl border border-border bg-card p-5 flex flex-col gap-3 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -46,7 +24,7 @@ function ProjectCard({ project }: { project: CProject }) {
                 {project.code && (
                   <span className="text-xs font-mono text-muted-foreground">{project.code}</span>
                 )}
-                <Badge variant={statusVariant(project.status)} className="text-xs capitalize">
+                <Badge variant={projectStatusVariant(project.status)} className="text-xs capitalize">
                   {project.status}
                 </Badge>
               </div>

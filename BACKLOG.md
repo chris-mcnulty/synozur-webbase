@@ -371,3 +371,94 @@ Follow-up items, in recommended order:
 Owner/tracking: file a ticket referencing this section once
 #154–#163 are scheduled into a sprint and the audit findings are
 acknowledged by marketing leadership.
+
+---
+
+## Galaxy portal lifecycle redesign (follow-up to May 2026 portal IA refactor)
+
+Context: the May 2026 redesign on `claude/redesign-portal-homepage-ku1rT`
+collapsed the Galaxy portal's flat 10-entry top nav into the customer
+lifecycle (`Home, Assess, Define, Deliver, Outcomes, Resources`) and
+rebuilt the homepage around that journey. To keep the diff scoped to
+the IA shift, six pieces were intentionally deferred — the structural
+slots are in place (visible placeholder cards or static content) so
+each integration is a fill-in, not a re-design.
+
+Follow-up items, in recommended order:
+
+1. **Back the CEO quarterly message slot with a CMS field.** Today
+   `CeoMessageCard` in `artifacts/galaxy/src/pages/home.tsx` renders
+   static placeholder copy. Add a small `portal_announcements` row
+   (or extend `site_settings`) keyed by quarter (`YYYY-QN`) with
+   `markdown_body`, `author_name`, `published_at`, plus an admin
+   editor under `/admin/site-config/`. Render the most recent
+   `published_at <= now()` entry; fall back to a "no message this
+   quarter" empty state instead of the placeholder text. Cache for
+   5 minutes — quarterly cadence does not need fresh-on-every-load.
+
+2. **Orbit integration — baseline overview, competitive analysis,
+   market intelligence.** `pages/stage-assess.tsx` currently renders
+   three `PlaceholderCard`s under "Market context" with the badge
+   `Integration pending`. The intended data shape per card:
+   - *Baseline company overview* — high-level positioning derived
+     from Orbit's dashboard, mapped to either the client's own
+     company or the chosen baseline org. One headline metric +
+     prose summary per Orbit "company-baseline" record.
+   - *Competitive analysis* — latest competitive landscape report
+     (peers list, threats list, daylight summary).
+   - *Market intelligence reports* — paginated quarterly market
+     signal reports curated for the engagement.
+   Backend prerequisite: an `orbit` source-app surface in the
+   portal API (mirroring the `nebula` / `orion` / `constellation`
+   patterns under `lib/api-client-react`). Until Orbit ships a
+   client-projection endpoint, leave the placeholders in place.
+
+3. **Zenith integration — readiness and policy reports.**
+   `pages/stage-define.tsx` renders four `PlaceholderCard`s under
+   "Readiness and policy". The intended top-level reports:
+   - *State of content* — content health (coverage, freshness,
+     ownership gaps).
+   - *AI readiness* — pillar-level AI maturity scoring.
+   - *Policy conformance* — adoption / drift signal across
+     published policies. (This is why Zenith belongs in **Define**
+     and not **Outcomes** — the policy view is a definitional input
+     to the strategy, not an outcome trendline.)
+   - *Information architecture* — the IA reference model the
+     engagement is being measured against.
+   Backend prerequisite: a `zenith` source-app projection in the
+   portal API exposing top-level summary cards (not full reports).
+
+4. **Vega integration — executive operations overview.**
+   `pages/stage-outcomes.tsx` renders four `PlaceholderCard`s.
+   Critical scoping constraint: surface **executive-level views
+   only** — current state of operations, outcome trendlines,
+   adoption signal, strategic-permanence summary. Do **not** expose
+   operator drill-downs, individual telemetry, or team-level
+   adoption breakdowns through the portal — those stay inside Vega
+   itself. Backend prerequisite: a `vega` source-app projection
+   that returns only the exec-summary aggregations and refuses to
+   leak the operator dataset.
+
+5. **Resources — define the shared-documents area.** The
+   "Shared workspace" section in `pages/stage-resources.tsx`
+   currently renders a single `PlaceholderCard` flagged `TBD`. The
+   open question is editorial, not technical: what cross-engagement
+   reference materials live here (templates, frameworks, reusable
+   IP)? Once decided, this can ride on the existing
+   `useListPortalDocuments` plumbing with a new "shared" engagement
+   scope, or a dedicated `portal_shared_documents` projection if
+   the access model differs from per-engagement docs.
+
+6. **Map relationship-manager details onto the homepage.** The May
+   2026 redesign explicitly punted the relationship-manager mapping
+   (`me.accountTeam` already covers account-manager / primary-
+   contact roles, but the broader RM-to-engagement-to-client mapping
+   was deferred). Once the RM data model is finalized, surface RM
+   details inline on the homepage account-team card and on each
+   `EngagementCard` (currently shows `accountLead` only). Likely
+   needs a new `PortalRelationshipManager` projection on `/api/portal/me`
+   plus per-engagement RM context.
+
+Owner/tracking: file a ticket referencing this section once Orbit /
+Zenith / Vega land their portal projections and the relationship-
+manager data model is signed off.
