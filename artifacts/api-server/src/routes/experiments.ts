@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   experimentsTable,
@@ -30,15 +30,15 @@ let cachedResponse: {
 } | null = null;
 
 async function computeRev(): Promise<string> {
+  // Cast to text rather than format with millisecond precision so writes
+  // landing in the same millisecond still produce distinct revs and the
+  // cache invalidates correctly.
   const result = await db.execute<{ rev: string | null }>(sql`
     SELECT
-      to_char(
-        GREATEST(
-          COALESCE((SELECT MAX(updated_at) FROM experiments), 'epoch'::timestamptz),
-          COALESCE((SELECT MAX(updated_at) FROM experiment_variants), 'epoch'::timestamptz)
-        ),
-        'YYYY-MM-DD"T"HH24:MI:SS.MS'
-      ) AS rev
+      GREATEST(
+        COALESCE((SELECT MAX(updated_at) FROM experiments), 'epoch'::timestamptz),
+        COALESCE((SELECT MAX(updated_at) FROM experiment_variants), 'epoch'::timestamptz)
+      )::text AS rev
   `);
   return (result.rows[0]?.rev as string) ?? "0";
 }
@@ -54,9 +54,18 @@ async function buildActivePayload() {
       generatedAt: new Date().toISOString(),
     });
   }
+  // Restrict the variants query to experiments currently running so the
+  // cost grows with the live cohort, not the full history of ended/draft
+  // experiments accumulated in the table.
   const variants = await db
     .select()
     .from(experimentVariantsTable)
+    .where(
+      inArray(
+        experimentVariantsTable.experimentId,
+        running.map((e) => e.id),
+      ),
+    )
     .orderBy(asc(experimentVariantsTable.key));
 
   const variantsByExperiment = new Map<string, typeof variants>();

@@ -528,58 +528,89 @@ router.get(
     );
 
     const conversions = exp.conversionPaths ?? [];
-    // For each conversion path, count distinct visitors per variant whose
-    // events match. The events table holds `visitor_id` and the assigned
-    // `variant_key` in the JSON properties bag (set by trackConversion on
-    // the client). We deliberately distinct on visitor_id so a single
-    // visitor clicking the CTA twice still counts once.
+    // Build a per-conversion-path SQL match clause. Joined to
+    // experiment_assignments below so the cohort matches the visitor
+    // count: only naturally-bucketed visitors (forced_by IS NULL) and
+    // events emitted at-or-after their assignedAt count.
+    function matchClauseFor(cp: (typeof conversions)[number]) {
+      if (cp.kind === "path") {
+        return sql`${trafficEventsTable.eventName} = 'conversion.path.visit'
+          AND ${trafficEventsTable.properties}->>'path' = ${cp.value}`;
+      }
+      if (cp.kind === "booking") {
+        return sql`${trafficEventsTable.eventName} = 'conversion.booking.click'
+          AND ${trafficEventsTable.properties}->>'eventId' = ${cp.value}`;
+      }
+      // cta — eventName equals the configured value (e.g.
+      // "conversion.cta.get_started").
+      return sql`${trafficEventsTable.eventName} = ${cp.value}`;
+    }
+
+    // Per-path: count distinct visitors per variant whose assignment is
+    // natural and who fired the conversion event. We trust the assignment
+    // row's variant_key (the first observed bucket), not the event's
+    // variant_key — re-bucketing mid-flight would otherwise smear a
+    // visitor across two variants.
     const conversionRows = await Promise.all(
       conversions.map(async (cp) => {
-        let condition;
-        if (cp.kind === "path") {
-          condition = sql`${trafficEventsTable.eventName} = 'conversion.path.visit'
-            AND ${trafficEventsTable.properties}->>'path' = ${cp.value}`;
-        } else if (cp.kind === "booking") {
-          condition = sql`${trafficEventsTable.eventName} = 'conversion.booking.click'
-            AND ${trafficEventsTable.properties}->>'eventId' = ${cp.value}`;
-        } else {
-          // cta — eventName equals the configured value (e.g.
-          // "conversion.cta.get_started").
-          condition = sql`${trafficEventsTable.eventName} = ${cp.value}`;
-        }
-        const startedClause = exp.startedAt
-          ? sql`AND ${trafficEventsTable.occurredAt} >= ${exp.startedAt}`
-          : sql``;
         const result = await db.execute<{
-          variant_key: string | null;
+          variant_key: string;
           c: number;
         }>(sql`
-          SELECT
-            ${trafficEventsTable.properties}->>'variant_key' AS variant_key,
-            COUNT(DISTINCT ${trafficEventsTable.properties}->>'visitor_id')::int AS c
-          FROM ${trafficEventsTable}
-          WHERE ${trafficEventsTable.properties}->>'experiment_key' = ${exp.key}
-            AND ${condition}
-            ${startedClause}
-          GROUP BY 1
+          SELECT a.variant_key AS variant_key,
+                 COUNT(DISTINCT a.visitor_id)::int AS c
+          FROM ${experimentAssignmentsTable} a
+          INNER JOIN ${trafficEventsTable} e
+            ON e.properties->>'visitor_id' = a.visitor_id
+            AND e.occurred_at >= a.assigned_at
+            AND ${matchClauseFor(cp)}
+          WHERE a.experiment_id = ${exp.id}
+            AND a.forced_by IS NULL
+          GROUP BY a.variant_key
         `);
         const map = new Map<string, number>();
-        for (const r of result.rows) {
-          if (r.variant_key) map.set(r.variant_key, Number(r.c));
-        }
+        for (const r of result.rows) map.set(r.variant_key, Number(r.c));
         return { cp, map };
       }),
     );
+
+    // Overall conversions per variant — distinct visitors who hit ANY
+    // configured conversion target. Computed as a separate query rather
+    // than summing per-path counts so a single visitor triggering
+    // multiple targets doesn't double-count (which previously made
+    // overall.rate exceed 1 and break the schema's max-1 constraint).
+    const overallByVariant = new Map<string, number>();
+    if (conversions.length > 0) {
+      const anyMatch = sql.join(
+        conversions.map((cp) => sql`(${matchClauseFor(cp)})`),
+        sql` OR `,
+      );
+      const overallResult = await db.execute<{
+        variant_key: string;
+        c: number;
+      }>(sql`
+        SELECT a.variant_key AS variant_key,
+               COUNT(DISTINCT a.visitor_id)::int AS c
+        FROM ${experimentAssignmentsTable} a
+        INNER JOIN ${trafficEventsTable} e
+          ON e.properties->>'visitor_id' = a.visitor_id
+          AND e.occurred_at >= a.assigned_at
+          AND (${anyMatch})
+        WHERE a.experiment_id = ${exp.id}
+          AND a.forced_by IS NULL
+        GROUP BY a.variant_key
+      `);
+      for (const r of overallResult.rows) {
+        overallByVariant.set(r.variant_key, Number(r.c));
+      }
+    }
 
     const controlKey = variants.find((v) => v.isControl)?.key ?? null;
     const controlVisitors = controlKey
       ? visitorsByVariant.get(controlKey) ?? 0
       : 0;
     const controlConversions = controlKey
-      ? conversionRows.reduce(
-          (acc, row) => acc + (row.map.get(controlKey) ?? 0),
-          0,
-        )
+      ? overallByVariant.get(controlKey) ?? 0
       : 0;
 
     const variantResults = variants.map((v) => {
@@ -594,7 +625,7 @@ router.get(
           rate: visitors > 0 ? count / visitors : 0,
         };
       });
-      const overallCount = conv.reduce((a, c) => a + c.count, 0);
+      const overallCount = overallByVariant.get(v.key) ?? 0;
       const overall = {
         count: overallCount,
         rate: visitors > 0 ? overallCount / visitors : 0,

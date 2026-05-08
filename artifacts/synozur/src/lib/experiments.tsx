@@ -95,12 +95,13 @@ function pickVariant(
   experiment: ExperimentPublic,
 ): ExperimentVariantPublic | null {
   if (experiment.variants.length === 0) return null;
-  const control =
-    experiment.variants.find((v) => v.isControl) ?? experiment.variants[0]!;
   const bucket = cyrb53(`${visitorId}:${experiment.key}`) % 100;
-  // Visitors past the trafficPercentage cutoff fall to control —
-  // they're "off-test" but still see consistent content.
-  if (bucket >= experiment.trafficPercentage) return control;
+  // Visitors past the trafficPercentage cutoff are "out of test" — no
+  // assignment is recorded and useOverride falls through to the
+  // component's default fallback so they don't pollute reporting as
+  // pseudo-control. The page renders the same default content control
+  // is meant to mirror.
+  if (bucket >= experiment.trafficPercentage) return null;
   // Weighted pick within the [0, trafficPercentage) range.
   const inTestBucket = (bucket * 100) / experiment.trafficPercentage;
   // Sort variants by key for stable ordering across deploys.
@@ -112,7 +113,9 @@ function pickVariant(
     cum += v.weight;
     if (inTestBucket < cum) return v;
   }
-  return control;
+  // Weights are validated to sum to 100 server-side at start; a
+  // misconfigured experiment falls through to control rather than no-op.
+  return experiment.variants.find((v) => v.isControl) ?? null;
 }
 
 // ---------- URL force overrides ----------------------------------------
