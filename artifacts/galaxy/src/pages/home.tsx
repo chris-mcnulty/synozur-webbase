@@ -206,9 +206,11 @@ export default function Home() {
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold">Your engagements</h2>
+              <h2 className="text-lg font-semibold">Active engagements</h2>
               <span className="text-xs text-muted-foreground">
-                {isLoading ? "" : `${engagements.length} total`}
+                {isLoading
+                  ? ""
+                  : `${engagements.length} active`}
               </span>
             </div>
             {isLoading ? (
@@ -219,8 +221,8 @@ export default function Home() {
             ) : engagements.length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
-                  No engagements yet. When your Synozur team kicks one off,
-                  you'll see it here.
+                  No active engagements right now. When your Synozur team kicks
+                  one off, you'll see it here.
                 </CardContent>
               </Card>
             ) : (

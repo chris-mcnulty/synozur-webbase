@@ -46,8 +46,9 @@ export default function StageResourcesPage() {
 
   const docs = docsQuery.data?.items ?? [];
   const invoices = invoicesQuery.data?.items ?? [];
-  const pendingInvoices = invoices.filter(isPending).slice(0, 3);
-  const pendingTotal = invoices.filter(isPending).reduce(
+  const allPendingInvoices = invoices.filter(isPending);
+  const pendingInvoices = allPendingInvoices.slice(0, 3);
+  const pendingTotal = allPendingInvoices.reduce(
     (sum, inv) => sum + (inv.totalAmount ?? 0),
     0,
   );
@@ -179,8 +180,8 @@ export default function StageResourcesPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-muted-foreground">
-                    {pendingInvoices.length} invoice
-                    {pendingInvoices.length !== 1 ? "s" : ""} outstanding
+                    {allPendingInvoices.length} invoice
+                    {allPendingInvoices.length !== 1 ? "s" : ""} outstanding
                   </div>
                 </div>
               </div>

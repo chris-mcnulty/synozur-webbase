@@ -119,12 +119,20 @@ function NavDropdown({ group }: { group: NavGroup }) {
   }, []);
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- hover wrapper around a real button; keyboard users open the dropdown via the button's focus/click.
-    <div className="relative" onMouseEnter={enter} onMouseLeave={leave}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- mouse-only handlers on a presentational wrapper around an interactive button; keyboard access is provided by the button below (toggle on click/Enter/Space, close on Escape).
+    <div
+      className="relative"
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) setOpen(false);
+      }}
+    >
       <button
         className="text-[17px] font-medium transition-colors py-2 text-muted-foreground hover:text-[#E60CB3] dark:hover:text-foreground"
         aria-haspopup="true"
         aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
       >
         {group.title}
       </button>

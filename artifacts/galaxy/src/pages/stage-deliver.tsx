@@ -13,6 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { LIFECYCLE_STAGES, StageHeader, StageSection } from "@/components/lifecycle";
 import NotCustomer from "./not-customer";
 import { constellationApi, type CProject } from "@/lib/constellation-api";
+import {
+  healthColor,
+  healthLabel,
+  projectStatusVariant,
+} from "@/lib/constellation-presentation";
 import { AlertCircle, FolderOpen } from "lucide-react";
 
 const STAGE = LIFECYCLE_STAGES.find((s) => s.key === "deliver")!;
@@ -23,34 +28,6 @@ const ENGAGEMENT_STATUS_LABEL: Record<PortalEngagement["status"], string> = {
   completed: "Completed",
   archived: "Archived",
 };
-
-function healthColor(status: string | null): string {
-  if (!status) return "text-muted-foreground";
-  const s = status.toLowerCase();
-  if (s === "green" || s === "on_track") return "text-emerald-400";
-  if (s === "amber" || s === "at_risk") return "text-amber-400";
-  if (s === "red" || s === "off_track") return "text-rose-400";
-  return "text-muted-foreground";
-}
-
-function healthLabel(status: string | null): string {
-  if (!status) return "—";
-  const map: Record<string, string> = {
-    green: "On track",
-    on_track: "On track",
-    amber: "At risk",
-    at_risk: "At risk",
-    red: "Off track",
-    off_track: "Off track",
-  };
-  return map[status.toLowerCase()] ?? status;
-}
-
-function statusVariant(status: string): "default" | "secondary" | "outline" {
-  if (status === "active") return "default";
-  if (status === "completed") return "secondary";
-  return "outline";
-}
 
 function ProjectCard({ project }: { project: CProject }) {
   return (
@@ -69,7 +46,7 @@ function ProjectCard({ project }: { project: CProject }) {
                     {project.code}
                   </span>
                 ) : null}
-                <Badge variant={statusVariant(project.status)} className="text-xs capitalize">
+                <Badge variant={projectStatusVariant(project.status)} className="text-xs capitalize">
                   {project.status}
                 </Badge>
               </div>
