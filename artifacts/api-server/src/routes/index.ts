@@ -67,6 +67,8 @@ import adminEmailRouter from "./adminEmail";
 import searchRouter from "./search";
 import constellationDemoRouter from "./constellationDemo";
 import portalConstellationRouter from "./portalConstellation";
+import experimentsRouter from "./experiments";
+import adminExperimentsRouter from "./adminExperiments";
 
 const router: IRouter = Router();
 
@@ -138,5 +140,7 @@ router.use(adminEmailRouter);
 router.use(searchRouter);
 router.use(constellationDemoRouter);
 router.use(portalConstellationRouter);
+router.use(experimentsRouter);
+router.use(adminExperimentsRouter);
 
 export default router;

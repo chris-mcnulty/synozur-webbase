@@ -3,3 +3,5 @@
 // from @workspace/api-client-react/api.schemas for client-side usage.
 export * from "./generated/api";
 export * from "./constants";
+// Hand-written schemas not derived from openapi.yaml.
+export * from "./experiments";
