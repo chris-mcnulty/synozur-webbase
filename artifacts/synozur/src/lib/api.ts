@@ -1343,6 +1343,16 @@ export const api = {
     jsonFetch<void>(url(`/admin/bookings/${encodeURIComponent(id)}`), {
       method: "DELETE",
     }),
+  // Graph service-account connection (delegated auth for native Bookings flow).
+  bookingsGraphStatus: () =>
+    jsonFetch<{ connected: boolean; account: string | null; entraConfigured: boolean }>(
+      url("/admin/bookings/graph-status"),
+    ),
+  bookingsGraphDisconnect: () =>
+    jsonFetch<void>(url("/admin/bookings/graph-token"), { method: "DELETE" }),
+  // bookingsGraphAuthorizeHref — not a fetch; callers use this as window.location.href
+  // to start the full-page Microsoft OAuth flow.
+  bookingsGraphAuthorizeHref: (): string => url("/admin/bookings/graph-authorize"),
   // Native (Microsoft Graph) booking flow. Only meaningful when the site
   // setting `bookingsRenderMode` is "native" and the booking row has an
   // msBusinessId — otherwise these endpoints respond 404/409.

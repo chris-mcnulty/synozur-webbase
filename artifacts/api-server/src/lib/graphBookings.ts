@@ -1,92 +1,194 @@
+import { eq } from "drizzle-orm";
+import { db, serviceTokensTable } from "@workspace/db";
 import { logger } from "./logger";
 
-// Microsoft Graph Bookings client (app-only / client-credentials).
+// Microsoft Graph Bookings client — delegated (service-account) authentication.
 //
-// Powers the "integrated" rendering mode for /start/{slug}: the api-server
-// calls Graph on the visitor's behalf so we can render an on-brand React flow
-// instead of Microsoft's iframe. Graph endpoints used:
+// Microsoft confirmed via support ticket that the Bookings API surface
+// (/solutions/bookingBusinesses and all sub-resources) does NOT support
+// app-only (client_credentials) tokens, even with Bookings.ReadWrite.All
+// application permission and admin consent. Every call requires a delegated
+// token from a signed-in user who has access to the Bookings calendars.
 //
-//   GET  /solutions/bookingBusinesses/{id}                — business config
-//   GET  /solutions/bookingBusinesses/{id}/services       — bookable services
-//   POST /solutions/bookingBusinesses/{id}/getStaffAvailability
-//   POST /solutions/bookingBusinesses/{id}/appointments   — create appointment
+// The solution: a one-time "Connect service account" OAuth consent flow in the
+// admin UI (/api/admin/bookings/graph-authorize → Microsoft → graph-callback).
+// The resulting refresh token is stored in the `service_tokens` table under
+// key "bookings_graph". Each request here:
+//   1. Reads the refresh token from DB (cached in-process for 30 s).
+//   2. Exchanges it for a short-lived access token (cached until near-expiry).
+//   3. If MS returns a new refresh token (rotation), persists it.
 //
-// Credentials come from the existing ENTRA_* env vars — no separate
-// MS_BOOKINGS_* variables are needed. The Entra app registration must hold
-// the `Bookings.ReadWrite.All` application permission with admin consent.
-//
-// Token cache is per-tenant (matching entra.ts). The cache lives in-process;
-// a multi-node deployment will fetch one token per node, which is fine for
-// these volumes.
+// Credentials reuse the existing ENTRA_* env vars — the same app registration
+// drives both user SSO and this service-account flow. The only additional step
+// is adding /api/admin/bookings/graph-callback to the app reg's Redirect URIs.
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+const SERVICE_TOKEN_KEY = "bookings_graph";
 
-interface AppTokenCache {
-  token: string;
-  expiresAt: number;
-}
-
-const appTokenCacheByTenant = new Map<string, AppTokenCache>();
-
+// Env helpers — reuse ENTRA_* vars from the user SSO app registration.
 function bookingsTenantId(): string | null {
   return process.env["ENTRA_TENANT_ID"] ?? null;
 }
-
 function bookingsClientId(): string | null {
   return process.env["ENTRA_APP_CLIENT_ID"] ?? null;
 }
-
 function bookingsClientSecret(): string | null {
-  return process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"] ?? null;
+  const v = process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"];
+  return v && v.length > 0 ? v : null;
 }
 
 export function isGraphBookingsConfigured(): boolean {
   return Boolean(bookingsTenantId() && bookingsClientId() && bookingsClientSecret());
 }
 
-async function getToken(): Promise<string | null> {
-  const tenantId = bookingsTenantId();
-  const clientId = bookingsClientId();
-  const clientSecret = bookingsClientSecret();
-  if (!tenantId || !clientId || !clientSecret) return null;
+// ---------------------------------------------------------------------------
+// In-process caches
+// ---------------------------------------------------------------------------
 
+interface AccessTokenCache {
+  token: string;
+  expiresAt: number;
+}
+
+// Delegated access token cache (single service account).
+let delegatedTokenCache: AccessTokenCache | null = null;
+
+// Row cache to avoid a DB round-trip on every request (30 s TTL).
+interface RowCache {
+  row: { refreshToken: string; accountHint: string | null } | null;
+  fetchedAt: number;
+}
+let rowCache: RowCache | null = null;
+const ROW_CACHE_TTL = 30_000;
+
+function invalidateRowCache(): void {
+  rowCache = null;
+  delegatedTokenCache = null;
+}
+
+// ---------------------------------------------------------------------------
+// Public token-store management (called by the admin OAuth routes)
+// ---------------------------------------------------------------------------
+
+export async function storeBookingsRefreshToken(
+  refreshToken: string,
+  accountHint: string | null,
+): Promise<void> {
+  await db
+    .insert(serviceTokensTable)
+    .values({ key: SERVICE_TOKEN_KEY, refreshToken, accountHint, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: serviceTokensTable.key,
+      set: { refreshToken, accountHint, updatedAt: new Date() },
+    });
+  invalidateRowCache();
+}
+
+export async function clearBookingsRefreshToken(): Promise<void> {
+  await db.delete(serviceTokensTable).where(eq(serviceTokensTable.key, SERVICE_TOKEN_KEY));
+  invalidateRowCache();
+}
+
+export async function getBookingsGraphStatus(): Promise<{
+  connected: boolean;
+  account: string | null;
+}> {
+  const row = await loadRow();
+  return { connected: Boolean(row), account: row?.accountHint ?? null };
+}
+
+// ---------------------------------------------------------------------------
+// Internal: load refresh token row (with cache)
+// ---------------------------------------------------------------------------
+
+async function loadRow(): Promise<{ refreshToken: string; accountHint: string | null } | null> {
   const now = Date.now();
-  const cached = appTokenCacheByTenant.get(tenantId);
-  if (cached && cached.expiresAt - 60_000 > now) return cached.token;
+  if (rowCache && now - rowCache.fetchedAt < ROW_CACHE_TTL) {
+    return rowCache.row;
+  }
+  const [row] = await db
+    .select({ refreshToken: serviceTokensTable.refreshToken, accountHint: serviceTokensTable.accountHint })
+    .from(serviceTokensTable)
+    .where(eq(serviceTokensTable.key, SERVICE_TOKEN_KEY));
+  const value = row ?? null;
+  rowCache = { row: value, fetchedAt: now };
+  return value;
+}
+
+// ---------------------------------------------------------------------------
+// Internal: get (or refresh) the delegated access token
+// ---------------------------------------------------------------------------
+
+async function getToken(): Promise<string | null> {
+  const now = Date.now();
+
+  // Return cached access token if still valid (with 90-second buffer).
+  if (delegatedTokenCache && delegatedTokenCache.expiresAt - 90_000 > now) {
+    return delegatedTokenCache.token;
+  }
+
+  if (!isGraphBookingsConfigured()) return null;
+
+  const row = await loadRow();
+  if (!row) return null;
+
+  const tenantId = bookingsTenantId()!;
+  const clientId = bookingsClientId()!;
+  const clientSecret = bookingsClientSecret()!;
 
   try {
-    const url = `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`;
+    const tokenUrl = `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`;
     const body = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
-      grant_type: "client_credentials",
-      scope: "https://graph.microsoft.com/.default",
+      grant_type: "refresh_token",
+      refresh_token: row.refreshToken,
+      scope: "offline_access https://graph.microsoft.com/Bookings.ReadWrite.All",
     });
-    const res = await fetch(url, {
+    const res = await fetch(tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
     });
+
     if (!res.ok) {
       const text = (await res.text()).slice(0, 500);
-      logger.warn(
-        { status: res.status, body: text, tenantId },
-        "Bookings Graph token fetch failed",
-      );
+      logger.warn({ status: res.status, body: text, tenantId }, "Bookings Graph refresh token exchange failed");
+      // Invalidate cache so next call retries immediately.
+      rowCache = null;
+      delegatedTokenCache = null;
       return null;
     }
-    const json = (await res.json()) as { access_token?: string; expires_in?: number };
+
+    const json = (await res.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
+
     if (!json.access_token) return null;
-    appTokenCacheByTenant.set(tenantId, {
+
+    // Persist rotated refresh token if MS returned a new one.
+    if (json.refresh_token && json.refresh_token !== row.refreshToken) {
+      logger.info({ tenantId }, "Bookings Graph: persisting rotated refresh token");
+      await storeBookingsRefreshToken(json.refresh_token, row.accountHint);
+    }
+
+    delegatedTokenCache = {
       token: json.access_token,
       expiresAt: now + (json.expires_in ?? 3600) * 1000,
-    });
+    };
     return json.access_token;
   } catch (err) {
-    logger.warn({ err, tenantId }, "Bookings Graph token fetch threw");
+    logger.warn({ err, tenantId }, "Bookings Graph token refresh threw");
+    delegatedTokenCache = null;
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Internal: authenticated Graph fetch
+// ---------------------------------------------------------------------------
 
 /** Thin wrapper around fetch that injects the bearer token and parses JSON. */
 async function graphFetch(
@@ -95,8 +197,22 @@ async function graphFetch(
 ): Promise<{ ok: true; json: unknown } | { ok: false; status: number; message: string }> {
   const token = await getToken();
   if (!token) {
-    return { ok: false, status: 503, message: "Bookings Graph credentials are not configured." };
+    const row = await loadRow();
+    if (!row) {
+      return {
+        ok: false,
+        status: 503,
+        message:
+          "Bookings provider is not connected. An admin must authorise the service account in Admin → Bookings.",
+      };
+    }
+    return {
+      ok: false,
+      status: 503,
+      message: "Bookings provider credentials could not be refreshed. Please re-connect the service account.",
+    };
   }
+
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
@@ -106,6 +222,7 @@ async function graphFetch(
     headers["Content-Type"] = "application/json";
     fetchInit.body = JSON.stringify(init.body);
   }
+
   let res: Response;
   try {
     res = await fetch(`${GRAPH_BASE}${path}`, fetchInit);
@@ -113,23 +230,29 @@ async function graphFetch(
     logger.warn({ err, path }, "Bookings Graph network error");
     return { ok: false, status: 502, message: "Bookings provider is unreachable." };
   }
+
   if (!res.ok) {
     const text = (await res.text()).slice(0, 500);
     logger.warn({ status: res.status, body: text, path }, "Bookings Graph call failed");
-    // Surface a sanitized message — Graph error bodies often contain
-    // enough detail to leak business config; collapse to status-class hints.
     if (res.status === 404) return { ok: false, status: 404, message: "Booking calendar not found." };
     if (res.status === 401 || res.status === 403) {
-      return { ok: false, status: 502, message: "Bookings provider rejected our credentials." };
+      // Might be a stale access token — evict so next call re-fetches.
+      delegatedTokenCache = null;
+      return {
+        ok: false,
+        status: 502,
+        message: "Bookings provider rejected our credentials. The service account may need re-authorisation.",
+      };
     }
     return { ok: false, status: 502, message: "Bookings provider returned an error." };
   }
+
   const json = (await res.json()) as unknown;
   return { ok: true, json };
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Public API — unchanged signatures, just the token source is different
 // ---------------------------------------------------------------------------
 
 export interface GraphBookingService {
@@ -176,16 +299,11 @@ export interface CreateAppointmentArgs {
 }
 
 function isoToGraphDateTime(iso: string): { dateTime: string; timeZone: string } {
-  // Graph expects { dateTime: "yyyy-MM-ddTHH:mm:ss(.fff)", timeZone: "UTC" }
-  // Strip any trailing Z so the dateTime field is naive.
   const stripped = iso.endsWith("Z") ? iso.slice(0, -1) : iso;
   return { dateTime: stripped, timeZone: "UTC" };
 }
 
 function dateTimeToUtcIso(dt: { dateTime?: string; timeZone?: string } | undefined): string | null {
-  // We always pass timeZone="UTC" on the way in, so on the way back we expect
-  // the same. If a tenant returns a different zone, fall back to treating it
-  // as UTC — the visitor sees a slot that's an hour off rather than a 500.
   if (!dt?.dateTime) return null;
   const hasZ = dt.dateTime.endsWith("Z");
   return hasZ ? dt.dateTime : `${dt.dateTime}Z`;
@@ -279,8 +397,6 @@ export async function getStaffAvailability(args: {
   startUtc: string;
   endUtc: string;
 }): Promise<{ ok: true; slots: GraphTimeSlot[] } | { ok: false; status: number; message: string }> {
-  // First we need the service so we can pass its staff list to
-  // getStaffAvailability — without staffIds Graph returns an empty result.
   const svc = await graphFetch(
     `/solutions/bookingBusinesses/${encodeURIComponent(args.businessId)}/services/${encodeURIComponent(args.serviceId)}`,
   );
@@ -317,9 +433,6 @@ export async function getStaffAvailability(args: {
     }>;
   };
 
-  // Flatten per-staff availability into a deduplicated slot list. Two staff
-  // with the same available window collapse into one selectable slot, but
-  // we keep both staff IDs so the appointment can pin to one of them.
   const byStart = new Map<string, GraphTimeSlot>();
   for (const staff of j.value ?? []) {
     const staffId = staff.staffId;
@@ -329,7 +442,6 @@ export async function getStaffAvailability(args: {
       const startUtc = dateTimeToUtcIso(item.startDateTime);
       const endUtc = dateTimeToUtcIso(item.endDateTime);
       if (!startUtc || !endUtc) continue;
-      // Slice "available" windows into duration-sized slots.
       const windowStart = new Date(startUtc).getTime();
       const windowEnd = new Date(endUtc).getTime();
       if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) continue;

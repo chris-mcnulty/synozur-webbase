@@ -11,7 +11,21 @@ import {
   listServices,
   getStaffAvailability,
   createAppointment,
+  getBookingsGraphStatus,
+  storeBookingsRefreshToken,
+  clearBookingsRefreshToken,
 } from "../lib/graphBookings";
+import {
+  buildAuthorizeUrl,
+  fetchDiscovery,
+  generatePkcePair,
+  generateRandomToken,
+  isEntraConfigured,
+} from "../lib/entraOidc";
+import {
+  persistAuthPendingState,
+  consumeAuthPendingState,
+} from "../lib/authStateStore";
 import { verifyTurnstile } from "../lib/turnstile";
 
 const router: IRouter = Router();
@@ -278,6 +292,162 @@ router.delete("/admin/bookings/:id", requireAdmin, async (req, res): Promise<voi
     res.status(404).json({ error: "Booking not found" });
     return;
   }
+  res.sendStatus(204);
+});
+
+// ---------------------------------------------------------------------------
+// Admin — Microsoft Graph OAuth consent flow.
+//
+// The Bookings API requires delegated (user-based) authentication — confirmed
+// by Microsoft support. This flow lets an admin connect a service account once;
+// the resulting refresh token lives in `service_tokens` and is reused/rotated
+// automatically by graphBookings.ts.
+//
+// Pre-requisite: add /api/admin/bookings/graph-callback to the Entra app
+// registration's Redirect URIs (Web platform) before starting the flow.
+// ---------------------------------------------------------------------------
+
+const BOOKINGS_OAUTH_SCOPES = [
+  "offline_access",
+  "https://graph.microsoft.com/Bookings.ReadWrite.All",
+];
+
+function deriveBookingsCallbackUri(req: Request): string {
+  const proto = req.get("x-forwarded-proto") ?? (req.secure ? "https" : "http");
+  const host = req.get("x-forwarded-host") ?? req.get("host") ?? req.hostname;
+  return `${proto}://${host}/api/admin/bookings/graph-callback`;
+}
+
+router.get("/admin/bookings/graph-status", requireAdmin, async (_req, res): Promise<void> => {
+  if (!isGraphBookingsConfigured()) {
+    res.json({ connected: false, account: null, entraConfigured: false });
+    return;
+  }
+  const status = await getBookingsGraphStatus();
+  res.json({ ...status, entraConfigured: true });
+});
+
+router.get("/admin/bookings/graph-authorize", requireAdmin, async (req, res): Promise<void> => {
+  if (!isEntraConfigured()) {
+    res.status(503).json({ error: "Entra OIDC is not configured on this server." });
+    return;
+  }
+  const pkce = generatePkcePair();
+  const state = generateRandomToken(24);
+  const nonce = generateRandomToken(16);
+  const redirectUri = deriveBookingsCallbackUri(req);
+  await persistAuthPendingState({
+    state,
+    codeVerifier: pkce.verifier,
+    nonce,
+    returnTo: "/admin/people/bookings",
+    redirectUri,
+  });
+  const authorizeUrl = await buildAuthorizeUrl({
+    state,
+    nonce,
+    pkceChallenge: pkce.challenge,
+    redirectUri,
+    scope: BOOKINGS_OAUTH_SCOPES,
+    prompt: "select_account",
+  });
+  res.redirect(authorizeUrl);
+});
+
+// No requireAdmin — this endpoint receives the browser redirect from Microsoft.
+// CSRF protection is via the `state` PKCE parameter.
+router.get("/admin/bookings/graph-callback", async (req, res): Promise<void> => {
+  const q = req.query as Record<string, string | undefined>;
+  const { code, state, error: oauthError } = q;
+
+  if (oauthError) {
+    const msg = encodeURIComponent(`Microsoft sign-in failed: ${oauthError}`);
+    res.redirect(`/admin/people/bookings?graphError=${msg}`);
+    return;
+  }
+  if (!code || !state) {
+    res.redirect("/admin/people/bookings?graphError=missing_params");
+    return;
+  }
+
+  const pending = await consumeAuthPendingState(state);
+  if (!pending) {
+    res.redirect("/admin/people/bookings?graphError=invalid_or_expired_state");
+    return;
+  }
+
+  let refreshToken: string | null = null;
+  let accountHint: string | null = null;
+  try {
+    const disco = await fetchDiscovery();
+    const body = new URLSearchParams({
+      client_id: process.env["ENTRA_APP_CLIENT_ID"] ?? "",
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: pending.redirectUri ?? deriveBookingsCallbackUri(req),
+      code_verifier: pending.codeVerifier,
+      scope: BOOKINGS_OAUTH_SCOPES.join(" "),
+    });
+    const secret = process.env["ENTRA_CLIENT_SECRET"] ?? process.env["ENTRA_APP_CLIENT_SECRET"];
+    if (secret) body.set("client_secret", secret);
+
+    const tokenRes = await fetch(disco.tokenEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!tokenRes.ok) {
+      const text = (await tokenRes.text()).slice(0, 300);
+      req.log.warn({ status: tokenRes.status, body: text }, "Bookings Graph code exchange failed");
+      const msg = encodeURIComponent("Token exchange with Microsoft failed — check server logs.");
+      res.redirect(`/admin/people/bookings?graphError=${msg}`);
+      return;
+    }
+
+    const json = (await tokenRes.json()) as Record<string, unknown>;
+    refreshToken = typeof json["refresh_token"] === "string" ? (json["refresh_token"] as string) : null;
+
+    // Decode id_token (if present) to extract the account UPN for display.
+    const idToken = typeof json["id_token"] === "string" ? (json["id_token"] as string) : null;
+    if (idToken) {
+      try {
+        const parts = idToken.split(".");
+        if (parts[1]) {
+          const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
+          accountHint =
+            (payload["preferred_username"] as string | undefined) ??
+            (payload["email"] as string | undefined) ??
+            (payload["upn"] as string | undefined) ??
+            null;
+        }
+      } catch {
+        // Account hint is display-only; failure is non-fatal.
+      }
+    }
+  } catch (err) {
+    req.log.warn({ err }, "Bookings Graph callback threw");
+    const msg = encodeURIComponent("Unexpected error during Microsoft sign-in — check server logs.");
+    res.redirect(`/admin/people/bookings?graphError=${msg}`);
+    return;
+  }
+
+  if (!refreshToken) {
+    const msg = encodeURIComponent(
+      "Microsoft did not return a refresh token. Ensure offline_access scope is included and the app supports it.",
+    );
+    res.redirect(`/admin/people/bookings?graphError=${msg}`);
+    return;
+  }
+
+  await storeBookingsRefreshToken(refreshToken, accountHint);
+  req.log.info({ accountHint }, "Bookings Graph service account connected");
+  res.redirect("/admin/people/bookings?graphConnected=1");
+});
+
+router.delete("/admin/bookings/graph-token", requireAdmin, async (req, res): Promise<void> => {
+  await clearBookingsRefreshToken();
+  req.log.info("Bookings Graph service account disconnected by admin");
   res.sendStatus(204);
 });
 
