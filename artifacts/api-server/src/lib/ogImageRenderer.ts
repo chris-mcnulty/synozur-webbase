@@ -29,8 +29,9 @@ export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris";
  * Bump history:
  *   1 — initial release (#161, May 2026).
  *   2 — Synozur logo doubled in size (May 2026).
+ *   3 — Fixed logo path resolution so logo renders in bundled production build (May 2026).
  */
-export const OG_TEMPLATE_VERSION = 2;
+export const OG_TEMPLATE_VERSION = 3;
 
 export interface OgImageInput {
   kind: OgImageKind;
@@ -85,8 +86,13 @@ function getLogoDataUri(): string | null {
     // process.cwd() is the api-server package dir when run via pnpm --filter.
     // The synozur public assets sit one directory up at artifacts/synozur/.
     const candidates = [
+      // __dirname in the esbuild bundle = artifacts/api-server/dist (two levels up to artifacts/)
+      resolve(__dirname, "../../synozur/public/images/sa-logo-horizontal-white.png"),
+      // __dirname in ts-node / tsx dev mode = artifacts/api-server/src/lib (three levels up to artifacts/)
+      resolve(__dirname, "../../../synozur/public/images/sa-logo-horizontal-white.png"),
+      // cwd-based fallbacks
       resolve(process.cwd(), "../synozur/public/images/sa-logo-horizontal-white.png"),
-      resolve(process.cwd(), "../../artifacts/synozur/public/images/sa-logo-horizontal-white.png"),
+      resolve(process.cwd(), "artifacts/synozur/public/images/sa-logo-horizontal-white.png"),
     ];
     for (const p of candidates) {
       try {
