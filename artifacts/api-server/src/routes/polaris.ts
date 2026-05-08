@@ -167,7 +167,7 @@ function publicFilterSql() {
 // ----- Public ------------------------------------------------------------
 
 router.get("/polaris/episodes", async (req, res) => {
-  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 50));
+  const pageSize = Math.min(500, Math.max(1, Number(req.query.pageSize) || 50));
   const page = Math.max(1, Number(req.query.page) || 1);
   const where = and(...publicFilterSql());
 

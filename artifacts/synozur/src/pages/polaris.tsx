@@ -25,7 +25,7 @@ interface PolarisEpisodeDto {
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 async function fetchPolarisEpisodes(): Promise<PolarisEpisodeDto[]> {
-  const res = await fetch(`${BASE_PATH}/api/polaris/episodes?pageSize=200`);
+  const res = await fetch(`${BASE_PATH}/api/polaris/episodes?pageSize=500`);
   if (!res.ok) throw new Error(`Failed to fetch Polaris episodes: ${res.status}`);
   const data = (await res.json()) as { items: PolarisEpisodeDto[] };
   return data.items;
