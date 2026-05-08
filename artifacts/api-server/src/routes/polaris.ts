@@ -23,6 +23,12 @@ import { siteOrigin } from "../lib/siteOrigin";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import { reindexEditorialSourceSafe } from "../lib/ai/reindexHook";
+import {
+  getCategoriesFor,
+  getTagsFor,
+  setCategoriesFor,
+  setTagsFor,
+} from "../lib/taxonomy";
 
 const router: IRouter = Router();
 
@@ -769,6 +775,8 @@ router.post(
         ),
       });
 
+      let collateralId: string;
+
       if (existing) {
         await db
           .update(collateralTable)
@@ -781,6 +789,7 @@ router.post(
           entityId: existing.id,
           diff: { episodeId: episode.id, bulk: true },
         });
+        collateralId = existing.id;
         updated++;
       } else {
         const base = toSlug(`polaris-${episode.slug}`);
@@ -815,8 +824,19 @@ router.post(
           entityId: newRow.id,
           diff: { episodeId: episode.id, bulk: true },
         });
+        collateralId = newRow.id;
         created++;
       }
+
+      // Copy taxonomy (categories + tags) from episode → collateral mirror.
+      const [episodeCategories, episodeTags] = await Promise.all([
+        getCategoriesFor("polaris_episode", episode.id),
+        getTagsFor("polaris_episode", episode.id),
+      ]);
+      await Promise.all([
+        setCategoriesFor("collateral", collateralId, episodeCategories.map((c) => c.id)),
+        setTagsFor("collateral", collateralId, episodeTags.map((t) => t.id)),
+      ]);
     }
 
     res.json({ total: episodes.length, created, updated });
@@ -918,6 +938,17 @@ router.post(
         diff: { episodeId: id },
       });
     }
+
+    // Copy taxonomy (categories + tags) from the episode to its collateral
+    // mirror so that service / solution / feature classifications sync too.
+    const [episodeCategories, episodeTags] = await Promise.all([
+      getCategoriesFor("polaris_episode", id),
+      getTagsFor("polaris_episode", id),
+    ]);
+    await Promise.all([
+      setCategoriesFor("collateral", row.id, episodeCategories.map((c) => c.id)),
+      setTagsFor("collateral", row.id, episodeTags.map((t) => t.id)),
+    ]);
 
     res.json({ collateral: serializeCollateralLink(row) });
   },
