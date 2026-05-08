@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlaceholderCard, StageSection } from "@/components/lifecycle";
 import NotCustomer from "./not-customer";
 import { constellationApi, type CInvoice } from "@/lib/constellation-api";
-import { ArrowRight, FileText, Receipt } from "lucide-react";
+import { AlertCircle, ArrowRight, FileText, Receipt } from "lucide-react";
 
 function fmtCurrency(amount: number | null): string {
   if (amount === null) return "—";
@@ -77,7 +77,14 @@ export default function StageResourcesPage() {
             </Link>
           }
         >
-          {docsQuery.isLoading ? (
+          {docsQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {docsQuery.error instanceof Error
+                ? docsQuery.error.message
+                : "Could not load documents."}
+            </div>
+          ) : docsQuery.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-14 w-full rounded-lg" />
               <Skeleton className="h-14 w-full rounded-lg" />
@@ -143,7 +150,14 @@ export default function StageResourcesPage() {
             </Link>
           }
         >
-          {invoicesQuery.isLoading ? (
+          {invoicesQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {invoicesQuery.error instanceof Error
+                ? invoicesQuery.error.message
+                : "Could not load invoices."}
+            </div>
+          ) : invoicesQuery.isLoading ? (
             <Skeleton className="h-20 w-full rounded-xl" />
           ) : pendingInvoices.length === 0 ? (
             <Card>

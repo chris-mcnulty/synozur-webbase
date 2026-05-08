@@ -13,9 +13,14 @@ import {
 } from "@/components/lifecycle";
 import NotCustomer from "./not-customer";
 import { nebulaApi } from "@/lib/nebula-api";
-import { ExternalLink, FileText, LayoutGrid } from "lucide-react";
+import { AlertCircle, ExternalLink, FileText, LayoutGrid } from "lucide-react";
 
 const STAGE = LIFECYCLE_STAGES.find((s) => s.key === "define")!;
+
+// Distinct from the /reports list query key (which uses pageSize 20). Including
+// the page size here keeps the homepage-strip cache from colliding with the
+// full reports page if a user navigates between them.
+const DEFINE_REPORTS_PAGE_SIZE = 5;
 
 function fmt(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -29,8 +34,8 @@ function fmt(iso: string | null | undefined) {
 export default function StageDefinePage() {
   const meQuery = useGetPortalMe();
   const reportsQuery = useQuery({
-    queryKey: ["nebula-reports", 1],
-    queryFn: () => nebulaApi.listReports(1, 5),
+    queryKey: ["nebula-reports", 1, DEFINE_REPORTS_PAGE_SIZE],
+    queryFn: () => nebulaApi.listReports(1, DEFINE_REPORTS_PAGE_SIZE),
     staleTime: 60_000,
   });
   const workspacesQuery = useQuery({
@@ -102,7 +107,14 @@ export default function StageDefinePage() {
             </Link>
           }
         >
-          {workspacesQuery.isLoading ? (
+          {workspacesQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {workspacesQuery.error instanceof Error
+                ? workspacesQuery.error.message
+                : "Could not load workspaces."}
+            </div>
+          ) : workspacesQuery.isLoading ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Skeleton className="h-20 w-full rounded-xl" />
               <Skeleton className="h-20 w-full rounded-xl" />
@@ -150,7 +162,14 @@ export default function StageDefinePage() {
             </Link>
           }
         >
-          {reportsQuery.isLoading ? (
+          {reportsQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {reportsQuery.error instanceof Error
+                ? reportsQuery.error.message
+                : "Could not load envisioning reports."}
+            </div>
+          ) : reportsQuery.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-16 w-full rounded-lg" />
               <Skeleton className="h-16 w-full rounded-lg" />

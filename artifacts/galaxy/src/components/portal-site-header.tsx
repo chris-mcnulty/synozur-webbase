@@ -54,18 +54,52 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
   }).catch(() => undefined);
 }
 
-// Lifecycle-stage navigation. Each entry maps to a customer-journey stage that
-// composes the relevant app surfaces. Per-app deep links (/projects, /reports,
-// /workspaces, etc.) still resolve, but they are reached *through* the stage
-// pages rather than being top-level entries of their own.
-const PORTAL_NAV: { href: string; label: string }[] = [
+// Top-level portal navigation. The middle four entries are the lifecycle
+// transformation stages (mirrored by `LIFECYCLE_STAGES` in `components/
+// lifecycle.tsx`); `Home` and `Resources` book-end them as non-stage entries.
+//
+// `aliases` lists the per-app deep-link prefixes that should still light up
+// the corresponding tab when a user lands via a saved deep link (e.g. someone
+// who bookmarked `/projects` should see `Deliver` highlighted). Per-app
+// surfaces are still reachable, just no longer top-level entries.
+interface PortalNavEntry {
+  href: string;
+  label: string;
+  aliases?: string[];
+}
+
+const PORTAL_NAV: PortalNavEntry[] = [
   { href: "/", label: "Home" },
-  { href: "/assess", label: "Assess" },
-  { href: "/define", label: "Define" },
-  { href: "/deliver", label: "Deliver" },
+  {
+    href: "/assess",
+    label: "Assess",
+    aliases: ["/assessments", "/learning", "/benchmarks"],
+  },
+  {
+    href: "/define",
+    label: "Define",
+    aliases: ["/reports", "/workspaces"],
+  },
+  {
+    href: "/deliver",
+    label: "Deliver",
+    aliases: ["/projects"],
+  },
   { href: "/outcomes", label: "Outcomes" },
-  { href: "/resources", label: "Resources" },
+  {
+    href: "/resources",
+    label: "Resources",
+    aliases: ["/documents", "/invoices", "/apps"],
+  },
 ];
+
+function isPortalNavActive(entry: PortalNavEntry, location: string): boolean {
+  if (entry.href === "/") return location === "/";
+  if (location === entry.href || location.startsWith(`${entry.href}/`)) return true;
+  return (entry.aliases ?? []).some(
+    (a) => location === a || location.startsWith(`${a}/`),
+  );
+}
 
 function isExternal(href: string) {
   return /^https?:\/\//.test(href);
@@ -476,7 +510,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                   <h3 className="font-semibold text-foreground">Galaxy Portal</h3>
                   <div className="flex flex-col gap-2 pl-4 border-l border-border/50">
                     {PORTAL_NAV.map((n) => {
-                      const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+                      const active = isPortalNavActive(n, location);
                       return (
                         <Link key={n.href} href={n.href}
                           className={`py-1 text-sm ${active ? "text-[#E60CB3] font-semibold" : "text-muted-foreground hover:text-primary"}`}
@@ -512,7 +546,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
           <span className="text-xs text-muted-foreground font-medium mr-3 hidden sm:inline">Galaxy Portal</span>
           <div className="flex items-center gap-1">
             {PORTAL_NAV.map((n) => {
-              const active = n.href === "/" ? location === "/" : location === n.href || location.startsWith(`${n.href}/`);
+              const active = isPortalNavActive(n, location);
               return (
                 <Link
                   key={n.href}

@@ -3,10 +3,12 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-// Lifecycle stages drive the portal's information architecture: each top-level
-// nav entry is a stage that composes the apps feeding it. The home journey
-// strip and the per-stage pages both read from this single source of truth, so
-// renaming or re-ordering stages happens in one place.
+// The four customer-transformation stages — Assess, Define, Deliver, Outcomes
+// — that the homepage `JourneyStrip` and each per-stage `StageHeader` render
+// from. The top-level portal nav wraps these with two non-stage entries
+// (`Home` and `Resources`) which are not part of `LIFECYCLE_STAGES` because
+// they're not transformation stages themselves; that mapping lives in
+// `portal-site-header.tsx`. Renaming or re-ordering a stage happens here.
 
 export type LifecycleStageKey = "assess" | "define" | "deliver" | "outcomes";
 

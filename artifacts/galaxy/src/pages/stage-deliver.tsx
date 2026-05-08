@@ -152,7 +152,14 @@ export default function StageDeliverPage() {
         />
 
         <StageSection title="Active engagements">
-          {engagementsQuery.isLoading ? (
+          {engagementsQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {engagementsQuery.error instanceof Error
+                ? engagementsQuery.error.message
+                : "Could not load engagements."}
+            </div>
+          ) : engagementsQuery.isLoading ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Skeleton className="h-20 w-full rounded-xl" />
               <Skeleton className="h-20 w-full rounded-xl" />

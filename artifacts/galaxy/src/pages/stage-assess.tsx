@@ -13,7 +13,7 @@ import {
 } from "@/components/lifecycle";
 import NotCustomer from "./not-customer";
 import { orionApi, type OrionModel, type OrionResultEntry } from "@/lib/orion-api";
-import { ExternalLink, ClipboardList, BarChart3 } from "lucide-react";
+import { AlertCircle, ExternalLink, ClipboardList, BarChart3 } from "lucide-react";
 
 const ORION_BASE = (import.meta.env.VITE_ORION_BASE_URL ?? "https://orion.synozur.com").replace(/\/$/, "");
 const STAGE = LIFECYCLE_STAGES.find((s) => s.key === "assess")!;
@@ -150,7 +150,14 @@ export default function StageAssessPage() {
             </Link>
           }
         >
-          {modelsQuery.isLoading ? (
+          {modelsQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {modelsQuery.error instanceof Error
+                ? modelsQuery.error.message
+                : "Could not load assessment models."}
+            </div>
+          ) : modelsQuery.isLoading ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Skeleton className="h-24 w-full rounded-xl" />
               <Skeleton className="h-24 w-full rounded-xl" />
@@ -183,7 +190,14 @@ export default function StageAssessPage() {
             </Link>
           }
         >
-          {resultsQuery.isLoading ? (
+          {resultsQuery.isError ? (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {resultsQuery.error instanceof Error
+                ? resultsQuery.error.message
+                : "Could not load benchmark results."}
+            </div>
+          ) : resultsQuery.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-14 w-full rounded-lg" />
               <Skeleton className="h-14 w-full rounded-lg" />
