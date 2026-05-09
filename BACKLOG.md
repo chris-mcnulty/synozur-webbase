@@ -553,3 +553,152 @@ Follow-up items, in recommended order:
 Owner/tracking: file a ticket referencing this section once Orbit /
 Zenith / Vega land their portal projections and the relationship-
 manager data model is signed off.
+
+---
+
+## Wix-platform parity gaps (May 2026 gap analysis)
+
+Context: a May 2026 capability comparison against the Wix platform
+surfaced four functional areas where the Wix product has first-class
+support and Synozur-WebBase does not. eCommerce, social marketing, and
+email marketing were excluded from scope. The four areas below are
+ordered by impact on the editorial / marketing experience. Each is its
+own initiative; only the page-authoring item has a detailed plan
+document attached today (see `docs/no-code-page-authoring-plan.md`).
+
+### 1. No-code page authoring + in-place editing
+
+The most fundamental gap. Today every public page is a hand-written
+React component; non-developers can edit hero/intro copy on the parent
+list pages (`content_parent_pages`), individual posts (TipTap), and a
+narrow set of `site_settings` fields, but cannot create new pages,
+reorder sections, or change layout without a deploy. Wix's Editor /
+Studio is built around this.
+
+Detailed staged plan: **`docs/no-code-page-authoring-plan.md`**.
+Headline scope:
+
+- New `pages` + `page_blocks` + `page_revisions` tables (block-typed
+  composition, not freeform layout).
+- Block-type registry (Hero, Prose, TwoColumn, Image, CTA, FAQ,
+  Embed, LogoStrip, Spacer, Testimonial) with paired `<Renderer>` /
+  `<Editor>` components and Zod-validated `props` + `content`.
+- Admin page builder at `/admin/pages/:id` with block palette, sortable
+  canvas, and right-rail inspector.
+- Live-site edit mode toggled via `?edit=1` for users with
+  `site.manage`; click-to-edit on each block opens the same inspector
+  the builder uses.
+- Opt-in migration of `content_parent_pages` and the static marketing
+  pages (`/about`, `/contact`, etc.) onto the new model.
+
+Owner/tracking: file the umbrella ticket and child tickets per phase
+once the plan is signed off.
+
+### 2. Multilingual / i18n
+
+There is no i18n scaffolding today — every string is English, every
+content row is single-language, and routing has no locale segment.
+Wix Multilingual covers 180+ languages with per-language SEO and
+auto-translation. If the brand needs a non-English experience, this is
+a substantial build:
+
+1. **Routing model.** Decide between path-prefix (`/es/...`),
+   subdomain, or query param. Path-prefix is the SEO-friendliest and
+   the easiest to fold into the existing Wouter setup.
+2. **Translation surface for static UI strings.** Adopt
+   `react-intl` or `i18next` and migrate the SPA's hardcoded strings
+   into a message catalog. Coordinate with the `synozur-nav` library
+   so navigation labels travel with the locale.
+3. **Localized content.** Add a `locale` column (or per-locale
+   sibling rows) to the major content tables: `posts`,
+   `case_studies`, `services`, `solutions`, `applications`,
+   `models`, `faq_items`, `team_members`, `events`, `webinars`,
+   `polaris_episodes`, `collateral`, plus `content_parent_pages`
+   and the new `pages` model from item 1.
+4. **Per-locale SEO.** `hreflang` tags, per-locale sitemaps, OG
+   image regeneration with translated copy, canonical handling.
+5. **Authoring UX.** Locale switcher in admin editors; inline
+   "missing translation" indicators; optional machine-translation
+   pre-fill (Anthropic call wrapped behind a feature flag).
+6. **Search.** Index per-locale TSV vectors; the existing
+   `search_tsv` generated columns currently hard-code
+   `'english'` (see `lib/db/src/schema/posts.ts`) and need to fan
+   out per locale.
+
+Owner/tracking: scope the languages first (count, write vs. read,
+machine vs. human translation budget) before opening engineering
+tickets. The smallest viable shape is "English + one secondary
+language for marketing surfaces only," which is a meaningful slice and
+would surface most of the routing / SEO work without forcing the full
+content-table refactor on day one.
+
+### 3. Live chat + community (forum / groups)
+
+Wix ships Wix Chat (visitor-to-operator real-time messaging with
+mobile operator app, automated triggers, business hours) and
+Wix Forum / Wix Groups (threaded discussions, member-to-member
+chat, group rules). The codebase has none of this; comments on
+insights posts are the only community surface.
+
+Decisions to make before scoping:
+
+1. **Live chat — buy or build?** A managed third-party (Intercom,
+   Crisp, HubSpot Chat — already paired with our HubSpot CRM) is
+   substantially less effort than building, and the operator
+   mobile experience is non-trivial. Recommend evaluating
+   HubSpot Conversations first since it shares the contact graph
+   with our existing HubSpot integration; LiveChat / Crisp /
+   Intercom are alternates. The build-it-ourselves option only
+   makes sense if the chat needs to share auth, permissions, and
+   data with the portal (Galaxy / Constellation), which it
+   probably doesn't for a marketing-site widget.
+2. **Forum / community — is there demand?** Wix Forum sees
+   engagement on community-led brands; for an advisory firm,
+   a moderated Q&A page (built on the existing comment +
+   moderation queue plumbing extended to standalone questions)
+   may cover the same need at a fraction of the cost. Evaluate
+   audience interest before committing.
+3. **If we do build a forum**, the existing `comments`,
+   `taxonomy`, `users`, and `audit_log` tables give us most of
+   the moderation primitives. New surface area: thread / topic
+   model, reactions, follows, notifications (depends on email
+   marketing infrastructure being out of scope for this gap
+   analysis but in scope for a forum build), and a member
+   activity feed.
+
+Owner/tracking: do the buy-vs-build evaluation for live chat as a
+discrete spike before any engineering work.
+
+### 4. Bookings depth (calendar sync, classes/groups, analytics)
+
+The codebase has a working bookings flow at `/start` backed by a
+`bookings` table and admin management. Wix Bookings adds:
+
+1. **Calendar sync.** Two-way sync with operator Google / Microsoft
+   365 calendars so a booking blocks the operator's real calendar
+   and a calendar-only event holds the slot. This is the largest
+   single piece of work — it requires Graph + Google Calendar
+   integrations, conflict detection, and a per-staff availability
+   model that supersedes the current single-availability flow.
+2. **Class / group / workshop bookings.** Multi-attendee slots,
+   capacity, waitlists. Today the slot model assumes 1:1
+   consultations.
+3. **Bookings analytics dashboard.** Top-performing services,
+   peak times, attendance vs. cancellation rate. The existing
+   admin analytics dashboard could host this once events are
+   modelled with consistent dimensions (service / staff / time
+   bucket / outcome).
+4. **Reminders + post-booking automations.** Opt-in reminder
+   emails, follow-up flows. Email infrastructure (`SendGrid`)
+   is already wired; the gap is the rule engine that triggers
+   it.
+5. **Payment-ready bookings.** Out of scope per gap-analysis
+   exclusions.
+
+Owner/tracking: the calendar-sync piece is the gating prerequisite
+for any of the others to be useful, and is itself a multi-week
+build. Recommend a small spike to validate the Graph +
+Google-Calendar token storage model and the conflict-resolution
+strategy before sizing the rest.
+
+---
