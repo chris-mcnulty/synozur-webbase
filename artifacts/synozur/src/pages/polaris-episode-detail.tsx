@@ -135,7 +135,72 @@ function formatDuration(seconds: number | null): string {
 
 const SHOW_NOTES_PREVIEW = 3;
 
-function ShowNotes({ lines }: { lines: string[] }) {
+/**
+ * Finds "Show Notes" (case-insensitive) as a heading in the blog post HTML and
+ * returns everything that follows it. Handles both plain headings
+ * (`<h1>Show Notes</h1>`) and Wix-nested ones
+ * (`<h2><span><span>Show Notes</span></span></h2>`).
+ * Returns null if the marker isn't found.
+ */
+function extractShowNotesHtml(html: string): string | null {
+  const lower = html.toLowerCase();
+  const markerIdx = lower.indexOf("show notes");
+  if (markerIdx === -1) return null;
+
+  // Walk forward from the marker to find the closing heading tag (</h1..3>).
+  // This skips any nested closing spans/tags that wrap the text.
+  const afterMarker = markerIdx + "show notes".length;
+  const headingClose = lower.indexOf("</h", afterMarker);
+  if (headingClose === -1) {
+    // No heading close — fall back to taking everything after the next >
+    const gt = html.indexOf(">", afterMarker);
+    if (gt === -1) return null;
+    return html.slice(gt + 1).trim() || null;
+  }
+
+  // Find the > that ends the closing heading tag (e.g. </h2>)
+  const gt = html.indexOf(">", headingClose);
+  if (gt === -1) return null;
+
+  const rest = html.slice(gt + 1).trim();
+  return rest || null;
+}
+
+/**
+ * Rewrites image src attributes that point to /objects/ paths so they resolve
+ * through the API storage proxy (same treatment as hero images).
+ */
+function rewriteStorageUrls(html: string, basePath: string): string {
+  return html.replace(
+    /src="(\/objects\/[^"]+)"/g,
+    `src="${basePath}/api/storage$1"`,
+  );
+}
+
+function ShowNotesHtml({ html }: { html: string }) {
+  return (
+    <section className="bg-background py-20 border-t border-border/60">
+      <div className="container mx-auto px-4 max-w-3xl">
+        <p className="text-sm uppercase tracking-widest text-primary mb-6">
+          Show Notes
+        </p>
+        <div
+          className="prose prose-invert prose-violet max-w-none
+            prose-headings:font-semibold prose-headings:tracking-tight
+            prose-h2:text-xl prose-h3:text-lg
+            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+            prose-strong:text-foreground
+            prose-li:text-muted-foreground prose-p:text-muted-foreground
+            prose-ul:my-3 prose-ol:my-3 prose-li:my-0.5
+            prose-img:rounded-xl prose-img:my-6"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ShowNotesPlain({ lines }: { lines: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const collapsible = lines.length > SHOW_NOTES_PREVIEW;
   const visible = expanded || !collapsible ? lines : lines.slice(0, SHOW_NOTES_PREVIEW);
@@ -386,10 +451,21 @@ export default function PolarisEpisodeDetail() {
         </section>
       )}
 
-      {/* Show notes */}
-      {summaryLines.length > 0 && (
-        <ShowNotes lines={summaryLines} />
-      )}
+      {/* Show notes — prefer rich HTML extracted from the linked blog post when
+          it contains a "Show Notes" heading; fall back to the plain-text DB
+          summary for episodes without a linked post or when the heading isn't
+          found in the post body. */}
+      {(() => {
+        const rawHtml = episode.linkedPost?.bodyHtml ?? null;
+        if (rawHtml) {
+          const extracted = extractShowNotesHtml(rawHtml);
+          if (extracted) {
+            const rewritten = rewriteStorageUrls(extracted, BASE_PATH);
+            return <ShowNotesHtml html={rewritten} />;
+          }
+        }
+        return summaryLines.length > 0 ? <ShowNotesPlain lines={summaryLines} /> : null;
+      })()}
 
       {/* Back to all episodes */}
       <section className="bg-background py-14 border-t border-border/60">

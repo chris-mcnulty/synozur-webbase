@@ -73,6 +73,7 @@ interface LinkedPostDto {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  bodyHtml: string | null;
   // Only set on CMS responses so editors can see if the linked post is a
   // draft / scheduled / archived. Public responses already filter by
   // status === "published", so the field is dropped there.
@@ -127,6 +128,7 @@ async function loadLinkedPost(
       heroPublicUrl: mediaTable.publicUrl,
       status: postsTable.status,
       deletedAt: postsTable.deletedAt,
+      bodyHtml: postsTable.bodyHtml,
     })
     .from(postsTable)
     .leftJoin(mediaTable, eq(mediaTable.id, postsTable.heroImageId))
@@ -149,6 +151,7 @@ async function loadLinkedPost(
         : r.heroPublicUrl
       : null,
     publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+    bodyHtml: r.bodyHtml ?? null,
     ...(opts.publicOnly ? {} : { status: r.status }),
   };
 }
