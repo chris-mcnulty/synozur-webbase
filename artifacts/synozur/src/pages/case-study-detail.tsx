@@ -366,13 +366,18 @@ export default function CaseStudyDetail() {
         </div>
       </section>
 
-      <EditWedge
-        kind="case-study"
-        id={study?.id}
-        slug={study?.slug}
-        snapshot={study ?? undefined}
-        queryKey={["case-studies", slug, "detail"]}
-      />
+      {/* Only mount the wedge when we're rendering CMS-backed data —
+          the static-fallback DTO uses the slug as `id`, so a PATCH to
+          /api/cms/case-studies/:id with that value would 404. */}
+      {detailQ.data && (
+        <EditWedge
+          kind="case-study"
+          id={detailQ.data.id}
+          slug={detailQ.data.slug}
+          snapshot={detailQ.data}
+          queryKey={["case-studies", slug, "detail"]}
+        />
+      )}
     </div>
   );
 }

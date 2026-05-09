@@ -78,6 +78,17 @@ export interface EntityRegistration {
    * visibility is gated by `active` / `publishedAt` instead).
    */
   statusEnum: readonly string[] | null;
+  /**
+   * Per-kind subtitle-equivalent column. Different entities call their
+   * one-line teaser different things — `subtitle` (posts, white_papers,
+   * collateral), `summary` (case_studies, polaris_episodes),
+   * `shortDescription` (videos, workshops, models), `tagline`
+   * (applications). The wedge sends the field under this server key
+   * and labels the input accordingly. `null` hides the field entirely
+   * for kinds whose update body has no equivalent.
+   */
+  subtitleKey: string | null;
+  subtitleLabel?: string;
 }
 
 const ARTIFACT_STATUS = ["draft", "scheduled", "published", "archived"] as const;
@@ -95,6 +106,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: true,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "subtitle",
+    subtitleLabel: "Subtitle",
   },
   {
     kind: "service",
@@ -107,6 +120,8 @@ const REG: readonly EntityRegistration[] = [
     // services have only `iconId`, no hero/og image columns
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    // services have no subtitle-shaped column on the public schema
+    subtitleKey: null,
   },
   {
     kind: "solution",
@@ -118,6 +133,7 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: null,
   },
   {
     kind: "case-study",
@@ -130,6 +146,8 @@ const REG: readonly EntityRegistration[] = [
     // heroImage is a text URL on case_studies
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "summary",
+    subtitleLabel: "Summary",
   },
   {
     kind: "application",
@@ -141,6 +159,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "tagline",
+    subtitleLabel: "Tagline",
   },
   {
     kind: "model",
@@ -152,6 +172,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "shortDescription",
+    subtitleLabel: "Short description",
   },
   {
     kind: "white-paper",
@@ -168,6 +190,8 @@ const REG: readonly EntityRegistration[] = [
     // white_papers stores heroImage / ogImage as text URLs
     imageIdPatch: false,
     statusEnum: COLLATERAL_LIFECYCLE_STATUS,
+    subtitleKey: "subtitle",
+    subtitleLabel: "Subtitle",
   },
   {
     kind: "video",
@@ -179,6 +203,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: COLLATERAL_LIFECYCLE_STATUS,
+    subtitleKey: "shortDescription",
+    subtitleLabel: "Short description",
   },
   {
     kind: "workshop",
@@ -191,6 +217,8 @@ const REG: readonly EntityRegistration[] = [
     imageIdPatch: false,
     // workshops have an `active` boolean instead of a status enum
     statusEnum: null,
+    subtitleKey: "shortDescription",
+    subtitleLabel: "Short description",
   },
   {
     kind: "webinar",
@@ -203,6 +231,8 @@ const REG: readonly EntityRegistration[] = [
     imageIdPatch: false,
     // collateral rows use `publishedAt` rather than a status enum
     statusEnum: null,
+    subtitleKey: "subtitle",
+    subtitleLabel: "Subtitle",
   },
   {
     kind: "library-item",
@@ -214,6 +244,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: null,
+    subtitleKey: "subtitle",
+    subtitleLabel: "Subtitle",
   },
   {
     kind: "polaris-episode",
@@ -225,6 +257,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "summary",
+    subtitleLabel: "Summary",
   },
   {
     kind: "team-member",
@@ -239,6 +273,7 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: false,
     imageIdPatch: false,
     statusEnum: null,
+    subtitleKey: null,
   },
   {
     kind: "event",
@@ -252,6 +287,7 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: false,
     imageIdPatch: false,
     statusEnum: null,
+    subtitleKey: null,
   },
   {
     kind: "job",
@@ -263,6 +299,8 @@ const REG: readonly EntityRegistration[] = [
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: JOB_STATUS,
+    // job descriptions are long-form, not subtitle-shaped — hide
+    subtitleKey: null,
   },
 ];
 

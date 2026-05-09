@@ -10,6 +10,19 @@ import {
   getEntityRegistration,
 } from "@/lib/entity-registry";
 
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+/**
+ * Convert a root-relative SPA path to one prefixed with the SPA's
+ * `BASE_URL`, so preview links work when the SPA is hosted under a
+ * subpath (e.g. `/app`). Idempotent for already-prefixed paths.
+ */
+function withBasePath(path: string): string {
+  if (!BASE_PATH) return path;
+  if (path.startsWith(BASE_PATH + "/") || path === BASE_PATH) return path;
+  return `${BASE_PATH}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 interface PreviewButtonProps {
   kind: EntityKind;
   /** Saved entity id. Required to mint preview tokens. */
@@ -48,7 +61,7 @@ export function PreviewButton({ kind, id, slug, isDraft }: PreviewButtonProps) {
 
     // Published items: just open the public URL.
     if (!isDraft) {
-      window.open(publicPathFor(kind, slug), "_blank", "noopener");
+      window.open(withBasePath(publicPathFor(kind, slug)), "_blank", "noopener");
       return;
     }
 
@@ -63,7 +76,7 @@ export function PreviewButton({ kind, id, slug, isDraft }: PreviewButtonProps) {
               ? await api.createSolutionPreviewToken(String(id))
               : null;
         if (result?.previewPath) {
-          window.open(result.previewPath, "_blank", "noopener");
+          window.open(withBasePath(result.previewPath), "_blank", "noopener");
         } else {
           toast({
             title: "Preview unavailable",
@@ -92,7 +105,7 @@ export function PreviewButton({ kind, id, slug, isDraft }: PreviewButtonProps) {
       description:
         "This item isn't published yet, so the public URL will 404. Publish it (or use the in-admin preview) to see it live.",
     });
-    window.open(publicPathFor(kind, slug), "_blank", "noopener");
+    window.open(withBasePath(publicPathFor(kind, slug)), "_blank", "noopener");
   }
 
   const button = (

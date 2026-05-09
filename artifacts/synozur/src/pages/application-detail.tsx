@@ -333,13 +333,18 @@ export default function ApplicationDetail() {
         </section>
       )}
 
-      <EditWedge
-        kind="application"
-        id={app?.id}
-        slug={app?.slug}
-        snapshot={app ?? undefined}
-        queryKey={["applications", slug, "detail"]}
-      />
+      {/* Only mount the wedge when we're rendering CMS-backed data —
+          the static-fallback DTO uses the slug as `id`, so a PATCH to
+          /api/cms/applications/:id with that value would 404. */}
+      {detailQ.data && (
+        <EditWedge
+          kind="application"
+          id={detailQ.data.id}
+          slug={detailQ.data.slug}
+          snapshot={detailQ.data}
+          queryKey={["applications", slug, "detail"]}
+        />
+      )}
     </div>
   );
 }

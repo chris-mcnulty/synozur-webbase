@@ -360,8 +360,12 @@ export default function WhitePaperDetail() {
         </div>
       </section>
 
+      {/* Collateral-only fallback: `col.id` is a collateral row id, so
+          we mount the wedge as `library-item` (which PATCHes
+          /cms/collateral/:id) rather than `white-paper` (which would
+          400/404 against /cms/white-papers/:id). */}
       <EditWedge
-        kind="white-paper"
+        kind="library-item"
         id={col.id}
         slug={col.slug}
         snapshot={col}
