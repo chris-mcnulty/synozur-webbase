@@ -23,6 +23,8 @@ interface CollateralCardProps {
    * Pass "eager" when the card is guaranteed above the fold (e.g. hero carousel).
    */
   imageLoading?: "lazy" | "eager";
+  /** Optional click handler — used by the carousel to fire conversion events. */
+  onClick?: () => void;
 }
 
 // For events the `publishedAt` field carries the event start date (set by
@@ -51,7 +53,7 @@ function dateLabel(item: Collateral): string {
   return item.type === "event" ? "Event" : "Published";
 }
 
-export function CollateralCard({ item, variant = "grid", imageLoading = "lazy" }: CollateralCardProps) {
+export function CollateralCard({ item, variant = "grid", imageLoading = "lazy", onClick }: CollateralCardProps) {
   // On md+ screens the carousel sits beside the hero headline inside a
   // min-h-[90vh] section. A pure 3/4 portrait aspect makes the card taller
   // than the viewport, pushing the title/badge overlay below the fold. Cap
@@ -120,13 +122,13 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy" }
 
   if (item.external) {
     return (
-      <a href={item.url} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={item.url} target="_blank" rel="noopener noreferrer" className="block" onClick={onClick}>
         {inner}
       </a>
     );
   }
   return (
-    <Link href={item.url} className="block">
+    <Link href={item.url} className="block" onClick={onClick}>
       {inner}
     </Link>
   );

@@ -47,6 +47,7 @@ export function FromTheFeedCarousel() {
   const [items, setItems] = useState<Collateral[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
+  const trackConversion = useTrackConversion();
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +131,19 @@ export function FromTheFeedCarousel() {
         <CarouselContent>
           {items.map((item) => (
             <CarouselItem key={item.id} className="basis-full">
-              <CollateralCard item={item} variant="carousel" imageLoading="eager" />
+              <CollateralCard
+                item={item}
+                variant="carousel"
+                imageLoading="eager"
+                onClick={() =>
+                  trackConversion("conversion.carousel.click", {
+                    itemId: item.id,
+                    itemType: item.type,
+                    itemTitle: item.title,
+                    itemUrl: item.url,
+                  })
+                }
+              />
             </CarouselItem>
           ))}
         </CarouselContent>
