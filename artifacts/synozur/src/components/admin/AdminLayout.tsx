@@ -55,6 +55,7 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { PreviewButton } from "@/components/admin/PreviewButton";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
 import type { Capability } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
@@ -243,11 +244,23 @@ export function AdminLayout({
   title,
   crumbs,
   actions,
+  previewEntity,
 }: {
   children: ReactNode;
   title?: string;
   crumbs?: Crumb[];
   actions?: ReactNode;
+  /**
+   * When set, auto-renders a PreviewButton in the header actions row
+   * for the given entity. Saves every admin edit page from importing
+   * and rendering the button itself.
+   */
+  previewEntity?: {
+    kind: import("@/lib/entity-registry").EntityKind;
+    id?: string | null;
+    slug?: string | null;
+    isDraft?: boolean;
+  };
 }) {
   const [location] = useLocation();
   const { signOut } = useAuth();
@@ -624,7 +637,19 @@ export function AdminLayout({
                 </h1>
               )}
             </div>
-            {actions && <div className="flex items-center gap-2">{actions}</div>}
+            {(previewEntity || actions) && (
+              <div className="flex items-center gap-2">
+                {previewEntity && (
+                  <PreviewButton
+                    kind={previewEntity.kind}
+                    id={previewEntity.id ?? null}
+                    slug={previewEntity.slug ?? null}
+                    isDraft={previewEntity.isDraft}
+                  />
+                )}
+                {actions}
+              </div>
+            )}
           </div>
           <div className="p-6">{children}</div>
         </main>

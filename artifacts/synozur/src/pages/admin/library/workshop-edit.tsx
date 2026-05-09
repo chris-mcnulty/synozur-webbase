@@ -259,6 +259,12 @@ export default function WorkshopEdit({ id }: Props) {
         { label: "Workshops", href: "/library/workshops" },
         { label: isNew ? "New" : "Edit" },
       ]}
+      previewEntity={{
+        kind: "workshop",
+        id,
+        slug: form.slug,
+        isDraft: false,
+      }}
     >
       <button
         onClick={() => navigate("/library/workshops")}

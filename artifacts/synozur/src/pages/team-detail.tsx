@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
 import { PersonJsonLd } from "@/components/person-jsonld";
+import { EditWedge } from "@/components/edit-wedge";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -340,6 +341,14 @@ export default function TeamDetail() {
           </div>
         </section>
       )}
+
+      <EditWedge
+        kind="team-member"
+        id={person.id}
+        slug={person.slug}
+        snapshot={person}
+        queryKey={["public-team-members", slug, "detail"]}
+      />
     </div>
   );
 }

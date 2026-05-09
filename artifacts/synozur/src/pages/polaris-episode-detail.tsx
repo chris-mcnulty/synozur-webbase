@@ -17,6 +17,7 @@ import Gone from "@/pages/gone";
 import type { PolarisLinkedPostDto } from "@/lib/api";
 import { VideoJsonLd } from "@/components/video-jsonld";
 import { SITE_ORIGIN } from "@/lib/seo-config";
+import { EditWedge } from "@/components/edit-wedge";
 
 interface PolarisEpisodeDto {
   id: string;
@@ -372,6 +373,14 @@ export default function PolarisEpisodeDetail() {
           </Link>
         </div>
       </section>
+
+      <EditWedge
+        kind="polaris-episode"
+        id={episode.id}
+        slug={episode.slug}
+        snapshot={episode}
+        queryKey={["polaris-episode", slug]}
+      />
     </div>
   );
 }

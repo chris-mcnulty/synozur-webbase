@@ -10,6 +10,7 @@ import NotFound from "./not-found";
 import Gone from "./gone";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
+import { EditWedge } from "@/components/edit-wedge";
 import { BookingCard } from "@/components/BookingCard";
 
 function stripHtml(html: string | null | undefined): string {
@@ -425,6 +426,14 @@ export default function SolutionDetail() {
           </div>
         </div>
       </section>
+
+      <EditWedge
+        kind="solution"
+        id={sol?.id}
+        slug={sol?.slug}
+        snapshot={sol ?? undefined}
+        queryKey={["solutions", slug, previewToken ?? ""]}
+      />
     </div>
   );
 }

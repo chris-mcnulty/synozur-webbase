@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
+import { EditWedge } from "@/components/edit-wedge";
 
 function isEmbeddable(url: string) {
   return /youtube\.com\/embed|player\.vimeo\.com|wistia\.net\/embed/.test(url);
@@ -156,6 +157,8 @@ export default function WebinarDetail() {
           </div>
         </div>
       </section>
+
+      <EditWedge kind="webinar" id={item.id} slug={item.slug} snapshot={item} />
     </div>
   );
 }

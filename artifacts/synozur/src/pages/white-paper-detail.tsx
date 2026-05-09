@@ -12,6 +12,7 @@ import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+import { EditWedge } from "@/components/edit-wedge";
 
 const DOC_TYPE_LABELS: Record<WhitePaperDocType, string> = {
   whitepaper: "White Paper",
@@ -230,6 +231,13 @@ export default function WhitePaperDetail() {
             </div>
           </div>
         </section>
+
+        <EditWedge
+          kind="white-paper"
+          id={wp.id}
+          slug={wp.slug}
+          snapshot={wp}
+        />
       </div>
     );
   }
@@ -351,6 +359,13 @@ export default function WhitePaperDetail() {
           </div>
         </div>
       </section>
+
+      <EditWedge
+        kind="white-paper"
+        id={col.id}
+        slug={col.slug}
+        snapshot={col}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { sanitizeHtml } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+import { EditWedge } from "@/components/edit-wedge";
 
 export default function ModelDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -164,6 +165,14 @@ export default function ModelDetail() {
           </div>
         </section>
       )}
+
+      <EditWedge
+        kind="model"
+        id={m?.id}
+        slug={m?.slug}
+        snapshot={m ?? undefined}
+        queryKey={["model", slug]}
+      />
     </div>
   );
 }

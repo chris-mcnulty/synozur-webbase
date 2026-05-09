@@ -10,6 +10,7 @@ import {
 } from "@/data/collateral";
 import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
+import { EditWedge } from "@/components/edit-wedge";
 
 /**
  * Returns true if the collateral item's `url` already maps to a richer local
@@ -266,6 +267,8 @@ export default function LibraryDetail() {
           )}
         </div>
       </section>
+
+      <EditWedge kind="library-item" id={item.id} slug={item.slug} snapshot={item} />
     </div>
   );
 }

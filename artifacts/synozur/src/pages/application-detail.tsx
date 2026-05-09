@@ -15,6 +15,7 @@ import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
+import { EditWedge } from "@/components/edit-wedge";
 
 // #133 — Constellation interactive demo A/B toggle.
 //
@@ -331,6 +332,14 @@ export default function ApplicationDetail() {
           </div>
         </section>
       )}
+
+      <EditWedge
+        kind="application"
+        id={app?.id}
+        slug={app?.slug}
+        snapshot={app ?? undefined}
+        queryKey={["applications", slug, "detail"]}
+      />
     </div>
   );
 }

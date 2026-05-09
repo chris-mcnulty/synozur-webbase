@@ -14,6 +14,7 @@ import {
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+import { EditWedge } from "@/components/edit-wedge";
 
 function staticAsDto(s: (typeof staticCaseStudies)[number]): CaseStudyDto {
   return {
@@ -364,6 +365,14 @@ export default function CaseStudyDetail() {
           </Link>
         </div>
       </section>
+
+      <EditWedge
+        kind="case-study"
+        id={study?.id}
+        slug={study?.slug}
+        snapshot={study ?? undefined}
+        queryKey={["case-studies", slug, "detail"]}
+      />
     </div>
   );
 }

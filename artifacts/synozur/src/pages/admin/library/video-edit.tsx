@@ -286,6 +286,12 @@ export default function VideoEdit({ id }: Props) {
         { label: "Videos", href: "/library/videos" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: "video",
+        id,
+        slug: form.slug,
+        isDraft: !form.publishedAt,
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/library/videos")}>

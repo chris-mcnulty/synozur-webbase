@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import { toEmbedUrl } from "@/lib/video-embed";
 import { VideoJsonLd } from "@/components/video-jsonld";
 import { SITE_ORIGIN } from "@/lib/seo-config";
+import { EditWedge } from "@/components/edit-wedge";
 
 const CATEGORY_LABELS: Record<VideoCategory, string> = {
   interview: "Interview",
@@ -184,6 +185,8 @@ export default function VideoDetail() {
           )}
         </div>
       </section>
+
+      <EditWedge kind="video" id={item.id} slug={item.slug} snapshot={item} />
     </div>
   );
 }

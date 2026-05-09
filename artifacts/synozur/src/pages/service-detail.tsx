@@ -11,6 +11,7 @@ import Gone from "./gone";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { BookingCard } from "@/components/BookingCard";
+import { EditWedge } from "@/components/edit-wedge";
 
 // The former string-matching map that paired service slugs with
 // workshop categories is gone (#105). The "related workshops" rail now
@@ -469,6 +470,14 @@ export default function ServiceDetail() {
           </Link>
         </div>
       </section>
+
+      <EditWedge
+        kind="service"
+        id={service?.id}
+        slug={service?.slug}
+        snapshot={service ?? undefined}
+        queryKey={["services", slug, "detail", previewToken ?? ""]}
+      />
     </div>
   );
 }

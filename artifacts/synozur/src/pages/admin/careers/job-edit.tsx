@@ -97,7 +97,15 @@ export default function CareersJobEdit({ id }: Props) {
   });
 
   return (
-    <AdminLayout title={isNew ? "New job" : "Edit job"}>
+    <AdminLayout
+      title={isNew ? "New job" : "Edit job"}
+      previewEntity={{
+        kind: "job",
+        id,
+        slug: form.slug,
+        isDraft: form.status !== "published",
+      }}
+    >
       <h1 className="text-2xl font-semibold mb-6">{isNew ? "New job posting" : "Edit job posting"}</h1>
       <form
         className="space-y-5 max-w-3xl"

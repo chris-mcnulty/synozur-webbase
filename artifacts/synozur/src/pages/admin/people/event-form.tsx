@@ -154,7 +154,16 @@ export default function EventForm({ id }: Props) {
   };
 
   return (
-    <AdminLayout title={title} crumbs={crumbs}>
+    <AdminLayout
+      title={title}
+      crumbs={crumbs}
+      previewEntity={{
+        kind: "event",
+        id,
+        slug: form.slug ?? null,
+        isDraft: form.status === "CANCELLED",
+      }}
+    >
       <div className="max-w-3xl">
       <form
         onSubmit={(e) => {

@@ -575,24 +575,72 @@ narrow set of `site_settings` fields, but cannot create new pages,
 reorder sections, or change layout without a deploy. Wix's Editor /
 Studio is built around this.
 
-Detailed staged plan: **`docs/no-code-page-authoring-plan.md`**.
-Headline scope:
+**Status (May 2026): not scheduled.** Two cheaper interventions
+(below) close most of the day-to-day editorial pain without taking
+on the full block-builder surface area. Revisit only if (a) demand
+for actual *new* pages without a deploy materialises, or (b) the
+remaining hand-coded pages start churning often enough to justify
+a builder.
 
-- New `pages` + `page_blocks` + `page_revisions` tables (block-typed
-  composition, not freeform layout).
-- Block-type registry (Hero, Prose, TwoColumn, Image, CTA, FAQ,
-  Embed, LogoStrip, Spacer, Testimonial) with paired `<Renderer>` /
-  `<Editor>` components and Zod-validated `props` + `content`.
-- Admin page builder at `/admin/pages/:id` with block palette, sortable
-  canvas, and right-rail inspector.
-- Live-site edit mode toggled via `?edit=1` for users with
-  `site.manage`; click-to-edit on each block opens the same inspector
-  the builder uses.
-- Opt-in migration of `content_parent_pages` and the static marketing
-  pages (`/about`, `/contact`, etc.) onto the new model.
+Detailed staged plan kept on file at
+**`docs/no-code-page-authoring-plan.md`** as the "if we need it
+later" reference (≈12 engineer-weeks). Headline scope was: new
+`pages` + `page_blocks` + `page_revisions` tables, ~10-block typed
+registry, admin page builder, live-site edit overlay with
+working-copy publish, opt-in migration of static pages.
 
-Owner/tracking: file the umbrella ticket and child tickets per phase
-once the plan is signed off.
+#### 1a. Lightweight static-page editing (≈2-3 engineer-weeks)
+
+The 80%-value alternative to the full builder. Targets the handful
+of hand-coded marketing pages that genuinely don't change often
+(`/about`, `/contact`, `/privacy`, `/terms`, `/partners`,
+`/clients`) plus any future static page that needs editorial
+control over hero/body/CTA without a deploy.
+
+Scope:
+
+1. **Generalise `content_parent_pages` into `static_pages`.** Add
+   `body_html` / `body_markdown`, `cta_label`, `cta_href`,
+   `secondary_cta_label`, `secondary_cta_href`, optional
+   `feature_media_id` alongside the existing hero / intro / SEO
+   columns. Keep `slug` as the lookup key.
+2. **2–3 reusable typed sections** that hand-coded pages can drop
+   in and that read content from small, dedicated tables: a logo
+   strip (already half there via the rotator data), a testimonial
+   block, a CTA card. Each is a typed table + admin form + a
+   single React component — no registry, no builder.
+3. **Admin form per static page** under `/admin/site-config/static-pages`
+   with the existing `RichTextEditor` for body, `MediaPickerModal`
+   for media, and a per-page preview button.
+4. **Migrate the listed pages one at a time** to read from the
+   table with the existing hardcoded copy as the fallback (same
+   pattern `content_parent_pages` already uses).
+
+Sequencing: ship 1+3 first (covers /privacy, /terms, /about),
+then 2 if/when a section actually needs to be reused across pages.
+Don't pre-build sections nobody is asking for.
+
+Owner/tracking: file as a single ticket; absorbs the editorial
+asks that motivated the full builder discussion.
+
+#### 1b. Preview buttons + in-place edit wedge (this PR)
+
+Independent of (and complementary to) item 1a. Delivers the
+"see changes without leaving the live site" workflow that the
+full builder would have provided, against the existing hand-coded
+pages and DB-driven entities. Implemented as part of the May 2026
+gap-analysis branch — see commit history. Scope:
+
+- **`<PreviewButton>`** in every admin edit page header, opening
+  the matching public URL in a new tab. For unpublished items,
+  appends a short-lived signed `?preview=…` token so admins (and
+  only admins) can see drafts.
+- **`<EditWedge>`** mounted on every public page that's bound to
+  an editable entity. Renders only for users with the relevant
+  capability. Opens a modal exposing the most-edited fields
+  (title, subtitle, hero image, SEO title / description, OG
+  image, status). "Open full editor" link inside the modal jumps
+  to the admin page when deeper edits are needed.
 
 ### 2. Multilingual / i18n
 

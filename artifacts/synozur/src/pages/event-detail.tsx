@@ -13,6 +13,7 @@ import { Meta } from "@/lib/meta";
 import { EventJsonLd } from "@/components/event-jsonld";
 import { ShareRail } from "@/components/share-rail";
 import { Button } from "@/components/ui/button";
+import { EditWedge } from "@/components/edit-wedge";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 import { toEmbedUrl } from "@/lib/video-embed";
 
@@ -276,6 +277,14 @@ export default function EventDetail() {
           </aside>
         </div>
       </div>
+
+      <EditWedge
+        kind="event"
+        id={event.id}
+        slug={event.slug}
+        snapshot={event}
+        queryKey={["event", slug]}
+      />
     </div>
   );
 }
