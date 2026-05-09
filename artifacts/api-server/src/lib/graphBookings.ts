@@ -707,7 +707,11 @@ export async function getStaffAvailability(args: {
       } | null;
     } | null;
   };
-  const staffIds = Array.isArray(svcJson.staffMemberIds) ? svcJson.staffMemberIds.filter(Boolean) : [];
+  // staffMemberIds may be empty when the service is configured as "Anyone" —
+  // in that case we use every staff member on the business (same as the real Bookings page).
+  const explicitStaffIds = Array.isArray(svcJson.staffMemberIds) ? svcJson.staffMemberIds.filter(Boolean) : [];
+  const anyoneMode = explicitStaffIds.length === 0;
+
   const durationMinutes = parseIso8601DurationMinutes(svcJson.defaultDuration ?? null) ?? 30;
   const durationMs = durationMinutes * 60_000;
 
@@ -731,16 +735,12 @@ export async function getStaffAvailability(args: {
       ? (svcAvailability.businessHours ?? [])
       : [];
 
-  if (staffIds.length === 0) {
-    return { ok: true, slots: [] };
-  }
-
   // 2. Fetch staff members (for working hours, timezone, email).
   const staffResult = await graphFetch(`/solutions/bookingBusinesses/${bid}/staffMembers`);
   if (!staffResult.ok) return staffResult;
 
   const allStaff = ((staffResult.json as { value?: StaffMemberRaw[] }).value ?? [])
-    .filter((s) => s.id && staffIds.includes(s.id));
+    .filter((s) => s.id && (anyoneMode || explicitStaffIds.includes(s.id)));
 
   if (allStaff.length === 0) return { ok: true, slots: [] };
 
