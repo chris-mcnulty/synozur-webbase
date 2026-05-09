@@ -18,6 +18,7 @@ import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { BookingCard } from "@/components/BookingCard";
+import { EditWedge } from "@/components/edit-wedge";
 
 function isExternal(href: string) {
   return /^(https?:|mailto:|tel:)/i.test(href);
@@ -549,6 +550,14 @@ export default function WorkshopDetail() {
           </div>
         </div>
       </section>
+
+      <EditWedge
+        kind="workshop"
+        id={w.id}
+        slug={w.slug}
+        snapshot={w}
+        queryKey={["public-workshop", slug]}
+      />
     </div>
   );
 }

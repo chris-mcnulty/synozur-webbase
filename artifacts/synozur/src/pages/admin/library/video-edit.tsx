@@ -286,6 +286,15 @@ export default function VideoEdit({ id }: Props) {
         { label: "Videos", href: "/library/videos" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: "video",
+        id,
+        slug: form.slug,
+        // Public visibility requires status=published AND a publishedAt
+        // timestamp; treat anything else as draft so the preview button
+        // mints a token / warns rather than silently 404ing.
+        isDraft: form.status !== "published" || !form.publishedAt,
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/library/videos")}>

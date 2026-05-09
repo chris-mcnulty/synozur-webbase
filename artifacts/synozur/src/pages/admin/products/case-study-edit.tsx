@@ -365,6 +365,12 @@ export default function CaseStudyEdit({ id }: Props) {
         { label: "Case Studies", href: "/products/case-studies" },
         { label: pageTitle },
       ]}
+      previewEntity={{
+        kind: "case-study",
+        id,
+        slug: form.slug,
+        isDraft: form.status !== "published",
+      }}
     >
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" size="sm" onClick={() => navigate("/products/case-studies")}>

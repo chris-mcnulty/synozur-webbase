@@ -323,6 +323,12 @@ export default function ApplicationEdit({ id }: Props) {
         { label: "Applications", href: "/applications" },
         { label: isNew ? "New" : existing?.name ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: "application",
+        id,
+        slug: form.slug,
+        isDraft: form.status !== "published",
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/applications")}>

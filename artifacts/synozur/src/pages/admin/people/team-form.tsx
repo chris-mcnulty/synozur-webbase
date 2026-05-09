@@ -110,6 +110,12 @@ export default function TeamForm({ id }: Props) {
         { label: "Team", href: "/people/team-members" },
         { label: isNew ? "New" : "Edit" },
       ]}
+      previewEntity={{
+        kind: "team-member",
+        id,
+        slug: form.slug ?? null,
+        isDraft: form.active === false,
+      }}
     >
       <button
         onClick={() => navigate("/people/team-members")}

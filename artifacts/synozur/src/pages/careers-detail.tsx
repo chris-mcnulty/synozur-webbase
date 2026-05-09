@@ -4,6 +4,7 @@ import { Briefcase, MapPin, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
 import { careersApi } from "@/lib/careers-api";
+import { EditWedge } from "@/components/edit-wedge";
 
 const TYPE_LABEL: Record<string, string> = {
   full_time: "Full-time",
@@ -88,6 +89,14 @@ export default function CareersDetailPage() {
           </a>
         </Link>
       </div>
+
+      <EditWedge
+        kind="job"
+        id={job.id}
+        slug={job.slug}
+        snapshot={job}
+        queryKey={["careers", "job", slug]}
+      />
     </div>
   );
 }

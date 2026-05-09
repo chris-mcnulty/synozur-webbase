@@ -352,6 +352,18 @@ export default function CollateralEdit({ id }: Props) {
     );
   }
 
+  // Collateral covers webinar / white_paper / case_study / podcast / model /
+  // training / event / insight. Videos and workshops have their own admin
+  // pages and aren't reachable here. We map the few that have purpose-built
+  // public detail routes to their kind; everything else falls back to the
+  // generic `/library/:slug` viewer.
+  const previewKind: import("@/lib/entity-registry").EntityKind =
+    form.type === "white_paper"
+      ? "white-paper"
+      : form.type === "webinar"
+        ? "webinar"
+        : "library-item";
+
   return (
     <AdminLayout
       title={isNew ? "New Library Item" : `Edit: ${existing?.title ?? ""}`}
@@ -360,6 +372,12 @@ export default function CollateralEdit({ id }: Props) {
         { label: "Library", href: "/library/collateral" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: previewKind,
+        id,
+        slug: form.slug,
+        isDraft: !form.publishedAt,
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/library/collateral")}>

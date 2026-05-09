@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
+import { EditWedge } from "@/components/edit-wedge";
 
 function isEmbeddable(url: string) {
   return /youtube\.com\/embed|player\.vimeo\.com|wistia\.net\/embed/.test(url);
@@ -14,6 +15,10 @@ export default function WebinarDetail() {
   const [, params] = useRoute("/webinars/:slug");
   const slug = params?.slug;
   const [item, setItem] = useState<Collateral | null | undefined>(undefined);
+  // Bumping `reloadTick` re-runs the loader effect — the EditWedge
+  // calls back into this when a save succeeds since this page doesn't
+  // route through React Query and would otherwise show stale content.
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +33,7 @@ export default function WebinarDetail() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, reloadTick]);
 
   if (item === undefined) {
     return (
@@ -156,6 +161,14 @@ export default function WebinarDetail() {
           </div>
         </div>
       </section>
+
+      <EditWedge
+        kind="webinar"
+        id={item.id}
+        slug={item.slug}
+        snapshot={item}
+        onSaved={() => setReloadTick((t) => t + 1)}
+      />
     </div>
   );
 }

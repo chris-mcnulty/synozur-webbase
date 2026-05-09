@@ -259,6 +259,15 @@ export default function WorkshopEdit({ id }: Props) {
         { label: "Workshops", href: "/library/workshops" },
         { label: isNew ? "New" : "Edit" },
       ]}
+      previewEntity={{
+        kind: "workshop",
+        id,
+        slug: form.slug,
+        // Workshops have no status enum; the public route 410/404s when
+        // the workshop is inactive, so `active=false` is the closest
+        // equivalent to "draft" for preview purposes.
+        isDraft: form.active === false,
+      }}
     >
       <button
         onClick={() => navigate("/library/workshops")}

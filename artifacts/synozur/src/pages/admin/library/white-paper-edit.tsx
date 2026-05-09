@@ -349,6 +349,15 @@ export default function WhitePaperEdit({ id }: Props) {
         { label: "White Papers", href: "/library/white-papers" },
         { label: isNew ? "New" : itemQ.data?.title ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: "white-paper",
+        id,
+        slug: form.slug,
+        // Public visibility requires status=published AND a publishedAt
+        // timestamp; archived rows or rows without a publish date 404
+        // on the public route.
+        isDraft: form.status !== "published" || !form.publishedAt,
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/library/white-papers")}>

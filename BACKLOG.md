@@ -553,3 +553,200 @@ Follow-up items, in recommended order:
 Owner/tracking: file a ticket referencing this section once Orbit /
 Zenith / Vega land their portal projections and the relationship-
 manager data model is signed off.
+
+---
+
+## Wix-platform parity gaps (May 2026 gap analysis)
+
+Context: a May 2026 capability comparison against the Wix platform
+surfaced four functional areas where the Wix product has first-class
+support and Synozur-WebBase does not. eCommerce, social marketing, and
+email marketing were excluded from scope. The four areas below are
+ordered by impact on the editorial / marketing experience. Each is its
+own initiative; only the page-authoring item has a detailed plan
+document attached today (see `docs/no-code-page-authoring-plan.md`).
+
+### 1. No-code page authoring + in-place editing
+
+The most fundamental gap. Today every public page is a hand-written
+React component; non-developers can edit hero/intro copy on the parent
+list pages (`content_parent_pages`), individual posts (TipTap), and a
+narrow set of `site_settings` fields, but cannot create new pages,
+reorder sections, or change layout without a deploy. Wix's Editor /
+Studio is built around this.
+
+**Status (May 2026): not scheduled.** Two cheaper interventions
+(below) close most of the day-to-day editorial pain without taking
+on the full block-builder surface area. Revisit only if (a) demand
+for actual *new* pages without a deploy materialises, or (b) the
+remaining hand-coded pages start churning often enough to justify
+a builder.
+
+Detailed staged plan kept on file at
+**`docs/no-code-page-authoring-plan.md`** as the "if we need it
+later" reference (≈12 engineer-weeks). Headline scope was: new
+`pages` + `page_blocks` + `page_revisions` tables, ~10-block typed
+registry, admin page builder, live-site edit overlay with
+working-copy publish, opt-in migration of static pages.
+
+#### 1a. Lightweight static-page editing (≈2-3 engineer-weeks)
+
+The 80%-value alternative to the full builder. Targets the handful
+of hand-coded marketing pages that genuinely don't change often
+(`/about`, `/contact`, `/privacy`, `/terms`, `/partners`,
+`/clients`) plus any future static page that needs editorial
+control over hero/body/CTA without a deploy.
+
+Scope:
+
+1. **Generalise `content_parent_pages` into `static_pages`.** Add
+   `body_html` / `body_markdown`, `cta_label`, `cta_href`,
+   `secondary_cta_label`, `secondary_cta_href`, optional
+   `feature_media_id` alongside the existing hero / intro / SEO
+   columns. Keep `slug` as the lookup key.
+2. **2–3 reusable typed sections** that hand-coded pages can drop
+   in and that read content from small, dedicated tables: a logo
+   strip (already half there via the rotator data), a testimonial
+   block, a CTA card. Each is a typed table + admin form + a
+   single React component — no registry, no builder.
+3. **Admin form per static page** under `/admin/site-config/static-pages`
+   with the existing `RichTextEditor` for body, `MediaPickerModal`
+   for media, and a per-page preview button.
+4. **Migrate the listed pages one at a time** to read from the
+   table with the existing hardcoded copy as the fallback (same
+   pattern `content_parent_pages` already uses).
+
+Sequencing: ship 1+3 first (covers /privacy, /terms, /about),
+then 2 if/when a section actually needs to be reused across pages.
+Don't pre-build sections nobody is asking for.
+
+Owner/tracking: file as a single ticket; absorbs the editorial
+asks that motivated the full builder discussion.
+
+#### 1b. Preview buttons + in-place edit wedge (this PR)
+
+Independent of (and complementary to) item 1a. Delivers the
+"see changes without leaving the live site" workflow that the
+full builder would have provided, against the existing hand-coded
+pages and DB-driven entities. Implemented as part of the May 2026
+gap-analysis branch — see commit history. Scope:
+
+- **`<PreviewButton>`** in every admin edit page header, opening
+  the matching public URL in a new tab. For unpublished items,
+  appends a short-lived signed `?preview=…` token so admins (and
+  only admins) can see drafts.
+- **`<EditWedge>`** mounted on every public page that's bound to
+  an editable entity. Renders only for users with the relevant
+  capability. Opens a modal exposing the most-edited fields
+  (title, subtitle, hero image, SEO title / description, OG
+  image, status). "Open full editor" link inside the modal jumps
+  to the admin page when deeper edits are needed.
+
+### 2. Multilingual / i18n
+
+There is no i18n scaffolding today — every string is English, every
+content row is single-language, and routing has no locale segment.
+Wix Multilingual covers 180+ languages with per-language SEO and
+auto-translation. If the brand needs a non-English experience, this is
+a substantial build:
+
+1. **Routing model.** Decide between path-prefix (`/es/...`),
+   subdomain, or query param. Path-prefix is the SEO-friendliest and
+   the easiest to fold into the existing Wouter setup.
+2. **Translation surface for static UI strings.** Adopt
+   `react-intl` or `i18next` and migrate the SPA's hardcoded strings
+   into a message catalog. Coordinate with the `synozur-nav` library
+   so navigation labels travel with the locale.
+3. **Localized content.** Add a `locale` column (or per-locale
+   sibling rows) to the major content tables: `posts`,
+   `case_studies`, `services`, `solutions`, `applications`,
+   `models`, `faq_items`, `team_members`, `events`, `webinars`,
+   `polaris_episodes`, `collateral`, plus `content_parent_pages`
+   and the new `pages` model from item 1.
+4. **Per-locale SEO.** `hreflang` tags, per-locale sitemaps, OG
+   image regeneration with translated copy, canonical handling.
+5. **Authoring UX.** Locale switcher in admin editors; inline
+   "missing translation" indicators; optional machine-translation
+   pre-fill (Anthropic call wrapped behind a feature flag).
+6. **Search.** Index per-locale TSV vectors; the existing
+   `search_tsv` generated columns currently hard-code
+   `'english'` (see `lib/db/src/schema/posts.ts`) and need to fan
+   out per locale.
+
+Owner/tracking: scope the languages first (count, write vs. read,
+machine vs. human translation budget) before opening engineering
+tickets. The smallest viable shape is "English + one secondary
+language for marketing surfaces only," which is a meaningful slice and
+would surface most of the routing / SEO work without forcing the full
+content-table refactor on day one.
+
+### 3. Live chat + community (forum / groups)
+
+Wix ships Wix Chat (visitor-to-operator real-time messaging with
+mobile operator app, automated triggers, business hours) and
+Wix Forum / Wix Groups (threaded discussions, member-to-member
+chat, group rules). The codebase has none of this; comments on
+insights posts are the only community surface.
+
+Decisions to make before scoping:
+
+1. **Live chat — buy or build?** A managed third-party (Intercom,
+   Crisp, HubSpot Chat — already paired with our HubSpot CRM) is
+   substantially less effort than building, and the operator
+   mobile experience is non-trivial. Recommend evaluating
+   HubSpot Conversations first since it shares the contact graph
+   with our existing HubSpot integration; LiveChat / Crisp /
+   Intercom are alternates. The build-it-ourselves option only
+   makes sense if the chat needs to share auth, permissions, and
+   data with the portal (Galaxy / Constellation), which it
+   probably doesn't for a marketing-site widget.
+2. **Forum / community — is there demand?** Wix Forum sees
+   engagement on community-led brands; for an advisory firm,
+   a moderated Q&A page (built on the existing comment +
+   moderation queue plumbing extended to standalone questions)
+   may cover the same need at a fraction of the cost. Evaluate
+   audience interest before committing.
+3. **If we do build a forum**, the existing `comments`,
+   `taxonomy`, `users`, and `audit_log` tables give us most of
+   the moderation primitives. New surface area: thread / topic
+   model, reactions, follows, notifications (depends on email
+   marketing infrastructure being out of scope for this gap
+   analysis but in scope for a forum build), and a member
+   activity feed.
+
+Owner/tracking: do the buy-vs-build evaluation for live chat as a
+discrete spike before any engineering work.
+
+### 4. Bookings depth (calendar sync, classes/groups, analytics)
+
+The codebase has a working bookings flow at `/start` backed by a
+`bookings` table and admin management. Wix Bookings adds:
+
+1. **Calendar sync.** Two-way sync with operator Google / Microsoft
+   365 calendars so a booking blocks the operator's real calendar
+   and a calendar-only event holds the slot. This is the largest
+   single piece of work — it requires Graph + Google Calendar
+   integrations, conflict detection, and a per-staff availability
+   model that supersedes the current single-availability flow.
+2. **Class / group / workshop bookings.** Multi-attendee slots,
+   capacity, waitlists. Today the slot model assumes 1:1
+   consultations.
+3. **Bookings analytics dashboard.** Top-performing services,
+   peak times, attendance vs. cancellation rate. The existing
+   admin analytics dashboard could host this once events are
+   modelled with consistent dimensions (service / staff / time
+   bucket / outcome).
+4. **Reminders + post-booking automations.** Opt-in reminder
+   emails, follow-up flows. Email infrastructure (`SendGrid`)
+   is already wired; the gap is the rule engine that triggers
+   it.
+5. **Payment-ready bookings.** Out of scope per gap-analysis
+   exclusions.
+
+Owner/tracking: the calendar-sync piece is the gating prerequisite
+for any of the others to be useful, and is itself a multi-week
+build. Recommend a small spike to validate the Graph +
+Google-Calendar token storage model and the conflict-resolution
+strategy before sizing the rest.
+
+---

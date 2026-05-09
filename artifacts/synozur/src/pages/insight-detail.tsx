@@ -19,9 +19,11 @@ import { CommentThread } from "@/components/comments/comment-thread";
 import {
   useListInsightComments,
   getListInsightCommentsQueryKey,
+  getGetInsightQueryKey,
   trackInsightView,
 } from "@workspace/api-client-react";
 import type { PublicPost } from "@workspace/api-client-react";
+import { EditWedge } from "@/components/edit-wedge";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -385,6 +387,14 @@ export default function InsightDetail() {
           </Link>
         </div>
       </section>
+
+      <EditWedge
+        kind="post"
+        id={post.id}
+        slug={post.slug}
+        snapshot={post}
+        queryKey={getGetInsightQueryKey(slug)}
+      />
     </div>
   );
 }

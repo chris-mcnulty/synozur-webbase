@@ -10,6 +10,7 @@ import { LogoRotator } from "@/components/logo-rotator";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FromTheFeedCarousel, HomeShortcuts } from "@/pages/home";
+import { HomeConfigWedge } from "@/components/home-config-wedge";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -663,6 +664,8 @@ export default function HomeB() {
       </section>
 
       <HomeShortcuts />
+
+      <HomeConfigWedge />
     </div>
   );
 }

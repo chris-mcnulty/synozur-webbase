@@ -154,7 +154,20 @@ export default function EventForm({ id }: Props) {
   };
 
   return (
-    <AdminLayout title={title} crumbs={crumbs}>
+    <AdminLayout
+      title={title}
+      crumbs={crumbs}
+      previewEntity={{
+        kind: "event",
+        id,
+        slug: form.slug ?? null,
+        // The public events route serves rows of any status (UPCOMING /
+        // ENDED / CANCELLED) — none of those are "drafts" from the
+        // public visibility standpoint. Treat events as not-draft until
+        // a real draft flag exists.
+        isDraft: false,
+      }}
+    >
       <div className="max-w-3xl">
       <form
         onSubmit={(e) => {

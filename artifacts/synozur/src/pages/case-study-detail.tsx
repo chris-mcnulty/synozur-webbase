@@ -14,6 +14,7 @@ import {
 import NotFound from "@/pages/not-found";
 import Gone from "@/pages/gone";
 import { ApiError } from "@/lib/api";
+import { EditWedge } from "@/components/edit-wedge";
 
 function staticAsDto(s: (typeof staticCaseStudies)[number]): CaseStudyDto {
   return {
@@ -364,6 +365,19 @@ export default function CaseStudyDetail() {
           </Link>
         </div>
       </section>
+
+      {/* Only mount the wedge when we're rendering CMS-backed data —
+          the static-fallback DTO uses the slug as `id`, so a PATCH to
+          /api/cms/case-studies/:id with that value would 404. */}
+      {detailQ.data && (
+        <EditWedge
+          kind="case-study"
+          id={detailQ.data.id}
+          slug={detailQ.data.slug}
+          snapshot={detailQ.data}
+          queryKey={["case-studies", slug, "detail"]}
+        />
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import { toEmbedUrl } from "@/lib/video-embed";
 import { VideoJsonLd } from "@/components/video-jsonld";
 import { SITE_ORIGIN } from "@/lib/seo-config";
+import { EditWedge } from "@/components/edit-wedge";
 
 const CATEGORY_LABELS: Record<VideoCategory, string> = {
   interview: "Interview",
@@ -22,6 +23,10 @@ export default function VideoDetail() {
   const [, params] = useRoute("/videos/:slug");
   const slug = params?.slug;
   const [item, setItem] = useState<VideoDto | null | undefined>(undefined);
+  // Bumping `reloadTick` re-runs the loader effect — the EditWedge
+  // calls back into this when a save succeeds since this page doesn't
+  // route through React Query and would otherwise show stale content.
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +42,7 @@ export default function VideoDetail() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, reloadTick]);
 
   if (item === undefined) {
     return (
@@ -184,6 +189,14 @@ export default function VideoDetail() {
           )}
         </div>
       </section>
+
+      <EditWedge
+        kind="video"
+        id={item.id}
+        slug={item.slug}
+        snapshot={item}
+        onSaved={() => setReloadTick((t) => t + 1)}
+      />
     </div>
   );
 }
