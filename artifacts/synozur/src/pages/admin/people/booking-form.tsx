@@ -51,7 +51,7 @@ export default function BookingForm({ id }: Props) {
     seoDescription: null,
     msBusinessId: null,
     msDefaultServiceId: null,
-    msTimezone: null,
+    msTimezone: "America/Los_Angeles",
   });
   const [error, setError] = useState<string | null>(null);
 
