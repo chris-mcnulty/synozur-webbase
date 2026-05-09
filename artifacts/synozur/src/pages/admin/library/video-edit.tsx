@@ -290,7 +290,10 @@ export default function VideoEdit({ id }: Props) {
         kind: "video",
         id,
         slug: form.slug,
-        isDraft: !form.publishedAt,
+        // Public visibility requires status=published AND a publishedAt
+        // timestamp; treat anything else as draft so the preview button
+        // mints a token / warns rather than silently 404ing.
+        isDraft: form.status !== "published" || !form.publishedAt,
       }}
       actions={
         <div className="flex items-center gap-2">

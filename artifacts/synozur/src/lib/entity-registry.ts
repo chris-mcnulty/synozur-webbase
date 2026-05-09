@@ -9,11 +9,16 @@
 //  - the admin URL where the full editor lives,
 //  - the capability(ies) that gate edit affordances,
 //  - whether the entity supports admin-minted preview tokens
-//    (services + solutions today; #60 / #66).
+//    (services + solutions today; #60 / #66),
+//  - which fields the inline edit modal can actually patch
+//    (varies — most CMS routes accept partial PATCH, but
+//    `team_members` and `events` validate a full body and
+//    several entities store images as URL strings rather than
+//    media-id FKs, so the wedge needs to hide widgets that
+//    would silently no-op).
 //
-// Modal-rendering and update-mutation wiring is deliberately
-// not in this file — those need per-entity React hooks and
-// live in `components/edit-wedge/modals/*`.
+// Per-kind PATCH-URL routing lives in `components/edit-wedge.tsx`
+// because it depends on runtime concerns (BASE_PATH, fetch).
 import type { Capability } from "@/lib/capabilities";
 
 export type EntityKind =
@@ -50,7 +55,34 @@ export interface EntityRegistration {
    * opens the public URL — drafts will 404.
    */
   supportsPreviewToken: boolean;
+  /**
+   * Whether the wedge's inline metadata form can save to this kind via
+   * a partial PATCH. False for kinds whose update routes validate a
+   * full body (team_members, events) — for those we still surface the
+   * wedge but the modal contains only an "Open full editor" link, not
+   * a form, so the user gets the navigation shortcut without a save
+   * that would 400.
+   */
+  inlinePatch: boolean;
+  /**
+   * Whether the entity stores hero/og images as media-id FKs (true) or
+   * as URL strings / non-existent fields (false). When false the wedge
+   * hides the image pickers — sending `heroImageId` / `ogImageId` to
+   * those routes is silently ignored by the server, which would
+   * mislead editors into thinking the image was saved.
+   */
+  imageIdPatch: boolean;
+  /**
+   * Status values the wedge offers in its dropdown. `null` hides the
+   * status field entirely (kinds without a status enum, or whose
+   * visibility is gated by `active` / `publishedAt` instead).
+   */
+  statusEnum: readonly string[] | null;
 }
+
+const ARTIFACT_STATUS = ["draft", "scheduled", "published", "archived"] as const;
+const COLLATERAL_LIFECYCLE_STATUS = ["draft", "published", "archived"] as const;
+const JOB_STATUS = ["draft", "published", "closed"] as const;
 
 const REG: readonly EntityRegistration[] = [
   {
@@ -60,6 +92,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/insights/posts/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: true,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "service",
@@ -68,6 +103,10 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/products/services/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: true,
+    inlinePatch: true,
+    // services have only `iconId`, no hero/og image columns
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "solution",
@@ -76,6 +115,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/products/solutions/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: true,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "case-study",
@@ -84,6 +126,10 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/products/case-studies/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    // heroImage is a text URL on case_studies
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "application",
@@ -92,6 +138,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/products/applications/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "model",
@@ -100,30 +149,48 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/products/models/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "white-paper",
     label: "White paper",
     publicPathPattern: "/white-papers/:slug",
-    adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
+    // Dedicated SPA editor at /admin/library/white-papers/:id/edit
+    // — `/admin/library/collateral/:id/edit` edits the auto-synced
+    // collateral row, which is the wrong screen for a hand-edited
+    // white-paper source.
+    adminEditPath: (id) => `/admin/library/white-papers/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    // white_papers stores heroImage / ogImage as text URLs
+    imageIdPatch: false,
+    statusEnum: COLLATERAL_LIFECYCLE_STATUS,
   },
   {
     kind: "video",
     label: "Video",
     publicPathPattern: "/videos/:slug",
-    adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
+    adminEditPath: (id) => `/admin/library/videos/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: COLLATERAL_LIFECYCLE_STATUS,
   },
   {
     kind: "workshop",
     label: "Workshop",
     publicPathPattern: "/workshops/:slug",
-    adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
+    adminEditPath: (id) => `/admin/library/workshops/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    // workshops have an `active` boolean instead of a status enum
+    statusEnum: null,
   },
   {
     kind: "webinar",
@@ -132,6 +199,10 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    // collateral rows use `publishedAt` rather than a status enum
+    statusEnum: null,
   },
   {
     kind: "library-item",
@@ -140,6 +211,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: null,
   },
   {
     kind: "polaris-episode",
@@ -148,6 +222,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/library/polaris-episodes/${id}/edit`,
     capabilities: ["content.author", "content.publish"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
   },
   {
     kind: "team-member",
@@ -156,6 +233,12 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/people/team-members/${id}`,
     capabilities: ["site.manage"],
     supportsPreviewToken: false,
+    // /api/admin/team-members/:id validates a full body (`name` is
+    // required), so a diff-only PATCH from the wedge would 400. The
+    // wedge still appears as a navigation shortcut to the full editor.
+    inlinePatch: false,
+    imageIdPatch: false,
+    statusEnum: null,
   },
   {
     kind: "event",
@@ -164,6 +247,11 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/people/events/${id}`,
     capabilities: ["site.manage"],
     supportsPreviewToken: false,
+    // Same story as team-member — the events PATCH route requires
+    // title + startDate.
+    inlinePatch: false,
+    imageIdPatch: false,
+    statusEnum: null,
   },
   {
     kind: "job",
@@ -172,6 +260,9 @@ const REG: readonly EntityRegistration[] = [
     adminEditPath: (id) => `/admin/careers/jobs/${id}/edit`,
     capabilities: ["careers.jobs.write"],
     supportsPreviewToken: false,
+    inlinePatch: true,
+    imageIdPatch: false,
+    statusEnum: JOB_STATUS,
   },
 ];
 

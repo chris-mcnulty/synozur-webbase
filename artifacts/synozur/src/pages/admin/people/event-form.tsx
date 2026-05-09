@@ -161,7 +161,11 @@ export default function EventForm({ id }: Props) {
         kind: "event",
         id,
         slug: form.slug ?? null,
-        isDraft: form.status === "CANCELLED",
+        // The public events route serves rows of any status (UPCOMING /
+        // ENDED / CANCELLED) — none of those are "drafts" from the
+        // public visibility standpoint. Treat events as not-draft until
+        // a real draft flag exists.
+        isDraft: false,
       }}
     >
       <div className="max-w-3xl">

@@ -353,7 +353,10 @@ export default function WhitePaperEdit({ id }: Props) {
         kind: "white-paper",
         id,
         slug: form.slug,
-        isDraft: !form.publishedAt,
+        // Public visibility requires status=published AND a publishedAt
+        // timestamp; archived rows or rows without a publish date 404
+        // on the public route.
+        isDraft: form.status !== "published" || !form.publishedAt,
       }}
       actions={
         <div className="flex items-center gap-2">

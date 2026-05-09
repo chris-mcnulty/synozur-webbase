@@ -58,6 +58,10 @@ function patchUrlFor(kind: EntityKind, id: string | number): string {
     case "video":
       return `${BASE_PATH}/api/cms/videos/${id}`;
     case "workshop":
+      // Workshops live in their own table, not collateral. Routes that mount
+      // the wedge with `kind=workshop` pass a workshop id, not the synced
+      // collateral row id, so the PATCH must hit /cms/workshops/:id.
+      return `${BASE_PATH}/api/cms/workshops/${id}`;
     case "webinar":
     case "library-item":
       return `${BASE_PATH}/api/cms/collateral/${id}`;
@@ -219,31 +223,6 @@ function diffPatch(initial: FormState, current: FormState): Record<string, unkno
   return patch;
 }
 
-const STATUS_CHOICES_ARTIFACT = ["draft", "scheduled", "published", "archived"] as const;
-const STATUS_CHOICES_EVENT = ["UPCOMING", "ENDED", "CANCELLED"] as const;
-const STATUS_CHOICES_JOB = ["draft", "published", "closed"] as const;
-
-function statusChoicesFor(kind: EntityKind): readonly string[] | null {
-  switch (kind) {
-    case "post":
-    case "service":
-    case "solution":
-    case "case-study":
-    case "application":
-    case "model":
-    case "polaris-episode":
-      return STATUS_CHOICES_ARTIFACT;
-    case "event":
-      return STATUS_CHOICES_EVENT;
-    case "job":
-      return STATUS_CHOICES_JOB;
-    default:
-      // Collateral kinds, team members — no status enum, controlled by
-      // `publishedAt` / `active`. Hide the field rather than guessing.
-      return null;
-  }
-}
-
 function EditModal({
   kind,
   id,
@@ -266,7 +245,7 @@ function EditModal({
   const [form, setForm] = useState<FormState>(initial);
   const [pickingHero, setPickingHero] = useState(false);
   const [pickingOg, setPickingOg] = useState(false);
-  const statusChoices = statusChoicesFor(kind);
+  const statusChoices = reg.statusEnum;
 
   const patch = diffPatch(initial, form);
   const hasChanges = Object.keys(patch).length > 0;
@@ -312,6 +291,44 @@ function EditModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, save.isPending, pickingHero, pickingOg]);
+
+  // Kinds whose update routes don't accept a partial diff (team_members,
+  // events) — surface the wedge as a navigation shortcut to the full
+  // editor rather than a form that would 400 on save.
+  if (!reg.inlinePatch) {
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit {reg.label.toLowerCase()}</DialogTitle>
+            <DialogDescription>
+              Inline edits aren&apos;t supported for {reg.label.toLowerCase()}s
+              yet. Open the full editor to make changes — it&apos;ll launch in
+              a new tab so you can keep this page open for reference.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              <X className="h-4 w-4 mr-2" aria-hidden="true" />
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                window.open(adminEditPathFor(kind, id), "_blank", "noopener");
+                onClose();
+              }}
+              data-testid="edit-wedge-open-editor"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" aria-hidden="true" />
+              Open full editor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -369,32 +386,34 @@ function EditModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Hero image</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPickingHero(true)}
-                className="w-full justify-start"
-              >
-                {form.heroImageId ? "Change…" : "Pick image…"}
-              </Button>
+          {reg.imageIdPatch && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Hero image</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPickingHero(true)}
+                  className="w-full justify-start"
+                >
+                  {form.heroImageId ? "Change…" : "Pick image…"}
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <Label>OG image</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPickingOg(true)}
+                  className="w-full justify-start"
+                >
+                  {form.ogImageId ? "Change…" : "Pick image…"}
+                </Button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>OG image</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPickingOg(true)}
-                className="w-full justify-start"
-              >
-                {form.ogImageId ? "Change…" : "Pick image…"}
-              </Button>
-            </div>
-          </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="edit-wedge-seo-title">SEO title</Label>
