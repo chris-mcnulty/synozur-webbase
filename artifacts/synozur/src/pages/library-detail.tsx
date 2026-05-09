@@ -125,6 +125,10 @@ export default function LibraryDetail() {
   const [, navigate] = useLocation();
   const slug = params?.slug;
   const [item, setItem] = useState<Collateral | null | undefined>(undefined);
+  // Bumping `reloadTick` re-runs the loader effect — the EditWedge
+  // calls back into this when a save succeeds since this page doesn't
+  // route through React Query and would otherwise show stale content.
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +143,7 @@ export default function LibraryDetail() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, reloadTick]);
 
   // If this collateral's canonical URL is a richer local route, redirect there
   // immediately (replace history so /library/:slug doesn't appear in the back
@@ -268,7 +272,13 @@ export default function LibraryDetail() {
         </div>
       </section>
 
-      <EditWedge kind="library-item" id={item.id} slug={item.slug} snapshot={item} />
+      <EditWedge
+        kind="library-item"
+        id={item.id}
+        slug={item.slug}
+        snapshot={item}
+        onSaved={() => setReloadTick((t) => t + 1)}
+      />
     </div>
   );
 }

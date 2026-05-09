@@ -54,10 +54,15 @@ export function PreviewButton({ kind, id, slug, isDraft }: PreviewButtonProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
 
-  const disabled = !slug || busy;
+  // Need both a saved slug AND a saved id to preview. New-item routes
+  // pre-populate `slug` from the title before the first save but leave
+  // `id` undefined; opening the public URL in that state would hit a
+  // guaranteed 404.
+  const isUnsaved = !slug || !id;
+  const disabled = isUnsaved || busy;
 
   async function open() {
-    if (!slug) return;
+    if (!slug || !id) return;
 
     // Published items: just open the public URL.
     if (!isDraft) {
@@ -134,7 +139,7 @@ export function PreviewButton({ kind, id, slug, isDraft }: PreviewButtonProps) {
         <span tabIndex={0}>{button}</span>
       </TooltipTrigger>
       <TooltipContent>
-        {!slug
+        {isUnsaved
           ? "Save the item first to enable preview."
           : "Working…"}
       </TooltipContent>

@@ -86,9 +86,10 @@ interface BodyProps {
   slug: string;
   snapshot: EntitySnapshot;
   queryKey?: readonly unknown[];
+  onSaved?: () => void;
 }
 
-export default function EditWedgeBody({ kind, id, slug, snapshot, queryKey }: BodyProps) {
+export default function EditWedgeBody({ kind, id, slug, snapshot, queryKey, onSaved }: BodyProps) {
   const reg = getEntityRegistration(kind);
   const [open, setOpen] = useState(false);
   return (
@@ -101,6 +102,7 @@ export default function EditWedgeBody({ kind, id, slug, snapshot, queryKey }: Bo
           slug={slug}
           snapshot={snapshot}
           queryKey={queryKey}
+          onSaved={onSaved}
           onClose={() => setOpen(false)}
         />
       )}
@@ -181,9 +183,11 @@ function diffPatch(
     // different things (subtitle / summary / shortDescription / tagline).
     patch[reg.subtitleKey] = current.subtitle;
   }
-  if (current.seoTitle !== initial.seoTitle) patch.seoTitle = current.seoTitle;
-  if (current.seoDescription !== initial.seoDescription)
-    patch.seoDescription = current.seoDescription;
+  if (reg.seoPatch) {
+    if (current.seoTitle !== initial.seoTitle) patch.seoTitle = current.seoTitle;
+    if (current.seoDescription !== initial.seoDescription)
+      patch.seoDescription = current.seoDescription;
+  }
   if (current.status !== initial.status && current.status !== "") patch.status = current.status;
   if (reg.imageIdPatch) {
     if (current.heroImageId !== initial.heroImageId) patch.heroImageId = current.heroImageId;
@@ -198,6 +202,7 @@ function EditModal({
   slug,
   snapshot,
   queryKey,
+  onSaved,
   onClose,
 }: {
   kind: EntityKind;
@@ -205,6 +210,7 @@ function EditModal({
   slug: string;
   snapshot: EntitySnapshot;
   queryKey?: readonly unknown[];
+  onSaved?: () => void;
   onClose: () => void;
 }) {
   const reg = getEntityRegistration(kind);
@@ -241,6 +247,11 @@ function EditModal({
       } else {
         await queryClient.invalidateQueries();
       }
+      // For pages that don't use React Query (e.g. library-detail and
+      // webinar-detail load via useEffect + fetchCollateralBySlug),
+      // invalidateQueries is a no-op — they need an explicit refetch
+      // hook to refresh the displayed content after a save.
+      onSaved?.();
       onClose();
     },
     onError: (err) => {
@@ -386,26 +397,30 @@ function EditModal({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-wedge-seo-title">SEO title</Label>
-            <Input
-              id="edit-wedge-seo-title"
-              value={form.seoTitle}
-              onChange={(e) => setForm((f) => ({ ...f, seoTitle: e.target.value }))}
-              maxLength={70}
-            />
-          </div>
+          {reg.seoPatch && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-wedge-seo-title">SEO title</Label>
+                <Input
+                  id="edit-wedge-seo-title"
+                  value={form.seoTitle}
+                  onChange={(e) => setForm((f) => ({ ...f, seoTitle: e.target.value }))}
+                  maxLength={70}
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-wedge-seo-description">SEO description</Label>
-            <Textarea
-              id="edit-wedge-seo-description"
-              value={form.seoDescription}
-              onChange={(e) => setForm((f) => ({ ...f, seoDescription: e.target.value }))}
-              rows={2}
-              maxLength={160}
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-wedge-seo-description">SEO description</Label>
+                <Textarea
+                  id="edit-wedge-seo-description"
+                  value={form.seoDescription}
+                  onChange={(e) => setForm((f) => ({ ...f, seoDescription: e.target.value }))}
+                  rows={2}
+                  maxLength={160}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">

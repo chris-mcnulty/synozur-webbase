@@ -59,6 +59,13 @@ interface EditWedgeProps {
    * everything (broad but safe).
    */
   queryKey?: readonly unknown[];
+  /**
+   * Optional. Called after a successful save. Pages that fetch via
+   * `useEffect` rather than React Query (currently library-detail and
+   * webinar-detail) need this to re-run their loader so the live page
+   * reflects the change without a full reload.
+   */
+  onSaved?: () => void;
 }
 
 function asSnapshot(v: unknown): EntitySnapshot {
@@ -70,7 +77,7 @@ function asSnapshot(v: unknown): EntitySnapshot {
 // MediaPickerModal (Uppy) + form widgets that live in the body.
 const EditWedgeBody = lazy(() => import("./edit-wedge-body"));
 
-export function EditWedge({ kind, id, slug, snapshot, queryKey }: EditWedgeProps) {
+export function EditWedge({ kind, id, slug, snapshot, queryKey, onSaved }: EditWedgeProps) {
   const { access, signedIn } = useAdminAccess();
 
   if (!signedIn || !access) return null;
@@ -86,6 +93,7 @@ export function EditWedge({ kind, id, slug, snapshot, queryKey }: EditWedgeProps
         slug={slug}
         snapshot={asSnapshot(snapshot)}
         queryKey={queryKey}
+        onSaved={onSaved}
       />
     </Suspense>
   );

@@ -89,6 +89,17 @@ export interface EntityRegistration {
    */
   subtitleKey: string | null;
   subtitleLabel?: string;
+  /**
+   * Whether the kind's PATCH route accepts flat `seoTitle` /
+   * `seoDescription` fields. Most artifact-shaped tables (posts,
+   * services, solutions, white_papers, videos) carry them as columns;
+   * applications, case-studies, models, polaris-episodes, careers,
+   * events, team-members don't have those columns at all (and would
+   * silently drop the values via Zod stripping), and workshops nest
+   * SEO under a jsonb `seo` blob with a different shape. Wedge hides
+   * the SEO inputs when this is false.
+   */
+  seoPatch: boolean;
 }
 
 const ARTIFACT_STATUS = ["draft", "scheduled", "published", "archived"] as const;
@@ -101,20 +112,29 @@ const REG: readonly EntityRegistration[] = [
     label: "Post",
     publicPathPattern: "/insights/:slug",
     adminEditPath: (id) => `/admin/insights/posts/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    // Server-side `requireAuth` plus per-row author guard, so any
+    // signed-in CMS user can hit /cms/posts/:id; gating on
+    // `content.publish` keeps the affordance off for plain `author`
+    // / `contributor` roles whose saves can still 403 on certain
+    // routes. The thread on PR #75 has the long-term fix (server
+    // capability-based guards).
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: true,
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
+    seoPatch: true,
   },
   {
     kind: "service",
     label: "Service",
     publicPathPattern: "/services/:slug",
     adminEditPath: (id) => `/admin/products/services/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    // Server uses requireRole("admin", "editor") for /cms/services/:id;
+    // gate on `content.publish` to keep author/contributor roles out.
+    capabilities: ["content.publish"],
     supportsPreviewToken: true,
     inlinePatch: true,
     // services have only `iconId`, no hero/og image columns
@@ -122,25 +142,27 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: ARTIFACT_STATUS,
     // services have no subtitle-shaped column on the public schema
     subtitleKey: null,
+    seoPatch: true,
   },
   {
     kind: "solution",
     label: "Solution",
     publicPathPattern: "/solutions/:slug",
     adminEditPath: (id) => `/admin/products/solutions/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: true,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: null,
+    seoPatch: true,
   },
   {
     kind: "case-study",
     label: "Case study",
     publicPathPattern: "/case-studies/:slug",
     adminEditPath: (id) => `/admin/products/case-studies/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     // heroImage is a text URL on case_studies
@@ -148,32 +170,36 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: "summary",
     subtitleLabel: "Summary",
+    // case_studies has no flat seo_title / seo_description columns
+    seoPatch: false,
   },
   {
     kind: "application",
     label: "Application",
     publicPathPattern: "/applications/:slug",
     adminEditPath: (id) => `/admin/products/applications/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: "tagline",
     subtitleLabel: "Tagline",
+    seoPatch: false,
   },
   {
     kind: "model",
     label: "Model",
     publicPathPattern: "/models/:slug",
     adminEditPath: (id) => `/admin/products/models/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: "shortDescription",
     subtitleLabel: "Short description",
+    seoPatch: false,
   },
   {
     kind: "white-paper",
@@ -184,7 +210,7 @@ const REG: readonly EntityRegistration[] = [
     // collateral row, which is the wrong screen for a hand-edited
     // white-paper source.
     adminEditPath: (id) => `/admin/library/white-papers/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     // white_papers stores heroImage / ogImage as text URLs
@@ -192,26 +218,28 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: COLLATERAL_LIFECYCLE_STATUS,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
+    seoPatch: true,
   },
   {
     kind: "video",
     label: "Video",
     publicPathPattern: "/videos/:slug",
     adminEditPath: (id) => `/admin/library/videos/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: COLLATERAL_LIFECYCLE_STATUS,
     subtitleKey: "shortDescription",
     subtitleLabel: "Short description",
+    seoPatch: true,
   },
   {
     kind: "workshop",
     label: "Workshop",
     publicPathPattern: "/workshops/:slug",
     adminEditPath: (id) => `/admin/library/workshops/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
@@ -219,13 +247,16 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: null,
     subtitleKey: "shortDescription",
     subtitleLabel: "Short description",
+    // workshops nest SEO in a jsonb `seo` blob with a different shape;
+    // PATCHing flat seoTitle / seoDescription would silently drop them.
+    seoPatch: false,
   },
   {
     kind: "webinar",
     label: "Webinar",
     publicPathPattern: "/webinars/:slug",
     adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
@@ -233,32 +264,36 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: null,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
+    // collateral has no flat seo columns
+    seoPatch: false,
   },
   {
     kind: "library-item",
     label: "Library item",
     publicPathPattern: "/library/:slug",
     adminEditPath: (id) => `/admin/library/collateral/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: null,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
+    seoPatch: false,
   },
   {
     kind: "polaris-episode",
     label: "Polaris episode",
     publicPathPattern: "/polaris/:slug",
     adminEditPath: (id) => `/admin/library/polaris-episodes/${id}/edit`,
-    capabilities: ["content.author", "content.publish"],
+    capabilities: ["content.publish"],
     supportsPreviewToken: false,
     inlinePatch: true,
     imageIdPatch: false,
     statusEnum: ARTIFACT_STATUS,
     subtitleKey: "summary",
     subtitleLabel: "Summary",
+    seoPatch: false,
   },
   {
     kind: "team-member",
@@ -274,6 +309,7 @@ const REG: readonly EntityRegistration[] = [
     imageIdPatch: false,
     statusEnum: null,
     subtitleKey: null,
+    seoPatch: false,
   },
   {
     kind: "event",
@@ -288,6 +324,7 @@ const REG: readonly EntityRegistration[] = [
     imageIdPatch: false,
     statusEnum: null,
     subtitleKey: null,
+    seoPatch: false,
   },
   {
     kind: "job",
@@ -301,6 +338,8 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: JOB_STATUS,
     // job descriptions are long-form, not subtitle-shaped — hide
     subtitleKey: null,
+    // careers.job_postings has no SEO columns
+    seoPatch: false,
   },
 ];
 
