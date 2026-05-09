@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/auth";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { HomeConfigWedge } from "@/components/home-config-wedge";
 
 const BASE_PATH_HOME = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -663,6 +664,8 @@ export default function Home() {
       </section>
 
       <HomeShortcuts />
+
+      <HomeConfigWedge />
     </div>
   );
 }

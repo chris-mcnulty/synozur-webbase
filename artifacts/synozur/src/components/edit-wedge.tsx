@@ -11,6 +11,44 @@
 // real body (`edit-wedge-body.tsx`) only for users that pass the
 // capability check. Anonymous traffic doesn't pay for the dialog,
 // MediaPickerModal (Uppy), or the rest of the admin UI surface.
+//
+// ---------------------------------------------------------------------
+// Where to mount this:
+//
+//   ✓ DO mount on a public detail page that's bound to a single
+//     editable CMS row registered in `entity-registry.ts` — e.g.
+//     /insights/:slug, /services/:slug, /case-studies/:slug. The
+//     wedge expects to PATCH one entity by id and to render against
+//     a snapshot of that entity.
+//
+//   ✗ DO NOT mount on:
+//     - error pages (`not-found.tsx`, `gone.tsx`),
+//     - search-results page (`search.tsx`) — no single entity,
+//     - list / index pages (`/insights`, `/case-studies`, `/team`,
+//       `/library`, etc.) — those have multiple entities; use the
+//       `content_parent_pages` admin or a future static-pages model
+//       (see BACKLOG.md §1a) to edit hero / intro copy instead,
+//     - the root home page or its A/B variants
+//       (`home.tsx` / `home-b.tsx`) — the home page composes from
+//       site_settings, publish_blocks, experiments, and featured
+//       collateral, so there's no single entity to PATCH. Mount
+//       `<HomeConfigWedge>` from `home-config-wedge.tsx` instead;
+//       that is a navigation-only chip that links to the relevant
+//       admin pages,
+//     - hand-coded marketing pages (`/about`, `/contact`,
+//       `/partners`, `/clients`, `/privacy`, `/terms`) — no DB row
+//       to patch yet,
+//     - form / booking flows (`/start`, `/contact`, `/careers/jobs/:slug/apply`),
+//     - auth surfaces (`/sign-in`, `/sign-up`, `/verify-email`,
+//       `/forgot-password`, etc.),
+//     - the AI Q&A page (`/insights/ask`).
+//
+// If you're tempted to mount the wedge somewhere not in the list
+// above, double-check that there's a single, registered entity kind
+// with a stable id and a partial-patch CMS endpoint backing it.
+// Otherwise add a navigation-only chip (modeled after
+// `home-config-wedge.tsx`) instead.
+// ---------------------------------------------------------------------
 import { lazy, Suspense } from "react";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { type EntityKind, getEntityRegistration } from "@/lib/entity-registry";
