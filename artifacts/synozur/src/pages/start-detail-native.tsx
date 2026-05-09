@@ -22,7 +22,6 @@ interface Props {
   bookingTitle: string;
 }
 
-// Visitor's IANA timezone, captured once on mount.
 function detectTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -31,21 +30,11 @@ function detectTimeZone(): string {
   }
 }
 
-// Number of days to show in the horizontal date strip. The matching
-// availability window on the api-server caps at 14 days.
-const DATE_STRIP_DAYS = 14;
+// How many days ahead the availability window extends.
+const BOOKING_DAYS = 28;
 
-// Format helpers that use the visitor's locale and the captured timezone.
-function fmtDate(d: Date, tz: string): { weekday: string; day: string; month: string } {
-  const fmt = new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: tz,
-  }).formatToParts(d);
-  const part = (t: string) => fmt.find((p) => p.type === t)?.value ?? "";
-  return { weekday: part("weekday"), day: part("day"), month: part("month") };
-}
+// Week-day column labels (Sunday-first).
+const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function fmtTime(iso: string, tz: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -65,15 +54,19 @@ function fmtFullDate(iso: string, tz: string): string {
   }).format(new Date(iso));
 }
 
-// "Same calendar day in tz?" — used to filter slots into the selected date.
-function sameDayInTz(a: Date, b: Date, tz: string): boolean {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
+// Returns "YYYY-MM-DD" in the visitor's timezone — used as a stable Map key.
+function localDateKey(d: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     timeZone: tz,
-  });
-  return fmt.format(a) === fmt.format(b);
+  }).format(d);
+}
+
+// Same calendar day in tz?
+function sameDayInTz(a: Date, b: Date, tz: string): boolean {
+  return localDateKey(a, tz) === localDateKey(b, tz);
 }
 
 const contactSchema = z.object({
@@ -89,9 +82,6 @@ type ContactFormData = z.infer<typeof contactSchema>;
 export default function StartDetailNative({ slug, bookingTitle }: Props) {
   const tz = useMemo(() => detectTimeZone(), []);
 
-  // Visitor's selections. selectedDateIso is initialized lazily to today's
-  // local midnight so it matches the dateStrip buttons (also local midnight)
-  // and the sameDayInTz slot filtering.
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [selectedDateIso, setSelectedDateIso] = useState<string>(() => {
     const today = new Date();
@@ -100,37 +90,56 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
   });
   const [selectedSlot, setSelectedSlot] = useState<{ startUtc: string; endUtc: string } | null>(null);
 
-  // Confirmation + bot-check state.
   const [confirmed, setConfirmed] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [botCheckFailed, setBotCheckFailed] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileHandle>(null);
 
-  // Date strip — 14 days starting today, anchored to the visitor's local
-  // midnight so button labels and timezone-aware slot filtering stay aligned.
-  const dateStrip = useMemo(() => {
-    const days: Date[] = [];
+  // Build the calendar grid and the availability fetch window.
+  //
+  // gridDays  — every cell rendered in the calendar (Sunday-aligned rows).
+  // stripDays — today → today+BOOKING_DAYS (the window we query for slots).
+  // todayMs   — local midnight of today (stable reference).
+  const { gridDays, stripDays, todayMs } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < DATE_STRIP_DAYS; i++) {
+    const tMs = today.getTime();
+
+    // Availability window: today to today + BOOKING_DAYS.
+    const strip: Date[] = [];
+    for (let i = 0; i < BOOKING_DAYS; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
-      days.push(d);
+      strip.push(d);
     }
-    return days;
+
+    // Grid starts on the Sunday of the current week.
+    const gridStart = new Date(today);
+    gridStart.setDate(today.getDate() - today.getDay());
+
+    // Grid ends on the Saturday on or after the last strip day.
+    const lastStrip = strip[strip.length - 1]!;
+    const gridEnd = new Date(lastStrip);
+    gridEnd.setDate(lastStrip.getDate() + (6 - lastStrip.getDay()));
+
+    const grid: Date[] = [];
+    const cur = new Date(gridStart);
+    while (cur <= gridEnd) {
+      grid.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return { gridDays: grid, stripDays: strip, todayMs: tMs };
   }, []);
 
-  // 1. Services + business metadata.
+  // Services + business metadata.
   const servicesQuery = useQuery({
     queryKey: ["native-bookings", slug, "services"],
     queryFn: () => api.listNativeBookingServices(slug),
     retry: false,
   });
 
-  // Auto-pick service: prefer the booking's default; else the only service;
-  // else stay null until the visitor chooses. Runs in an effect (not during
-  // render) so React 18 strict-mode doesn't warn about updates during render.
   useEffect(() => {
     if (serviceId !== null) return;
     if (!servicesQuery.data) return;
@@ -145,13 +154,12 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
     }
   }, [servicesQuery.data, serviceId]);
 
-  // 2. Availability — fetch for the full strip in one round trip; we filter
-  // client-side per day. Caching is by (slug, serviceId) so flipping dates
-  // doesn't re-hit the server.
-  const stripStartUtc = dateStrip[0]?.toISOString();
-  const stripEndUtc = dateStrip[dateStrip.length - 1]
-    ? new Date(dateStrip[dateStrip.length - 1]!.getTime() + 24 * 60 * 60 * 1000).toISOString()
+  // Availability — one fetch for the full 28-day window; filtered client-side per day.
+  const stripStartUtc = stripDays[0]?.toISOString();
+  const stripEndMs = stripDays[stripDays.length - 1]
+    ? stripDays[stripDays.length - 1]!.getTime() + 24 * 60 * 60 * 1000
     : undefined;
+  const stripEndUtc = stripEndMs ? new Date(stripEndMs).toISOString() : undefined;
 
   const availabilityQuery = useQuery({
     queryKey: ["native-bookings", slug, "availability", serviceId, stripStartUtc, stripEndUtc],
@@ -165,6 +173,16 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
     retry: false,
   });
 
+  // Set of "YYYY-MM-DD" strings (in visitor tz) that have at least one slot.
+  const datesWithSlots = useMemo<Set<string> | null>(() => {
+    if (!availabilityQuery.data) return null; // null = still loading
+    const s = new Set<string>();
+    for (const slot of availabilityQuery.data.slots) {
+      s.add(localDateKey(new Date(slot.startUtc), tz));
+    }
+    return s;
+  }, [availabilityQuery.data, tz]);
+
   const slotsForSelectedDate = useMemo(() => {
     if (!selectedDateIso || !availabilityQuery.data) return [];
     const target = new Date(selectedDateIso);
@@ -173,7 +191,7 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
     );
   }, [availabilityQuery.data, selectedDateIso, tz]);
 
-  // 3. Submit appointment.
+  // Submit appointment.
   const {
     register,
     handleSubmit,
@@ -266,9 +284,12 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
   const selectedService: NativeBookingService | null =
     services.find((s) => s.id === serviceId) ?? null;
 
+  const windowEndMs = todayMs + BOOKING_DAYS * 24 * 60 * 60 * 1000;
+  const isLoading = availabilityQuery.isLoading;
+
   return (
     <div className="space-y-8" data-testid="booking-native">
-      {/* Service picker — only renders when there's a real choice to make. */}
+      {/* Service picker */}
       {services.length > 1 && (
         <div>
           <h2 className="text-sm uppercase tracking-widest text-primary mb-3">
@@ -311,48 +332,125 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
         </div>
       )}
 
-      {/* Date strip */}
+      {/* Calendar grid */}
       {selectedService && (
         <div>
           <h2 className="text-sm uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
             <CalendarIcon className="h-4 w-4" /> Pick a day
           </h2>
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-            {dateStrip.map((d) => {
+
+          {/* Weekday column headers */}
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {WEEKDAY_HEADERS.map((h) => (
+              <div
+                key={h}
+                className="text-center text-xs font-medium text-muted-foreground py-1"
+              >
+                {h}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7 gap-1">
+            {gridDays.map((d) => {
+              const dMs = d.getTime();
               const iso = d.toISOString();
-              const active = iso === selectedDateIso;
-              const parts = fmtDate(d, tz);
+              const key = localDateKey(d, tz);
+              const isToday = dMs === todayMs;
+              const isPast = dMs < todayMs;
+              const isBeyond = dMs >= windowEndMs;
+              const isOutside = isPast || isBeyond;
+              const isSelected = iso === selectedDateIso;
+
+              // Has slots: null while loading (show neutral), true/false once loaded.
+              const hasSlots = datesWithSlots === null ? null : datesWithSlots.has(key);
+              const isUnavailable = !isOutside && !isLoading && hasSlots === false;
+
+              // Month label shown only on the 1st of each month (or on gridStart
+              // if it's not the 1st, so the user sees which month they're in).
+              const showMonth = d.getDate() === 1 || (dMs === gridDays[0]?.getTime());
+              const monthLabel = d.toLocaleDateString(undefined, { month: "short", timeZone: tz });
+
+              let cellClass =
+                "relative flex flex-col items-center justify-center rounded-lg border py-2 min-h-[3.25rem] text-center transition-colors select-none ";
+
+              if (isSelected && !isOutside) {
+                cellClass += "border-primary bg-primary text-primary-foreground font-semibold ";
+              } else if (isOutside) {
+                cellClass += "border-transparent text-muted-foreground/25 cursor-default ";
+              } else if (isLoading) {
+                cellClass +=
+                  "border-border/40 text-muted-foreground/40 animate-pulse cursor-default ";
+              } else if (isUnavailable) {
+                cellClass +=
+                  "border-border/30 text-muted-foreground/40 cursor-pointer hover:border-border/60 ";
+              } else {
+                cellClass +=
+                  "border-border cursor-pointer hover:border-primary/60 hover:bg-primary/5 ";
+                if (isToday) cellClass += "ring-1 ring-primary/30 ";
+              }
+
               return (
                 <button
                   key={iso}
                   type="button"
+                  disabled={isOutside}
                   onClick={() => {
+                    if (isOutside) return;
                     setSelectedDateIso(iso);
                     setSelectedSlot(null);
                   }}
                   data-testid={`date-${iso}`}
-                  className={`flex-shrink-0 w-20 rounded-xl border-2 p-3 text-center transition-colors hover:border-primary/60 ${
-                    active ? "border-primary bg-primary/5" : "border-border"
-                  }`}
+                  className={cellClass}
                 >
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {parts.weekday}
-                  </div>
-                  <div className="text-2xl font-semibold leading-tight mt-1">
-                    {parts.day}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {parts.month}
-                  </div>
+                  {/* Month label on 1st or grid start */}
+                  {showMonth && !isOutside && (
+                    <span className="text-[10px] leading-none text-muted-foreground mb-0.5">
+                      {monthLabel}
+                    </span>
+                  )}
+
+                  {/* Day number */}
+                  <span
+                    className={`text-base font-semibold leading-none ${
+                      isUnavailable ? "line-through decoration-muted-foreground/40" : ""
+                    }`}
+                  >
+                    {d.getDate()}
+                  </span>
+
+                  {/* Today dot */}
+                  {isToday && !isSelected && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
+                  )}
+
+                  {/* Unavailable × */}
+                  {isUnavailable && (
+                    <span className="text-[9px] leading-none text-muted-foreground/50 mt-0.5">
+                      ✕
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
+
+          {/* Legend */}
+          <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-border" />
+              Available
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-border/30 opacity-40" />
+              No openings
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Time slot grid — multi-column on desktop, the whole reason we widened
-          the page. */}
+      {/* Time slot grid */}
       {selectedService && (
         <div>
           <h2 className="text-sm uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
@@ -373,7 +471,7 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
           )}
           {!availabilityQuery.isLoading && slotsForSelectedDate.length === 0 && (
             <p className="text-muted-foreground text-sm">
-              No open times on this day. Try another day in the strip above.
+              No open times on this day — pick another date above.
             </p>
           )}
           {slotsForSelectedDate.length > 0 && (
@@ -401,7 +499,7 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
         </div>
       )}
 
-      {/* Contact form — appears once a slot is chosen. */}
+      {/* Contact form */}
       {selectedSlot && (
         <form
           onSubmit={handleSubmit((d) => {
@@ -454,7 +552,6 @@ export default function StartDetailNative({ slug, bookingTitle }: Props) {
             </div>
           </div>
 
-          {/* Honeypot. */}
           <input
             type="text"
             tabIndex={-1}

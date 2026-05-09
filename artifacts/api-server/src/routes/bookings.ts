@@ -565,8 +565,7 @@ router.get("/bookings/:slug/services", async (req, res): Promise<void> => {
 
 const AvailabilityQuery = z.object({
   serviceId: z.string().min(1),
-  // ISO-8601 instants. Must be ≤ 14 days apart to keep Graph happy and our
-  // payloads bounded.
+  // ISO-8601 instants. Must be ≤ 62 days apart (Graph getSchedule limit).
   start: z.string().datetime(),
   end: z.string().datetime(),
 });
@@ -595,8 +594,8 @@ router.get(
       res.status(400).json({ error: "Invalid date range." });
       return;
     }
-    if (endMs - startMs > 14 * 24 * 60 * 60 * 1000) {
-      res.status(400).json({ error: "Range too wide (max 14 days)." });
+    if (endMs - startMs > 62 * 24 * 60 * 60 * 1000) {
+      res.status(400).json({ error: "Range too wide (max 62 days)." });
       return;
     }
     const ctx = await loadBookingForNative(slug);
