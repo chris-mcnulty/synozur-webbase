@@ -692,10 +692,44 @@ export async function getStaffAvailability(args: {
     `/solutions/bookingBusinesses/${bid}/services/${encodeURIComponent(args.serviceId)}`,
   );
   if (!svcResult.ok) return svcResult;
-  const svcJson = svcResult.json as { staffMemberIds?: string[]; defaultDuration?: string | null };
+  const svcJson = svcResult.json as {
+    staffMemberIds?: string[];
+    defaultDuration?: string | null;
+    schedulingPolicy?: {
+      timeSlotInterval?: string | null;
+      minimumLeadTime?: string | null;
+      generalAvailability?: {
+        availabilityType?: string | null;
+        businessHours?: Array<{
+          day?: string;
+          timeSlots?: Array<{ startTime?: string; endTime?: string }>;
+        }> | null;
+      } | null;
+    } | null;
+  };
   const staffIds = Array.isArray(svcJson.staffMemberIds) ? svcJson.staffMemberIds.filter(Boolean) : [];
   const durationMinutes = parseIso8601DurationMinutes(svcJson.defaultDuration ?? null) ?? 30;
   const durationMs = durationMinutes * 60_000;
+
+  // timeSlotInterval controls how often slot start times are offered (scheduling granularity).
+  // This is separate from the service duration. Default: 10 min per Graph docs.
+  const granularityMinutes =
+    parseIso8601DurationMinutes(svcJson.schedulingPolicy?.timeSlotInterval ?? null) ?? 10;
+  const granularityMs = granularityMinutes * 60_000;
+
+  // minimumLeadTime: slots within this window from now are hidden (can't book on short notice).
+  const minimumLeadMs =
+    (parseIso8601DurationMinutes(svcJson.schedulingPolicy?.minimumLeadTime ?? null) ?? 0) * 60_000;
+  const earliestBookableMs = Date.now() + minimumLeadMs;
+
+  // generalAvailability.businessHours: when availabilityType === "customWeeklyHours", these
+  // define the booking window for this service (overrides individual staff working hours).
+  // The Bookings page only offers slots within this window.
+  const svcAvailability = svcJson.schedulingPolicy?.generalAvailability;
+  const svcBusinessHours: Array<{ day?: string; timeSlots?: Array<{ startTime?: string; endTime?: string }> }> =
+    svcAvailability?.availabilityType === "customWeeklyHours"
+      ? (svcAvailability.businessHours ?? [])
+      : [];
 
   if (staffIds.length === 0) {
     return { ok: true, slots: [] };
@@ -817,40 +851,86 @@ export async function getStaffAvailability(args: {
       const weekday = weekdayInTz(noonMs, staffTz);
       const localDate = localDateInTz(noonMs, staffTz);
 
-      const whDay = (staff.workingHours ?? []).find(
+      // Determine the time slots to use for this day.
+      // Priority: service-level custom weekly hours (from schedulingPolicy.generalAvailability)
+      // because the Bookings page uses those as the outer booking window.
+      // Fall back to staff-level working hours when no service hours are defined.
+      const svcDaySlots = svcBusinessHours.find(
         (wh) => (wh.day ?? "").toLowerCase() === weekday,
-      );
+      )?.timeSlots ?? null;
 
-      if (whDay) {
-        for (const ts of whDay.timeSlots ?? []) {
-          const start = parseHHMM(ts.startTime ?? "00:00:00");
-          const end = parseHHMM(ts.endTime ?? "00:00:00");
-          if (end.h === 0 && end.m === 0) continue; // midnight sentinel → skip
+      const staffDaySlots = (staff.workingHours ?? []).find(
+        (wh) => (wh.day ?? "").toLowerCase() === weekday,
+      )?.timeSlots ?? null;
 
-          const winStartMs = wallClockToUtcMs(dayMs, localDate, start.h, start.m, staffTz);
-          const winEndMs = wallClockToUtcMs(dayMs, localDate, end.h, end.m, staffTz);
+      // When the service defines custom hours, intersect them with staff hours.
+      // This ensures a slot is only offered if both the service window and the
+      // staff member's personal working hours permit it.
+      function intersectSlots(
+        primarySlots: Array<{ startTime?: string; endTime?: string }>,
+        secondarySlots: Array<{ startTime?: string; endTime?: string }> | null,
+      ): Array<[number, number]> {
+        // Convert to minutes-from-midnight pairs.
+        const toMin = (hhmm: { h: number; m: number }) => hhmm.h * 60 + hhmm.m;
+        const primary = primarySlots
+          .map((ts) => [toMin(parseHHMM(ts.startTime ?? "")), toMin(parseHHMM(ts.endTime ?? ""))] as [number, number])
+          .filter(([s, e]) => e > s);
+        if (!secondarySlots) return primary;
+        const secondary = secondarySlots
+          .map((ts) => [toMin(parseHHMM(ts.startTime ?? "")), toMin(parseHHMM(ts.endTime ?? ""))] as [number, number])
+          .filter(([s, e]) => e > s);
+        const result: [number, number][] = [];
+        for (const [ps, pe] of primary) {
+          for (const [ss, se] of secondary) {
+            const is = Math.max(ps, ss);
+            const ie = Math.min(pe, se);
+            if (ie > is) result.push([is, ie]);
+          }
+        }
+        return result;
+      }
 
-          // Clip to the requested query window.
-          const clampStart = Math.max(winStartMs, startMs);
-          const clampEnd = Math.min(winEndMs, endMs);
-          if (clampEnd <= clampStart + durationMs) continue;
+      // Resolve the effective time windows for this day + staff member.
+      const effectiveSlots: Array<[number, number]> =
+        svcDaySlots !== null
+          ? intersectSlots(svcDaySlots, staffDaySlots)
+          : staffDaySlots !== null
+            ? intersectSlots(staffDaySlots, null)
+            : [];
 
-          // Walk the window in duration-sized steps, skipping blocked slots.
-          for (let t = clampStart; t + durationMs <= clampEnd; t += durationMs) {
-            const slotEnd = t + durationMs;
-            const blocked = availView !== null
-              ? !isSlotFreeInSchedule(t, slotEnd, availView)
-              : bookedMs.some((b) => t < b.e && slotEnd > b.s);
-            if (blocked) continue;
+      for (const [startMin, endMin] of effectiveSlots) {
+        const startH = Math.floor(startMin / 60);
+        const startM = startMin % 60;
+        const endH = Math.floor(endMin / 60);
+        const endMins = endMin % 60;
 
-            const slotStart = new Date(t).toISOString();
-            const slotEndIso = new Date(slotEnd).toISOString();
-            const existing = byStart.get(slotStart);
-            if (existing) {
-              if (!existing.staffIds.includes(staffId)) existing.staffIds.push(staffId);
-            } else {
-              byStart.set(slotStart, { startUtc: slotStart, endUtc: slotEndIso, staffIds: [staffId] });
-            }
+        const winStartMs = wallClockToUtcMs(dayMs, localDate, startH, startM, staffTz);
+        const winEndMs = wallClockToUtcMs(dayMs, localDate, endH, endMins, staffTz);
+
+        // Clip to the requested query window.
+        const clampStart = Math.max(winStartMs, startMs);
+        const clampEnd = Math.min(winEndMs, endMs);
+        if (clampEnd <= clampStart + durationMs) continue;
+
+        // Walk the window in granularity-sized steps (scheduling interval),
+        // checking whether the full service duration fits and is free.
+        for (let t = clampStart; t + durationMs <= clampEnd; t += granularityMs) {
+          // Apply minimum lead time: hide slots too close to now.
+          if (t < earliestBookableMs) continue;
+
+          const slotEnd = t + durationMs;
+          const blocked = availView !== null
+            ? !isSlotFreeInSchedule(t, slotEnd, availView)
+            : bookedMs.some((b) => t < b.e && slotEnd > b.s);
+          if (blocked) continue;
+
+          const slotStart = new Date(t).toISOString();
+          const slotEndIso = new Date(slotEnd).toISOString();
+          const existing = byStart.get(slotStart);
+          if (existing) {
+            if (!existing.staffIds.includes(staffId)) existing.staffIds.push(staffId);
+          } else {
+            byStart.set(slotStart, { startUtc: slotStart, endUtc: slotEndIso, staffIds: [staffId] });
           }
         }
       }
