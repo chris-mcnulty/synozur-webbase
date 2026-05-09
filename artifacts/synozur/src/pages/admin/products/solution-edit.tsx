@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, Eye } from "lucide-react";
+import { ArrowLeft, Save, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -309,33 +309,6 @@ export default function SolutionEdit({ id }: Props) {
     }
   };
 
-  // #60: save + mint preview token + open public detail page in new tab.
-  const [previewPending, setPreviewPending] = useState(false);
-  const onPreview = async () => {
-    if (!id) {
-      toast({
-        title: "Save first",
-        description: "Create the solution before previewing.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setPreviewPending(true);
-    try {
-      await updateMut.mutateAsync({ id, data: toBody(form) });
-      const { previewPath } = await api.createSolutionPreviewToken(id);
-      window.open(previewPath, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      toast({
-        title: "Preview failed",
-        description: e instanceof Error ? e.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setPreviewPending(false);
-    }
-  };
-
   const handleIcon = (m: MediaItem) => {
     update({ iconId: m.id, iconUrl: mediaUrl(m) });
     setShowIconPicker(false);
@@ -357,22 +330,17 @@ export default function SolutionEdit({ id }: Props) {
         { label: "Solutions", href: "/products/solutions" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
+      previewEntity={{
+        kind: "solution",
+        id,
+        slug: form.slug,
+        isDraft: form.status !== "published",
+      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/products/solutions")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          {canWrite && !isNew && (
-            <Button
-              variant="outline"
-              onClick={onPreview}
-              disabled={previewPending || updateMut.isPending}
-              data-testid="button-preview-solution"
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {previewPending ? "Opening…" : "Preview"}
-            </Button>
-          )}
           {canWrite && (
             <Button
               onClick={onSave}
