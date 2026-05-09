@@ -33,6 +33,13 @@ export default function WhitePaperDetail() {
   // Collateral is normally the runtime authority, but a 410 from the editorial
   // source is an explicit "this is retired" signal we must honor (#162 / L13).
   const [isGone, setIsGone] = useState(false);
+  // Bumping `reloadTick` re-runs the loader effect — both EditWedge
+  // mounts (the white_papers-source branch and the collateral
+  // fallback) call back into this when a save succeeds since this
+  // page doesn't route through React Query and would otherwise show
+  // stale content.
+  const [reloadTick, setReloadTick] = useState(0);
+  const bumpReload = () => setReloadTick((t) => t + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +84,7 @@ export default function WhitePaperDetail() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, reloadTick]);
 
   if (item === undefined) {
     return (
@@ -237,6 +244,7 @@ export default function WhitePaperDetail() {
           id={wp.id}
           slug={wp.slug}
           snapshot={wp}
+          onSaved={bumpReload}
         />
       </div>
     );
@@ -369,6 +377,7 @@ export default function WhitePaperDetail() {
         id={col.id}
         slug={col.slug}
         snapshot={col}
+        onSaved={bumpReload}
       />
     </div>
   );
