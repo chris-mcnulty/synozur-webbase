@@ -436,10 +436,19 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
   }
 
   // Phase 2: pre-load every existing row whose slug appears in the import
-  // so the per-row write loop runs O(1) DB calls per row instead of an
-  // extra SELECT each time. Wrap the writes in a transaction so a partial
-  // failure rolls back cleanly and the redirect cache isn't poisoned with
-  // half-imported state.
+  // so the per-row write loop is O(1) DB calls per row instead of an
+  // extra SELECT each time.
+  //
+  // Semantics are best-effort: rows that fail (e.g. unique-constraint
+  // violations from a race, transient DB errors) are recorded in
+  // `summary.errors` and the loop keeps going. Successful rows still
+  // commit, which matches what an editor expects from a bulk import — a
+  // single bad row in a 200-row CSV shouldn't roll back the other 199.
+  // We do NOT wrap this in a `db.transaction()` because the per-row
+  // try/catch would swallow errors inside the transaction and the
+  // promise that "everything rolls back on partial failure" would be a
+  // lie. If we ever need true atomicity, drop the per-row catch and let
+  // the first failure abort the import.
   const slugs = validated.map((v) => v.slug);
   const existingRows: ShortLink[] = slugs.length
     ? await db
@@ -451,49 +460,47 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
     existingRows.map((r) => [r.slug, r]),
   );
 
-  await db.transaction(async (tx: typeof db) => {
-    for (const v of validated) {
-      try {
-        const existing = existingBySlug.get(v.slug);
-        if (existing) {
-          if (collisionPolicy === "skip") {
-            summary.skipped++;
-            continue;
-          }
-          await tx
-            .update(shortLinksTable)
-            .set({
-              targetUrl: v.targetUrl,
-              title: v.title ?? null,
-              notes: v.notes ?? null,
-              tags: v.tags ?? null,
-              rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
-            })
-            .where(eq(shortLinksTable.id, existing.id));
-          summary.updated++;
-        } else {
-          await tx.insert(shortLinksTable).values({
-            slug: v.slug,
+  for (const v of validated) {
+    try {
+      const existing = existingBySlug.get(v.slug);
+      if (existing) {
+        if (collisionPolicy === "skip") {
+          summary.skipped++;
+          continue;
+        }
+        await db
+          .update(shortLinksTable)
+          .set({
             targetUrl: v.targetUrl,
             title: v.title ?? null,
             notes: v.notes ?? null,
-            statusCode: 302,
-            active: defaultActive,
             tags: v.tags ?? null,
-            rebrandlyId: v.rebrandlyId ?? null,
-            createdBy: req.authedUser?.id ?? null,
-          });
-          summary.imported++;
-        }
-      } catch (err) {
-        summary.errors.push({
-          row: v.csvRow,
+            rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
+          })
+          .where(eq(shortLinksTable.id, existing.id));
+        summary.updated++;
+      } else {
+        await db.insert(shortLinksTable).values({
           slug: v.slug,
-          error: err instanceof Error ? err.message : String(err),
+          targetUrl: v.targetUrl,
+          title: v.title ?? null,
+          notes: v.notes ?? null,
+          statusCode: 302,
+          active: defaultActive,
+          tags: v.tags ?? null,
+          rebrandlyId: v.rebrandlyId ?? null,
+          createdBy: req.authedUser?.id ?? null,
         });
+        summary.imported++;
       }
+    } catch (err) {
+      summary.errors.push({
+        row: v.csvRow,
+        slug: v.slug,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-  });
+  }
   invalidateShortLinkCache();
   await audit({
     actorId: req.authedUser!.id,

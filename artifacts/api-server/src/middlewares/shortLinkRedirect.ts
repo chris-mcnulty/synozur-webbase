@@ -12,10 +12,25 @@ import { logger } from "../lib/logger";
 
 // First-segment paths that need their own response on the short-link host
 // rather than being treated as a slug. Anything matching these is allowed
-// to fall through to a downstream handler (e.g. the existing /robots.txt
-// handler in `app.ts`); everything else either redirects (slug match) or
-// renders our own 404 — the aka host never reveals the marketing SPA.
+// to fall through to a downstream handler; everything else either
+// redirects (slug match) or renders our own 404 — the aka host never
+// reveals the marketing SPA.
+//
+// `api` is included so `aka.synozur.com/api/...` reaches the Express API
+// router mounted in `app.ts`. That matters in two places:
+//   1. The OG image contract on `routes/shortLinks.ts` lets editors store
+//      a site-relative path like `/api/storage/foo.png`. When a social
+//      bot fetches the unfurl HTML at `aka.synozur.com/<slug>`, it
+//      resolves the image relative to the page URL and re-fetches from
+//      `aka.synozur.com/api/storage/foo.png` — that needs to work.
+//   2. Operational endpoints (e.g. `/api/health`) should remain reachable
+//      regardless of which host the load balancer routed the request to.
+// `images` mirrors the same idea for static assets shipped in the SPA's
+// `public/images` tree, in case admins paste a path like
+// `/images/og/holidays.png` into `ogImageUrl`.
 const PASSTHROUGH_FIRST_SEGMENTS = new Set<string>([
+  "api",
+  "images",
   "robots.txt",
   "sitemap.xml",
   "favicon.ico",
