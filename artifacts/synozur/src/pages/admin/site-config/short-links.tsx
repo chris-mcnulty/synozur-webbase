@@ -4,12 +4,15 @@ import {
   BarChart3,
   Copy,
   Download,
+  Image as ImageIcon,
   Pencil,
   Plus,
   QrCode,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -233,6 +236,49 @@ async function saveSettings(body: SettingsUpsertInput): Promise<ShortLinkSetting
   });
 }
 
+function OgPreviewCard({
+  imageUrl,
+  title,
+  description,
+  targetUrl,
+}: {
+  imageUrl: string;
+  title: string;
+  description: string;
+  targetUrl: string;
+}) {
+  let domain = "";
+  try {
+    domain = new URL(targetUrl).hostname;
+  } catch {
+    // ignore
+  }
+  return (
+    <div className="rounded-md border border-border overflow-hidden bg-muted/30 text-sm max-w-sm">
+      {imageUrl && (
+        <div className="aspect-[1200/628] w-full bg-muted overflow-hidden">
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+      <div className="px-3 py-2 space-y-0.5">
+        {domain && (
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">
+            {domain}
+          </p>
+        )}
+        <p className="font-semibold leading-snug text-sm truncate">
+          {title || "(no title)"}
+        </p>
+        {description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminShortLinks() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
@@ -278,6 +324,8 @@ export default function AdminShortLinks() {
   const [rebrandlyPolicy, setRebrandlyPolicy] = useState<
     "skip" | "overwrite"
   >("skip");
+  const [showOgPicker, setShowOgPicker] = useState(false);
+  const [showEditOgPicker, setShowEditOgPicker] = useState(false);
 
   const settingsQ = useQuery<ShortLinkSettings, Error>({
     queryKey: ["/api/cms/short-links/settings"],
@@ -681,32 +729,67 @@ export default function AdminShortLinks() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="og-image">OG image URL or path</Label>
-                    <Input
-                      id="og-image"
-                      placeholder="https://… or /images/og/holidays.png"
-                      value={draft.ogImageUrl ?? ""}
+                    <Label htmlFor="og-description">OG description</Label>
+                    <Textarea
+                      id="og-description"
+                      rows={2}
+                      placeholder="Short copy that appears under the title in unfurls."
+                      value={draft.ogDescription ?? ""}
                       onChange={(e) =>
-                        setDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
+                        setDraft((d) => ({
+                          ...d,
+                          ogDescription: e.target.value,
+                        }))
                       }
                     />
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="og-description">OG description</Label>
-                  <Textarea
-                    id="og-description"
-                    rows={2}
-                    placeholder="Short copy that appears under the title in unfurls."
-                    value={draft.ogDescription ?? ""}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        ogDescription: e.target.value,
-                      }))
-                    }
-                  />
+                  <Label>OG image</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    {draft.ogImageUrl && (
+                      <>
+                        <img
+                          src={draft.ogImageUrl}
+                          alt=""
+                          className="h-14 w-24 rounded object-cover border border-border shrink-0"
+                        />
+                        <span className="text-xs text-muted-foreground font-mono truncate flex-1">
+                          {draft.ogImageUrl}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDraft((d) => ({ ...d, ogImageUrl: "" }))}
+                          className="shrink-0 rounded p-1 hover:bg-muted text-muted-foreground"
+                          title="Remove image"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setShowOgPicker(true)}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      {draft.ogImageUrl ? "Change" : "Choose image…"}
+                    </Button>
+                  </div>
                 </div>
+                {(draft.ogImageUrl || draft.ogTitle || draft.ogDescription) && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Preview</p>
+                    <OgPreviewCard
+                      imageUrl={draft.ogImageUrl ?? ""}
+                      title={draft.ogTitle ?? ""}
+                      description={draft.ogDescription ?? ""}
+                      targetUrl={draft.targetUrl}
+                    />
+                  </div>
+                )}
               </div>
             </details>
           </Card>
@@ -919,42 +1002,80 @@ export default function AdminShortLinks() {
                 Social preview (optional)
               </summary>
               <div className="mt-3 space-y-3">
-                <div>
-                  <Label htmlFor="edit-og-title">OG title</Label>
-                  <Input
-                    id="edit-og-title"
-                    value={(editDraft.ogTitle as string | undefined) ?? ""}
-                    onChange={(e) =>
-                      setEditDraft((d) => ({ ...d, ogTitle: e.target.value }))
-                    }
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-og-title">OG title</Label>
+                    <Input
+                      id="edit-og-title"
+                      value={(editDraft.ogTitle as string | undefined) ?? ""}
+                      onChange={(e) =>
+                        setEditDraft((d) => ({ ...d, ogTitle: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-og-description">OG description</Label>
+                    <Textarea
+                      id="edit-og-description"
+                      rows={2}
+                      value={
+                        (editDraft.ogDescription as string | undefined) ?? ""
+                      }
+                      onChange={(e) =>
+                        setEditDraft((d) => ({
+                          ...d,
+                          ogDescription: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label htmlFor="edit-og-description">OG description</Label>
-                  <Textarea
-                    id="edit-og-description"
-                    rows={2}
-                    value={
-                      (editDraft.ogDescription as string | undefined) ?? ""
-                    }
-                    onChange={(e) =>
-                      setEditDraft((d) => ({
-                        ...d,
-                        ogDescription: e.target.value,
-                      }))
-                    }
-                  />
+                  <Label>OG image</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    {editDraft.ogImageUrl && (
+                      <>
+                        <img
+                          src={editDraft.ogImageUrl as string}
+                          alt=""
+                          className="h-14 w-24 rounded object-cover border border-border shrink-0"
+                        />
+                        <span className="text-xs text-muted-foreground font-mono truncate flex-1">
+                          {editDraft.ogImageUrl as string}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditDraft((d) => ({ ...d, ogImageUrl: "" }))}
+                          className="shrink-0 rounded p-1 hover:bg-muted text-muted-foreground"
+                          title="Remove image"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => setShowEditOgPicker(true)}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                      {editDraft.ogImageUrl ? "Change" : "Choose image…"}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="edit-og-image">OG image URL or path</Label>
-                  <Input
-                    id="edit-og-image"
-                    value={(editDraft.ogImageUrl as string | undefined) ?? ""}
-                    onChange={(e) =>
-                      setEditDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
-                    }
-                  />
-                </div>
+                {(editDraft.ogImageUrl || editDraft.ogTitle || editDraft.ogDescription) && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Preview</p>
+                    <OgPreviewCard
+                      imageUrl={(editDraft.ogImageUrl as string | undefined) ?? ""}
+                      title={(editDraft.ogTitle as string | undefined) ?? ""}
+                      description={(editDraft.ogDescription as string | undefined) ?? ""}
+                      targetUrl={(editDraft.targetUrl as string | undefined) ?? ""}
+                    />
+                  </div>
+                )}
               </div>
             </details>
             <div className="flex items-center gap-2">
@@ -1292,6 +1413,28 @@ export default function AdminShortLinks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <MediaPickerModal
+        open={showOgPicker}
+        onClose={() => setShowOgPicker(false)}
+        onSelect={(m) => {
+          setDraft((d) => ({ ...d, ogImageUrl: mediaUrl(m) }));
+          setShowOgPicker(false);
+        }}
+        title="Choose OG image"
+        kind="image"
+        categorySlug="social"
+      />
+      <MediaPickerModal
+        open={showEditOgPicker}
+        onClose={() => setShowEditOgPicker(false)}
+        onSelect={(m) => {
+          setEditDraft((d) => ({ ...d, ogImageUrl: mediaUrl(m) }));
+          setShowEditOgPicker(false);
+        }}
+        title="Choose OG image"
+        kind="image"
+        categorySlug="social"
+      />
     </AdminLayout>
   );
 }
