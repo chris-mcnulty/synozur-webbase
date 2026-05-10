@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import {
   db,
   shortLinksTable,
@@ -395,6 +395,13 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
     skipped: 0,
     errors: [],
   };
+
+  // Phase 1: validate every CSV row up front so we can collect all errors
+  // in one pass and avoid issuing N round-trips to the DB just to
+  // discover invalid input. The validated rows carry their original CSV
+  // index so error messages still cite the right line.
+  type ValidatedRow = z.infer<typeof ImportRowSchema> & { csvRow: number };
+  const validated: ValidatedRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rawSlug =
@@ -425,49 +432,68 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
       });
       continue;
     }
-    const v = ok.data;
-    try {
-      const existing = await db.query.shortLinksTable.findFirst({
-        where: eq(shortLinksTable.slug, v.slug),
-      });
-      if (existing) {
-        if (collisionPolicy === "skip") {
-          summary.skipped++;
-          continue;
-        }
-        await db
-          .update(shortLinksTable)
-          .set({
+    validated.push({ ...ok.data, csvRow: i + 2 });
+  }
+
+  // Phase 2: pre-load every existing row whose slug appears in the import
+  // so the per-row write loop runs O(1) DB calls per row instead of an
+  // extra SELECT each time. Wrap the writes in a transaction so a partial
+  // failure rolls back cleanly and the redirect cache isn't poisoned with
+  // half-imported state.
+  const slugs = validated.map((v) => v.slug);
+  const existingRows: ShortLink[] = slugs.length
+    ? await db
+        .select()
+        .from(shortLinksTable)
+        .where(inArray(shortLinksTable.slug, slugs))
+    : [];
+  const existingBySlug = new Map<string, ShortLink>(
+    existingRows.map((r) => [r.slug, r]),
+  );
+
+  await db.transaction(async (tx: typeof db) => {
+    for (const v of validated) {
+      try {
+        const existing = existingBySlug.get(v.slug);
+        if (existing) {
+          if (collisionPolicy === "skip") {
+            summary.skipped++;
+            continue;
+          }
+          await tx
+            .update(shortLinksTable)
+            .set({
+              targetUrl: v.targetUrl,
+              title: v.title ?? null,
+              notes: v.notes ?? null,
+              tags: v.tags ?? null,
+              rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
+            })
+            .where(eq(shortLinksTable.id, existing.id));
+          summary.updated++;
+        } else {
+          await tx.insert(shortLinksTable).values({
+            slug: v.slug,
             targetUrl: v.targetUrl,
             title: v.title ?? null,
             notes: v.notes ?? null,
+            statusCode: 302,
+            active: defaultActive,
             tags: v.tags ?? null,
-            rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
-          })
-          .where(eq(shortLinksTable.id, existing.id));
-        summary.updated++;
-      } else {
-        await db.insert(shortLinksTable).values({
+            rebrandlyId: v.rebrandlyId ?? null,
+            createdBy: req.authedUser?.id ?? null,
+          });
+          summary.imported++;
+        }
+      } catch (err) {
+        summary.errors.push({
+          row: v.csvRow,
           slug: v.slug,
-          targetUrl: v.targetUrl,
-          title: v.title ?? null,
-          notes: v.notes ?? null,
-          statusCode: 302,
-          active: defaultActive,
-          tags: v.tags ?? null,
-          rebrandlyId: v.rebrandlyId ?? null,
-          createdBy: req.authedUser?.id ?? null,
+          error: err instanceof Error ? err.message : String(err),
         });
-        summary.imported++;
       }
-    } catch (err) {
-      summary.errors.push({
-        row: i + 2,
-        slug: v.slug,
-        error: err instanceof Error ? err.message : String(err),
-      });
     }
-  }
+  });
   invalidateShortLinkCache();
   await audit({
     actorId: req.authedUser!.id,
@@ -539,9 +565,15 @@ router.get("/cms/short-links/:id/stats", ...readGuard, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  // UTC-normalized day truncation. The same expression is used for SELECT,
+  // GROUP BY, and ORDER BY so the buckets line up regardless of the DB
+  // session timezone. Truncating after `at time zone 'utc'` shifts the
+  // timestamp into UTC first, then keeps day boundaries aligned with the
+  // calendar the dashboard reads (`YYYY-MM-DD` in UTC).
+  const dayUtc = sql`date_trunc('day', ${shortLinkClicksTable.clickedAt} at time zone 'utc')`;
   const dailyRows = await db
     .select({
-      day: sql<string>`to_char(date_trunc('day', ${shortLinkClicksTable.clickedAt}) at time zone 'utc', 'YYYY-MM-DD')`,
+      day: sql<string>`to_char(${dayUtc}, 'YYYY-MM-DD')`,
       count: sql<number>`count(*)::int`,
     })
     .from(shortLinkClicksTable)
@@ -551,8 +583,8 @@ router.get("/cms/short-links/:id/stats", ...readGuard, async (req, res) => {
         gte(shortLinkClicksTable.clickedAt, since),
       ),
     )
-    .groupBy(sql`date_trunc('day', ${shortLinkClicksTable.clickedAt})`)
-    .orderBy(sql`date_trunc('day', ${shortLinkClicksTable.clickedAt})`);
+    .groupBy(dayUtc)
+    .orderBy(dayUtc);
   const referrerRows = await db
     .select({
       referrer: shortLinkClicksTable.referrer,

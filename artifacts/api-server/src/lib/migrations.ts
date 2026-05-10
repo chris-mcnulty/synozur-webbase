@@ -2675,6 +2675,81 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS ms_timezone text;
     `);
 
+    // Branded short-link service (#76). Idempotent DDL for the two new
+    // tables, their indexes, and the three `site_settings` columns that
+    // configure the public host / fallback URL. Without these, a
+    // production startup against a DB that pre-dates the PR fails as
+    // soon as the redirect middleware or the admin UI reads these
+    // columns.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS short_links (
+        id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug          text NOT NULL,
+        target_url    text NOT NULL,
+        title         text,
+        notes         text,
+        status_code   integer NOT NULL DEFAULT 302,
+        active        boolean NOT NULL DEFAULT true,
+        tags          text[],
+        hit_count     integer NOT NULL DEFAULT 0,
+        last_click_at timestamptz,
+        rebrandly_id  text,
+        og_title       text,
+        og_description text,
+        og_image_url   text,
+        created_by    uuid REFERENCES users(id) ON DELETE SET NULL,
+        created_at    timestamptz NOT NULL DEFAULT now(),
+        updated_at    timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    // OG columns get their own ADD COLUMN IF NOT EXISTS so a DB that
+    // already has the table from an earlier deploy of this PR picks them
+    // up on subsequent rolls.
+    await db.execute(sql`
+      ALTER TABLE short_links
+        ADD COLUMN IF NOT EXISTS og_title text,
+        ADD COLUMN IF NOT EXISTS og_description text,
+        ADD COLUMN IF NOT EXISTS og_image_url text;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS short_links_slug_key
+        ON short_links (slug);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS short_links_active_idx
+        ON short_links (active);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS short_links_rebrandly_idx
+        ON short_links (rebrandly_id);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS short_link_clicks (
+        id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        short_link_id  uuid NOT NULL REFERENCES short_links(id) ON DELETE CASCADE,
+        clicked_at     timestamptz NOT NULL DEFAULT now(),
+        ip_hash        text,
+        user_agent     text,
+        referrer       text,
+        country        text,
+        session_hash   text
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS short_link_clicks_link_idx
+        ON short_link_clicks (short_link_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS short_link_clicks_clicked_at_idx
+        ON short_link_clicks (clicked_at);
+    `);
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS short_link_public_base text,
+        ADD COLUMN IF NOT EXISTS short_link_additional_hosts jsonb,
+        ADD COLUMN IF NOT EXISTS short_link_fallback_url text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

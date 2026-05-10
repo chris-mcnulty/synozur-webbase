@@ -33,6 +33,7 @@
     "test:insights-gone": "node --import tsx --test src/routes/insights.gone.test.ts",
     "test:seo-unpublish": "node --import tsx --test src/routes/seoUnpublishSubmit.test.ts",
     "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts",
+    "test:short-links": "node --import tsx --test src/routes/shortLinks.schema.test.ts",
     "test:prompt-cache": "node --import tsx --test src/lib/ai/promptCache.test.ts",
     "test:ai-chat-cache": "node --import tsx --test src/routes/aiChat.cache.test.ts",
     "test:portal-documents": "node --import tsx --test src/routes/portalDocuments.test.ts",

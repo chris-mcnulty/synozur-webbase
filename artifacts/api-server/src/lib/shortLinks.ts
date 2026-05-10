@@ -293,10 +293,17 @@ export async function publicShortUrl(slug: string): Promise<string> {
 // redundancy) so the central logo overlay (~22% of the QR's width) doesn't
 // break decoding. The mark is composited on a small white pad so it stays
 // legible against dark modules.
-let logoBufferCache: Buffer | null = null;
+//
+// `null` is the not-yet-attempted sentinel; once we resolve, we cache
+// either the Buffer or `false` to memoize the not-found outcome and avoid
+// re-walking the filesystem (and re-logging the warning) on every QR
+// request in environments where the mark isn't shipped.
+let logoBufferCache: Buffer | false | null = null;
 
 async function loadLogoBuffer(): Promise<Buffer | null> {
-  if (logoBufferCache) return logoBufferCache;
+  if (logoBufferCache !== null) {
+    return logoBufferCache === false ? null : logoBufferCache;
+  }
   const candidates = [
     process.env.BRAND_QR_LOGO_PATH,
     path.resolve(
@@ -321,6 +328,7 @@ async function loadLogoBuffer(): Promise<Buffer | null> {
     { tried: candidates },
     "short-links: brand mark not found; QR will render unbranded",
   );
+  logoBufferCache = false;
   return null;
 }
 
@@ -465,8 +473,8 @@ export interface OgRenderOptions {
 
 // Minimal social-bot HTML preview. Mirrors the structure used by
 // `lib/ogResolver.ts#renderOgHtml` (so unfurls look consistent with the
-// rest of the site) and includes a meta-refresh + visible link as a
-// graceful fallback for the rare bot that does follow the page.
+// rest of the site) and renders a visible <a> as a graceful fallback for
+// the rare bot that follows the page rather than just scraping tags.
 export function renderShortLinkOgHtml(opts: OgRenderOptions): string {
   const t = escapeHtml(opts.title);
   const d = escapeHtml(opts.description);
