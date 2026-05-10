@@ -64,6 +64,9 @@ interface ShortLink {
   hitCount: number;
   lastClickAt: string | null;
   rebrandlyId: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
   publicUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -81,6 +84,22 @@ interface UpsertInput {
   statusCode?: 301 | 302 | 307 | 308;
   active?: boolean;
   tags?: string[];
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImageUrl?: string | null;
+}
+
+interface ShortLinkSettings {
+  publicBase: string;
+  publicHost: string;
+  additionalHosts: string[];
+  fallbackUrl: string | null;
+}
+
+interface SettingsUpsertInput {
+  publicBase: string | null;
+  additionalHosts: string[];
+  fallbackUrl: string | null;
 }
 
 interface ImportResponse {
@@ -123,6 +142,9 @@ function emptyDraft(): UpsertInput {
     statusCode: 302,
     active: true,
     tags: [],
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
   };
 }
 
@@ -174,6 +196,17 @@ async function fetchStats(id: string): Promise<StatsResponse> {
   return apiFetch<StatsResponse>(`/api/cms/short-links/${id}/stats`);
 }
 
+async function fetchSettings(): Promise<ShortLinkSettings> {
+  return apiFetch<ShortLinkSettings>("/api/cms/short-links/settings");
+}
+
+async function saveSettings(body: SettingsUpsertInput): Promise<ShortLinkSettings> {
+  return apiFetch<ShortLinkSettings>("/api/cms/short-links/settings", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export default function AdminShortLinks() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
@@ -197,8 +230,57 @@ export default function AdminShortLinks() {
   );
   const [statsTarget, setStatsTarget] = useState<ShortLink | null>(null);
   const [qrTarget, setQrTarget] = useState<ShortLink | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState<{
+    publicBase: string;
+    additionalHosts: string;
+    fallbackUrl: string;
+  }>({ publicBase: "", additionalHosts: "", fallbackUrl: "" });
+
+  const settingsQ = useQuery<ShortLinkSettings, Error>({
+    queryKey: ["/api/cms/short-links/settings"],
+    queryFn: fetchSettings,
+  });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/cms/short-links"] });
+  const invalidateSettings = () =>
+    qc.invalidateQueries({ queryKey: ["/api/cms/short-links/settings"] });
+
+  const settingsMut = useMutation({
+    mutationFn: saveSettings,
+    onSuccess: () => {
+      toast({ title: "Settings saved" });
+      setSettingsOpen(false);
+      invalidateSettings();
+      // Public-base change affects every link's `publicUrl` field, so
+      // refetch the list too.
+      invalidate();
+    },
+    onError: (e: Error) =>
+      toast({ title: "Settings save failed", description: e.message, variant: "destructive" }),
+  });
+
+  const openSettings = () => {
+    const s = settingsQ.data;
+    setSettingsDraft({
+      publicBase: s?.publicBase ?? "",
+      additionalHosts: (s?.additionalHosts ?? []).join(", "),
+      fallbackUrl: s?.fallbackUrl ?? "",
+    });
+    setSettingsOpen(true);
+  };
+
+  const onSaveSettings = () => {
+    const additional = settingsDraft.additionalHosts
+      .split(/[,;\s]+/)
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean);
+    settingsMut.mutate({
+      publicBase: settingsDraft.publicBase.trim() || null,
+      additionalHosts: additional,
+      fallbackUrl: settingsDraft.fallbackUrl.trim() || null,
+    });
+  };
 
   const createMut = useMutation({
     mutationFn: createLink,
@@ -265,6 +347,9 @@ export default function AdminShortLinks() {
       statusCode: draft.statusCode,
       active: draft.active,
       tags: parseTagString(draftTags),
+      ogTitle: draft.ogTitle?.trim() || null,
+      ogDescription: draft.ogDescription?.trim() || null,
+      ogImageUrl: draft.ogImageUrl?.trim() || null,
     });
   };
 
@@ -277,6 +362,9 @@ export default function AdminShortLinks() {
       statusCode: coerceStatus(link.statusCode),
       active: link.active,
       tags: link.tags,
+      ogTitle: link.ogTitle ?? "",
+      ogDescription: link.ogDescription ?? "",
+      ogImageUrl: link.ogImageUrl ?? "",
     });
     setEditTags(tagsToString(link.tags));
     setEditTarget(link);
@@ -300,6 +388,9 @@ export default function AdminShortLinks() {
         statusCode: editDraft.statusCode ?? 302,
         active: editDraft.active ?? true,
         tags: parseTagString(editTags),
+        ogTitle: editDraft.ogTitle?.toString().trim() || null,
+        ogDescription: editDraft.ogDescription?.toString().trim() || null,
+        ogImageUrl: editDraft.ogImageUrl?.toString().trim() || null,
       },
     });
   };
@@ -337,10 +428,50 @@ export default function AdminShortLinks() {
           </div>
         )}
 
+        {/* Service settings card. Lets admins change the public base URL,
+            additional hostnames, and the 404 fallback link without a deploy. */}
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="text-sm font-semibold">Short-link service</div>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Public base:{" "}
+                  <code className="font-mono">
+                    {settingsQ.data?.publicBase ?? "https://aka.synozur.com"}
+                  </code>
+                </div>
+                <div>
+                  Additional hosts:{" "}
+                  <code className="font-mono">
+                    {settingsQ.data?.additionalHosts.length
+                      ? settingsQ.data.additionalHosts.join(", ")
+                      : "(none)"}
+                  </code>
+                </div>
+                <div>
+                  404 fallback URL:{" "}
+                  <code className="font-mono">
+                    {settingsQ.data?.fallbackUrl ?? "(none — show plain 404)"}
+                  </code>
+                </div>
+              </div>
+            </div>
+            {canWrite && (
+              <Button variant="outline" size="sm" onClick={openSettings}>
+                Edit settings
+              </Button>
+            )}
+          </div>
+        </Card>
+
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Each link is served from <code className="font-mono">aka.synozur.com/&lt;slug&gt;</code>.
-            QR codes are branded with the Synozur mark.
+            Each link is served from{" "}
+            <code className="font-mono">
+              {settingsQ.data?.publicHost ?? "aka.synozur.com"}/&lt;slug&gt;
+            </code>
+            . QR codes are branded with the Synozur mark.
           </p>
           {canWrite && (
             <Button variant="outline" onClick={() => setImportOpen(true)}>
@@ -422,6 +553,56 @@ export default function AdminShortLinks() {
                 onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
               />
             </div>
+
+            {/* OG override fields. When any are set, social-bot crawlers
+                hitting the short URL get an HTML preview built from these
+                values instead of the 302 — humans still get the redirect. */}
+            <details className="rounded-md border border-input/60 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Social preview (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="og-title">OG title</Label>
+                    <Input
+                      id="og-title"
+                      placeholder="Holidays at Synozur — 2025 calendar"
+                      value={draft.ogTitle ?? ""}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, ogTitle: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="og-image">OG image URL or path</Label>
+                    <Input
+                      id="og-image"
+                      placeholder="https://… or /images/og/holidays.png"
+                      value={draft.ogImageUrl ?? ""}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="og-description">OG description</Label>
+                  <Textarea
+                    id="og-description"
+                    rows={2}
+                    placeholder="Short copy that appears under the title in unfurls."
+                    value={draft.ogDescription ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        ogDescription: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </details>
           </Card>
         )}
 
@@ -627,6 +808,49 @@ export default function AdminShortLinks() {
                 onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
               />
             </div>
+            <details className="rounded-md border border-input/60 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Social preview (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <Label htmlFor="edit-og-title">OG title</Label>
+                  <Input
+                    id="edit-og-title"
+                    value={(editDraft.ogTitle as string | undefined) ?? ""}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({ ...d, ogTitle: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-og-description">OG description</Label>
+                  <Textarea
+                    id="edit-og-description"
+                    rows={2}
+                    value={
+                      (editDraft.ogDescription as string | undefined) ?? ""
+                    }
+                    onChange={(e) =>
+                      setEditDraft((d) => ({
+                        ...d,
+                        ogDescription: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-og-image">OG image URL or path</Label>
+                  <Input
+                    id="edit-og-image"
+                    value={(editDraft.ogImageUrl as string | undefined) ?? ""}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            </details>
             <div className="flex items-center gap-2">
               <Switch
                 id="edit-active"
@@ -745,6 +969,81 @@ export default function AdminShortLinks() {
 
       {/* Stats dialog */}
       <StatsDialog target={statsTarget} onClose={() => setStatsTarget(null)} />
+
+      {/* Settings dialog */}
+      <Dialog
+        open={settingsOpen}
+        onOpenChange={(open) => {
+          if (!open) setSettingsOpen(false);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Short-link service settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="settings-publicBase">Public base URL</Label>
+              <Input
+                id="settings-publicBase"
+                placeholder="https://aka.synozur.com"
+                value={settingsDraft.publicBase}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({ ...s, publicBase: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Embedded in QR codes and copy-to-clipboard. Leave blank to use
+                the default <code className="font-mono">https://aka.synozur.com</code>.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="settings-additionalHosts">
+                Additional hostnames (comma-separated)
+              </Label>
+              <Input
+                id="settings-additionalHosts"
+                placeholder="aka.localhost, go.synozur.com"
+                value={settingsDraft.additionalHosts}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({
+                    ...s,
+                    additionalHosts: e.target.value,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Hostnames besides the one parsed from the public base URL that
+                the redirect middleware should treat as a short-link host.
+                Useful for staging aliases or local-dev.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="settings-fallbackUrl">404 fallback URL</Label>
+              <Input
+                id="settings-fallbackUrl"
+                placeholder="https://www.synozur.com"
+                value={settingsDraft.fallbackUrl}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({ ...s, fallbackUrl: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Surfaced as a "Go to ___" button on the 404 page when an
+                unknown slug is requested. Leave blank to suppress the button.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={onSaveSettings} disabled={settingsMut.isPending}>
+              {settingsMut.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

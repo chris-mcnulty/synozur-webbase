@@ -5,16 +5,18 @@ import {
   db,
   shortLinksTable,
   shortLinkClicksTable,
+  siteSettingsTable,
   type ShortLink,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import {
   generateBrandedQrPng,
+  getShortLinkSettings,
   invalidateShortLinkCache,
+  invalidateShortLinkSettingsCache,
   isValidSlug,
   normalizeSlug,
-  publicShortUrl,
 } from "../lib/shortLinks";
 import { parseCsvAsObjects } from "../lib/csv";
 
@@ -23,7 +25,7 @@ const router: IRouter = Router();
 const readGuard = [requireAuth];
 const adminGuard = [requireAuth, requireRole("admin", "editor")];
 
-function serialize(row: ShortLink) {
+function serialize(row: ShortLink, publicBase: string) {
   return {
     id: row.id,
     slug: row.slug,
@@ -36,7 +38,10 @@ function serialize(row: ShortLink) {
     hitCount: row.hitCount,
     lastClickAt: row.lastClickAt ? row.lastClickAt.toISOString() : null,
     rebrandlyId: row.rebrandlyId,
-    publicUrl: publicShortUrl(row.slug),
+    ogTitle: row.ogTitle,
+    ogDescription: row.ogDescription,
+    ogImageUrl: row.ogImageUrl,
+    publicUrl: `${publicBase}/${row.slug}`,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -67,6 +72,17 @@ const statusCodeShape = z
   .union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)])
   .optional();
 
+// `ogImageUrl` may be a fully-qualified URL or a site-relative path
+// beginning with `/`. We don't enforce `.url()` so admins can reference
+// an asset under `/api/storage/...` without retyping the origin.
+const ogImageShape = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine((v) => /^https?:\/\//i.test(v) || v.startsWith("/"), {
+    message: "OG image must be a full URL or a site-relative path",
+  });
+
 const CreateBody = z.object({
   slug: slugShape,
   targetUrl: targetUrlShape,
@@ -75,15 +91,21 @@ const CreateBody = z.object({
   statusCode: statusCodeShape,
   active: z.boolean().optional(),
   tags: z.array(z.string().max(64)).max(32).optional(),
+  ogTitle: z.string().max(200).nullish(),
+  ogDescription: z.string().max(500).nullish(),
+  ogImageUrl: ogImageShape.nullish(),
 });
 const UpdateBody = CreateBody.partial();
 
 router.get("/cms/short-links", ...readGuard, async (_req, res) => {
-  const rows = await db
-    .select()
-    .from(shortLinksTable)
-    .orderBy(desc(shortLinksTable.updatedAt), asc(shortLinksTable.slug));
-  res.json({ items: rows.map(serialize) });
+  const [rows, settings] = await Promise.all([
+    db
+      .select()
+      .from(shortLinksTable)
+      .orderBy(desc(shortLinksTable.updatedAt), asc(shortLinksTable.slug)),
+    getShortLinkSettings(),
+  ]);
+  res.json({ items: rows.map((r: ShortLink) => serialize(r, settings.publicBase)) });
 });
 
 router.post("/cms/short-links", ...adminGuard, async (req, res) => {
@@ -110,6 +132,9 @@ router.post("/cms/short-links", ...adminGuard, async (req, res) => {
       statusCode: d.statusCode ?? 302,
       active: d.active ?? true,
       tags: d.tags ?? null,
+      ogTitle: d.ogTitle ?? null,
+      ogDescription: d.ogDescription ?? null,
+      ogImageUrl: d.ogImageUrl ?? null,
       createdBy: req.authedUser?.id ?? null,
     })
     .returning();
@@ -120,7 +145,8 @@ router.post("/cms/short-links", ...adminGuard, async (req, res) => {
     entity: "short_link",
     entityId: row.id,
   });
-  res.status(201).json(serialize(row));
+  const settings = await getShortLinkSettings();
+  res.status(201).json(serialize(row, settings.publicBase));
 });
 
 router.patch("/cms/short-links/:id", ...adminGuard, async (req, res) => {
@@ -160,6 +186,10 @@ router.patch("/cms/short-links/:id", ...adminGuard, async (req, res) => {
   if (d.statusCode !== undefined) updates.statusCode = d.statusCode;
   if (d.active !== undefined) updates.active = d.active;
   if (d.tags !== undefined) updates.tags = d.tags;
+  if (d.ogTitle !== undefined) updates.ogTitle = d.ogTitle ?? null;
+  if (d.ogDescription !== undefined)
+    updates.ogDescription = d.ogDescription ?? null;
+  if (d.ogImageUrl !== undefined) updates.ogImageUrl = d.ogImageUrl ?? null;
   const [row] = await db
     .update(shortLinksTable)
     .set(updates)
@@ -173,7 +203,8 @@ router.patch("/cms/short-links/:id", ...adminGuard, async (req, res) => {
     entityId: id,
     diff: buildAuditDiff(existing as never, row as never),
   });
-  res.json(serialize(row));
+  const settings = await getShortLinkSettings();
+  res.json(serialize(row, settings.publicBase));
 });
 
 router.delete("/cms/short-links/:id", ...adminGuard, async (req, res) => {
@@ -194,6 +225,88 @@ router.delete("/cms/short-links/:id", ...adminGuard, async (req, res) => {
     entityId: id,
   });
   res.status(204).end();
+});
+
+// ---- Short-link service settings ------------------------------------------
+//
+// Three columns on `site_settings` configure the redirect host: the public
+// base URL (embedded in QR codes), the list of additional hostnames the
+// middleware should accept beyond the one parsed from `publicBase`, and
+// the fallback URL surfaced on the 404 page. Stored on `site_settings`
+// rather than in env vars so admins can flip them without a deploy.
+
+const SETTINGS_ROW_ID = 1;
+
+const SettingsBody = z.object({
+  // Either a full https URL or null to revert to the hard-coded default.
+  publicBase: z
+    .string()
+    .trim()
+    .max(512)
+    .url({ message: "Public base must be a full https URL" })
+    .nullish(),
+  // Bare hostnames; we strip whitespace + lowercase before storing.
+  additionalHosts: z
+    .array(z.string().trim().min(1).max(253))
+    .max(16)
+    .optional(),
+  // Where to send users from the 404 page; null hides the suggestion.
+  fallbackUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .url({ message: "Fallback URL must be a full URL" })
+    .nullish(),
+});
+
+router.get("/cms/short-links/settings", ...readGuard, async (_req, res) => {
+  const settings = await getShortLinkSettings();
+  res.json(settings);
+});
+
+router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
+  const parsed = SettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const cleanedHosts = (d.additionalHosts ?? []).map((h) => h.toLowerCase());
+  // Upsert against the singleton settings row. Mirrors the pattern in
+  // `routes/siteSettings.ts` — site_settings is keyed on id=1.
+  const [existing] = await db
+    .select()
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
+  if (!existing) {
+    await db.insert(siteSettingsTable).values({
+      id: SETTINGS_ROW_ID,
+      requireCookieConsent: false,
+      shortLinkPublicBase: d.publicBase ?? null,
+      shortLinkAdditionalHosts: cleanedHosts.length ? cleanedHosts : null,
+      shortLinkFallbackUrl: d.fallbackUrl ?? null,
+    });
+  } else {
+    await db
+      .update(siteSettingsTable)
+      .set({
+        shortLinkPublicBase: d.publicBase ?? null,
+        shortLinkAdditionalHosts: cleanedHosts.length ? cleanedHosts : null,
+        shortLinkFallbackUrl: d.fallbackUrl ?? null,
+      })
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
+  }
+  invalidateShortLinkSettingsCache();
+  await audit({
+    actorId: req.authedUser!.id,
+    action: "short_link.settings.update",
+    entity: "site_settings",
+    entityId: String(SETTINGS_ROW_ID),
+    diff: { publicBase: d.publicBase, additionalHosts: cleanedHosts, fallbackUrl: d.fallbackUrl },
+  });
+  res.json(await getShortLinkSettings());
 });
 
 // ---- CSV import (Rebrandly export) ----------------------------------------
@@ -369,7 +482,10 @@ router.get("/cms/short-links/:id/qr.png", ...readGuard, async (req, res) => {
     Math.min(2048, Number.parseInt(String(req.query.size ?? "512"), 10) || 512),
   );
   try {
-    const png = await generateBrandedQrPng(publicShortUrl(row.slug), { size });
+    const settings = await getShortLinkSettings();
+    const png = await generateBrandedQrPng(`${settings.publicBase}/${row.slug}`, {
+      size,
+    });
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "public, max-age=86400, immutable");
     res.send(png);

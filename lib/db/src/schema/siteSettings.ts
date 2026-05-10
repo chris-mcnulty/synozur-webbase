@@ -254,6 +254,24 @@ export const siteSettingsTable = pgTable("site_settings", {
   // falls back to a hard-coded default map.
   searchKindBoosts: jsonb("search_kind_boosts").$type<Record<string, number>>(),
 
+  // Branded short-link service (aka.synozur.com/<slug>) — admin-tunable so
+  // we don't ship hostnames or fallback URLs in env vars.
+  // `shortLinkPublicBase` is the canonical https origin embedded in QR
+  // codes and copied from the admin UI; null falls back to the hard-coded
+  // default `https://aka.synozur.com`. The hostname parsed from this value
+  // is automatically treated as a short-link host by the redirect
+  // middleware.
+  // `shortLinkAdditionalHosts` lists every extra hostname the redirect
+  // middleware should treat as a short-link host (in addition to the host
+  // parsed from `shortLinkPublicBase`). Useful for staging aliases or
+  // local-dev (`aka.localhost`).
+  // `shortLinkFallbackUrl` is the "where do you actually want to go?"
+  // suggestion offered on the 404 page when an unknown slug is requested.
+  // Null suppresses the suggestion entirely.
+  shortLinkPublicBase: text("short_link_public_base"),
+  shortLinkAdditionalHosts: jsonb("short_link_additional_hosts").$type<string[]>(),
+  shortLinkFallbackUrl: text("short_link_fallback_url"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

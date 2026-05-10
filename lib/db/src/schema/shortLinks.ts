@@ -36,6 +36,17 @@ export const shortLinksTable = pgTable(
     lastClickAt: timestamp("last_click_at", { withTimezone: true }),
     // Carried from Rebrandly exports so re-imports are idempotent.
     rebrandlyId: text("rebrandly_id"),
+    // Per-link OG override. When any of these are set, the redirect
+    // middleware serves a minimal HTML preview to social-bot user agents
+    // (LinkedIn / Slack / Twitter / etc.) instead of the 302, so unfurls
+    // show curated copy rather than whatever the destination chose to
+    // expose. Humans still get the redirect. All three fields are nullable;
+    // null falls back to a generic preview built from `title` + the
+    // destination URL. `ogImageUrl` may be a fully-qualified URL or a
+    // site-relative path beginning with `/`.
+    ogTitle: text("og_title"),
+    ogDescription: text("og_description"),
+    ogImageUrl: text("og_image_url"),
     createdBy: uuid("created_by").references(() => usersTable.id, {
       onDelete: "set null",
     }),
