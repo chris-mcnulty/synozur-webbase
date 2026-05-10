@@ -8,7 +8,7 @@ import {
   siteSettingsTable,
   type ShortLink,
 } from "@workspace/db";
-import { requireAuth, requireRole } from "../middlewares/auth";
+import { requireAuth, requireCapability } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import {
   generateBrandedQrPng,
@@ -22,8 +22,12 @@ import { parseCsvAsObjects } from "../lib/csv";
 
 const router: IRouter = Router();
 
-const readGuard = [requireAuth];
-const adminGuard = [requireAuth, requireRole("admin", "editor")];
+// Capability-based gating (preferred over role checks since #111). The
+// admin sidebar entry uses `site.manage`, so reads and writes are gated on
+// the same capability — capability remappings via the role/capability
+// admin survive without code changes here.
+const readGuard = [requireAuth, requireCapability("site.manage")];
+const adminGuard = [requireAuth, requireCapability("site.manage")];
 
 function serialize(row: ShortLink, publicBase: string) {
   return {
@@ -55,7 +59,7 @@ const slugShape = z
   .transform((v) => normalizeSlug(v))
   .refine((v) => isValidSlug(v), {
     message:
-      "Slug must start with a letter or digit and contain only [a-z0-9._-/].",
+      "Slug must start with a letter or digit and contain only [a-z0-9._-]. Slashes aren't supported.",
   });
 
 const targetUrlShape = z
@@ -237,26 +241,39 @@ router.delete("/cms/short-links/:id", ...adminGuard, async (req, res) => {
 
 const SETTINGS_ROW_ID = 1;
 
-const SettingsBody = z.object({
-  // Either a full https URL or null to revert to the hard-coded default.
-  publicBase: z
+// `.url()` accepts any well-formed URL scheme (mailto:, ftp://, etc.).
+// QR codes and unfurls only behave correctly when the public base is
+// https, and the fallback should be a real http(s) destination, so both
+// shapes layer a protocol refinement on top of the URL parse. Builder
+// keeps the per-field max length composable.
+function urlWithSchemes(maxLen: number, schemes: ReadonlyArray<"http:" | "https:">) {
+  return z
     .string()
     .trim()
-    .max(512)
-    .url({ message: "Public base must be a full https URL" })
-    .nullish(),
+    .max(maxLen)
+    .url()
+    .refine(
+      (v) => {
+        try {
+          return schemes.includes(new URL(v).protocol as "http:" | "https:");
+        } catch {
+          return false;
+        }
+      },
+      { message: `Must be a ${schemes.map((s) => s.replace(":", "")).join(" or ")} URL` },
+    );
+}
+
+const SettingsBody = z.object({
+  // Full https URL or null to revert to the hard-coded default.
+  publicBase: urlWithSchemes(512, ["https:"]).nullish(),
   // Bare hostnames; we strip whitespace + lowercase before storing.
   additionalHosts: z
     .array(z.string().trim().min(1).max(253))
     .max(16)
     .optional(),
   // Where to send users from the 404 page; null hides the suggestion.
-  fallbackUrl: z
-    .string()
-    .trim()
-    .max(2048)
-    .url({ message: "Fallback URL must be a full URL" })
-    .nullish(),
+  fallbackUrl: urlWithSchemes(2048, ["http:", "https:"]).nullish(),
 });
 
 router.get("/cms/short-links/settings", ...readGuard, async (_req, res) => {
@@ -487,7 +504,12 @@ router.get("/cms/short-links/:id/qr.png", ...readGuard, async (req, res) => {
       size,
     });
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+    // Short TTL + must-revalidate (no `immutable`) because the QR payload
+    // depends on `settings.publicBase`, which admins can flip from the
+    // settings card. 5 min absorbs hot-path repeats (e.g. embedding the
+    // QR in multiple admin views) without making a base-URL change wait
+    // hours to propagate to printed collateral previews.
+    res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
     res.send(png);
   } catch (err) {
     res

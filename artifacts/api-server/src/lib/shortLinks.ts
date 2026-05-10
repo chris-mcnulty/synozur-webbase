@@ -60,6 +60,10 @@ function safeHostFromUrl(raw: string | null | undefined): string | null {
 }
 
 async function loadSettings(): Promise<ResolvedSettings> {
+  // `site_settings` is treated as a singleton row pinned at id=1 across the
+  // codebase (see `routes/siteSettings.ts#SETTINGS_ID`). Querying by id
+  // keeps us aligned with that contract instead of relying on insertion
+  // order.
   const [row] = await db
     .select({
       publicBase: siteSettingsTable.shortLinkPublicBase,
@@ -67,6 +71,7 @@ async function loadSettings(): Promise<ResolvedSettings> {
       fallbackUrl: siteSettingsTable.shortLinkFallbackUrl,
     })
     .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1))
     .limit(1);
   const publicBase = (row?.publicBase ?? DEFAULT_PUBLIC_BASE).replace(
     /\/+$/,
@@ -150,11 +155,13 @@ export async function getShortLinkSettings(): Promise<{
 
 // ─── Slug helpers ───────────────────────────────────────────────────────────
 
-// Slug rules: Rebrandly accepts `[a-zA-Z0-9-_./]+`. We collapse case (slugs
-// match case-insensitively) and forbid characters that would change URL
-// semantics (`?`, `#`, whitespace). Keeps existing Rebrandly slugs valid
-// while preventing surprises like `/Foo` and `/foo` resolving differently.
-const SLUG_RE = /^[a-z0-9][a-z0-9._\-/]{0,127}$/;
+// Slug rules: lower-cased, must start with a letter or digit, then any of
+// `[a-z0-9._-]`. We deliberately disallow `/` even though Rebrandly accepts
+// it: the redirect middleware resolves the first path segment only, so a
+// nested slug like `foo/bar` would parse as the slug `foo` at request time
+// and the row would be unreachable. Keeping the validator and the
+// middleware in sync prevents creating links that can never be served.
+const SLUG_RE = /^[a-z0-9][a-z0-9._\-]{0,127}$/;
 
 export function normalizeSlug(raw: string): string {
   return raw.trim().replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();

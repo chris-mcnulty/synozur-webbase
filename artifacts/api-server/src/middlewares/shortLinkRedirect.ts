@@ -29,6 +29,32 @@ function firstSegment(path: string): string | null {
   return slash === -1 ? trimmed : trimmed.slice(0, slash);
 }
 
+// Merge the inbound query string into the destination URL. Naively
+// concatenating the inbound `?...` works only when the target has none of
+// its own; if the target is `https://example.com/path?utm=x` we'd produce
+// `...path?utm=x?foo=bar`, which most clients reject. Using URLSearchParams
+// preserves both sides correctly, with inbound params winning on key
+// collisions so a campaign-link override always reaches the destination.
+function mergeQuery(targetUrl: string, originalUrl: string): string {
+  const qIdx = originalUrl.indexOf("?");
+  if (qIdx === -1) return targetUrl;
+  const inboundQs = originalUrl.slice(qIdx + 1);
+  if (!inboundQs) return targetUrl;
+  try {
+    const out = new URL(targetUrl);
+    const inbound = new URLSearchParams(inboundQs);
+    inbound.forEach((value, key) => {
+      out.searchParams.set(key, value);
+    });
+    return out.toString();
+  } catch {
+    // Target wasn't a parseable absolute URL — fall back to the previous
+    // behaviour so we still send the user somewhere useful.
+    const sep = targetUrl.includes("?") ? "&" : "?";
+    return `${targetUrl}${sep}${inboundQs}`;
+  }
+}
+
 // Express middleware — runs before any other routing. When the request
 // lands on a configured short-link host (default `aka.synozur.com`):
 //   - GET/HEAD `/<slug>` → 302 to the slug's target (or per-row code).
@@ -148,10 +174,6 @@ export function shortLinkRedirectMiddleware() {
         return;
       }
 
-      const qs = req.originalUrl.includes("?")
-        ? req.originalUrl.slice(req.originalUrl.indexOf("?"))
-        : "";
-
       // Fire-and-forget click recording so the redirect itself doesn't
       // wait on the audit insert. Capture the request context up front
       // because `req` properties (especially `ip`) are tied to the
@@ -165,7 +187,7 @@ export function shortLinkRedirectMiddleware() {
         sessionHash: null,
       });
 
-      res.redirect(hit.statusCode, hit.targetUrl + qs);
+      res.redirect(hit.statusCode, mergeQuery(hit.targetUrl, req.originalUrl));
     } catch (err) {
       logger.error({ err, path }, "short-links: middleware error");
       // On error, prefer a 502 over leaking through to the marketing site —
