@@ -202,9 +202,11 @@ test("normalize-then-validate accepts the inputs it's expected to", () => {
 // projection (slashtag→slug, destination→targetUrl, description→notes,
 // clicks→hitCount, lastClickAt→Date) so a Rebrandly schema rename or a
 // silent change to the mapper is caught before it ships and corrupts an
-// import. We deliberately do NOT carry Rebrandly tags into our `tags`
-// column — the column exists for future use but the product doesn't
-// surface tags in the admin UI today, so importing them adds noise.
+// import. The admin UI does expose a tags input on each short-link row,
+// but the team isn't actively using tags as a workflow today — so the
+// Rebrandly importer deliberately leaves them out rather than dragging
+// every Rebrandly link's tag list into our `tags` column unsolicited.
+// If tags become first-class later, add them back to this mapper.
 
 interface RebrandlyLinkLike {
   id?: string;

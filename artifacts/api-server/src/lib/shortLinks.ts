@@ -218,7 +218,12 @@ async function loadShortLinks(): Promise<Map<string, CacheEntry>> {
     .where(eq(shortLinksTable.active, true));
   const map = new Map<string, CacheEntry>();
   for (const r of rows) {
-    map.set(r.slug, {
+    // Key by the *normalized* slug so the cache lookup matches whatever
+    // `lookupShortLink()` produces from the inbound URL. The route layer
+    // normalizes on insert/update, but importers and DB-level edits can
+    // still land mixed-case or slash-wrapped values; without this we'd
+    // silently miss those rows at redirect time.
+    map.set(normalizeSlug(r.slug), {
       id: r.id,
       targetUrl: r.targetUrl,
       statusCode: r.statusCode,

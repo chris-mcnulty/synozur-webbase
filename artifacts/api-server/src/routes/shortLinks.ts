@@ -424,7 +424,18 @@ async function applyImportRows(
   opts: ApplyImportOpts,
   summary: ImportSummary,
 ): Promise<void> {
-  const slugs = validated.map((v) => v.slug);
+  // Dedupe within the batch so a CSV/Rebrandly source that lists the
+  // same slug twice doesn't try to INSERT the second occurrence and hit
+  // a unique-constraint error. Last-write-wins matches what an editor
+  // intuitively expects from "fixed up the spreadsheet, re-uploaded."
+  // We keep the original sourceRow on the row that survives so error
+  // messages still cite a real line; collapsed duplicates are silently
+  // discarded.
+  const dedupedBySlug = new Map<string, ValidatedImportRow>();
+  for (const v of validated) dedupedBySlug.set(v.slug, v);
+  const deduped = [...dedupedBySlug.values()];
+
+  const slugs = deduped.map((v) => v.slug);
   const existingRows: ShortLink[] = slugs.length
     ? await db
         .select()
@@ -435,7 +446,7 @@ async function applyImportRows(
     existingRows.map((r) => [r.slug, r]),
   );
 
-  for (const v of validated) {
+  for (const v of deduped) {
     try {
       const existing = existingBySlug.get(v.slug);
       if (existing) {
@@ -461,19 +472,27 @@ async function applyImportRows(
           .where(eq(shortLinksTable.id, existing.id));
         summary.updated++;
       } else {
-        await db.insert(shortLinksTable).values({
-          slug: v.slug,
-          targetUrl: v.targetUrl,
-          title: v.title ?? null,
-          notes: v.notes ?? null,
-          statusCode: 302,
-          active: opts.defaultActive,
-          tags: v.tags ?? null,
-          rebrandlyId: v.rebrandlyId ?? null,
-          hitCount: v.hitCount ?? 0,
-          lastClickAt: v.lastClickAt ?? null,
-          createdBy: opts.createdBy,
-        });
+        const [inserted] = await db
+          .insert(shortLinksTable)
+          .values({
+            slug: v.slug,
+            targetUrl: v.targetUrl,
+            title: v.title ?? null,
+            notes: v.notes ?? null,
+            statusCode: 302,
+            active: opts.defaultActive,
+            tags: v.tags ?? null,
+            rebrandlyId: v.rebrandlyId ?? null,
+            hitCount: v.hitCount ?? 0,
+            lastClickAt: v.lastClickAt ?? null,
+            createdBy: opts.createdBy,
+          })
+          .returning();
+        // Belt-and-suspenders for the dedupe step above: if a future
+        // change ever drops the upfront dedupe, recording the freshly
+        // inserted row here keeps a same-batch second occurrence on the
+        // update path instead of a duplicate insert.
+        if (inserted) existingBySlug.set(inserted.slug, inserted);
         summary.imported++;
       }
     } catch (err) {

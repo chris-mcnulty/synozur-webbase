@@ -546,8 +546,17 @@ export default function AdminShortLinks() {
               </div>
             </div>
             {canWrite && (
-              <Button variant="outline" size="sm" onClick={openSettings}>
-                Edit settings
+              // Disabled until the settings query resolves — otherwise
+              // the dialog seeds blank values from `settingsQ.data` and
+              // a save would clobber publicBase / fallbackUrl / hosts
+              // back to null.
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openSettings}
+                disabled={!settingsQ.data}
+              >
+                {settingsQ.isLoading ? "Loading…" : "Edit settings"}
               </Button>
             )}
           </div>
@@ -1219,29 +1228,57 @@ export default function AdminShortLinks() {
               <Label htmlFor="settings-rebrandly-key">
                 Rebrandly API key
               </Label>
-              <Input
-                id="settings-rebrandly-key"
-                type="password"
-                autoComplete="off"
-                placeholder={
-                  settingsQ.data?.rebrandlyApiKeyMasked
-                    ? `Currently set: ${settingsQ.data.rebrandlyApiKeyMasked} (leave blank to keep)`
-                    : "Paste your Rebrandly API key"
-                }
-                value={settingsDraft.rebrandlyApiKey}
-                onChange={(e) =>
-                  setSettingsDraft((s) => ({
-                    ...s,
-                    rebrandlyApiKey: e.target.value,
-                    rebrandlyApiKeyTouched: true,
-                  }))
-                }
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="settings-rebrandly-key"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={
+                    settingsQ.data?.rebrandlyApiKeyMasked
+                      ? `Currently set: ${settingsQ.data.rebrandlyApiKeyMasked}`
+                      : "Paste your Rebrandly API key"
+                  }
+                  value={settingsDraft.rebrandlyApiKey}
+                  onChange={(e) =>
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      rebrandlyApiKey: e.target.value,
+                      rebrandlyApiKeyTouched: true,
+                    }))
+                  }
+                />
+                {settingsQ.data?.rebrandlyApiKeyMasked && (
+                  // Explicit clear control. Marks the field touched and
+                  // empty so onSaveSettings sends `rebrandlyApiKey: ""`,
+                  // which the server treats as a deliberate clear.
+                  // Avoids the previous "type a single space" trick.
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setSettingsDraft((s) => ({
+                        ...s,
+                        rebrandlyApiKey: "",
+                        rebrandlyApiKeyTouched: true,
+                      }))
+                    }
+                  >
+                    Clear key
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Used by the "Import from Rebrandly API" flow. Leaving the
-                field blank on save keeps the existing key. To clear the
-                key, type a single space and save (the trim discards it
-                server-side, leaving the column null).
+                Used by the "Import from Rebrandly API" flow. Leave this
+                field blank on save to keep the existing key; type a new
+                value to rotate it; or use <strong>Clear key</strong> to
+                remove it.
+                {settingsDraft.rebrandlyApiKeyTouched &&
+                  settingsDraft.rebrandlyApiKey === "" &&
+                  settingsQ.data?.rebrandlyApiKeyMasked && (
+                    <span className="block text-destructive mt-1">
+                      Saving will clear the stored key.
+                    </span>
+                  )}
               </p>
             </div>
           </div>
