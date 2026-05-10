@@ -30,6 +30,30 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
+      // Short-link host redirect — must run BEFORE React or any other script.
+      // Replit's path-based proxy routes aka.synozur.com/cfmtest to this SPA
+      // (because the SPA claims "/") instead of the api-server. This snippet
+      // detects the branded short-link hostname and immediately redirects the
+      // browser to /api/r/<slug>, where the api-server performs the real lookup
+      // and issues a proper HTTP redirect (with click recording and OG support
+      // for social bots that DO execute JavaScript).
+      (function () {
+        var SHORTLINK_HOST = "aka.synozur.com";
+        var PASSTHROUGH = [
+          "api", "admin", "galaxy", "images", "assets", "favicon.ico",
+          "robots.txt", "sitemap.xml", ".well-known"
+        ];
+        if (window.location.hostname === SHORTLINK_HOST) {
+          var seg = window.location.pathname.replace(/^\/+/, "").split("/")[0];
+          if (seg && PASSTHROUGH.indexOf(seg.toLowerCase()) === -1) {
+            window.location.replace(
+              "/api/r/" + encodeURIComponent(seg) + window.location.search
+            );
+          }
+        }
+      })();
+    </script>
+    <script>
       // Pre-hydration: apply the user's saved theme to <html> BEFORE React mounts
       // so the body background never flashes light during route transitions or
       // initial paint. Mirrors the logic in src/context/theme.tsx — explicit

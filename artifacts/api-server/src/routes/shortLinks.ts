@@ -17,12 +17,110 @@ import {
   invalidateShortLinkCache,
   invalidateShortLinkSettingsCache,
   isValidSlug,
+  lookupShortLink,
   normalizeSlug,
+  recordClick,
+  renderShortLinkNotFoundHtml,
+  renderShortLinkOgHtml,
 } from "../lib/shortLinks";
+import { detectBot } from "../lib/traffic";
 import { parseCsvAsObjects } from "../lib/csv";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+// ---- Public redirect endpoint (/api/r/:slug) --------------------------------
+//
+// Replit routes traffic by path prefix, not by hostname. Short-link slugs sit
+// at the root of aka.synozur.com (e.g. aka.synozur.com/cfmtest), but the
+// api-server artifact only claims /api, /.well-known, and /oauth — so bare
+// slug requests land on the SPA's static server instead of here.
+//
+// The SPA's index.html contains a blocking script that detects the aka
+// hostname and immediately redirects to /api/r/<slug> before React mounts.
+// This endpoint performs the actual lookup and redirect — the same logic as
+// shortLinkRedirectMiddleware minus the hostname guard (which is irrelevant
+// because the path is already /api/r/<slug>).
+//
+// NOTE: Social bots that skip JavaScript receive the SPA's index.html and
+// won't see curated OG preview HTML when a short link has OG overrides set.
+// The long-term fix is to make the api-server claim path "/" in its artifact
+// routing so all aka.synozur.com traffic hits the middleware server-side.
+function mergeSlugQuery(targetUrl: string, originalUrl: string): string {
+  const qIdx = originalUrl.indexOf("?");
+  if (qIdx === -1) return targetUrl;
+  const inboundQs = originalUrl.slice(qIdx + 1);
+  if (!inboundQs) return targetUrl;
+  try {
+    const out = new URL(targetUrl);
+    new URLSearchParams(inboundQs).forEach((v, k) => out.searchParams.set(k, v));
+    return out.toString();
+  } catch {
+    const sep = targetUrl.includes("?") ? "&" : "?";
+    return `${targetUrl}${sep}${inboundQs}`;
+  }
+}
+
+router.get("/r/:slug", async (req, res) => {
+  const raw = String(req.params.slug ?? "").trim().toLowerCase();
+  if (!raw || !isValidSlug(raw)) {
+    res.status(404).type("text/plain").send("Not found");
+    return;
+  }
+  try {
+    const hit = await lookupShortLink(raw);
+    if (!hit) {
+      const settings = await getShortLinkSettings();
+      res.status(404).setHeader("Content-Type", "text/html; charset=utf-8").send(
+        renderShortLinkNotFoundHtml({
+          slug: raw,
+          fallbackUrl: settings.fallbackUrl,
+          publicBase: settings.publicBase,
+        }),
+      );
+      return;
+    }
+
+    const ua = req.get("user-agent") ?? "";
+    const bot = detectBot(ua);
+    const hasOgOverride = !!hit.ogTitle || !!hit.ogDescription || !!hit.ogImageUrl;
+
+    if (req.method === "GET" && bot.isBot && bot.botCategory === "social" && hasOgOverride) {
+      const settings = await getShortLinkSettings();
+      res.status(200)
+        .setHeader("Content-Type", "text/html; charset=utf-8")
+        .setHeader("Cache-Control", "public, max-age=300, s-maxage=300")
+        .send(
+          renderShortLinkOgHtml({
+            url: `${settings.publicBase}/${raw}`,
+            title: hit.ogTitle || hit.title || `${settings.publicBase}/${raw}`,
+            description: hit.ogDescription || hit.targetUrl,
+            image: hit.ogImageUrl,
+          }),
+        );
+      void recordClick(hit.id, {
+        ip: req.ip ?? null,
+        userAgent: ua,
+        referrer: req.get("referer") ?? req.get("referrer") ?? null,
+        country: (req.get("cf-ipcountry") || req.get("x-vercel-ip-country")) ?? null,
+        sessionHash: null,
+      });
+      return;
+    }
+
+    void recordClick(hit.id, {
+      ip: req.ip ?? null,
+      userAgent: ua,
+      referrer: req.get("referer") ?? req.get("referrer") ?? null,
+      country: (req.get("cf-ipcountry") || req.get("x-vercel-ip-country")) ?? null,
+      sessionHash: null,
+    });
+    res.redirect(hit.statusCode, mergeSlugQuery(hit.targetUrl, req.originalUrl));
+  } catch (err) {
+    logger.error({ err, slug: raw }, "short-links: /api/r/:slug error");
+    res.status(502).type("text/plain").send("Short-link service temporarily unavailable.");
+  }
+});
 
 // Capability-based gating (preferred over role checks since #111). The
 // admin sidebar entry uses `site.manage`, so reads and writes are gated on
