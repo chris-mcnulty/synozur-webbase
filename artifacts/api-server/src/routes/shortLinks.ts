@@ -1032,6 +1032,75 @@ function resolveImageUrl(
   }
 }
 
+const OG_FETCH_MAX_REDIRECTS = 5;
+
+// We deliberately do NOT use `fetch`'s built-in redirect follower. It
+// resolves redirect chains without giving us a chance to validate each
+// hop, so a public URL that 30x'es to http://127.0.0.1/... would still
+// be fetched. Manually following lets us re-check every hop against
+// `isProbablyPrivateHost` and refuse non-http(s) schemes.
+//
+// Note this is hostname-string-based and not DNS-resolution-based, so
+// a public hostname that resolves to a private IP can still slip
+// through. The endpoint is admin-only and the admin already trusts
+// these target URLs enough to publish them — DNS-rebinding-grade
+// protection is intentionally out of scope.
+async function fetchHtmlWithSafeRedirects(
+  initialUrl: URL,
+  signal: AbortSignal,
+): Promise<{ resp: Response; finalUrl: URL }> {
+  let currentUrl = initialUrl;
+  for (let hop = 0; hop <= OG_FETCH_MAX_REDIRECTS; hop++) {
+    if (!/^https?:$/i.test(currentUrl.protocol)) {
+      throw new Error(
+        `Refusing redirect to non-http(s) scheme: ${currentUrl.protocol}`,
+      );
+    }
+    if (isProbablyPrivateHost(currentUrl.hostname)) {
+      throw new Error(
+        "Refusing to fetch private / loopback hosts (including redirect hops).",
+      );
+    }
+    const resp = await fetch(currentUrl, {
+      method: "GET",
+      redirect: "manual",
+      signal,
+      headers: {
+        "User-Agent": OG_FETCH_USER_AGENT,
+        // Some sites gate OG metadata behind an Accept that includes
+        // text/html. A few CDNs return JSON to bot-y user agents
+        // otherwise.
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (resp.status >= 300 && resp.status < 400) {
+      const location = resp.headers.get("location");
+      // Drain the redirect body so the underlying connection can be
+      // returned to the pool.
+      try {
+        await resp.body?.cancel();
+      } catch {
+        // ignore
+      }
+      if (!location) {
+        // Redirect without a Location header — treat as terminal so the
+        // caller can decide what to do.
+        return { resp, finalUrl: currentUrl };
+      }
+      let nextUrl: URL;
+      try {
+        nextUrl = new URL(location, currentUrl);
+      } catch {
+        throw new Error("Redirect target was not a valid URL.");
+      }
+      currentUrl = nextUrl;
+      continue;
+    }
+    return { resp, finalUrl: currentUrl };
+  }
+  throw new Error(`Exceeded ${OG_FETCH_MAX_REDIRECTS} redirects.`);
+}
+
 const PreviewBody = z.object({
   url: targetUrlShape,
 });
@@ -1070,19 +1139,14 @@ router.post(
       OG_FETCH_TIMEOUT_MS,
     );
     let resp: Response;
+    let finalUrl: URL;
     try {
-      resp = await fetch(parsedUrl, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": OG_FETCH_USER_AGENT,
-          // Some sites gate OG metadata behind an Accept that includes
-          // text/html. A few CDNs return JSON to bot-y user agents
-          // otherwise.
-          Accept: "text/html,application/xhtml+xml",
-        },
-      });
+      const result = await fetchHtmlWithSafeRedirects(
+        parsedUrl,
+        controller.signal,
+      );
+      resp = result.resp;
+      finalUrl = result.finalUrl;
     } catch (err) {
       clearTimeout(timer);
       const aborted =
@@ -1091,10 +1155,12 @@ router.post(
         { err, url: parsedUrl.toString() },
         "short-links: OG preview fetch failed",
       );
-      res.status(502).json({
-        error: aborted
-          ? "Target URL didn't respond in time."
-          : "Could not reach the target URL.",
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not reach the target URL.";
+      res.status(aborted ? 504 : 502).json({
+        error: aborted ? "Target URL didn't respond in time." : message,
       });
       return;
     }
@@ -1139,16 +1205,6 @@ router.post(
       html = await resp.text();
     }
 
-    // Use the URL we actually landed on (after redirects) as the base for
-    // resolving relative og:image paths.
-    const finalUrl = (() => {
-      try {
-        return new URL(resp.url || parsedUrl.toString());
-      } catch {
-        return parsedUrl;
-      }
-    })();
-
     // Limit our regex search to the first chunk of the document — OG
     // metadata always lives in <head>, and scanning a 256KB body for
     // every meta tag can be slow.
@@ -1172,17 +1228,41 @@ router.post(
     ]);
     const docTitle = pickTitle(headSlice);
 
+    // Resolve relative paths against the URL we actually landed on, then
+    // re-validate the host. The admin's browser would otherwise fetch
+    // whatever we return — an og:image pointing at a private host would
+    // bypass the server-side SSRF guard and leak into client-side
+    // requests.
+    let imageUrl: string | null = resolveImageUrl(ogImage, finalUrl);
+    let imageBlocked = false;
+    if (imageUrl) {
+      try {
+        const imgUrlObj = new URL(imageUrl);
+        if (
+          !/^https?:$/i.test(imgUrlObj.protocol) ||
+          isProbablyPrivateHost(imgUrlObj.hostname)
+        ) {
+          imageUrl = null;
+          imageBlocked = true;
+        }
+      } catch {
+        imageUrl = null;
+        imageBlocked = true;
+      }
+    }
+
     res.json({
       finalUrl: finalUrl.toString(),
       title: ogTitle || docTitle,
       description: ogDescription,
-      imageUrl: resolveImageUrl(ogImage, finalUrl),
+      imageUrl,
+      imageBlocked,
       // Hint the UI which fields actually came from OG vs the document
       // title fallback, so we can label them honestly.
       sources: {
         title: ogTitle ? "og" : docTitle ? "title" : null,
         description: ogDescription ? "og" : null,
-        imageUrl: ogImage ? "og" : null,
+        imageUrl: imageUrl && ogImage ? "og" : null,
       },
     });
   },

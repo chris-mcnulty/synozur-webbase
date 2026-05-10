@@ -272,6 +272,10 @@ interface TargetPreview {
   title: string | null;
   description: string | null;
   imageUrl: string | null;
+  // True if the server stripped an og:image because its host failed the
+  // private-host check. The UI surfaces this so the admin knows why no
+  // image is shown even though the page had one.
+  imageBlocked?: boolean;
   sources: {
     title: "og" | "title" | null;
     description: "og" | null;
@@ -1999,6 +2003,12 @@ function TargetPreviewPanel({
   ) => void;
   onDismiss: () => void;
 }) {
+  // We deliberately do NOT auto-load `<img src={preview.imageUrl}>`.
+  // The image URL comes from untrusted target metadata, so auto-loading
+  // would let the admin's browser issue arbitrary outbound requests
+  // (and bypass the server-side SSRF guard). The editor has to click
+  // "Show preview" to load it, which keeps the choice explicit.
+  const [imagePreviewLoaded, setImagePreviewLoaded] = useState(false);
   const titleAvailable = !!preview.title;
   const descAvailable = !!preview.description;
   const imageAvailable = !!preview.imageUrl;
@@ -2084,11 +2094,23 @@ function TargetPreviewPanel({
                 Image · og:image
               </div>
               <div className="mt-1 flex items-start gap-3">
-                <img
-                  src={preview.imageUrl!}
-                  alt="Target OG preview"
-                  className="h-16 w-28 shrink-0 rounded border bg-background object-cover"
-                />
+                {imagePreviewLoaded ? (
+                  <img
+                    src={preview.imageUrl!}
+                    alt="Target OG preview"
+                    className="h-16 w-28 shrink-0 rounded border bg-background object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setImagePreviewLoaded(true)}
+                    className="flex h-16 w-28 shrink-0 items-center justify-center rounded border border-dashed text-[10px] text-muted-foreground hover:bg-muted/40"
+                    title="Loads the image from the target host in your browser"
+                  >
+                    Show preview
+                  </button>
+                )}
                 <div className="min-w-0 flex-1">
                   <code className="block break-all text-xs text-muted-foreground">
                     {preview.imageUrl}
@@ -2113,6 +2135,12 @@ function TargetPreviewPanel({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+          {preview.imageBlocked && !imageAvailable && (
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
+              Target had an og:image, but its host was filtered as private
+              / loopback.
             </div>
           )}
         </div>
