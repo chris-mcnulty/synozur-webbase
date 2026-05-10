@@ -336,6 +336,48 @@ export default function AdminShortLinks() {
   const invalidateSettings = () =>
     qc.invalidateQueries({ queryKey: ["/api/cms/short-links/settings"] });
 
+  function escapeCsvField(value: string): string {
+    if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+    return value;
+  }
+
+  function downloadCsv() {
+    const headers = [
+      "slug", "publicUrl", "targetUrl", "statusCode", "active",
+      "hitCount", "lastClickAt", "title", "tags", "notes",
+      "ogTitle", "ogDescription", "ogImageUrl", "createdAt", "updatedAt",
+    ];
+    const rows = items.map((r) =>
+      [
+        r.slug,
+        r.publicUrl,
+        r.targetUrl,
+        String(r.statusCode),
+        r.active ? "true" : "false",
+        String(r.hitCount),
+        r.lastClickAt ?? "",
+        r.title ?? "",
+        (r.tags ?? []).join("; "),
+        r.notes ?? "",
+        r.ogTitle ?? "",
+        r.ogDescription ?? "",
+        r.ogImageUrl ?? "",
+        r.createdAt,
+        r.updatedAt,
+      ]
+        .map(escapeCsvField)
+        .join(","),
+    );
+    const csv = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `short-links-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const settingsMut = useMutation({
     mutationFn: saveSettings,
     onSuccess: () => {
@@ -618,21 +660,29 @@ export default function AdminShortLinks() {
             </code>
             . QR codes are branded with the Synozur mark.
           </p>
-          {canWrite && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setRebrandlyImportOpen(true)}
-              >
-                <Upload className="h-4 w-4 mr-1" />
-                Import from Rebrandly API
+          <div className="flex gap-2">
+            {items.length > 0 && (
+              <Button variant="outline" onClick={downloadCsv}>
+                <Download className="h-4 w-4 mr-1" />
+                Export CSV
               </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4 mr-1" />
-                Import CSV
-              </Button>
-            </div>
-          )}
+            )}
+            {canWrite && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setRebrandlyImportOpen(true)}
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Import from Rebrandly API
+                </Button>
+                <Button variant="outline" onClick={() => setImportOpen(true)}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Import CSV
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {canWrite && (
