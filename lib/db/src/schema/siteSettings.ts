@@ -271,6 +271,13 @@ export const siteSettingsTable = pgTable("site_settings", {
   shortLinkPublicBase: text("short_link_public_base"),
   shortLinkAdditionalHosts: jsonb("short_link_additional_hosts").$type<string[]>(),
   shortLinkFallbackUrl: text("short_link_fallback_url"),
+  // Rebrandly API key for the "Import from Rebrandly" admin flow. Stored in
+  // DB rather than env so admins can rotate keys without a redeploy. Never
+  // returned in plaintext from the settings GET endpoint — the route masks
+  // it to `last4` form (e.g. `••••dfa4`) and the PUT endpoint treats an
+  // omitted/empty `rebrandlyApiKey` as "leave the existing key alone" so
+  // accidentally re-saving the form doesn't clobber it.
+  shortLinkRebrandlyApiKey: text("short_link_rebrandly_api_key"),
 
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

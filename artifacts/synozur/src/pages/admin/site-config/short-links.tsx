@@ -94,12 +94,20 @@ interface ShortLinkSettings {
   publicHost: string;
   additionalHosts: string[];
   fallbackUrl: string | null;
+  // Masked render of the configured Rebrandly API key (e.g. `••••dfa4`),
+  // or null if no key is set. The raw key is never returned by the GET
+  // endpoint — admins re-paste the full value to rotate.
+  rebrandlyApiKeyMasked: string | null;
 }
 
 interface SettingsUpsertInput {
   publicBase: string | null;
   additionalHosts: string[];
   fallbackUrl: string | null;
+  // Omit the field entirely to leave the existing key alone (so a normal
+  // settings save doesn't clobber it). Empty string clears it. A non-empty
+  // string replaces it.
+  rebrandlyApiKey?: string;
 }
 
 interface ImportResponse {
@@ -192,6 +200,24 @@ async function importCsv(body: {
   });
 }
 
+interface RebrandlyImportResponse extends ImportResponse {
+  totalFetched: number;
+}
+
+async function importRebrandly(body: {
+  collisionPolicy: "skip" | "overwrite";
+  defaultActive: boolean;
+  domainId?: string;
+}): Promise<RebrandlyImportResponse> {
+  return apiFetch<RebrandlyImportResponse>(
+    "/api/cms/short-links/import-rebrandly",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
 async function fetchStats(id: string): Promise<StatsResponse> {
   return apiFetch<StatsResponse>(`/api/cms/short-links/${id}/stats`);
 }
@@ -235,7 +261,23 @@ export default function AdminShortLinks() {
     publicBase: string;
     additionalHosts: string;
     fallbackUrl: string;
-  }>({ publicBase: "", additionalHosts: "", fallbackUrl: "" });
+    rebrandlyApiKey: string;
+    // True once the editor has typed into the key field. We only send the
+    // key on save when this flag is set so the existing value isn't
+    // accidentally cleared by an empty input.
+    rebrandlyApiKeyTouched: boolean;
+  }>({
+    publicBase: "",
+    additionalHosts: "",
+    fallbackUrl: "",
+    rebrandlyApiKey: "",
+    rebrandlyApiKeyTouched: false,
+  });
+  const [rebrandlyImportOpen, setRebrandlyImportOpen] = useState(false);
+  const [rebrandlyDomainId, setRebrandlyDomainId] = useState("");
+  const [rebrandlyPolicy, setRebrandlyPolicy] = useState<
+    "skip" | "overwrite"
+  >("skip");
 
   const settingsQ = useQuery<ShortLinkSettings, Error>({
     queryKey: ["/api/cms/short-links/settings"],
@@ -266,6 +308,12 @@ export default function AdminShortLinks() {
       publicBase: s?.publicBase ?? "",
       additionalHosts: (s?.additionalHosts ?? []).join(", "),
       fallbackUrl: s?.fallbackUrl ?? "",
+      // Show the masked value in the input as a placeholder hint via the
+      // mask string in the dialog body; the field itself starts blank so
+      // an admin who's just opening the dialog doesn't accidentally type
+      // *into* the masked text.
+      rebrandlyApiKey: "",
+      rebrandlyApiKeyTouched: false,
     });
     setSettingsOpen(true);
   };
@@ -275,11 +323,15 @@ export default function AdminShortLinks() {
       .split(/[,;\s]+/)
       .map((h) => h.trim().toLowerCase())
       .filter(Boolean);
-    settingsMut.mutate({
+    const payload: SettingsUpsertInput = {
       publicBase: settingsDraft.publicBase.trim() || null,
       additionalHosts: additional,
       fallbackUrl: settingsDraft.fallbackUrl.trim() || null,
-    });
+    };
+    if (settingsDraft.rebrandlyApiKeyTouched) {
+      payload.rebrandlyApiKey = settingsDraft.rebrandlyApiKey.trim();
+    }
+    settingsMut.mutate(payload);
   };
 
   const createMut = useMutation({
@@ -330,6 +382,25 @@ export default function AdminShortLinks() {
     },
     onError: (e: Error) =>
       toast({ title: "Import failed", description: e.message, variant: "destructive" }),
+  });
+
+  const rebrandlyImportMut = useMutation({
+    mutationFn: importRebrandly,
+    onSuccess: (resp) => {
+      const { imported, updated, skipped, errors } = resp.summary;
+      toast({
+        title: "Rebrandly import complete",
+        description: `Fetched ${resp.totalFetched}; imported ${imported}, updated ${updated}, skipped ${skipped}, errors ${errors.length}.`,
+      });
+      setRebrandlyImportOpen(false);
+      invalidate();
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "Rebrandly import failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const items = listQ.data?.items ?? [];
@@ -416,6 +487,23 @@ export default function AdminShortLinks() {
     });
   };
 
+  const onImportRebrandly = () => {
+    if (!settingsQ.data?.rebrandlyApiKeyMasked) {
+      toast({
+        title: "Rebrandly API key isn't configured",
+        description:
+          "Open Edit settings and paste a Rebrandly API key first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    rebrandlyImportMut.mutate({
+      collisionPolicy: rebrandlyPolicy,
+      defaultActive: true,
+      domainId: rebrandlyDomainId.trim() || undefined,
+    });
+  };
+
   return (
     <AdminLayout
       title="Branded short links"
@@ -474,10 +562,19 @@ export default function AdminShortLinks() {
             . QR codes are branded with the Synozur mark.
           </p>
           {canWrite && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-1" />
-              Import from Rebrandly CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRebrandlyImportOpen(true)}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Import from Rebrandly API
+              </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-1" />
+                Import CSV
+              </Button>
+            </div>
           )}
         </div>
 
@@ -871,6 +968,91 @@ export default function AdminShortLinks() {
         </DialogContent>
       </Dialog>
 
+      {/* Rebrandly API import dialog */}
+      <Dialog
+        open={rebrandlyImportOpen}
+        onOpenChange={(open) => {
+          if (!open) setRebrandlyImportOpen(false);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import from Rebrandly API</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Fetches every link in the configured Rebrandly account and
+              upserts it into the local table. Slug, target URL, title,
+              description, lifetime click count, and last-click timestamp
+              all carry over. Per-day analytics start fresh from the
+              first scan after cutover.
+            </p>
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <strong>Heads-up:</strong> existing printed QR codes that
+              encode <code className="font-mono">aka.synozur.com/&lt;slug&gt;</code>{" "}
+              will keep working seamlessly after a DNS cutover. QR codes
+              that encode <code className="font-mono">rebrand.ly/...</code>{" "}
+              go dead the moment Rebrandly is disabled and need to be
+              reprinted.
+            </div>
+            <div>
+              <Label htmlFor="rebrandly-policy">On slug collision</Label>
+              <select
+                id="rebrandly-policy"
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={rebrandlyPolicy}
+                onChange={(e) =>
+                  setRebrandlyPolicy(
+                    e.target.value === "overwrite" ? "overwrite" : "skip",
+                  )
+                }
+              >
+                <option value="skip">Skip (keep existing)</option>
+                <option value="overwrite">Overwrite existing</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="rebrandly-domain-id">
+                Rebrandly domain ID (optional)
+              </Label>
+              <Input
+                id="rebrandly-domain-id"
+                placeholder="leave blank to import every domain"
+                value={rebrandlyDomainId}
+                onChange={(e) => setRebrandlyDomainId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Scopes the import to a single Rebrandly branded domain
+                (look up the ID in Rebrandly → Domains → API).
+              </p>
+            </div>
+            {!settingsQ.data?.rebrandlyApiKeyMasked && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                No Rebrandly API key is configured. Open{" "}
+                <strong>Edit settings</strong> and paste one first.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRebrandlyImportOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onImportRebrandly}
+              disabled={
+                rebrandlyImportMut.isPending ||
+                !settingsQ.data?.rebrandlyApiKeyMasked
+              }
+            >
+              {rebrandlyImportMut.isPending ? "Importing…" : "Import"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import dialog */}
       <Dialog
         open={importOpen}
@@ -1031,6 +1213,35 @@ export default function AdminShortLinks() {
               <p className="text-xs text-muted-foreground mt-1">
                 Surfaced as a "Go to ___" button on the 404 page when an
                 unknown slug is requested. Leave blank to suppress the button.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="settings-rebrandly-key">
+                Rebrandly API key
+              </Label>
+              <Input
+                id="settings-rebrandly-key"
+                type="password"
+                autoComplete="off"
+                placeholder={
+                  settingsQ.data?.rebrandlyApiKeyMasked
+                    ? `Currently set: ${settingsQ.data.rebrandlyApiKeyMasked} (leave blank to keep)`
+                    : "Paste your Rebrandly API key"
+                }
+                value={settingsDraft.rebrandlyApiKey}
+                onChange={(e) =>
+                  setSettingsDraft((s) => ({
+                    ...s,
+                    rebrandlyApiKey: e.target.value,
+                    rebrandlyApiKeyTouched: true,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Used by the "Import from Rebrandly API" flow. Leaving the
+                field blank on save keeps the existing key. To clear the
+                key, type a single space and save (the trim discards it
+                server-side, leaving the column null).
               </p>
             </div>
           </div>

@@ -2749,6 +2749,10 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS short_link_additional_hosts jsonb,
         ADD COLUMN IF NOT EXISTS short_link_fallback_url text;
     `);
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS short_link_rebrandly_api_key text;
+    `);
 
     logger.info("Startup migrations complete");
   } catch (err) {

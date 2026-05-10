@@ -12,6 +12,7 @@ import { requireAuth, requireCapability } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import {
   generateBrandedQrPng,
+  getRebrandlyApiKey,
   getShortLinkSettings,
   invalidateShortLinkCache,
   invalidateShortLinkSettingsCache,
@@ -19,6 +20,7 @@ import {
   normalizeSlug,
 } from "../lib/shortLinks";
 import { parseCsvAsObjects } from "../lib/csv";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -233,11 +235,16 @@ router.delete("/cms/short-links/:id", ...adminGuard, async (req, res) => {
 
 // ---- Short-link service settings ------------------------------------------
 //
-// Three columns on `site_settings` configure the redirect host: the public
-// base URL (embedded in QR codes), the list of additional hostnames the
-// middleware should accept beyond the one parsed from `publicBase`, and
-// the fallback URL surfaced on the 404 page. Stored on `site_settings`
-// rather than in env vars so admins can flip them without a deploy.
+// Four columns on `site_settings` configure the service:
+//   - `shortLinkPublicBase` — canonical https origin embedded in QR codes
+//   - `shortLinkAdditionalHosts` — extra hostnames the middleware accepts
+//   - `shortLinkFallbackUrl` — suggestion shown on the 404 page
+//   - `shortLinkRebrandlyApiKey` — used by the Rebrandly import handler
+// Stored on `site_settings` rather than in env vars so admins can flip
+// them without a deploy. The Rebrandly key is treated as a secret — the
+// GET response masks it to `••••<last4>` and the PUT shape only updates
+// it when the request explicitly carries `rebrandlyApiKey` (omitting the
+// key on a settings save leaves the existing value alone).
 
 const SETTINGS_ROW_ID = 1;
 
@@ -274,6 +281,10 @@ const SettingsBody = z.object({
     .optional(),
   // Where to send users from the 404 page; null hides the suggestion.
   fallbackUrl: urlWithSchemes(2048, ["http:", "https:"]).nullish(),
+  // Rebrandly API key. Omitted/undefined ⇒ leave existing value alone
+  // (so accidentally re-saving the form doesn't clobber the secret).
+  // Empty string ⇒ explicit clear. Otherwise stored verbatim.
+  rebrandlyApiKey: z.string().max(256).optional(),
 });
 
 router.get("/cms/short-links/settings", ...readGuard, async (_req, res) => {
@@ -291,6 +302,14 @@ router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
   }
   const d = parsed.data;
   const cleanedHosts = (d.additionalHosts ?? []).map((h) => h.toLowerCase());
+  // Resolve the Rebrandly key delta:
+  //   undefined ⇒ key field absent from request, leave existing alone
+  //   ""        ⇒ explicit clear
+  //   "<value>" ⇒ store verbatim
+  const keyDelta: { value: string | null } | null =
+    d.rebrandlyApiKey === undefined
+      ? null
+      : { value: d.rebrandlyApiKey === "" ? null : d.rebrandlyApiKey };
   // Upsert against the singleton settings row. Mirrors the pattern in
   // `routes/siteSettings.ts` — site_settings is keyed on id=1.
   const [existing] = await db
@@ -304,15 +323,18 @@ router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
       shortLinkPublicBase: d.publicBase ?? null,
       shortLinkAdditionalHosts: cleanedHosts.length ? cleanedHosts : null,
       shortLinkFallbackUrl: d.fallbackUrl ?? null,
+      shortLinkRebrandlyApiKey: keyDelta?.value ?? null,
     });
   } else {
+    const updates: Partial<typeof siteSettingsTable.$inferInsert> = {
+      shortLinkPublicBase: d.publicBase ?? null,
+      shortLinkAdditionalHosts: cleanedHosts.length ? cleanedHosts : null,
+      shortLinkFallbackUrl: d.fallbackUrl ?? null,
+    };
+    if (keyDelta) updates.shortLinkRebrandlyApiKey = keyDelta.value;
     await db
       .update(siteSettingsTable)
-      .set({
-        shortLinkPublicBase: d.publicBase ?? null,
-        shortLinkAdditionalHosts: cleanedHosts.length ? cleanedHosts : null,
-        shortLinkFallbackUrl: d.fallbackUrl ?? null,
-      })
+      .set(updates)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
   }
   invalidateShortLinkSettingsCache();
@@ -321,7 +343,13 @@ router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
     action: "short_link.settings.update",
     entity: "site_settings",
     entityId: String(SETTINGS_ROW_ID),
-    diff: { publicBase: d.publicBase, additionalHosts: cleanedHosts, fallbackUrl: d.fallbackUrl },
+    // Audit logs the *fact* that the key changed, never the value itself.
+    diff: {
+      publicBase: d.publicBase,
+      additionalHosts: cleanedHosts,
+      fallbackUrl: d.fallbackUrl,
+      rebrandlyApiKeyChanged: keyDelta !== null,
+    },
   });
   res.json(await getShortLinkSettings());
 });
@@ -341,6 +369,11 @@ const ImportRowSchema = z.object({
   notes: z.string().max(1000).nullish(),
   tags: z.array(z.string().max(64)).max(32).optional(),
   rebrandlyId: z.string().max(64).nullish(),
+  // Rebrandly importer carries lifetime click count + last-click timestamp
+  // forward so historical totals don't reset at cutover. CSV path leaves
+  // both undefined and the upsert step skips them.
+  hitCount: z.number().int().min(0).optional(),
+  lastClickAt: z.date().optional(),
 });
 
 const ImportBody = z.object({
@@ -356,6 +389,101 @@ interface ImportSummary {
   updated: number;
   skipped: number;
   errors: { row: number; slug?: string; error: string }[];
+}
+
+type ValidatedImportRow = z.infer<typeof ImportRowSchema> & {
+  // 1-based source line for error messages — CSV row number for the CSV
+  // importer, sequential index (1..N) for the Rebrandly importer.
+  sourceRow: number;
+};
+
+interface ApplyImportOpts {
+  collisionPolicy: "skip" | "overwrite";
+  defaultActive: boolean;
+  createdBy: string | null;
+}
+
+// Shared phase-2 upsert step used by both the CSV importer and the
+// Rebrandly API importer.
+//
+// Pre-loads every existing row whose slug appears in the validated batch
+// so the per-row write loop is O(1) DB calls per row instead of an extra
+// SELECT each time.
+//
+// Semantics are best-effort: rows that fail (e.g. unique-constraint
+// violations from a race, transient DB errors) are recorded in
+// `summary.errors` and the loop keeps going. Successful rows still
+// commit, which matches what an editor expects from a bulk import — a
+// single bad row in a 200-row import shouldn't roll back the other 199.
+// We do NOT wrap this in a `db.transaction()` because the per-row
+// try/catch would swallow errors inside the transaction and "rolls back
+// on partial failure" would be a lie. If we ever need true atomicity,
+// drop the per-row catch and let the first failure abort.
+async function applyImportRows(
+  validated: ValidatedImportRow[],
+  opts: ApplyImportOpts,
+  summary: ImportSummary,
+): Promise<void> {
+  const slugs = validated.map((v) => v.slug);
+  const existingRows: ShortLink[] = slugs.length
+    ? await db
+        .select()
+        .from(shortLinksTable)
+        .where(inArray(shortLinksTable.slug, slugs))
+    : [];
+  const existingBySlug = new Map<string, ShortLink>(
+    existingRows.map((r) => [r.slug, r]),
+  );
+
+  for (const v of validated) {
+    try {
+      const existing = existingBySlug.get(v.slug);
+      if (existing) {
+        if (opts.collisionPolicy === "skip") {
+          summary.skipped++;
+          continue;
+        }
+        const updates: Partial<typeof shortLinksTable.$inferInsert> = {
+          targetUrl: v.targetUrl,
+          title: v.title ?? null,
+          notes: v.notes ?? null,
+          tags: v.tags ?? null,
+          rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
+        };
+        // Carry-over fields: only set when the source actually provided
+        // them, so re-importing a CSV after a Rebrandly pull doesn't
+        // zero out the historical hitCount.
+        if (v.hitCount !== undefined) updates.hitCount = v.hitCount;
+        if (v.lastClickAt !== undefined) updates.lastClickAt = v.lastClickAt;
+        await db
+          .update(shortLinksTable)
+          .set(updates)
+          .where(eq(shortLinksTable.id, existing.id));
+        summary.updated++;
+      } else {
+        await db.insert(shortLinksTable).values({
+          slug: v.slug,
+          targetUrl: v.targetUrl,
+          title: v.title ?? null,
+          notes: v.notes ?? null,
+          statusCode: 302,
+          active: opts.defaultActive,
+          tags: v.tags ?? null,
+          rebrandlyId: v.rebrandlyId ?? null,
+          hitCount: v.hitCount ?? 0,
+          lastClickAt: v.lastClickAt ?? null,
+          createdBy: opts.createdBy,
+        });
+        summary.imported++;
+      }
+    } catch (err) {
+      summary.errors.push({
+        row: v.sourceRow,
+        slug: v.slug,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 }
 
 function pickField(
@@ -400,8 +528,7 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
   // in one pass and avoid issuing N round-trips to the DB just to
   // discover invalid input. The validated rows carry their original CSV
   // index so error messages still cite the right line.
-  type ValidatedRow = z.infer<typeof ImportRowSchema> & { csvRow: number };
-  const validated: ValidatedRow[] = [];
+  const validated: ValidatedImportRow[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rawSlug =
@@ -432,75 +559,18 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
       });
       continue;
     }
-    validated.push({ ...ok.data, csvRow: i + 2 });
+    validated.push({ ...ok.data, sourceRow: i + 2 });
   }
 
-  // Phase 2: pre-load every existing row whose slug appears in the import
-  // so the per-row write loop is O(1) DB calls per row instead of an
-  // extra SELECT each time.
-  //
-  // Semantics are best-effort: rows that fail (e.g. unique-constraint
-  // violations from a race, transient DB errors) are recorded in
-  // `summary.errors` and the loop keeps going. Successful rows still
-  // commit, which matches what an editor expects from a bulk import — a
-  // single bad row in a 200-row CSV shouldn't roll back the other 199.
-  // We do NOT wrap this in a `db.transaction()` because the per-row
-  // try/catch would swallow errors inside the transaction and the
-  // promise that "everything rolls back on partial failure" would be a
-  // lie. If we ever need true atomicity, drop the per-row catch and let
-  // the first failure abort the import.
-  const slugs = validated.map((v) => v.slug);
-  const existingRows: ShortLink[] = slugs.length
-    ? await db
-        .select()
-        .from(shortLinksTable)
-        .where(inArray(shortLinksTable.slug, slugs))
-    : [];
-  const existingBySlug = new Map<string, ShortLink>(
-    existingRows.map((r) => [r.slug, r]),
+  await applyImportRows(
+    validated,
+    {
+      collisionPolicy,
+      defaultActive,
+      createdBy: req.authedUser?.id ?? null,
+    },
+    summary,
   );
-
-  for (const v of validated) {
-    try {
-      const existing = existingBySlug.get(v.slug);
-      if (existing) {
-        if (collisionPolicy === "skip") {
-          summary.skipped++;
-          continue;
-        }
-        await db
-          .update(shortLinksTable)
-          .set({
-            targetUrl: v.targetUrl,
-            title: v.title ?? null,
-            notes: v.notes ?? null,
-            tags: v.tags ?? null,
-            rebrandlyId: v.rebrandlyId ?? existing.rebrandlyId,
-          })
-          .where(eq(shortLinksTable.id, existing.id));
-        summary.updated++;
-      } else {
-        await db.insert(shortLinksTable).values({
-          slug: v.slug,
-          targetUrl: v.targetUrl,
-          title: v.title ?? null,
-          notes: v.notes ?? null,
-          statusCode: 302,
-          active: defaultActive,
-          tags: v.tags ?? null,
-          rebrandlyId: v.rebrandlyId ?? null,
-          createdBy: req.authedUser?.id ?? null,
-        });
-        summary.imported++;
-      }
-    } catch (err) {
-      summary.errors.push({
-        row: v.csvRow,
-        slug: v.slug,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
   invalidateShortLinkCache();
   await audit({
     actorId: req.authedUser!.id,
@@ -511,6 +581,207 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
   });
   res.json({ summary });
 });
+
+// ---- Rebrandly API import -------------------------------------------------
+//
+// Pulls every link from the configured Rebrandly account and upserts it
+// through the same validation + upsert pipeline the CSV importer uses.
+// The API key lives in `site_settings.short_link_rebrandly_api_key`
+// (admin-managed via `/cms/short-links/settings`); we never accept a key
+// in the import request body so it can't end up in audit logs or
+// browser dev tools.
+//
+// Pagination: Rebrandly's `/v1/links` returns up to 25 entries and uses
+// cursor pagination — pass `last=<id of last item>` for the next page.
+// We cap total fetched at MAX_LINKS to bound runtime; large accounts can
+// be imported in chunks via `domainId` filter.
+
+const RebrandlyImportBody = z.object({
+  collisionPolicy: z.enum(["skip", "overwrite"]).default("skip"),
+  defaultActive: z.boolean().default(true),
+  // Optional: scope the pull to one Rebrandly domain (e.g. branded host).
+  domainId: z.string().max(64).optional(),
+});
+
+// Subset of the Rebrandly link payload we read. Rebrandly returns more
+// fields (creator, integrated, sponsored, …) but none of them map onto
+// our schema, so we ignore them. `clicks` and `lastClickAt` flow into
+// `hitCount` / `lastClickAt` so historical totals carry over — per-day
+// breakdowns still start fresh in our `short_link_clicks` table.
+interface RebrandlyLink {
+  id?: string;
+  slashtag?: string;
+  destination?: string;
+  title?: string | null;
+  description?: string | null;
+  clicks?: number;
+  lastClickAt?: string | null;
+}
+
+// Exported for unit tests so the mapping can be exercised without a
+// running DB or live Rebrandly account. Returns either a candidate row
+// suitable for `ImportRowSchema.safeParse` or a synthetic error row that
+// describes why the link was unmappable (e.g. missing slug/destination).
+export function mapRebrandlyLink(
+  link: RebrandlyLink,
+): { ok: true; candidate: Record<string, unknown> } | { ok: false; error: string } {
+  if (!link.slashtag || !link.destination) {
+    return {
+      ok: false,
+      error: "Rebrandly link missing slashtag or destination",
+    };
+  }
+  const candidate: Record<string, unknown> = {
+    slug: link.slashtag,
+    targetUrl: link.destination,
+    title: link.title ?? null,
+    notes: link.description ?? null,
+    rebrandlyId: link.id ?? null,
+  };
+  if (typeof link.clicks === "number" && Number.isFinite(link.clicks)) {
+    candidate.hitCount = Math.max(0, Math.floor(link.clicks));
+  }
+  if (link.lastClickAt) {
+    const parsed = new Date(link.lastClickAt);
+    if (!Number.isNaN(parsed.getTime())) candidate.lastClickAt = parsed;
+  }
+  return { ok: true, candidate };
+}
+
+const REBRANDLY_PAGE_SIZE = 25;
+const REBRANDLY_MAX_LINKS = 25_000;
+
+router.post(
+  "/cms/short-links/import-rebrandly",
+  ...adminGuard,
+  async (req, res) => {
+    const parsed = RebrandlyImportBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { collisionPolicy, defaultActive, domainId } = parsed.data;
+    const apiKey = await getRebrandlyApiKey();
+    if (!apiKey) {
+      res.status(400).json({
+        error:
+          "Rebrandly API key isn't configured. Set it in Site Settings → Short links first.",
+      });
+      return;
+    }
+
+    const summary: ImportSummary = {
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [],
+    };
+    const validated: ValidatedImportRow[] = [];
+    let nextCursor: string | undefined;
+    let totalFetched = 0;
+    let sourceIdx = 0;
+
+    try {
+      // Cursor-paginated fetch. Rebrandly returns an empty array when the
+      // cursor passes the last link, which is our signal to stop.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const url = new URL("https://api.rebrandly.com/v1/links");
+        url.searchParams.set("limit", String(REBRANDLY_PAGE_SIZE));
+        url.searchParams.set("orderBy", "createdAt");
+        url.searchParams.set("orderDir", "asc");
+        if (domainId) url.searchParams.set("domain.id", domainId);
+        if (nextCursor) url.searchParams.set("last", nextCursor);
+
+        const resp = await fetch(url, {
+          method: "GET",
+          headers: {
+            apikey: apiKey,
+            Accept: "application/json",
+          },
+        });
+        if (!resp.ok) {
+          const body = await resp.text().catch(() => "");
+          throw new Error(
+            `Rebrandly API returned ${resp.status}${body ? `: ${body.slice(0, 200)}` : ""}`,
+          );
+        }
+        const page = (await resp.json()) as RebrandlyLink[];
+        if (!Array.isArray(page) || page.length === 0) break;
+
+        for (const link of page) {
+          sourceIdx++;
+          const mapped = mapRebrandlyLink(link);
+          if (!mapped.ok) {
+            summary.errors.push({
+              row: sourceIdx,
+              slug: link.slashtag,
+              error: mapped.error,
+            });
+            continue;
+          }
+          const ok = ImportRowSchema.safeParse(mapped.candidate);
+          if (!ok.success) {
+            summary.errors.push({
+              row: sourceIdx,
+              slug: link.slashtag,
+              error: ok.error.issues.map((iss) => iss.message).join("; "),
+            });
+            continue;
+          }
+          validated.push({ ...ok.data, sourceRow: sourceIdx });
+        }
+
+        totalFetched += page.length;
+        if (page.length < REBRANDLY_PAGE_SIZE) break;
+        if (totalFetched >= REBRANDLY_MAX_LINKS) {
+          summary.errors.push({
+            row: totalFetched,
+            error: `Reached the import cap of ${REBRANDLY_MAX_LINKS} links. Re-run with a domainId filter to scope the pull.`,
+          });
+          break;
+        }
+        const last = page[page.length - 1];
+        if (!last.id) break; // can't paginate without a cursor token
+        nextCursor = last.id;
+      }
+    } catch (err) {
+      logger.error({ err }, "short-links: Rebrandly import failed mid-stream");
+      // Apply whatever we successfully validated so the editor doesn't
+      // lose the work, then surface the failure in the summary.
+      summary.errors.push({
+        row: sourceIdx,
+        error: `Rebrandly fetch aborted: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+
+    await applyImportRows(
+      validated,
+      {
+        collisionPolicy,
+        defaultActive,
+        createdBy: req.authedUser?.id ?? null,
+      },
+      summary,
+    );
+    invalidateShortLinkCache();
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "short_link.import.rebrandly",
+      entity: "short_link",
+      entityId: null,
+      diff: {
+        summary,
+        collisionPolicy,
+        totalFetched,
+        domainId: domainId ?? null,
+      },
+    });
+    res.json({ summary, totalFetched });
+  },
+);
 
 // ---- QR code --------------------------------------------------------------
 //

@@ -195,3 +195,144 @@ test("normalize-then-validate accepts the inputs it's expected to", () => {
     );
   }
 });
+
+// ─── Rebrandly mapping ─────────────────────────────────────────────────────
+//
+// Mirror of `mapRebrandlyLink` in routes/shortLinks.ts. Pins the field
+// projection (slashtag→slug, destination→targetUrl, description→notes,
+// clicks→hitCount, lastClickAt→Date) so a Rebrandly schema rename or a
+// silent change to the mapper is caught before it ships and corrupts an
+// import. We deliberately do NOT carry Rebrandly tags into our `tags`
+// column — the column exists for future use but the product doesn't
+// surface tags in the admin UI today, so importing them adds noise.
+
+interface RebrandlyLinkLike {
+  id?: string;
+  slashtag?: string;
+  destination?: string;
+  title?: string | null;
+  description?: string | null;
+  clicks?: number;
+  lastClickAt?: string | null;
+}
+
+function mapRebrandlyLink(
+  link: RebrandlyLinkLike,
+):
+  | { ok: true; candidate: Record<string, unknown> }
+  | { ok: false; error: string } {
+  if (!link.slashtag || !link.destination) {
+    return {
+      ok: false,
+      error: "Rebrandly link missing slashtag or destination",
+    };
+  }
+  const candidate: Record<string, unknown> = {
+    slug: link.slashtag,
+    targetUrl: link.destination,
+    title: link.title ?? null,
+    notes: link.description ?? null,
+    rebrandlyId: link.id ?? null,
+  };
+  if (typeof link.clicks === "number" && Number.isFinite(link.clicks)) {
+    candidate.hitCount = Math.max(0, Math.floor(link.clicks));
+  }
+  if (link.lastClickAt) {
+    const parsed = new Date(link.lastClickAt);
+    if (!Number.isNaN(parsed.getTime())) candidate.lastClickAt = parsed;
+  }
+  return { ok: true, candidate };
+}
+
+test("mapRebrandlyLink projects a typical Rebrandly payload", () => {
+  const result = mapRebrandlyLink({
+    id: "abc123",
+    slashtag: "holidays-wp",
+    destination: "https://www.synozur.com/insights/holidays-2025",
+    title: "Holidays 2025",
+    description: "Annual holiday post",
+    clicks: 142,
+    lastClickAt: "2026-04-30T18:22:11Z",
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(
+    {
+      slug: result.candidate.slug,
+      targetUrl: result.candidate.targetUrl,
+      title: result.candidate.title,
+      notes: result.candidate.notes,
+      rebrandlyId: result.candidate.rebrandlyId,
+      hitCount: result.candidate.hitCount,
+    },
+    {
+      slug: "holidays-wp",
+      targetUrl: "https://www.synozur.com/insights/holidays-2025",
+      title: "Holidays 2025",
+      notes: "Annual holiday post",
+      rebrandlyId: "abc123",
+      hitCount: 142,
+    },
+  );
+  assert.ok(result.candidate.lastClickAt instanceof Date);
+});
+
+test("mapRebrandlyLink rejects links missing slashtag or destination", () => {
+  for (const link of [
+    {},
+    { slashtag: "foo" },
+    { destination: "https://example.com" },
+    { slashtag: "", destination: "https://example.com" },
+  ]) {
+    const result = mapRebrandlyLink(link);
+    assert.equal(result.ok, false);
+  }
+});
+
+test("mapRebrandlyLink ignores non-finite click counts", () => {
+  // Rebrandly has been seen returning `null` or `undefined` clicks for
+  // freshly-created links; we don't want NaN bleeding into hitCount.
+  for (const clicks of [Number.NaN, Number.POSITIVE_INFINITY, undefined as unknown as number, null as unknown as number]) {
+    const result = mapRebrandlyLink({
+      slashtag: "foo",
+      destination: "https://example.com",
+      clicks,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(
+      result.candidate.hitCount,
+      undefined,
+      `expected hitCount to stay undefined for ${String(clicks)}`,
+    );
+  }
+});
+
+test("mapRebrandlyLink floors fractional click counts and clamps negatives", () => {
+  const positive = mapRebrandlyLink({
+    slashtag: "foo",
+    destination: "https://example.com",
+    clicks: 12.7,
+  });
+  assert.equal(positive.ok, true);
+  if (positive.ok) assert.equal(positive.candidate.hitCount, 12);
+
+  const negative = mapRebrandlyLink({
+    slashtag: "foo",
+    destination: "https://example.com",
+    clicks: -5,
+  });
+  assert.equal(negative.ok, true);
+  if (negative.ok) assert.equal(negative.candidate.hitCount, 0);
+});
+
+test("mapRebrandlyLink ignores unparseable lastClickAt", () => {
+  const result = mapRebrandlyLink({
+    slashtag: "foo",
+    destination: "https://example.com",
+    lastClickAt: "not a date",
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.candidate.lastClickAt, undefined);
+});

@@ -140,17 +140,46 @@ export async function getShortLinkSettings(): Promise<{
   publicHost: string;
   additionalHosts: string[];
   fallbackUrl: string | null;
+  rebrandlyApiKeyMasked: string | null;
 }> {
   const s = await getSettings();
   // Strip the auto-derived publicHost out of the additionalHosts view so
   // the admin UI shows only the values it can edit.
   const additional = [...s.hosts].filter((h) => h !== s.publicHost).sort();
+  // Masked render of the Rebrandly API key. We never return the raw value
+  // from the GET endpoint — the import handler reads it via
+  // `getRebrandlyApiKey()` which queries the column directly. The mask
+  // shows the last 4 chars only so admins can confirm "yes, that's the
+  // key I expect" without exposing the secret. A separate uncached query
+  // keeps us from caching plaintext in the resolved-settings struct.
+  const [keyRow] = await db
+    .select({ key: siteSettingsTable.shortLinkRebrandlyApiKey })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1))
+    .limit(1);
+  const raw = keyRow?.key ?? null;
+  const masked =
+    raw && raw.length >= 4 ? `••••${raw.slice(-4)}` : raw ? "••••" : null;
   return {
     publicBase: s.publicBase,
     publicHost: s.publicHost,
     additionalHosts: additional,
     fallbackUrl: s.fallbackUrl,
+    rebrandlyApiKeyMasked: masked,
   };
+}
+
+// Returns the raw Rebrandly API key for use by the importer. Bypasses the
+// settings cache (which deliberately doesn't carry the plaintext) and
+// returns null when no key is configured. Callers must treat the result
+// as a secret — never log it, never return it in API responses.
+export async function getRebrandlyApiKey(): Promise<string | null> {
+  const [row] = await db
+    .select({ key: siteSettingsTable.shortLinkRebrandlyApiKey })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1))
+    .limit(1);
+  return row?.key ?? null;
 }
 
 // ─── Slug helpers ───────────────────────────────────────────────────────────
