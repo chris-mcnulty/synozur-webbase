@@ -939,4 +939,333 @@ router.get("/cms/short-links/:id/stats", ...readGuard, async (req, res) => {
   });
 });
 
+// HTML-fetching helpers for the OG preview endpoint. We deliberately do
+// not pull in a parser dependency for this — a handful of regexes against
+// `<head>` covers the OG / Twitter / fallback tags we care about, and it
+// keeps the api-server bundle lean.
+const OG_FETCH_TIMEOUT_MS = 6000;
+const OG_FETCH_MAX_BYTES = 512 * 1024; // 512KB head should be plenty
+const OG_FETCH_USER_AGENT =
+  "SynozurShortLinks/1.0 (+https://aka.synozur.com)";
+
+const PRIVATE_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127(?:\.\d+){3}$/,
+  /^0(?:\.\d+){3}$/,
+  /^10(?:\.\d+){3}$/,
+  /^192\.168(?:\.\d+){2}$/,
+  /^172\.(1[6-9]|2\d|3[0-1])(?:\.\d+){2}$/,
+  /^169\.254(?:\.\d+){2}$/,
+  /^::1$/,
+  /^fc00:/i,
+  /^fd[0-9a-f]{2}:/i,
+  /^fe80:/i,
+];
+
+function isProbablyPrivateHost(hostname: string): boolean {
+  // Strip IPv6 brackets if any.
+  const h = hostname.replace(/^\[/, "").replace(/\]$/, "");
+  return PRIVATE_HOST_PATTERNS.some((p) => p.test(h));
+}
+
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => {
+      const code = Number(n);
+      return Number.isFinite(code) ? String.fromCharCode(code) : "";
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => {
+      const code = parseInt(n, 16);
+      return Number.isFinite(code) ? String.fromCharCode(code) : "";
+    });
+}
+
+function pickMetaContent(html: string, names: string[]): string | null {
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Match either order: `property="x" ... content="y"` or
+    // `content="y" ... property="x"`.
+    const patterns = [
+      new RegExp(
+        `<meta\\b[^>]*?\\b(?:property|name)\\s*=\\s*["']${escaped}["'][^>]*?\\bcontent\\s*=\\s*["']([^"']*)["']`,
+        "i",
+      ),
+      new RegExp(
+        `<meta\\b[^>]*?\\bcontent\\s*=\\s*["']([^"']*)["'][^>]*?\\b(?:property|name)\\s*=\\s*["']${escaped}["']`,
+        "i",
+      ),
+    ];
+    for (const p of patterns) {
+      const m = html.match(p);
+      if (m && m[1]) {
+        const v = decodeHtmlEntities(m[1]).trim();
+        if (v) return v;
+      }
+    }
+  }
+  return null;
+}
+
+function pickTitle(html: string): string | null {
+  const m = html.match(/<title[^>]*>([\s\S]{0,500}?)<\/title>/i);
+  if (!m) return null;
+  const v = decodeHtmlEntities(m[1]).replace(/\s+/g, " ").trim();
+  return v || null;
+}
+
+function resolveImageUrl(
+  imageRef: string | null,
+  baseUrl: URL,
+): string | null {
+  if (!imageRef) return null;
+  try {
+    return new URL(imageRef, baseUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+const OG_FETCH_MAX_REDIRECTS = 5;
+
+// We deliberately do NOT use `fetch`'s built-in redirect follower. It
+// resolves redirect chains without giving us a chance to validate each
+// hop, so a public URL that 30x'es to http://127.0.0.1/... would still
+// be fetched. Manually following lets us re-check every hop against
+// `isProbablyPrivateHost` and refuse non-http(s) schemes.
+//
+// Note this is hostname-string-based and not DNS-resolution-based, so
+// a public hostname that resolves to a private IP can still slip
+// through. The endpoint is admin-only and the admin already trusts
+// these target URLs enough to publish them — DNS-rebinding-grade
+// protection is intentionally out of scope.
+async function fetchHtmlWithSafeRedirects(
+  initialUrl: URL,
+  signal: AbortSignal,
+): Promise<{ resp: Response; finalUrl: URL }> {
+  let currentUrl = initialUrl;
+  for (let hop = 0; hop <= OG_FETCH_MAX_REDIRECTS; hop++) {
+    if (!/^https?:$/i.test(currentUrl.protocol)) {
+      throw new Error(
+        `Refusing redirect to non-http(s) scheme: ${currentUrl.protocol}`,
+      );
+    }
+    if (isProbablyPrivateHost(currentUrl.hostname)) {
+      throw new Error(
+        "Refusing to fetch private / loopback hosts (including redirect hops).",
+      );
+    }
+    const resp = await fetch(currentUrl, {
+      method: "GET",
+      redirect: "manual",
+      signal,
+      headers: {
+        "User-Agent": OG_FETCH_USER_AGENT,
+        // Some sites gate OG metadata behind an Accept that includes
+        // text/html. A few CDNs return JSON to bot-y user agents
+        // otherwise.
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (resp.status >= 300 && resp.status < 400) {
+      const location = resp.headers.get("location");
+      // Drain the redirect body so the underlying connection can be
+      // returned to the pool.
+      try {
+        await resp.body?.cancel();
+      } catch {
+        // ignore
+      }
+      if (!location) {
+        // Redirect without a Location header — treat as terminal so the
+        // caller can decide what to do.
+        return { resp, finalUrl: currentUrl };
+      }
+      let nextUrl: URL;
+      try {
+        nextUrl = new URL(location, currentUrl);
+      } catch {
+        throw new Error("Redirect target was not a valid URL.");
+      }
+      currentUrl = nextUrl;
+      continue;
+    }
+    return { resp, finalUrl: currentUrl };
+  }
+  throw new Error(`Exceeded ${OG_FETCH_MAX_REDIRECTS} redirects.`);
+}
+
+const PreviewBody = z.object({
+  url: targetUrlShape,
+});
+
+router.post(
+  "/cms/short-links/preview-target",
+  ...adminGuard,
+  async (req, res) => {
+    const parsed = PreviewBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { url } = parsed.data;
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      res.status(400).json({ error: "Could not parse URL" });
+      return;
+    }
+    if (isProbablyPrivateHost(parsedUrl.hostname)) {
+      res.status(400).json({
+        error:
+          "Refusing to fetch private / loopback hosts. Use a public URL.",
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      OG_FETCH_TIMEOUT_MS,
+    );
+    let resp: Response;
+    let finalUrl: URL;
+    try {
+      const result = await fetchHtmlWithSafeRedirects(
+        parsedUrl,
+        controller.signal,
+      );
+      resp = result.resp;
+      finalUrl = result.finalUrl;
+    } catch (err) {
+      clearTimeout(timer);
+      const aborted =
+        err instanceof Error && err.name === "AbortError";
+      logger.warn(
+        { err, url: parsedUrl.toString() },
+        "short-links: OG preview fetch failed",
+      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not reach the target URL.";
+      res.status(aborted ? 504 : 502).json({
+        error: aborted ? "Target URL didn't respond in time." : message,
+      });
+      return;
+    }
+    clearTimeout(timer);
+
+    if (!resp.ok) {
+      res.status(502).json({
+        error: `Target returned HTTP ${resp.status}.`,
+      });
+      return;
+    }
+    const ct = resp.headers.get("content-type") ?? "";
+    if (!/(text\/html|application\/xhtml\+xml)/i.test(ct)) {
+      res.status(415).json({
+        error: `Target is ${ct || "non-HTML"}; nothing to preview.`,
+      });
+      return;
+    }
+
+    // Stream-and-cap so a giant target page doesn't blow up the server.
+    let html = "";
+    if (resp.body) {
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder("utf-8", { fatal: false });
+      let total = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        html += decoder.decode(value, { stream: true });
+        if (total >= OG_FETCH_MAX_BYTES) {
+          try {
+            await reader.cancel();
+          } catch {
+            // ignore
+          }
+          break;
+        }
+      }
+      html += decoder.decode();
+    } else {
+      html = await resp.text();
+    }
+
+    // Limit our regex search to the first chunk of the document — OG
+    // metadata always lives in <head>, and scanning a 256KB body for
+    // every meta tag can be slow.
+    const headSlice = html.slice(0, 64 * 1024);
+
+    const ogTitle =
+      pickMetaContent(headSlice, [
+        "og:title",
+        "twitter:title",
+      ]);
+    const ogDescription = pickMetaContent(headSlice, [
+      "og:description",
+      "twitter:description",
+      "description",
+    ]);
+    const ogImage = pickMetaContent(headSlice, [
+      "og:image:secure_url",
+      "og:image",
+      "twitter:image",
+      "twitter:image:src",
+    ]);
+    const docTitle = pickTitle(headSlice);
+
+    // Resolve relative paths against the URL we actually landed on, then
+    // re-validate the host. The admin's browser would otherwise fetch
+    // whatever we return — an og:image pointing at a private host would
+    // bypass the server-side SSRF guard and leak into client-side
+    // requests.
+    let imageUrl: string | null = resolveImageUrl(ogImage, finalUrl);
+    let imageBlocked = false;
+    if (imageUrl) {
+      try {
+        const imgUrlObj = new URL(imageUrl);
+        if (
+          !/^https?:$/i.test(imgUrlObj.protocol) ||
+          isProbablyPrivateHost(imgUrlObj.hostname)
+        ) {
+          imageUrl = null;
+          imageBlocked = true;
+        }
+      } catch {
+        imageUrl = null;
+        imageBlocked = true;
+      }
+    }
+
+    res.json({
+      finalUrl: finalUrl.toString(),
+      title: ogTitle || docTitle,
+      description: ogDescription,
+      imageUrl,
+      imageBlocked,
+      // Hint the UI which fields actually came from OG vs the document
+      // title fallback, so we can label them honestly.
+      sources: {
+        title: ogTitle ? "og" : docTitle ? "title" : null,
+        description: ogDescription ? "og" : null,
+        imageUrl: imageUrl && ogImage ? "og" : null,
+      },
+    });
+  },
+);
+
 export default router;
