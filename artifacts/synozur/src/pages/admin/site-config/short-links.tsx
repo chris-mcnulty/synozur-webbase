@@ -935,24 +935,24 @@ export default function AdminShortLinks() {
             <TableBody>
               {listQ.isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : listQ.isError ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-destructive">
+                  <TableCell colSpan={7} className="text-destructive">
                     Failed to load short links: {listQ.error?.message}
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     No short links yet. Add one above or import from Rebrandly.
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((r) => (
+                sortedItems.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs">
                       <button
@@ -980,6 +980,9 @@ export default function AdminShortLinks() {
                       {r.lastClickAt
                         ? new Date(r.lastClickAt).toLocaleString()
                         : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(r.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <Switch
