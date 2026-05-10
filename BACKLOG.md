@@ -750,3 +750,86 @@ Google-Calendar token storage model and the conflict-resolution
 strategy before sizing the rest.
 
 ---
+
+## Short-link root path takeover (follow-up to May 2026 production fix)
+
+**Context:** `aka.synozur.com` is the Replit deployment's primary custom
+domain. Replit's reverse proxy routes by path prefix, not by hostname — the
+api-server only claims `/api`, `/.well-known`, and `/oauth`, so a request for
+`aka.synozur.com/cfmtest` (path `/cfmtest`) falls through to the Synozur SPA
+(which claims `/`). The SPA's `/*` → `index.html` static rewrite fires and
+React Router renders a 404 instead of the intended redirect.
+
+**Interim fix shipped (May 2026):**
+Two-part workaround that keeps the SPA serving at `/` while still redirecting
+short-link traffic to the api-server:
+
+1. `artifacts/synozur/index.html` — inline blocking `<script>` that fires
+   before React mounts. Detects `window.location.hostname === 'aka.synozur.com'`,
+   extracts the first path segment, and calls `window.location.replace('/api/r/<slug>')`.
+   Passthrough segments (api, admin, galaxy, images, etc.) are excluded.
+
+2. `artifacts/api-server/src/routes/shortLinks.ts` — new public
+   `GET /api/r/:slug` endpoint. Performs the full short-link resolution: DB
+   lookup, click recording, query-string merging, bot OG rendering, and HTTP
+   redirect. No hostname guard — it's opt-in by explicit URL.
+
+**Limitations of the workaround:**
+- Social bots that skip JavaScript (rare; most crawlers do execute JS) receive
+  the SPA's blank `index.html` and never reach the bot OG renderer. For links
+  with curated OG overrides the unfurl preview would be wrong for those bots.
+- The redirect chain is two hops for regular users: `aka.synozur.com/slug` →
+  _(JS replace)_ → `aka.synozur.com/api/r/slug` → _(302)_ → `target`. Modern
+  browsers handle this in milliseconds with no visible flash, but it's not as
+  clean as a direct server-side redirect.
+
+**Proper fix — api-server root path takeover:**
+The api-server's `artifact.toml` should claim `/` in addition to `/api`,
+`/.well-known`, and `/oauth`. The api-server would then become the sole
+production handler for all paths and hostnames, with the existing
+`shortLinkRedirectMiddleware` intercepting `aka.synozur.com/*` traffic and a
+new static-file fallback serving the SPA's compiled `dist/public/` for all
+other hostnames.
+
+Implementation steps:
+
+1. **Update `artifacts/api-server/.replit-artifact/artifact.toml`:**
+   Add `"/"` to `[[services]] paths`.
+   Use `verifyAndReplaceArtifactToml` per the artifacts skill — do not edit
+   `artifact.toml` directly.
+
+2. **Update `artifacts/synozur/.replit-artifact/artifact.toml`:**
+   Remove `paths = ["/"]` from the SPA service and drop `serve = "static"` /
+   `publicDir` / `[[services.production.rewrites]]` from `[services.production]`.
+   Keep the `build` array so Replit still compiles the SPA dist during
+   deployment. The api-server then serves those files, not a separate static
+   server.
+
+3. **Add static-file fallback to the api-server Express app (`app.ts`):**
+   After all `/api` routes, mount `express.static('artifacts/synozur/dist/public', { index: false })`
+   followed by a catch-all that sends `artifacts/synozur/dist/public/index.html`
+   for unmatched paths. Gate this on `NODE_ENV === 'production'`; in
+   development, add an `http-proxy-middleware` target to the SPA's Vite dev
+   server on port 20131 for non-short-link-host requests so the dev experience
+   is unchanged.
+
+4. **Remove the interim workaround:** delete the blocking script from
+   `artifacts/synozur/index.html` and the `GET /api/r/:slug` route from
+   `shortLinks.ts` (or keep the route as a permanent redirect alias — it
+   causes no harm and could be useful for direct API consumers).
+
+**Risk notes:**
+- The SPA's Vite dev server must still run during development; the api-server
+  proxy must forward to it for non-`aka.synozur.com` requests.
+- If Replit's proxy treats equal-specificity path conflicts
+  (both services claiming `/`) as undefined behaviour, the SPA's path claim
+  must be removed — not merely coexist. Verify via a staging deploy before
+  cutting production.
+- The api-server's static fallback must replicate the SPA's `/*` → `index.html`
+  client-side routing behaviour for every unknown path so no existing SPA route
+  regresses to a 404.
+
+Owner/tracking: open a project task once the Wix-platform parity backlog and
+launch-readiness checklist are clear; this is a medium-complexity infra change
+with no user-visible feature delta, so it should be batched with the next
+artifact-routing or server-consolidation effort.
