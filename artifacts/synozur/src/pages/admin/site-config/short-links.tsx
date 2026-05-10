@@ -1,27 +1,53 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   Copy,
   Download,
+  ExternalLink,
+  Loader2,
   Pencil,
   Plus,
   QrCode,
+  Search as SearchIcon,
+  Settings as SettingsIcon,
+  Sparkles,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -76,12 +102,14 @@ interface ListResponse {
   items: ShortLink[];
 }
 
+type StatusCode = 301 | 302 | 307 | 308;
+
 interface UpsertInput {
   slug: string;
   targetUrl: string;
   title?: string | null;
   notes?: string | null;
-  statusCode?: 301 | 302 | 307 | 308;
+  statusCode?: StatusCode;
   active?: boolean;
   tags?: string[];
   ogTitle?: string | null;
@@ -128,32 +156,17 @@ interface StatsResponse {
   topCountries: { country: string; count: number }[];
 }
 
-const STATUS_OPTIONS: { value: 301 | 302 | 307 | 308; label: string }[] = [
-  { value: 302, label: "302 Temporary (default)" },
-  { value: 301, label: "301 Permanent" },
-  { value: 307, label: "307 Temporary (preserves method)" },
-  { value: 308, label: "308 Permanent (preserves method)" },
+const STATUS_OPTIONS: { value: StatusCode; label: string; hint: string }[] = [
+  { value: 302, label: "302 Temporary", hint: "Default — browsers may re-resolve" },
+  { value: 301, label: "301 Permanent", hint: "Cached aggressively by clients" },
+  { value: 307, label: "307 Temporary", hint: "Preserves HTTP method" },
+  { value: 308, label: "308 Permanent", hint: "Preserves HTTP method" },
 ];
 
-function coerceStatus(value: unknown): 301 | 302 | 307 | 308 {
+function coerceStatus(value: unknown): StatusCode {
   const n = Number(value);
   if (n === 301 || n === 307 || n === 308) return n;
   return 302;
-}
-
-function emptyDraft(): UpsertInput {
-  return {
-    slug: "",
-    targetUrl: "",
-    title: "",
-    notes: "",
-    statusCode: 302,
-    active: true,
-    tags: [],
-    ogTitle: "",
-    ogDescription: "",
-    ogImageUrl: "",
-  };
 }
 
 function tagsToString(tags: string[] | undefined | null): string {
@@ -165,6 +178,27 @@ function parseTagString(input: string): string[] {
     .split(/[,;|]/)
     .map((t) => t.trim())
     .filter(Boolean);
+}
+
+function buildPreviewUrl(publicBase: string | undefined, slug: string): string {
+  const base = (publicBase ?? "https://aka.synozur.com").replace(/\/+$/, "");
+  const cleanSlug = slug.trim().replace(/^\/+/, "");
+  return cleanSlug ? `${base}/${cleanSlug}` : `${base}/`;
+}
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const diff = Date.now() - t;
+  if (diff < 60_000) return "just now";
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 async function listLinks(): Promise<ListResponse> {
@@ -233,6 +267,362 @@ async function saveSettings(body: SettingsUpsertInput): Promise<ShortLinkSetting
   });
 }
 
+interface TargetPreview {
+  finalUrl: string;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  sources: {
+    title: "og" | "title" | null;
+    description: "og" | null;
+    imageUrl: "og" | null;
+  };
+}
+
+async function fetchTargetPreview(url: string): Promise<TargetPreview> {
+  return apiFetch<TargetPreview>("/api/cms/short-links/preview-target", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
+function StatusBadge({ code }: { code: number }) {
+  const permanent = code === 301 || code === 308;
+  return (
+    <Badge
+      variant={permanent ? "secondary" : "outline"}
+      className="font-mono text-[10px] tracking-tight"
+    >
+      {code}
+    </Badge>
+  );
+}
+
+function CollisionPolicySelect({
+  value,
+  onChange,
+  id,
+}: {
+  value: "skip" | "overwrite";
+  onChange: (v: "skip" | "overwrite") => void;
+  id?: string;
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => onChange(v === "overwrite" ? "overwrite" : "skip")}
+    >
+      <SelectTrigger id={id}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="skip">Skip (keep existing)</SelectItem>
+        <SelectItem value="overwrite">Overwrite existing</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+function StatusSelect({
+  value,
+  onChange,
+  id,
+}: {
+  value: StatusCode;
+  onChange: (v: StatusCode) => void;
+  id?: string;
+}) {
+  return (
+    <Select
+      value={String(value)}
+      onValueChange={(v) => onChange(coerceStatus(v))}
+    >
+      <SelectTrigger id={id}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {STATUS_OPTIONS.map((opt) => (
+          <SelectItem key={opt.value} value={String(opt.value)}>
+            <div className="flex flex-col">
+              <span>{opt.label}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {opt.hint}
+              </span>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+interface ShortLinkFormFields {
+  slug: string;
+  targetUrl: string;
+  statusCode: StatusCode;
+  title: string;
+  notes: string;
+  active: boolean;
+  tagsText: string;
+  ogTitle: string;
+  ogDescription: string;
+  ogImageUrl: string;
+}
+
+// Shared form body for the Add and Edit dialogs. Keeps the two flows visually
+// identical so editors don't have to re-learn a different layout when going
+// from create to edit.
+function ShortLinkFormBody({
+  values,
+  onChange,
+  publicBase,
+  showActiveSwitch,
+  idPrefix,
+}: {
+  values: ShortLinkFormFields;
+  onChange: (next: Partial<ShortLinkFormFields>) => void;
+  publicBase: string | undefined;
+  showActiveSwitch: boolean;
+  idPrefix: string;
+}) {
+  const preview = buildPreviewUrl(publicBase, values.slug);
+  const { toast } = useToast();
+  const [fetchedPreview, setFetchedPreview] = useState<TargetPreview | null>(
+    null,
+  );
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewMut = useMutation({
+    mutationFn: fetchTargetPreview,
+    onSuccess: (resp) => {
+      setFetchedPreview(resp);
+      setPreviewError(null);
+      const found = [
+        resp.title ? "title" : null,
+        resp.description ? "description" : null,
+        resp.imageUrl ? "image" : null,
+      ].filter(Boolean);
+      if (found.length === 0) {
+        toast({
+          title: "No metadata found",
+          description: "Target page doesn't expose OG / Twitter / title tags.",
+        });
+      }
+    },
+    onError: (e: Error) => {
+      setFetchedPreview(null);
+      setPreviewError(e.message);
+    },
+  });
+
+  const onFetchPreview = () => {
+    const url = values.targetUrl.trim();
+    if (!url) {
+      toast({
+        title: "Enter a target URL first",
+        variant: "destructive",
+      });
+      return;
+    }
+    previewMut.mutate(url);
+  };
+
+  const onApplyAll = () => {
+    if (!fetchedPreview) return;
+    const next: Partial<ShortLinkFormFields> = {};
+    if (fetchedPreview.title) {
+      // Populate the visible Title — and also OG title so unfurls
+      // explicitly carry it. Don't clobber values the editor already
+      // typed unless they're empty.
+      if (!values.title.trim()) next.title = fetchedPreview.title;
+      if (!values.ogTitle.trim()) next.ogTitle = fetchedPreview.title;
+    }
+    if (fetchedPreview.description && !values.ogDescription.trim()) {
+      next.ogDescription = fetchedPreview.description;
+    }
+    if (fetchedPreview.imageUrl && !values.ogImageUrl.trim()) {
+      next.ogImageUrl = fetchedPreview.imageUrl;
+    }
+    if (Object.keys(next).length === 0) {
+      toast({
+        title: "Nothing new to apply",
+        description: "All matched fields already have a value.",
+      });
+      return;
+    }
+    onChange(next);
+    toast({
+      title: "Applied target metadata",
+      description: `Filled: ${Object.keys(next).join(", ")}.`,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
+        <div>
+          <Label htmlFor={`${idPrefix}-slug`}>Slug</Label>
+          <Input
+            id={`${idPrefix}-slug`}
+            placeholder="holidayswp"
+            value={values.slug}
+            onChange={(e) => onChange({ slug: e.target.value })}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Public URL:{" "}
+            <code className="font-mono text-foreground">{preview}</code>
+          </p>
+        </div>
+        <div>
+          <Label htmlFor={`${idPrefix}-statusCode`}>Redirect type</Label>
+          <StatusSelect
+            id={`${idPrefix}-statusCode`}
+            value={values.statusCode}
+            onChange={(v) => onChange({ statusCode: v })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={`${idPrefix}-targetUrl`}>Target URL</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 -mr-2 px-2 text-xs"
+            onClick={onFetchPreview}
+            disabled={previewMut.isPending || !values.targetUrl.trim()}
+            title="Fetch the target page and read its title, description, and OG image"
+          >
+            {previewMut.isPending ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+            )}
+            {previewMut.isPending ? "Fetching…" : "Fetch from target"}
+          </Button>
+        </div>
+        <Input
+          id={`${idPrefix}-targetUrl`}
+          placeholder="https://example.com/long/url"
+          value={values.targetUrl}
+          onChange={(e) => onChange({ targetUrl: e.target.value })}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+
+      {previewError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Couldn't fetch target metadata: {previewError}
+        </div>
+      )}
+
+      {fetchedPreview && (
+        <TargetPreviewPanel
+          preview={fetchedPreview}
+          values={values}
+          onApplyAll={onApplyAll}
+          onApplyField={(field, value) => onChange({ [field]: value })}
+          onDismiss={() => setFetchedPreview(null)}
+        />
+      )}
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <Label htmlFor={`${idPrefix}-title`}>Title (optional)</Label>
+          <Input
+            id={`${idPrefix}-title`}
+            placeholder="Holidays WP"
+            value={values.title}
+            onChange={(e) => onChange({ title: e.target.value })}
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${idPrefix}-tags`}>Tags (comma-separated)</Label>
+          <Input
+            id={`${idPrefix}-tags`}
+            placeholder="campaign, holiday-2025"
+            value={values.tagsText}
+            onChange={(e) => onChange({ tagsText: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor={`${idPrefix}-notes`}>Notes (optional)</Label>
+        <Input
+          id={`${idPrefix}-notes`}
+          placeholder="Print-collateral QR for the December campaign"
+          value={values.notes}
+          onChange={(e) => onChange({ notes: e.target.value })}
+        />
+      </div>
+
+      {showActiveSwitch && (
+        <div className="flex items-center gap-2">
+          <Switch
+            id={`${idPrefix}-active`}
+            checked={values.active}
+            onCheckedChange={(v) => onChange({ active: v })}
+          />
+          <Label htmlFor={`${idPrefix}-active`} className="cursor-pointer">
+            Active
+          </Label>
+          <span className="text-xs text-muted-foreground">
+            Inactive links return a 404 instead of redirecting.
+          </span>
+        </div>
+      )}
+
+      {/* OG override fields. When any are set, social-bot crawlers hitting
+          the short URL get an HTML preview built from these values instead
+          of the redirect — humans still get the redirect. */}
+      <details className="rounded-md border border-input/60 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Social preview (optional)
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <Label htmlFor={`${idPrefix}-og-title`}>OG title</Label>
+              <Input
+                id={`${idPrefix}-og-title`}
+                placeholder="Holidays at Synozur — 2025 calendar"
+                value={values.ogTitle}
+                onChange={(e) => onChange({ ogTitle: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor={`${idPrefix}-og-image`}>
+                OG image URL or path
+              </Label>
+              <Input
+                id={`${idPrefix}-og-image`}
+                placeholder="https://… or /images/og/holidays.png"
+                value={values.ogImageUrl}
+                onChange={(e) => onChange({ ogImageUrl: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor={`${idPrefix}-og-description`}>OG description</Label>
+            <Textarea
+              id={`${idPrefix}-og-description`}
+              rows={2}
+              placeholder="Short copy that appears under the title in unfurls."
+              value={values.ogDescription}
+              onChange={(e) => onChange({ ogDescription: e.target.value })}
+            />
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export default function AdminShortLinks() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
@@ -244,18 +634,64 @@ export default function AdminShortLinks() {
     queryFn: listLinks,
   });
 
-  const [draft, setDraft] = useState<UpsertInput>(emptyDraft());
-  const [draftTags, setDraftTags] = useState<string>("");
+  const settingsQ = useQuery<ShortLinkSettings, Error>({
+    queryKey: ["/api/cms/short-links/settings"],
+    queryFn: fetchSettings,
+  });
+
+  // Add dialog
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<ShortLinkFormFields>({
+    slug: "",
+    targetUrl: "",
+    statusCode: 302,
+    title: "",
+    notes: "",
+    active: true,
+    tagsText: "",
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
+  });
+
+  // Edit dialog
   const [editTarget, setEditTarget] = useState<ShortLink | null>(null);
-  const [editDraft, setEditDraft] = useState<Partial<UpsertInput>>({});
-  const [editTags, setEditTags] = useState<string>("");
+  const [editForm, setEditForm] = useState<ShortLinkFormFields>({
+    slug: "",
+    targetUrl: "",
+    statusCode: 302,
+    title: "",
+    notes: "",
+    active: true,
+    tagsText: "",
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
+  });
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<ShortLink | null>(null);
+
+  // Filter
+  const [search, setSearch] = useState("");
+
+  // Imports
   const [importOpen, setImportOpen] = useState(false);
   const [importCsvText, setImportCsvText] = useState("");
   const [importPolicy, setImportPolicy] = useState<"skip" | "overwrite">(
     "skip",
   );
+  const [rebrandlyImportOpen, setRebrandlyImportOpen] = useState(false);
+  const [rebrandlyDomainId, setRebrandlyDomainId] = useState("");
+  const [rebrandlyPolicy, setRebrandlyPolicy] = useState<
+    "skip" | "overwrite"
+  >("skip");
+
+  // Sub-dialogs
   const [statsTarget, setStatsTarget] = useState<ShortLink | null>(null);
   const [qrTarget, setQrTarget] = useState<ShortLink | null>(null);
+
+  // Settings dialog
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<{
     publicBase: string;
@@ -273,18 +709,9 @@ export default function AdminShortLinks() {
     rebrandlyApiKey: "",
     rebrandlyApiKeyTouched: false,
   });
-  const [rebrandlyImportOpen, setRebrandlyImportOpen] = useState(false);
-  const [rebrandlyDomainId, setRebrandlyDomainId] = useState("");
-  const [rebrandlyPolicy, setRebrandlyPolicy] = useState<
-    "skip" | "overwrite"
-  >("skip");
 
-  const settingsQ = useQuery<ShortLinkSettings, Error>({
-    queryKey: ["/api/cms/short-links/settings"],
-    queryFn: fetchSettings,
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/cms/short-links"] });
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["/api/cms/short-links"] });
   const invalidateSettings = () =>
     qc.invalidateQueries({ queryKey: ["/api/cms/short-links/settings"] });
 
@@ -299,7 +726,11 @@ export default function AdminShortLinks() {
       invalidate();
     },
     onError: (e: Error) =>
-      toast({ title: "Settings save failed", description: e.message, variant: "destructive" }),
+      toast({
+        title: "Settings save failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const openSettings = () => {
@@ -338,12 +769,27 @@ export default function AdminShortLinks() {
     mutationFn: createLink,
     onSuccess: () => {
       toast({ title: "Short link created" });
-      setDraft(emptyDraft());
-      setDraftTags("");
+      setAddOpen(false);
+      setAddForm({
+        slug: "",
+        targetUrl: "",
+        statusCode: 302,
+        title: "",
+        notes: "",
+        active: true,
+        tagsText: "",
+        ogTitle: "",
+        ogDescription: "",
+        ogImageUrl: "",
+      });
       invalidate();
     },
     onError: (e: Error) =>
-      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+      toast({
+        title: "Save failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const updateMut = useMutation({
@@ -355,17 +801,26 @@ export default function AdminShortLinks() {
       invalidate();
     },
     onError: (e: Error) =>
-      toast({ title: "Update failed", description: e.message, variant: "destructive" }),
+      toast({
+        title: "Update failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const deleteMut = useMutation({
     mutationFn: deleteLink,
     onSuccess: () => {
       toast({ title: "Short link deleted" });
+      setDeleteTarget(null);
       invalidate();
     },
     onError: (e: Error) =>
-      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+      toast({
+        title: "Delete failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const importMut = useMutation({
@@ -381,7 +836,11 @@ export default function AdminShortLinks() {
       invalidate();
     },
     onError: (e: Error) =>
-      toast({ title: "Import failed", description: e.message, variant: "destructive" }),
+      toast({
+        title: "Import failed",
+        description: e.message,
+        variant: "destructive",
+      }),
   });
 
   const rebrandlyImportMut = useMutation({
@@ -405,48 +864,97 @@ export default function AdminShortLinks() {
 
   const items = listQ.data?.items ?? [];
 
+  const summary = useMemo(() => {
+    let active = 0;
+    let totalHits = 0;
+    for (const r of items) {
+      if (r.active) active += 1;
+      totalHits += r.hitCount;
+    }
+    return {
+      total: items.length,
+      active,
+      inactive: items.length - active,
+      totalHits,
+    };
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((r) => {
+      if (r.slug.toLowerCase().includes(q)) return true;
+      if (r.targetUrl.toLowerCase().includes(q)) return true;
+      if ((r.title ?? "").toLowerCase().includes(q)) return true;
+      if ((r.notes ?? "").toLowerCase().includes(q)) return true;
+      if (r.tags.some((t) => t.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  }, [items, search]);
+
+  const onOpenAdd = () => {
+    setAddForm({
+      slug: "",
+      targetUrl: "",
+      statusCode: 302,
+      title: "",
+      notes: "",
+      active: true,
+      tagsText: "",
+      ogTitle: "",
+      ogDescription: "",
+      ogImageUrl: "",
+    });
+    setAddOpen(true);
+  };
+
   const onAdd = () => {
-    if (!draft.slug.trim() || !draft.targetUrl.trim()) {
-      toast({ title: "Slug and target URL are required", variant: "destructive" });
+    if (!addForm.slug.trim() || !addForm.targetUrl.trim()) {
+      toast({
+        title: "Slug and target URL are required",
+        variant: "destructive",
+      });
       return;
     }
     createMut.mutate({
-      slug: draft.slug.trim(),
-      targetUrl: draft.targetUrl.trim(),
-      title: draft.title?.trim() || null,
-      notes: draft.notes?.trim() || null,
-      statusCode: draft.statusCode,
-      active: draft.active,
-      tags: parseTagString(draftTags),
-      ogTitle: draft.ogTitle?.trim() || null,
-      ogDescription: draft.ogDescription?.trim() || null,
-      ogImageUrl: draft.ogImageUrl?.trim() || null,
+      slug: addForm.slug.trim(),
+      targetUrl: addForm.targetUrl.trim(),
+      title: addForm.title.trim() || null,
+      notes: addForm.notes.trim() || null,
+      statusCode: addForm.statusCode,
+      active: addForm.active,
+      tags: parseTagString(addForm.tagsText),
+      ogTitle: addForm.ogTitle.trim() || null,
+      ogDescription: addForm.ogDescription.trim() || null,
+      ogImageUrl: addForm.ogImageUrl.trim() || null,
     });
   };
 
   const onEdit = (link: ShortLink) => {
-    setEditDraft({
+    setEditForm({
       slug: link.slug,
       targetUrl: link.targetUrl,
+      statusCode: coerceStatus(link.statusCode),
       title: link.title ?? "",
       notes: link.notes ?? "",
-      statusCode: coerceStatus(link.statusCode),
       active: link.active,
-      tags: link.tags,
+      tagsText: tagsToString(link.tags),
       ogTitle: link.ogTitle ?? "",
       ogDescription: link.ogDescription ?? "",
       ogImageUrl: link.ogImageUrl ?? "",
     });
-    setEditTags(tagsToString(link.tags));
     setEditTarget(link);
   };
 
   const onSaveEdit = () => {
     if (!editTarget) return;
-    const slug = editDraft.slug?.trim() ?? "";
-    const targetUrl = editDraft.targetUrl?.trim() ?? "";
+    const slug = editForm.slug.trim();
+    const targetUrl = editForm.targetUrl.trim();
     if (!slug || !targetUrl) {
-      toast({ title: "Slug and target URL are required", variant: "destructive" });
+      toast({
+        title: "Slug and target URL are required",
+        variant: "destructive",
+      });
       return;
     }
     updateMut.mutate({
@@ -454,14 +962,14 @@ export default function AdminShortLinks() {
       body: {
         slug,
         targetUrl,
-        title: editDraft.title?.toString().trim() || null,
-        notes: editDraft.notes?.toString().trim() || null,
-        statusCode: editDraft.statusCode ?? 302,
-        active: editDraft.active ?? true,
-        tags: parseTagString(editTags),
-        ogTitle: editDraft.ogTitle?.toString().trim() || null,
-        ogDescription: editDraft.ogDescription?.toString().trim() || null,
-        ogImageUrl: editDraft.ogImageUrl?.toString().trim() || null,
+        title: editForm.title.trim() || null,
+        notes: editForm.notes.trim() || null,
+        statusCode: editForm.statusCode,
+        active: editForm.active,
+        tags: parseTagString(editForm.tagsText),
+        ogTitle: editForm.ogTitle.trim() || null,
+        ogDescription: editForm.ogDescription.trim() || null,
+        ogImageUrl: editForm.ogImageUrl.trim() || null,
       },
     });
   };
@@ -504,298 +1012,300 @@ export default function AdminShortLinks() {
     });
   };
 
+  const publicHostLabel = settingsQ.data?.publicHost ?? "aka.synozur.com";
+  const publicBaseLabel = settingsQ.data?.publicBase ?? "https://aka.synozur.com";
+
   return (
     <AdminLayout
       title="Branded short links"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Short links" }]}
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
         {!canWrite && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-            You have read-only access. Only editors and admins can change short links.
+            You have read-only access. Only editors and admins can change short
+            links.
           </div>
         )}
 
-        {/* Service settings card. Lets admins change the public base URL,
-            additional hostnames, and the 404 fallback link without a deploy. */}
+        {/* Service summary card. Shows scale-at-a-glance counts and the
+            current public-base configuration. Settings live behind the
+            Edit settings dialog so the page itself stays focused on the
+            list. */}
         <Card className="p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <div className="text-sm font-semibold">Short-link service</div>
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                <div>
-                  Public base:{" "}
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 space-y-3">
+              <div>
+                <div className="text-sm font-semibold">Short-link service</div>
+                <div className="text-xs text-muted-foreground">
+                  Each link is served from{" "}
                   <code className="font-mono">
-                    {settingsQ.data?.publicBase ?? "https://aka.synozur.com"}
+                    {publicHostLabel}/&lt;slug&gt;
                   </code>
+                  . QR codes are branded with the Synozur mark.
                 </div>
-                <div>
-                  Additional hosts:{" "}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <SummaryChip label="Links" value={summary.total} />
+                <SummaryChip label="Active" value={summary.active} tone="active" />
+                {summary.inactive > 0 && (
+                  <SummaryChip
+                    label="Inactive"
+                    value={summary.inactive}
+                    tone="muted"
+                  />
+                )}
+                <SummaryChip
+                  label="Total clicks"
+                  value={summary.totalHits}
+                  tone="muted"
+                />
+              </div>
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-[auto_1fr]">
+                <dt>Public base</dt>
+                <dd>
+                  <code className="font-mono">{publicBaseLabel}</code>
+                </dd>
+                <dt>Additional hosts</dt>
+                <dd>
                   <code className="font-mono">
                     {settingsQ.data?.additionalHosts.length
                       ? settingsQ.data.additionalHosts.join(", ")
                       : "(none)"}
                   </code>
-                </div>
-                <div>
-                  404 fallback URL:{" "}
+                </dd>
+                <dt>404 fallback</dt>
+                <dd>
                   <code className="font-mono">
                     {settingsQ.data?.fallbackUrl ?? "(none — show plain 404)"}
                   </code>
-                </div>
-              </div>
+                </dd>
+              </dl>
             </div>
             {canWrite && (
-              // Disabled until the settings query resolves — otherwise
-              // the dialog seeds blank values from `settingsQ.data` and
-              // a save would clobber publicBase / fallbackUrl / hosts
-              // back to null.
+              // Disabled until the settings query resolves — otherwise the
+              // dialog seeds blank values from `settingsQ.data` and a save
+              // would clobber publicBase / fallbackUrl / hosts back to null.
               <Button
                 variant="outline"
                 size="sm"
                 onClick={openSettings}
                 disabled={!settingsQ.data}
               >
+                <SettingsIcon className="mr-1 h-4 w-4" />
                 {settingsQ.isLoading ? "Loading…" : "Edit settings"}
               </Button>
             )}
           </div>
         </Card>
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Each link is served from{" "}
-            <code className="font-mono">
-              {settingsQ.data?.publicHost ?? "aka.synozur.com"}/&lt;slug&gt;
-            </code>
-            . QR codes are branded with the Synozur mark.
-          </p>
+        {/* Toolbar: search filter on the left, primary actions on the right. */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-sm">
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search slug, title, target, tag…"
+              aria-label="Search short links"
+              className="pl-8 pr-9"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           {canWrite && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setRebrandlyImportOpen(true)}
               >
-                <Upload className="h-4 w-4 mr-1" />
+                <Upload className="mr-1 h-4 w-4" />
                 Import from Rebrandly API
               </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4 mr-1" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportOpen(true)}
+              >
+                <Upload className="mr-1 h-4 w-4" />
                 Import CSV
+              </Button>
+              <Button size="sm" onClick={onOpenAdd}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add short link
               </Button>
             </div>
           )}
         </div>
 
-        {canWrite && (
-          <Card className="p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-[180px_1fr_140px_auto] gap-3 items-end">
-              <div>
-                <Label htmlFor="slug">Slug</Label>
-                <Input
-                  id="slug"
-                  placeholder="holidayswp"
-                  value={draft.slug}
-                  onChange={(e) => setDraft((d) => ({ ...d, slug: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="targetUrl">Target URL</Label>
-                <Input
-                  id="targetUrl"
-                  placeholder="https://example.com/long/url"
-                  value={draft.targetUrl}
-                  onChange={(e) => setDraft((d) => ({ ...d, targetUrl: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="statusCode">Status</Label>
-                <select
-                  id="statusCode"
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                  value={draft.statusCode}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, statusCode: coerceStatus(e.target.value) }))
-                  }
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button onClick={onAdd} disabled={createMut.isPending}>
-                <Plus className="h-4 w-4 mr-1" />
-                {createMut.isPending ? "Adding…" : "Add"}
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="title">Title (optional)</Label>
-                <Input
-                  id="title"
-                  placeholder="Holidays WP"
-                  value={draft.title ?? ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
-                <Input
-                  id="tags"
-                  placeholder="campaign, holiday-2025"
-                  value={draftTags}
-                  onChange={(e) => setDraftTags(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Input
-                id="notes"
-                placeholder="Print-collateral QR for the December campaign"
-                value={draft.notes ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-              />
-            </div>
-
-            {/* OG override fields. When any are set, social-bot crawlers
-                hitting the short URL get an HTML preview built from these
-                values instead of the 302 — humans still get the redirect. */}
-            <details className="rounded-md border border-input/60 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Social preview (optional)
-              </summary>
-              <div className="mt-3 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="og-title">OG title</Label>
-                    <Input
-                      id="og-title"
-                      placeholder="Holidays at Synozur — 2025 calendar"
-                      value={draft.ogTitle ?? ""}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, ogTitle: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="og-image">OG image URL or path</Label>
-                    <Input
-                      id="og-image"
-                      placeholder="https://… or /images/og/holidays.png"
-                      value={draft.ogImageUrl ?? ""}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="og-description">OG description</Label>
-                  <Textarea
-                    id="og-description"
-                    rows={2}
-                    placeholder="Short copy that appears under the title in unfurls."
-                    value={draft.ogDescription ?? ""}
-                    onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        ogDescription: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            </details>
-          </Card>
-        )}
-
-        <Card className="p-0 overflow-hidden">
+        <Card className="overflow-hidden p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Slug</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead className="w-[80px]">Hits</TableHead>
+                <TableHead className="min-w-[220px]">Link</TableHead>
+                <TableHead className="min-w-[260px]">Target</TableHead>
+                <TableHead className="w-[80px]">Code</TableHead>
+                <TableHead className="w-[80px] text-right">Hits</TableHead>
                 <TableHead className="w-[140px]">Last click</TableHead>
                 <TableHead className="w-[80px]">Active</TableHead>
-                <TableHead className="w-[220px] text-right">Actions</TableHead>
+                <TableHead className="w-[180px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {listQ.isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : listQ.isError ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-destructive">
+                  <TableCell colSpan={7} className="text-destructive">
                     Failed to load short links: {listQ.error?.message}
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
-                    No short links yet. Add one above or import from Rebrandly.
+                  <TableCell
+                    colSpan={7}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    No short links yet.
+                    {canWrite && (
+                      <>
+                        {" "}
+                        <button
+                          type="button"
+                          className="font-medium text-primary underline-offset-4 hover:underline"
+                          onClick={onOpenAdd}
+                        >
+                          Add the first one
+                        </button>{" "}
+                        or import from Rebrandly.
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    No links match{" "}
+                    <code className="font-mono">{search}</code>.{" "}
+                    <button
+                      type="button"
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      onClick={() => setSearch("")}
+                    >
+                      Clear search
+                    </button>
+                    .
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((r) => (
+                filteredItems.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-mono text-xs">
-                      <button
-                        type="button"
-                        onClick={() => onCopy(r.publicUrl)}
-                        className="hover:underline"
-                        title={`Copy ${r.publicUrl}`}
-                      >
-                        {r.slug}
-                      </button>
+                    <TableCell className="align-top">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-medium">
+                          {r.title?.trim() ? (
+                            r.title
+                          ) : (
+                            <span className="font-mono">/{r.slug}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onCopy(r.publicUrl)}
+                          className="group inline-flex items-center gap-1 self-start font-mono text-xs text-muted-foreground hover:text-foreground"
+                          title={`Copy ${r.publicUrl}`}
+                          aria-label={`Copy ${r.publicUrl} to clipboard`}
+                        >
+                          <span className="break-all text-left">
+                            {r.publicUrl}
+                          </span>
+                          <Copy className="h-3 w-3 opacity-0 group-hover:opacity-70" />
+                        </button>
+                        {r.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {r.tags.map((t) => (
+                              <Badge
+                                key={t}
+                                variant="outline"
+                                className="text-[10px] font-normal"
+                              >
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs max-w-[420px] truncate">
+                    <TableCell className="align-top">
                       <a
                         href={r.targetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:underline"
+                        className="group inline-flex max-w-full items-center gap-1 font-mono text-xs hover:underline"
                         title={r.targetUrl}
                       >
-                        {r.targetUrl}
+                        <span className="truncate">{r.targetUrl}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" />
                       </a>
+                      {r.notes && (
+                        <div
+                          className="mt-1 truncate text-xs text-muted-foreground"
+                          title={r.notes}
+                        >
+                          {r.notes}
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell>{r.hitCount}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {r.lastClickAt
-                        ? new Date(r.lastClickAt).toLocaleString()
-                        : "—"}
+                    <TableCell className="align-top">
+                      <StatusBadge code={r.statusCode} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right align-top tabular-nums">
+                      {r.hitCount.toLocaleString()}
+                    </TableCell>
+                    <TableCell
+                      className="align-top text-xs text-muted-foreground"
+                      title={r.lastClickAt ? new Date(r.lastClickAt).toLocaleString() : undefined}
+                    >
+                      {formatRelative(r.lastClickAt)}
+                    </TableCell>
+                    <TableCell className="align-top">
                       <Switch
                         checked={r.active}
                         disabled={!canWrite || updateMut.isPending}
                         onCheckedChange={(v) =>
                           updateMut.mutate({ id: r.id, body: { active: v } })
                         }
+                        aria-label={
+                          r.active
+                            ? `Deactivate ${r.slug}`
+                            : `Activate ${r.slug}`
+                        }
                       />
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onCopy(r.publicUrl)}
-                        title="Copy short URL"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="space-x-0.5 text-right align-top">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setQrTarget(r)}
                         title="QR code"
+                        aria-label={`Show QR code for ${r.slug}`}
                       >
                         <QrCode className="h-4 w-4" />
                       </Button>
@@ -804,6 +1314,7 @@ export default function AdminShortLinks() {
                         size="sm"
                         onClick={() => setStatsTarget(r)}
                         title="Stats"
+                        aria-label={`Show click stats for ${r.slug}`}
                       >
                         <BarChart3 className="h-4 w-4" />
                       </Button>
@@ -814,23 +1325,16 @@ export default function AdminShortLinks() {
                             size="sm"
                             onClick={() => onEdit(r)}
                             title="Edit"
+                            aria-label={`Edit ${r.slug}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (
-                                !confirm(
-                                  `Delete short link /${r.slug}? Existing QR codes pointing to it will 404.`,
-                                )
-                              ) {
-                                return;
-                              }
-                              deleteMut.mutate(r.id);
-                            }}
+                            onClick={() => setDeleteTarget(r)}
                             title="Delete"
+                            aria-label={`Delete ${r.slug}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -842,8 +1346,60 @@ export default function AdminShortLinks() {
               )}
             </TableBody>
           </Table>
+          {/* Footer count line keeps users oriented when filtering. */}
+          {!listQ.isLoading && !listQ.isError && items.length > 0 && (
+            <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
+              <span>
+                Showing {filteredItems.length.toLocaleString()} of{" "}
+                {items.length.toLocaleString()}
+              </span>
+              {search && (
+                <button
+                  type="button"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  onClick={() => setSearch("")}
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+          )}
         </Card>
       </div>
+
+      {/* Add dialog */}
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (!open) setAddOpen(false);
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add short link</DialogTitle>
+            <DialogDescription>
+              Pick a slug and a target URL. Title, tags, and the social-preview
+              fields are optional.
+            </DialogDescription>
+          </DialogHeader>
+          <ShortLinkFormBody
+            idPrefix="add"
+            values={addForm}
+            onChange={(next) => setAddForm((s) => ({ ...s, ...next }))}
+            publicBase={settingsQ.data?.publicBase}
+            showActiveSwitch
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={onAdd} disabled={createMut.isPending}>
+              <Plus className="mr-1 h-4 w-4" />
+              {createMut.isPending ? "Adding…" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog
@@ -852,120 +1408,24 @@ export default function AdminShortLinks() {
           if (!open) setEditTarget(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit short link</DialogTitle>
+            <DialogTitle>
+              Edit{" "}
+              <span className="font-mono">/{editTarget?.slug}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Changing the slug will change every published QR / link that
+              points at this row.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="edit-slug">Slug</Label>
-              <Input
-                id="edit-slug"
-                value={editDraft.slug ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, slug: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-targetUrl">Target URL</Label>
-              <Input
-                id="edit-targetUrl"
-                value={editDraft.targetUrl ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, targetUrl: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-statusCode">Status</Label>
-              <select
-                id="edit-statusCode"
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={editDraft.statusCode ?? 302}
-                onChange={(e) =>
-                  setEditDraft((d) => ({ ...d, statusCode: coerceStatus(e.target.value) }))
-                }
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="edit-title">Title (optional)</Label>
-              <Input
-                id="edit-title"
-                value={(editDraft.title as string | undefined) ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
-              <Input
-                id="edit-tags"
-                value={editTags}
-                onChange={(e) => setEditTags(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-notes">Notes (optional)</Label>
-              <Input
-                id="edit-notes"
-                value={(editDraft.notes as string | undefined) ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
-              />
-            </div>
-            <details className="rounded-md border border-input/60 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Social preview (optional)
-              </summary>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <Label htmlFor="edit-og-title">OG title</Label>
-                  <Input
-                    id="edit-og-title"
-                    value={(editDraft.ogTitle as string | undefined) ?? ""}
-                    onChange={(e) =>
-                      setEditDraft((d) => ({ ...d, ogTitle: e.target.value }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-og-description">OG description</Label>
-                  <Textarea
-                    id="edit-og-description"
-                    rows={2}
-                    value={
-                      (editDraft.ogDescription as string | undefined) ?? ""
-                    }
-                    onChange={(e) =>
-                      setEditDraft((d) => ({
-                        ...d,
-                        ogDescription: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-og-image">OG image URL or path</Label>
-                  <Input
-                    id="edit-og-image"
-                    value={(editDraft.ogImageUrl as string | undefined) ?? ""}
-                    onChange={(e) =>
-                      setEditDraft((d) => ({ ...d, ogImageUrl: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-            </details>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="edit-active"
-                checked={editDraft.active ?? true}
-                onCheckedChange={(v) => setEditDraft((d) => ({ ...d, active: v }))}
-              />
-              <Label htmlFor="edit-active">Active</Label>
-            </div>
-          </div>
+          <ShortLinkFormBody
+            idPrefix="edit"
+            values={editForm}
+            onChange={(next) => setEditForm((s) => ({ ...s, ...next }))}
+            publicBase={settingsQ.data?.publicBase}
+            showActiveSwitch
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)}>
               Cancel
@@ -977,6 +1437,37 @@ export default function AdminShortLinks() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete <span className="font-mono">/{deleteTarget?.slug}</span>?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Existing QR codes and printed collateral pointing at this slug
+              will start returning a 404. Click history is also removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (deleteTarget) deleteMut.mutate(deleteTarget.id);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Rebrandly API import dialog */}
       <Dialog
         open={rebrandlyImportOpen}
@@ -987,38 +1478,28 @@ export default function AdminShortLinks() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Import from Rebrandly API</DialogTitle>
+            <DialogDescription>
+              Fetches every link in the configured Rebrandly account and
+              upserts it. Slug, target URL, title, description, lifetime
+              click count, and last-click timestamp carry over. Per-day
+              analytics start fresh from the first scan after cutover.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Fetches every link in the configured Rebrandly account and
-              upserts it into the local table. Slug, target URL, title,
-              description, lifetime click count, and last-click timestamp
-              all carry over. Per-day analytics start fresh from the
-              first scan after cutover.
-            </p>
             <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              <strong>Heads-up:</strong> existing printed QR codes that
-              encode <code className="font-mono">aka.synozur.com/&lt;slug&gt;</code>{" "}
-              will keep working seamlessly after a DNS cutover. QR codes
-              that encode <code className="font-mono">rebrand.ly/...</code>{" "}
-              go dead the moment Rebrandly is disabled and need to be
-              reprinted.
+              <strong>Heads-up:</strong> existing printed QR codes that encode{" "}
+              <code className="font-mono">aka.synozur.com/&lt;slug&gt;</code>{" "}
+              keep working seamlessly after a DNS cutover. QR codes that encode{" "}
+              <code className="font-mono">rebrand.ly/...</code> go dead the
+              moment Rebrandly is disabled and need to be reprinted.
             </div>
             <div>
               <Label htmlFor="rebrandly-policy">On slug collision</Label>
-              <select
+              <CollisionPolicySelect
                 id="rebrandly-policy"
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 value={rebrandlyPolicy}
-                onChange={(e) =>
-                  setRebrandlyPolicy(
-                    e.target.value === "overwrite" ? "overwrite" : "skip",
-                  )
-                }
-              >
-                <option value="skip">Skip (keep existing)</option>
-                <option value="overwrite">Overwrite existing</option>
-              </select>
+                onChange={setRebrandlyPolicy}
+              />
             </div>
             <div>
               <Label htmlFor="rebrandly-domain-id">
@@ -1030,9 +1511,9 @@ export default function AdminShortLinks() {
                 value={rebrandlyDomainId}
                 onChange={(e) => setRebrandlyDomainId(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Scopes the import to a single Rebrandly branded domain
-                (look up the ID in Rebrandly → Domains → API).
+              <p className="mt-1 text-xs text-muted-foreground">
+                Scopes the import to a single Rebrandly branded domain (look
+                up the ID in Rebrandly → Domains → API).
               </p>
             </div>
             {!settingsQ.data?.rebrandlyApiKeyMasked && (
@@ -1062,7 +1543,7 @@ export default function AdminShortLinks() {
         </DialogContent>
       </Dialog>
 
-      {/* Import dialog */}
+      {/* CSV import dialog */}
       <Dialog
         open={importOpen}
         onOpenChange={(open) => {
@@ -1072,26 +1553,21 @@ export default function AdminShortLinks() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Import from Rebrandly CSV</DialogTitle>
+            <DialogDescription>
+              Paste a Rebrandly CSV export below. Recognised columns:{" "}
+              <code>slug</code> / <code>slashtag</code>, <code>destination</code>{" "}
+              / <code>targetUrl</code>, <code>title</code>, <code>notes</code>,{" "}
+              <code>tags</code>, <code>id</code>.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Paste a Rebrandly CSV export below. Recognised columns: <code>slug</code> /
-              <code>slashtag</code>, <code>destination</code> / <code>targetUrl</code>,
-              <code>title</code>, <code>notes</code>, <code>tags</code>, <code>id</code>.
-            </p>
             <div>
               <Label htmlFor="import-policy">On slug collision</Label>
-              <select
+              <CollisionPolicySelect
                 id="import-policy"
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 value={importPolicy}
-                onChange={(e) =>
-                  setImportPolicy(e.target.value === "overwrite" ? "overwrite" : "skip")
-                }
-              >
-                <option value="skip">Skip (keep existing)</option>
-                <option value="overwrite">Overwrite existing</option>
-              </select>
+                onChange={setImportPolicy}
+              />
             </div>
             <div>
               <Label htmlFor="import-csv">CSV</Label>
@@ -1125,32 +1601,51 @@ export default function AdminShortLinks() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>QR code · /{qrTarget?.slug}</DialogTitle>
+            <DialogTitle>
+              QR code · <span className="font-mono">/{qrTarget?.slug}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Branded with the Synozur mark. Use the 1024×1024 download for
+              print collateral.
+            </DialogDescription>
           </DialogHeader>
           {qrTarget && (
-            <div className="space-y-3 flex flex-col items-center">
+            <div className="flex flex-col items-center space-y-3">
               <img
                 src={`/api/cms/short-links/${qrTarget.id}/qr.png?size=512`}
                 alt={`QR for ${qrTarget.publicUrl}`}
-                className="w-64 h-64 rounded border bg-white"
+                className="h-64 w-64 rounded border bg-white"
               />
-              <code className="text-xs text-muted-foreground">{qrTarget.publicUrl}</code>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  asChild
-                >
+              <code className="break-all text-center text-xs text-muted-foreground">
+                {qrTarget.publicUrl}
+              </code>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button variant="outline" size="sm" asChild>
                   <a
                     href={`/api/cms/short-links/${qrTarget.id}/qr.png?size=1024`}
                     download={`${qrTarget.slug}-qr.png`}
                   >
-                    <Download className="h-4 w-4 mr-1" />
+                    <Download className="mr-1 h-4 w-4" />
                     Download (1024×1024)
                   </a>
                 </Button>
-                <Button variant="outline" onClick={() => onCopy(qrTarget.publicUrl)}>
-                  <Copy className="h-4 w-4 mr-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onCopy(qrTarget.publicUrl)}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
                   Copy URL
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={qrTarget.publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="mr-1 h-4 w-4" />
+                    Open
+                  </a>
                 </Button>
               </div>
             </div>
@@ -1171,116 +1666,145 @@ export default function AdminShortLinks() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Short-link service settings</DialogTitle>
+            <DialogDescription>
+              Affects every short link served by this app. Changes apply
+              immediately on save — no redeploy needed.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="settings-publicBase">Public base URL</Label>
-              <Input
-                id="settings-publicBase"
-                placeholder="https://aka.synozur.com"
-                value={settingsDraft.publicBase}
-                onChange={(e) =>
-                  setSettingsDraft((s) => ({ ...s, publicBase: e.target.value }))
-                }
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Embedded in QR codes and copy-to-clipboard. Leave blank to use
-                the default <code className="font-mono">https://aka.synozur.com</code>.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="settings-additionalHosts">
-                Additional hostnames (comma-separated)
-              </Label>
-              <Input
-                id="settings-additionalHosts"
-                placeholder="aka.localhost, go.synozur.com"
-                value={settingsDraft.additionalHosts}
-                onChange={(e) =>
-                  setSettingsDraft((s) => ({
-                    ...s,
-                    additionalHosts: e.target.value,
-                  }))
-                }
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Hostnames besides the one parsed from the public base URL that
-                the redirect middleware should treat as a short-link host.
-                Useful for staging aliases or local-dev.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="settings-fallbackUrl">404 fallback URL</Label>
-              <Input
-                id="settings-fallbackUrl"
-                placeholder="https://www.synozur.com"
-                value={settingsDraft.fallbackUrl}
-                onChange={(e) =>
-                  setSettingsDraft((s) => ({ ...s, fallbackUrl: e.target.value }))
-                }
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Surfaced as a "Go to ___" button on the 404 page when an
-                unknown slug is requested. Leave blank to suppress the button.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="settings-rebrandly-key">
-                Rebrandly API key
-              </Label>
-              <div className="flex gap-2">
+          <div className="space-y-4">
+            <SettingsSection
+              title="Public URL"
+              description="What admins copy and what gets baked into QR codes."
+            >
+              <div>
+                <Label htmlFor="settings-publicBase">Public base URL</Label>
                 <Input
-                  id="settings-rebrandly-key"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={
-                    settingsQ.data?.rebrandlyApiKeyMasked
-                      ? `Currently set: ${settingsQ.data.rebrandlyApiKeyMasked}`
-                      : "Paste your Rebrandly API key"
-                  }
-                  value={settingsDraft.rebrandlyApiKey}
+                  id="settings-publicBase"
+                  placeholder="https://aka.synozur.com"
+                  value={settingsDraft.publicBase}
                   onChange={(e) =>
                     setSettingsDraft((s) => ({
                       ...s,
-                      rebrandlyApiKey: e.target.value,
-                      rebrandlyApiKeyTouched: true,
+                      publicBase: e.target.value,
                     }))
                   }
                 />
-                {settingsQ.data?.rebrandlyApiKeyMasked && (
-                  // Explicit clear control. Marks the field touched and
-                  // empty so onSaveSettings sends `rebrandlyApiKey: ""`,
-                  // which the server treats as a deliberate clear.
-                  // Avoids the previous "type a single space" trick.
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Leave blank to use the default{" "}
+                  <code className="font-mono">https://aka.synozur.com</code>.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="settings-additionalHosts">
+                  Additional hostnames
+                </Label>
+                <Input
+                  id="settings-additionalHosts"
+                  placeholder="aka.localhost, go.synozur.com"
+                  value={settingsDraft.additionalHosts}
+                  onChange={(e) =>
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      additionalHosts: e.target.value,
+                    }))
+                  }
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Comma-separated. Hostnames besides the one parsed from the
+                  public base URL that the redirect middleware should treat as
+                  a short-link host. Useful for staging aliases or local-dev.
+                </p>
+              </div>
+            </SettingsSection>
+
+            <Separator />
+
+            <SettingsSection
+              title="404 fallback"
+              description="Where unknown slugs send visitors."
+            >
+              <div>
+                <Label htmlFor="settings-fallbackUrl">404 fallback URL</Label>
+                <Input
+                  id="settings-fallbackUrl"
+                  placeholder="https://www.synozur.com"
+                  value={settingsDraft.fallbackUrl}
+                  onChange={(e) =>
+                    setSettingsDraft((s) => ({
+                      ...s,
+                      fallbackUrl: e.target.value,
+                    }))
+                  }
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Surfaced as a "Go to ___" button on the 404 page when an
+                  unknown slug is requested. Leave blank to suppress the button.
+                </p>
+              </div>
+            </SettingsSection>
+
+            <Separator />
+
+            <SettingsSection
+              title="Rebrandly API"
+              description="Used by the Import-from-Rebrandly flow only."
+            >
+              <div>
+                <Label htmlFor="settings-rebrandly-key">
+                  Rebrandly API key
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="settings-rebrandly-key"
+                    type="password"
+                    autoComplete="off"
+                    placeholder={
+                      settingsQ.data?.rebrandlyApiKeyMasked
+                        ? `Currently set: ${settingsQ.data.rebrandlyApiKeyMasked}`
+                        : "Paste your Rebrandly API key"
+                    }
+                    value={settingsDraft.rebrandlyApiKey}
+                    onChange={(e) =>
                       setSettingsDraft((s) => ({
                         ...s,
-                        rebrandlyApiKey: "",
+                        rebrandlyApiKey: e.target.value,
                         rebrandlyApiKeyTouched: true,
                       }))
                     }
-                  >
-                    Clear key
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Used by the "Import from Rebrandly API" flow. Leave this
-                field blank on save to keep the existing key; type a new
-                value to rotate it; or use <strong>Clear key</strong> to
-                remove it.
+                  />
+                  {settingsQ.data?.rebrandlyApiKeyMasked && (
+                    // Explicit clear control. Marks the field touched and
+                    // empty so onSaveSettings sends `rebrandlyApiKey: ""`,
+                    // which the server treats as a deliberate clear.
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setSettingsDraft((s) => ({
+                          ...s,
+                          rebrandlyApiKey: "",
+                          rebrandlyApiKeyTouched: true,
+                        }))
+                      }
+                    >
+                      Clear key
+                    </Button>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Leave blank on save to keep the existing key; type a new
+                  value to rotate it; or use <strong>Clear key</strong> to
+                  remove it.
+                </p>
                 {settingsDraft.rebrandlyApiKeyTouched &&
                   settingsDraft.rebrandlyApiKey === "" &&
                   settingsQ.data?.rebrandlyApiKeyMasked && (
-                    <span className="block text-destructive mt-1">
+                    <p className="mt-1 text-xs text-destructive">
                       Saving will clear the stored key.
-                    </span>
+                    </p>
                   )}
-              </p>
-            </div>
+              </div>
+            </SettingsSection>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>
@@ -1296,6 +1820,53 @@ export default function AdminShortLinks() {
   );
 }
 
+function SummaryChip({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "active" | "muted";
+}) {
+  const toneClass =
+    tone === "active"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+      : tone === "muted"
+        ? "border-input/60 bg-muted/40 text-muted-foreground"
+        : "border-input bg-background";
+  return (
+    <div
+      className={`inline-flex items-baseline gap-2 rounded-md border px-2.5 py-1 text-xs ${toneClass}`}
+    >
+      <span className="font-semibold tabular-nums text-foreground">
+        {value.toLocaleString()}
+      </span>
+      <span className="text-[11px] uppercase tracking-wide">{label}</span>
+    </div>
+  );
+}
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function StatsDialog({
   target,
   onClose,
@@ -1304,7 +1875,9 @@ function StatsDialog({
   onClose: () => void;
 }) {
   const statsQ = useQuery<StatsResponse, Error>({
-    queryKey: target ? [`/api/cms/short-links/${target.id}/stats`] : ["stats-disabled"],
+    queryKey: target
+      ? [`/api/cms/short-links/${target.id}/stats`]
+      : ["stats-disabled"],
     queryFn: () => fetchStats(target!.id),
     enabled: !!target,
   });
@@ -1318,37 +1891,41 @@ function StatsDialog({
     <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Stats · /{target?.slug}</DialogTitle>
+          <DialogTitle>
+            Stats · <span className="font-mono">/{target?.slug}</span>
+          </DialogTitle>
+          {target?.publicUrl && (
+            <DialogDescription>
+              <code className="break-all font-mono">{target.publicUrl}</code>
+            </DialogDescription>
+          )}
         </DialogHeader>
         {statsQ.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : statsQ.isError ? (
-          <p className="text-sm text-destructive">Failed to load stats: {statsQ.error.message}</p>
+          <p className="text-sm text-destructive">
+            Failed to load stats: {statsQ.error.message}
+          </p>
         ) : statsQ.data ? (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground">Total clicks</div>
-                <div className="text-2xl font-semibold">{statsQ.data.totalClicks}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">
-                  Unique sessions ({statsQ.data.windowDays}d)
-                </div>
-                <div className="text-2xl font-semibold">{statsQ.data.uniqueSessions}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Window</div>
-                <div className="text-2xl font-semibold">{statsQ.data.windowDays}d</div>
-              </div>
+              <StatTile
+                label="Total clicks"
+                value={statsQ.data.totalClicks.toLocaleString()}
+              />
+              <StatTile
+                label={`Unique sessions (${statsQ.data.windowDays}d)`}
+                value={statsQ.data.uniqueSessions.toLocaleString()}
+              />
+              <StatTile label="Window" value={`${statsQ.data.windowDays}d`} />
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">
+              <div className="mb-1 text-xs text-muted-foreground">
                 Daily clicks (last {statsQ.data.windowDays} days)
               </div>
-              <div className="flex items-end gap-1 h-24 border rounded p-2 bg-muted/20">
+              <div className="flex h-24 items-end gap-1 rounded border bg-muted/20 p-2">
                 {statsQ.data.daily.length === 0 ? (
-                  <div className="text-xs text-muted-foreground self-center w-full text-center">
+                  <div className="w-full self-center text-center text-xs text-muted-foreground">
                     No clicks in window yet.
                   </div>
                 ) : (
@@ -1356,9 +1933,11 @@ function StatsDialog({
                     <div
                       key={d.day}
                       title={`${d.day}: ${d.count}`}
-                      className="bg-primary/70 hover:bg-primary rounded-sm flex-1 min-w-[6px]"
+                      className="min-w-[6px] flex-1 rounded-sm bg-primary/70 hover:bg-primary"
                       style={{
-                        height: `${max ? Math.max(4, Math.round((d.count / max) * 100)) : 4}%`,
+                        height: `${
+                          max ? Math.max(4, Math.round((d.count / max) * 100)) : 4
+                        }%`,
                       }}
                     />
                   ))
@@ -1366,36 +1945,22 @@ function StatsDialog({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Top referrers</div>
-                <ul className="text-sm space-y-1">
-                  {statsQ.data.topReferrers.length === 0 ? (
-                    <li className="text-muted-foreground">—</li>
-                  ) : (
-                    statsQ.data.topReferrers.map((r) => (
-                      <li key={r.referrer} className="flex justify-between gap-2">
-                        <span className="truncate">{r.referrer}</span>
-                        <span className="font-mono text-xs">{r.count}</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">Top countries</div>
-                <ul className="text-sm space-y-1">
-                  {statsQ.data.topCountries.length === 0 ? (
-                    <li className="text-muted-foreground">—</li>
-                  ) : (
-                    statsQ.data.topCountries.map((r) => (
-                      <li key={r.country} className="flex justify-between gap-2">
-                        <span className="truncate">{r.country}</span>
-                        <span className="font-mono text-xs">{r.count}</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
+              <RankedList
+                label="Top referrers"
+                items={statsQ.data.topReferrers.map((r) => ({
+                  key: r.referrer,
+                  label: r.referrer,
+                  count: r.count,
+                }))}
+              />
+              <RankedList
+                label="Top countries"
+                items={statsQ.data.topCountries.map((r) => ({
+                  key: r.country,
+                  label: r.country,
+                  count: r.count,
+                }))}
+              />
             </div>
           </div>
         ) : null}
@@ -1406,5 +1971,209 @@ function StatsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-muted/20 px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function TargetPreviewPanel({
+  preview,
+  values,
+  onApplyAll,
+  onApplyField,
+  onDismiss,
+}: {
+  preview: TargetPreview;
+  values: ShortLinkFormFields;
+  onApplyAll: () => void;
+  onApplyField: (
+    field: "title" | "ogTitle" | "ogDescription" | "ogImageUrl",
+    value: string,
+  ) => void;
+  onDismiss: () => void;
+}) {
+  const titleAvailable = !!preview.title;
+  const descAvailable = !!preview.description;
+  const imageAvailable = !!preview.imageUrl;
+  const nothing = !titleAvailable && !descAvailable && !imageAvailable;
+  const titleSourceLabel =
+    preview.sources.title === "og"
+      ? "og:title"
+      : preview.sources.title === "title"
+        ? "<title>"
+        : null;
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            Found at target
+          </div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            {preview.finalUrl}
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-1">
+          {!nothing && (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={onApplyAll}
+            >
+              Apply all
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={onDismiss}
+            aria-label="Dismiss preview"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {nothing ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          The target page didn't expose any OG, Twitter, or {"<title>"} tags.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {titleAvailable && (
+            <PreviewField
+              label={`Title${titleSourceLabel ? ` · ${titleSourceLabel}` : ""}`}
+              value={preview.title!}
+              alreadySet={
+                values.title.trim() === preview.title!.trim() &&
+                values.ogTitle.trim() === preview.title!.trim()
+              }
+              onApply={() => {
+                if (!values.title.trim()) onApplyField("title", preview.title!);
+                if (!values.ogTitle.trim())
+                  onApplyField("ogTitle", preview.title!);
+              }}
+            />
+          )}
+          {descAvailable && (
+            <PreviewField
+              label="Description · og:description"
+              value={preview.description!}
+              alreadySet={
+                values.ogDescription.trim() === preview.description!.trim()
+              }
+              onApply={() =>
+                onApplyField("ogDescription", preview.description!)
+              }
+            />
+          )}
+          {imageAvailable && (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">
+                Image · og:image
+              </div>
+              <div className="mt-1 flex items-start gap-3">
+                <img
+                  src={preview.imageUrl!}
+                  alt="Target OG preview"
+                  className="h-16 w-28 shrink-0 rounded border bg-background object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <code className="block break-all text-xs text-muted-foreground">
+                    {preview.imageUrl}
+                  </code>
+                  <div className="mt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      disabled={
+                        values.ogImageUrl.trim() === preview.imageUrl!.trim()
+                      }
+                      onClick={() =>
+                        onApplyField("ogImageUrl", preview.imageUrl!)
+                      }
+                    >
+                      {values.ogImageUrl.trim() === preview.imageUrl!.trim()
+                        ? "Already set"
+                        : "Use this"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PreviewField({
+  label,
+  value,
+  alreadySet,
+  onApply,
+}: {
+  label: string;
+  value: string;
+  alreadySet: boolean;
+  onApply: () => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          disabled={alreadySet}
+          onClick={onApply}
+        >
+          {alreadySet ? "Already set" : "Use this"}
+        </Button>
+      </div>
+      <div className="mt-1 line-clamp-2 break-words text-sm">{value}</div>
+    </div>
+  );
+}
+
+function RankedList({
+  label,
+  items,
+}: {
+  label: string;
+  items: { key: string; label: string; count: number }[];
+}) {
+  return (
+    <div>
+      <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+      <ul className="space-y-1 text-sm">
+        {items.length === 0 ? (
+          <li className="text-muted-foreground">—</li>
+        ) : (
+          items.map((r) => (
+            <li key={r.key} className="flex justify-between gap-2">
+              <span className="truncate">{r.label}</span>
+              <span className="font-mono text-xs tabular-nums">{r.count}</span>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
   );
 }
