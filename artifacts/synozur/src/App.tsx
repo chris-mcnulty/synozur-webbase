@@ -94,6 +94,7 @@ import VideoEdit from "@/pages/admin/library/video-edit";
 import AdminWhitePapersList from "@/pages/admin/library/white-papers-list";
 import WhitePaperEdit from "@/pages/admin/library/white-paper-edit";
 import AdminWixRedirects from "@/pages/admin/site-config/redirects";
+import AdminShortLinks from "@/pages/admin/site-config/short-links";
 import AdminNotFoundLogs from "@/pages/admin/site-config/not-found-logs";
 import AdminWorkshopsList from "@/pages/admin/library/workshops-list";
 import WorkshopEdit from "@/pages/admin/library/workshop-edit";
@@ -420,6 +421,7 @@ function AdminRoutes() {
         </Route>
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
+        <Route path="/site-config/short-links" component={AdminShortLinks} />
         <Route path="/site-config/not-found-logs" component={AdminNotFoundLogs} />
         <Route path="/site-config/health" component={AdminSiteHealth} />
         <Route path="/site-config/csp-violations" component={AdminCspViolations} />

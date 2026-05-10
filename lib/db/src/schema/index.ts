@@ -27,6 +27,7 @@ export * from "./legacyTraffic";
 export * from "./videos";
 export * from "./whitePapers";
 export * from "./wixRedirects";
+export * from "./shortLinks";
 export * from "./notFoundLogs";
 export * from "./workshops";
 export * from "./polarisEpisodes";

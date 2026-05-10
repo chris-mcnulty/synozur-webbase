@@ -33,6 +33,7 @@
     "test:insights-gone": "node --import tsx --test src/routes/insights.gone.test.ts",
     "test:seo-unpublish": "node --import tsx --test src/routes/seoUnpublishSubmit.test.ts",
     "test:wix-redirects-schema": "node --import tsx --test src/routes/wixRedirects.schema.test.ts",
+    "test:short-links": "node --import tsx --test src/routes/shortLinks.schema.test.ts",
     "test:prompt-cache": "node --import tsx --test src/lib/ai/promptCache.test.ts",
     "test:ai-chat-cache": "node --import tsx --test src/routes/aiChat.cache.test.ts",
     "test:portal-documents": "node --import tsx --test src/routes/portalDocuments.test.ts",
@@ -59,6 +60,7 @@
     "pdf-parse": "^1.1.1",
     "pino": "^9",
     "pino-http": "^10",
+    "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "slugify": "^1.6.9",
     "zod": "catalog:"
@@ -70,6 +72,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "@types/pdf-parse": "^1.1.5",
+    "@types/qrcode": "^1.5.6",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",
