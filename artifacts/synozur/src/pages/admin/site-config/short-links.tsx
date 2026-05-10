@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
   Copy,
   Download,
   Image as ImageIcon,
@@ -495,6 +498,32 @@ export default function AdminShortLinks() {
 
   const items = listQ.data?.items ?? [];
 
+  const [sortKey, setSortKey] = useState<"slug" | "createdAt" | "hitCount">("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function toggleSort(key: "slug" | "createdAt" | "hitCount") {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "slug" ? "asc" : "desc");
+    }
+  }
+
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "slug") {
+        cmp = a.slug.localeCompare(b.slug);
+      } else if (sortKey === "hitCount") {
+        cmp = a.hitCount - b.hitCount;
+      } else {
+        cmp = a.createdAt.localeCompare(b.createdAt);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [items, sortKey, sortDir]);
+
   const onAdd = () => {
     if (!draft.slug.trim() || !draft.targetUrl.trim()) {
       toast({ title: "Slug and target URL are required", variant: "destructive" });
@@ -849,10 +878,56 @@ export default function AdminShortLinks() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Slug</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("slug")}
+                  >
+                    Slug
+                    {sortKey === "slug" ? (
+                      sortDir === "asc"
+                        ? <ChevronUp className="h-3 w-3" />
+                        : <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronsUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead>Target</TableHead>
-                <TableHead className="w-[80px]">Hits</TableHead>
+                <TableHead className="w-[80px]">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("hitCount")}
+                  >
+                    Hits
+                    {sortKey === "hitCount" ? (
+                      sortDir === "asc"
+                        ? <ChevronUp className="h-3 w-3" />
+                        : <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronsUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="w-[140px]">Last click</TableHead>
+                <TableHead className="w-[120px]">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("createdAt")}
+                  >
+                    Created
+                    {sortKey === "createdAt" ? (
+                      sortDir === "asc"
+                        ? <ChevronUp className="h-3 w-3" />
+                        : <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronsUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="w-[80px]">Active</TableHead>
                 <TableHead className="w-[220px] text-right">Actions</TableHead>
               </TableRow>
