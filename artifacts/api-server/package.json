@@ -59,6 +59,7 @@
     "pdf-parse": "^1.1.1",
     "pino": "^9",
     "pino-http": "^10",
+    "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "slugify": "^1.6.9",
     "zod": "catalog:"
@@ -70,6 +71,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "@types/pdf-parse": "^1.1.5",
+    "@types/qrcode": "^1.5.6",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",

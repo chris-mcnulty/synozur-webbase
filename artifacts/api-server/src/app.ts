@@ -6,6 +6,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { wixRedirectMiddleware } from "./lib/wixRedirects";
 import { careersRedirectMiddleware } from "./lib/careersRedirect";
+import { shortLinkRedirectMiddleware } from "./middlewares/shortLinkRedirect";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { socialBotRendererMiddleware } from "./middlewares/socialBotRenderer";
 import { attachUserIfPresent } from "./middlewares/auth";
@@ -69,6 +70,13 @@ app.use(express.urlencoded({ extended: true }));
 // Native session resolver — populates `req.authedUser` and `req.session` if a
 // valid `sid` cookie is present. Replaces the previous Clerk middleware.
 app.use(attachUserIfPresent);
+
+// Branded short links (aka.synozur.com/<slug>). Runs before any other host
+// handling so a `aka.synozur.com/foo` request never falls through to the
+// marketing SPA shell or the wix-redirects table on a different host. The
+// middleware short-circuits when `req.hostname` doesn't match a configured
+// short-link host (default `aka.synozur.com`), so other hosts pay nothing.
+app.use(shortLinkRedirectMiddleware());
 
 // Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
 // 301 to their new home without ever reaching the SPA shell. Skips /api/*.
