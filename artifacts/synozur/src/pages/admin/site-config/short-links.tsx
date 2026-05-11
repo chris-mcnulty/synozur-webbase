@@ -1281,7 +1281,7 @@ export default function AdminShortLinks() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[220px]">
+                <TableHead className="sticky left-0 z-10 min-w-[220px] bg-background shadow-[8px_0_8px_-8px_rgba(0,0,0,0.1)]">
                   <button
                     type="button"
                     className="flex items-center gap-1 hover:text-foreground"
@@ -1394,7 +1394,7 @@ export default function AdminShortLinks() {
                   return sortDir === "asc" ? cmp : -cmp;
                 }).map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="align-top">
+                    <TableCell className="sticky left-0 z-10 bg-background align-top shadow-[8px_0_8px_-8px_rgba(0,0,0,0.1)] [tr:hover_&]:bg-muted/50">
                       <div className="flex flex-col gap-1">
                         <div className="text-sm font-medium">
                           {r.title?.trim() ? (
