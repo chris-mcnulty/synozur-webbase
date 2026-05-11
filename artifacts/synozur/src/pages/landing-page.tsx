@@ -15,6 +15,7 @@ import {
   type LandingPageCTA,
 } from "@/lib/api-landing-pages";
 import NotFound from "@/pages/not-found";
+import { EditWedge } from "@/components/edit-wedge";
 
 // Public renderer for DB-backed landing pages. Mounted at the public
 // wildcard route `/:slug` — App.tsx delegates here for any single-segment
@@ -438,6 +439,13 @@ export default function LandingPageView({ slug }: Props) {
       />
       <JsonLd data={buildJsonLd(data, canonicalUrl)} />
       {data.blocks.map(renderBlock)}
+      <EditWedge
+        kind="landing-page"
+        id={data.id}
+        slug={data.slug}
+        snapshot={data}
+        queryKey={["landing-page", normalized]}
+      />
     </div>
   );
 }

@@ -36,7 +36,8 @@ export type EntityKind =
   | "polaris-episode"
   | "team-member"
   | "event"
-  | "job";
+  | "job"
+  | "landing-page";
 
 export interface EntityRegistration {
   kind: EntityKind;
@@ -340,6 +341,24 @@ const REG: readonly EntityRegistration[] = [
     subtitleKey: null,
     // careers.job_postings has no SEO columns
     seoPatch: false,
+  },
+  {
+    // Landing pages live at a generic /:slug wildcard catch-all so this
+    // registration is placed last — entityFromPath iterates in order and
+    // /:slug would otherwise shadow every other single-segment pattern.
+    kind: "landing-page",
+    label: "Landing page",
+    publicPathPattern: "/:slug",
+    adminEditPath: (id) => `/admin/site-config/landing-pages/${id}/edit`,
+    capabilities: ["content.publish"],
+    supportsPreviewToken: false,
+    inlinePatch: true,
+    // heroImage / ogImageUrl are stored as text URL strings, not FK IDs
+    imageIdPatch: false,
+    statusEnum: ARTIFACT_STATUS,
+    subtitleKey: "subtitle",
+    subtitleLabel: "Subtitle",
+    seoPatch: true,
   },
 ];
 

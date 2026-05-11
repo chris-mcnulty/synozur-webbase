@@ -72,6 +72,8 @@ function patchUrlFor(kind: EntityKind, id: string | number): string {
       return `${BASE_PATH}/api/admin/events/${id}`;
     case "job":
       return `${BASE_PATH}/api/cms/careers/jobs/${id}`;
+    case "landing-page":
+      return `${BASE_PATH}/api/cms/landing-pages/${id}`;
   }
 }
 
