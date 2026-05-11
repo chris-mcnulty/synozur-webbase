@@ -111,9 +111,9 @@ export type LandingPageBlock =
   | ImageBlock
   | FaqBlock;
 
-// Lifecycle now mirrors the shared `artifact_status` enum used by every
-// other CMS type. `scheduled` is supported on the DB side; the admin UI
-// can grow into it later without a schema change.
+// Lifecycle mirrors the shared `artifact_status` enum used by every other
+// CMS type — same draft / scheduled / published / archived states the
+// admin status dropdown exposes.
 export type LandingPageStatus =
   | "draft"
   | "scheduled"

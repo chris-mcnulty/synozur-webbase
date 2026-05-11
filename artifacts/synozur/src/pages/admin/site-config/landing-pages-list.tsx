@@ -258,13 +258,18 @@ export default function AdminLandingPagesList() {
                     {p.featured ? (
                       <span
                         className="inline-flex items-center gap-1 text-amber-500"
+                        aria-label={
+                          p.featuredRank != null
+                            ? `Featured (rank ${p.featuredRank})`
+                            : "Featured"
+                        }
                         title={
                           p.featuredRank != null
                             ? `Rank ${p.featuredRank}`
                             : "Featured"
                         }
                       >
-                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                         {p.featuredRank != null && (
                           <span className="text-xs tabular-nums">
                             {p.featuredRank}
@@ -272,7 +277,9 @@ export default function AdminLandingPagesList() {
                         )}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground" aria-label="Not featured">
+                        —
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-xs">

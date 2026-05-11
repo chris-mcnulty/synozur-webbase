@@ -172,6 +172,16 @@ function draftToInput(draft: Draft) {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
+  // featuredRank is constrained to an int regex by the input's onChange
+  // guard, but coerce here too so an unparseable value (e.g. paste of a
+  // stale string from older state) becomes null rather than NaN.
+  const parsedRank =
+    draft.featuredRank === ""
+      ? null
+      : Number.isFinite(Number(draft.featuredRank)) &&
+          Number.isInteger(Number(draft.featuredRank))
+        ? Number(draft.featuredRank)
+        : null;
   return {
     slug: draft.slug || null,
     title: draft.title,
@@ -185,8 +195,7 @@ function draftToInput(draft: Draft) {
     seoCanonicalUrl: draft.seoCanonicalUrl || null,
     ogImageUrl: draft.ogImageUrl || null,
     featured: draft.featured,
-    featuredRank:
-      draft.featuredRank === "" ? null : Number(draft.featuredRank),
+    featuredRank: parsedRank,
     pillar: draft.pillar === "" ? null : draft.pillar,
     serviceId: draft.serviceId || null,
     solutionId: draft.solutionId || null,
@@ -613,9 +622,23 @@ export default function LandingPageEdit({ id }: Props) {
                   id="lp-featured-rank"
                   type="number"
                   value={draft.featuredRank}
-                  onChange={(e) =>
-                    setDraft({ ...draft, featuredRank: e.target.value })
-                  }
+                  // `featuredRank` is an int on the API side, so reject
+                  // anything that doesn't parse cleanly to an integer
+                  // (decimals, letters, NaN) before it reaches the
+                  // payload — otherwise the save would 400.
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      setDraft({ ...draft, featuredRank: "" });
+                      return;
+                    }
+                    if (/^-?\d+$/.test(raw)) {
+                      setDraft({ ...draft, featuredRank: raw });
+                    }
+                  }}
+                  step={1}
+                  min={0}
+                  inputMode="numeric"
                   placeholder="Lower = higher priority"
                   disabled={!canWrite || !draft.featured}
                   data-testid="input-featured-rank"

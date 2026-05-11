@@ -92,9 +92,10 @@ import { BlockSchema } from "./landingPagesSchema";
 // list separate but trivially auditable.
 void LANDING_PAGE_BLOCK_TYPES;
 
-// `coerceDate` accepts the ISO-string-or-null shape the admin UI sends for
+// Accepts the ISO-string-or-null shape the admin UI sends for
 // `unpublishedAt` and turns it into the Date the DB column expects (or
-// null to clear it).
+// null to clear it). Empty strings are normalised to null so a cleared
+// datetime-local input doesn't fail validation as an empty ISO string.
 const NullableDate = z
   .union([z.string().datetime({ offset: true }), z.string().length(0), z.null()])
   .nullish()
@@ -159,10 +160,12 @@ function serialize(row: LandingPage) {
   };
 }
 
-// Fire-and-log: a featured / classification change should rebuild the
-// collateral mirror so the carousel + /library see the new state, but a
-// sync failure must never block the admin save. Logged at error so it
-// surfaces in the same place as other sync helpers.
+// A featured / classification change should rebuild the collateral
+// mirror so the carousel + /library see the new state. We await the
+// sync (matching the post / case-study / etc. routes — sync latency is
+// a small DB upsert) but swallow errors so a sync failure can't fail
+// the admin save. Logged at error so it surfaces in the same place as
+// the other sync helpers.
 async function syncCollateralOrLog(page: LandingPage): Promise<void> {
   try {
     await upsertCollateralFromLandingPage(page);
