@@ -8,12 +8,18 @@ import {
   isLandingPagePubliclyVisible,
   LANDING_PAGE_BLOCK_TYPES,
   LANDING_PAGE_STATUSES,
+  COLLATERAL_PILLARS,
   type LandingPage,
   type LandingPageBlock,
 } from "@workspace/db";
 import { requireAuth, requireCapability } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import {
+  upsertCollateralFromLandingPage,
+  softDeleteCollateralForLandingPage,
+} from "../lib/syncCollateral";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -86,15 +92,40 @@ import { BlockSchema } from "./landingPagesSchema";
 // list separate but trivially auditable.
 void LANDING_PAGE_BLOCK_TYPES;
 
+// Accepts the ISO-string-or-null shape the admin UI sends for
+// `unpublishedAt` and turns it into the Date the DB column expects (or
+// null to clear it). Empty strings are normalised to null so a cleared
+// datetime-local input doesn't fail validation as an empty ISO string.
+const NullableDate = z
+  .union([z.string().datetime({ offset: true }), z.string().length(0), z.null()])
+  .nullish()
+  .transform((v) => {
+    if (!v) return null;
+    return new Date(v);
+  });
+
 const CreateBody = z.object({
   slug: z.string().min(1).nullish(),
   title: z.string().min(1),
+  subtitle: z.string().nullish(),
+  description: z.string().nullish(),
+  heroImage: z.string().nullish(),
   status: z.enum(LANDING_PAGE_STATUSES).optional(),
   blocks: z.array(BlockSchema).optional(),
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
   seoCanonicalUrl: z.string().nullish(),
   ogImageUrl: z.string().nullish(),
+  // Classification — same surface as posts / white_papers / applications.
+  featured: z.boolean().optional(),
+  featuredRank: z.number().int().nullish(),
+  pillar: z.enum(COLLATERAL_PILLARS).nullish(),
+  serviceId: z.string().uuid().nullish(),
+  solutionId: z.string().uuid().nullish(),
+  tags: z.array(z.string()).optional(),
+  active: z.boolean().optional(),
+  unpublishedAt: NullableDate,
+  sourceId: z.string().nullish(),
 });
 const UpdateBody = CreateBody.partial();
 
@@ -103,6 +134,9 @@ function serialize(row: LandingPage) {
     id: row.id,
     slug: row.slug,
     title: row.title,
+    subtitle: row.subtitle,
+    description: row.description,
+    heroImage: row.heroImage,
     status: row.status,
     blocks: landingPageBlocks(row),
     seoTitle: row.seoTitle,
@@ -110,9 +144,37 @@ function serialize(row: LandingPage) {
     seoCanonicalUrl: row.seoCanonicalUrl,
     ogImageUrl: row.ogImageUrl,
     publishedAt: row.publishedAt,
+    unpublishedAt: row.unpublishedAt,
+    // Classification surface — same shape returned by the other artifact
+    // admin endpoints so the frontend can share filter / sort UI.
+    featured: row.featured,
+    featuredRank: row.featuredRank,
+    pillar: row.pillar,
+    serviceId: row.serviceId,
+    solutionId: row.solutionId,
+    tags: (row.tags as string[]) ?? [],
+    active: row.active,
+    sourceId: row.sourceId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+// A featured / classification change should rebuild the collateral
+// mirror so the carousel + /library see the new state. We await the
+// sync (matching the post / case-study / etc. routes — sync latency is
+// a small DB upsert) but swallow errors so a sync failure can't fail
+// the admin save. Logged at error so it surfaces in the same place as
+// the other sync helpers.
+async function syncCollateralOrLog(page: LandingPage): Promise<void> {
+  try {
+    await upsertCollateralFromLandingPage(page);
+  } catch (err) {
+    logger.error(
+      { err, landingPageId: page.id },
+      "upsertCollateralFromLandingPage failed",
+    );
+  }
 }
 
 async function ensureUniqueSlug(base: string, excludeId?: string): Promise<string> {
@@ -218,6 +280,9 @@ router.post("/cms/landing-pages", ...adminGuard, async (req, res) => {
     .values({
       slug,
       title: d.title,
+      subtitle: d.subtitle ?? null,
+      description: d.description ?? "",
+      heroImage: d.heroImage ?? "",
       status,
       blocks: (d.blocks ?? []) as unknown as LandingPageBlock[],
       seoTitle: d.seoTitle ?? null,
@@ -225,6 +290,15 @@ router.post("/cms/landing-pages", ...adminGuard, async (req, res) => {
       seoCanonicalUrl: d.seoCanonicalUrl ?? null,
       ogImageUrl: d.ogImageUrl ?? null,
       publishedAt: status === "published" ? new Date() : null,
+      unpublishedAt: d.unpublishedAt ?? null,
+      featured: d.featured ?? false,
+      featuredRank: d.featuredRank ?? null,
+      pillar: d.pillar ?? null,
+      serviceId: d.serviceId ?? null,
+      solutionId: d.solutionId ?? null,
+      tags: d.tags ?? [],
+      active: d.active ?? true,
+      sourceId: d.sourceId ?? null,
     })
     .returning();
   await audit({
@@ -233,6 +307,7 @@ router.post("/cms/landing-pages", ...adminGuard, async (req, res) => {
     entity: "landing_page",
     entityId: row.id,
   });
+  await syncCollateralOrLog(row);
   res.status(201).json(serialize(row));
 });
 
@@ -262,11 +337,23 @@ router.patch("/cms/landing-pages/:id", ...adminGuard, async (req, res) => {
     updates.slug = slug;
   }
   if (d.title !== undefined) updates.title = d.title;
+  if (d.subtitle !== undefined) updates.subtitle = d.subtitle;
+  if (d.description !== undefined) updates.description = d.description ?? "";
+  if (d.heroImage !== undefined) updates.heroImage = d.heroImage ?? "";
   if (d.blocks !== undefined) updates.blocks = d.blocks;
   if (d.seoTitle !== undefined) updates.seoTitle = d.seoTitle;
   if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription;
   if (d.seoCanonicalUrl !== undefined) updates.seoCanonicalUrl = d.seoCanonicalUrl;
   if (d.ogImageUrl !== undefined) updates.ogImageUrl = d.ogImageUrl;
+  if (d.unpublishedAt !== undefined) updates.unpublishedAt = d.unpublishedAt;
+  if (d.featured !== undefined) updates.featured = d.featured;
+  if (d.featuredRank !== undefined) updates.featuredRank = d.featuredRank;
+  if (d.pillar !== undefined) updates.pillar = d.pillar;
+  if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
+  if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
+  if (d.tags !== undefined) updates.tags = d.tags;
+  if (d.active !== undefined) updates.active = d.active;
+  if (d.sourceId !== undefined) updates.sourceId = d.sourceId;
   if (d.status !== undefined) {
     updates.status = d.status;
     // First publish stamps publishedAt; re-publishing leaves the original
@@ -287,6 +374,7 @@ router.patch("/cms/landing-pages/:id", ...adminGuard, async (req, res) => {
     entity: "landing_page",
     entityId: id,
   });
+  await syncCollateralOrLog(updated);
   res.json(serialize(updated));
 });
 
@@ -307,6 +395,16 @@ router.delete("/cms/landing-pages/:id", ...adminGuard, async (req, res) => {
     entity: "landing_page",
     entityId: id,
   });
+  // Mirror the soft-delete into the collateral row (if one exists) so the
+  // page drops out of the carousel / library immediately.
+  try {
+    await softDeleteCollateralForLandingPage(id);
+  } catch (err) {
+    logger.error(
+      { err, landingPageId: id },
+      "softDeleteCollateralForLandingPage failed",
+    );
+  }
   res.status(204).end();
 });
 
@@ -326,12 +424,27 @@ const ImportBody = z.object({
   page: z.object({
     slug: z.string().min(1),
     title: z.string().min(1),
+    subtitle: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    heroImage: z.string().nullable().optional(),
     status: z.enum(LANDING_PAGE_STATUSES),
     blocks: z.array(BlockSchema),
     seoTitle: z.string().nullable().optional(),
     seoDescription: z.string().nullable().optional(),
     seoCanonicalUrl: z.string().nullable().optional(),
     ogImageUrl: z.string().nullable().optional(),
+    // Classification fields are optional in the import payload so older
+    // export files (pre-classification) still parse cleanly. Defaults
+    // match the column defaults (`featured = false`, `active = true`).
+    unpublishedAt: NullableDate,
+    featured: z.boolean().optional(),
+    featuredRank: z.number().int().nullable().optional(),
+    pillar: z.enum(COLLATERAL_PILLARS).nullable().optional(),
+    serviceId: z.string().uuid().nullable().optional(),
+    solutionId: z.string().uuid().nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    active: z.boolean().optional(),
+    sourceId: z.string().nullable().optional(),
   }),
   // `force: true` lets the client confirm an overwrite after we returned
   // 409 on the first attempt. We bounce the operator through a confirm so
@@ -355,12 +468,26 @@ router.get("/cms/landing-pages/:id/export", ...adminGuard, async (req, res) => {
     page: {
       slug: row.slug,
       title: row.title,
+      subtitle: row.subtitle,
+      description: row.description,
+      heroImage: row.heroImage,
       status: row.status,
       blocks: landingPageBlocks(row),
       seoTitle: row.seoTitle,
       seoDescription: row.seoDescription,
       seoCanonicalUrl: row.seoCanonicalUrl,
       ogImageUrl: row.ogImageUrl,
+      unpublishedAt: row.unpublishedAt
+        ? row.unpublishedAt.toISOString()
+        : null,
+      featured: row.featured,
+      featuredRank: row.featuredRank,
+      pillar: row.pillar,
+      serviceId: row.serviceId,
+      solutionId: row.solutionId,
+      tags: (row.tags as string[]) ?? [],
+      active: row.active,
+      sourceId: row.sourceId,
     },
   };
   await audit({
@@ -409,12 +536,24 @@ router.post("/cms/landing-pages/import", ...adminGuard, async (req, res) => {
 
   const writable = {
     title: page.title,
+    subtitle: page.subtitle ?? null,
+    description: page.description ?? "",
+    heroImage: page.heroImage ?? "",
     status: page.status,
     blocks: page.blocks as unknown as LandingPageBlock[],
     seoTitle: page.seoTitle ?? null,
     seoDescription: page.seoDescription ?? null,
     seoCanonicalUrl: page.seoCanonicalUrl ?? null,
     ogImageUrl: page.ogImageUrl ?? null,
+    unpublishedAt: page.unpublishedAt ?? null,
+    featured: page.featured ?? false,
+    featuredRank: page.featuredRank ?? null,
+    pillar: page.pillar ?? null,
+    serviceId: page.serviceId ?? null,
+    solutionId: page.solutionId ?? null,
+    tags: page.tags ?? [],
+    active: page.active ?? true,
+    sourceId: page.sourceId ?? null,
   };
 
   let row: LandingPage;
@@ -458,6 +597,7 @@ router.post("/cms/landing-pages/import", ...adminGuard, async (req, res) => {
     entity: "landing_page",
     entityId: row.id,
   });
+  await syncCollateralOrLog(row);
   res.status(mode === "created" ? 201 : 200).json({ mode, page: serialize(row) });
 });
 

@@ -59,6 +59,9 @@ export function canonicalUrlForCollateral(
       return `/insights/${slug}`;
     case "podcast":
       return `/polaris/${slug}`;
+    case "landing_page":
+      // Landing pages live at the site root (/:slug), not under /library.
+      return `/${slug}`;
     default:
       return `/library/${slug}`;
   }
@@ -83,6 +86,7 @@ export const SYNCED_COLLATERAL_TYPES = [
   "insight",
   "podcast",
   "application",
+  "landing_page",
 ] as const;
 
 export type SyncedCollateralType = (typeof SYNCED_COLLATERAL_TYPES)[number];

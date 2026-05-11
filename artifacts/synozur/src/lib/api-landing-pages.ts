@@ -111,12 +111,28 @@ export type LandingPageBlock =
   | ImageBlock
   | FaqBlock;
 
-export type LandingPageStatus = "draft" | "published" | "archived";
+// Lifecycle mirrors the shared `artifact_status` enum used by every other
+// CMS type — same draft / scheduled / published / archived states the
+// admin status dropdown exposes.
+export type LandingPageStatus =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "archived";
+
+export type LandingPagePillar =
+  | "strategic"
+  | "technology"
+  | "experiences"
+  | "gtm";
 
 export interface LandingPageDto {
   id: string;
   slug: string;
   title: string;
+  subtitle: string | null;
+  description: string;
+  heroImage: string;
   status: LandingPageStatus;
   blocks: LandingPageBlock[];
   seoTitle: string | null;
@@ -124,6 +140,15 @@ export interface LandingPageDto {
   seoCanonicalUrl: string | null;
   ogImageUrl: string | null;
   publishedAt: string | null;
+  unpublishedAt: string | null;
+  featured: boolean;
+  featuredRank: number | null;
+  pillar: LandingPagePillar | null;
+  serviceId: string | null;
+  solutionId: string | null;
+  tags: string[];
+  active: boolean;
+  sourceId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -131,12 +156,24 @@ export interface LandingPageDto {
 export interface LandingPageInput {
   slug?: string | null;
   title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  heroImage?: string | null;
   status?: LandingPageStatus;
   blocks?: LandingPageBlock[];
   seoTitle?: string | null;
   seoDescription?: string | null;
   seoCanonicalUrl?: string | null;
   ogImageUrl?: string | null;
+  unpublishedAt?: string | null;
+  featured?: boolean;
+  featuredRank?: number | null;
+  pillar?: LandingPagePillar | null;
+  serviceId?: string | null;
+  solutionId?: string | null;
+  tags?: string[];
+  active?: boolean;
+  sourceId?: string | null;
 }
 
 // Wire format for a single landing-page export file. `format` + `version`
@@ -150,12 +187,27 @@ export interface LandingPageExport {
   page: {
     slug: string;
     title: string;
+    subtitle?: string | null;
+    description?: string | null;
+    heroImage?: string | null;
     status: LandingPageStatus;
     blocks: LandingPageBlock[];
     seoTitle: string | null;
     seoDescription: string | null;
     seoCanonicalUrl: string | null;
     ogImageUrl: string | null;
+    // Classification fields are optional in the wire format so a v1 file
+    // written before they existed still imports cleanly. Importers fall
+    // back to column defaults when these are absent.
+    unpublishedAt?: string | null;
+    featured?: boolean;
+    featuredRank?: number | null;
+    pillar?: LandingPagePillar | null;
+    serviceId?: string | null;
+    solutionId?: string | null;
+    tags?: string[];
+    active?: boolean;
+    sourceId?: string | null;
   };
 }
 

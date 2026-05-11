@@ -2782,6 +2782,90 @@ export async function runMigrations(): Promise<void> {
         ON landing_pages (status);
     `);
 
+    // Landing-page classification affordances — bring landing_pages up to
+    // parity with the rest of the artifact tables (posts, white_papers,
+    // applications, etc.) so editors can mark a page featured, assign a
+    // pillar / service / solution, attach tags, schedule unpublish, and
+    // carry a stable sourceId for imports. Featured pages are synced into
+    // the collateral table via `upsertCollateralFromLandingPage` so they
+    // appear in the home carousel and /library alongside other content.
+    //
+    // status is migrated from the bespoke `text` column to the shared
+    // `artifact_status` enum so the lifecycle matches every other CMS
+    // table. The cast goes through an explicit USING clause because
+    // PostgreSQL can't infer the conversion from text → enum.
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'landing_pages'
+            AND column_name = 'status'
+            AND data_type = 'text'
+        ) THEN
+          ALTER TABLE landing_pages
+            ALTER COLUMN status DROP DEFAULT,
+            ALTER COLUMN status TYPE artifact_status USING status::artifact_status,
+            ALTER COLUMN status SET DEFAULT 'draft'::artifact_status;
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`
+      ALTER TABLE landing_pages
+        ADD COLUMN IF NOT EXISTS subtitle           text,
+        ADD COLUMN IF NOT EXISTS description        text NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS hero_image         text NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS unpublished_at     timestamptz,
+        ADD COLUMN IF NOT EXISTS featured           boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS featured_rank      integer,
+        ADD COLUMN IF NOT EXISTS pillar             collateral_pillar,
+        ADD COLUMN IF NOT EXISTS service_id         uuid REFERENCES services(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS solution_id        uuid REFERENCES solutions(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS tags               jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS active             boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS source_id          text;
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS landing_pages_source_id_key
+        ON landing_pages (source_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_featured_rank_idx
+        ON landing_pages (featured, featured_rank);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_pillar_idx
+        ON landing_pages (pillar);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_service_idx
+        ON landing_pages (service_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_solution_idx
+        ON landing_pages (solution_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_published_at_idx
+        ON landing_pages (published_at);
+    `);
+    // Extend the existing enums so featured landing pages can sync into
+    // collateral with type='landing_page' and carry shared taxonomy via
+    // entity_categories / entity_tags with entity_type='landing_page'.
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE collateral_type ADD VALUE IF NOT EXISTS 'landing_page';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await db.execute(sql`
+      DO $$ BEGIN
+        ALTER TYPE taxonomy_entity_type ADD VALUE IF NOT EXISTS 'landing_page';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

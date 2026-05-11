@@ -45,6 +45,7 @@ export const TAXONOMY_ENTITY_TYPES = [
   "collateral",
   "service",
   "solution",
+  "landing_page",
 ] as const;
 export type TaxonomyEntityType = (typeof TAXONOMY_ENTITY_TYPES)[number];
 

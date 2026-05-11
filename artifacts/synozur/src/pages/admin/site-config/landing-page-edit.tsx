@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -25,11 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { api, type ServiceWithSolutions } from "@/lib/api";
 import {
   landingPagesApi,
   type LandingPageBlock,
   type LandingPageDto,
   type LandingPageStatus,
+  type LandingPagePillar,
   type CardGridCard,
   type LandingPageCTA,
 } from "@/lib/api-landing-pages";
@@ -45,11 +48,25 @@ interface Props {
 interface Draft {
   slug: string;
   title: string;
+  subtitle: string;
+  description: string;
+  heroImage: string;
   status: LandingPageStatus;
   seoTitle: string;
   seoDescription: string;
   seoCanonicalUrl: string;
   ogImageUrl: string;
+  // Classification — empty-string sentinels mean "no value", since the
+  // <Select /> components used below treat undefined as uncontrolled.
+  featured: boolean;
+  featuredRank: string;
+  pillar: LandingPagePillar | "";
+  serviceId: string;
+  solutionId: string;
+  tagsText: string;
+  active: boolean;
+  unpublishedAt: string;
+  sourceId: string;
   blocks: LandingPageBlock[];
   // Parallel array of stable client-only ids used as React keys. The DB
   // block payloads have no natural id, and using the array index as a key
@@ -58,6 +75,34 @@ interface Draft {
   // index 2 after a move). Kept in lockstep with `blocks` on every
   // mutation and discarded on save.
   blockKeys: string[];
+}
+
+const PILLAR_OPTIONS: { value: LandingPagePillar; label: string }[] = [
+  { value: "strategic", label: "Strategic Transformation" },
+  { value: "technology", label: "Technology Transformation" },
+  { value: "experiences", label: "Experiences" },
+  { value: "gtm", label: "Go-to-Market" },
+];
+
+// `datetime-local` inputs want `YYYY-MM-DDTHH:mm` without timezone, but
+// the server hands us a full ISO string. Strip the suffix on read and
+// re-attach the local zone offset on write so a round-trip preserves the
+// editor's intent.
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
 function newKey(): string {
@@ -72,11 +117,23 @@ function newKey(): string {
 const EMPTY_DRAFT: Draft = {
   slug: "",
   title: "",
+  subtitle: "",
+  description: "",
+  heroImage: "",
   status: "draft",
   seoTitle: "",
   seoDescription: "",
   seoCanonicalUrl: "",
   ogImageUrl: "",
+  featured: false,
+  featuredRank: "",
+  pillar: "",
+  serviceId: "",
+  solutionId: "",
+  tagsText: "",
+  active: true,
+  unpublishedAt: "",
+  sourceId: "",
   blocks: [],
   blockKeys: [],
 };
@@ -85,13 +142,67 @@ function toDraft(p: LandingPageDto): Draft {
   return {
     slug: p.slug,
     title: p.title,
+    subtitle: p.subtitle ?? "",
+    description: p.description ?? "",
+    heroImage: p.heroImage ?? "",
     status: p.status,
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
     ogImageUrl: p.ogImageUrl ?? "",
+    featured: p.featured,
+    featuredRank: p.featuredRank != null ? String(p.featuredRank) : "",
+    pillar: p.pillar ?? "",
+    serviceId: p.serviceId ?? "",
+    solutionId: p.solutionId ?? "",
+    tagsText: (p.tags ?? []).join(", "),
+    active: p.active,
+    unpublishedAt: isoToLocalInput(p.unpublishedAt),
+    sourceId: p.sourceId ?? "",
     blocks: p.blocks,
     blockKeys: p.blocks.map(() => newKey()),
+  };
+}
+
+// Builds the LandingPageInput payload from the draft. Centralised because
+// create + update need the exact same shape — the only difference between
+// them is which mutation gets called.
+function draftToInput(draft: Draft) {
+  const tags = draft.tagsText
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  // featuredRank is constrained to an int regex by the input's onChange
+  // guard, but coerce here too so an unparseable value (e.g. paste of a
+  // stale string from older state) becomes null rather than NaN.
+  const parsedRank =
+    draft.featuredRank === ""
+      ? null
+      : Number.isFinite(Number(draft.featuredRank)) &&
+          Number.isInteger(Number(draft.featuredRank))
+        ? Number(draft.featuredRank)
+        : null;
+  return {
+    slug: draft.slug || null,
+    title: draft.title,
+    subtitle: draft.subtitle || null,
+    description: draft.description || null,
+    heroImage: draft.heroImage || null,
+    status: draft.status,
+    blocks: draft.blocks,
+    seoTitle: draft.seoTitle || null,
+    seoDescription: draft.seoDescription || null,
+    seoCanonicalUrl: draft.seoCanonicalUrl || null,
+    ogImageUrl: draft.ogImageUrl || null,
+    featured: draft.featured,
+    featuredRank: parsedRank,
+    pillar: draft.pillar === "" ? null : draft.pillar,
+    serviceId: draft.serviceId || null,
+    solutionId: draft.solutionId || null,
+    tags,
+    active: draft.active,
+    unpublishedAt: localInputToIso(draft.unpublishedAt),
+    sourceId: draft.sourceId || null,
   };
 }
 
@@ -145,8 +256,18 @@ export default function LandingPageEdit({ id }: Props) {
     enabled: !isNew,
   });
 
+  const servicesQ = useQuery({
+    queryKey: ["admin-services-with-solutions"],
+    queryFn: () => api.listServicesAdmin(),
+  });
+  const allServices: ServiceWithSolutions[] = servicesQ.data?.items ?? [];
+
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(isNew);
+
+  const selectedService =
+    allServices.find((s) => s.id === draft.serviceId) ?? null;
+  const availableSolutions = selectedService?.solutions ?? [];
 
   useEffect(() => {
     if (existingQ.data && !hydrated) {
@@ -156,17 +277,7 @@ export default function LandingPageEdit({ id }: Props) {
   }, [existingQ.data, hydrated]);
 
   const createMut = useMutation({
-    mutationFn: () =>
-      landingPagesApi.create({
-        slug: draft.slug || null,
-        title: draft.title,
-        status: draft.status,
-        blocks: draft.blocks,
-        seoTitle: draft.seoTitle || null,
-        seoDescription: draft.seoDescription || null,
-        seoCanonicalUrl: draft.seoCanonicalUrl || null,
-        ogImageUrl: draft.ogImageUrl || null,
-      }),
+    mutationFn: () => landingPagesApi.create(draftToInput(draft)),
     onSuccess: (row) => {
       toast({ title: "Landing page created" });
       qc.invalidateQueries({ queryKey: ["admin-landing-pages"] });
@@ -181,17 +292,7 @@ export default function LandingPageEdit({ id }: Props) {
   });
 
   const updateMut = useMutation({
-    mutationFn: () =>
-      landingPagesApi.update(id as string, {
-        slug: draft.slug || null,
-        title: draft.title,
-        status: draft.status,
-        blocks: draft.blocks,
-        seoTitle: draft.seoTitle || null,
-        seoDescription: draft.seoDescription || null,
-        seoCanonicalUrl: draft.seoCanonicalUrl || null,
-        ogImageUrl: draft.ogImageUrl || null,
-      }),
+    mutationFn: () => landingPagesApi.update(id as string, draftToInput(draft)),
     onSuccess: (row) => {
       toast({ title: "Landing page saved" });
       qc.invalidateQueries({ queryKey: ["admin-landing-pages"] });
@@ -390,10 +491,55 @@ export default function LandingPageEdit({ id }: Props) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="lp-subtitle">Subtitle</Label>
+                <Input
+                  id="lp-subtitle"
+                  value={draft.subtitle}
+                  onChange={(e) =>
+                    setDraft({ ...draft, subtitle: e.target.value })
+                  }
+                  disabled={!canWrite}
+                  placeholder="Short label shown on library/carousel cards"
+                  data-testid="input-subtitle"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lp-description">Card description</Label>
+                <Textarea
+                  id="lp-description"
+                  rows={3}
+                  value={draft.description}
+                  onChange={(e) =>
+                    setDraft({ ...draft, description: e.target.value })
+                  }
+                  disabled={!canWrite}
+                  placeholder="Short summary surfaced on /library tiles and the home carousel"
+                  data-testid="input-description"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Distinct from the meta description — this is the copy on
+                  carousel / library cards.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="lp-hero-image">Card hero image URL</Label>
+                <Input
+                  id="lp-hero-image"
+                  value={draft.heroImage}
+                  onChange={(e) =>
+                    setDraft({ ...draft, heroImage: e.target.value })
+                  }
+                  placeholder="https://… (shown on library/carousel cards)"
+                  disabled={!canWrite}
+                  data-testid="input-hero-image"
+                />
               </div>
             </CardContent>
           </Card>
@@ -443,8 +589,226 @@ export default function LandingPageEdit({ id }: Props) {
           </Card>
         </div>
 
-        {/* SEO */}
+        {/* Classification + SEO */}
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Classification</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="lp-featured" className="text-sm font-medium">
+                  Featured
+                </Label>
+                <Switch
+                  id="lp-featured"
+                  checked={draft.featured}
+                  onCheckedChange={(v) =>
+                    setDraft({ ...draft, featured: v })
+                  }
+                  disabled={!canWrite}
+                  data-testid="switch-landing-page-featured"
+                />
+              </div>
+              <p className="-mt-2 text-xs text-muted-foreground">
+                Featured pages appear on the home carousel and in /library
+                alongside other published content.
+              </p>
+              <div>
+                <Label htmlFor="lp-featured-rank" className="text-xs">
+                  Featured rank
+                </Label>
+                <Input
+                  id="lp-featured-rank"
+                  type="number"
+                  value={draft.featuredRank}
+                  // `featuredRank` is an int on the API side, so reject
+                  // anything that doesn't parse cleanly to an integer
+                  // (decimals, letters, NaN) before it reaches the
+                  // payload — otherwise the save would 400.
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      setDraft({ ...draft, featuredRank: "" });
+                      return;
+                    }
+                    if (/^-?\d+$/.test(raw)) {
+                      setDraft({ ...draft, featuredRank: raw });
+                    }
+                  }}
+                  step={1}
+                  min={0}
+                  inputMode="numeric"
+                  placeholder="Lower = higher priority"
+                  disabled={!canWrite || !draft.featured}
+                  data-testid="input-featured-rank"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lp-pillar" className="text-xs">
+                  Pillar
+                </Label>
+                <Select
+                  value={draft.pillar || "__none__"}
+                  onValueChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      pillar: v === "__none__" ? "" : (v as LandingPagePillar),
+                    })
+                  }
+                  disabled={!canWrite}
+                >
+                  <SelectTrigger id="lp-pillar" data-testid="select-pillar">
+                    <SelectValue placeholder="No pillar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No pillar</SelectItem>
+                    {PILLAR_OPTIONS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="lp-service" className="text-xs">
+                  Service
+                </Label>
+                <Select
+                  value={draft.serviceId || "__none__"}
+                  onValueChange={(v) => {
+                    const next = v === "__none__" ? "" : v;
+                    // Clearing the service has to clear the solution too —
+                    // the picker is gated on the parent service.
+                    setDraft({ ...draft, serviceId: next, solutionId: "" });
+                  }}
+                  disabled={!canWrite}
+                >
+                  <SelectTrigger id="lp-service" data-testid="select-service">
+                    <SelectValue placeholder="No service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No service</SelectItem>
+                    {allServices.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="lp-solution" className="text-xs">
+                  Solution
+                </Label>
+                <Select
+                  value={draft.solutionId || "__none__"}
+                  onValueChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      solutionId: v === "__none__" ? "" : v,
+                    })
+                  }
+                  disabled={
+                    !canWrite ||
+                    !draft.serviceId ||
+                    availableSolutions.length === 0
+                  }
+                >
+                  <SelectTrigger
+                    id="lp-solution"
+                    data-testid="select-solution"
+                  >
+                    <SelectValue
+                      placeholder={
+                        draft.serviceId
+                          ? availableSolutions.length === 0
+                            ? "No solutions"
+                            : "No solution"
+                          : "Select a service first"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No solution</SelectItem>
+                    {availableSolutions.map((sol) => (
+                      <SelectItem key={sol.id} value={sol.id}>
+                        {sol.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="lp-tags" className="text-xs">
+                  Tags (comma-separated)
+                </Label>
+                <Input
+                  id="lp-tags"
+                  value={draft.tagsText}
+                  onChange={(e) =>
+                    setDraft({ ...draft, tagsText: e.target.value })
+                  }
+                  placeholder="copilot, training, m365"
+                  disabled={!canWrite}
+                  data-testid="input-tags"
+                />
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <Label htmlFor="lp-active" className="text-sm font-medium">
+                  Active
+                </Label>
+                <Switch
+                  id="lp-active"
+                  checked={draft.active}
+                  onCheckedChange={(v) =>
+                    setDraft({ ...draft, active: v })
+                  }
+                  disabled={!canWrite}
+                  data-testid="switch-landing-page-active"
+                />
+              </div>
+              <p className="-mt-2 text-xs text-muted-foreground">
+                Inactive pages keep their content but stop serving and drop
+                out of rails.
+              </p>
+              <div>
+                <Label htmlFor="lp-unpublished-at" className="text-xs">
+                  Unpublish at
+                </Label>
+                <Input
+                  id="lp-unpublished-at"
+                  type="datetime-local"
+                  value={draft.unpublishedAt}
+                  onChange={(e) =>
+                    setDraft({ ...draft, unpublishedAt: e.target.value })
+                  }
+                  disabled={!canWrite}
+                  data-testid="input-unpublished-at"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional — the page auto-retires at this time.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="lp-source-id" className="text-xs">
+                  Source ID
+                </Label>
+                <Input
+                  id="lp-source-id"
+                  value={draft.sourceId}
+                  onChange={(e) =>
+                    setDraft({ ...draft, sourceId: e.target.value })
+                  }
+                  placeholder="External / import correlation key"
+                  disabled={!canWrite}
+                  data-testid="input-source-id"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>SEO</CardTitle>
