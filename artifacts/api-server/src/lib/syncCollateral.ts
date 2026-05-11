@@ -729,12 +729,19 @@ export async function upsertCollateralFromLandingPage(
   const serviceId =
     page.serviceId ?? (await pillarToServiceId(normalizedPillar));
 
+  // Prefer the explicit card hero, then any OG override, then fall back
+  // to the auto-generated OG image so the library card is never blank.
+  const resolvedHero =
+    page.heroImage ||
+    page.ogImageUrl ||
+    `/api/og/image?kind=landing-page&id=${encodeURIComponent(page.id)}`;
+
   const syncedFields = {
     type: "landing_page" as const,
     title: page.title,
     subtitle: page.subtitle ?? null,
     description: page.description ?? "",
-    heroImage: page.heroImage || page.ogImageUrl || "",
+    heroImage: resolvedHero,
     pillar: normalizedPillar,
     tags: (page.tags as string[]) ?? [],
     url: canonicalUrlForCollateral("landing_page", page.slug),

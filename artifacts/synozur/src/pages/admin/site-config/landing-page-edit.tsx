@@ -562,13 +562,18 @@ export default function LandingPageEdit({ id }: Props) {
                     <ImageIcon className="h-4 w-4" />
                   </Button>
                 </div>
-                {draft.heroImage && (
+                {draft.heroImage ? (
                   <img
                     src={mediaUrl(draft.heroImage)}
                     alt=""
                     className="mt-2 h-24 w-full object-cover rounded border border-border"
                   />
-                )}
+                ) : draft.featured && draft.status === "published" ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <span>⚠</span>
+                    No hero image set — library cards will fall back to the auto-generated OG image. Set one above for a richer card.
+                  </p>
+                ) : null}
               </div>
             </CardContent>
           </Card>
