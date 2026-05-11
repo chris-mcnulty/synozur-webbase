@@ -803,7 +803,6 @@ router.post(
     try {
       // Cursor-paginated fetch. Rebrandly returns an empty array when the
       // cursor passes the last link, which is our signal to stop.
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const url = new URL("https://api.rebrandly.com/v1/links");
         url.searchParams.set("limit", String(REBRANDLY_PAGE_SIZE));

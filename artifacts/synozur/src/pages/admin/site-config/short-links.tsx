@@ -690,49 +690,6 @@ function ShortLinkFormBody({
   );
 }
 
-function OgPreviewCard({
-  imageUrl,
-  title,
-  description,
-  targetUrl,
-}: {
-  imageUrl: string;
-  title: string;
-  description: string;
-  targetUrl: string;
-}) {
-  let domain = "";
-  try {
-    domain = new URL(targetUrl).hostname;
-  } catch {
-    // ignore
-  }
-  return (
-    <div className="rounded-md border border-border overflow-hidden bg-muted/30 text-sm max-w-sm">
-      {imageUrl && (
-        <div className="aspect-[1200/628] w-full bg-muted overflow-hidden">
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        </div>
-      )}
-      <div className="px-3 py-2 space-y-0.5">
-        {domain && (
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">
-            {domain}
-          </p>
-        )}
-        <p className="font-semibold leading-snug text-sm truncate">
-          {title || "(no title)"}
-        </p>
-        {description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function AdminShortLinks() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
