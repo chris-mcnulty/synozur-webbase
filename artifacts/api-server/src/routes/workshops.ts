@@ -280,7 +280,7 @@ router.get("/workshops", async (req, res) => {
     .from(workshopsTable)
     .where(and(...filters))
     .orderBy(asc(workshopsTable.displayOrder), asc(workshopsTable.title));
-  res.json({ items: rows.map(shape) });
+  res.json({ items: rows.map((w) => shape(w)) });
 });
 
 router.get("/workshops/:slug", async (req, res) => {
@@ -314,7 +314,7 @@ router.get("/cms/workshops", ...readGuard, async (_req, res) => {
     .from(workshopsTable)
     .where(isNull(workshopsTable.deletedAt))
     .orderBy(asc(workshopsTable.displayOrder), asc(workshopsTable.title));
-  res.json({ items: rows.map(shape) });
+  res.json({ items: rows.map((w) => shape(w)) });
 });
 
 router.get("/cms/workshops/:id", ...readGuard, async (req, res) => {

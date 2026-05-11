@@ -106,7 +106,7 @@ router.get("/applications", async (req, res) => {
       sql`${applicationsTable.featuredRank} asc nulls last`,
       asc(applicationsTable.title),
     );
-  res.json({ items: rows.map(serialize) });
+  res.json({ items: rows.map((a) => serialize(a)) });
 });
 
 router.get("/applications/:slug", async (req, res) => {
@@ -189,7 +189,7 @@ router.get("/cms/applications", ...readGuard, async (_req, res) => {
       sql`${applicationsTable.featuredRank} asc nulls last`,
       asc(applicationsTable.title),
     );
-  res.json({ items: rows.map(serialize) });
+  res.json({ items: rows.map((a) => serialize(a)) });
 });
 
 router.get("/cms/applications/:id", ...readGuard, async (req, res) => {
