@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  Download,
   ExternalLink,
   Plus,
   Save,
@@ -253,6 +254,31 @@ export default function LandingPageEdit({ id }: Props) {
     [isNew, draft.title],
   );
 
+  const onExport = async () => {
+    if (!id) return;
+    try {
+      const payload = await landingPagesApi.exportPage(id);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `${payload.page.slug}.landing-page.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      toast({ title: "Exported", description: `${payload.page.slug}.landing-page.json` });
+    } catch (e) {
+      toast({
+        title: "Export failed",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!isNew && existingQ.isLoading) {
     return (
       <AdminLayout title="Landing page" crumbs={[{ label: "Admin", href: "/" }]}>
@@ -271,6 +297,15 @@ export default function LandingPageEdit({ id }: Props) {
       ]}
       actions={
         <div className="flex items-center gap-2">
+          {!isNew && (
+            <Button
+              variant="outline"
+              onClick={onExport}
+              data-testid="button-export-landing-page"
+            >
+              <Download className="h-4 w-4 mr-2" /> Export
+            </Button>
+          )}
           {!isNew && draft.status === "published" && (
             <Button asChild variant="outline">
               <a

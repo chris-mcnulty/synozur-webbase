@@ -1,6 +1,8 @@
+import { useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { AppLink } from "@/components/ui/app-link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,20 +13,39 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useToast } from "@/hooks/use-toast";
 import {
   landingPagesApi,
+  LandingPageImportConflictError,
   type LandingPageDto,
+  type LandingPageExport,
 } from "@/lib/api-landing-pages";
 
 const LIST_KEY = ["admin-landing-pages"];
+
+// Pending import that needs a confirmation step because the slug already
+// exists in this environment. We keep the parsed payload around so the
+// confirm dialog can resubmit with force: true without re-reading the file.
+interface PendingImportConflict {
+  payload: LandingPageExport;
+  existing: LandingPageDto;
+}
 
 export default function AdminLandingPagesList() {
   const { access } = useAdminAccess();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
   const canWrite = !!access?.isEditorOrAbove;
 
   const listQ = useQuery({
@@ -54,17 +75,99 @@ export default function AdminLandingPagesList() {
     deleteMut.mutate(p.id);
   };
 
+  // ---------------------------------------------------------------------------
+  // Import flow
+  // ---------------------------------------------------------------------------
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingConflict, setPendingConflict] = useState<PendingImportConflict | null>(
+    null,
+  );
+
+  const sendImport = async (payload: LandingPageExport, force: boolean) => {
+    try {
+      const result = await landingPagesApi.importPage(payload, { force });
+      toast({
+        title: result.mode === "created" ? "Imported" : "Updated",
+        description: `/${result.page.slug}`,
+      });
+      qc.invalidateQueries({ queryKey: LIST_KEY });
+      qc.invalidateQueries({ queryKey: ["landing-page", result.page.slug] });
+      setPendingConflict(null);
+      // Drop the operator straight into the editor so they can verify the
+      // result without having to hunt the row down in the list.
+      setLocation(`/site-config/landing-pages/${result.page.id}/edit`);
+    } catch (err) {
+      if (err instanceof LandingPageImportConflictError) {
+        setPendingConflict({ payload, existing: err.existing });
+        return;
+      }
+      toast({
+        title: "Import failed",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onFileChosen = async (file: File) => {
+    let parsed: LandingPageExport;
+    try {
+      const text = await file.text();
+      parsed = JSON.parse(text) as LandingPageExport;
+    } catch {
+      toast({
+        title: "Import failed",
+        description: "File is not valid JSON.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (parsed?.format !== "synozur-landing-page" || parsed?.version !== 1) {
+      toast({
+        title: "Import failed",
+        description:
+          "Not a recognised landing-page export (expected format: synozur-landing-page, version: 1).",
+        variant: "destructive",
+      });
+      return;
+    }
+    await sendImport(parsed, false);
+  };
+
   return (
     <AdminLayout
       title="Landing Pages"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Landing Pages" }]}
       actions={
         canWrite && (
-          <Button asChild data-testid="button-create-landing-page">
-            <AppLink href="/site-config/landing-pages/new" asChild unstyled>
-              <Plus className="h-4 w-4 mr-2" /> New landing page
-            </AppLink>
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Reset so the same file can be picked twice in a row.
+                e.target.value = "";
+                if (file) void onFileChosen(file);
+              }}
+              data-testid="input-import-landing-page"
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="button-import-landing-page"
+            >
+              <Upload className="h-4 w-4 mr-2" /> Import
+            </Button>
+            <Button asChild data-testid="button-create-landing-page">
+              <AppLink href="/site-config/landing-pages/new" asChild unstyled>
+                <Plus className="h-4 w-4 mr-2" /> New landing page
+              </AppLink>
+            </Button>
+          </div>
         )
       }
     >
@@ -74,7 +177,10 @@ export default function AdminLandingPagesList() {
           /ai-training
         </code>
         ). Each page is a typed sequence of blocks — hero, rich text, card grid,
-        CTA, image, FAQ — and stays editable without code changes.
+        CTA, image, FAQ — and stays editable without code changes. Use{" "}
+        <strong>Export</strong> (from the editor) and <strong>Import</strong>{" "}
+        (here) to move a page between environments without a full database
+        replacement.
       </p>
 
       <div className="rounded-md border border-border overflow-x-auto">
@@ -179,6 +285,46 @@ export default function AdminLandingPagesList() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog
+        open={!!pendingConflict}
+        onOpenChange={(o) => (!o ? setPendingConflict(null) : null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Overwrite existing landing page?</DialogTitle>
+            <DialogDescription>
+              A landing page with slug{" "}
+              <code className="font-mono">/{pendingConflict?.existing.slug}</code>{" "}
+              already exists in this environment (status:{" "}
+              <strong>{pendingConflict?.existing.status}</strong>, last updated{" "}
+              {pendingConflict
+                ? new Date(pendingConflict.existing.updatedAt).toLocaleString()
+                : ""}
+              ). Importing will replace its title, status, blocks, and SEO
+              fields with the values from the uploaded file. The page id and
+              first-publish timestamp are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingConflict(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (pendingConflict) {
+                  void sendImport(pendingConflict.payload, true);
+                }
+              }}
+              data-testid="button-confirm-import-overwrite"
+            >
+              Overwrite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
+
