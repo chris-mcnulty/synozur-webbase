@@ -983,10 +983,10 @@ export default function AdminShortLinks() {
   }
 
   // ---- Sort -----------------------------------------------------------------
-  const [sortKey, setSortKey] = useState<"slug" | "createdAt" | "hitCount">("createdAt");
+  const [sortKey, setSortKey] = useState<"slug" | "createdAt" | "hitCount" | "lastClickAt">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  function toggleSort(key: "slug" | "createdAt" | "hitCount") {
+  function toggleSort(key: "slug" | "createdAt" | "hitCount" | "lastClickAt") {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -1303,7 +1303,7 @@ export default function AdminShortLinks() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="min-w-[260px]">Target</TableHead>
+                <TableHead className="w-[220px] max-w-[220px]">Target</TableHead>
                 <TableHead className="w-[80px]">Code</TableHead>
                 <TableHead className="w-[80px] text-right">
                   <button
@@ -1319,7 +1319,20 @@ export default function AdminShortLinks() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="w-[140px]">Last click</TableHead>
+                <TableHead className="w-[120px]">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("lastClickAt")}
+                  >
+                    Last click
+                    {sortKey === "lastClickAt" ? (
+                      sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronsUpDown className="h-3 w-3 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="w-[120px]">
                   <button
                     type="button"
@@ -1396,9 +1409,19 @@ export default function AdminShortLinks() {
               ) : (
                 [...filteredItems].sort((a, b) => {
                   let cmp = 0;
-                  if (sortKey === "slug") cmp = a.slug.localeCompare(b.slug);
-                  else if (sortKey === "hitCount") cmp = a.hitCount - b.hitCount;
-                  else cmp = a.createdAt.localeCompare(b.createdAt);
+                  if (sortKey === "slug") {
+                    cmp = a.slug.localeCompare(b.slug);
+                  } else if (sortKey === "hitCount") {
+                    cmp = a.hitCount - b.hitCount;
+                  } else if (sortKey === "lastClickAt") {
+                    // Null (never clicked) always sorts to the end regardless of direction
+                    if (!a.lastClickAt && !b.lastClickAt) cmp = 0;
+                    else if (!a.lastClickAt) return 1;
+                    else if (!b.lastClickAt) return -1;
+                    else cmp = a.lastClickAt.localeCompare(b.lastClickAt);
+                  } else {
+                    cmp = a.createdAt.localeCompare(b.createdAt);
+                  }
                   return sortDir === "asc" ? cmp : -cmp;
                 }).map((r) => (
                   <TableRow key={r.id}>
@@ -1438,12 +1461,12 @@ export default function AdminShortLinks() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="w-[220px] max-w-[220px] overflow-hidden align-top">
                       <a
                         href={r.targetUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group inline-flex max-w-full items-center gap-1 font-mono text-xs hover:underline"
+                        className="group flex min-w-0 items-center gap-1 font-mono text-xs hover:underline"
                         title={r.targetUrl}
                       >
                         <span className="truncate">{r.targetUrl}</span>
