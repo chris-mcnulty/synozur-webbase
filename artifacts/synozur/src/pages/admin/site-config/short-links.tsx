@@ -938,10 +938,17 @@ export default function AdminShortLinks() {
   }
 
   function downloadCsv() {
+    // Header order matches what the import endpoint accepts so the
+    // round-trip works: export this CSV → push DB → re-import here with
+    // `overwrite` to restore lifetime hitCount, lastClickAt, and admin
+    // fields (statusCode / active / OG overrides). `rebrandlyId` is
+    // included so links sourced from Rebrandly keep their link identity
+    // through the round-trip.
     const headers = [
       "slug", "publicUrl", "targetUrl", "statusCode", "active",
       "hitCount", "lastClickAt", "title", "tags", "notes",
-      "ogTitle", "ogDescription", "ogImageUrl", "createdAt", "updatedAt",
+      "ogTitle", "ogDescription", "ogImageUrl", "rebrandlyId",
+      "createdAt", "updatedAt",
     ];
     const rows = items.map((r) =>
       [
@@ -958,6 +965,7 @@ export default function AdminShortLinks() {
         r.ogTitle ?? "",
         r.ogDescription ?? "",
         r.ogImageUrl ?? "",
+        r.rebrandlyId ?? "",
         r.createdAt,
         r.updatedAt,
       ]
@@ -1735,12 +1743,21 @@ export default function AdminShortLinks() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Import from Rebrandly CSV</DialogTitle>
+            <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>
-              Paste a Rebrandly CSV export below. Recognised columns:{" "}
-              <code>slug</code> / <code>slashtag</code>, <code>destination</code>{" "}
-              / <code>targetUrl</code>, <code>title</code>, <code>notes</code>,{" "}
-              <code>tags</code>, <code>id</code>.
+              Paste a Rebrandly CSV export or a prior <em>Export CSV</em> from
+              this page. Re-importing a self-export with{" "}
+              <strong>overwrite</strong> restores lifetime{" "}
+              <code>hitCount</code> and <code>lastClickAt</code> after a full
+              database push, along with <code>statusCode</code>,{" "}
+              <code>active</code>, and OG overrides. Recognised columns:{" "}
+              <code>slug</code> / <code>slashtag</code>,{" "}
+              <code>destination</code> / <code>targetUrl</code>,{" "}
+              <code>title</code>, <code>notes</code>, <code>tags</code>,{" "}
+              <code>hitCount</code>, <code>lastClickAt</code>,{" "}
+              <code>statusCode</code>, <code>active</code>,{" "}
+              <code>ogTitle</code>, <code>ogDescription</code>,{" "}
+              <code>ogImageUrl</code>, <code>rebrandlyId</code> / <code>id</code>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

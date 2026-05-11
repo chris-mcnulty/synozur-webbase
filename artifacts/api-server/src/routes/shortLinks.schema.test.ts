@@ -338,3 +338,185 @@ test("mapRebrandlyLink ignores unparseable lastClickAt", () => {
   if (!result.ok) return;
   assert.equal(result.candidate.lastClickAt, undefined);
 });
+
+// ─── CSV stats round-trip parsing ──────────────────────────────────────────
+//
+// Mirrors the per-cell parsing helpers in the CSV import handler. The whole
+// point of these helpers is to let a self-export (Export CSV → DB push →
+// Import CSV with overwrite) restore lifetime hitCount, lastClickAt, and the
+// admin-managed fields (statusCode / active / OG) without corrupting rows
+// when cells are blank or malformed. If any of these parsers regress, a
+// production reimport could silently zero a real hit count or flip a link
+// inactive, so pin the behaviour here.
+
+function parseHitCount(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.max(0, n);
+}
+
+function parseLastClickAt(raw: string | undefined): Date | undefined {
+  if (!raw) return undefined;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function parseStatusCode(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function parseActive(raw: string | undefined): boolean | undefined {
+  if (raw === undefined) return undefined;
+  if (/^(true|1|yes|y|t)$/i.test(raw.trim())) return true;
+  if (/^(false|0|no|n|f)$/i.test(raw.trim())) return false;
+  return undefined;
+}
+
+test("parseHitCount preserves a non-zero export value", () => {
+  assert.equal(parseHitCount("142"), 142);
+});
+
+test("parseHitCount preserves an explicit zero (so newly-tracked links don't go undefined)", () => {
+  // The upsert step skips undefined; a CSV cell of "0" must round-trip as
+  // 0 to overwrite a stale higher count.
+  assert.equal(parseHitCount("0"), 0);
+});
+
+test("parseHitCount clamps negative or fractional cells", () => {
+  assert.equal(parseHitCount("-5"), 0);
+  assert.equal(parseHitCount("12.7"), 12);
+});
+
+test("parseHitCount returns undefined for blank / malformed cells", () => {
+  // A blank cell from `pickField` is already filtered to `undefined`, but
+  // a malformed non-numeric value must NOT silently zero a real count.
+  for (const raw of [undefined, "", "n/a", "abc"]) {
+    assert.equal(parseHitCount(raw), undefined, `raw=${JSON.stringify(raw)}`);
+  }
+});
+
+test("parseLastClickAt accepts an ISO timestamp from the self-export", () => {
+  const d = parseLastClickAt("2026-04-30T18:22:11Z");
+  assert.ok(d instanceof Date);
+  if (d) assert.equal(d.toISOString(), "2026-04-30T18:22:11.000Z");
+});
+
+test("parseLastClickAt returns undefined for blank / unparseable cells", () => {
+  for (const raw of [undefined, "", "not a date"]) {
+    assert.equal(
+      parseLastClickAt(raw),
+      undefined,
+      `raw=${JSON.stringify(raw)}`,
+    );
+  }
+});
+
+test("parseStatusCode reads a numeric cell", () => {
+  for (const code of [301, 302, 307, 308] as const) {
+    assert.equal(parseStatusCode(String(code)), code);
+  }
+});
+
+test("parseStatusCode returns undefined for blank cells", () => {
+  assert.equal(parseStatusCode(undefined), undefined);
+});
+
+test("parseActive recognises the export's `true`/`false` literals", () => {
+  assert.equal(parseActive("true"), true);
+  assert.equal(parseActive("false"), false);
+});
+
+test("parseActive recognises common truthy/falsy aliases", () => {
+  for (const truthy of ["TRUE", "True", "1", "yes", "y", "t"]) {
+    assert.equal(parseActive(truthy), true, `truthy=${truthy}`);
+  }
+  for (const falsy of ["FALSE", "False", "0", "no", "n", "f"]) {
+    assert.equal(parseActive(falsy), false, `falsy=${falsy}`);
+  }
+});
+
+test("parseActive returns undefined for blank or ambiguous cells (no silent flip)", () => {
+  // Ambiguous values must NOT silently flip the existing `active` flag;
+  // the upsert step skips undefined, so the prod row keeps its current value.
+  for (const raw of [undefined, "", "maybe", " "]) {
+    assert.equal(parseActive(raw), undefined, `raw=${JSON.stringify(raw)}`);
+  }
+});
+
+// ─── OG field round-trip parsing ───────────────────────────────────────────
+//
+// Mirror of `pickField` in the route. OG candidate values must stay
+// `undefined` when the column is absent OR the cell is blank so the
+// `if (v.ogX !== undefined)` guards in `applyImportRows` skip them.
+// Coercing to null would make every Rebrandly import (no OG columns)
+// silently clobber admin-managed OG overrides with null.
+
+function pickField(
+  row: Record<string, string>,
+  ...candidates: string[]
+): string | undefined {
+  const keys = Object.keys(row);
+  for (const c of candidates) {
+    const want = c.toLowerCase().replace(/[\s_-]/g, "");
+    const k = keys.find(
+      (k) => k.toLowerCase().replace(/[\s_-]/g, "") === want,
+    );
+    if (k && row[k]) return row[k];
+  }
+  return undefined;
+}
+
+test("OG candidate stays undefined when columns are absent (Rebrandly CSV shape)", () => {
+  // A Rebrandly CSV has no `ogTitle` / `ogDescription` / `ogImageUrl`
+  // headers. The candidate construction must keep these undefined so the
+  // overwrite update path does NOT clear admin-managed OG overrides.
+  const rebrandlyRow = {
+    id: "abc",
+    slashtag: "foo",
+    destination: "https://example.com",
+    title: "Hello",
+  };
+  assert.equal(pickField(rebrandlyRow, "ogTitle"), undefined);
+  assert.equal(pickField(rebrandlyRow, "ogDescription"), undefined);
+  assert.equal(pickField(rebrandlyRow, "ogImageUrl"), undefined);
+});
+
+test("OG candidate stays undefined for blank cells in a self-export row", () => {
+  // A self-export ALWAYS includes the OG columns, but most links don't
+  // have an override, so cells are blank. The parser must treat that as
+  // "no change" (undefined), not as an explicit clear — otherwise a
+  // round-trip overwrite would wipe an OG override set after the export
+  // snapshot was taken.
+  const selfExportRow = {
+    slug: "foo",
+    targetUrl: "https://example.com",
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
+  };
+  assert.equal(pickField(selfExportRow, "ogTitle"), undefined);
+  assert.equal(pickField(selfExportRow, "ogDescription"), undefined);
+  assert.equal(pickField(selfExportRow, "ogImageUrl"), undefined);
+});
+
+test("OG candidate returns the cell value when an override is set", () => {
+  const selfExportRow = {
+    slug: "foo",
+    targetUrl: "https://example.com",
+    ogTitle: "Custom OG title",
+    ogDescription: "Custom description",
+    ogImageUrl: "https://cdn.example.com/og.png",
+  };
+  assert.equal(pickField(selfExportRow, "ogTitle"), "Custom OG title");
+  assert.equal(
+    pickField(selfExportRow, "ogDescription"),
+    "Custom description",
+  );
+  assert.equal(
+    pickField(selfExportRow, "ogImageUrl"),
+    "https://cdn.example.com/og.png",
+  );
+});

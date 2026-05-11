@@ -467,11 +467,24 @@ const ImportRowSchema = z.object({
   notes: z.string().max(1000).nullish(),
   tags: z.array(z.string().max(64)).max(32).optional(),
   rebrandlyId: z.string().max(64).nullish(),
-  // Rebrandly importer carries lifetime click count + last-click timestamp
-  // forward so historical totals don't reset at cutover. CSV path leaves
-  // both undefined and the upsert step skips them.
+  // Stats carry-over: lifetime click count and last-click timestamp. Both
+  // the Rebrandly importer and the self-export CSV use these to restore
+  // historical totals after a destructive DB push (#76, #142). Sources
+  // that don't carry stats leave the fields undefined and the upsert
+  // step skips them.
   hitCount: z.number().int().min(0).optional(),
   lastClickAt: z.date().optional(),
+  // Admin-managed fields preserved by the self-export CSV so a full
+  // export → DB push → re-import round-trips without losing per-link
+  // configuration. All optional because Rebrandly exports don't carry
+  // them.
+  statusCode: z
+    .union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)])
+    .optional(),
+  active: z.boolean().optional(),
+  ogTitle: z.string().max(200).nullish(),
+  ogDescription: z.string().max(500).nullish(),
+  ogImageUrl: ogImageShape.nullish(),
 });
 
 const ImportBody = z.object({
@@ -561,9 +574,18 @@ async function applyImportRows(
         };
         // Carry-over fields: only set when the source actually provided
         // them, so re-importing a CSV after a Rebrandly pull doesn't
-        // zero out the historical hitCount.
+        // zero out the historical hitCount, and a Rebrandly pull doesn't
+        // clobber admin-managed columns (statusCode / active / OG) that
+        // Rebrandly never sees.
         if (v.hitCount !== undefined) updates.hitCount = v.hitCount;
         if (v.lastClickAt !== undefined) updates.lastClickAt = v.lastClickAt;
+        if (v.statusCode !== undefined) updates.statusCode = v.statusCode;
+        if (v.active !== undefined) updates.active = v.active;
+        if (v.ogTitle !== undefined) updates.ogTitle = v.ogTitle ?? null;
+        if (v.ogDescription !== undefined)
+          updates.ogDescription = v.ogDescription ?? null;
+        if (v.ogImageUrl !== undefined)
+          updates.ogImageUrl = v.ogImageUrl ?? null;
         await db
           .update(shortLinksTable)
           .set(updates)
@@ -577,12 +599,15 @@ async function applyImportRows(
             targetUrl: v.targetUrl,
             title: v.title ?? null,
             notes: v.notes ?? null,
-            statusCode: 302,
-            active: opts.defaultActive,
+            statusCode: v.statusCode ?? 302,
+            active: v.active ?? opts.defaultActive,
             tags: v.tags ?? null,
             rebrandlyId: v.rebrandlyId ?? null,
             hitCount: v.hitCount ?? 0,
             lastClickAt: v.lastClickAt ?? null,
+            ogTitle: v.ogTitle ?? null,
+            ogDescription: v.ogDescription ?? null,
+            ogImageUrl: v.ogImageUrl ?? null,
             createdBy: opts.createdBy,
           })
           .returning();
@@ -654,6 +679,42 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
       pickField(row, "destination", "targetUrl", "destinationUrl", "longUrl") ??
       "";
     const tagsRaw = pickField(row, "tags", "tag");
+    // Stats / admin fields read back from a prior self-export so a full
+    // round-trip preserves them. All optional — Rebrandly's CSV doesn't
+    // ship these and we want the same code path to keep working there.
+    // Unparseable values become undefined (not zero / not false), so a
+    // malformed cell doesn't silently zero a real hit count.
+    const hitCountRaw = pickField(row, "hitCount", "hits", "clicks");
+    const hitCountParsed =
+      hitCountRaw !== undefined ? Number.parseInt(hitCountRaw, 10) : undefined;
+    const hitCount =
+      hitCountParsed !== undefined && Number.isFinite(hitCountParsed)
+        ? Math.max(0, hitCountParsed)
+        : undefined;
+    const lastClickRaw = pickField(row, "lastClickAt", "lastClick");
+    const lastClickParsed = lastClickRaw ? new Date(lastClickRaw) : undefined;
+    const lastClickAt =
+      lastClickParsed && !Number.isNaN(lastClickParsed.getTime())
+        ? lastClickParsed
+        : undefined;
+    const statusCodeRaw = pickField(row, "statusCode", "status");
+    const statusCodeParsed =
+      statusCodeRaw !== undefined
+        ? Number.parseInt(statusCodeRaw, 10)
+        : undefined;
+    const statusCode =
+      statusCodeParsed !== undefined && Number.isFinite(statusCodeParsed)
+        ? statusCodeParsed
+        : undefined;
+    const activeRaw = pickField(row, "active", "enabled");
+    const active =
+      activeRaw === undefined
+        ? undefined
+        : /^(true|1|yes|y|t)$/i.test(activeRaw.trim())
+          ? true
+          : /^(false|0|no|n|f)$/i.test(activeRaw.trim())
+            ? false
+            : undefined;
     const candidate = {
       slug: rawSlug,
       targetUrl: rawTarget,
@@ -665,7 +726,20 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
             .map((t) => t.trim())
             .filter(Boolean)
         : undefined,
-      rebrandlyId: pickField(row, "id", "linkId") ?? null,
+      rebrandlyId: pickField(row, "rebrandlyId", "id", "linkId") ?? null,
+      hitCount,
+      lastClickAt,
+      statusCode,
+      active,
+      // OG fields stay UNDEFINED when the column is absent or the cell is
+      // blank, so the `if (v.ogX !== undefined)` guards in
+      // `applyImportRows` skip them. Coercing to null here would make
+      // every Rebrandly import (which has no OG columns) clobber
+      // admin-managed OG overrides with null. Admins clear an OG
+      // override via the UI, not by blanking a cell.
+      ogTitle: pickField(row, "ogTitle"),
+      ogDescription: pickField(row, "ogDescription"),
+      ogImageUrl: pickField(row, "ogImageUrl"),
     };
     const ok = ImportRowSchema.safeParse(candidate);
     if (!ok.success) {
