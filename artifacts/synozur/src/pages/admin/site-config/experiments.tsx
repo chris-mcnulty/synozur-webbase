@@ -43,9 +43,10 @@ export default function AdminExperimentsList() {
   const [draftPageKey, setDraftPageKey] = useState("home");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-experiments"],
     queryFn: () => api.listAdminExperiments(),
+    retry: 1,
   });
 
   const createMutation = useMutation({
@@ -212,6 +213,13 @@ export default function AdminExperimentsList() {
 
       {isLoading ? (
         <div className="text-muted-foreground">Loading…</div>
+      ) : isError ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-8 text-center">
+          <p className="text-sm text-destructive mb-3">Failed to load experiments.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
       ) : !data || data.experiments.length === 0 ? (
         <div className="rounded-md border border-dashed border-border p-8 text-center text-muted-foreground">
           No experiments yet. Create one to get started.
