@@ -100,7 +100,7 @@ export const ConversionPath = z.object({
   // "cta" — fires on a CTA event (eventId match in event properties)
   // "booking" — same shape as cta but separated for reporting clarity
   // "path" — fires on navigation to a path that startsWith(value)
-  kind: z.enum(["cta", "booking", "path"]),
+  kind: z.enum(["cta", "booking", "path", "carousel"]),
   value: z.string().min(1).max(200),
   label: z.string().min(1).max(120),
 });
@@ -183,7 +183,7 @@ export const VariantResult = z.object({
   conversions: z.array(
     z.object({
       label: z.string(),
-      kind: z.enum(["cta", "booking", "path"]),
+      kind: z.enum(["cta", "booking", "path", "carousel"]),
       value: z.string(),
       count: z.number().int().min(0),
       rate: z.number().min(0).max(1),
