@@ -19,7 +19,7 @@ import {
 import Home from "@/pages/home";
 import HomeB from "@/pages/home-b";
 import About from "@/pages/about";
-import AiTraining from "@/pages/ai-training";
+import LandingPageView from "@/pages/landing-page";
 import ServicesOverview from "@/pages/services-overview";
 import ServiceDetail from "@/pages/service-detail";
 import SolutionDetail from "@/pages/solution-detail";
@@ -112,6 +112,8 @@ import AdminAiGrounding from "@/pages/admin/ai/grounding";
 import AdminInsightsQuestions from "@/pages/admin/insights/questions";
 import InsightsAskPage from "@/pages/insights/ask";
 import AdminListPageCopy from "@/pages/admin/site-config/list-page-copy";
+import AdminLandingPagesList from "@/pages/admin/site-config/landing-pages-list";
+import AdminLandingPageEdit from "@/pages/admin/site-config/landing-page-edit";
 import AdminSiteSettings from "@/pages/admin/site-config/site-settings";
 import AdminAltHome from "@/pages/admin/site-config/alt-home";
 import AdminExperimentsList from "@/pages/admin/site-config/experiments";
@@ -421,6 +423,13 @@ function AdminRoutes() {
           {(params) => <AdminExperimentDetail id={params.id} />}
         </Route>
         <Route path="/site-config/list-page-copy" component={AdminListPageCopy} />
+        <Route path="/site-config/landing-pages" component={AdminLandingPagesList} />
+        <Route path="/site-config/landing-pages/new">
+          <AdminLandingPageEdit />
+        </Route>
+        <Route path="/site-config/landing-pages/:id/edit">
+          {(params) => <AdminLandingPageEdit id={params.id} />}
+        </Route>
         <Route path="/site-config/redirects" component={AdminWixRedirects} />
         <Route path="/site-config/short-links" component={AdminShortLinks} />
         <Route path="/site-config/not-found-logs" component={AdminNotFoundLogs} />
@@ -524,7 +533,6 @@ function Router() {
             <Route path="/home-a" component={Home} />
             <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
-            <Route path="/ai-training" component={AiTraining} />
             <Route path="/services-overview/default" component={ServicesOverview} />
             <Route path="/services-overview/:slug" component={ServicesOverview} />
             <Route path="/services/:slug" component={ServiceDetail} />
@@ -586,6 +594,13 @@ function Router() {
             <Route path="/pending-approval" component={PendingApprovalPage} />
             <Route path="/forgot-password" component={ForgotPasswordPage} />
             <Route path="/reset-password" component={ResetPasswordPage} />
+            {/* DB-backed landing pages claim any remaining single-segment URL
+                (e.g. /ai-training). The route renders <NotFound /> internally
+                if the slug isn't a published landing page, so the
+                user-visible 404 behaviour is preserved. */}
+            <Route path="/:slug">
+              {(params) => <LandingPageView slug={params.slug} />}
+            </Route>
             <Route component={NotFound} />
           </Switch>
         </Layout>
