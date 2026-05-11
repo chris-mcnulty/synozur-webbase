@@ -1327,7 +1327,9 @@ export default function AdminShortLinks() {
                   </button>
                 </TableHead>
                 <TableHead className="w-[80px]">Active</TableHead>
-                <TableHead className="w-[180px] text-right">Actions</TableHead>
+                <TableHead className="sticky right-0 z-10 w-[180px] bg-background text-right shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.1)]">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1480,7 +1482,7 @@ export default function AdminShortLinks() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="space-x-0.5 text-right align-top">
+                    <TableCell className="sticky right-0 z-10 space-x-0.5 bg-background text-right align-top shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.1)] [tr:hover_&]:bg-muted/50">
                       <Button
                         variant="ghost"
                         size="sm"
