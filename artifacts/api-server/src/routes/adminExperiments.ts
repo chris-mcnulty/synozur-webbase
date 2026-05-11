@@ -399,6 +399,73 @@ router.post(
   },
 );
 
+router.post(
+  "/admin/experiments/:id/duplicate",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const loaded = await loadExperimentOr404(String(req.params.id));
+    if (!loaded) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const src = loaded.exp;
+    // Build a unique key: append -copy, -copy-2, -copy-3, …
+    let newKey = `${src.key}-copy`;
+    let suffix = 1;
+    while (true) {
+      const existing = await db
+        .select({ id: experimentsTable.id })
+        .from(experimentsTable)
+        .where(eq(experimentsTable.key, newKey))
+        .limit(1);
+      if (existing.length === 0) break;
+      suffix += 1;
+      newKey = `${src.key}-copy-${suffix}`;
+    }
+    const [created] = await db
+      .insert(experimentsTable)
+      .values({
+        key: newKey,
+        name: `${src.name} (Copy)`,
+        description: src.description,
+        pageKey: src.pageKey,
+        trafficPercentage: src.trafficPercentage,
+        holdbackPercentage: src.holdbackPercentage,
+        conversionPaths: src.conversionPaths,
+        autoStopAfterDays: src.autoStopAfterDays,
+        autoStopOnSignificance: src.autoStopOnSignificance,
+        minVisitorsForAutoStop: src.minVisitorsForAutoStop,
+        status: "draft",
+        createdBy: req.admin?.userId ?? null,
+      })
+      .returning();
+    const copiedVariants = loaded.variants.length
+      ? await db
+          .insert(experimentVariantsTable)
+          .values(
+            loaded.variants.map((v) => ({
+              experimentId: created!.id,
+              key: v.key,
+              name: v.name,
+              isControl: v.isControl,
+              weight: v.weight,
+              overrides: v.overrides,
+            })),
+          )
+          .returning()
+      : [];
+    invalidateActiveExperimentsCache();
+    await audit({
+      actorId: req.admin?.userId ?? null,
+      action: "experiment.create",
+      entity: "experiment",
+      entityId: created!.id,
+      diff: { after: { key: created!.key, name: created!.name, duplicatedFrom: src.id } },
+    });
+    res.status(201).json(shapeAdminExperiment(created!, copiedVariants));
+  },
+);
+
 router.delete(
   "/admin/experiments/:id",
   requireAdmin,

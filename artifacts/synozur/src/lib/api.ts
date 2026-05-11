@@ -942,6 +942,11 @@ export const api = {
       url(`/admin/experiments/${encodeURIComponent(id)}/end`),
       { method: "POST" },
     ),
+  duplicateAdminExperiment: (id: string) =>
+    jsonFetch<import("@workspace/api-zod/types").AdminExperiment>(
+      url(`/admin/experiments/${encodeURIComponent(id)}/duplicate`),
+      { method: "POST" },
+    ),
   deleteAdminExperiment: (id: string) =>
     jsonFetch<void>(url(`/admin/experiments/${encodeURIComponent(id)}`), {
       method: "DELETE",

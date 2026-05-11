@@ -4,7 +4,7 @@
    them. Form inputs all have visible labels and are usable; this rule's
    strict structural requirement is at odds with the inline-form layout. */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ExternalLink,
   Image as ImageIcon,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,6 +196,8 @@ function OverviewTab({
     experiment.minVisitorsForAutoStop ?? 1000,
   );
 
+  const [, navigate] = useLocation();
+
   const updateMutation = useMutation({
     mutationFn: () =>
       api.updateAdminExperiment(experiment.id, {
@@ -212,6 +215,16 @@ function OverviewTab({
     },
     onError: (err) =>
       onError(err instanceof Error ? err.message : "Update failed"),
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: () => api.duplicateAdminExperiment(experiment.id),
+    onSuccess: (copy) => {
+      onError(null);
+      navigate(`/site-config/experiments/${copy.id}`);
+    },
+    onError: (err) =>
+      onError(err instanceof Error ? err.message : "Duplicate failed"),
   });
 
   const startMutation = useMutation({
@@ -380,6 +393,14 @@ function OverviewTab({
               End
             </Button>
           ) : null}
+          <Button
+            variant="outline"
+            onClick={() => duplicateMutation.mutate()}
+            disabled={duplicateMutation.isPending}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            {duplicateMutation.isPending ? "Duplicating…" : "Duplicate as draft"}
+          </Button>
         </div>
       </div>
     </div>
