@@ -1721,13 +1721,22 @@ export default function AdminShortLinks() {
               <code className="font-mono">rebrand.ly/...</code> go dead the
               moment Rebrandly is disabled and need to be reprinted.
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="rebrandly-policy">On slug collision</Label>
               <CollisionPolicySelect
                 id="rebrandly-policy"
                 value={rebrandlyPolicy}
                 onChange={setRebrandlyPolicy}
               />
+              {rebrandlyPolicy === "skip" ? (
+                <p className="text-xs rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-3 py-2">
+                  <strong>Skip mode:</strong> slugs already in this system are left untouched. Use <strong>Overwrite</strong> to refresh click counts and targets from Rebrandly.
+                </p>
+              ) : (
+                <p className="text-xs rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 px-3 py-2">
+                  <strong>Overwrite mode:</strong> existing rows are updated with the latest values from Rebrandly, including click counts and targets. New slugs are still inserted.
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="rebrandly-domain-id">
@@ -1786,11 +1795,7 @@ export default function AdminShortLinks() {
             <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>
               Upload or paste a Rebrandly CSV export or a prior{" "}
-              <em>Export CSV</em> from this page. Re-importing a self-export
-              with <strong>overwrite</strong> restores lifetime{" "}
-              <code>hitCount</code> and <code>lastClickAt</code> after a full
-              database push, along with <code>statusCode</code>,{" "}
-              <code>active</code>, and OG overrides. Recognised columns:{" "}
+              <em>Export CSV</em> from this page. Recognised columns:{" "}
               <code>slug</code> / <code>slashtag</code>,{" "}
               <code>destination</code> / <code>targetUrl</code>,{" "}
               <code>title</code>, <code>notes</code>, <code>tags</code>,{" "}
@@ -1802,13 +1807,23 @@ export default function AdminShortLinks() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="import-policy">On slug collision</Label>
               <CollisionPolicySelect
                 id="import-policy"
                 value={importPolicy}
                 onChange={setImportPolicy}
               />
+              {importPolicy === "skip" ? (
+                <p className="text-xs rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-3 py-2">
+                  <strong>Skip mode:</strong> rows whose slug already exists are left untouched — click counts, last-click dates, and all other fields will{" "}
+                  <em>not</em> be updated. Use <strong>Overwrite</strong> when restoring stats after a full database push.
+                </p>
+              ) : (
+                <p className="text-xs rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 px-3 py-2">
+                  <strong>Overwrite mode:</strong> existing rows are updated with values from the CSV — including <code>hitCount</code>, <code>lastClickAt</code>, <code>statusCode</code>, <code>active</code>, and OG overrides. New slugs are still inserted.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
