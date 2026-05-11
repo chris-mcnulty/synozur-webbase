@@ -390,6 +390,19 @@ router.get("/cms/short-links/settings", ...readGuard, async (_req, res) => {
   res.json(settings);
 });
 
+// Pattern used to block Replit-managed infrastructure domains from being
+// saved as short-link hosts. Mirrors the guard in lib/shortLinks.ts.
+const REPLIT_HOST_RE = /\.(replit\.dev|replit\.app|repl\.co)$/i;
+
+function hostFromUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
   const parsed = SettingsBody.safeParse(req.body);
   if (!parsed.success) {
@@ -399,6 +412,28 @@ router.put("/cms/short-links/settings", ...adminGuard, async (req, res) => {
     return;
   }
   const d = parsed.data;
+
+  // Reject any attempt to configure a Replit-managed domain as a short-link
+  // host. Allowing this would make the dev/staging preview URL intercept
+  // normal SPA navigation and redirect it to the fallback page.
+  const publicHost = hostFromUrl(d.publicBase);
+  if (publicHost && REPLIT_HOST_RE.test(publicHost)) {
+    res.status(400).json({
+      error:
+        "Replit-managed domains (.replit.dev / .replit.app / .repl.co) cannot be used as the short-link public base.",
+    });
+    return;
+  }
+  const badAdditionalHost = (d.additionalHosts ?? []).find((h) =>
+    REPLIT_HOST_RE.test(h.trim().toLowerCase()),
+  );
+  if (badAdditionalHost) {
+    res.status(400).json({
+      error: `"${badAdditionalHost}" is a Replit-managed domain and cannot be added as an additional short-link host.`,
+    });
+    return;
+  }
+
   const cleanedHosts = (d.additionalHosts ?? []).map((h) => h.toLowerCase());
   // Resolve the Rebrandly key delta:
   //   undefined ⇒ key field absent from request, leave existing alone

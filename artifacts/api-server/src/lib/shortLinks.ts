@@ -39,6 +39,23 @@ let linkInflight: Promise<Map<string, CacheEntry>> | null = null;
 
 const DEFAULT_PUBLIC_BASE = "https://aka.synozur.com";
 
+// Replit-managed hostnames that must never be treated as short-link hosts,
+// even if an admin accidentally adds them to site_settings. Populated from
+// the REPLIT_DOMAINS env var (comma-separated) at module load time, plus a
+// catch-all pattern for the three known Replit infrastructure suffixes.
+const REPLIT_ENV_HOSTS = new Set(
+  (process.env.REPLIT_DOMAINS ?? "")
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+function isReplitManagedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (REPLIT_ENV_HOSTS.has(h)) return true;
+  return /\.(replit\.dev|replit\.app|repl\.co)$/i.test(h);
+}
+
 interface ResolvedSettings {
   publicBase: string;
   publicHost: string;
@@ -78,11 +95,18 @@ async function loadSettings(): Promise<ResolvedSettings> {
     "",
   );
   const publicHost = safeHostFromUrl(publicBase) ?? "aka.synozur.com";
-  const hosts = new Set<string>([publicHost]);
+  // Never let a Replit-managed domain become a short-link host — guard both
+  // the primary publicBase and each additionalHost entry.
+  const hosts = new Set<string>(
+    isReplitManagedHost(publicHost) ? [] : [publicHost],
+  );
   for (const h of row?.additionalHosts ?? []) {
     const cleaned = h.trim().toLowerCase();
-    if (cleaned) hosts.add(cleaned);
+    if (cleaned && !isReplitManagedHost(cleaned)) hosts.add(cleaned);
   }
+  // Hard-code the canonical short-link host as the absolute fallback so the
+  // redirect service is never inadvertently disabled by a misconfiguration.
+  if (hosts.size === 0) hosts.add("aka.synozur.com");
   return {
     publicBase,
     publicHost,
@@ -131,8 +155,13 @@ export async function isShortLinkHost(
   hostname: string | undefined | null,
 ): Promise<boolean> {
   if (!hostname) return false;
+  const h = hostname.toLowerCase();
+  // Replit-managed preview and deployment domains are never short-link hosts
+  // regardless of what site_settings contains. This prevents the dev/staging
+  // preview URL from accidentally intercepting normal SPA traffic.
+  if (isReplitManagedHost(h)) return false;
   const s = await getSettings();
-  return s.hosts.has(hostname.toLowerCase());
+  return s.hosts.has(h);
 }
 
 export async function getShortLinkSettings(): Promise<{

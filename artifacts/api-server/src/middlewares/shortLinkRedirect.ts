@@ -28,13 +28,62 @@ import { logger } from "../lib/logger";
 // `images` mirrors the same idea for static assets shipped in the SPA's
 // `public/images` tree, in case admins paste a path like
 // `/images/og/holidays.png` into `ogImageUrl`.
+// SPA-owned first-level route segments. When a request arrives on the
+// short-link host for one of these paths we let it fall through so the
+// SPA can render the real page — prevents valid marketing routes like
+// `/about` or `/contact` from being mistaken for missing short links.
 const PASSTHROUGH_FIRST_SEGMENTS = new Set<string>([
+  // Infrastructure / API
   "api",
+  "oauth",
+  ".well-known",
+  // Static assets
   "images",
+  "assets",
+  "favicon.ico",
   "robots.txt",
   "sitemap.xml",
-  "favicon.ico",
-  ".well-known",
+  "llms.txt",
+  "polaris", // podcast feed lives at /polaris/rss.xml (site root)
+  // Auth sub-app (Galaxy customer portal)
+  "galaxy",
+  // Admin SPA
+  "admin",
+  // Public marketing pages — top-level segments the SPA owns
+  "about",
+  "applications",
+  "careers",
+  "case-studies",
+  "clients",
+  "contact",
+  "events",
+  "faq",
+  "forgot-password",
+  "home-a",
+  "home-b",
+  "insights",
+  "items",
+  "join",
+  "library",
+  "models",
+  "partners",
+  "pending-approval",
+  "privacy",
+  "reset-password",
+  "search",
+  "services",
+  "services-overview",
+  "sign-in",
+  "sign-up",
+  "solutions",
+  "start",
+  "team",
+  "terms",
+  "verify-email",
+  "videos",
+  "webinars",
+  "white-papers",
+  "workshops",
 ]);
 
 function firstSegment(path: string): string | null {

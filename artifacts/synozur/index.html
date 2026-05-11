@@ -39,9 +39,25 @@
       // for social bots that DO execute JavaScript).
       (function () {
         var SHORTLINK_HOST = "aka.synozur.com";
+        // Replit-managed preview/deploy domains are never the short-link host.
+        if (/\.(replit\.dev|replit\.app|repl\.co)$/i.test(window.location.hostname)) return;
+        // SPA-owned first-level segments: pass these through so real marketing
+        // pages work even when accessed via the short-link hostname.
         var PASSTHROUGH = [
-          "api", "admin", "galaxy", "images", "assets", "favicon.ico",
-          "robots.txt", "sitemap.xml", ".well-known"
+          // Infrastructure / API
+          "api", "oauth", ".well-known",
+          // Static assets
+          "images", "assets", "favicon.ico", "robots.txt", "sitemap.xml", "llms.txt",
+          // Sub-apps
+          "galaxy", "admin", "polaris",
+          // Public marketing pages
+          "about", "applications", "careers", "case-studies", "clients",
+          "contact", "events", "faq", "forgot-password", "home-a", "home-b",
+          "insights", "items", "join", "library", "models", "partners",
+          "pending-approval", "privacy", "reset-password", "search",
+          "services", "services-overview", "sign-in", "sign-up", "solutions",
+          "start", "team", "terms", "verify-email", "videos", "webinars",
+          "white-papers", "workshops"
         ];
         if (window.location.hostname === SHORTLINK_HOST) {
           var seg = window.location.pathname.replace(/^\/+/, "").split("/")[0];
