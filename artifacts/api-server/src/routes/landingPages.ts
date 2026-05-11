@@ -10,20 +10,28 @@ import {
   type LandingPage,
   type LandingPageBlock,
 } from "@workspace/db";
-import { requireAuth, requireRole } from "../middlewares/auth";
+import { requireAuth, requireCapability } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
 
 const router: IRouter = Router();
 
-// Editors get full CRUD; same gate as the rest of the CMS write routes.
-const adminGuard = [requireAuth, requireRole("admin", "editor")];
+// `site.manage` is the same capability used for List Page Copy, Site
+// Settings, and the rest of the admin "Site Config" tools — landing pages
+// belong with that group. Capability gates are preferred over role gates
+// per the project convention in middlewares/auth.ts (#111).
+const adminGuard = [requireAuth, requireCapability("site.manage")];
 
-// Slug values that cannot be claimed by a landing page because they collide
-// with code-backed routes (admin shells, auth, etc.). Detail pages like
-// /services/:slug are not at risk because they live under a prefix; we only
-// need to protect single-segment URLs.
+// Slug values that cannot be claimed by a landing page because they would
+// be unreachable: the SPA's `/:slug` catch-all only matches single-segment
+// URLs that aren't already claimed by a more specific public route, and a
+// "published" DB page on one of these slugs would never render.
+//
+// Detail routes (e.g. `/services/:slug`, `/insights/:slug`) live under a
+// prefix and don't conflict — we only block the standalone single-segment
+// paths.
 const RESERVED_SLUGS = new Set<string>([
+  // Admin / API / auth shells
   "admin",
   "api",
   "sign-in",
@@ -32,8 +40,37 @@ const RESERVED_SLUGS = new Set<string>([
   "pending-approval",
   "forgot-password",
   "reset-password",
+  // Marketing-site code routes
   "home-a",
   "home-b",
+  "about",
+  "clients",
+  "case-studies",
+  "applications",
+  "models",
+  "workshops",
+  "library",
+  "search",
+  "webinars",
+  "videos",
+  "white-papers",
+  "items",
+  "faq",
+  "team",
+  "partners",
+  "insights",
+  "polaris",
+  "contact",
+  "careers",
+  "join",
+  "start",
+  "events",
+  "privacy",
+  "terms",
+  // Reserved hub pages that don't live on this domain today but commonly
+  // get claimed by future code routes.
+  "services",
+  "solutions",
 ]);
 
 const BlockSchema = z.object({ type: z.enum(LANDING_PAGE_BLOCK_TYPES) }).passthrough();
@@ -68,8 +105,10 @@ function serialize(row: LandingPage) {
 }
 
 async function ensureUniqueSlug(base: string, excludeId?: string): Promise<string> {
-  let slug = toSlug(base);
-  let i = 1;
+  const baseSlug = toSlug(base);
+  let slug = baseSlug;
+  // First collision becomes `${baseSlug}-1`, second `${baseSlug}-2`, etc.
+  let suffix = 0;
   while (true) {
     const rows = await db
       .select({ id: landingPagesTable.id })
@@ -81,8 +120,8 @@ async function ensureUniqueSlug(base: string, excludeId?: string): Promise<strin
       )
       .limit(1);
     if (rows.length === 0) return slug;
-    i++;
-    slug = `${toSlug(base)}-${i}`;
+    suffix++;
+    slug = `${baseSlug}-${suffix}`;
   }
 }
 

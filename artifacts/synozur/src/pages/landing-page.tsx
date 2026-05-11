@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { JsonLd } from "@/components/jsonld";
+import { sanitizeHtml } from "@/components/rich-text";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import {
   landingPagesApi,
@@ -115,9 +116,10 @@ function RichTextSection(block: Extract<LandingPageBlock, { type: "richText" }>)
         )}
         <div
           className="prose prose-invert max-w-none"
-          // bodyHtml is authored by editors via the admin RichTextEditor,
-          // which already sanitises pasted content.
-          dangerouslySetInnerHTML={{ __html: block.bodyHtml }}
+          // Sanitise on render so HTML pasted directly into the admin
+          // editor (or written before the upstream sanitiser existed) can't
+          // smuggle scripts past us.
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.bodyHtml) }}
         />
       </div>
     </section>
@@ -321,6 +323,16 @@ function renderBlock(block: LandingPageBlock, index: number) {
   }
 }
 
+// JSON-LD URLs must be absolute for Google's validators. Editors author
+// CTAs / card links as either absolute URLs or root-relative paths; this
+// normalises root-relative input to `${SITE_ORIGIN}${path}` and leaves
+// anything else (http/https/mailto/etc.) alone.
+function absoluteUrl(href: string): string {
+  if (/^[a-z]+:/i.test(href) || href.startsWith("//")) return href;
+  if (href.startsWith("/")) return `${SITE_ORIGIN}${href}`;
+  return href;
+}
+
 function buildJsonLd(page: LandingPageDto, canonicalUrl: string) {
   const cardGrid = page.blocks.find((b) => b.type === "cardGrid") as
     | Extract<LandingPageBlock, { type: "cardGrid" }>
@@ -329,38 +341,45 @@ function buildJsonLd(page: LandingPageDto, canonicalUrl: string) {
     | Extract<LandingPageBlock, { type: "faq" }>
     | undefined;
 
-  const base = {
-    "@context": "https://schema.org",
+  const webPage: Record<string, unknown> = {
     "@type": "WebPage",
     name: page.title,
     url: canonicalUrl,
     description: page.seoDescription ?? undefined,
     isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_ORIGIN },
-  } as Record<string, unknown>;
+  };
 
   if (cardGrid) {
-    base.mainEntity = {
+    webPage.mainEntity = {
       "@type": "ItemList",
       numberOfItems: cardGrid.cards.length,
       itemListElement: cardGrid.cards.map((c, i) => ({
         "@type": "ListItem",
         position: i + 1,
-        url: c.url ?? canonicalUrl,
+        url: c.url ? absoluteUrl(c.url) : canonicalUrl,
         name: c.title,
       })),
     };
   }
-  if (faq) {
-    base.faq = {
-      "@type": "FAQPage",
-      mainEntity: faq.items.map((it) => ({
-        "@type": "Question",
-        name: it.q,
-        acceptedAnswer: { "@type": "Answer", text: it.a },
-      })),
-    };
+
+  // FAQ rich results require a standalone FAQPage node — nesting it under
+  // WebPage as `faq` is silently ignored by Google's validators. When both
+  // a WebPage and FAQ are present we emit them as siblings under @graph.
+  if (!faq) {
+    return { "@context": "https://schema.org", ...webPage };
   }
-  return base;
+  const faqPage = {
+    "@type": "FAQPage",
+    mainEntity: faq.items.map((it) => ({
+      "@type": "Question",
+      name: it.q,
+      acceptedAnswer: { "@type": "Answer", text: it.a },
+    })),
+  };
+  return {
+    "@context": "https://schema.org",
+    "@graph": [webPage, faqPage],
+  };
 }
 
 export default function LandingPageView({ slug }: Props) {
@@ -381,8 +400,29 @@ export default function LandingPageView({ slug }: Props) {
     return <NotFound />;
   }
 
-  const canonicalPath = `/${data.slug}`;
-  const canonicalUrl = `${SITE_ORIGIN}${canonicalPath}`;
+  // Editors can override the canonical URL per page. The Meta component
+  // takes a path and prepends SITE_ORIGIN, so we resolve an absolute
+  // override back to a path-on-this-origin (cross-origin overrides we keep
+  // as the full URL for JSON-LD and let Meta produce the same-origin
+  // fallback). Empty override → use the page's own URL.
+  const defaultPath = `/${data.slug}`;
+  const override = data.seoCanonicalUrl?.trim() ?? "";
+  let canonicalPath = defaultPath;
+  let canonicalUrl = `${SITE_ORIGIN}${defaultPath}`;
+  if (override) {
+    if (override.startsWith("/")) {
+      canonicalPath = override;
+      canonicalUrl = `${SITE_ORIGIN}${override}`;
+    } else if (override.startsWith(SITE_ORIGIN)) {
+      canonicalPath = override.slice(SITE_ORIGIN.length) || "/";
+      canonicalUrl = override;
+    } else {
+      // Cross-origin canonical: surface it in JSON-LD, and feed Meta the
+      // closest same-origin equivalent so it still emits a sensible
+      // <link rel="canonical">.
+      canonicalUrl = override;
+    }
+  }
 
   return (
     <div className="w-full">

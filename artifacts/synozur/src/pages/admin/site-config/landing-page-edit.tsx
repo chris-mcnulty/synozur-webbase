@@ -50,6 +50,22 @@ interface Draft {
   seoCanonicalUrl: string;
   ogImageUrl: string;
   blocks: LandingPageBlock[];
+  // Parallel array of stable client-only ids used as React keys. The DB
+  // block payloads have no natural id, and using the array index as a key
+  // would let input state lag behind after a reorder/remove (e.g. text
+  // typed into card 2 would visually stick to whatever block lands at
+  // index 2 after a move). Kept in lockstep with `blocks` on every
+  // mutation and discarded on save.
+  blockKeys: string[];
+}
+
+function newKey(): string {
+  // Cheap, collision-free for editor lifetime — these keys never leave
+  // the client. crypto.randomUUID is available in all targeted browsers
+  // but guard for older test environments.
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -61,6 +77,7 @@ const EMPTY_DRAFT: Draft = {
   seoCanonicalUrl: "",
   ogImageUrl: "",
   blocks: [],
+  blockKeys: [],
 };
 
 function toDraft(p: LandingPageDto): Draft {
@@ -73,6 +90,7 @@ function toDraft(p: LandingPageDto): Draft {
     seoCanonicalUrl: p.seoCanonicalUrl ?? "",
     ogImageUrl: p.ogImageUrl ?? "",
     blocks: p.blocks,
+    blockKeys: p.blocks.map(() => newKey()),
   };
 }
 
@@ -200,7 +218,11 @@ export default function LandingPageEdit({ id }: Props) {
   };
 
   const addBlock = (type: LandingPageBlock["type"]) =>
-    setDraft((d) => ({ ...d, blocks: [...d.blocks, BLOCK_TEMPLATES[type]()] }));
+    setDraft((d) => ({
+      ...d,
+      blocks: [...d.blocks, BLOCK_TEMPLATES[type]()],
+      blockKeys: [...d.blockKeys, newKey()],
+    }));
 
   const updateBlock = (index: number, next: LandingPageBlock) =>
     setDraft((d) => ({
@@ -209,15 +231,21 @@ export default function LandingPageEdit({ id }: Props) {
     }));
 
   const removeBlock = (index: number) =>
-    setDraft((d) => ({ ...d, blocks: d.blocks.filter((_, i) => i !== index) }));
+    setDraft((d) => ({
+      ...d,
+      blocks: d.blocks.filter((_, i) => i !== index),
+      blockKeys: d.blockKeys.filter((_, i) => i !== index),
+    }));
 
   const moveBlock = (index: number, dir: -1 | 1) =>
     setDraft((d) => {
       const target = index + dir;
       if (target < 0 || target >= d.blocks.length) return d;
-      const next = [...d.blocks];
-      [next[index], next[target]] = [next[target], next[index]];
-      return { ...d, blocks: next };
+      const nextBlocks = [...d.blocks];
+      const nextKeys = [...d.blockKeys];
+      [nextBlocks[index], nextBlocks[target]] = [nextBlocks[target], nextBlocks[index]];
+      [nextKeys[index], nextKeys[target]] = [nextKeys[target], nextKeys[index]];
+      return { ...d, blocks: nextBlocks, blockKeys: nextKeys };
     });
 
   const title = useMemo(
@@ -341,7 +369,7 @@ export default function LandingPageEdit({ id }: Props) {
               )}
               {draft.blocks.map((block, i) => (
                 <BlockEditor
-                  key={i}
+                  key={draft.blockKeys[i] ?? i}
                   index={i}
                   total={draft.blocks.length}
                   block={block}
