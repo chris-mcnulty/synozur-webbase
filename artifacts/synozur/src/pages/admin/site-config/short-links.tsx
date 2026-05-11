@@ -1130,7 +1130,7 @@ export default function AdminShortLinks() {
 
   const onImport = () => {
     if (!importCsvText.trim()) {
-      toast({ title: "Paste a CSV first", variant: "destructive" });
+      toast({ title: "Upload a CSV file or paste CSV text first", variant: "destructive" });
       return;
     }
     importMut.mutate({
@@ -1775,16 +1775,19 @@ export default function AdminShortLinks() {
       <Dialog
         open={importOpen}
         onOpenChange={(open) => {
-          if (!open) setImportOpen(false);
+          if (!open) {
+            setImportOpen(false);
+            setImportFileName(null);
+          }
         }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>
-              Paste a Rebrandly CSV export or a prior <em>Export CSV</em> from
-              this page. Re-importing a self-export with{" "}
-              <strong>overwrite</strong> restores lifetime{" "}
+              Upload or paste a Rebrandly CSV export or a prior{" "}
+              <em>Export CSV</em> from this page. Re-importing a self-export
+              with <strong>overwrite</strong> restores lifetime{" "}
               <code>hitCount</code> and <code>lastClickAt</code> after a full
               database push, along with <code>statusCode</code>,{" "}
               <code>active</code>, and OG overrides. Recognised columns:{" "}
@@ -1794,7 +1797,8 @@ export default function AdminShortLinks() {
               <code>hitCount</code>, <code>lastClickAt</code>,{" "}
               <code>statusCode</code>, <code>active</code>,{" "}
               <code>ogTitle</code>, <code>ogDescription</code>,{" "}
-              <code>ogImageUrl</code>, <code>rebrandlyId</code> / <code>id</code>.
+              <code>ogImageUrl</code>, <code>rebrandlyId</code> /{" "}
+              <code>id</code>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1806,20 +1810,48 @@ export default function AdminShortLinks() {
                 onChange={setImportPolicy}
               />
             </div>
-            <div>
-              <Label htmlFor="import-csv">CSV</Label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="import-csv">CSV</Label>
+                <div className="flex items-center gap-2">
+                  {importFileName && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                      {importFileName}
+                    </span>
+                  )}
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept=".csv,text/csv,text/plain"
+                    className="hidden"
+                    onChange={onImportFileChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => importFileRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    Upload file
+                  </Button>
+                </div>
+              </div>
               <Textarea
                 id="import-csv"
                 rows={12}
                 placeholder="slug,destination,title,tags&#10;holidayswp,https://example.com/holidays,Holidays WP,campaign|holiday-2025"
                 value={importCsvText}
-                onChange={(e) => setImportCsvText(e.target.value)}
+                onChange={(e) => {
+                  setImportCsvText(e.target.value);
+                  if (importFileName) setImportFileName(null);
+                }}
                 className="font-mono text-xs"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportOpen(false)}>
+            <Button variant="outline" onClick={() => { setImportOpen(false); setImportFileName(null); }}>
               Cancel
             </Button>
             <Button onClick={onImport} disabled={importMut.isPending}>

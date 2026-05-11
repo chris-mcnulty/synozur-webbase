@@ -643,6 +643,23 @@ export default function LandingPageEdit({ id }: Props) {
                 Featured pages appear on the home carousel and in /library
                 alongside other published content.
               </p>
+              {/* Collateral library status — derived from the current draft */}
+              {draft.featured && draft.status === "published" ? (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+                  In collateral library — synced automatically on save
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40 shrink-0" />
+                  Not in library —{" "}
+                  {!draft.featured && draft.status !== "published"
+                    ? "requires Published status + Featured"
+                    : !draft.featured
+                      ? "enable Featured above"
+                      : "set status to Published"}
+                </div>
+              )}
               <div>
                 <Label htmlFor="lp-featured-rank" className="text-xs">
                   Featured rank
