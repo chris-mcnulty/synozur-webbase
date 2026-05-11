@@ -16,6 +16,11 @@ export const CollateralType = {
   podcast: "podcast",
   model: "model",
   training: "training",
+  workshop: "workshop",
   event: "event",
   insight: "insight",
+  video: "video",
+  ebook: "ebook",
+  application: "application",
+  landing_page: "landing_page",
 } as const;

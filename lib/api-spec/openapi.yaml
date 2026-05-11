@@ -7594,8 +7594,13 @@ components:
         - podcast
         - model
         - training
+        - workshop
         - event
         - insight
+        - video
+        - ebook
+        - application
+        - landing_page
     CollateralPillar:
       type: string
       enum:

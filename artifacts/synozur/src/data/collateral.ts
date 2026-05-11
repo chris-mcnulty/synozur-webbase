@@ -17,9 +17,13 @@ export type CollateralType =
   | "podcast"
   | "model"
   | "training"
+  | "workshop"
   | "event"
   | "insight"
-  | "application";
+  | "video"
+  | "ebook"
+  | "application"
+  | "landing_page";
 
 export type Pillar =
   | "strategic"
@@ -85,9 +89,13 @@ export const TYPE_LABELS: Record<CollateralType, string> = {
   podcast: "PODCAST",
   model: "MODEL",
   training: "WORKSHOP",
+  workshop: "WORKSHOP",
   event: "EVENT",
   insight: "INSIGHT",
+  video: "VIDEO",
+  ebook: "EBOOK",
   application: "APPLICATION",
+  landing_page: "LANDING PAGE",
 };
 
 export const PILLAR_LABELS: Record<Pillar, string> = {
@@ -189,9 +197,13 @@ export function getTypeFacets(): CollateralType[] {
     "podcast",
     "model",
     "training",
+    "workshop",
     "event",
     "insight",
+    "video",
+    "ebook",
     "application",
+    "landing_page",
   ];
 }
 

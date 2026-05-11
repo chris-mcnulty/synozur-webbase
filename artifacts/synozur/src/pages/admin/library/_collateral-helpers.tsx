@@ -16,6 +16,8 @@ export const COLLATERAL_TYPE_TABS: { value: string; label: string }[] = [
   { value: "insight", label: "Insight" },
   { value: "video", label: "Video" },
   { value: "ebook", label: "eBook" },
+  { value: "application", label: "Application" },
+  { value: "landing_page", label: "Landing Page" },
 ];
 
 export const COLLATERAL_TYPE_LABELS: Record<string, string> = {
@@ -75,6 +77,10 @@ export function editorPathForSource(sourceId: string | null | undefined): string
       return `/people/events/${id}`;
     case "workshop":
       return `/library/workshops/${id}/edit`;
+    case "application":
+      return `/products/applications/${id}/edit`;
+    case "landing_page":
+      return `/site-config/landing-pages/${id}/edit`;
     default:
       return null;
   }
