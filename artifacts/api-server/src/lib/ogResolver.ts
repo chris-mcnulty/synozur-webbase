@@ -24,6 +24,7 @@ import {
   mediaTable,
   siteSettingsTable,
   polarisEpisodesTable,
+  landingPagesTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
 
@@ -72,7 +73,7 @@ export function absUrl(raw: string | null | undefined, origin: string): string |
  * artifact hasn't changed and the template version hasn't been bumped.
  */
 export function dynamicOgImageUrl(
-  kind: "insight" | "case-study" | "white-paper" | "polaris",
+  kind: "insight" | "case-study" | "white-paper" | "polaris" | "landing-page",
   id: string,
   lastModified: Date | null | undefined,
   origin: string,
@@ -153,7 +154,53 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
   const section = parts[0] ?? "";
   const slug = parts[1] ?? "";
 
-  if (!slug) return fallback;
+  // Single-segment path (no sub-slug) — landing pages live at /:slug.
+  // All other registered routes have two segments (e.g. /insights/:slug),
+  // so if slug is empty but section is non-empty we try the landing pages
+  // table before falling back to site defaults.
+  if (!slug) {
+    if (section) {
+      try {
+        const [row] = await db
+          .select({
+            id: landingPagesTable.id,
+            title: landingPagesTable.title,
+            seoTitle: landingPagesTable.seoTitle,
+            seoDescription: landingPagesTable.seoDescription,
+            ogImageUrl: landingPagesTable.ogImageUrl,
+            heroImage: landingPagesTable.heroImage,
+            updatedAt: landingPagesTable.updatedAt,
+          })
+          .from(landingPagesTable)
+          .where(
+            and(
+              eq(landingPagesTable.slug, section),
+              eq(landingPagesTable.status, "published"),
+              isNull(landingPagesTable.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (row) {
+          const editorImage =
+            (row.ogImageUrl && row.ogImageUrl.trim()) ||
+            (row.heroImage && row.heroImage.trim()) ||
+            null;
+          return {
+            ...fallback,
+            title: row.seoTitle || row.title,
+            description: row.seoDescription || defaults.description,
+            image:
+              absUrl(editorImage, origin) ??
+              dynamicOgImageUrl("landing-page", row.id, row.updatedAt, origin),
+            ogType: "website",
+          };
+        }
+      } catch {
+        // DB error — fall through to site defaults.
+      }
+    }
+    return fallback;
+  }
 
   try {
     switch (section) {

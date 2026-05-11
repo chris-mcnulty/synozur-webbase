@@ -734,7 +734,7 @@ export async function upsertCollateralFromLandingPage(
     title: page.title,
     subtitle: page.subtitle ?? null,
     description: page.description ?? "",
-    heroImage: page.heroImage ?? "",
+    heroImage: page.heroImage || page.ogImageUrl || "",
     pillar: normalizedPillar,
     tags: (page.tags as string[]) ?? [],
     url: canonicalUrlForCollateral("landing_page", page.slug),

@@ -17,7 +17,7 @@
  * The returned URL is root-relative so `Meta` will resolve it against
  * `SITE_ORIGIN` for `og:image` (which must be absolute for crawlers).
  */
-export type DynamicOgKind = "insight" | "case-study" | "white-paper" | "polaris";
+export type DynamicOgKind = "insight" | "case-study" | "white-paper" | "polaris" | "landing-page";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 

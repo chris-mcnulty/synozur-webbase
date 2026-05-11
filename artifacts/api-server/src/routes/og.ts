@@ -21,6 +21,7 @@ import {
   caseStudiesTable,
   whitePapersTable,
   polarisEpisodesTable,
+  landingPagesTable,
   usersTable,
 } from "@workspace/db";
 import {
@@ -42,6 +43,7 @@ const KINDS: readonly OgImageKind[] = [
   "case-study",
   "white-paper",
   "polaris",
+  "landing-page",
 ];
 
 const UUID_RE =
@@ -184,6 +186,32 @@ async function resolveArtifact(
       };
     }
 
+    case "landing-page": {
+      const [row] = await db
+        .select({
+          id: landingPagesTable.id,
+          title: landingPagesTable.title,
+          seoTitle: landingPagesTable.seoTitle,
+          subtitle: landingPagesTable.subtitle,
+          updatedAt: landingPagesTable.updatedAt,
+        })
+        .from(landingPagesTable)
+        .where(
+          and(eq(landingPagesTable.id, id), isNull(landingPagesTable.deletedAt)),
+        )
+        .limit(1);
+      if (!row) return null;
+      return {
+        input: {
+          kind,
+          title: row.seoTitle || row.title,
+          byline: null,
+          context: row.subtitle || null,
+        },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
     default:
       return null;
   }
@@ -257,7 +285,7 @@ router.get("/og/image", async (req, res): Promise<void> => {
  * Admin/editor only. Returns `{ ok, kind, id, cleared, prerendered }`.
  */
 const RegenerateBodySchema = z.object({
-  kind: z.enum(["insight", "case-study", "white-paper", "polaris"]),
+  kind: z.enum(["insight", "case-study", "white-paper", "polaris", "landing-page"]),
   id: z.string().uuid(),
   prerender: z.boolean().optional().default(false),
 });

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { useToast } from "@/hooks/use-toast";
 import {
   MediaPickerModal,
@@ -443,7 +444,7 @@ export default function LandingPageEdit({ id }: Props) {
         </div>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
           {/* Page-level fields */}
           <Card>
@@ -880,8 +881,17 @@ export default function LandingPageEdit({ id }: Props) {
                   disabled={!canWrite}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Auto-generated social card preview</Label>
+                <OgImagePreview
+                  kind="landing-page"
+                  id={isNew ? null : (existingQ.data?.id ?? null)}
+                  updatedAt={existingQ.data?.updatedAt}
+                  showOverrideHint
+                />
+              </div>
               <div>
-                <Label htmlFor="lp-og">Social share image</Label>
+                <Label htmlFor="lp-og">Social share image override</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="lp-og"

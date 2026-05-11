@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 
-export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris";
+export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris" | "landing-page";
 
 /**
  * Renderer template version. Embedded in the cache key alongside the
@@ -57,6 +57,7 @@ const KIND_LABELS: Record<OgImageKind, string> = {
   "case-study": "Case Study",
   "white-paper": "White Paper",
   polaris: "Polaris",
+  "landing-page": "Landing Page",
 };
 
 // Brand palette mirrors `--synozur-*` HSL values from
