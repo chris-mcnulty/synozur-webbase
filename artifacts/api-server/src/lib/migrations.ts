@@ -2754,6 +2754,34 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS short_link_rebrandly_api_key text;
     `);
 
+    // DB-backed standalone landing pages (e.g. /ai-training). See
+    // schema/landingPages.ts for the block-payload shapes.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS landing_pages (
+        id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug               text NOT NULL,
+        title              text NOT NULL,
+        status             text NOT NULL DEFAULT 'draft',
+        blocks             jsonb NOT NULL DEFAULT '[]'::jsonb,
+        seo_title          text,
+        seo_description    text,
+        seo_canonical_url  text,
+        og_image_url       text,
+        published_at       timestamptz,
+        created_at         timestamptz NOT NULL DEFAULT now(),
+        updated_at         timestamptz NOT NULL DEFAULT now(),
+        deleted_at         timestamptz
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS landing_pages_slug_key
+        ON landing_pages (slug);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS landing_pages_status_idx
+        ON landing_pages (status);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

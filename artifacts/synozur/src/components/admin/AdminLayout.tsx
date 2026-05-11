@@ -206,6 +206,7 @@ const SECTIONS: NavSection[] = [
       { href: "/site-config/alt-home", label: "Alt Home", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-alt-home" },
       { href: "/site-config/experiments", label: "Experiments", icon: FlaskConical, capability: "site.manage", testId: "nav-admin-experiments" },
       { href: "/site-config/list-page-copy", label: "List Page Copy", icon: FileText, capability: "site.manage", testId: "nav-admin-list-page-copy" },
+      { href: "/site-config/landing-pages", label: "Landing Pages", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-landing-pages" },
       { href: "/site-config/redirects", label: "Redirects", icon: ExternalLink, capability: "site.manage", testId: "nav-admin-redirects" },
       { href: "/site-config/short-links", label: "Short Links", icon: Link2, capability: "site.manage", testId: "nav-admin-short-links" },
       { href: "/site-config/not-found-logs", label: "404 Log", icon: FileSearch, capability: "site.manage", testId: "nav-admin-not-found-logs" },

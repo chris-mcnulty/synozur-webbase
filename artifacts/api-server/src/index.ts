@@ -12,6 +12,7 @@ import { ensureGalaxyOAuthClient } from "./lib/galaxyOauthSeed";
 import { logSecurityHeaderConfig } from "./lib/securityHeaders";
 import { logLaunchReadiness } from "./lib/launchReadiness";
 import { seedTestAdminIfConfigured } from "./lib/testAdminSeed";
+import { seedLandingPagesIfMissing } from "./lib/landingPagesSeed";
 
 const rawPort = process.env["PORT"];
 
@@ -35,6 +36,7 @@ try {
 await ensureSigningKey();
 await ensureGalaxyOAuthClient();
 await seedTestAdminIfConfigured();
+await seedLandingPagesIfMissing();
 
 const server = app.listen(port, (err) => {
   if (err) {
