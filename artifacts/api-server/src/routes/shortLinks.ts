@@ -731,9 +731,15 @@ router.post("/cms/short-links/import", ...adminGuard, async (req, res) => {
       lastClickAt,
       statusCode,
       active,
-      ogTitle: pickField(row, "ogTitle") ?? null,
-      ogDescription: pickField(row, "ogDescription") ?? null,
-      ogImageUrl: pickField(row, "ogImageUrl") ?? null,
+      // OG fields stay UNDEFINED when the column is absent or the cell is
+      // blank, so the `if (v.ogX !== undefined)` guards in
+      // `applyImportRows` skip them. Coercing to null here would make
+      // every Rebrandly import (which has no OG columns) clobber
+      // admin-managed OG overrides with null. Admins clear an OG
+      // override via the UI, not by blanking a cell.
+      ogTitle: pickField(row, "ogTitle"),
+      ogDescription: pickField(row, "ogDescription"),
+      ogImageUrl: pickField(row, "ogImageUrl"),
     };
     const ok = ImportRowSchema.safeParse(candidate);
     if (!ok.success) {

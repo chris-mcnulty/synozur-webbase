@@ -445,3 +445,78 @@ test("parseActive returns undefined for blank or ambiguous cells (no silent flip
     assert.equal(parseActive(raw), undefined, `raw=${JSON.stringify(raw)}`);
   }
 });
+
+// ─── OG field round-trip parsing ───────────────────────────────────────────
+//
+// Mirror of `pickField` in the route. OG candidate values must stay
+// `undefined` when the column is absent OR the cell is blank so the
+// `if (v.ogX !== undefined)` guards in `applyImportRows` skip them.
+// Coercing to null would make every Rebrandly import (no OG columns)
+// silently clobber admin-managed OG overrides with null.
+
+function pickField(
+  row: Record<string, string>,
+  ...candidates: string[]
+): string | undefined {
+  const keys = Object.keys(row);
+  for (const c of candidates) {
+    const want = c.toLowerCase().replace(/[\s_-]/g, "");
+    const k = keys.find(
+      (k) => k.toLowerCase().replace(/[\s_-]/g, "") === want,
+    );
+    if (k && row[k]) return row[k];
+  }
+  return undefined;
+}
+
+test("OG candidate stays undefined when columns are absent (Rebrandly CSV shape)", () => {
+  // A Rebrandly CSV has no `ogTitle` / `ogDescription` / `ogImageUrl`
+  // headers. The candidate construction must keep these undefined so the
+  // overwrite update path does NOT clear admin-managed OG overrides.
+  const rebrandlyRow = {
+    id: "abc",
+    slashtag: "foo",
+    destination: "https://example.com",
+    title: "Hello",
+  };
+  assert.equal(pickField(rebrandlyRow, "ogTitle"), undefined);
+  assert.equal(pickField(rebrandlyRow, "ogDescription"), undefined);
+  assert.equal(pickField(rebrandlyRow, "ogImageUrl"), undefined);
+});
+
+test("OG candidate stays undefined for blank cells in a self-export row", () => {
+  // A self-export ALWAYS includes the OG columns, but most links don't
+  // have an override, so cells are blank. The parser must treat that as
+  // "no change" (undefined), not as an explicit clear — otherwise a
+  // round-trip overwrite would wipe an OG override set after the export
+  // snapshot was taken.
+  const selfExportRow = {
+    slug: "foo",
+    targetUrl: "https://example.com",
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
+  };
+  assert.equal(pickField(selfExportRow, "ogTitle"), undefined);
+  assert.equal(pickField(selfExportRow, "ogDescription"), undefined);
+  assert.equal(pickField(selfExportRow, "ogImageUrl"), undefined);
+});
+
+test("OG candidate returns the cell value when an override is set", () => {
+  const selfExportRow = {
+    slug: "foo",
+    targetUrl: "https://example.com",
+    ogTitle: "Custom OG title",
+    ogDescription: "Custom description",
+    ogImageUrl: "https://cdn.example.com/og.png",
+  };
+  assert.equal(pickField(selfExportRow, "ogTitle"), "Custom OG title");
+  assert.equal(
+    pickField(selfExportRow, "ogDescription"),
+    "Custom description",
+  );
+  assert.equal(
+    pickField(selfExportRow, "ogImageUrl"),
+    "https://cdn.example.com/og.png",
+  );
+});
