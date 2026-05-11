@@ -1064,6 +1064,7 @@ function BlockFields({
   disabled: boolean;
   onChange: (next: LandingPageBlock) => void;
 }) {
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
   switch (block.type) {
     case "hero":
       return (
@@ -1161,34 +1162,66 @@ function BlockFields({
 
     case "image":
       return (
-        <div className="space-y-3">
-          <FormField label="Image URL">
-            <Input
-              value={block.url}
-              onChange={(e) => onChange({ ...block, url: e.target.value })}
-              placeholder="https://…"
-              disabled={disabled}
-            />
-          </FormField>
-          <FieldRow>
-            <FormField label="Alt text">
-              <Input
-                value={block.alt ?? ""}
-                onChange={(e) => onChange({ ...block, alt: e.target.value })}
-                disabled={disabled}
-              />
+        <>
+          <div className="space-y-3">
+            <FormField label="Image">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={block.url}
+                  onChange={(e) => onChange({ ...block, url: e.target.value })}
+                  placeholder="https://…"
+                  disabled={disabled}
+                  className="flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImagePickerOpen(true)}
+                  disabled={disabled}
+                >
+                  <ImageIcon className="h-4 w-4 mr-1.5" />
+                  {block.url ? "Change" : "Pick image"}
+                </Button>
+              </div>
+              {block.url && (
+                <img
+                  src={block.url}
+                  alt={block.alt ?? ""}
+                  className="mt-1 h-32 w-full object-cover rounded border border-border"
+                />
+              )}
             </FormField>
-            <FormField label="Caption">
-              <Input
-                value={block.caption ?? ""}
-                onChange={(e) =>
-                  onChange({ ...block, caption: e.target.value })
-                }
-                disabled={disabled}
-              />
-            </FormField>
-          </FieldRow>
-        </div>
+            <FieldRow>
+              <FormField label="Alt text">
+                <Input
+                  value={block.alt ?? ""}
+                  onChange={(e) => onChange({ ...block, alt: e.target.value })}
+                  disabled={disabled}
+                />
+              </FormField>
+              <FormField label="Caption">
+                <Input
+                  value={block.caption ?? ""}
+                  onChange={(e) =>
+                    onChange({ ...block, caption: e.target.value })
+                  }
+                  disabled={disabled}
+                />
+              </FormField>
+            </FieldRow>
+          </div>
+          <MediaPickerModal
+            open={imagePickerOpen}
+            onClose={() => setImagePickerOpen(false)}
+            onSelect={(item: MediaItem) => {
+              onChange({ ...block, url: mediaUrl(item) });
+              setImagePickerOpen(false);
+            }}
+            title="Pick image"
+            kind="image"
+          />
+        </>
       );
 
     case "faq":

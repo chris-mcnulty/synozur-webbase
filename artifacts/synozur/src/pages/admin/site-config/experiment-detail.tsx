@@ -1325,6 +1325,11 @@ function ConversionsTab({
         value: "/services/ai-strategy-design",
         label: "Visit AI strategy & design",
       },
+      carousel: {
+        kind: "carousel",
+        value: "conversion.carousel.click",
+        label: "Carousel card click",
+      },
     };
     setPaths([...paths, defaults[kind]]);
   }
