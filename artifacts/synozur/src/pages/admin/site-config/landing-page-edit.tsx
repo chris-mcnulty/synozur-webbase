@@ -197,6 +197,13 @@ export default function LandingPageEdit({ id }: Props) {
       qc.invalidateQueries({ queryKey: ["admin-landing-pages"] });
       qc.invalidateQueries({ queryKey: ["admin-landing-page", id] });
       qc.invalidateQueries({ queryKey: ["landing-page", row.slug] });
+      // If the slug just changed, the public renderer's cache under the
+      // old slug would otherwise serve stale content (or show the page at
+      // a URL that should now 404) until the entry naturally expires.
+      const previousSlug = existingQ.data?.slug;
+      if (previousSlug && previousSlug !== row.slug) {
+        qc.invalidateQueries({ queryKey: ["landing-page", previousSlug] });
+      }
     },
     onError: (e: Error) =>
       toast({

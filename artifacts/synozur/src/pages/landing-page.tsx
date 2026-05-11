@@ -34,8 +34,12 @@ const LEVEL_CLASS: Record<string, string> = {
   Advanced: "bg-fuchsia-500/10 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-400/20",
 };
 
+// Treat anything with an explicit URI scheme (or a protocol-relative `//`
+// prefix) as external — `mailto:`, `tel:`, `sms:`, `https:` etc. all need
+// to leave wouter's client-side `<Link>` and let the browser handle the
+// navigation. Path-relative hrefs (e.g. `/contact`) stay internal.
 function isExternal(href: string): boolean {
-  return /^[a-z]+:\/\//i.test(href) || href.startsWith("//");
+  return /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//");
 }
 
 function Cta({ cta }: { cta: LandingPageCTA }) {
@@ -430,6 +434,7 @@ export default function LandingPageView({ slug }: Props) {
         title={data.seoTitle ?? data.title}
         description={data.seoDescription ?? undefined}
         canonicalPath={canonicalPath}
+        image={data.ogImageUrl ?? undefined}
       />
       <JsonLd data={buildJsonLd(data, canonicalUrl)} />
       {data.blocks.map(renderBlock)}

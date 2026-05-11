@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ilike, isNull, ne, or } from "drizzle-orm";
 import {
   db,
   landingPagesTable,
+  landingPageBlocks,
   isLandingPagePubliclyVisible,
   LANDING_PAGE_BLOCK_TYPES,
   LANDING_PAGE_STATUSES,
@@ -73,7 +74,17 @@ const RESERVED_SLUGS = new Set<string>([
   "solutions",
 ]);
 
-const BlockSchema = z.object({ type: z.enum(LANDING_PAGE_BLOCK_TYPES) }).passthrough();
+// Per-type Zod validation for block payloads lives in a sibling file so
+// the unit test can import it without booting Express / db. The public
+// renderer trusts the stored shape (`block.cards.map(...)`), so a
+// malformed write — via Create / Update / Import — would crash the page
+// on every visit. We validate strictly here and let the API reject bad
+// input with a 400 instead of persisting it.
+import { BlockSchema } from "./landingPagesSchema";
+// LANDING_PAGE_BLOCK_TYPES from the db package still anchors the runtime
+// tag list; re-exporting it via BlockSchema keeps the union and the tag
+// list separate but trivially auditable.
+void LANDING_PAGE_BLOCK_TYPES;
 
 const CreateBody = z.object({
   slug: z.string().min(1).nullish(),
@@ -93,7 +104,7 @@ function serialize(row: LandingPage) {
     slug: row.slug,
     title: row.title,
     status: row.status,
-    blocks: (row.blocks ?? []) as LandingPageBlock[],
+    blocks: landingPageBlocks(row),
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
     seoCanonicalUrl: row.seoCanonicalUrl,
@@ -345,7 +356,7 @@ router.get("/cms/landing-pages/:id/export", ...adminGuard, async (req, res) => {
       slug: row.slug,
       title: row.title,
       status: row.status,
-      blocks: (row.blocks ?? []) as LandingPageBlock[],
+      blocks: landingPageBlocks(row),
       seoTitle: row.seoTitle,
       seoDescription: row.seoDescription,
       seoCanonicalUrl: row.seoCanonicalUrl,

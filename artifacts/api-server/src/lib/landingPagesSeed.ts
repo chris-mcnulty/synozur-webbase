@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import {
   db,
   landingPagesTable,
@@ -137,23 +136,29 @@ const AI_TRAINING_SEED = {
 
 export async function seedLandingPagesIfMissing(): Promise<void> {
   try {
-    const existing = await db.query.landingPagesTable.findFirst({
-      where: eq(landingPagesTable.slug, AI_TRAINING_SEED.slug),
-    });
-    if (existing) return;
-    await db.insert(landingPagesTable).values({
-      slug: AI_TRAINING_SEED.slug,
-      title: AI_TRAINING_SEED.title,
-      status: AI_TRAINING_SEED.status,
-      blocks: AI_TRAINING_SEED.blocks,
-      seoTitle: AI_TRAINING_SEED.seoTitle,
-      seoDescription: AI_TRAINING_SEED.seoDescription,
-      publishedAt: new Date(),
-    });
-    logger.info(
-      { slug: AI_TRAINING_SEED.slug },
-      "Seeded initial landing page",
-    );
+    // Atomic insert-or-nothing so two instances racing through startup don't
+    // both observe an empty table and then collide on the unique-slug
+    // index. `returning()` tells us whether this call was the one that
+    // actually wrote the row — useful for the log line and nothing else.
+    const inserted = await db
+      .insert(landingPagesTable)
+      .values({
+        slug: AI_TRAINING_SEED.slug,
+        title: AI_TRAINING_SEED.title,
+        status: AI_TRAINING_SEED.status,
+        blocks: AI_TRAINING_SEED.blocks,
+        seoTitle: AI_TRAINING_SEED.seoTitle,
+        seoDescription: AI_TRAINING_SEED.seoDescription,
+        publishedAt: new Date(),
+      })
+      .onConflictDoNothing({ target: landingPagesTable.slug })
+      .returning({ id: landingPagesTable.id });
+    if (inserted.length > 0) {
+      logger.info(
+        { slug: AI_TRAINING_SEED.slug },
+        "Seeded initial landing page",
+      );
+    }
   } catch (err) {
     // Seeding is best-effort — a failure shouldn't block the server from
     // booting. An empty landing_pages table just means /ai-training will
