@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -748,6 +748,20 @@ export default function AdminShortLinks() {
   const [importPolicy, setImportPolicy] = useState<"skip" | "overwrite">(
     "skip",
   );
+  const [importFileName, setImportFileName] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const onImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setImportCsvText((evt.target?.result as string) ?? "");
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
   const [rebrandlyImportOpen, setRebrandlyImportOpen] = useState(false);
   const [rebrandlyDomainId, setRebrandlyDomainId] = useState("");
   const [rebrandlyPolicy, setRebrandlyPolicy] = useState<
