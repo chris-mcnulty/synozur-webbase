@@ -506,75 +506,6 @@ export default function LandingPageEdit({ id }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="lp-subtitle">Subtitle</Label>
-                <Input
-                  id="lp-subtitle"
-                  value={draft.subtitle}
-                  onChange={(e) =>
-                    setDraft({ ...draft, subtitle: e.target.value })
-                  }
-                  disabled={!canWrite}
-                  placeholder="Short label shown on library/carousel cards"
-                  data-testid="input-subtitle"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lp-description">Card description</Label>
-                <Textarea
-                  id="lp-description"
-                  rows={3}
-                  value={draft.description}
-                  onChange={(e) =>
-                    setDraft({ ...draft, description: e.target.value })
-                  }
-                  disabled={!canWrite}
-                  placeholder="Short summary surfaced on /library tiles and the home carousel"
-                  data-testid="input-description"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Distinct from the meta description — this is the copy on
-                  carousel / library cards.
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="lp-hero-image">Card hero image</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="lp-hero-image"
-                    value={draft.heroImage}
-                    onChange={(e) =>
-                      setDraft({ ...draft, heroImage: e.target.value })
-                    }
-                    placeholder="https://… (shown on library/carousel cards)"
-                    disabled={!canWrite}
-                    data-testid="input-hero-image"
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    type="button"
-                    onClick={() => setHeroPickerOpen(true)}
-                    disabled={!canWrite}
-                    aria-label="Pick from media library"
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                {draft.heroImage ? (
-                  <img
-                    src={mediaUrl(draft.heroImage)}
-                    alt=""
-                    className="mt-2 h-24 w-full object-cover rounded border border-border"
-                  />
-                ) : draft.featured && draft.status === "published" ? (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                    <span>⚠</span>
-                    No hero image set — library cards will fall back to the auto-generated OG image. Set one above for a richer card.
-                  </p>
-                ) : null}
-              </div>
             </CardContent>
           </Card>
 
@@ -623,8 +554,86 @@ export default function LandingPageEdit({ id }: Props) {
           </Card>
         </div>
 
-        {/* Classification + SEO */}
+        {/* Right column: Library card + Classification + SEO */}
         <div className="space-y-6">
+          {/* Library card metadata */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Library card</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="lp-subtitle">Subtitle</Label>
+                <Input
+                  id="lp-subtitle"
+                  value={draft.subtitle}
+                  onChange={(e) =>
+                    setDraft({ ...draft, subtitle: e.target.value })
+                  }
+                  disabled={!canWrite}
+                  placeholder="Short label shown on library/carousel cards"
+                  data-testid="input-subtitle"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lp-description">Description</Label>
+                <Textarea
+                  id="lp-description"
+                  rows={3}
+                  value={draft.description}
+                  onChange={(e) =>
+                    setDraft({ ...draft, description: e.target.value })
+                  }
+                  disabled={!canWrite}
+                  placeholder="Short summary surfaced on /library tiles and the home carousel"
+                  data-testid="input-description"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Distinct from the meta description — this is the copy on
+                  carousel / library cards.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="lp-hero-image">Hero image</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="lp-hero-image"
+                    value={draft.heroImage}
+                    onChange={(e) =>
+                      setDraft({ ...draft, heroImage: e.target.value })
+                    }
+                    placeholder="https://… (shown on library/carousel cards)"
+                    disabled={!canWrite}
+                    data-testid="input-hero-image"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    onClick={() => setHeroPickerOpen(true)}
+                    disabled={!canWrite}
+                    aria-label="Pick from media library"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                {draft.heroImage ? (
+                  <img
+                    src={mediaUrl(draft.heroImage)}
+                    alt=""
+                    className="mt-2 h-24 w-full object-cover rounded border border-border"
+                  />
+                ) : draft.featured && draft.status === "published" ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <span>⚠</span>
+                    No hero image set — library cards will fall back to the auto-generated OG image. Set one above for a richer card.
+                  </p>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Classification</CardTitle>
