@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Download,
   ExternalLink,
+  Image as ImageIcon,
   Plus,
   Save,
   Trash2,
@@ -13,6 +14,11 @@ import {
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useToast } from "@/hooks/use-toast";
+import {
+  MediaPickerModal,
+  mediaUrl,
+} from "@/components/admin/MediaPickerModal";
+import type { MediaItem } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -264,6 +270,8 @@ export default function LandingPageEdit({ id }: Props) {
 
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(isNew);
+  const [heroPickerOpen, setHeroPickerOpen] = useState(false);
+  const [ogPickerOpen, setOgPickerOpen] = useState(false);
 
   const selectedService =
     allServices.find((s) => s.id === draft.serviceId) ?? null;
@@ -529,17 +537,37 @@ export default function LandingPageEdit({ id }: Props) {
                 </p>
               </div>
               <div>
-                <Label htmlFor="lp-hero-image">Card hero image URL</Label>
-                <Input
-                  id="lp-hero-image"
-                  value={draft.heroImage}
-                  onChange={(e) =>
-                    setDraft({ ...draft, heroImage: e.target.value })
-                  }
-                  placeholder="https://… (shown on library/carousel cards)"
-                  disabled={!canWrite}
-                  data-testid="input-hero-image"
-                />
+                <Label htmlFor="lp-hero-image">Card hero image</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="lp-hero-image"
+                    value={draft.heroImage}
+                    onChange={(e) =>
+                      setDraft({ ...draft, heroImage: e.target.value })
+                    }
+                    placeholder="https://… (shown on library/carousel cards)"
+                    disabled={!canWrite}
+                    data-testid="input-hero-image"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    onClick={() => setHeroPickerOpen(true)}
+                    disabled={!canWrite}
+                    aria-label="Pick from media library"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                {draft.heroImage && (
+                  <img
+                    src={mediaUrl(draft.heroImage)}
+                    alt=""
+                    className="mt-2 h-24 w-full object-cover rounded border border-border"
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -853,21 +881,62 @@ export default function LandingPageEdit({ id }: Props) {
                 />
               </div>
               <div>
-                <Label htmlFor="lp-og">Social share image URL</Label>
-                <Input
-                  id="lp-og"
-                  value={draft.ogImageUrl}
-                  onChange={(e) =>
-                    setDraft({ ...draft, ogImageUrl: e.target.value })
-                  }
-                  placeholder="https://…"
-                  disabled={!canWrite}
-                />
+                <Label htmlFor="lp-og">Social share image</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="lp-og"
+                    value={draft.ogImageUrl}
+                    onChange={(e) =>
+                      setDraft({ ...draft, ogImageUrl: e.target.value })
+                    }
+                    placeholder="https://…"
+                    disabled={!canWrite}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    onClick={() => setOgPickerOpen(true)}
+                    disabled={!canWrite}
+                    aria-label="Pick from media library"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                {draft.ogImageUrl && (
+                  <img
+                    src={mediaUrl(draft.ogImageUrl)}
+                    alt=""
+                    className="mt-2 h-20 w-full object-cover rounded border border-border"
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <MediaPickerModal
+        open={heroPickerOpen}
+        onClose={() => setHeroPickerOpen(false)}
+        onSelect={(item: MediaItem) => {
+          setDraft((d) => ({ ...d, heroImage: mediaUrl(item) }));
+          setHeroPickerOpen(false);
+        }}
+        title="Pick card hero image"
+        kind="image"
+      />
+      <MediaPickerModal
+        open={ogPickerOpen}
+        onClose={() => setOgPickerOpen(false)}
+        onSelect={(item: MediaItem) => {
+          setDraft((d) => ({ ...d, ogImageUrl: mediaUrl(item) }));
+          setOgPickerOpen(false);
+        }}
+        title="Pick social share image"
+        kind="image"
+      />
     </AdminLayout>
   );
 }
