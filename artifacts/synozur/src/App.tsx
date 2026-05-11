@@ -19,6 +19,7 @@ import {
 import Home from "@/pages/home";
 import HomeB from "@/pages/home-b";
 import About from "@/pages/about";
+import AiTraining from "@/pages/ai-training";
 import ServicesOverview from "@/pages/services-overview";
 import ServiceDetail from "@/pages/service-detail";
 import SolutionDetail from "@/pages/solution-detail";
@@ -523,6 +524,7 @@ function Router() {
             <Route path="/home-a" component={Home} />
             <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
+            <Route path="/ai-training" component={AiTraining} />
             <Route path="/services-overview/default" component={ServicesOverview} />
             <Route path="/services-overview/:slug" component={ServicesOverview} />
             <Route path="/services/:slug" component={ServiceDetail} />

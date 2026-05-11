@@ -16,8 +16,8 @@
  *   pnpm --filter @workspace/api-server exec tsx src/scripts/seedWixRedirects.ts
  */
 
-import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { db, wixRedirectsTable } from "@workspace/db";
+import { inArray, sql } from "drizzle-orm";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +33,7 @@ const __dirname = path.dirname(__filename);
 const LIVE_PATHS = new Set([
   "/",
   "/about",
+  "/ai-training",
   "/clients",
   "/contact",
   "/events",
@@ -98,7 +99,9 @@ const SITEMAP: [string, string][] = [
   ["/delivery-project-management", "/solutions/delivery-management"],
   ["/gtm-strategy",             "/solutions/gtm-strategy-and-execution"],
   ["/company-operating-system", "/solutions/company-os"],
-  ["/ai-training",              "/solutions/ai-strategy-and-design"],
+  // /ai-training is now a live page — see LIVE_PATHS. Removed from SITEMAP
+  // rules so we never reinstall the redirect that used to point it at
+  // /solutions/ai-strategy-and-design.
 
   // /strategy-solutions/ → /solutions/
   ["/strategy-solutions/company-os",                    "/solutions/company-os"],
@@ -235,6 +238,28 @@ async function upsert(
 // ---------------------------------------------------------------------------
 async function main() {
   console.log("=== seedWixRedirects ===\n");
+
+  // ---------------------------------------------------------------------
+  // Cleanup phase: delete any rows whose source_path is now a live page.
+  // This handles cases where a redirect was seeded before the page was
+  // built (e.g. /ai-training used to 301 to /solutions/...). Without this,
+  // shipping a new live page would still 301 visitors away from it.
+  // ---------------------------------------------------------------------
+  const livePaths = Array.from(LIVE_PATHS);
+  const deletedRows = await db
+    .delete(wixRedirectsTable)
+    .where(inArray(wixRedirectsTable.sourcePath, livePaths))
+    .returning({ sourcePath: wixRedirectsTable.sourcePath });
+  const deletedPaths = deletedRows.map((r) => r.sourcePath);
+  if (deletedPaths.length > 0) {
+    console.log(
+      `Cleanup: removed ${deletedPaths.length} stale redirect(s) whose source is now a live page:`,
+    );
+    for (const p of deletedPaths) console.log(`  - ${p}`);
+    console.log("");
+  } else {
+    console.log("Cleanup: no stale redirects to remove\n");
+  }
 
   let csvInserted = 0, csvSkipped = 0;
   const csvRows = parseWixCsv();
