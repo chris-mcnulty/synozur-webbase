@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AppLink } from "@/components/ui/app-link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ExternalLink, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Upload, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -190,6 +190,8 @@ export default function AdminLandingPagesList() {
               <TableHead>Title</TableHead>
               <TableHead>URL</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Featured</TableHead>
+              <TableHead>Pillar</TableHead>
               <TableHead>Blocks</TableHead>
               <TableHead>Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -199,7 +201,7 @@ export default function AdminLandingPagesList() {
             {listQ.isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={8}
                   className="text-center text-muted-foreground py-8"
                 >
                   Loading…
@@ -208,7 +210,7 @@ export default function AdminLandingPagesList() {
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={8}
                   className="text-center text-muted-foreground py-8"
                 >
                   No landing pages yet.
@@ -251,6 +253,34 @@ export default function AdminLandingPagesList() {
                     >
                       {p.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {p.featured ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-amber-500"
+                        title={
+                          p.featuredRank != null
+                            ? `Rank ${p.featuredRank}`
+                            : "Featured"
+                        }
+                      >
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        {p.featuredRank != null && (
+                          <span className="text-xs tabular-nums">
+                            {p.featuredRank}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {p.pillar ? (
+                      <span className="capitalize">{p.pillar}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">{p.blocks.length}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">

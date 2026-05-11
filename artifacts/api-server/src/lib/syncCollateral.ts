@@ -17,6 +17,7 @@ import {
   type Application,
   type Model,
   type Workshop,
+  type LandingPage,
   type CollateralPillar,
 } from "@workspace/db";
 import { canonicalUrlForCollateral } from "@workspace/api-zod";
@@ -50,6 +51,7 @@ const CASE_STUDY_SOURCE_PREFIX = "case_study:";
 const APPLICATION_SOURCE_PREFIX = "application:";
 const MODEL_SOURCE_PREFIX = "model:";
 const WORKSHOP_SOURCE_PREFIX = "workshop:";
+const LANDING_PAGE_SOURCE_PREFIX = "landing_page:";
 
 export function eventSourceId(eventId: number): string {
   return `${EVENT_SOURCE_PREFIX}${eventId}`;
@@ -81,6 +83,10 @@ export function modelSourceId(modelId: string): string {
 
 export function workshopSourceId(workshopId: string): string {
   return `${WORKSHOP_SOURCE_PREFIX}${workshopId}`;
+}
+
+export function landingPageSourceId(landingPageId: string): string {
+  return `${LANDING_PAGE_SOURCE_PREFIX}${landingPageId}`;
 }
 
 async function ensureUniqueCollateralSlug(base: string, excludeId?: string): Promise<string> {
@@ -682,6 +688,86 @@ export async function softDeleteCollateralForWorkshop(
   workshopId: string,
 ): Promise<void> {
   const sourceId = workshopSourceId(workshopId);
+  const now = new Date();
+  await db
+    .update(collateralTable)
+    .set({ deletedAt: now, active: false, updatedAt: now })
+    .where(eq(collateralTable.sourceId, sourceId));
+}
+
+// Landing pages opt into the library via the `featured` flag, mirroring
+// the post→collateral sync. An unfeatured / unpublished / archived /
+// soft-deleted page drops out of the library without losing its row, so
+// flipping `featured` back on restores it cleanly.
+export async function upsertCollateralFromLandingPage(
+  page: LandingPage,
+): Promise<void> {
+  const sourceId = landingPageSourceId(page.id);
+  const existing = await db.query.collateralTable.findFirst({
+    where: eq(collateralTable.sourceId, sourceId),
+  });
+
+  const now = new Date();
+  const withinWindow =
+    (!page.publishedAt || page.publishedAt <= now) &&
+    (!page.unpublishedAt || page.unpublishedAt > now);
+  const isEligible =
+    page.featured &&
+    page.active &&
+    page.status === "published" &&
+    !page.deletedAt &&
+    withinWindow;
+
+  if (!isEligible) {
+    if (existing) {
+      await softDeleteCollateralForLandingPage(page.id);
+    }
+    return;
+  }
+
+  const normalizedPillar = normalizePillar(page.pillar);
+  const serviceId =
+    page.serviceId ?? (await pillarToServiceId(normalizedPillar));
+
+  const syncedFields = {
+    type: "landing_page" as const,
+    title: page.title,
+    subtitle: page.subtitle ?? null,
+    description: page.description ?? "",
+    heroImage: page.heroImage ?? "",
+    pillar: normalizedPillar,
+    tags: (page.tags as string[]) ?? [],
+    url: canonicalUrlForCollateral("landing_page", page.slug),
+    external: false,
+    publishedAt: page.publishedAt,
+    featured: page.featured,
+    featuredRank: page.featuredRank,
+    serviceId,
+    solutionId: page.solutionId,
+    active: true,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(collateralTable)
+      .set({ ...syncedFields, deletedAt: null })
+      .where(eq(collateralTable.id, existing.id));
+    return;
+  }
+
+  const slug = await ensureUniqueCollateralSlug(page.slug);
+  await db.insert(collateralTable).values({
+    ...syncedFields,
+    slug,
+    sourceId,
+  });
+}
+
+export async function softDeleteCollateralForLandingPage(
+  landingPageId: string,
+): Promise<void> {
+  const sourceId = landingPageSourceId(landingPageId);
   const now = new Date();
   await db
     .update(collateralTable)

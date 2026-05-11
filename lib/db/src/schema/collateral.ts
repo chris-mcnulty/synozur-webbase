@@ -33,6 +33,10 @@ export const COLLATERAL_TYPES = [
   "ebook",
   "application",
   "workshop",
+  // DB-backed standalone landing pages (e.g. /ai-training). Synced into
+  // collateral when an editor marks the page `featured` so it can appear
+  // in the home carousel and /library alongside the other content types.
+  "landing_page",
 ] as const;
 export type CollateralType = (typeof COLLATERAL_TYPES)[number];
 
