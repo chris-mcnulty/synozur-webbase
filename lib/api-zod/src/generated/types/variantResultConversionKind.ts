@@ -13,4 +13,5 @@ export const VariantResultConversionKind = {
   cta: "cta",
   booking: "booking",
   path: "path",
+  carousel: "carousel",
 } as const;

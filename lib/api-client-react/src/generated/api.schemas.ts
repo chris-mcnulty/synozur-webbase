@@ -2930,6 +2930,7 @@ export const ConversionPathKind = {
   cta: "cta",
   booking: "booking",
   path: "path",
+  carousel: "carousel",
 } as const;
 
 export interface ConversionPath {
@@ -3281,6 +3282,7 @@ export const VariantResultConversionKind = {
   cta: "cta",
   booking: "booking",
   path: "path",
+  carousel: "carousel",
 } as const;
 
 export interface VariantResultConversion {

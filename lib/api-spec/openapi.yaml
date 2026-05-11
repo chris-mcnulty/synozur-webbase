@@ -9359,7 +9359,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [cta, booking, path]
+          enum: [cta, booking, path, carousel]
         value:
           type: string
           minLength: 1
@@ -9831,7 +9831,7 @@ components:
           type: string
         kind:
           type: string
-          enum: [cta, booking, path]
+          enum: [cta, booking, path, carousel]
         value:
           type: string
         count:

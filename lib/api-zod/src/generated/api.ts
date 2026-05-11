@@ -5407,7 +5407,7 @@ export const GetActiveExperimentsResponse = zod.object({
       conversionPaths: zod
         .array(
           zod.object({
-            kind: zod.enum(["cta", "booking", "path"]),
+            kind: zod.enum(["cta", "booking", "path", "carousel"]),
             value: zod
               .string()
               .min(1)
@@ -5769,7 +5769,7 @@ export const ListAdminExperimentsResponse = zod.object({
       conversionPaths: zod
         .array(
           zod.object({
-            kind: zod.enum(["cta", "booking", "path"]),
+            kind: zod.enum(["cta", "booking", "path", "carousel"]),
             value: zod
               .string()
               .min(1)
@@ -6072,7 +6072,7 @@ export const CreateAdminExperimentBody = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -6189,7 +6189,7 @@ export const GetAdminExperimentResponse = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -6465,7 +6465,7 @@ export const UpdateAdminExperimentBody = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -6588,7 +6588,7 @@ export const UpdateAdminExperimentResponse = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -6927,7 +6927,7 @@ export const StartAdminExperimentResponse = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -7262,7 +7262,7 @@ export const PauseAdminExperimentResponse = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -7597,7 +7597,7 @@ export const EndAdminExperimentResponse = zod.object({
   conversionPaths: zod
     .array(
       zod.object({
-        kind: zod.enum(["cta", "booking", "path"]),
+        kind: zod.enum(["cta", "booking", "path", "carousel"]),
         value: zod
           .string()
           .min(1)
@@ -7862,7 +7862,7 @@ export const GetAdminExperimentResultsResponse = zod.object({
       conversions: zod.array(
         zod.object({
           label: zod.string(),
-          kind: zod.enum(["cta", "booking", "path"]),
+          kind: zod.enum(["cta", "booking", "path", "carousel"]),
           value: zod.string(),
           count: zod
             .number()

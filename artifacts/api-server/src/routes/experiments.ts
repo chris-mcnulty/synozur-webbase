@@ -78,13 +78,21 @@ async function buildActivePayload() {
   const experiments = running.flatMap((exp) => {
     const list = variantsByExperiment.get(exp.id) ?? [];
     if (list.length === 0) return [];
+    // Defensive: filter out any conversionPath entries whose `kind` is
+    // not yet recognised by the schema (e.g. added to the DB before the
+    // spec was updated). Dropping unknown paths is far preferable to a
+    // 500 for every visitor.
+    const knownKinds = new Set(["cta", "booking", "path", "carousel"]);
+    const safePaths = ((exp.conversionPaths ?? []) as { kind?: string }[])
+      .filter((p) => knownKinds.has(p.kind ?? ""));
+
     return [
       {
         key: exp.key,
         pageKey: exp.pageKey,
         trafficPercentage: exp.trafficPercentage,
         holdbackPercentage: exp.holdbackPercentage ?? 0,
-        conversionPaths: exp.conversionPaths ?? [],
+        conversionPaths: safePaths,
         variants: list.map((v) => {
           // Defensive: a malformed `overrides` JSONB row (e.g. legacy
           // shape, hand-edit, future schema we don't know yet) must
