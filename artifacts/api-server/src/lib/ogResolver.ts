@@ -25,6 +25,7 @@ import {
   siteSettingsTable,
   polarisEpisodesTable,
   landingPagesTable,
+  assetsTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
 
@@ -112,6 +113,30 @@ async function resolveMediaUrl(
   }
 }
 
+// Mirrors `imageUrlFor()` in `artifacts/api-server/src/routes/siteSettings.ts`
+// for the legacy integer-id `assets` table. Resolves to the same
+// `/api/storage/<storageKey>` URL the admin UI surfaces in the picker so
+// the bot middleware sees the same image the editor configured. Drop
+// alongside the legacy `assets` table when BACKLOG.md "Asset Library
+// consolidation" §3 lands.
+async function resolveAssetUrl(
+  assetId: number | null | undefined,
+  origin: string,
+): Promise<string | null> {
+  if (assetId == null) return null;
+  try {
+    const [asset] = await db
+      .select({ storageKey: assetsTable.storageKey })
+      .from(assetsTable)
+      .where(eq(assetsTable.id, assetId))
+      .limit(1);
+    if (!asset?.storageKey) return null;
+    return `${origin}/api/storage${asset.storageKey}`;
+  } catch {
+    return null;
+  }
+}
+
 interface SiteDefaults {
   description: string;
   image: string;
@@ -123,18 +148,21 @@ async function loadSiteDefaults(origin: string): Promise<SiteDefaults> {
       .select({
         seoDefaultDescription: siteSettingsTable.seoDefaultDescription,
         seoDefaultOgImageMediaId: siteSettingsTable.seoDefaultOgImageMediaId,
+        seoDefaultOgImageAssetId: siteSettingsTable.seoDefaultOgImageAssetId,
       })
       .from(siteSettingsTable)
       .limit(1);
     const description = row?.seoDefaultDescription ?? DEFAULT_DESCRIPTION;
-    // The admin "Default OG image" slot writes through `seoDefaultOgImageMediaId`
-    // (UUID → mediaTable). The legacy `seoDefaultOgImageAssetId` (integer →
-    // assetsTable) is being phased out under BACKLOG.md "Asset Library
-    // consolidation" — once that lands the only thing the resolver needs is
-    // the media row. Until then, an unset media-id column quietly drops
-    // through to the hard-coded fallback path, which matches the existing
-    // behavior for unconfigured environments.
-    const configured = await resolveMediaUrl(row?.seoDefaultOgImageMediaId, origin);
+    // Mirrors the "prefer media, fall back to asset" precedence in
+    // `routes/siteSettings.ts:resolveImageUrls()`. New writes flow through
+    // `seoDefaultOgImageMediaId` (UUID → mediaTable), but the legacy
+    // `seoDefaultOgImageAssetId` (integer → assetsTable) is still
+    // populated until BACKLOG.md "Asset Library consolidation" §3 drops
+    // the assets table — so production environments that configured the
+    // default OG image before the media migration still resolve correctly.
+    const configured =
+      (await resolveMediaUrl(row?.seoDefaultOgImageMediaId, origin)) ??
+      (await resolveAssetUrl(row?.seoDefaultOgImageAssetId, origin));
     return {
       description,
       image:

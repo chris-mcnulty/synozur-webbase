@@ -58,9 +58,16 @@ external pen-testers reach this surface.
 
 **Scope (one PR):**
 - `POST /oauth/introspect` (RFC 7662) with the spec-mandated response
-  shape; bearer-auth via the client's `client_secret` or PKCE proof.
+  shape. Client authentication: confidential clients send their
+  `client_id` + `client_secret` via HTTP Basic (preferred) or in the
+  POST body; public PKCE clients (Galaxy SPA, downstream React apps)
+  cannot introspect — they verify the JWT locally against the JWKS
+  endpoint instead. Document that constraint in the discovery
+  document so SDK callers don't try to use it from the browser.
 - `POST /oauth/revoke` (RFC 7009) for both `refresh_token` and
-  `access_token` hints; idempotent.
+  `access_token` hints; idempotent. Same client-auth shape as
+  introspect (HTTP Basic for confidential clients); public PKCE
+  clients are permitted to revoke the tokens they hold per RFC 7009 §2.1.
 - Scheduler cron in `lib/scheduler.ts` that rotates the active
   `oauth_signing_keys` row every N days (default 90, admin-configurable),
   retires keys older than the longest token lifetime (refresh-token TTL
