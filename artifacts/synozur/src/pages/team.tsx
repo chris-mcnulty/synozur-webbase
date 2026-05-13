@@ -86,12 +86,12 @@ export default function Team() {
                       href={`/team/${encodeURIComponent(p.slug)}`}
                       className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                     >
-                      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
+                      <div className="relative aspect-square rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
                         {imageSrc ? (
                           <img
                             src={imageSrc}
                             alt={p.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
