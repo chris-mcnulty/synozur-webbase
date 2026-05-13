@@ -603,6 +603,9 @@ export async function applyAutofill(
         break;
       }
       case "service": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         const set: Record<string, unknown> = { updatedAt: new Date() };
         const guards = [eq(servicesTable.id, f.id)];
         if (patch.seoTitle) {
@@ -630,6 +633,9 @@ export async function applyAutofill(
         break;
       }
       case "solution": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         const set: Record<string, unknown> = { updatedAt: new Date() };
         const guards = [eq(solutionsTable.id, f.id)];
         if (patch.seoTitle) {
@@ -657,6 +663,9 @@ export async function applyAutofill(
         break;
       }
       case "application": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         const set: Record<string, unknown> = { updatedAt: new Date() };
         const guards = [eq(applicationsTable.id, f.id)];
         if (patch.seoTitle) {
@@ -690,6 +699,9 @@ export async function applyAutofill(
         break;
       }
       case "case-study": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         const set: Record<string, unknown> = { updatedAt: new Date() };
         const guards = [eq(caseStudiesTable.id, f.id)];
         if (patch.seoTitle) {
@@ -723,6 +735,9 @@ export async function applyAutofill(
         break;
       }
       case "model": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         const set: Record<string, unknown> = { updatedAt: new Date() };
         const guards = [eq(modelsTable.id, f.id)];
         if (patch.seoTitle) {
@@ -756,6 +771,9 @@ export async function applyAutofill(
         break;
       }
       case "workshop": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
         // Workshops keep SEO copy in a JSONB column, so we read-modify-write
         // the `seo` object instead of patching flat columns.
         if (!patch.seoTitle && !patch.seoDescription) break;
