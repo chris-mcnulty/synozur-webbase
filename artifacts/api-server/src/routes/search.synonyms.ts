@@ -62,25 +62,43 @@ export function buildTsqueryExpr(rawQuery: string): string {
 
   let remaining = lower;
   const parts: string[] = [];
+  const usedGroups = new Set<number>();
 
-  for (const group of SYNONYM_GROUPS) {
-    // Longest variant first so a full-phrase hit ("artificial
-    // intelligence") wins over the bare acronym when both could match.
-    const sorted = [...group].sort((a, b) => b.length - a.length);
-    for (const variant of sorted) {
-      const re = new RegExp(`\\b${escapeRegex(variant)}\\b`, "i");
-      if (re.test(remaining)) {
-        remaining = remaining
-          .replace(new RegExp(`\\b${escapeRegex(variant)}\\b`, "gi"), " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        const orParts = group.map(
-          (v) => `plainto_tsquery('english', '${escapeSqlLiteral(v)}')`,
-        );
-        parts.push(`(${orParts.join(" || ")})`);
-        break;
+  // Repeatedly pick the longest synonym variant that still matches
+  // `remaining`, across every group that hasn't been consumed yet. The
+  // search is *global* — not group-local — so e.g. "generative ai"
+  // matches the 13-char "generative ai" alias in the GenAI group
+  // instead of getting devoured by the 2-char "ai" in an earlier group
+  // and leaving "generative" stranded as a required free-text term.
+  while (true) {
+    let bestGroupIdx = -1;
+    let bestVariant: string | null = null;
+    let bestLen = 0;
+
+    SYNONYM_GROUPS.forEach((group, idx) => {
+      if (usedGroups.has(idx)) return;
+      for (const variant of group) {
+        if (variant.length <= bestLen) continue;
+        const re = new RegExp(`\\b${escapeRegex(variant)}\\b`, "i");
+        if (re.test(remaining)) {
+          bestGroupIdx = idx;
+          bestVariant = variant;
+          bestLen = variant.length;
+        }
       }
-    }
+    });
+
+    if (bestGroupIdx < 0 || bestVariant === null) break;
+    usedGroups.add(bestGroupIdx);
+    remaining = remaining
+      .replace(new RegExp(`\\b${escapeRegex(bestVariant)}\\b`, "gi"), " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const group = SYNONYM_GROUPS[bestGroupIdx]!;
+    const orParts = group.map(
+      (v) => `plainto_tsquery('english', '${escapeSqlLiteral(v)}')`,
+    );
+    parts.push(`(${orParts.join(" || ")})`);
   }
 
   if (remaining.length > 0) {

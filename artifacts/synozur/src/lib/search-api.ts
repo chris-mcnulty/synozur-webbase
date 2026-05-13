@@ -43,9 +43,13 @@ export interface SearchResult {
 export interface SearchResponse {
   items: SearchResult[];
   nextCursor: string | null;
-  // Total match count across all kinds for this query (pre-pagination).
-  // Null on pagination loads that returned zero rows — clients should
-  // keep whatever they captured from the first page in that case.
+  // Total match count for this query *within the requested scope*
+  // (pre-pagination). When `fetchSearch` was called with a `kind`, this
+  // counts only that kind's matches; when called with `kind: "all"`
+  // (the default) it spans every indexed kind. `0` is a real "no
+  // matches" answer on the first page; `null` only appears when a
+  // pagination load walked past the end, so the client should keep
+  // whatever total it cached from page 0 in that case.
   totalCount: number | null;
   searchId: string | null;
   boosts: Record<string, number>;

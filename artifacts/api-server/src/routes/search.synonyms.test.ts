@@ -74,6 +74,23 @@ test("case-insensitive matching across the dictionary", () => {
   assert.match(upper, /plainto_tsquery\('english', 'machine learning'\)/);
 });
 
+test("longest variant wins across groups, not just within one", () => {
+  // Regression: dictionary order used to let the 2-char "ai" in the
+  // first group consume the token before the GenAI group's "gen ai" /
+  // "generative ai" had a chance to match.
+  const expr = buildTsqueryExpr("generative ai");
+  // Should expand the GenAI group...
+  assert.match(expr, /plainto_tsquery\('english', 'genai'\)/);
+  assert.match(expr, /plainto_tsquery\('english', 'generative ai'\)/);
+  // ...and not leave "generative" stranded as a free-text term.
+  assert.doesNotMatch(
+    expr,
+    /plainto_tsquery\('english', 'generative'\)(?!\s*\|\|)/,
+  );
+  // Should not have engaged the generic AI group's OR fan-out either.
+  assert.doesNotMatch(expr, /plainto_tsquery\('english', 'artificial intelligence'\)/);
+});
+
 test("multiple synonym groups in one query each get their own OR-group", () => {
   const expr = buildTsqueryExpr("AI and ML");
   assert.match(expr, /plainto_tsquery\('english', 'artificial intelligence'\)/);

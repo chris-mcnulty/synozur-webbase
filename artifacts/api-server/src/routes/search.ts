@@ -350,10 +350,18 @@ router.get("/search", async (req, res) => {
     };
   });
   const nextCursor = hasMore ? encodeCursor(offset + limit) : null;
-  // `total_count` is the same scalar on every row of `matches`; if the
-  // page is empty we don't know it from this query, so the client keeps
-  // whatever it already cached from page 0.
-  const totalCount = rows.length > 0 ? Number(rows[0].total_count) : null;
+  // `total_count` is the same scalar on every row of `matches`. With
+  // rows we lift it directly; with no rows the meaning depends on the
+  // page: on the first page an empty result set genuinely means
+  // "0 matches", but a paginated empty page just means "we walked past
+  // the end" — in which case we surface `null` so the client keeps
+  // whatever total it captured from page 0.
+  const totalCount =
+    rows.length > 0
+      ? Number(rows[0].total_count)
+      : offset === 0
+        ? 0
+        : null;
 
   // Telemetry: one row per request on the first page only (offset=0) —
   // pagination loads shouldn't double-count the same query.
