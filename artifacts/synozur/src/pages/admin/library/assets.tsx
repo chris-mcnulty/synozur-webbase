@@ -93,7 +93,9 @@ export default function AssetsLibrary() {
     qc.invalidateQueries({ queryKey: getListLibraryAssetsQueryKey() });
 
   const { data: cats } = useListAssetCategories();
-  const categories: AssetCategory[] = cats?.items ?? [];
+  const categories: AssetCategory[] = [...(cats?.items ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
+  );
 
   const { data, isLoading } = useListLibraryAssets({
     ...(search.trim() ? { search: search.trim() } : {}),
