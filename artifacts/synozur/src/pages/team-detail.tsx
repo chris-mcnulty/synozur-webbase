@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Calendar, Linkedin, Mail, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, ChevronDown, ChevronUp, Linkedin, Mail, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
@@ -81,8 +82,26 @@ function RecentEventsRail({
   events: RecentEvent[];
   name: string;
 }) {
+  const [pastOpen, setPastOpen] = useState(false);
   if (!events.length) return null;
+
   const now = Date.now();
+  const upcoming = events
+    .filter((e) => {
+      const ms = new Date(e.startDate).getTime();
+      return Number.isFinite(ms) && ms >= now;
+    })
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  const past = events
+    .filter((e) => {
+      const ms = new Date(e.startDate).getTime();
+      return !Number.isFinite(ms) || ms < now;
+    })
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+
+  const firstName = name.split(" ")[0];
+  const heading = upcoming.length > 0 ? `${firstName} is speaking at` : `${firstName} has spoken at`;
+
   return (
     <section className="py-20 bg-card border-t border-border">
       <div className="container mx-auto px-4 max-w-5xl">
@@ -90,9 +109,7 @@ function RecentEventsRail({
           On Stage
         </p>
         <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
-          <h2 className="text-2xl md:text-3xl font-bold">
-            {name.split(" ")[0]} is speaking at
-          </h2>
+          <h2 className="text-2xl md:text-3xl font-bold">{heading}</h2>
           <Link
             href="/events"
             className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -100,54 +117,81 @@ function RecentEventsRail({
             All events <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((e) => {
-            const image = resolveImageUrl(e.imageUrl);
-            const startMs = new Date(e.startDate).getTime();
-            const upcoming = Number.isFinite(startMs) && startMs >= now;
-            return (
-              <Link
-                key={e.id}
-                href={`/events/${e.slug}`}
-                className="group rounded-2xl border border-border/60 bg-background overflow-hidden hover:border-primary/40 transition-colors block"
-              >
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted/20">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={e.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full nebula-gradient opacity-30 flex items-center justify-center">
-                      <Calendar className="h-8 w-8 text-white/70" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-5">
-                  <p className="text-xs uppercase tracking-widest text-primary mb-2">
-                    {upcoming ? "Upcoming" : "Past"}
-                  </p>
-                  <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors mb-2">
-                    {e.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(
-                      typeof e.startDate === "string"
-                        ? e.startDate
-                        : e.startDate.toISOString(),
-                    )}
-                    {e.location ? ` · ${e.location}` : ""}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+
+        {upcoming.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {upcoming.map((e) => (
+              <EventCard key={e.id} event={e} label="Upcoming" />
+            ))}
+          </div>
+        )}
+
+        {past.length > 0 && (
+          <div className={upcoming.length > 0 ? "mt-10" : ""}>
+            <button
+              onClick={() => setPastOpen((o) => !o)}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 group"
+            >
+              {pastOpen ? (
+                <ChevronUp className="h-4 w-4 text-primary" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-primary" />
+              )}
+              {pastOpen
+                ? "Hide past events"
+                : `Show ${past.length} past event${past.length !== 1 ? "s" : ""}`}
+            </button>
+            {pastOpen && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {past.map((e) => (
+                  <EventCard key={e.id} event={e} label="Past" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function EventCard({ event: e, label }: { event: RecentEvent; label: string }) {
+  const image = resolveImageUrl(e.imageUrl);
+  return (
+    <Link
+      href={`/events/${e.slug}`}
+      className="group rounded-2xl border border-border/60 bg-background overflow-hidden hover:border-primary/40 transition-colors block"
+    >
+      <div className="relative aspect-[16/9] overflow-hidden bg-muted/20">
+        {image ? (
+          <img
+            src={image}
+            alt={e.title}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full nebula-gradient opacity-30 flex items-center justify-center">
+            <Calendar className="h-8 w-8 text-white/70" />
+          </div>
+        )}
+      </div>
+      <div className="p-5">
+        <p className="text-xs uppercase tracking-widest text-primary mb-2">{label}</p>
+        <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors mb-2">
+          {e.title}
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {formatDate(
+            typeof e.startDate === "string"
+              ? e.startDate
+              : e.startDate.toISOString(),
+          )}
+          {e.location ? ` · ${e.location}` : ""}
+        </p>
+      </div>
+    </Link>
   );
 }
 
