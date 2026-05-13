@@ -43,6 +43,10 @@ export interface SearchResult {
 export interface SearchResponse {
   items: SearchResult[];
   nextCursor: string | null;
+  // Total match count across all kinds for this query (pre-pagination).
+  // Null on pagination loads that returned zero rows — clients should
+  // keep whatever they captured from the first page in that case.
+  totalCount: number | null;
   searchId: string | null;
   boosts: Record<string, number>;
 }

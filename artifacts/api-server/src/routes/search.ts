@@ -7,6 +7,9 @@ import {
   siteSettingsTable,
 } from "@workspace/db";
 import { requireCapability } from "../middlewares/auth";
+import { buildTsqueryExpr } from "./search.synonyms";
+
+export { buildTsqueryExpr, SYNONYM_GROUPS } from "./search.synonyms";
 
 // #170 — Public-site search via Postgres FTS.
 //
@@ -291,15 +294,22 @@ router.get("/search", async (req, res) => {
     `;
   });
 
-  // Single round-trip: WITH clause computes the tsquery once, then UNION
-  // ALL across kinds, ORDER BY rank DESC, kind, id; take limit+1 so we
-  // can tell whether a `nextCursor` is needed without a COUNT(*).
+  // Single round-trip: `q` CTE computes the synonym-expanded tsquery,
+  // `matches` materialises the UNION ALL across kinds (so the total
+  // count and the page slice both read from the same row set without
+  // re-running the search), then the outer SELECT paginates and tags
+  // every row with the same `total_count` scalar for the UI.
+  const tsqueryExpr = buildTsqueryExpr(q);
   const fullSql = `
-    WITH q AS (SELECT plainto_tsquery('english', $1) AS query)
-    ${subselects.join("\nUNION ALL\n")}
+    WITH q AS (SELECT ${tsqueryExpr} AS query),
+    matches AS (
+      ${subselects.join("\nUNION ALL\n")}
+    )
+    SELECT *, (SELECT COUNT(*) FROM matches)::int AS total_count
+    FROM matches
     ORDER BY rank DESC, kind ASC, id ASC
-    OFFSET $2
-    LIMIT $3
+    OFFSET ${offset}
+    LIMIT ${limit + 1}
   `;
 
   let rows: Array<{
@@ -309,11 +319,10 @@ router.get("/search", async (req, res) => {
     title: string;
     excerpt_html: string;
     rank: number;
+    total_count: number | string;
   }>;
   try {
-    const result = await db.execute(
-      sql.raw(fullSql.replace("$1", `'${q.replace(/'/g, "''")}'`).replace("$2", String(offset)).replace("$3", String(limit + 1))),
-    );
+    const result = await db.execute(sql.raw(fullSql));
     rows = (result as unknown as { rows: typeof rows }).rows ?? (result as unknown as typeof rows);
   } catch (err) {
     req.log?.error({ err, q }, "Search query failed");
@@ -341,6 +350,10 @@ router.get("/search", async (req, res) => {
     };
   });
   const nextCursor = hasMore ? encodeCursor(offset + limit) : null;
+  // `total_count` is the same scalar on every row of `matches`; if the
+  // page is empty we don't know it from this query, so the client keeps
+  // whatever it already cached from page 0.
+  const totalCount = rows.length > 0 ? Number(rows[0].total_count) : null;
 
   // Telemetry: one row per request on the first page only (offset=0) —
   // pagination loads shouldn't double-count the same query.
@@ -352,7 +365,9 @@ router.get("/search", async (req, res) => {
         .values({
           query: q,
           queryNormalized: normalizeQuery(q),
-          resultCount: items.length,
+          // Use the true total so the zero-result-queries report reflects
+          // empty searches (not "had a first page but maybe more").
+          resultCount: totalCount ?? 0,
         })
         .returning({ id: searchQueriesTable.id });
       searchId = logged?.id ?? null;
@@ -364,6 +379,7 @@ router.get("/search", async (req, res) => {
   res.json({
     items,
     nextCursor,
+    totalCount,
     searchId,
     boosts,
   });
