@@ -18,7 +18,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 
-export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris" | "landing-page";
+export type OgImageKind =
+  | "insight"
+  | "case-study"
+  | "white-paper"
+  | "polaris"
+  | "landing-page"
+  | "service"
+  | "solution"
+  | "application"
+  | "model"
+  | "workshop";
 
 /**
  * Renderer template version. Embedded in the cache key alongside the
@@ -30,8 +40,12 @@ export type OgImageKind = "insight" | "case-study" | "white-paper" | "polaris" |
  *   1 — initial release (#161, May 2026).
  *   2 — Synozur logo doubled in size (May 2026).
  *   3 — Fixed logo path resolution so logo renders in bundled production build (May 2026).
+ *   4 — Added service/solution/application/model/workshop kinds; existing
+ *       PNG cache for the original five kinds is unaffected (their bytes
+ *       are identical), but the bump simplifies operator reasoning when
+ *       eyeballing a freshly-deployed environment.
  */
-export const OG_TEMPLATE_VERSION = 3;
+export const OG_TEMPLATE_VERSION = 4;
 
 export interface OgImageInput {
   kind: OgImageKind;
@@ -58,6 +72,11 @@ const KIND_LABELS: Record<OgImageKind, string> = {
   "white-paper": "White Paper",
   polaris: "Polaris",
   "landing-page": "Landing Page",
+  service: "Service",
+  solution: "Solution",
+  application: "Application",
+  model: "Model",
+  workshop: "Workshop",
 };
 
 // Brand palette mirrors `--synozur-*` HSL values from
