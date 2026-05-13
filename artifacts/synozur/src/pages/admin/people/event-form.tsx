@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, X, RefreshCw, MapPin, Film } from "lucide-react";
+import {
+  Image as ImageIcon,
+  X,
+  RefreshCw,
+  MapPin,
+  Film,
+  ChevronUp,
+  ChevronDown,
+  Users,
+} from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { Button } from "@/components/ui/button";
@@ -52,6 +61,7 @@ export default function EventForm({ id }: Props) {
     imageAssetId: null,
     imageMediaId: null,
     recordingVideoId: null,
+    speakerIds: [],
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
@@ -82,10 +92,61 @@ export default function EventForm({ id }: Props) {
         imageAssetId: existing.imageAssetId,
         imageMediaId: existing.imageMediaId ?? null,
         recordingVideoId: existing.recordingVideoId ?? null,
+        speakerIds:
+          (existing.speakers ?? [])
+            .slice()
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((s) => s.teamMemberId) ?? [],
       });
       setImagePreview(existing.imageUrl ?? null);
     }
   }, [existing]);
+
+  const teamMembersQ = useQuery({
+    queryKey: ["admin-team-members-for-event"],
+    queryFn: () => api.adminTeamMembers(),
+  });
+
+  const speakerIds = form.speakerIds ?? [];
+
+  const speakerLookup = useMemo(() => {
+    const map = new Map<number, { name: string; jobTitle: string; active: boolean }>();
+    for (const m of teamMembersQ.data ?? []) {
+      map.set(m.id, {
+        name: m.name,
+        jobTitle: m.jobTitle,
+        active: m.active,
+      });
+    }
+    return map;
+  }, [teamMembersQ.data]);
+
+  const availableTeamMembers = useMemo(() => {
+    const selected = new Set(speakerIds);
+    return (teamMembersQ.data ?? [])
+      .filter((m) => m.active && !selected.has(m.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [teamMembersQ.data, speakerIds]);
+
+  const addSpeaker = (id: number) => {
+    setForm((f) => ({ ...f, speakerIds: [...(f.speakerIds ?? []), id] }));
+  };
+  const removeSpeaker = (id: number) => {
+    setForm((f) => ({
+      ...f,
+      speakerIds: (f.speakerIds ?? []).filter((x) => x !== id),
+    }));
+  };
+  const moveSpeaker = (id: number, delta: -1 | 1) => {
+    setForm((f) => {
+      const ids = (f.speakerIds ?? []).slice();
+      const i = ids.indexOf(id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= ids.length) return f;
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+      return { ...f, speakerIds: ids };
+    });
+  };
 
   const videosQ = useQuery({
     queryKey: ["admin-videos-for-event"],
@@ -390,6 +451,108 @@ export default function EventForm({ id }: Props) {
                 Attach a post-event recording from the video library. When set,
                 the public event detail page embeds the player beneath the
                 &ldquo;past event&rdquo; banner.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Speakers</Label>
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-muted-foreground mt-2 shrink-0" />
+            <div className="flex-1 space-y-3">
+              {speakerIds.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No speakers tagged yet. Add team members who are speaking or
+                  appearing — they'll show on the public event page and the
+                  event will surface on each speaker's bio.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {speakerIds.map((id, idx) => {
+                    const info = speakerLookup.get(id);
+                    return (
+                      <li
+                        key={id}
+                        className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2"
+                        data-testid={`speaker-row-${id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            {info?.name ?? `Team member #${id}`}
+                            {info && !info.active && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (inactive)
+                              </span>
+                            )}
+                          </div>
+                          {info?.jobTitle && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {info.jobTitle}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={idx === 0}
+                          onClick={() => moveSpeaker(id, -1)}
+                          aria-label="Move up"
+                          data-testid={`speaker-up-${id}`}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={idx === speakerIds.length - 1}
+                          onClick={() => moveSpeaker(id, 1)}
+                          aria-label="Move down"
+                          data-testid={`speaker-down-${id}`}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeSpeaker(id)}
+                          aria-label="Remove speaker"
+                          data-testid={`speaker-remove-${id}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <Select
+                value="__add__"
+                onValueChange={(v) => {
+                  if (v === "__add__") return;
+                  const n = Number.parseInt(v, 10);
+                  if (Number.isFinite(n)) addSpeaker(n);
+                }}
+              >
+                <SelectTrigger data-testid="select-add-speaker">
+                  <SelectValue placeholder="Add a team member as speaker" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__add__">Add a speaker…</SelectItem>
+                  {availableTeamMembers.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>
+                      {m.name}
+                      {m.jobTitle ? ` — ${m.jobTitle}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Order controls how speakers appear on the public event page —
+                lower entries show first.
               </p>
             </div>
           </div>

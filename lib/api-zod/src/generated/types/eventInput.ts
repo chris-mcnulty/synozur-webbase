@@ -32,4 +32,6 @@ export interface EventInput {
   imageMediaId?: string | null;
   /** @nullable */
   recordingVideoId?: string | null;
+  /** Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder. */
+  speakerIds?: number[];
 }

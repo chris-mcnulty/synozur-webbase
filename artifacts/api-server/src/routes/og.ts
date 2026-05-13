@@ -28,6 +28,7 @@ import {
   applicationsTable,
   modelsTable,
   workshopsTable,
+  teamMembersTable,
 } from "@workspace/db";
 import {
   renderOgImagePng,
@@ -54,10 +55,20 @@ const KINDS: readonly OgImageKind[] = [
   "application",
   "model",
   "workshop",
+  "team-member",
 ];
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INT_RE = /^[1-9][0-9]{0,9}$/;
+
+// Team members use a `serial` (integer) primary key; every other OG kind
+// uses uuid. Validate per-kind so a `team-member` request can pass an
+// integer id without us widening the regex for everything else.
+function isValidIdForKind(kind: OgImageKind, id: string): boolean {
+  if (kind === "team-member") return INT_RE.test(id);
+  return UUID_RE.test(id);
+}
 
 interface ResolvedArtifact {
   input: OgImageInput;
@@ -307,6 +318,39 @@ async function resolveArtifact(
       };
     }
 
+    case "team-member": {
+      const numericId = Number.parseInt(id, 10);
+      if (!Number.isFinite(numericId)) return null;
+      const [row] = await db
+        .select({
+          id: teamMembersTable.id,
+          name: teamMembersTable.name,
+          jobTitle: teamMembersTable.jobTitle,
+          updatedAt: teamMembersTable.updatedAt,
+          active: teamMembersTable.active,
+        })
+        .from(teamMembersTable)
+        .where(eq(teamMembersTable.id, numericId))
+        .limit(1);
+      if (!row || !row.active) return null;
+      // Deliberately do NOT forward `team_members.image_url` as
+      // `avatarUrl`. The renderer fetches `avatarUrl` server-side, and
+      // the team-member headshot URL is editor-controlled — letting it
+      // through would open an SSRF vector. The bio page already prefers
+      // the editor headshot for og:image when it's set; this generator
+      // path only fires when no headshot is configured, so the initials
+      // disc is the intended fallback.
+      return {
+        input: {
+          kind,
+          title: row.name,
+          byline: row.jobTitle || null,
+          context: "Synozur Alliance",
+        },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
     case "workshop": {
       const [row] = await db
         .select({
@@ -346,12 +390,16 @@ router.get("/og/image", async (req, res): Promise<void> => {
     });
     return;
   }
-  if (!UUID_RE.test(rawId)) {
-    res.status(400).json({ error: "Invalid or missing 'id' (must be a UUID)" });
+  const kind = rawKind as OgImageKind;
+  if (!isValidIdForKind(kind, rawId)) {
+    res.status(400).json({
+      error:
+        kind === "team-member"
+          ? "Invalid or missing 'id' (must be a positive integer)"
+          : "Invalid or missing 'id' (must be a UUID)",
+    });
     return;
   }
-
-  const kind = rawKind as OgImageKind;
   const id = rawId;
 
   try {
@@ -402,22 +450,28 @@ router.get("/og/image", async (req, res): Promise<void> => {
  *
  * Admin/editor only. Returns `{ ok, kind, id, cleared, prerendered }`.
  */
-const RegenerateBodySchema = z.object({
-  kind: z.enum([
-    "insight",
-    "case-study",
-    "white-paper",
-    "polaris",
-    "landing-page",
-    "service",
-    "solution",
-    "application",
-    "model",
-    "workshop",
-  ]),
-  id: z.string().uuid(),
-  prerender: z.boolean().optional().default(false),
-});
+const RegenerateBodySchema = z
+  .object({
+    kind: z.enum([
+      "insight",
+      "case-study",
+      "white-paper",
+      "polaris",
+      "landing-page",
+      "service",
+      "solution",
+      "application",
+      "model",
+      "workshop",
+      "team-member",
+    ]),
+    id: z.string(),
+    prerender: z.boolean().optional().default(false),
+  })
+  .refine((v) => isValidIdForKind(v.kind, v.id), {
+    message: "Invalid id for kind (UUID for most kinds, integer for team-member)",
+    path: ["id"],
+  });
 
 router.post(
   "/og/regenerate",

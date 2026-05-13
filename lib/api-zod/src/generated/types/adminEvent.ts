@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EventSpeaker } from "./eventSpeaker";
 
 export interface AdminEvent {
   id: number;
@@ -41,4 +42,6 @@ export interface AdminEvent {
   recordingVideoUrl?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  /** Team members speaking or appearing at this event. */
+  speakers?: EventSpeaker[];
 }

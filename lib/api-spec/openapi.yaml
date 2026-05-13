@@ -6548,6 +6548,30 @@ components:
           type:
             - string
             - 'null'
+    EventSpeaker:
+      type: object
+      required:
+        - teamMemberId
+        - name
+        - slug
+        - jobTitle
+        - sortOrder
+      properties:
+        teamMemberId:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        jobTitle:
+          type: string
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        sortOrder:
+          type: integer
+
     PublicEvent:
       type: object
       required:
@@ -6608,6 +6632,11 @@ components:
           type:
             - string
             - 'null'
+        speakers:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventSpeaker'
+          description: Team members speaking or appearing at this event.
     AdminEvent:
       type: object
       required:
@@ -6691,6 +6720,11 @@ components:
         updatedAt:
           type: string
           format: date-time
+        speakers:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventSpeaker'
+          description: Team members speaking or appearing at this event.
     AdminFormSubmission:
       type: object
       required: [id, formType, payload, createdAt]
@@ -6919,6 +6953,11 @@ components:
           type:
             - string
             - 'null'
+        speakerIds:
+          type: array
+          items:
+            type: integer
+          description: Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.
 
     Service:
       type: object
@@ -7994,6 +8033,38 @@ components:
           items:
             $ref: '#/components/schemas/Category'
 
+    TeamMemberRecentEvent:
+      type: object
+      required:
+        - id
+        - slug
+        - title
+        - startDate
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        title:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        location:
+          type:
+            - string
+            - 'null'
+        teaser:
+          type:
+            - string
+            - 'null'
+        imageUrl:
+          type:
+            - string
+            - 'null'
+        status:
+          type: string
+
     PublicTeamMemberDetail:
       type: object
       required:
@@ -8050,7 +8121,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TeamMemberRecentPost'
-          description: Up to 3 most recent published posts by this team member.
+          description: Up to 5 most recent published posts by this team member.
+        recentEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMemberRecentEvent'
+          description: Up to 5 most recent or upcoming events at which this team member is speaking or appearing.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last-modified timestamp — used by the public bio page to invalidate the dynamically-generated OG image.
 
     AdminTeamMember:
       type: object

@@ -2885,6 +2885,29 @@ export async function runMigrations(): Promise<void> {
          AND external_subject LIKE 'synozur:author:%';
     `);
 
+    // 51. event_speakers: many-to-many between events and team_members so
+    //     editors can tag who's speaking/appearing at each event. The bio
+    //     page surfaces a team member's most recent events; the event
+    //     detail page surfaces the speaker list. Cascades on both FKs so
+    //     deleting either side doesn't leave orphan rows.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS event_speakers (
+        event_id integer NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        team_member_id integer NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
+        sort_order integer NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (event_id, team_member_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS event_speakers_event_idx
+        ON event_speakers (event_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS event_speakers_team_member_idx
+        ON event_speakers (team_member_id);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

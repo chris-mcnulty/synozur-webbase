@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, and, desc, lte, isNull, inArray } from "drizzle-orm";
+import { eq, asc, and, desc, lte, isNull, inArray, sql } from "drizzle-orm";
 import {
   db,
   teamMembersTable,
@@ -7,6 +7,9 @@ import {
   postCategories,
   categoriesTable,
   mediaTable,
+  eventsTable,
+  eventSpeakersTable,
+  assetsTable,
   type TeamMember,
 } from "@workspace/db";
 import {
@@ -92,7 +95,7 @@ function adminShape(m: TeamMember) {
   };
 }
 
-async function fetchRecentPosts(userId: string, limit = 3) {
+async function fetchRecentPosts(userId: string, limit = 5) {
   const now = new Date();
   const posts = await db
     .select({
@@ -158,6 +161,96 @@ async function fetchRecentPosts(userId: string, limit = 3) {
   }));
 }
 
+// Return the team member's most relevant events: upcoming first (oldest
+// upcoming to newest upcoming), then past events (most recent first).
+// Capped at `limit` total. Archived events are excluded because they're
+// hidden from the public events list. Ordering and `LIMIT` happen in SQL
+// so a member with many speaking credits doesn't drag the whole join
+// table into application memory.
+async function fetchRecentEvents(teamMemberId: number, limit = 5) {
+  const now = new Date();
+  const ordered = await db
+    .select({
+      id: eventsTable.id,
+      slug: eventsTable.slug,
+      title: eventsTable.title,
+      startDate: eventsTable.startDate,
+      location: eventsTable.location,
+      teaser: eventsTable.teaser,
+      status: eventsTable.status,
+      imageMediaId: eventsTable.imageMediaId,
+      imageAssetId: eventsTable.imageAssetId,
+    })
+    .from(eventSpeakersTable)
+    .innerJoin(eventsTable, eq(eventSpeakersTable.eventId, eventsTable.id))
+    .where(
+      and(
+        eq(eventSpeakersTable.teamMemberId, teamMemberId),
+        sql`lower(coalesce(${eventsTable.status}, '')) <> 'archived'`,
+      ),
+    )
+    .orderBy(
+      // Upcoming bucket first, then past bucket; within each bucket,
+      // sort by proximity to "now" (oldest-upcoming first → most-recent
+      // past first). The two CASE-bounded keys collapse to null in the
+      // other bucket so they don't interfere across the boundary.
+      sql`(${eventsTable.startDate} >= ${now}) desc`,
+      sql`case when ${eventsTable.startDate} >= ${now} then ${eventsTable.startDate} end asc`,
+      sql`case when ${eventsTable.startDate} < ${now} then ${eventsTable.startDate} end desc`,
+    )
+    .limit(limit);
+  if (ordered.length === 0) return [];
+
+  const mediaIds = ordered
+    .map((r) => r.imageMediaId)
+    .filter((v): v is string => v != null);
+  const assetIds = ordered
+    .map((r) => r.imageAssetId)
+    .filter((v): v is number => v != null);
+  const [mediaRows, assetRows] = await Promise.all([
+    mediaIds.length
+      ? db
+          .select({
+            id: mediaTable.id,
+            publicUrl: mediaTable.publicUrl,
+            storageKey: mediaTable.storageKey,
+          })
+          .from(mediaTable)
+          .where(inArray(mediaTable.id, mediaIds))
+      : Promise.resolve([]),
+    assetIds.length
+      ? db
+          .select({ id: assetsTable.id, storageKey: assetsTable.storageKey })
+          .from(assetsTable)
+          .where(inArray(assetsTable.id, assetIds))
+      : Promise.resolve([]),
+  ]);
+  const mediaById = new Map(mediaRows.map((m) => [m.id, m]));
+  const assetsById = new Map(assetRows.map((a) => [a.id, a]));
+
+  return ordered.map((r) => {
+    let imageUrl: string | null = null;
+    if (r.imageMediaId) {
+      const m = mediaById.get(r.imageMediaId);
+      if (m) imageUrl = m.publicUrl || `/api/storage${m.storageKey}`;
+    }
+    if (!imageUrl && r.imageAssetId) {
+      const a = assetsById.get(r.imageAssetId);
+      if (a) imageUrl = `/api/storage${a.storageKey}`;
+    }
+    return {
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      startDate: r.startDate.toISOString(),
+      location: r.location ?? null,
+      teaser: r.teaser ?? null,
+      imageUrl,
+      status: r.status,
+    };
+  });
+}
+
 router.get("/team-members", async (_req, res): Promise<void> => {
   const rows = await db
     .select()
@@ -182,7 +275,10 @@ router.get("/team-members/:slug", async (req, res): Promise<void> => {
     return;
   }
 
-  const recentPosts = m.userId ? await fetchRecentPosts(m.userId) : [];
+  const [recentPosts, recentEvents] = await Promise.all([
+    m.userId ? fetchRecentPosts(m.userId) : Promise.resolve([]),
+    fetchRecentEvents(m.id),
+  ]);
 
   res.json(
     GetPublicTeamMemberResponse.parse({
@@ -200,6 +296,8 @@ router.get("/team-members/:slug", async (req, res): Promise<void> => {
       tags: m.tags ?? [],
       userId: m.userId ?? null,
       recentPosts,
+      recentEvents,
+      updatedAt: m.updatedAt,
     }),
   );
 });

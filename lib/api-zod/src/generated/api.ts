@@ -3397,6 +3397,19 @@ export const ListPublicEventsResponseItem = zod.object({
   recordingVideoSlug: zod.string().nullish(),
   recordingVideoUrl: zod.string().nullish(),
   recordingVideoTitle: zod.string().nullish(),
+  speakers: zod
+    .array(
+      zod.object({
+        teamMemberId: zod.number(),
+        name: zod.string(),
+        slug: zod.string(),
+        jobTitle: zod.string(),
+        imageUrl: zod.string().nullish(),
+        sortOrder: zod.number(),
+      }),
+    )
+    .optional()
+    .describe("Team members speaking or appearing at this event."),
 });
 export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
 
@@ -3426,6 +3439,19 @@ export const ListAdminEventsResponseItem = zod.object({
   recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
+  speakers: zod
+    .array(
+      zod.object({
+        teamMemberId: zod.number(),
+        name: zod.string(),
+        slug: zod.string(),
+        jobTitle: zod.string(),
+        imageUrl: zod.string().nullish(),
+        sortOrder: zod.number(),
+      }),
+    )
+    .optional()
+    .describe("Team members speaking or appearing at this event."),
 });
 export const ListAdminEventsResponse = zod.array(ListAdminEventsResponseItem);
 
@@ -3449,6 +3475,12 @@ export const CreateEventBody = zod.object({
   imageAssetId: zod.number().nullish(),
   imageMediaId: zod.string().uuid().nullish(),
   recordingVideoId: zod.string().nullish(),
+  speakerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.",
+    ),
 });
 
 export const GetAdminEventParams = zod.object({
@@ -3478,6 +3510,19 @@ export const GetAdminEventResponse = zod.object({
   recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
+  speakers: zod
+    .array(
+      zod.object({
+        teamMemberId: zod.number(),
+        name: zod.string(),
+        slug: zod.string(),
+        jobTitle: zod.string(),
+        imageUrl: zod.string().nullish(),
+        sortOrder: zod.number(),
+      }),
+    )
+    .optional()
+    .describe("Team members speaking or appearing at this event."),
 });
 
 export const UpdateEventParams = zod.object({
@@ -3500,6 +3545,12 @@ export const UpdateEventBody = zod.object({
   imageAssetId: zod.number().nullish(),
   imageMediaId: zod.string().uuid().nullish(),
   recordingVideoId: zod.string().nullish(),
+  speakerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.",
+    ),
 });
 
 export const UpdateEventResponse = zod.object({
@@ -3525,6 +3576,19 @@ export const UpdateEventResponse = zod.object({
   recordingVideoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date().optional(),
   updatedAt: zod.coerce.date().optional(),
+  speakers: zod
+    .array(
+      zod.object({
+        teamMemberId: zod.number(),
+        name: zod.string(),
+        slug: zod.string(),
+        jobTitle: zod.string(),
+        imageUrl: zod.string().nullish(),
+        sortOrder: zod.number(),
+      }),
+    )
+    .optional()
+    .describe("Team members speaking or appearing at this event."),
 });
 
 export const DeleteEventParams = zod.object({
@@ -3593,7 +3657,30 @@ export const GetPublicTeamMemberResponse = zod.object({
       }),
     )
     .optional()
-    .describe("Up to 3 most recent published posts by this team member."),
+    .describe("Up to 5 most recent published posts by this team member."),
+  recentEvents: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        slug: zod.string(),
+        title: zod.string(),
+        startDate: zod.coerce.date(),
+        location: zod.string().nullish(),
+        teaser: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+        status: zod.string().optional(),
+      }),
+    )
+    .optional()
+    .describe(
+      "Up to 5 most recent or upcoming events at which this team member is speaking or appearing.",
+    ),
+  updatedAt: zod.coerce
+    .date()
+    .optional()
+    .describe(
+      "Last-modified timestamp — used by the public bio page to invalidate the dynamically-generated OG image.",
+    ),
 });
 
 /**

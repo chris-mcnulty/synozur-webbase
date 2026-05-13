@@ -8,6 +8,8 @@ import {
   assetsTable,
   mediaTable,
   videosTable,
+  eventSpeakersTable,
+  teamMembersTable,
   type Event,
   type Asset,
   type Media,
@@ -100,6 +102,95 @@ interface EnrichedEvent {
   event: Event;
   imageUrl: string | null;
   recordingVideo: Pick<Video, "id" | "slug" | "title" | "videoUrl"> | null;
+  speakers: EventSpeakerRow[];
+}
+
+interface EventSpeakerRow {
+  teamMemberId: number;
+  name: string;
+  slug: string;
+  jobTitle: string;
+  imageUrl: string | null;
+  sortOrder: number;
+}
+
+async function loadSpeakersForEvents(
+  eventIds: number[],
+): Promise<Map<number, EventSpeakerRow[]>> {
+  const out = new Map<number, EventSpeakerRow[]>();
+  if (eventIds.length === 0) return out;
+  const rows = await db
+    .select({
+      eventId: eventSpeakersTable.eventId,
+      teamMemberId: teamMembersTable.id,
+      name: teamMembersTable.name,
+      slug: teamMembersTable.slug,
+      jobTitle: teamMembersTable.jobTitle,
+      imageUrl: teamMembersTable.imageUrl,
+      active: teamMembersTable.active,
+      sortOrder: eventSpeakersTable.sortOrder,
+    })
+    .from(eventSpeakersTable)
+    .innerJoin(
+      teamMembersTable,
+      eq(teamMembersTable.id, eventSpeakersTable.teamMemberId),
+    )
+    .where(inArray(eventSpeakersTable.eventId, eventIds));
+  for (const r of rows) {
+    if (!r.active) continue;
+    const list = out.get(r.eventId) ?? [];
+    list.push({
+      teamMemberId: r.teamMemberId,
+      name: r.name,
+      slug: r.slug,
+      jobTitle: r.jobTitle,
+      imageUrl: r.imageUrl ?? null,
+      sortOrder: r.sortOrder,
+    });
+    out.set(r.eventId, list);
+  }
+  for (const list of out.values()) {
+    list.sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+    );
+  }
+  return out;
+}
+
+async function replaceEventSpeakers(
+  eventId: number,
+  speakerIds: number[],
+): Promise<void> {
+  const deduped: number[] = [];
+  const seen = new Set<number>();
+  for (const id of speakerIds) {
+    if (!Number.isFinite(id) || seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+  }
+  // Validate team-member ids before the transaction so a bad input
+  // doesn't open a transaction that then has to roll back.
+  let values: { eventId: number; teamMemberId: number; sortOrder: number }[] = [];
+  if (deduped.length > 0) {
+    const validRows = await db
+      .select({ id: teamMembersTable.id })
+      .from(teamMembersTable)
+      .where(inArray(teamMembersTable.id, deduped));
+    const validIds = new Set(validRows.map((r) => r.id));
+    values = deduped
+      .filter((id) => validIds.has(id))
+      .map((teamMemberId, idx) => ({ eventId, teamMemberId, sortOrder: idx }));
+  }
+  // Delete + insert in one transaction so a failed insert can't leave
+  // the event with no speakers when the editor only meant to reorder.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(eventSpeakersTable)
+      .where(eq(eventSpeakersTable.eventId, eventId));
+    if (values.length > 0) {
+      await tx.insert(eventSpeakersTable).values(values);
+    }
+  });
 }
 
 // Resolve the event hero image URL. New writes from the editor populate
@@ -122,8 +213,8 @@ function resolveEventImageUrl(
 
 async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
   const now = new Date();
-  // Fan out the three lookups; they're independent.
-  const [assetRows, mediaRows, videoRows] = await Promise.all([
+  // Fan out the four lookups; they're independent.
+  const [assetRows, mediaRows, videoRows, speakerMap] = await Promise.all([
     event.imageAssetId
       ? db
           .select()
@@ -156,6 +247,7 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
             ),
           )
       : Promise.resolve([]),
+    loadSpeakersForEvents([event.id]),
   ]);
   const [asset] = assetRows;
   const [media] = mediaRows;
@@ -166,6 +258,7 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
     event,
     imageUrl: resolveEventImageUrl(event, mediaById, assetsById),
     recordingVideo: video ?? null,
+    speakers: speakerMap.get(event.id) ?? [],
   };
 }
 
@@ -180,9 +273,9 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
     new Set(events.map((e) => e.recordingVideoId).filter((v): v is string => v != null)),
   );
   const now = new Date();
-  // The three lookups are independent — fan them out so endpoint latency
+  // The four lookups are independent — fan them out so endpoint latency
   // is bound by the slowest query rather than their sum.
-  const [assets, mediaRows, videos] = await Promise.all([
+  const [assets, mediaRows, videos, speakerMap] = await Promise.all([
     assetIds.length
       ? db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds))
       : Promise.resolve([]),
@@ -209,6 +302,7 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
             ),
           )
       : Promise.resolve([]),
+    loadSpeakersForEvents(events.map((e) => e.id)),
   ]);
   const assetsById = new Map(assets.map((a) => [a.id, a]));
   const mediaById = new Map(mediaRows.map((m) => [m.id, m]));
@@ -219,11 +313,12 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
     recordingVideo: event.recordingVideoId
       ? videosById.get(event.recordingVideoId) ?? null
       : null,
+    speakers: speakerMap.get(event.id) ?? [],
   }));
 }
 
 function publicShape(enriched: EnrichedEvent) {
-  const { event, imageUrl, recordingVideo } = enriched;
+  const { event, imageUrl, recordingVideo, speakers } = enriched;
   return {
     id: event.id,
     title: event.title,
@@ -241,11 +336,12 @@ function publicShape(enriched: EnrichedEvent) {
     recordingVideoSlug: recordingVideo?.slug ?? null,
     recordingVideoUrl: recordingVideo?.videoUrl || null,
     recordingVideoTitle: recordingVideo?.title ?? null,
+    speakers,
   };
 }
 
 function adminShape(enriched: EnrichedEvent) {
-  const { event, imageUrl, recordingVideo } = enriched;
+  const { event, imageUrl, recordingVideo, speakers } = enriched;
   return {
     id: event.id,
     title: event.title,
@@ -269,6 +365,7 @@ function adminShape(enriched: EnrichedEvent) {
     recordingVideoUrl: recordingVideo?.videoUrl || null,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
+    speakers,
   };
 }
 
@@ -360,6 +457,9 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       recordingVideoId,
     })
     .returning();
+  if (parsed.data.speakerIds !== undefined) {
+    await replaceEventSpeakers(event.id, parsed.data.speakerIds);
+  }
   const enriched = await loadEventEnriched(event);
   try {
     await upsertCollateralFromEvent(event, enriched.imageUrl);
@@ -430,6 +530,9 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
   if (!event) {
     res.status(404).json({ error: "Event not found" });
     return;
+  }
+  if (parsed.data.speakerIds !== undefined) {
+    await replaceEventSpeakers(event.id, parsed.data.speakerIds);
   }
   const enriched = await loadEventEnriched(event);
   try {

@@ -1,8 +1,19 @@
-import { pgTable, text, serial, timestamp, integer, boolean, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  timestamp,
+  integer,
+  boolean,
+  uuid,
+  primaryKey,
+  index,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { assetCategoriesTable } from "./assetCategories";
 import { mediaTable } from "./media";
+import { teamMembersTable } from "./teamMembers";
 
 export const assetsTable = pgTable("assets", {
   id: serial("id").primaryKey(),
@@ -64,3 +75,36 @@ export const insertEventSchema = createInsertSchema(eventsTable).omit({
 });
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof eventsTable.$inferSelect;
+
+// Many-to-many: which team members are speaking at / appearing at an
+// event. Editors set the list from the admin event form; the public
+// event detail page renders the corresponding bios, and each team
+// member's bio page surfaces their upcoming and most recent events.
+//
+// `sortOrder` is editor-controlled (lower first, ties broken by team
+// member's name) so the keynote can appear before panelists. Deletes
+// cascade from either side — un-publishing a team member or deleting
+// an event tears down the link without leaving orphans.
+export const eventSpeakersTable = pgTable(
+  "event_speakers",
+  {
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => eventsTable.id, { onDelete: "cascade" }),
+    teamMemberId: integer("team_member_id")
+      .notNull()
+      .references(() => teamMembersTable.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.eventId, t.teamMemberId] }),
+    index("event_speakers_event_idx").on(t.eventId),
+    index("event_speakers_team_member_idx").on(t.teamMemberId),
+  ],
+);
+
+export type EventSpeaker = typeof eventSpeakersTable.$inferSelect;
+export type InsertEventSpeaker = typeof eventSpeakersTable.$inferInsert;
