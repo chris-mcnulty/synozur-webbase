@@ -2866,7 +2866,18 @@ export async function runMigrations(): Promise<void> {
       END $$;
     `);
 
-    // 50. Backfill `auth_provider = 'imported'` for the `synozur:author:*`
+    // 50. events.image_media_id — UUID FK to the unified `media` table,
+    //     parallel to the legacy integer `image_asset_id`. Added to the
+    //     Drizzle schema in PR #82 but the corresponding DDL was omitted
+    //     from migrations.ts, causing every `db.select().from(eventsTable)`
+    //     to throw "column image_media_id does not exist".
+    await db.execute(sql`
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS image_media_id uuid
+          REFERENCES media(id) ON DELETE SET NULL;
+    `);
+
+    // 51. Backfill `auth_provider = 'imported'` for the `synozur:author:*`
     //     placeholder rows created by the Wix blog ingest. Step 39 only
     //     covered the older `import:wix:*` / `imported:*` /
     //     `system:imported-from-wix` patterns; the `synozur:author:*` pattern
