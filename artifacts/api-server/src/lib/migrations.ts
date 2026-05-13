@@ -2866,6 +2866,25 @@ export async function runMigrations(): Promise<void> {
       END $$;
     `);
 
+    // 50. Backfill `auth_provider = 'imported'` for the `synozur:author:*`
+    //     placeholder rows created by the Wix blog ingest. Step 39 only
+    //     covered the older `import:wix:*` / `imported:*` /
+    //     `system:imported-from-wix` patterns; the `synozur:author:*` pattern
+    //     used by the Wix ingest for named authors (michelle.caldwell,
+    //     andrew.borg, ruven.gotz, austin.govella) was missed.  Without
+    //     `auth_provider = 'imported'`, `linkImportedAuthors.ts` cannot find
+    //     these rows and the first-sign-in merge in `routes/auth.ts` cannot
+    //     claim them.
+    //
+    //     Idempotent: only touches rows still at `auth_provider IS NULL`.
+    await db.execute(sql`
+      UPDATE users
+         SET auth_provider = 'imported'
+       WHERE auth_provider IS NULL
+         AND external_subject IS NOT NULL
+         AND external_subject LIKE 'synozur:author:%';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

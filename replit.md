@@ -14,6 +14,17 @@ I want iterative development.
 I want to be asked before you make any major changes.
 I do not want you to change any files in the `docs/` directory.
 
+## Standing Actions on PR / Task-Agent Merges
+
+When any external PR or task-agent branch is merged, always:
+1. Inspect `lib/db/src/schema/*.ts` for added/removed columns and verify the DB matches (no phantom columns, no missing ones).
+2. Check `artifacts/api-server/src/lib/migrations.ts` for new steps and confirm they ran (`information_schema.columns` or a targeted SQL probe).
+3. Scan for new scripts in `artifacts/api-server/src/scripts/` — document whether they need a one-time run and record the outcome.
+4. Verify new routes are registered in `routes/index.ts` and new admin pages are wired into `App.tsx` + `AdminLayout.tsx`.
+5. Check `lib/api-zod/src/` for any hand-written schemas that must stay in sync with `openapi.yaml` (e.g. `experiments.ts` ConversionPath kinds).
+6. Probe the dev DB for data-integrity issues (orphaned rows, null discriminators that new code depends on).
+7. Add a migration step for any data gap found, then restart the API server to apply it.
+
 # System Architecture
 
 ## UI/UX Decisions
