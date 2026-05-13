@@ -27,24 +27,25 @@ export type DynamicOgKind =
   | "solution"
   | "application"
   | "model"
-  | "workshop";
+  | "workshop"
+  | "team-member";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 // Keep in sync with `OG_TEMPLATE_VERSION` in
 // `artifacts/api-server/src/lib/ogImageRenderer.ts`.
-export const OG_TEMPLATE_VERSION = 4;
+export const OG_TEMPLATE_VERSION = 5;
 
 export function dynamicOgImageUrl(
   kind: DynamicOgKind,
-  id: string | null | undefined,
+  id: string | number | null | undefined,
   lastModified: string | Date | null | undefined,
 ): string | null {
-  if (!id) return null;
+  if (id === null || id === undefined || id === "") return null;
   let v = 0;
   if (lastModified) {
     const d = lastModified instanceof Date ? lastModified : new Date(lastModified);
     if (!Number.isNaN(d.getTime())) v = d.getTime();
   }
-  return `${BASE_PATH}/api/og/image?kind=${kind}&id=${encodeURIComponent(id)}&v=${v}&t=${OG_TEMPLATE_VERSION}`;
+  return `${BASE_PATH}/api/og/image?kind=${kind}&id=${encodeURIComponent(String(id))}&v=${v}&t=${OG_TEMPLATE_VERSION}`;
 }

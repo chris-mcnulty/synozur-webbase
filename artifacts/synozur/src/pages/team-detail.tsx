@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Linkedin, Mail, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Linkedin, Mail, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
 import { PersonJsonLd } from "@/components/person-jsonld";
 import { EditWedge } from "@/components/edit-wedge";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -61,6 +62,94 @@ type RecentPost = {
   publishedAt?: string | null;
   categories?: { id: string; slug: string; name: string }[];
 };
+
+type RecentEvent = {
+  id: number;
+  slug: string;
+  title: string;
+  startDate: string | Date;
+  location?: string | null;
+  teaser?: string | null;
+  imageUrl?: string | null;
+  status?: string;
+};
+
+function RecentEventsRail({
+  events,
+  name,
+}: {
+  events: RecentEvent[];
+  name: string;
+}) {
+  if (!events.length) return null;
+  const now = Date.now();
+  return (
+    <section className="py-20 bg-card border-t border-border">
+      <div className="container mx-auto px-4 max-w-5xl">
+        <p className="text-sm uppercase tracking-widest text-primary mb-3">
+          On Stage
+        </p>
+        <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
+          <h2 className="text-2xl md:text-3xl font-bold">
+            {name.split(" ")[0]} is speaking at
+          </h2>
+          <Link
+            href="/events"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            All events <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {events.map((e) => {
+            const image = resolveImageUrl(e.imageUrl);
+            const startMs = new Date(e.startDate).getTime();
+            const upcoming = Number.isFinite(startMs) && startMs >= now;
+            return (
+              <Link
+                key={e.id}
+                href={`/events/${e.slug}`}
+                className="group rounded-2xl border border-border/60 bg-background overflow-hidden hover:border-primary/40 transition-colors block"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-muted/20">
+                  {image ? (
+                    <img
+                      src={image}
+                      alt={e.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full nebula-gradient opacity-30 flex items-center justify-center">
+                      <Calendar className="h-8 w-8 text-white/70" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <p className="text-xs uppercase tracking-widest text-primary mb-2">
+                    {upcoming ? "Upcoming" : "Past"}
+                  </p>
+                  <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors mb-2">
+                    {e.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(
+                      typeof e.startDate === "string"
+                        ? e.startDate
+                        : e.startDate.toISOString(),
+                    )}
+                    {e.location ? ` · ${e.location}` : ""}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function RecentPostsRail({ posts, name }: { posts: RecentPost[]; name: string }) {
   if (!posts.length) return null;
@@ -179,11 +268,27 @@ export default function TeamDetail() {
     .filter((p) => p.slug !== person.slug)
     .slice(0, 3);
 
-  const recentPosts = (person as { recentPosts?: RecentPost[] }).recentPosts ?? [];
+  const enriched = person as {
+    recentPosts?: RecentPost[];
+    recentEvents?: RecentEvent[];
+    updatedAt?: string | Date | null;
+  };
+  const recentPosts = enriched.recentPosts ?? [];
+  const recentEvents = enriched.recentEvents ?? [];
+  // Use the editor-set headshot when present (LinkedIn / Slack accept any
+  // aspect ratio); fall back to the dynamic 1200×630 brand template so
+  // members without a photo still unfurl cleanly.
+  const ogImage =
+    imageSrc ?? dynamicOgImageUrl("team-member", person.id, enriched.updatedAt);
 
   return (
     <div className="w-full">
-      <Meta title={person.name} description={metaDescription} />
+      <Meta
+        title={person.name}
+        description={metaDescription}
+        image={ogImage ?? undefined}
+        type="article"
+      />
       <PersonJsonLd
         slug={person.slug}
         name={person.name}
@@ -294,6 +399,8 @@ export default function TeamDetail() {
           </div>
         </section>
       )}
+
+      <RecentEventsRail events={recentEvents} name={person.name} />
 
       <RecentPostsRail posts={recentPosts} name={person.name} />
 

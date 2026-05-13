@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TeamMemberRecentEvent } from "./teamMemberRecentEvent";
 import type { TeamMemberRecentPost } from "./teamMemberRecentPost";
 
 export interface PublicTeamMemberDetail {
@@ -27,6 +28,10 @@ export interface PublicTeamMemberDetail {
   active: boolean;
   tags: string[];
   userId?: string | null;
-  /** Up to 3 most recent published posts by this team member. */
+  /** Up to 5 most recent published posts by this team member. */
   recentPosts?: TeamMemberRecentPost[];
+  /** Up to 5 most recent or upcoming events at which this team member is speaking or appearing. */
+  recentEvents?: TeamMemberRecentEvent[];
+  /** Last-modified timestamp — used by the public bio page to invalidate the dynamically-generated OG image. */
+  updatedAt?: Date;
 }

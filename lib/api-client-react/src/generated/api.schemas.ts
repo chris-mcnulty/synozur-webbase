@@ -1421,6 +1421,16 @@ export interface UpdateAssetBody {
   altText?: string | null;
 }
 
+export interface EventSpeaker {
+  teamMemberId: number;
+  name: string;
+  slug: string;
+  jobTitle: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  sortOrder: number;
+}
+
 export interface PublicEvent {
   id: number;
   title: string;
@@ -1447,6 +1457,8 @@ export interface PublicEvent {
   recordingVideoUrl?: string | null;
   /** @nullable */
   recordingVideoTitle?: string | null;
+  /** Team members speaking or appearing at this event. */
+  speakers?: EventSpeaker[];
 }
 
 export interface AdminEvent {
@@ -1484,6 +1496,8 @@ export interface AdminEvent {
   recordingVideoUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  /** Team members speaking or appearing at this event. */
+  speakers?: EventSpeaker[];
 }
 
 export type AdminFormSubmissionPayload = { [key: string]: unknown };
@@ -1644,6 +1658,8 @@ export interface EventInput {
   imageMediaId?: string | null;
   /** @nullable */
   recordingVideoId?: string | null;
+  /** Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder. */
+  speakerIds?: number[];
 }
 
 export type ServiceStatus = (typeof ServiceStatus)[keyof typeof ServiceStatus];
@@ -2217,6 +2233,20 @@ export interface TeamMemberRecentPost {
   categories?: Category[];
 }
 
+export interface TeamMemberRecentEvent {
+  id: number;
+  slug: string;
+  title: string;
+  startDate: string;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  status?: string;
+}
+
 export interface PublicTeamMemberDetail {
   id: number;
   name: string;
@@ -2237,8 +2267,12 @@ export interface PublicTeamMemberDetail {
   active: boolean;
   tags: string[];
   userId?: string | null;
-  /** Up to 3 most recent published posts by this team member. */
+  /** Up to 5 most recent published posts by this team member. */
   recentPosts?: TeamMemberRecentPost[];
+  /** Up to 5 most recent or upcoming events at which this team member is speaking or appearing. */
+  recentEvents?: TeamMemberRecentEvent[];
+  /** Last-modified timestamp — used by the public bio page to invalidate the dynamically-generated OG image. */
+  updatedAt?: string;
 }
 
 export interface AdminTeamMember {

@@ -28,7 +28,8 @@ export type OgImageKind =
   | "solution"
   | "application"
   | "model"
-  | "workshop";
+  | "workshop"
+  | "team-member";
 
 /**
  * Renderer template version. Embedded in the cache key alongside the
@@ -44,8 +45,10 @@ export type OgImageKind =
  *       PNG cache for the original five kinds is unaffected (their bytes
  *       are identical), but the bump simplifies operator reasoning when
  *       eyeballing a freshly-deployed environment.
+ *   5 — Added team-member kind. The bio page surfaces this PNG when no
+ *       headshot is set on the row.
  */
-export const OG_TEMPLATE_VERSION = 4;
+export const OG_TEMPLATE_VERSION = 5;
 
 export interface OgImageInput {
   kind: OgImageKind;
@@ -77,6 +80,7 @@ const KIND_LABELS: Record<OgImageKind, string> = {
   application: "Application",
   model: "Model",
   workshop: "Workshop",
+  "team-member": "Team",
 };
 
 // Brand palette mirrors `--synozur-*` HSL values from
