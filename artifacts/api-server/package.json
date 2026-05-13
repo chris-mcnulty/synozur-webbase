@@ -38,7 +38,8 @@
     "test:ai-chat-cache": "node --import tsx --test src/routes/aiChat.cache.test.ts",
     "test:portal-documents": "node --import tsx --test src/routes/portalDocuments.test.ts",
     "test:og-regenerate": "node --import tsx --test src/routes/og.regenerate.test.ts",
-    "test:landing-pages-schema": "node --import tsx --test src/routes/landingPages.schema.test.ts"
+    "test:landing-pages-schema": "node --import tsx --test src/routes/landingPages.schema.test.ts",
+    "test:search-synonyms": "node --import tsx --test src/routes/search.synonyms.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

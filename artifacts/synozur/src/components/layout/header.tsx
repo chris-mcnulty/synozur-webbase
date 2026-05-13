@@ -197,9 +197,16 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchTotal, setSearchTotal] = useState<number | null>(null);
   const [searchId, setSearchId] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchAbortRef = useRef<AbortController | null>(null);
+
+  // Dialog page size — the full /search results page handles longer
+  // tails. Larger than 8 because grouping by kind plus synonym
+  // expansion routinely surfaces 10+ relevant hits that previously hid
+  // behind the "See all results" link.
+  const DIALOG_RESULT_LIMIT = 15;
 
   // ⌘K / Ctrl-K (and "/" when not in a text input) open the palette.
   useEffect(() => {
@@ -229,6 +236,7 @@ export function Header() {
     const q = searchQuery.trim();
     if (q.length < 2) {
       setSearchResults([]);
+      setSearchTotal(null);
       setSearchId(null);
       setSearchLoading(false);
       return;
@@ -238,15 +246,17 @@ export function Header() {
       const ctrl = new AbortController();
       searchAbortRef.current = ctrl;
       setSearchLoading(true);
-      fetchSearch({ q, limit: 8, signal: ctrl.signal })
+      fetchSearch({ q, limit: DIALOG_RESULT_LIMIT, signal: ctrl.signal })
         .then((res) => {
           if (ctrl.signal.aborted) return;
           setSearchResults(res.items);
+          setSearchTotal(res.totalCount);
           setSearchId(res.searchId);
         })
         .catch((err: unknown) => {
           if ((err as { name?: string })?.name === "AbortError") return;
           setSearchResults([]);
+          setSearchTotal(null);
         })
         .finally(() => {
           if (!ctrl.signal.aborted) setSearchLoading(false);
@@ -260,6 +270,7 @@ export function Header() {
     if (!searchOpen) {
       setSearchQuery("");
       setSearchResults([]);
+      setSearchTotal(null);
       setSearchId(null);
       searchAbortRef.current?.abort();
     }
@@ -638,6 +649,17 @@ export function Header() {
           value={searchQuery}
           onValueChange={setSearchQuery}
           data-testid="command-search-input"
+          // When the user presses Enter on a query that has no result
+          // matches, route to the full /search page instead of letting
+          // cmdk swallow the keystroke — that page still runs the
+          // synonym-expanded search and offers tabs / filters even when
+          // the dialog turned up empty.
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchLoading) {
+              e.preventDefault();
+              goToFullSearch();
+            }
+          }}
         />
         <CommandList>
           {searchLoading && (
@@ -646,7 +668,9 @@ export function Header() {
             </div>
           )}
           {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-            <CommandEmpty>No matches. Press Enter to open full search.</CommandEmpty>
+            <CommandEmpty>
+              No matches in the quick view. Press Enter to open the full search page (with kind filters and the synonym index).
+            </CommandEmpty>
           )}
           {!searchLoading && searchQuery.trim().length < 2 && (
             <div className="py-6 text-center text-xs text-muted-foreground">
@@ -686,7 +710,11 @@ export function Header() {
                 data-testid="command-open-full-search"
               >
                 <Search className="h-4 w-4 mr-2" />
-                See all results for "{searchQuery.trim()}"
+                {searchTotal !== null && searchTotal > searchResults.length
+                  ? `See all ${searchTotal} results for "${searchQuery.trim()}" — filter by type`
+                  : searchTotal !== null && searchTotal > 0
+                    ? `Open full search for "${searchQuery.trim()}" — filter by type`
+                    : `Open full search for "${searchQuery.trim()}"`}
               </CommandItem>
             </CommandGroup>
           )}
