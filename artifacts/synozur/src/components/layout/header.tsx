@@ -655,7 +655,7 @@ export function Header() {
           // synonym-expanded search and offers tabs / filters even when
           // the dialog turned up empty.
           onKeyDown={(e) => {
-            if (e.key === "Enter" && searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchLoading) {
+            if (e.key === "Enter" && searchQuery.trim().length >= 2) {
               e.preventDefault();
               goToFullSearch();
             }
@@ -702,23 +702,29 @@ export function Header() {
               </CommandGroup>
             );
           })}
-          {searchQuery.trim().length >= 2 && (
-            <CommandGroup heading="More">
-              <CommandItem
-                value="__open-full-search__"
-                onSelect={goToFullSearch}
-                data-testid="command-open-full-search"
-              >
-                <Search className="h-4 w-4 mr-2" />
-                {searchTotal !== null && searchTotal > searchResults.length
-                  ? `See all ${searchTotal} results for "${searchQuery.trim()}" — filter by type`
-                  : searchTotal !== null && searchTotal > 0
-                    ? `Open full search for "${searchQuery.trim()}" — filter by type`
-                    : `Open full search for "${searchQuery.trim()}"`}
-              </CommandItem>
-            </CommandGroup>
-          )}
         </CommandList>
+        {searchQuery.trim().length >= 2 && (
+          <div className="border-t border-border/60">
+            <button
+              type="button"
+              onClick={goToFullSearch}
+              data-testid="command-open-full-search"
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-primary hover:bg-muted/40 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="h-4 w-4 shrink-0" />
+                {searchTotal !== null && searchTotal > searchResults.length
+                  ? `See all ${searchTotal} results for "${searchQuery.trim()}"`
+                  : searchTotal !== null && searchTotal > 0
+                    ? `Full results for "${searchQuery.trim()}"`
+                    : `Full search for "${searchQuery.trim()}"`}
+              </span>
+              <span className="flex items-center gap-1 text-xs opacity-60 shrink-0">
+                Filter by type <ArrowRight className="h-3 w-3" />
+              </span>
+            </button>
+          </div>
+        )}
       </CommandDialog>
     </header>
   );
