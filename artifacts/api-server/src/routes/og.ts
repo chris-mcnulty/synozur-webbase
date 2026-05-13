@@ -23,6 +23,11 @@ import {
   polarisEpisodesTable,
   landingPagesTable,
   usersTable,
+  servicesTable,
+  solutionsTable,
+  applicationsTable,
+  modelsTable,
+  workshopsTable,
 } from "@workspace/db";
 import {
   renderOgImagePng,
@@ -44,6 +49,11 @@ const KINDS: readonly OgImageKind[] = [
   "white-paper",
   "polaris",
   "landing-page",
+  "service",
+  "solution",
+  "application",
+  "model",
+  "workshop",
 ];
 
 const UUID_RE =
@@ -212,6 +222,114 @@ async function resolveArtifact(
       };
     }
 
+    case "service": {
+      const [row] = await db
+        .select({
+          id: servicesTable.id,
+          title: servicesTable.title,
+          seoTitle: servicesTable.seoTitle,
+          updatedAt: servicesTable.updatedAt,
+        })
+        .from(servicesTable)
+        .where(and(eq(servicesTable.id, id), isNull(servicesTable.deletedAt)))
+        .limit(1);
+      if (!row) return null;
+      return {
+        input: { kind, title: row.seoTitle || row.title, byline: null, context: null },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
+    case "solution": {
+      const [row] = await db
+        .select({
+          id: solutionsTable.id,
+          title: solutionsTable.title,
+          seoTitle: solutionsTable.seoTitle,
+          updatedAt: solutionsTable.updatedAt,
+        })
+        .from(solutionsTable)
+        .where(and(eq(solutionsTable.id, id), isNull(solutionsTable.deletedAt)))
+        .limit(1);
+      if (!row) return null;
+      return {
+        input: { kind, title: row.seoTitle || row.title, byline: null, context: null },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
+    case "application": {
+      const [row] = await db
+        .select({
+          id: applicationsTable.id,
+          name: applicationsTable.name,
+          title: applicationsTable.title,
+          tagline: applicationsTable.tagline,
+          version: applicationsTable.version,
+          updatedAt: applicationsTable.updatedAt,
+        })
+        .from(applicationsTable)
+        .where(
+          and(eq(applicationsTable.id, id), isNull(applicationsTable.deletedAt)),
+        )
+        .limit(1);
+      if (!row) return null;
+      const headline = row.name || row.title;
+      const context =
+        (row.tagline && row.tagline.trim()) ||
+        (row.version ? `Version ${row.version}` : null);
+      return {
+        input: { kind, title: headline, byline: null, context: context || null },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
+    case "model": {
+      const [row] = await db
+        .select({
+          id: modelsTable.id,
+          title: modelsTable.title,
+          shortDescription: modelsTable.shortDescription,
+          updatedAt: modelsTable.updatedAt,
+        })
+        .from(modelsTable)
+        .where(and(eq(modelsTable.id, id), isNull(modelsTable.deletedAt)))
+        .limit(1);
+      if (!row) return null;
+      return {
+        input: {
+          kind,
+          title: row.title,
+          byline: null,
+          context: (row.shortDescription && row.shortDescription.trim()) || null,
+        },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
+    case "workshop": {
+      const [row] = await db
+        .select({
+          id: workshopsTable.id,
+          title: workshopsTable.title,
+          category: workshopsTable.category,
+          shortDescription: workshopsTable.shortDescription,
+          updatedAt: workshopsTable.updatedAt,
+        })
+        .from(workshopsTable)
+        .where(and(eq(workshopsTable.id, id), isNull(workshopsTable.deletedAt)))
+        .limit(1);
+      if (!row) return null;
+      const context =
+        (row.category && row.category.trim()) ||
+        (row.shortDescription && row.shortDescription.trim()) ||
+        null;
+      return {
+        input: { kind, title: row.title, byline: null, context },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
     default:
       return null;
   }
@@ -285,7 +403,18 @@ router.get("/og/image", async (req, res): Promise<void> => {
  * Admin/editor only. Returns `{ ok, kind, id, cleared, prerendered }`.
  */
 const RegenerateBodySchema = z.object({
-  kind: z.enum(["insight", "case-study", "white-paper", "polaris", "landing-page"]),
+  kind: z.enum([
+    "insight",
+    "case-study",
+    "white-paper",
+    "polaris",
+    "landing-page",
+    "service",
+    "solution",
+    "application",
+    "model",
+    "workshop",
+  ]),
   id: z.string().uuid(),
   prerender: z.boolean().optional().default(false),
 });

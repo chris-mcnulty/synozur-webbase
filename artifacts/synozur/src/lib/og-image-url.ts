@@ -17,11 +17,23 @@
  * The returned URL is root-relative so `Meta` will resolve it against
  * `SITE_ORIGIN` for `og:image` (which must be absolute for crawlers).
  */
-export type DynamicOgKind = "insight" | "case-study" | "white-paper" | "polaris" | "landing-page";
+export type DynamicOgKind =
+  | "insight"
+  | "case-study"
+  | "white-paper"
+  | "polaris"
+  | "landing-page"
+  | "service"
+  | "solution"
+  | "application"
+  | "model"
+  | "workshop";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-export const OG_TEMPLATE_VERSION = 2;
+// Keep in sync with `OG_TEMPLATE_VERSION` in
+// `artifacts/api-server/src/lib/ogImageRenderer.ts`.
+export const OG_TEMPLATE_VERSION = 4;
 
 export function dynamicOgImageUrl(
   kind: DynamicOgKind,
