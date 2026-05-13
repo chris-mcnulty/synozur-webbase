@@ -42,7 +42,9 @@ export function AssetCategoriesModal({ open, onClose }: Props) {
     qc.invalidateQueries({ queryKey: getListAssetCategoriesQueryKey() });
 
   const { data } = useListAssetCategories({ query: { enabled: open } });
-  const categories = data?.items ?? [];
+  const categories = [...(data?.items ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
+  );
 
   const [newLabel, setNewLabel] = useState("");
   const [newSlug, setNewSlug] = useState("");

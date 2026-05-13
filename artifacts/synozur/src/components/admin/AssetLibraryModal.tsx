@@ -98,7 +98,9 @@ export function AssetLibraryModal({
   const { toast } = useToast();
 
   const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
-  const categories = catsData?.items ?? [];
+  const categories = [...(catsData?.items ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
+  );
   const categoryLabelBySlug = new Map(categories.map((c) => [c.slug, c.label]));
 
   const categoryLocked = !!category;
