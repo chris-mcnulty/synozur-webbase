@@ -161,10 +161,6 @@ async function replaceEventSpeakers(
   eventId: number,
   speakerIds: number[],
 ): Promise<void> {
-  await db
-    .delete(eventSpeakersTable)
-    .where(eq(eventSpeakersTable.eventId, eventId));
-  if (speakerIds.length === 0) return;
   const deduped: number[] = [];
   const seen = new Set<number>();
   for (const id of speakerIds) {
@@ -172,17 +168,29 @@ async function replaceEventSpeakers(
     seen.add(id);
     deduped.push(id);
   }
-  if (deduped.length === 0) return;
-  const validRows = await db
-    .select({ id: teamMembersTable.id })
-    .from(teamMembersTable)
-    .where(inArray(teamMembersTable.id, deduped));
-  const validIds = new Set(validRows.map((r) => r.id));
-  const values = deduped
-    .filter((id) => validIds.has(id))
-    .map((teamMemberId, idx) => ({ eventId, teamMemberId, sortOrder: idx }));
-  if (values.length === 0) return;
-  await db.insert(eventSpeakersTable).values(values);
+  // Validate team-member ids before the transaction so a bad input
+  // doesn't open a transaction that then has to roll back.
+  let values: { eventId: number; teamMemberId: number; sortOrder: number }[] = [];
+  if (deduped.length > 0) {
+    const validRows = await db
+      .select({ id: teamMembersTable.id })
+      .from(teamMembersTable)
+      .where(inArray(teamMembersTable.id, deduped));
+    const validIds = new Set(validRows.map((r) => r.id));
+    values = deduped
+      .filter((id) => validIds.has(id))
+      .map((teamMemberId, idx) => ({ eventId, teamMemberId, sortOrder: idx }));
+  }
+  // Delete + insert in one transaction so a failed insert can't leave
+  // the event with no speakers when the editor only meant to reorder.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(eventSpeakersTable)
+      .where(eq(eventSpeakersTable.eventId, eventId));
+    if (values.length > 0) {
+      await tx.insert(eventSpeakersTable).values(values);
+    }
+  });
 }
 
 // Resolve the event hero image URL. New writes from the editor populate

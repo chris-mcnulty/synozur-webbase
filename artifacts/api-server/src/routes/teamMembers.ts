@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, and, desc, lte, isNull, inArray } from "drizzle-orm";
+import { eq, asc, and, desc, lte, isNull, inArray, sql } from "drizzle-orm";
 import {
   db,
   teamMembersTable,
@@ -164,9 +164,12 @@ async function fetchRecentPosts(userId: string, limit = 5) {
 // Return the team member's most relevant events: upcoming first (oldest
 // upcoming to newest upcoming), then past events (most recent first).
 // Capped at `limit` total. Archived events are excluded because they're
-// hidden from the public events list.
+// hidden from the public events list. Ordering and `LIMIT` happen in SQL
+// so a member with many speaking credits doesn't drag the whole join
+// table into application memory.
 async function fetchRecentEvents(teamMemberId: number, limit = 5) {
-  const rows = await db
+  const now = new Date();
+  const ordered = await db
     .select({
       id: eventsTable.id,
       slug: eventsTable.slug,
@@ -177,24 +180,25 @@ async function fetchRecentEvents(teamMemberId: number, limit = 5) {
       status: eventsTable.status,
       imageMediaId: eventsTable.imageMediaId,
       imageAssetId: eventsTable.imageAssetId,
-      sortOrder: eventSpeakersTable.sortOrder,
     })
     .from(eventSpeakersTable)
     .innerJoin(eventsTable, eq(eventSpeakersTable.eventId, eventsTable.id))
-    .where(eq(eventSpeakersTable.teamMemberId, teamMemberId));
-
-  const visible = rows.filter(
-    (r) => (r.status ?? "").toLowerCase() !== "archived",
-  );
-
-  const now = Date.now();
-  const upcoming = visible
-    .filter((r) => r.startDate.getTime() >= now)
-    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const past = visible
-    .filter((r) => r.startDate.getTime() < now)
-    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
-  const ordered = [...upcoming, ...past].slice(0, limit);
+    .where(
+      and(
+        eq(eventSpeakersTable.teamMemberId, teamMemberId),
+        sql`lower(coalesce(${eventsTable.status}, '')) <> 'archived'`,
+      ),
+    )
+    .orderBy(
+      // Upcoming bucket first, then past bucket; within each bucket,
+      // sort by proximity to "now" (oldest-upcoming first → most-recent
+      // past first). The two CASE-bounded keys collapse to null in the
+      // other bucket so they don't interfere across the boundary.
+      sql`(${eventsTable.startDate} >= ${now}) desc`,
+      sql`case when ${eventsTable.startDate} >= ${now} then ${eventsTable.startDate} end asc`,
+      sql`case when ${eventsTable.startDate} < ${now} then ${eventsTable.startDate} end desc`,
+    )
+    .limit(limit);
   if (ordered.length === 0) return [];
 
   const mediaIds = ordered

@@ -326,7 +326,6 @@ async function resolveArtifact(
           id: teamMembersTable.id,
           name: teamMembersTable.name,
           jobTitle: teamMembersTable.jobTitle,
-          imageUrl: teamMembersTable.imageUrl,
           updatedAt: teamMembersTable.updatedAt,
           active: teamMembersTable.active,
         })
@@ -334,12 +333,18 @@ async function resolveArtifact(
         .where(eq(teamMembersTable.id, numericId))
         .limit(1);
       if (!row || !row.active) return null;
+      // Deliberately do NOT forward `team_members.image_url` as
+      // `avatarUrl`. The renderer fetches `avatarUrl` server-side, and
+      // the team-member headshot URL is editor-controlled — letting it
+      // through would open an SSRF vector. The bio page already prefers
+      // the editor headshot for og:image when it's set; this generator
+      // path only fires when no headshot is configured, so the initials
+      // disc is the intended fallback.
       return {
         input: {
           kind,
           title: row.name,
           byline: row.jobTitle || null,
-          avatarUrl: row.imageUrl || null,
           context: "Synozur Alliance",
         },
         lastModifiedMs: row.updatedAt.getTime(),

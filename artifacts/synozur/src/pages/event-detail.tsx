@@ -17,6 +17,19 @@ import { EditWedge } from "@/components/edit-wedge";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 import { toEmbedUrl } from "@/lib/video-embed";
 
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+// Speaker `imageUrl` values come straight from `team_members.image_url`
+// and can be relative (e.g. `/images/...`). Resolve against BASE_PATH so
+// the rendered `<img src>` works under a non-root deploy prefix, mirroring
+// the helper on team-detail.tsx.
+function resolveImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/")) return `${BASE_PATH}${url}`;
+  return url;
+}
+
 function formatDate(iso: string | Date): string {
   return new Date(iso).toLocaleDateString("en-US", {
     weekday: "long",
@@ -223,16 +236,18 @@ export default function EventDetail() {
               <div className="mt-10" data-testid="event-speakers">
                 <h2 className="text-xl font-semibold mb-4">Speakers</h2>
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {event.speakers!.map((s) => (
+                  {event.speakers!.map((s) => {
+                    const speakerImg = resolveImageUrl(s.imageUrl);
+                    return (
                     <li key={s.teamMemberId}>
                       <Link
                         href={`/team/${encodeURIComponent(s.slug)}`}
                         className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 hover:border-primary/40 transition-colors"
                       >
                         <div className="h-12 w-12 rounded-full overflow-hidden bg-muted shrink-0">
-                          {s.imageUrl ? (
+                          {speakerImg ? (
                             <img
-                              src={s.imageUrl}
+                              src={speakerImg}
                               alt={s.name}
                               loading="lazy"
                               decoding="async"
@@ -262,7 +277,8 @@ export default function EventDetail() {
                         </div>
                       </Link>
                     </li>
-                  ))}
+                  );
+                  })}
                 </ul>
               </div>
             )}
