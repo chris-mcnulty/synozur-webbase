@@ -360,12 +360,12 @@ export default function TeamDetail() {
               transition={{ duration: 0.5 }}
               className="md:col-span-2"
             >
-              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-white/5 border border-white/10">
+              <div className="relative aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10">
                 {imageSrc ? (
                   <img
                     src={imageSrc}
                     alt={person.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-zinc-400 text-sm">
