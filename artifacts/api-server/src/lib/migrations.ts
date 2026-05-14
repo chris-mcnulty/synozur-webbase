@@ -2906,6 +2906,83 @@ export async function runMigrations(): Promise<void> {
         ON event_speakers (team_member_id);
     `);
 
+    // 53. PR #84 — Clear stale Clerk-era `external_subject` values on rows
+    //     that were created during the Clerk period but never migrated to
+    //     native auth. These rows have `external_subject LIKE 'user_%'`
+    //     (Clerk user-ID format) and `auth_provider IS NULL`. The Clerk ID
+    //     is permanently unreachable now that Clerk is removed; leaving it
+    //     set would cause the partial unique index on
+    //     (auth_provider, external_subject) to behave unexpectedly if
+    //     auth_provider is later set by an Entra or local-password sign-in.
+    //     Nulling the subject is safe: the row will be matched on email when
+    //     the user next signs in, and auth_provider/entra_object_id will be
+    //     filled in normally.
+    //
+    //     Idempotent: only updates rows that still carry a Clerk-style
+    //     external_subject and have no auth_provider set.
+    await db.execute(sql`
+      UPDATE users
+         SET external_subject = NULL
+       WHERE auth_provider IS NULL
+         AND external_subject LIKE 'user_%';
+    `);
+
+    // 54. PR #84 follow-up — Merge the orphaned Clerk-era user row into its
+    //     corresponding Entra-linked row where both share the same email.
+    //
+    //     After step 53 cleared the stale `external_subject` from the old
+    //     Clerk row, that row became unreachable (auth_provider IS NULL,
+    //     external_subject IS NULL) but still owned 121 posts and had roles
+    //     assigned. The canonical Entra row (auth_provider = 'entra', same
+    //     email) already carries identical roles and is the account used for
+    //     actual sign-in — so the right fix is to re-point every FK reference
+    //     to the Entra row and delete the orphan.
+    //
+    //     All re-point UPDATE statements are safe: they only run when the old
+    //     row still exists. The DO block returns early if there is no such
+    //     duplicate pair, so this is idempotent on any install that is
+    //     already clean.
+    await db.execute(sql`
+      DO $$
+      DECLARE
+        old_id uuid;
+        new_id uuid;
+      BEGIN
+        SELECT u1.id INTO old_id
+          FROM users u1
+          JOIN users u2 ON u2.email = u1.email AND u2.auth_provider IS NOT NULL
+         WHERE u1.auth_provider IS NULL
+           AND u1.external_subject IS NULL
+         LIMIT 1;
+
+        IF old_id IS NULL THEN RETURN; END IF;
+
+        SELECT u2.id INTO new_id
+          FROM users u1
+          JOIN users u2 ON u2.email = u1.email AND u2.auth_provider IS NOT NULL
+         WHERE u1.id = old_id
+         LIMIT 1;
+
+        IF new_id IS NULL THEN RETURN; END IF;
+
+        UPDATE posts               SET author_id              = new_id WHERE author_id              = old_id;
+        UPDATE audit_log           SET actor_id               = new_id WHERE actor_id               = old_id;
+        UPDATE media               SET uploaded_by            = new_id WHERE uploaded_by            = old_id;
+        UPDATE comments            SET moderated_by           = new_id WHERE moderated_by           = old_id;
+        UPDATE revisions           SET edited_by              = new_id WHERE edited_by              = old_id;
+        UPDATE service_revisions   SET edited_by              = new_id WHERE edited_by              = old_id;
+        UPDATE solution_revisions  SET edited_by              = new_id WHERE edited_by              = old_id;
+        UPDATE short_links         SET created_by             = new_id WHERE created_by             = old_id;
+        UPDATE client_organizations SET account_manager_user_id = new_id WHERE account_manager_user_id = old_id;
+
+        DELETE FROM user_roles               WHERE user_id = old_id;
+        DELETE FROM email_verification_tokens WHERE user_id = old_id;
+        DELETE FROM password_reset_tokens    WHERE user_id = old_id;
+        DELETE FROM sessions                 WHERE user_id = old_id;
+        DELETE FROM users                    WHERE id      = old_id;
+      END $$;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
