@@ -14,9 +14,8 @@ import { logger } from "./logger";
 
 // #126: Microsoft Entra group reconciliation.
 //
-// Identity now lands here from the native OIDC flow in `entraOidc.ts`, not
-// from Clerk. After the ID token is verified and the user row is upserted in
-// `routes/auth.ts`, we call `applyEntraSignIn` to:
+// Called from `routes/auth.ts` after the OIDC ID token has been verified by
+// `entraOidc.ts` and the user row has been upserted. `applyEntraSignIn`:
 //   1. Mirror tenant + object id onto the user row (idempotent).
 //   2. Resolve the user's transitive group membership via Microsoft Graph
 //      (app-only credential — `ENTRA_APP_CLIENT_ID` + `ENTRA_APP_CLIENT_SECRET`

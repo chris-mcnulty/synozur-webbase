@@ -20,7 +20,6 @@ export function trafficCrawlerMiddleware(): RequestHandler {
     // Skip API, proxy, feeds, static asset extensions, admin and auth routes.
     if (
       url.startsWith("/api/") ||
-      url.startsWith("/__clerk") ||
       url.startsWith("/admin/") ||
       url === "/admin" ||
       url === "/sign-in" ||

@@ -4,10 +4,10 @@ import { logger } from "./logger";
 
 // Native Microsoft Entra (Azure AD) OIDC client.
 //
-// Replaces the previous Clerk-routed sign-in path. Implements the
-// authorization-code flow with PKCE and S256 challenge against the v2.0
-// endpoint, validates the returned ID token against the tenant JWKS, and
-// returns the canonical claim set used by the app's session/identity layer.
+// Implements the authorization-code flow with PKCE and S256 challenge
+// against the v2.0 endpoint, validates the returned ID token against the
+// tenant JWKS, and returns the canonical claim set used by the app's
+// session/identity layer.
 //
 // Configuration is env-driven so we can run without DB writes:
 //   ENTRA_TENANT_ID            Synozur's own tenant GUID, OR "organizations"
