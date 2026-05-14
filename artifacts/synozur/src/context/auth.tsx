@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
-// Native auth context. The SPA reads identity from `/api/auth/me` and
-// triggers sign-in by redirecting to `/sign-in`, which handles both SSO
+// Native auth context. The SPA reads session state from `/api/auth/session`
+// and triggers sign-in by redirecting to `/sign-in`, which handles both SSO
 // and email/password flows.
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
