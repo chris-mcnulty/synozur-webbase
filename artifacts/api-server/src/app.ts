@@ -68,7 +68,7 @@ app.use(express.json({ type: ["application/csp-report", "application/reports+jso
 app.use(express.urlencoded({ extended: true }));
 
 // Native session resolver — populates `req.authedUser` and `req.session` if a
-// valid `sid` cookie is present. Replaces the previous Clerk middleware.
+// valid `sid` cookie is present.
 app.use(attachUserIfPresent);
 
 // Branded short links (aka.synozur.com/<slug>). Runs before any other host

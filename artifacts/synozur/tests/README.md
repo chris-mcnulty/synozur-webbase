@@ -38,10 +38,10 @@ End-to-end + accessibility harness for the public marketing site.
   clicks "Sync to library" and asserts the re-sync toast. Skipped
   automatically when `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` are
   unset.
-- **`sign-in.spec.ts`** — Clerk-removal cleanup #9. Smokes the
-  `/sign-in` page render and (when Entra is configured) the OIDC
-  redirect; the full Entra round-trip is gated on
-  `E2E_ENTRA_TEST_USER_EMAIL` / `E2E_ENTRA_TEST_USER_PASSWORD`.
+- **`sign-in.spec.ts`** — Smokes the `/sign-in` page render and
+  (when Entra is configured) the OIDC redirect; the full Entra
+  round-trip is gated on `E2E_ENTRA_TEST_USER_EMAIL` /
+  `E2E_ENTRA_TEST_USER_PASSWORD`.
 - **`sign-in-flow.spec.ts`** — Task #119. End-to-end coverage of the
   local-auth happy path (register → verify email → sign in →
   `/admin` → sign out), the wrong-password error banner, and the

@@ -8,9 +8,9 @@ import {
   type ReactNode,
 } from "react";
 
-// Native auth context. Replaces Clerk's `useUser` / `useAuth` / `useClerk` —
-// the SPA reads identity from `/api/auth/me` and triggers sign-in by
-// redirecting to `/sign-in`, which handles both SSO and email/password flows.
+// Native auth context. The SPA reads session state from `/api/auth/session`
+// and triggers sign-in by redirecting to `/sign-in`, which handles both SSO
+// and email/password flows.
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -131,8 +131,7 @@ export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
   if (!ctx) {
     // The provider hasn't mounted yet — return an inert "loading" shape so
-    // first-render reads don't crash. This mirrors Clerk's pattern of
-    // surfacing `isLoaded=false` while the SDK boots.
+    // first-render reads don't crash.
     return {
       isLoaded: false,
       isSignedIn: false,

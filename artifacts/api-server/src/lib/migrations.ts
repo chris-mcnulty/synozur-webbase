@@ -20,24 +20,13 @@ export async function runMigrations(): Promise<void> {
     // #126 / #131 — PR 45: Entra SSO + HubSpot lead capture
     // -----------------------------------------------------------
 
-    // 1. users: rename clerk_user_id → external_subject if the old column still exists.
-    await db.execute(sql`
-      DO $$
-      BEGIN
-        IF EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'users' AND column_name = 'clerk_user_id'
-        ) THEN
-          ALTER TABLE users RENAME COLUMN clerk_user_id TO external_subject;
-          ALTER TABLE users ALTER COLUMN external_subject DROP NOT NULL;
-        END IF;
-      END $$;
-    `);
-
-    // 2. users: new columns. (Note: `last_sso_provider` was historically added
+    // 1. users: new columns. (Note: `last_sso_provider` was historically added
     //    here but dropped in step 38 — `auth_provider` is the canonical signal.)
+    //    Keep the guarded `external_subject` addition for compatibility with
+    //    older Clerk-era databases before the identity index is created below.
     await db.execute(sql`
       ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS external_subject text,
         ADD COLUMN IF NOT EXISTS auth_provider text,
         ADD COLUMN IF NOT EXISTS entra_tenant_id text,
         ADD COLUMN IF NOT EXISTS entra_object_id text,
@@ -48,8 +37,7 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS last_sign_in_at timestamptz;
     `);
 
-    // 3. users: swap index (idempotent — drop old name, create new).
-    await db.execute(sql`DROP INDEX IF EXISTS users_clerk_user_id_key;`);
+    // 2. users: identity indexes.
     await db.execute(sql`
       CREATE UNIQUE INDEX IF NOT EXISTS users_external_subject_key
         ON users (auth_provider, external_subject)
@@ -1328,21 +1316,20 @@ export async function runMigrations(): Promise<void> {
     //     the OIDC migration as a discriminator; superseded by `auth_provider`,
     //     which is the canonical IdP signal. IF EXISTS makes this safe on
     //     databases where the column was never created (fresh installs after
-    //     step 2 above stopped adding it).
+    //     step 1 above stopped adding it).
     await db.execute(sql`
       ALTER TABLE users DROP COLUMN IF EXISTS last_sso_provider;
     `);
 
     // 39. Backfill `auth_provider = 'imported'` for placeholder author rows
-    //     that survived the `clerk_user_id → external_subject` rename in
-    //     step 1. Those historical rows kept their `external_subject`
+    //     whose `external_subject` is set but `auth_provider` is null
     //     ('system:imported-from-wix' / 'import:wix:<slug>' / fixPostAuthors
-    //     'imported:<local-part>') but `auth_provider` was never set, so the
-    //     post-cleanup lookups in `tools/insights-crawler/{ingest,backfill-
-    //     authors}.ts` and `scripts/linkImportedAuthors.ts` — which now
-    //     filter on `auth_provider = 'imported' AND external_subject = …`
-    //     to match the canonical pattern — would miss the historical rows
-    //     and break idempotency on a pre-cleanup install.
+    //     'imported:<local-part>'). The post-cleanup lookups in
+    //     `tools/insights-crawler/{ingest,backfill-authors}.ts` and
+    //     `scripts/linkImportedAuthors.ts` filter on
+    //     `auth_provider = 'imported' AND external_subject = …` to match
+    //     the canonical pattern, so without this backfill those historical
+    //     rows would be skipped and idempotency would break.
     //
     //     Idempotent: only updates rows where `auth_provider IS NULL`, so
     //     re-running is a no-op and rows that are already canonical

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Clerk-removal cleanup #9 — Playwright sign-in smoke test.
+ * Playwright sign-in smoke test.
  *
  * Two tiers, gated on env vars so CI doesn't require an Entra test tenant
  * by default:
