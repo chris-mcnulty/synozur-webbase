@@ -22,8 +22,11 @@ export async function runMigrations(): Promise<void> {
 
     // 1. users: new columns. (Note: `last_sso_provider` was historically added
     //    here but dropped in step 38 — `auth_provider` is the canonical signal.)
+    //    Keep the guarded `external_subject` addition for compatibility with
+    //    older Clerk-era databases before the identity index is created below.
     await db.execute(sql`
       ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS external_subject text,
         ADD COLUMN IF NOT EXISTS auth_provider text,
         ADD COLUMN IF NOT EXISTS entra_tenant_id text,
         ADD COLUMN IF NOT EXISTS entra_object_id text,
