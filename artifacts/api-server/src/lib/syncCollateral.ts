@@ -1,7 +1,8 @@
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, ne } from "drizzle-orm";
 import {
   db,
   collateralTable,
+  landingPagesTable,
   servicesTable,
   solutionsTable,
   assetsTable,
@@ -780,4 +781,43 @@ export async function softDeleteCollateralForLandingPage(
     .update(collateralTable)
     .set({ deletedAt: now, active: false, updatedAt: now })
     .where(eq(collateralTable.sourceId, sourceId));
+}
+
+// Landing pages only mirror into the collateral library on create / update /
+// import. Pages that were already published + featured before the
+// landing_page→collateral sync was wired up (or before the collateral_type
+// enum gained 'landing_page') never produced a mirror row, so they silently
+// missed /library and the home carousel. This idempotent backfill runs on
+// startup: it picks up eligible pages that have no collateral row at all and
+// upserts them. `upsertCollateralFromLandingPage` re-applies the precise
+// eligibility (including the publish window) and is a no-op for pages that
+// don't qualify, so passing the SQL-filtered candidate set is safe. In steady
+// state the candidate query returns zero rows, so this stays cheap.
+export async function backfillLandingPageCollateral(): Promise<number> {
+  const candidates = await db
+    .select()
+    .from(landingPagesTable)
+    .where(
+      and(
+        eq(landingPagesTable.featured, true),
+        eq(landingPagesTable.status, "published"),
+        eq(landingPagesTable.active, true),
+        isNull(landingPagesTable.deletedAt),
+      ),
+    );
+  if (candidates.length === 0) return 0;
+
+  const mirrored = await db
+    .select({ sourceId: collateralTable.sourceId })
+    .from(collateralTable)
+    .where(like(collateralTable.sourceId, "landing_page:%"));
+  const mirroredIds = new Set(mirrored.map((r) => r.sourceId));
+
+  let repaired = 0;
+  for (const page of candidates) {
+    if (mirroredIds.has(landingPageSourceId(page.id))) continue;
+    await upsertCollateralFromLandingPage(page);
+    repaired += 1;
+  }
+  return repaired;
 }

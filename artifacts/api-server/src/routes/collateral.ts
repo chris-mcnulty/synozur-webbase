@@ -12,6 +12,7 @@ import {
   postsTable,
   polarisEpisodesTable,
   eventsTable,
+  landingPagesTable,
 } from "@workspace/db";
 import {
   canonicalUrlForCollateral,
@@ -419,6 +420,7 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
     post: ["insight"],
     polaris_episode: ["podcast"],
     event: ["event"],
+    landing_page: ["landing_page"],
   };
   const typeMismatch = collateralRows
     .filter((r) => r.sourceId && SOURCE_ID_PATTERN.test(r.sourceId))
@@ -488,7 +490,16 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
   }> = [];
 
   // Fetch source rows for each table. Each query selects the minimum we need.
-  const [whitePaperRows, caseStudyRows, modelRows, videoRows, postRows, polarisRows, eventRows] =
+  const [
+    whitePaperRows,
+    caseStudyRows,
+    modelRows,
+    videoRows,
+    postRows,
+    polarisRows,
+    eventRows,
+    landingPageRows,
+  ] =
     await Promise.all([
       db
         .select({
@@ -561,6 +572,19 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
           status: eventsTable.status,
         })
         .from(eventsTable),
+      db
+        .select({
+          id: landingPagesTable.id,
+          slug: landingPagesTable.slug,
+          title: landingPagesTable.title,
+          status: landingPagesTable.status,
+          active: landingPagesTable.active,
+          featured: landingPagesTable.featured,
+          publishedAt: landingPagesTable.publishedAt,
+          unpublishedAt: landingPagesTable.unpublishedAt,
+          deletedAt: landingPagesTable.deletedAt,
+        })
+        .from(landingPagesTable),
     ]);
 
   // Build a sourceId -> source row index for orphan detection. The source's
@@ -609,6 +633,18 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
   );
   // Events sync uses status !== "CANCELLED" as the active gate.
   addToIndex("event", eventRows, (r) => r.status !== "CANCELLED");
+  // Landing pages opt into the library via the featured flag and honour a
+  // publish window — mirror upsertCollateralFromLandingPage's eligibility
+  // exactly so unfeatured / out-of-window pages aren't flagged as missing.
+  const auditNow = new Date();
+  const landingPageEligible = (r: (typeof landingPageRows)[number]) =>
+    r.featured === true &&
+    r.active === true &&
+    r.status === "published" &&
+    !r.deletedAt &&
+    (!r.publishedAt || r.publishedAt <= auditNow) &&
+    (!r.unpublishedAt || r.unpublishedAt > auditNow);
+  addToIndex("landing_page", landingPageRows, landingPageEligible);
 
   // orphanedSync: collateral.sourceId is set but doesn't resolve to any row
   for (const r of collateralRows) {
@@ -747,6 +783,20 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
         r.featured === true && r.status === "published" && !r.deletedAt,
     })),
     ["insight"],
+  );
+  checkSourceTable(
+    "landing_pages",
+    "landing_page",
+    landingPageRows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      // Landing pages mirror into the library only when featured +
+      // published + active + within the publish window (see
+      // upsertCollateralFromLandingPage). Match that gate exactly.
+      isPublishedActive: landingPageEligible(r),
+    })),
+    ["landing_page"],
   );
 
   res.json({
