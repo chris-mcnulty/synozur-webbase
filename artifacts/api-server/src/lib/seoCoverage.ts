@@ -1,0 +1,480 @@
+// #160 — Search Console / Bing index-coverage scanner.
+//
+// A daily cron (see scheduler.ts) walks every published canonical URL —
+// reusing the same enumeration the sitemap is built from — and asks each
+// search engine whether the URL is actually in its index:
+//
+//   - Google: Search Console URL Inspection API
+//     (POST searchconsole.googleapis.com/v1/urlInspection/index:inspect).
+//     Reuses the GOOGLE_INDEXING_SA_JSON service account from #102 but with
+//     the webmasters.readonly scope; the SA must be added as a user on the
+//     Search Console property identified by GOOGLE_SEARCH_CONSOLE_SITE_URL.
+//   - Bing: Webmaster GetUrlInfo (reuses BING_API_KEY / BING_SITE_URL).
+//     Best-effort — the Bing API exposes far less than Search Console.
+//
+// Every provider is opt-in via env vars and degrades gracefully (no creds →
+// bucket "not-configured", never throws) exactly like seoSubmit.ts.
+
+import { GoogleAuth } from "google-auth-library";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
+import {
+  db,
+  seoCoverageStatusTable,
+  seoCoverageRunsTable,
+  type SeoCoverageRun,
+} from "@workspace/db";
+import { collectEntries, classifyArtifactKind } from "../routes/seo";
+import { siteOrigin } from "./siteOrigin";
+import { logger } from "./logger";
+import {
+  type CoverageBucket,
+  type GoogleIndexStatusResult,
+  type BingUrlInfo,
+  normalizeGoogleBucket,
+  normalizeBingBucket,
+  parseMicrosoftDate,
+} from "./seoCoverageBuckets";
+
+export {
+  type CoverageBucket,
+  type GoogleIndexStatusResult,
+  type BingUrlInfo,
+  normalizeGoogleBucket,
+  normalizeBingBucket,
+  parseMicrosoftDate,
+} from "./seoCoverageBuckets";
+
+const GOOGLE_SC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+const GOOGLE_INSPECT_URL =
+  "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect";
+
+const SCAN_CONCURRENCY = 5;
+const DEFAULT_MAX_URLS = 1500;
+
+function maxUrls(): number {
+  const raw = Number(process.env.SEO_COVERAGE_MAX_URLS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : DEFAULT_MAX_URLS;
+}
+
+export function googleConfigured(): boolean {
+  return Boolean(
+    process.env.GOOGLE_INDEXING_SA_JSON?.trim() &&
+      process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim(),
+  );
+}
+
+export function bingConfigured(): boolean {
+  return Boolean(
+    process.env.BING_API_KEY?.trim() && process.env.BING_SITE_URL?.trim(),
+  );
+}
+
+// ─── Testing seam (no live credentials in CI) ────────────────────────────────
+
+type GoogleClient = Awaited<ReturnType<GoogleAuth["getClient"]>>;
+type GoogleClientFactory = (saJson: string) => Promise<GoogleClient>;
+let googleClientFactory: GoogleClientFactory | null = null;
+export function __setGoogleClientFactoryForTesting(
+  factory: GoogleClientFactory | null,
+): void {
+  googleClientFactory = factory;
+}
+
+// ─── Provider calls ──────────────────────────────────────────────────────────
+
+interface GoogleProbe {
+  bucket: CoverageBucket;
+  coverageState: string | null;
+  verdict: string | null;
+  lastCrawlAt: Date | null;
+  raw: unknown;
+}
+
+async function makeGoogleClient(): Promise<GoogleClient | null> {
+  const sa = process.env.GOOGLE_INDEXING_SA_JSON?.trim();
+  if (!sa) return null;
+  if (googleClientFactory) return googleClientFactory(sa);
+  let credentials: unknown;
+  try {
+    credentials = JSON.parse(sa);
+  } catch {
+    logger.warn("seo.coverage: GOOGLE_INDEXING_SA_JSON is not valid JSON");
+    return null;
+  }
+  const auth = new GoogleAuth({
+    credentials: credentials as NonNullable<
+      ConstructorParameters<typeof GoogleAuth>[0]
+    >["credentials"],
+    scopes: [GOOGLE_SC_SCOPE],
+  });
+  return auth.getClient();
+}
+
+async function probeGoogle(
+  client: GoogleClient,
+  siteUrl: string,
+  inspectionUrl: string,
+): Promise<GoogleProbe> {
+  try {
+    const res = (await client.request({
+      url: GOOGLE_INSPECT_URL,
+      method: "POST",
+      data: { inspectionUrl, siteUrl },
+    })) as { data?: unknown };
+    const data = (res.data ?? {}) as {
+      inspectionResult?: { indexStatusResult?: GoogleIndexStatusResult };
+    };
+    const isr = data.inspectionResult?.indexStatusResult ?? null;
+    return {
+      bucket: normalizeGoogleBucket(isr),
+      coverageState: isr?.coverageState ?? null,
+      verdict: isr?.verdict ?? null,
+      lastCrawlAt: isr?.lastCrawlTime ? new Date(isr.lastCrawlTime) : null,
+      raw: isr,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      bucket: "error",
+      coverageState: null,
+      verdict: null,
+      lastCrawlAt: null,
+      raw: { error: msg },
+    };
+  }
+}
+
+interface BingProbe {
+  bucket: CoverageBucket;
+  httpStatus: number | null;
+  lastCrawlAt: Date | null;
+  raw: unknown;
+}
+
+async function probeBing(inspectionUrl: string): Promise<BingProbe> {
+  const apiKey = process.env.BING_API_KEY?.trim();
+  const siteUrl = process.env.BING_SITE_URL?.trim();
+  if (!apiKey || !siteUrl) {
+    return { bucket: "not-configured", httpStatus: null, lastCrawlAt: null, raw: null };
+  }
+  try {
+    const u = new URL(
+      "https://ssl.bing.com/webmaster/api.svc/json/GetUrlInfo",
+    );
+    u.searchParams.set("apikey", apiKey);
+    u.searchParams.set("siteUrl", siteUrl);
+    u.searchParams.set("url", inspectionUrl);
+    const res = await fetch(u.toString(), {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      return {
+        bucket: "error",
+        httpStatus: null,
+        lastCrawlAt: null,
+        raw: { httpStatus: res.status },
+      };
+    }
+    const body = (await res.json()) as { d?: BingUrlInfo | null };
+    const d = body.d ?? null;
+    return {
+      bucket: normalizeBingBucket(d),
+      httpStatus: typeof d?.HttpStatus === "number" ? d.HttpStatus : null,
+      lastCrawlAt: parseMicrosoftDate(d?.LastCrawledDate),
+      raw: d,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { bucket: "error", httpStatus: null, lastCrawlAt: null, raw: { error: msg } };
+  }
+}
+
+// ─── Scan ────────────────────────────────────────────────────────────────────
+
+let scanRunning = false;
+export function isScanRunning(): boolean {
+  return scanRunning;
+}
+
+export interface ScanResult {
+  urlCount: number;
+  googleChecked: number;
+  bingChecked: number;
+  googleConfigured: boolean;
+  bingConfigured: boolean;
+  skipped: boolean;
+}
+
+/**
+ * Walk every published canonical URL and refresh its index-coverage row.
+ * Safe to call concurrently — a second invocation while one is in flight
+ * returns `{ skipped: true }` instead of double-scanning.
+ */
+export async function runSeoCoverageScan(
+  trigger: "scheduled" | "manual" = "scheduled",
+): Promise<ScanResult> {
+  const gConf = googleConfigured();
+  const bConf = bingConfigured();
+  if (scanRunning) {
+    return {
+      urlCount: 0,
+      googleChecked: 0,
+      bingChecked: 0,
+      googleConfigured: gConf,
+      bingConfigured: bConf,
+      skipped: true,
+    };
+  }
+  scanRunning = true;
+
+  const [run] = await db
+    .insert(seoCoverageRunsTable)
+    .values({
+      trigger,
+      googleConfigured: gConf ? 1 : 0,
+      bingConfigured: bConf ? 1 : 0,
+    })
+    .returning({ id: seoCoverageRunsTable.id });
+
+  let googleChecked = 0;
+  let bingChecked = 0;
+  let urlCount = 0;
+  const scanStartedAt = new Date();
+  try {
+    const origin = siteOrigin();
+    const entries = await collectEntries();
+    const urls = Array.from(new Set(entries.map((e) => e.loc))).slice(
+      0,
+      maxUrls(),
+    );
+    urlCount = urls.length;
+
+    const googleClient = gConf ? await makeGoogleClient() : null;
+    const googleSiteUrl =
+      process.env.GOOGLE_SEARCH_CONSOLE_SITE_URL?.trim() ?? "";
+
+    const queue = [...urls];
+    async function worker() {
+      for (;;) {
+        const fullUrl = queue.shift();
+        if (!fullUrl) return;
+        const path = fullUrl.startsWith(origin)
+          ? fullUrl.slice(origin.length) || "/"
+          : fullUrl;
+        const kind = classifyArtifactKind(path);
+
+        const set: Record<string, unknown> = {
+          path,
+          artifactKind: kind,
+          lastCheckedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        if (googleClient) {
+          const g = await probeGoogle(googleClient, googleSiteUrl, fullUrl);
+          set.googleBucket = g.bucket;
+          set.googleCoverageState = g.coverageState;
+          set.googleVerdict = g.verdict;
+          set.googleLastCrawlAt = g.lastCrawlAt;
+          set.googleRaw = g.raw;
+          if (g.bucket !== "error") googleChecked += 1;
+        } else {
+          set.googleBucket = "not-configured";
+        }
+
+        const b = await probeBing(fullUrl);
+        set.bingBucket = b.bucket;
+        set.bingHttpStatus = b.httpStatus;
+        set.bingLastCrawlAt = b.lastCrawlAt;
+        set.bingRaw = b.raw;
+        if (b.bucket !== "not-configured" && b.bucket !== "error") {
+          bingChecked += 1;
+        }
+
+        await db
+          .insert(seoCoverageStatusTable)
+          .values({
+            url: fullUrl,
+            path,
+            artifactKind: kind,
+            googleBucket: (set.googleBucket as string) ?? null,
+            googleCoverageState: (set.googleCoverageState as string) ?? null,
+            googleVerdict: (set.googleVerdict as string) ?? null,
+            googleLastCrawlAt: (set.googleLastCrawlAt as Date) ?? null,
+            googleRaw: set.googleRaw ?? null,
+            bingBucket: (set.bingBucket as string) ?? null,
+            bingHttpStatus: (set.bingHttpStatus as number) ?? null,
+            bingLastCrawlAt: (set.bingLastCrawlAt as Date) ?? null,
+            bingRaw: set.bingRaw ?? null,
+            lastCheckedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: seoCoverageStatusTable.url,
+            set,
+          });
+      }
+    }
+    const workerCount = Math.min(SCAN_CONCURRENCY, urls.length || 1);
+    await Promise.all(Array.from({ length: workerCount }, worker));
+
+    // Drop rows for URLs that are no longer published (unpublished /
+    // deleted): any row touched this run has lastCheckedAt >= scanStartedAt,
+    // so anything older than the scan start was not re-seen and is stale.
+    await db
+      .delete(seoCoverageStatusTable)
+      .where(lt(seoCoverageStatusTable.lastCheckedAt, scanStartedAt));
+
+    await db
+      .update(seoCoverageRunsTable)
+      .set({
+        finishedAt: new Date(),
+        urlCount,
+        googleChecked,
+        bingChecked,
+      })
+      .where(eq(seoCoverageRunsTable.id, run.id));
+
+    logger.info(
+      { urlCount, googleChecked, bingChecked, trigger },
+      "seo.coverage scan complete",
+    );
+    return {
+      urlCount,
+      googleChecked,
+      bingChecked,
+      googleConfigured: gConf,
+      bingConfigured: bConf,
+      skipped: false,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await db
+      .update(seoCoverageRunsTable)
+      .set({ finishedAt: new Date(), error: msg, urlCount, googleChecked, bingChecked })
+      .where(eq(seoCoverageRunsTable.id, run.id));
+    logger.error({ err }, "seo.coverage scan failed");
+    throw err;
+  } finally {
+    scanRunning = false;
+  }
+}
+
+// ─── Aggregation for the dashboard ───────────────────────────────────────────
+
+export interface KindBuckets {
+  kind: string;
+  total: number;
+  indexed: number;
+  discoveredNotIndexed: number;
+  crawlError: number;
+  soft404: number;
+  unknown: number;
+}
+
+export interface CoverageOverview {
+  lastRun: SeoCoverageRun | null;
+  googleConfigured: boolean;
+  bingConfigured: boolean;
+  byKind: KindBuckets[];
+  scanRunning: boolean;
+}
+
+export async function getCoverageOverview(): Promise<CoverageOverview> {
+  const rows = await db
+    .select({
+      kind: seoCoverageStatusTable.artifactKind,
+      bucket: seoCoverageStatusTable.googleBucket,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(seoCoverageStatusTable)
+    .groupBy(seoCoverageStatusTable.artifactKind, seoCoverageStatusTable.googleBucket);
+
+  const byKind = new Map<string, KindBuckets>();
+  for (const r of rows) {
+    const k = byKind.get(r.kind) ?? {
+      kind: r.kind,
+      total: 0,
+      indexed: 0,
+      discoveredNotIndexed: 0,
+      crawlError: 0,
+      soft404: 0,
+      unknown: 0,
+    };
+    k.total += r.count;
+    switch (r.bucket) {
+      case "indexed":
+        k.indexed += r.count;
+        break;
+      case "discovered-not-indexed":
+        k.discoveredNotIndexed += r.count;
+        break;
+      case "crawl-error":
+        k.crawlError += r.count;
+        break;
+      case "soft-404":
+        k.soft404 += r.count;
+        break;
+      default:
+        k.unknown += r.count;
+        break;
+    }
+    byKind.set(r.kind, k);
+  }
+
+  const [lastRun] = await db
+    .select()
+    .from(seoCoverageRunsTable)
+    .orderBy(desc(seoCoverageRunsTable.startedAt))
+    .limit(1);
+
+  return {
+    lastRun: lastRun ?? null,
+    googleConfigured: googleConfigured(),
+    bingConfigured: bingConfigured(),
+    byKind: Array.from(byKind.values()).sort((a, b) =>
+      a.kind.localeCompare(b.kind),
+    ),
+    scanRunning,
+  };
+}
+
+export interface CoverageUrlRow {
+  url: string;
+  path: string;
+  artifactKind: string;
+  googleBucket: string | null;
+  googleCoverageState: string | null;
+  bingBucket: string | null;
+  bingHttpStatus: number | null;
+  lastCheckedAt: string | null;
+}
+
+export async function listCoverageUrls(opts: {
+  kind?: string;
+  bucket?: string;
+  limit: number;
+}): Promise<CoverageUrlRow[]> {
+  const conds = [];
+  if (opts.kind) conds.push(eq(seoCoverageStatusTable.artifactKind, opts.kind));
+  if (opts.bucket)
+    conds.push(eq(seoCoverageStatusTable.googleBucket, opts.bucket));
+  const rows = await db
+    .select({
+      url: seoCoverageStatusTable.url,
+      path: seoCoverageStatusTable.path,
+      artifactKind: seoCoverageStatusTable.artifactKind,
+      googleBucket: seoCoverageStatusTable.googleBucket,
+      googleCoverageState: seoCoverageStatusTable.googleCoverageState,
+      bingBucket: seoCoverageStatusTable.bingBucket,
+      bingHttpStatus: seoCoverageStatusTable.bingHttpStatus,
+      lastCheckedAt: seoCoverageStatusTable.lastCheckedAt,
+    })
+    .from(seoCoverageStatusTable)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(seoCoverageStatusTable.path)
+    .limit(Math.min(opts.limit, 500));
+  return rows.map((r) => ({
+    ...r,
+    lastCheckedAt: r.lastCheckedAt ? r.lastCheckedAt.toISOString() : null,
+  }));
+}

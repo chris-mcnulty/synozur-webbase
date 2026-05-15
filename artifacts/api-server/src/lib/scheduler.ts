@@ -5,6 +5,7 @@ import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
 import { flushPortalDocumentNotifications } from "./portalDocumentNotifications";
 import { reindexEditorialSourceSafe } from "./ai/reindexHook";
 import { runAutoStopSweep } from "./experimentsAutoStop";
+import { runSeoCoverageScan } from "./seoCoverage";
 import { invalidateActiveExperimentsCache } from "../routes/experiments";
 import type { Logger } from "pino";
 
@@ -26,6 +27,11 @@ const AUDIT_PRUNE_INITIAL_DELAY_MS = 15 * 60 * 1000;
 // significance threshold is honored within an hour of crossing.
 const EXPERIMENT_AUTOSTOP_INTERVAL_MS = 60 * 60 * 1000;
 const EXPERIMENT_AUTOSTOP_INITIAL_DELAY_MS = 5 * 60 * 1000;
+// #160 — daily Search Console / Bing index-coverage scan. Delayed well
+// past boot so startup migrations and the first sitemap build settle
+// first; the scanner no-ops cheaply when no provider creds are set.
+const SEO_COVERAGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const SEO_COVERAGE_INITIAL_DELAY_MS = 20 * 60 * 1000;
 // Auth/oauth/session events are kept for 5 years regardless of the admin's
 // retention setting — these are the rows compliance teams actually need.
 const AUTH_RETENTION_DAYS = 365 * 5;
@@ -255,11 +261,38 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
     EXPERIMENT_AUTOSTOP_INTERVAL_MS,
   );
 
+  // #160 — daily SEO index-coverage scan.
+  let seoCoverageRunning = false;
+  async function seoCoverageTick() {
+    if (stopping || seoCoverageRunning) return;
+    seoCoverageRunning = true;
+    try {
+      const result = await runSeoCoverageScan("scheduled");
+      if (!result.skipped) {
+        logger.info(result, "seo-coverage daily scan complete");
+      }
+    } catch (err) {
+      logger.error({ err }, "seo-coverage daily scan tick failed");
+    } finally {
+      seoCoverageRunning = false;
+    }
+  }
+  const seoCoverageInitial = setTimeout(
+    seoCoverageTick,
+    SEO_COVERAGE_INITIAL_DELAY_MS,
+  );
+  const seoCoverageInterval = setInterval(
+    seoCoverageTick,
+    SEO_COVERAGE_INTERVAL_MS,
+  );
+
   return {
     stop() {
       stopping = true;
       clearTimeout(initial);
       clearInterval(interval);
+      clearTimeout(seoCoverageInitial);
+      clearInterval(seoCoverageInterval);
       clearTimeout(reconcileInitial);
       clearInterval(reconcileInterval);
       clearTimeout(notifyInitial);

@@ -31,6 +31,27 @@ Implementation lives in `artifacts/api-server/src/lib/seoSubmit.ts`. The api-ser
 
 Both tokens have a redundant React-side fallback in `artifacts/synozur/src/components/layout/index.tsx` driven by the `seoGoogleSiteVerification` / `seoBingSiteVerification` columns in `site_settings`, but Search Console's verification crawler does not execute JavaScript — the env-driven SSR path is what actually completes verification.
 
+### Index-coverage dashboard (#160)
+
+The `/admin/marketing/seo-coverage` dashboard reports, per artifact type, how
+many published URLs are **indexed / discovered-not-indexed / crawl-error /
+soft-404** according to each search engine. A daily cron
+(`runSeoCoverageScan` in `artifacts/api-server/src/lib/seoCoverage.ts`) walks
+the same URL set the sitemap is built from and calls the Search Console URL
+Inspection API + the Bing Webmaster `GetUrlInfo` API.
+
+| Var | Channel | Required? | Description |
+| --- | --- | --- | --- |
+| `GOOGLE_INDEXING_SA_JSON` | Google URL Inspection | Optional (reused from Step 2) | **Same service-account JSON as the Indexing API.** The Search Console URL Inspection API only needs the SA added as a *user* on the property (Owner already covers it). No extra secret. |
+| `GOOGLE_SEARCH_CONSOLE_SITE_URL` | Google URL Inspection | Optional (with the SA above) | The exact Search Console property identifier, e.g. `sc-domain:synozur.com` for a domain property or `https://www.synozur.com/` for a URL-prefix property. Must match the property the SA is added to. |
+| `BING_API_KEY` / `BING_SITE_URL` | Bing GetUrlInfo | Optional | Reused from Step 3. Bing is best-effort — its Webmaster API exposes far less than Search Console, so its column degrades to `unknown`/`not-configured` gracefully. |
+| `SEO_COVERAGE_MAX_URLS` | Both | Optional (default `1500`) | Per-run cap so a large sitemap can't exhaust the Search Console URL Inspection daily quota (2000/property/day). |
+
+Every provider is independently opt-in and degrades exactly like the
+submission channels: with no credentials the dashboard shows a "not
+configured" banner and the bucket counts stay empty rather than throwing.
+The scan also runs from the **Rescan now** button on the dashboard.
+
 ### CSP rollout (Tier 1 launch-readiness L4)
 
 | Var | Required? | Description |
@@ -96,6 +117,33 @@ Independent of IndexNow — useful if you want `submitted` counts visible in the
    | `BING_SITE_URL` | the exact verified site URL, e.g. `https://www.synozur.com` |
 
 Both must be present; the channel reports `error: "BING_API_KEY or BING_SITE_URL not set"` if either is missing.
+
+---
+
+## Step 4 — Search Console URL Inspection (index-coverage dashboard, #160)
+
+Reuses the Step 2 service account — no new Google Cloud setup.
+
+1. Confirm the Step 2 service account is added to the Search Console
+   property (Settings → Users and permissions). Owner from Step 2 is
+   sufficient; read access is all the URL Inspection API needs.
+2. Determine the property identifier:
+   - Domain property → `sc-domain:synozur.com`
+   - URL-prefix property → `https://www.synozur.com/` (trailing slash, exact)
+3. In the deployed app's secrets, set:
+
+   | Var | Value |
+   | --- | --- |
+   | `GOOGLE_SEARCH_CONSOLE_SITE_URL` | the property identifier from step 2 |
+
+4. (Optional) set `BING_API_KEY` / `BING_SITE_URL` (Step 3) to populate the
+   Bing column too.
+5. Deploy. The first scan runs ~20 minutes after boot, then daily; trigger
+   one immediately with **Rescan now** on `/admin/marketing/seo-coverage`.
+
+The URL Inspection API quota is 2000 calls per property per day; the
+scanner caps each run at `SEO_COVERAGE_MAX_URLS` (default 1500) so a single
+run can't exhaust it.
 
 ---
 

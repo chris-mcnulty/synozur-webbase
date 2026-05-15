@@ -143,6 +143,7 @@ import CareersEmbedJobs from "@/pages/careers-embed-jobs";
 import CareersEmbedJob from "@/pages/careers-embed-job";
 import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
+import MarketingSeoCoverage from "@/pages/admin/marketing/seo-coverage";
 import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
@@ -452,6 +453,7 @@ function AdminRoutes() {
         <Route path="/marketing/traffic-import" component={TrafficImportPage} />
         <Route path="/marketing/seo" component={MarketingSeo} />
         <Route path="/marketing/seo-audit" component={MarketingSeoAudit} />
+        <Route path="/marketing/seo-coverage" component={MarketingSeoCoverage} />
         <Route path="/marketing/subscribers" component={MarketingSubscribers} />
 
         {/* AI section */}

@@ -35,7 +35,7 @@ function xmlEscape(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-interface Entry {
+export interface Entry {
   loc: string;
   lastmod?: string | null;
   changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
@@ -80,7 +80,27 @@ function toEntry(path: string, lastmod: Date | string | null | undefined): Entry
   return { loc: path, lastmod: iso };
 }
 
-async function collectEntries(): Promise<Entry[]> {
+// #160 — classify a relative path into an artifact kind for the SEO
+// coverage dashboard's per-type buckets. Mirrors the URL patterns built
+// in collectEntries() below.
+export function classifyArtifactKind(path: string): string {
+  const p = path.split(/[?#]/)[0];
+  if (p === "/" ) return "home";
+  if (p.startsWith("/insights/")) return "insight";
+  if (p.startsWith("/services/")) return "service";
+  if (p.startsWith("/solutions/")) return "solution";
+  if (p.startsWith("/applications/")) return "application";
+  if (p.startsWith("/case-studies/")) return "case-study";
+  if (p.startsWith("/models/")) return "model";
+  if (p.startsWith("/workshops/")) return "workshop";
+  if (p.startsWith("/webinars/")) return "webinar";
+  if (p.startsWith("/library/")) return "library";
+  if (p.startsWith("/team/")) return "team";
+  if (p.startsWith("/faq/")) return "faq";
+  return "static";
+}
+
+export async function collectEntries(): Promise<Entry[]> {
   const origin = siteOrigin();
   const entries: Entry[] = [];
 

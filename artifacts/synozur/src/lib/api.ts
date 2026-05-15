@@ -735,6 +735,49 @@ export interface SeoSubmitBundle {
   results: SeoSubmitResult[];
 }
 
+// #160 — Search Console / Bing index-coverage dashboard.
+export interface SeoCoverageKindBuckets {
+  kind: string;
+  total: number;
+  indexed: number;
+  discoveredNotIndexed: number;
+  crawlError: number;
+  soft404: number;
+  unknown: number;
+}
+
+export interface SeoCoverageRun {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  trigger: string;
+  urlCount: number;
+  googleConfigured: number;
+  bingConfigured: number;
+  googleChecked: number;
+  bingChecked: number;
+  error: string | null;
+}
+
+export interface SeoCoverageOverview {
+  lastRun: SeoCoverageRun | null;
+  googleConfigured: boolean;
+  bingConfigured: boolean;
+  byKind: SeoCoverageKindBuckets[];
+  scanRunning: boolean;
+}
+
+export interface SeoCoverageUrlRow {
+  url: string;
+  path: string;
+  artifactKind: string;
+  googleBucket: string | null;
+  googleCoverageState: string | null;
+  bingBucket: string | null;
+  bingHttpStatus: number | null;
+  lastCheckedAt: string | null;
+}
+
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
@@ -992,6 +1035,23 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ urls }),
     }),
+  seoCoverage: () =>
+    jsonFetch<SeoCoverageOverview>(url("/cms/seo-coverage")),
+  seoCoverageUrls: (params: { kind?: string; bucket?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params.kind) q.set("kind", params.kind);
+    if (params.bucket) q.set("bucket", params.bucket);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return jsonFetch<{ rows: SeoCoverageUrlRow[] }>(
+      url(`/cms/seo-coverage/urls${qs ? `?${qs}` : ""}`),
+    );
+  },
+  seoCoverageScan: () =>
+    jsonFetch<{ started: boolean; alreadyRunning?: boolean }>(
+      url("/cms/seo-coverage/scan"),
+      { method: "POST", body: JSON.stringify({}) },
+    ),
   publicTeamMembers: () => jsonFetch<PublicTeamMember[]>(url("/team-members")),
   publicTeamMember: (slug: string) =>
     jsonFetch<PublicTeamMemberDetail>(url(`/team-members/${encodeURIComponent(slug)}`)),
