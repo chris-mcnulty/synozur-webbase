@@ -95,7 +95,7 @@ export const TYPE_LABELS: Record<CollateralType, string> = {
   video: "VIDEO",
   ebook: "EBOOK",
   application: "APPLICATION",
-  landing_page: "LANDING PAGE",
+  landing_page: "PAGES",
 };
 
 export const PILLAR_LABELS: Record<Pillar, string> = {
