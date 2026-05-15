@@ -61,7 +61,7 @@ export default function Webinars() {
         image={copy.ogImage}
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] pt-24 pb-12">
+      <section className="relative overflow-hidden bg-[#0B0B1A] pt-20 pb-8 md:pt-24 md:pb-12">
         <div className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-6xl">
           <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
@@ -80,7 +80,7 @@ export default function Webinars() {
         </div>
       </section>
 
-      <section className="bg-background py-12">
+      <section className="bg-background py-8 md:py-12">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-3">

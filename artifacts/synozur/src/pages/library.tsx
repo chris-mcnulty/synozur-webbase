@@ -126,7 +126,7 @@ export default function Library() {
         image={copy.ogImage}
       />
 
-      <section className="bg-[#0B0B1A] pt-24 pb-12">
+      <section className="bg-[#0B0B1A] pt-20 pb-8 md:pt-24 md:pb-12">
         <div className="container mx-auto px-4 max-w-6xl">
           <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
@@ -144,7 +144,7 @@ export default function Library() {
         </div>
       </section>
 
-      <section className="bg-background py-12">
+      <section className="bg-background py-8 md:py-12">
         <div className="container mx-auto px-4 max-w-6xl">
           {/* Search */}
           <form onSubmit={submitSearch} className="mb-8">
@@ -185,7 +185,7 @@ export default function Library() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">Type</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
                 {getTypeFacets().map((t) => {
                   const active = types.includes(t);
                   return (
@@ -193,7 +193,7 @@ export default function Library() {
                       key={t}
                       type="button"
                       onClick={() => toggleType(t)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                         active
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-card text-foreground border-border hover:bg-muted"
@@ -207,7 +207,7 @@ export default function Library() {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">Pillar</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
                 {getPillarFacets().map((p) => {
                   const active = pillars.includes(p);
                   return (
@@ -215,7 +215,7 @@ export default function Library() {
                       key={p}
                       type="button"
                       onClick={() => togglePillar(p)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                         active
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-card text-foreground border-border hover:bg-muted"

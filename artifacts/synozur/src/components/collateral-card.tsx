@@ -58,10 +58,14 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy", 
   // min-h-[90vh] section. A pure 3/4 portrait aspect makes the card taller
   // than the viewport, pushing the title/badge overlay below the fold. Cap
   // the height so the bottom text overlay always stays visible.
+  // On mobile the grid is a single full-width column, so a 4/5 portrait card
+  // becomes very tall and forces excessive scrolling. Use a compact landscape
+  // ratio on phones (matching the workshop cards) and restore the portrait
+  // look from `sm:` up, where the grid is 2–3 narrow columns.
   const aspect =
     variant === "carousel"
       ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
-      : "aspect-[4/5]";
+      : "aspect-[4/3] sm:aspect-[4/5]";
   const formattedDate = formatCardDate(item);
 
   const heroSrc =
@@ -94,8 +98,8 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy", 
         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 z-10" />
-      <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-8">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center gap-2 mb-2 sm:mb-4">
           <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/25 text-white text-[11px] tracking-[0.2em] font-semibold backdrop-blur-md">
             {TYPE_LABELS[item.type]}
           </span>
@@ -138,7 +142,7 @@ export function CollateralCardSkeleton({ variant = "grid" }: { variant?: "carous
   const aspect =
     variant === "carousel"
       ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
-      : "aspect-[4/5]";
+      : "aspect-[4/3] sm:aspect-[4/5]";
   return (
     <div
       className={`relative ${aspect} overflow-hidden rounded-2xl border border-border/60 bg-card animate-pulse`}
