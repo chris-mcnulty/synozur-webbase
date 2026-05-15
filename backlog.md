@@ -183,10 +183,10 @@ Shipped: `NODE_ENV=test`-gated auth bypass plus Playwright coverage of the link-
 
 ~~The pillar overview, per-pillar overview, service-detail, and solution-detail pages were built and manually verified but have no automated test coverage.~~ **Shipped:** Playwright suite at `artifacts/synozur/tests/services.spec.ts` covers the full flow — overview → pillar → solution detail with API assertions. Runs in the manual-trigger `quality.yml` workflow alongside the axe a11y suite (`a11y.spec.ts`). Verified May 2026.
 
-### #109 · Careers / HR module under `/admin/people/careers`
+### ~~#109 · Careers / HR module under `/admin/people/careers`~~ **— Shipped May 2026**
 **Depends on:** admin section reorganization (capability layer + section folders)
 
-Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module: DB tables for `job_postings` (title, slug, department, location, employment type, status, hero copy, responsibilities, requirements, compensation range, posted/closes timestamps) and `job_applications` (name, email, resume object-storage ref, cover letter, status `new|reviewing|interviewing|offer|hired|rejected|withdrawn`, applicant-supplied fields, timeline of status changes). Admin pages under `pages/admin/people/careers/` for list + edit of postings and a triage view of applications. Public pages at `/careers` and `/careers/:slug` with an apply form that uploads resumes through the existing Object Storage flow. Introduces an `hr` role and an `hr.manage` capability; the existing Careers admin items on the sidebar are gated on `hr.manage`. Transactional email confirmations reuse the Resend integration.
+~~Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module.~~ **Shipped:** `lib/db/src/schema/careers.ts` backs the module; api-server routes live under `artifacts/api-server/src/routes/careers/` (`jobs.ts`, `applications.ts`, `settings.ts`) gated on `careers.applications.read` / `careers.applications.write` capabilities, with `careersAi.ts` (AI resume scoring), `careersResumeParser.ts`, and `careersEmail.ts` helpers. Public surface: `pages/careers.tsx`, `careers-detail.tsx`, `careers-apply.tsx`, `careers-applied.tsx`, plus `careers-embed-jobs.tsx` / `careers-embed-job.tsx` embeddable variants and a `careersRedirect.ts` legacy-URL map. Admin module landed under `pages/admin/careers/` (`jobs-list.tsx`, `job-edit.tsx`, `applications-list.tsx`, `application-detail.tsx`, `settings.tsx`) rather than under `pages/admin/people/` to match the broader admin section grouping. Playwright coverage in `artifacts/synozur/tests/careers.spec.ts`. Transactional confirmations run through the current SendGrid path (#220), not the original Resend integration.
 
 ### ~~#110 · Show a video thumbnail preview when a custom hero video is active~~ **— Shipped May 2026**
 **Depends on:** #106 (hero video background)
@@ -299,15 +299,15 @@ Shipped: integration suite at `artifacts/api-server/src/routes/auth.rateLimit.te
 
 ## Marketing & Lifecycle
 
-### #83 · Gated download CTA for white papers
+### ~~#83 · Gated download CTA for white papers~~ **— Dropped May 2026 (handled by HubSpot)**
 **Depends on:** —
 
-White paper detail pages currently offer a plain download button. For lead generation, high-value white papers should require a visitor's name and email before delivering the file. On form submission the API creates a submission record (same `submissions` table used by contact and intake forms), sends the visitor a time-limited secure download link by email, and surfaces the submission in the admin alongside other form responses. Non-gated items keep their existing direct-download behavior. The admin collateral editor gains a "Require email to download" toggle that enables gating per item.
+~~White paper detail pages currently offer a plain download button. For lead generation, high-value white papers should require a visitor's name and email before delivering the file.~~ **Dropped from scope:** white-paper lead-gen gating is handled by HubSpot forms / landing pages, which already own the form capture, list membership, and nurture flow. An in-app gate would duplicate the CRM-side capture and split the lead record. No in-app work planned.
 
-### #85 · Upcoming webinar registration rail
+### ~~#85 · Upcoming webinar registration rail~~ **— Dropped May 2026 (handled by Teams webinar)**
 **Depends on:** —
 
-Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state: webinar records gain a `scheduled_at` date and an optional external `registration_url`. When a webinar is upcoming the detail page shows the event date and a registration CTA instead of a video player; the webinar index gains an "Upcoming" section above the on-demand grid. If no external URL is provided, an inline name/email form creates a submission record and sends a confirmation email with an .ics calendar invite attachment. Once the scheduled date passes, items revert automatically to on-demand behavior.
+~~Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state with an inline registration form.~~ **Dropped from scope:** upcoming-webinar registration is handled by Microsoft Teams webinar (registration page, confirmation + calendar invite, attendee management). The library continues to host the on-demand recording after the event; no in-app registration rail will be built.
 
 ### #86 · Fix OG tags for social link previews — **Infrastructure shipped, production data not populated**
 **Depends on:** —
@@ -616,12 +616,12 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#68~~ | ~~Auto-trim old post revisions~~ — **Shipped May 2026** | Content Library | #48 |
 | ~~#75~~ | ~~Bulk reorder featured library items via drag-and-drop~~ — **Shipped May 2026** | Content Library | #69 |
 | ~~#76~~ | ~~Show a live preview of how a library item will appear on the public site~~ — **Shipped May 2026** | Content Library | #69 |
-| #83 | Gated download CTA for white papers | Marketing & Lifecycle | — |
+| ~~#83~~ | ~~Gated download CTA for white papers~~ — **Dropped May 2026 (handled by HubSpot)** | Marketing & Lifecycle | — |
 | ~~#84~~ | ~~Seed & verify 301 redirects from Wix~~ — **Shipped (seeder)** | Public Site UX | — |
-| #85 | Upcoming webinar registration rail | Marketing & Lifecycle | — |
+| ~~#85~~ | ~~Upcoming webinar registration rail~~ — **Dropped May 2026 (handled by Teams webinar)** | Marketing & Lifecycle | — |
 | #86 | Fix OG tags for social link previews — **infrastructure shipped, prod data backfill open (L7)** | Marketing & Lifecycle | — |
 | ~~#102~~ | ~~Connect search engine submission to live credentials~~ — **Shipped May 2026** | Marketing & Lifecycle | #97 |
-| #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
+| ~~#109~~ | ~~Careers / HR module under /admin/people/careers~~ — **Shipped May 2026** | Admin Access & People | — |
 | ~~#110~~ | ~~Show a video thumbnail preview when a custom hero video is active~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#111~~ | ~~Validate video uploads before they reach object storage~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#119~~ | ~~Add automated browser tests for the full sign-in and sign-out flow~~ — **Shipped May 2026** | Admin Access & People | #115 |
