@@ -98,8 +98,8 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy", 
         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 z-10" />
-      <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-8">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center gap-2 mb-2 sm:mb-4">
           <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/25 text-white text-[11px] tracking-[0.2em] font-semibold backdrop-blur-md">
             {TYPE_LABELS[item.type]}
           </span>
