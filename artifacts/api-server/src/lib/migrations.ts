@@ -3027,8 +3027,8 @@ export async function runMigrations(): Promise<void> {
         finished_at timestamptz,
         trigger text NOT NULL DEFAULT 'scheduled',
         url_count integer NOT NULL DEFAULT 0,
-        google_configured integer NOT NULL DEFAULT 0,
-        bing_configured integer NOT NULL DEFAULT 0,
+        google_configured boolean NOT NULL DEFAULT false,
+        bing_configured boolean NOT NULL DEFAULT false,
         google_checked integer NOT NULL DEFAULT 0,
         bing_checked integer NOT NULL DEFAULT 0,
         error text

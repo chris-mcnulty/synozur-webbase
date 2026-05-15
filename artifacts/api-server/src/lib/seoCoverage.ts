@@ -50,6 +50,9 @@ const GOOGLE_INSPECT_URL =
 
 const SCAN_CONCURRENCY = 5;
 const DEFAULT_MAX_URLS = 1500;
+// Per-request ceiling so a stalled provider can't hang a worker (and keep
+// the scan lock held) indefinitely.
+const PROVIDER_TIMEOUT_MS = 10_000;
 
 function maxUrls(): number {
   const raw = Number(process.env.SEO_COVERAGE_MAX_URLS);
@@ -120,6 +123,7 @@ async function probeGoogle(
       url: GOOGLE_INSPECT_URL,
       method: "POST",
       data: { inspectionUrl, siteUrl },
+      timeout: PROVIDER_TIMEOUT_MS,
     })) as { data?: unknown };
     const data = (res.data ?? {}) as {
       inspectionResult?: { indexStatusResult?: GoogleIndexStatusResult };
@@ -164,9 +168,20 @@ async function probeBing(inspectionUrl: string): Promise<BingProbe> {
     u.searchParams.set("apikey", apiKey);
     u.searchParams.set("siteUrl", siteUrl);
     u.searchParams.set("url", inspectionUrl);
-    const res = await fetch(u.toString(), {
-      headers: { Accept: "application/json" },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      PROVIDER_TIMEOUT_MS,
+    );
+    let res: Response;
+    try {
+      res = await fetch(u.toString(), {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) {
       return {
         bucket: "error",
@@ -194,6 +209,29 @@ async function probeBing(inspectionUrl: string): Promise<BingProbe> {
 let scanRunning = false;
 export function isScanRunning(): boolean {
   return scanRunning;
+}
+
+// Cross-process single-flight: a Postgres session-level advisory lock so a
+// second replica (or a manual scan racing the cron) can't double-consume
+// the Search Console URL Inspection quota. The in-memory `scanRunning`
+// flag is just a cheap same-process fast path on top of this.
+const SCAN_ADVISORY_LOCK_KEY = 4815162342;
+
+async function tryAcquireScanLock(): Promise<boolean> {
+  const r = (await db.execute(
+    sql`select pg_try_advisory_lock(${SCAN_ADVISORY_LOCK_KEY}) as locked`,
+  )) as unknown as { rows?: Array<{ locked: boolean }> };
+  return r.rows?.[0]?.locked === true;
+}
+
+async function releaseScanLock(): Promise<void> {
+  try {
+    await db.execute(
+      sql`select pg_advisory_unlock(${SCAN_ADVISORY_LOCK_KEY})`,
+    );
+  } catch {
+    /* lock auto-releases on session end; nothing actionable here */
+  }
 }
 
 export interface ScanResult {
@@ -227,12 +265,24 @@ export async function runSeoCoverageScan(
   }
   scanRunning = true;
 
+  if (!(await tryAcquireScanLock())) {
+    scanRunning = false;
+    return {
+      urlCount: 0,
+      googleChecked: 0,
+      bingChecked: 0,
+      googleConfigured: gConf,
+      bingConfigured: bConf,
+      skipped: true,
+    };
+  }
+
   const [run] = await db
     .insert(seoCoverageRunsTable)
     .values({
       trigger,
-      googleConfigured: gConf ? 1 : 0,
-      bingConfigured: bConf ? 1 : 0,
+      googleConfigured: gConf,
+      bingConfigured: bConf,
     })
     .returning({ id: seoCoverageRunsTable.id });
 
@@ -355,6 +405,7 @@ export async function runSeoCoverageScan(
     logger.error({ err }, "seo.coverage scan failed");
     throw err;
   } finally {
+    await releaseScanLock();
     scanRunning = false;
   }
 }
@@ -391,6 +442,11 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
 
   const byKind = new Map<string, KindBuckets>();
   for (const r of rows) {
+    // "not-configured" / "error" are provider/transport states, not
+    // coverage verdicts. Excluding them keeps the table empty when Google
+    // isn't configured (matching the dashboard banner + docs) and keeps
+    // "Unknown" meaning a genuine unknown coverage state.
+    if (r.bucket === "not-configured" || r.bucket === "error") continue;
     const k = byKind.get(r.kind) ?? {
       kind: r.kind,
       total: 0,

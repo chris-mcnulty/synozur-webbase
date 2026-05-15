@@ -81,23 +81,33 @@ function toEntry(path: string, lastmod: Date | string | null | undefined): Entry
 }
 
 // #160 — classify a relative path into an artifact kind for the SEO
-// coverage dashboard's per-type buckets. Mirrors the URL patterns built
+// coverage dashboard's per-type buckets. Keyed on the first path segment
+// so both the section hub (e.g. "/insights") and detail pages (e.g.
+// "/insights/foo") classify the same way. Mirrors the URL patterns built
 // in collectEntries() below.
+const SEGMENT_KIND: Record<string, string> = {
+  insights: "insight",
+  services: "service",
+  "services-overview": "service",
+  solutions: "solution",
+  applications: "application",
+  "case-studies": "case-study",
+  models: "model",
+  workshops: "workshop",
+  webinars: "webinar",
+  library: "library",
+  items: "library",
+  team: "team",
+  faq: "faq",
+  polaris: "polaris",
+  events: "event",
+};
+
 export function classifyArtifactKind(path: string): string {
-  const p = path.split(/[?#]/)[0];
-  if (p === "/" ) return "home";
-  if (p.startsWith("/insights/")) return "insight";
-  if (p.startsWith("/services/")) return "service";
-  if (p.startsWith("/solutions/")) return "solution";
-  if (p.startsWith("/applications/")) return "application";
-  if (p.startsWith("/case-studies/")) return "case-study";
-  if (p.startsWith("/models/")) return "model";
-  if (p.startsWith("/workshops/")) return "workshop";
-  if (p.startsWith("/webinars/")) return "webinar";
-  if (p.startsWith("/library/")) return "library";
-  if (p.startsWith("/team/")) return "team";
-  if (p.startsWith("/faq/")) return "faq";
-  return "static";
+  const clean = path.split(/[?#]/)[0];
+  if (clean === "/" || clean === "") return "home";
+  const seg = clean.replace(/^\/+/, "").split("/")[0];
+  return SEGMENT_KIND[seg] ?? "static";
 }
 
 export async function collectEntries(): Promise<Entry[]> {

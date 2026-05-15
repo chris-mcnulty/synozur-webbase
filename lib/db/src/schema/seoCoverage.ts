@@ -16,6 +16,7 @@ import {
   uuid,
   text,
   integer,
+  boolean,
   timestamp,
   jsonb,
   index,
@@ -73,8 +74,8 @@ export const seoCoverageRunsTable = pgTable(
     // "scheduled" | "manual"
     trigger: text("trigger").notNull().default("scheduled"),
     urlCount: integer("url_count").notNull().default(0),
-    googleConfigured: integer("google_configured").notNull().default(0),
-    bingConfigured: integer("bing_configured").notNull().default(0),
+    googleConfigured: boolean("google_configured").notNull().default(false),
+    bingConfigured: boolean("bing_configured").notNull().default(false),
     googleChecked: integer("google_checked").notNull().default(0),
     bingChecked: integer("bing_checked").notNull().default(0),
     error: text("error"),

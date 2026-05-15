@@ -752,8 +752,8 @@ export interface SeoCoverageRun {
   finishedAt: string | null;
   trigger: string;
   urlCount: number;
-  googleConfigured: number;
-  bingConfigured: number;
+  googleConfigured: boolean;
+  bingConfigured: boolean;
   googleChecked: number;
   bingChecked: number;
   error: string | null;
