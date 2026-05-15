@@ -58,10 +58,14 @@ export function CollateralCard({ item, variant = "grid", imageLoading = "lazy", 
   // min-h-[90vh] section. A pure 3/4 portrait aspect makes the card taller
   // than the viewport, pushing the title/badge overlay below the fold. Cap
   // the height so the bottom text overlay always stays visible.
+  // On mobile the grid is a single full-width column, so a 4/5 portrait card
+  // becomes very tall and forces excessive scrolling. Use a compact landscape
+  // ratio on phones (matching the workshop cards) and restore the portrait
+  // look from `sm:` up, where the grid is 2–3 narrow columns.
   const aspect =
     variant === "carousel"
       ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
-      : "aspect-[4/5]";
+      : "aspect-[4/3] sm:aspect-[4/5]";
   const formattedDate = formatCardDate(item);
 
   const heroSrc =
@@ -138,7 +142,7 @@ export function CollateralCardSkeleton({ variant = "grid" }: { variant?: "carous
   const aspect =
     variant === "carousel"
       ? "aspect-[4/5] md:aspect-auto md:h-[min(70vh,640px)]"
-      : "aspect-[4/5]";
+      : "aspect-[4/3] sm:aspect-[4/5]";
   return (
     <div
       className={`relative ${aspect} overflow-hidden rounded-2xl border border-border/60 bg-card animate-pulse`}
