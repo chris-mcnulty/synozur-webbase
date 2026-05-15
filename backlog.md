@@ -183,10 +183,10 @@ Shipped: `NODE_ENV=test`-gated auth bypass plus Playwright coverage of the link-
 
 ~~The pillar overview, per-pillar overview, service-detail, and solution-detail pages were built and manually verified but have no automated test coverage.~~ **Shipped:** Playwright suite at `artifacts/synozur/tests/services.spec.ts` covers the full flow — overview → pillar → solution detail with API assertions. Runs in the manual-trigger `quality.yml` workflow alongside the axe a11y suite (`a11y.spec.ts`). Verified May 2026.
 
-### #109 · Careers / HR module under `/admin/people/careers`
+### ~~#109 · Careers / HR module under `/admin/people/careers`~~ **— Shipped May 2026**
 **Depends on:** admin section reorganization (capability layer + section folders)
 
-Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module: DB tables for `job_postings` (title, slug, department, location, employment type, status, hero copy, responsibilities, requirements, compensation range, posted/closes timestamps) and `job_applications` (name, email, resume object-storage ref, cover letter, status `new|reviewing|interviewing|offer|hired|rejected|withdrawn`, applicant-supplied fields, timeline of status changes). Admin pages under `pages/admin/people/careers/` for list + edit of postings and a triage view of applications. Public pages at `/careers` and `/careers/:slug` with an apply form that uploads resumes through the existing Object Storage flow. Introduces an `hr` role and an `hr.manage` capability; the existing Careers admin items on the sidebar are gated on `hr.manage`. Transactional email confirmations reuse the Resend integration.
+~~Today the admin has a `people` section that manages the team grid and events, but nothing for recruiting. This task adds a Careers module.~~ **Shipped:** `lib/db/src/schema/careers.ts` backs the module; api-server routes live under `artifacts/api-server/src/routes/careers/` (`jobs.ts`, `applications.ts`, `settings.ts`) gated on `careers.applications.read` / `careers.applications.write` capabilities, with `careersAi.ts` (AI resume scoring), `careersResumeParser.ts`, and `careersEmail.ts` helpers. Public surface: `pages/careers.tsx`, `careers-detail.tsx`, `careers-apply.tsx`, `careers-applied.tsx`, plus `careers-embed-jobs.tsx` / `careers-embed-job.tsx` embeddable variants and a `careersRedirect.ts` legacy-URL map. Admin module landed under `pages/admin/careers/` (`jobs-list.tsx`, `job-edit.tsx`, `applications-list.tsx`, `application-detail.tsx`, `settings.tsx`) rather than under `pages/admin/people/` to match the broader admin section grouping. Playwright coverage in `artifacts/synozur/tests/careers.spec.ts`. Transactional confirmations run through the current SendGrid path (#220), not the original Resend integration.
 
 ### ~~#110 · Show a video thumbnail preview when a custom hero video is active~~ **— Shipped May 2026**
 **Depends on:** #106 (hero video background)
@@ -299,15 +299,15 @@ Shipped: integration suite at `artifacts/api-server/src/routes/auth.rateLimit.te
 
 ## Marketing & Lifecycle
 
-### #83 · Gated download CTA for white papers
+### ~~#83 · Gated download CTA for white papers~~ **— Dropped May 2026 (handled by HubSpot)**
 **Depends on:** —
 
-White paper detail pages currently offer a plain download button. For lead generation, high-value white papers should require a visitor's name and email before delivering the file. On form submission the API creates a submission record (same `submissions` table used by contact and intake forms), sends the visitor a time-limited secure download link by email, and surfaces the submission in the admin alongside other form responses. Non-gated items keep their existing direct-download behavior. The admin collateral editor gains a "Require email to download" toggle that enables gating per item.
+~~White paper detail pages currently offer a plain download button. For lead generation, high-value white papers should require a visitor's name and email before delivering the file.~~ **Dropped from scope:** white-paper lead-gen gating is handled by HubSpot forms / landing pages, which already own the form capture, list membership, and nurture flow. An in-app gate would duplicate the CRM-side capture and split the lead record. No in-app work planned.
 
-### #85 · Upcoming webinar registration rail
+### ~~#85 · Upcoming webinar registration rail~~ **— Dropped May 2026 (handled by Teams webinar)**
 **Depends on:** —
 
-Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state: webinar records gain a `scheduled_at` date and an optional external `registration_url`. When a webinar is upcoming the detail page shows the event date and a registration CTA instead of a video player; the webinar index gains an "Upcoming" section above the on-demand grid. If no external URL is provided, an inline name/email form creates a submission record and sends a confirmation email with an .ics calendar invite attachment. Once the scheduled date passes, items revert automatically to on-demand behavior.
+~~Every webinar in the collateral library is currently treated as a past on-demand recording. This task adds an "upcoming" state with an inline registration form.~~ **Dropped from scope:** upcoming-webinar registration is handled by Microsoft Teams webinar (registration page, confirmation + calendar invite, attendee management). The library continues to host the on-demand recording after the event; no in-app registration rail will be built.
 
 ### #86 · Fix OG tags for social link previews — **Infrastructure shipped, production data not populated**
 **Depends on:** —
@@ -469,10 +469,14 @@ Shipped: a new `Broken-link check` workflow (`.github/workflows/link-check.yml`)
 
 ~~The site emits Organization, Article, FAQPage, BreadcrumbList, and Event JSON-LD today, but several artifact types still rank weaker than they could because their structured data is incomplete.~~ **Shipped:** four new components in `artifacts/synozur/src/components/` — `local-business-jsonld.tsx` (emitted on `/contact`, sourced from `site_settings` org address fields with hard-coded geo/opening-hours defaults for the Mill Creek WA office), `person-jsonld.tsx` (emitted on `/team/:slug` with jobTitle, image, and `sameAs` LinkedIn / website links from the existing team profile fields), `video-jsonld.tsx` (emitted on `/videos/:slug` and `/polaris/:slug` with `uploadDate`, ISO-8601 `duration` via `secondsToIsoDuration`, `thumbnailUrl`, `contentUrl`, and `embedUrl`), and `review-jsonld.tsx` (Review + AggregateRating wrapper on the `/clients` testimonials block). The existing `article-jsonld.tsx` learned an `isNews` prop and `insight-detail.tsx` opts a post into `NewsArticle` when its tags or categories include `news`. Each schema renders a single managed `<script id>` so no stacking occurs across SPA navigations.
 
-### #160 · Search Console domain-property verification + indexing dashboard
+### ~~#160 · Search Console domain-property verification + indexing dashboard~~ **— Shipped May 2026** (code; DNS/property verification is ops, tracked under L2)
 **Depends on:** #102 (live search-engine submission credentials)
 
-Production verification with Google Search Console and Bing Webmaster Tools is currently file-upload or DNS-record based and has never been re-confirmed after the Wix → Synozur cutover. This task: (a) adds a `<meta name="google-site-verification">` and `<meta name="msvalidate.01">` line to `index.html` keyed off env variables (so dev/staging/prod can each carry their own token without code changes), (b) confirms DNS TXT verification is also in place at the domain registrar, (c) builds an internal `/admin/marketing/seo-coverage` page that reads the Search Console URL Inspection API + Bing Webmaster API on a daily cron and surfaces "indexed", "discovered — not indexed", "crawl error", and "soft 404" buckets per artifact type, so editors can tell at a glance whether a published post has actually made it into the index.
+~~Production verification with Google Search Console and Bing Webmaster Tools … This task: (a) adds verification meta tags keyed off env variables, (b) confirms DNS TXT verification, (c) builds an internal `/admin/marketing/seo-coverage` page that reads the Search Console URL Inspection API + Bing Webmaster API on a daily cron and surfaces "indexed", "discovered — not indexed", "crawl error", and "soft 404" buckets per artifact type.~~ **Shipped:**
+
+- **(a)** already shipped earlier: `artifacts/synozur/server.mjs` splices `<meta name="google-site-verification">` / `<meta name="msvalidate.01">` from `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` at boot (see launch-readiness L2).
+- **(b)** is an ops task (registrar DNS TXT + property re-verification after the Wix cutover) — remains tracked under L2; no code component.
+- **(c) shipped:** new `seo_coverage_status` + `seo_coverage_runs` tables (idempotent migration step 55 in `lib/migrations.ts`); core scanner `artifacts/api-server/src/lib/seoCoverage.ts` reuses the sitemap's `collectEntries()` URL set, calls the Google **Search Console URL Inspection API** (reusing the #102 `GOOGLE_INDEXING_SA_JSON` SA with the `webmasters.readonly` scope + new `GOOGLE_SEARCH_CONSOLE_SITE_URL` property var) and the Bing Webmaster **GetUrlInfo** API (reusing `BING_API_KEY`/`BING_SITE_URL`), with pure unit-tested bucket normalizers in `seoCoverageBuckets.ts` (`pnpm --filter @workspace/api-server run test:seo-coverage`, 14 cases). Every provider is opt-in and degrades gracefully like `seoSubmit.ts`. A daily cron in `lib/scheduler.ts` (20-min post-boot delay, then 24 h) refreshes rows and prunes URLs that are no longer published. Admin API `GET/POST /cms/seo-coverage*` gated on `content.moderate`; dashboard at `/admin/marketing/seo-coverage` (route + `AdminLayout` nav entry `nav-admin-marketing-seo-coverage`) renders per-artifact-type bucket counts, provider-config + last-run banner, drill-down by (kind, bucket), and a **Rescan now** button. Env vars documented in `docs/seo-env.md` (Step 4). **Remaining ops:** set `GOOGLE_SEARCH_CONSOLE_SITE_URL` (and confirm the SA is a Search Console user) in production, then verify a scan populates buckets — folds into the L2 ops checklist.
 
 ### ~~#161 · Dynamic OG image generation for insights, case studies, and Polaris episodes~~ — **Shipped May 2026**
 **Depends on:** —
@@ -616,12 +620,12 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#68~~ | ~~Auto-trim old post revisions~~ — **Shipped May 2026** | Content Library | #48 |
 | ~~#75~~ | ~~Bulk reorder featured library items via drag-and-drop~~ — **Shipped May 2026** | Content Library | #69 |
 | ~~#76~~ | ~~Show a live preview of how a library item will appear on the public site~~ — **Shipped May 2026** | Content Library | #69 |
-| #83 | Gated download CTA for white papers | Marketing & Lifecycle | — |
+| ~~#83~~ | ~~Gated download CTA for white papers~~ — **Dropped May 2026 (handled by HubSpot)** | Marketing & Lifecycle | — |
 | ~~#84~~ | ~~Seed & verify 301 redirects from Wix~~ — **Shipped (seeder)** | Public Site UX | — |
-| #85 | Upcoming webinar registration rail | Marketing & Lifecycle | — |
+| ~~#85~~ | ~~Upcoming webinar registration rail~~ — **Dropped May 2026 (handled by Teams webinar)** | Marketing & Lifecycle | — |
 | #86 | Fix OG tags for social link previews — **infrastructure shipped, prod data backfill open (L7)** | Marketing & Lifecycle | — |
 | ~~#102~~ | ~~Connect search engine submission to live credentials~~ — **Shipped May 2026** | Marketing & Lifecycle | #97 |
-| #109 | Careers / HR module under /admin/people/careers | Admin Access & People | — |
+| ~~#109~~ | ~~Careers / HR module under /admin/people/careers~~ — **Shipped May 2026** | Admin Access & People | — |
 | ~~#110~~ | ~~Show a video thumbnail preview when a custom hero video is active~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#111~~ | ~~Validate video uploads before they reach object storage~~ — **Shipped May 2026** | Admin Access & People | #106 |
 | ~~#119~~ | ~~Add automated browser tests for the full sign-in and sign-out flow~~ — **Shipped May 2026** | Admin Access & People | #115 |
@@ -653,7 +657,7 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | ~~#157~~ | ~~CI broken-link checker over the published site~~ — **Shipped May 2026** | Marketing & Lifecycle | #156 |
 | ~~#158~~ | ~~Add `eslint-plugin-jsx-a11y` and a pre-commit a11y/SEO gate~~ — **Shipped (#235)** | Marketing & Lifecycle | — |
 | ~~#159~~ | ~~Expand JSON-LD schema coverage (LocalBusiness, Person, Review, VideoObject)~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
-| #160 | Search Console domain-property verification + indexing dashboard | Marketing & Lifecycle | #102 |
+| ~~#160~~ | ~~Search Console domain-property verification + indexing dashboard~~ — **Shipped May 2026** (code; DNS verification = L2 ops) | Marketing & Lifecycle | #102 |
 | ~~#161~~ | ~~Dynamic OG image generation for insights, case studies, and Polaris episodes~~ — **Shipped May 2026** | Marketing & Lifecycle | — |
 | ~~#162~~ | ~~Use 410 Gone and 308 Permanent Redirect for unpublished and moved content~~ — **Shipped May 2026** | Public Site UX | — |
 | ~~#163~~ | ~~Tune robots meta directives and add a discovery-friendly 404 page~~ — **Shipped May 2026** | Public Site UX | — |

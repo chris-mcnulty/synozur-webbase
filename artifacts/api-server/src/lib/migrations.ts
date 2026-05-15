@@ -2984,6 +2984,61 @@ export async function runMigrations(): Promise<void> {
       END $$;
     `);
 
+    // 55. #160 — Search Console / Bing index-coverage tracking. One
+    //     seo_coverage_status row per published canonical URL, refreshed by
+    //     the daily SEO-coverage cron; seo_coverage_runs records each scan
+    //     so the admin dashboard can surface last-run + provider config.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_coverage_status (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        url text NOT NULL UNIQUE,
+        path text NOT NULL,
+        artifact_kind text NOT NULL,
+        google_bucket text,
+        google_coverage_state text,
+        google_verdict text,
+        google_last_crawl_at timestamptz,
+        google_raw jsonb,
+        bing_bucket text,
+        bing_http_status integer,
+        bing_last_crawl_at timestamptz,
+        bing_raw jsonb,
+        last_checked_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_status_kind_idx
+        ON seo_coverage_status (artifact_kind);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_status_google_bucket_idx
+        ON seo_coverage_status (google_bucket);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_status_checked_idx
+        ON seo_coverage_status (last_checked_at);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_coverage_runs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        started_at timestamptz NOT NULL DEFAULT now(),
+        finished_at timestamptz,
+        trigger text NOT NULL DEFAULT 'scheduled',
+        url_count integer NOT NULL DEFAULT 0,
+        google_configured boolean NOT NULL DEFAULT false,
+        bing_configured boolean NOT NULL DEFAULT false,
+        google_checked integer NOT NULL DEFAULT 0,
+        bing_checked integer NOT NULL DEFAULT 0,
+        error text
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_runs_started_idx
+        ON seo_coverage_runs (started_at);
+    `);
+
     // Best-effort data backfill — runs after all schema DDL so the
     // collateral_type enum and landing_pages columns are guaranteed to
     // exist. A failure here must not abort schema migrations: the backfill

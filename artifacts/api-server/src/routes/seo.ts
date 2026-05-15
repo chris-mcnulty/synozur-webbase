@@ -35,7 +35,7 @@ function xmlEscape(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-interface Entry {
+export interface Entry {
   loc: string;
   lastmod?: string | null;
   changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
@@ -80,7 +80,37 @@ function toEntry(path: string, lastmod: Date | string | null | undefined): Entry
   return { loc: path, lastmod: iso };
 }
 
-async function collectEntries(): Promise<Entry[]> {
+// #160 — classify a relative path into an artifact kind for the SEO
+// coverage dashboard's per-type buckets. Keyed on the first path segment
+// so both the section hub (e.g. "/insights") and detail pages (e.g.
+// "/insights/foo") classify the same way. Mirrors the URL patterns built
+// in collectEntries() below.
+const SEGMENT_KIND: Record<string, string> = {
+  insights: "insight",
+  services: "service",
+  "services-overview": "service",
+  solutions: "solution",
+  applications: "application",
+  "case-studies": "case-study",
+  models: "model",
+  workshops: "workshop",
+  webinars: "webinar",
+  library: "library",
+  items: "library",
+  team: "team",
+  faq: "faq",
+  polaris: "polaris",
+  events: "event",
+};
+
+export function classifyArtifactKind(path: string): string {
+  const clean = path.split(/[?#]/)[0];
+  if (clean === "/" || clean === "") return "home";
+  const seg = clean.replace(/^\/+/, "").split("/")[0];
+  return SEGMENT_KIND[seg] ?? "static";
+}
+
+export async function collectEntries(): Promise<Entry[]> {
   const origin = siteOrigin();
   const entries: Entry[] = [];
 
