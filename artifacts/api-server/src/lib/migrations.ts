@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
+import { backfillLandingPageCollateral } from "./syncCollateral";
 
 /**
  * Idempotent schema migrations that run on every server startup.
@@ -2982,6 +2983,22 @@ export async function runMigrations(): Promise<void> {
         DELETE FROM users                    WHERE id      = old_id;
       END $$;
     `);
+
+    // Best-effort data backfill — runs after all schema DDL so the
+    // collateral_type enum and landing_pages columns are guaranteed to
+    // exist. A failure here must not abort schema migrations: the backfill
+    // is idempotent and self-heals on the next startup.
+    try {
+      const repaired = await backfillLandingPageCollateral();
+      if (repaired > 0) {
+        logger.info(
+          { repaired },
+          "Backfilled missing landing-page collateral mirrors",
+        );
+      }
+    } catch (err) {
+      logger.error({ err }, "Landing-page collateral backfill failed");
+    }
 
     logger.info("Startup migrations complete");
   } catch (err) {
