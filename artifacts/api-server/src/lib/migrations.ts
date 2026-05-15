@@ -3055,6 +3055,25 @@ export async function runMigrations(): Promise<void> {
       logger.error({ err }, "Landing-page collateral backfill failed");
     }
 
+    // 55. Fix stale team_members.user_id for Chris McNulty.
+    //
+    // Migration step 54 merged the orphaned Clerk-era user row into the
+    // Entra row and deleted the orphan. The team_members record for Chris
+    // McNulty (id = 3) was left pointing at the now-deleted orphan ID
+    // (ac0a2899-…) instead of his live Entra user (8a305c5d-…). The team
+    // detail route uses team_members.user_id to look up recent posts, so
+    // the author link produced zero results on his public profile page.
+    //
+    // Idempotent: the WHERE clause only fires when the old orphan ID is
+    // still present; if the row already points to the correct user this
+    // is a zero-row update.
+    await db.execute(sql`
+      UPDATE team_members
+         SET user_id = '8a305c5d-1047-4822-86f8-da4b69cd6a4b'
+       WHERE slug    = 'chris-mcnulty'
+         AND user_id = 'ac0a2899-799c-4ee9-8616-b2d41bbafe3a';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
