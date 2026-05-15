@@ -2,14 +2,11 @@
  * Idempotent seed — enriches solution pages with a product / accelerators
  * callout (where relevant) and a solution-specific FAQ. The callout
  * highlights whichever Synozur product is the natural accelerator for that
- * practice — Zenith (M365 governance) for the M365-stack solutions, Vega
+ * practice — Zenith (M365 governance) for AI Strategy and Design, Vega
  * (the Company Operating System) for Company OS.
  *
  * Solutions with a Zenith callout AND an FAQ:
- *   - Microsoft Partner Development  (slug: microsoft-partner-development)
  *   - AI Strategy and Design         (slug: ai-strategy-and-design)
- *   - Employee Effectiveness         (slug: employee-effectiveness)
- *   - Employee Strategies            (slug: employee-strategies)
  *
  * Solutions with a Vega callout AND an FAQ:
  *   - Company OS                     (slug: company-os)
@@ -24,6 +21,13 @@
  *   - Strategic Roadmaps             (slug: strategic-roadmaps)
  *   - Communication Strategies       (slug: communication-strategies)
  *   - Delivery Management            (slug: delivery-management)
+ *
+ * Solutions explicitly reset to NO enrichment — a Zenith callout + FAQ was
+ * seeded here previously, but the M365-governance framing isn't appropriate
+ * for these practices, so the seed actively clears both columns:
+ *   - Microsoft Partner Development  (slug: microsoft-partner-development)
+ *   - Employee Effectiveness         (slug: employee-effectiveness)
+ *   - Employee Strategies            (slug: employee-strategies)
  *
  * For FAQ-only enrichments acceleratorsHtml is left untouched (null/empty)
  * so the page renders the FAQ block without an out-of-place tool callout.
@@ -51,41 +55,6 @@ function p(...lines: string[]): string {
 
 // `ul()` was a stale helper for an earlier seed shape; current seeds emit
 // list HTML inline. Removed.
-
-// ---------------------------------------------------------------------------
-// Microsoft Partner Development — content
-// ---------------------------------------------------------------------------
-
-const PARTNER_ACCELERATORS_HTML = [
-  p(
-    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center\u2014and a purpose-built asset for Microsoft Partners looking to differentiate their M365 practice.",
-  ),
-  p(
-    "Partners who bring Zenith into a client engagement get an instant, data-driven picture of workspace health, governance policy alignment, and Copilot readiness across the entire tenant. That visibility shortens discovery, makes recommendations concrete, and gives clients a compelling reason to act. Partners can also position Zenith as an ongoing value-add that keeps governance from drifting after the engagement closes.",
-  ),
-  p(
-    "Zenith integrates with Microsoft Entra ID for tenant-isolated authentication and surfaces governance decisions directly in SharePoint\u2014making it a natural fit for partners already working in the Microsoft stack.",
-  ),
-].join("\n");
-
-const PARTNER_FAQ_HTML = [
-  p("<strong>Can we offer Zenith directly to our clients as part of an M365 engagement?</strong>"),
-  p(
-    "Yes. Synozur works with Microsoft Partners to position Zenith as a governance layer within existing M365 practices. Whether you\u2019re running an adoption workshop, a Copilot readiness assessment, or a post-deployment governance review, Zenith can slot into the engagement as a client-facing deliverable or an ongoing subscription.",
-  ),
-  p("<strong>How does Zenith help us win Microsoft deals?</strong>"),
-  p(
-    "Zenith gives you evidence before you recommend anything\u2014workspace health scores, governance policy gaps, Copilot readiness ratings\u2014that make your proposals more credible and easier to approve. Clients can see their actual posture rather than accepting a consultant\u2019s assertion. That transparency shortens sales cycles and increases close rates on governance-adjacent work.",
-  ),
-  p("<strong>Does Zenith compete with any Microsoft-native tooling?</strong>"),
-  p(
-    "No. Zenith complements the Microsoft stack rather than replacing it. It surfaces signals from Entra ID, SharePoint, and Purview in a single pane of glass, correlates them against your governance policies, and prioritizes remediation\u2014work that Microsoft\u2019s native reporting does not do automatically. Purview enforces the policies Zenith helps you design.",
-  ),
-  p("<strong>What does Synozur provide to partners implementing Zenith?</strong>"),
-  p(
-    "We provide onboarding support, technical documentation, and partner-facing guidance on how to frame Zenith within an M365 practice. Reach out through your Synozur contact or the partner inquiry form to discuss specifics.",
-  ),
-].join("\n");
 
 // ---------------------------------------------------------------------------
 // AI Strategy and Design — content
@@ -123,38 +92,6 @@ const AI_FAQ_HTML = [
 ].join("\n");
 
 // ---------------------------------------------------------------------------
-// Employee Effectiveness — content
-// ---------------------------------------------------------------------------
-
-const EMPLOYEE_ACCELERATORS_HTML = [
-  p(
-    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center, and it supports employee effectiveness by ensuring that the collaboration tools employees depend on are well-configured, findable, and governed.",
-  ),
-  p(
-    "When SharePoint, Teams, and OneDrive are poorly governed\u2014with sprawling workspaces, inconsistent naming, and unclear ownership\u2014employees lose time searching for content, duplicate work, and route around official channels. Zenith surfaces those friction points and prioritizes the governance fixes that have the greatest impact on day-to-day effectiveness. It also monitors workspace health continuously, so improvements don\u2019t erode over time as teams and content grow.",
-  ),
-].join("\n");
-
-const EMPLOYEE_FAQ_HTML = [
-  p("<strong>How does poor M365 governance affect employee productivity?</strong>"),
-  p(
-    "Governance problems become employee experience problems. When workspaces are unnamed or misconfigured, when external sharing is inconsistent, or when there\u2019s no clear \u201csource of truth\u201d for a given project or team, employees spend time navigating friction instead of doing work. Surveys consistently show that findability and information overload are top sources of employee frustration in Microsoft 365 environments.",
-  ),
-  p("<strong>Can we use Zenith without a broader M365 adoption engagement?</strong>"),
-  p(
-    "Yes. Zenith can be deployed as a standalone governance monitoring tool. That said, the most impactful results come when Zenith\u2019s findings are connected to an adoption or governance program that acts on them\u2014otherwise the visibility doesn\u2019t translate into improvement. We can help you scope a lightweight engagement to get both.",
-  ),
-  p("<strong>What does Zenith show us about how employees are using M365 today?</strong>"),
-  p(
-    "Zenith evaluates workspace health across your entire tenant\u2014looking at governance policy adherence, Copilot readiness, sharing posture, and ownership. While it isn\u2019t a usage analytics tool, it identifies the structural issues that make it harder for employees to collaborate effectively and surfaces the remediation steps most likely to reduce friction.",
-  ),
-  p("<strong>How does Zenith help our IT team manage governance at scale?</strong>"),
-  p(
-    "Zenith gives IT a unified view of governance health across all workspaces\u2014without requiring manual audits. It maps workspaces to your governance policies, flags violations, and recommends prioritized actions. That means IT can shift from reactive \u201cgovernance firefighting\u201d to proactive maintenance, and can demonstrate governance posture to leadership in a format that doesn\u2019t require a deep Microsoft 365 background to interpret.",
-  ),
-].join("\n");
-
-// ---------------------------------------------------------------------------
 // Company OS — content
 // ---------------------------------------------------------------------------
 
@@ -182,40 +119,6 @@ const COMPANY_OS_FAQ_HTML = [
   p("<strong>How does Vega keep strategy connected to daily execution?</strong>"),
   p(
     "Vega brings mission, priorities, OKRs, and the meeting rhythm into a single operating cadence, with hierarchy, weighting, and rollups so progress is visible at every level. Its AI assistant helps leaders see where execution is diverging from intent and prompts the conversations that keep the organization aligned week to week.",
-  ),
-].join("\n");
-
-// ---------------------------------------------------------------------------
-// Employee Strategies — content
-// ---------------------------------------------------------------------------
-
-const EMPLOYEE_STRATEGIES_ACCELERATORS_HTML = [
-  p(
-    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center. While Employee Strategies is fundamentally a people-and-culture practice, Zenith plays a supporting role when the strategy depends on Microsoft 365 as the day-to-day work environment.",
-  ),
-  p(
-    "Employee experience strategies often run aground on the same issue: the digital environment doesn\u2019t match the experience leadership describes. When Teams, SharePoint, and OneDrive are noisy, fragmented, or inconsistently governed, employees feel friction regardless of how strong the strategy is on paper. Zenith identifies the structural governance issues that quietly degrade the employee experience and prioritizes the fixes most likely to have the largest impact.",
-  ),
-].join("\n");
-
-const EMPLOYEE_STRATEGIES_FAQ_HTML = [
-  p(
-    "<strong>How does M365 governance connect to employee strategy?</strong>",
-  ),
-  p(
-    "Employees experience your strategy through the tools they use every day. If the digital workplace is hard to navigate\u2014too many duplicate workspaces, unclear ownership, inconsistent sharing\u2014every employee initiative has to fight that friction. Cleaning up the governance layer makes the rest of your employee strategy land more cleanly.",
-  ),
-  p(
-    "<strong>Do we need to use Zenith as part of an Employee Strategies engagement?</strong>",
-  ),
-  p(
-    "No. Employee Strategies engagements stand on their own and focus on operating model, leadership rhythms, and people practices. Zenith is relevant only when the engagement intersects with Microsoft 365\u2014for example, when leaders want to improve how employees collaborate, find information, or work with AI tools like Copilot. In those cases Zenith provides the governance evidence behind the recommendations.",
-  ),
-  p(
-    "<strong>Can Zenith help us measure progress on employee experience initiatives?</strong>",
-  ),
-  p(
-    "Zenith doesn\u2019t measure sentiment or engagement directly\u2014that comes from listening programs and qualitative feedback. What it does provide is a baseline and ongoing view of the structural conditions that make the digital workplace usable. Pairing Zenith\u2019s governance signal with the employee feedback you already collect gives a more complete picture of where to invest.",
   ),
 ].join("\n");
 
@@ -369,34 +272,16 @@ interface Enrichment {
 
 const ENRICHMENTS: Enrichment[] = [
   {
-    slug: "microsoft-partner-development",
-    label: "Microsoft Partner Development",
-    acceleratorsHtml: PARTNER_ACCELERATORS_HTML,
-    faqHtml: PARTNER_FAQ_HTML,
-  },
-  {
     slug: "ai-strategy-and-design",
     label: "AI Strategy and Design",
     acceleratorsHtml: AI_ACCELERATORS_HTML,
     faqHtml: AI_FAQ_HTML,
   },
   {
-    slug: "employee-effectiveness",
-    label: "Employee Effectiveness",
-    acceleratorsHtml: EMPLOYEE_ACCELERATORS_HTML,
-    faqHtml: EMPLOYEE_FAQ_HTML,
-  },
-  {
     slug: "company-os",
     label: "Company OS",
     acceleratorsHtml: COMPANY_OS_ACCELERATORS_HTML,
     faqHtml: COMPANY_OS_FAQ_HTML,
-  },
-  {
-    slug: "employee-strategies",
-    label: "Employee Strategies",
-    acceleratorsHtml: EMPLOYEE_STRATEGIES_ACCELERATORS_HTML,
-    faqHtml: EMPLOYEE_STRATEGIES_FAQ_HTML,
   },
   // FAQ-only enrichments (no Zenith callout). acceleratorsHtml is left
   // untouched so the page renders the FAQ section without an irrelevant
@@ -444,6 +329,17 @@ const ENRICHMENTS: Enrichment[] = [
     faqHtml: DELIVERY_FAQ_HTML,
   },
 ];
+
+// Solutions a previous run of this seed enriched with a Zenith callout + FAQ
+// that are NOT appropriate for the M365-governance framing. Because the seed
+// only ever SETs columns, dropping them from ENRICHMENTS isn't enough — the
+// stale rows would persist in the DB. We actively null both columns so the
+// solution page renders neither block (the page gates on truthy HTML).
+const RESET_SLUGS = [
+  "microsoft-partner-development",
+  "employee-effectiveness",
+  "employee-strategies",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Main
@@ -504,8 +400,33 @@ async function main() {
     updated++;
   }
 
+  let reset = 0;
+  for (const slug of RESET_SLUGS) {
+    const [solution] = await db
+      .select({ id: solutionsTable.id })
+      .from(solutionsTable)
+      .where(eq(solutionsTable.slug, slug))
+      .limit(1);
+
+    if (!solution) {
+      console.warn(
+        `  [WARN] Solution not found: (slug: ${slug}). Skipping reset.`,
+      );
+      notFound++;
+      continue;
+    }
+
+    await db
+      .update(solutionsTable)
+      .set({ acceleratorsHtml: null, faqHtml: null, updatedAt: new Date() })
+      .where(eq(solutionsTable.id, solution.id));
+
+    console.log(`  [OK] Reset enrichment "${slug}" (${solution.id})`);
+    reset++;
+  }
+
   console.log(
-    `\nDone. ${updated} solution(s) updated, ${notFound} not found.`,
+    `\nDone. ${updated} solution(s) updated, ${reset} reset, ${notFound} not found.`,
   );
 }
 
