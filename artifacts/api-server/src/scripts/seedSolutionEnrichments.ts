@@ -1,15 +1,20 @@
 /**
- * Idempotent seed — enriches solution pages with the Zenith / accelerators
- * callout (where relevant) and a solution-specific FAQ.
+ * Idempotent seed — enriches solution pages with a product / accelerators
+ * callout (where relevant) and a solution-specific FAQ. The callout
+ * highlights whichever Synozur product is the natural accelerator for that
+ * practice — Zenith (M365 governance) for the M365-stack solutions, Vega
+ * (the Company Operating System) for Company OS.
  *
  * Solutions with a Zenith callout AND an FAQ:
  *   - Microsoft Partner Development  (slug: microsoft-partner-development)
  *   - AI Strategy and Design         (slug: ai-strategy-and-design)
  *   - Employee Effectiveness         (slug: employee-effectiveness)
- *   - Company OS                     (slug: company-os)
  *   - Employee Strategies            (slug: employee-strategies)
  *
- * Solutions with FAQ-only enrichment (no Zenith callout — these practices
+ * Solutions with a Vega callout AND an FAQ:
+ *   - Company OS                     (slug: company-os)
+ *
+ * Solutions with FAQ-only enrichment (no product callout — these practices
  * don't sit on the Microsoft 365 stack, but each page still benefits from
  * answering the questions buyers actually ask):
  *   - Brand and Messaging            (slug: brand-and-messaging)
@@ -155,28 +160,28 @@ const EMPLOYEE_FAQ_HTML = [
 
 const COMPANY_OS_ACCELERATORS_HTML = [
   p(
-    "<strong><a href=\"https://zenith.synozur.com\">Zenith</a></strong> is Synozur\u2019s Microsoft 365 Governance Command Center, and it complements Company OS engagements that rely on Microsoft 365\u2014particularly when Vega is the operating backbone.",
+    "<strong><a href=\"https://vega.synozur.com\">Vega</a></strong> is Synozur\u2019s AI-augmented Company Operating System\u2014the accelerator that turns a Company OS engagement from a set of decisions into a running operating rhythm.",
   ),
   p(
-    "A Company OS only works if the systems supporting it are trustworthy. When SharePoint, Teams, and OneDrive house the policies, processes, and decisions that run the business, governance posture directly affects how reliably the operating system performs. Zenith surfaces workspace health, ownership, sharing, and policy alignment across the tenant so the structures Company OS depends on stay clean as the organization grows.",
+    "A Company OS only delivers if strategy stays connected to daily execution. Vega unifies mission, priorities, OKRs, and meetings into a single cadence so the operating model is something the organization runs every week\u2014not a document that goes stale. The Vega Launchpad can generate a tailored Company OS directly from your existing mission, values, and strategy documents, so engagements start with a working system instead of a blank page.",
   ),
   p(
-    "For clients standardizing on Vega, Zenith provides the continuous governance signal needed to keep the operating environment well-organized, well-labeled, and ready for AI-assisted work.",
+    "As the organization grows, Vega keeps clarity, cadence, and accountability intact\u2014with an AI assistant that helps leaders maintain alignment and surface where execution is drifting from intent.",
   ),
 ].join("\n");
 
 const COMPANY_OS_FAQ_HTML = [
-  p("<strong>How does Zenith fit into a Company OS engagement?</strong>"),
+  p("<strong>How does Vega fit into a Company OS engagement?</strong>"),
   p(
-    "Company OS defines how the business runs\u2014decisions, rituals, ownership, and the systems that carry them. When those systems live in Microsoft 365, Zenith makes sure the underlying workspaces are well-governed, findable, and aligned to the policies your operating model assumes are in place. It\u2019s not required to start a Company OS engagement, but it removes a common source of friction when Microsoft 365 is the primary operating environment.",
+    "Company OS defines how the business runs\u2014mission, priorities, rituals, ownership, and accountability. Vega is where that operating model actually lives and runs: it unifies mission, OKRs, and meetings into one cadence so the model stays active rather than becoming a static artifact. It\u2019s not required to begin a Company OS engagement, but it\u2019s how most clients keep the operating system running after the engagement ends.",
   ),
-  p("<strong>Do we need Zenith if we\u2019re using Vega?</strong>"),
+  p("<strong>Can we stand up a Company OS quickly with Vega?</strong>"),
   p(
-    "Vega and Zenith solve different problems. Vega is the operating system for how work gets done; Zenith monitors the governance health of the Microsoft 365 environment that Vega often runs on. Many clients use both: Vega to define and run the operating model, Zenith to keep the M365 foundation healthy underneath it.",
+    "Yes. The Vega Launchpad generates a tailored Company OS from your existing organizational documents\u2014importing mission, values, and strategic elements\u2014so you start from a working draft rather than a blank template. That shortens setup considerably and lets the engagement focus on refinement and adoption instead of initial assembly.",
   ),
-  p("<strong>What signals does Zenith provide that matter for a Company OS?</strong>"),
+  p("<strong>How does Vega keep strategy connected to daily execution?</strong>"),
   p(
-    "Zenith highlights workspaces with unclear ownership, inconsistent governance, weak sensitivity labeling, or risky sharing\u2014the same conditions that create confusion about \u201cwhere does this live\u201d and \u201cwho owns this.\u201d Resolving them makes the operating model easier to follow and reduces the day-to-day friction employees feel when navigating the environment.",
+    "Vega brings mission, priorities, OKRs, and the meeting rhythm into a single operating cadence, with hierarchy, weighting, and rollups so progress is visible at every level. Its AI assistant helps leaders see where execution is diverging from intent and prompts the conversations that keep the organization aligned week to week.",
   ),
 ].join("\n");
 
