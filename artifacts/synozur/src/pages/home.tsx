@@ -276,11 +276,11 @@ export default function Home() {
   );
   const positioningText = useOverride<string>(
     "home.hero.positioning.text",
-    "Reimagine. Reinvent. Results.",
+    "The Transformation Company",
   );
   const positioningAccent = useOverride<string>(
     "home.hero.positioning.accentWord",
-    "Results.",
+    "Transformation",
   );
   const taglineText = useOverride<string>(
     "home.hero.tagline.text",
