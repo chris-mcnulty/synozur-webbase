@@ -3095,6 +3095,34 @@ export async function runMigrations(): Promise<void> {
          AND public_url NOT LIKE '/api/%';
     `);
 
+    // 57. Fix /objects/uploads/ image paths inside post body_html and
+    //     body_markdown.
+    //
+    // The same crawler migration that produced the broken media.public_url
+    // values (step 56) also embedded image paths as /objects/uploads/<uuid>
+    // directly in the post body content. The RichTextEditor and public post
+    // renderer both serve these via /api/storage/objects/*, so the missing
+    // prefix causes broken-image placeholders mid-article.
+    //
+    // 134 posts have broken img srcs in body_html; 13 have them in
+    // body_markdown. A simple string replace is safe because these paths
+    // only appear as image src attributes in crawled content — they were
+    // never referenced any other way. Idempotent: the WHERE guards ensure
+    // only affected rows are touched; a second run finds no matches.
+    await db.execute(sql`
+      UPDATE posts
+         SET body_html = replace(body_html,
+               '"/objects/uploads/', '"/api/storage/objects/uploads/')
+       WHERE body_html LIKE '%"/objects/uploads/%';
+    `);
+
+    await db.execute(sql`
+      UPDATE posts
+         SET body_markdown = replace(body_markdown,
+               '(/objects/uploads/', '(/api/storage/objects/uploads/')
+       WHERE body_markdown LIKE '%(/objects/uploads/%';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
