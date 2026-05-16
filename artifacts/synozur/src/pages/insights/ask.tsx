@@ -48,13 +48,14 @@ const KIND_LABELS: Record<string, string> = {
   white_paper: "White paper",
   faq: "FAQ",
   polaris: "Polaris episode",
+  application: "Synozur platform",
 };
 
 const STARTER_QUESTIONS = [
   "What is Synozur's approach to change management?",
-  "How does the Polaris workshop work?",
+  "What does the Polaris podcast explore?",
   "What's your point of view on AI for sales teams?",
-  "Show me a case study about Microsoft 365 Copilot rollout.",
+  "What is Orion?",
 ];
 
 // Stable per-tab session id so /admin/insights/questions can group a

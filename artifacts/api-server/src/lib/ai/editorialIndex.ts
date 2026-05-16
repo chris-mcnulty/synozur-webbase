@@ -8,6 +8,7 @@ import {
   faqItemsTable,
   faqCategoriesTable,
   polarisEpisodesTable,
+  applicationsTable,
   type EditorialSourceKind,
 } from "@workspace/db";
 
@@ -266,6 +267,31 @@ async function loadSources(): Promise<SourceRow[]> {
       url: `/polaris/${e.slug}`,
       text,
       updatedAt: e.updatedAt,
+    });
+  }
+
+  // Applications (Orion, Vega, Nebula, etc.) — see routes/applications.ts.
+  // Combines tagline + shortSummary + descriptionParagraphs so Ask Synozur
+  // can answer product questions ("What is Orion?", "How does Vega work?")
+  // with grounded, cited answers that link to the application page.
+  const applications = await db.select().from(applicationsTable);
+  for (const a of applications) {
+    if (!isPublic(a, { activeRequired: true })) continue;
+    const paras = Array.isArray(a.descriptionParagraphs)
+      ? (a.descriptionParagraphs as string[])
+      : [];
+    const text = [a.tagline, a.shortSummary, ...paras]
+      .map((s) => s?.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!text.trim()) continue;
+    out.push({
+      kind: "application",
+      id: a.id,
+      title: a.title || a.name,
+      url: `/applications/${a.slug}`,
+      text,
+      updatedAt: a.updatedAt,
     });
   }
 

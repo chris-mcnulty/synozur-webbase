@@ -28,6 +28,7 @@ export const EDITORIAL_SOURCE_KINDS = [
   "white_paper",
   "faq",
   "polaris",
+  "application",
 ] as const;
 export type EditorialSourceKind = (typeof EDITORIAL_SOURCE_KINDS)[number];
 
