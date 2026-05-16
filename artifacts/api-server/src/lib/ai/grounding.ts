@@ -69,7 +69,11 @@ export async function buildSystemPrompt(
 
   const sections = filtered.map((d) => {
     const label = CATEGORY_LABELS[d.category as GroundingCategory] ?? d.category;
-    return `### ${label}: ${d.title}\n${d.content}`;
+    // Intentionally omit d.title from the heading. Internal document names
+    // (e.g. "Synozur Messaging and Positioning Framework") must never appear
+    // in the model's output — using only the category label prevents the model
+    // from citing or repeating internal framework titles to end-users.
+    return `### ${label}\n${d.content}`;
   });
   return sections.join("\n\n");
 }
