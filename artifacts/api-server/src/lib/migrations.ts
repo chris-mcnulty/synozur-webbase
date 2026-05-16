@@ -3074,6 +3074,27 @@ export async function runMigrations(): Promise<void> {
          AND user_id = 'ac0a2899-799c-4ee9-8616-b2d41bbafe3a';
     `);
 
+    // 56. Fix media.public_url records missing the /api/storage prefix.
+    //
+    // The original Wix-blog crawler ingestion wrote public_url as the raw
+    // storage key (e.g. /objects/uploads/<uuid>) instead of the routable
+    // path (/api/storage/objects/uploads/<uuid>). The UI correctly uses
+    // /api/storage<storageKey> for new uploads (MediaPickerModal lines 275
+    // and 421), so only migrated-crawler records are affected.
+    //
+    // 358 rows are broken; 120 post hero images display as a broken-image
+    // placeholder as a result. Prepending /api/storage makes them resolve
+    // correctly via the GET /api/storage/objects/* route.
+    //
+    // Idempotent: the WHERE guard ensures only rows with the wrong prefix
+    // are updated; rows already starting with /api/ are untouched.
+    await db.execute(sql`
+      UPDATE media
+         SET public_url = '/api/storage' || public_url
+       WHERE public_url LIKE '/objects/%'
+         AND public_url NOT LIKE '/api/%';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
