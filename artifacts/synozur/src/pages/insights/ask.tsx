@@ -51,7 +51,7 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 const STARTER_QUESTIONS = [
-  "What is concierge AI in your model?",
+  "What is Synozur's approach to change management?",
   "How does the Polaris workshop work?",
   "What's your point of view on AI for sales teams?",
   "Show me a case study about Microsoft 365 Copilot rollout.",
