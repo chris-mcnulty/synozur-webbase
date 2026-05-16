@@ -135,6 +135,15 @@ export default function CaseStudyDetail() {
               {study.clientLabel}
             </span>
           </div>
+          {study.clientLogo && (
+            <div className="mb-6">
+              <img
+                src={study.clientLogo}
+                alt={`${study.clientLabel ?? study.client} logo`}
+                className="h-9 w-auto object-contain brightness-0 invert opacity-80"
+              />
+            </div>
+          )}
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6 max-w-4xl">
             {study.title}
           </h1>
