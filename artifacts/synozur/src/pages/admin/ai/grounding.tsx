@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, Upload, FileText } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,6 +117,8 @@ function toInput(draft: DraftState): GroundingDocumentInput {
   };
 }
 
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
 export default function AdminAiGrounding() {
   const { access } = useAdminAccess();
   const qc = useQueryClient();
@@ -129,6 +131,32 @@ export default function AdminAiGrounding() {
     enabled: canManage,
   });
   const items = listQ.data?.items ?? [];
+
+  const rebuildMut = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE_PATH}/api/ai/editorial-index/rebuild`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ sources: number; chunks: number; removed: number }>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Search index rebuilt",
+        description: `${data.sources} sources · ${data.chunks} chunks indexed`,
+      });
+    },
+    onError: (e: Error) =>
+      toast({
+        title: "Rebuild failed",
+        description: e.message,
+        variant: "destructive",
+      }),
+  });
 
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DraftState>(emptyDraft());
@@ -313,9 +341,21 @@ export default function AdminAiGrounding() {
                 {items.filter((d) => d.isActive).length} active
               </p>
             </div>
-            <Button onClick={openNew} data-testid="button-new-grounding">
-              <Plus className="mr-2 h-4 w-4" /> New document
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => rebuildMut.mutate()}
+                disabled={rebuildMut.isPending}
+                title="Re-scans all published posts, case studies, landing pages, applications, and other content so Ask Synozur searches the latest version of everything."
+                data-testid="button-rebuild-index"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${rebuildMut.isPending ? "animate-spin" : ""}`} />
+                {rebuildMut.isPending ? "Rebuilding…" : "Rebuild search index"}
+              </Button>
+              <Button onClick={openNew} data-testid="button-new-grounding">
+                <Plus className="mr-2 h-4 w-4" /> New document
+              </Button>
+            </div>
           </div>
         </Card>
 

@@ -49,6 +49,7 @@ const KIND_LABELS: Record<string, string> = {
   faq: "FAQ",
   polaris: "Polaris episode",
   application: "Synozur platform",
+  landing_page: "Resource page",
 };
 
 const STARTER_QUESTIONS = [

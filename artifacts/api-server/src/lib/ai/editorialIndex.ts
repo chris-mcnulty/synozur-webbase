@@ -9,6 +9,9 @@ import {
   faqCategoriesTable,
   polarisEpisodesTable,
   applicationsTable,
+  landingPagesTable,
+  landingPageBlocks,
+  type LandingPageBlock,
   type EditorialSourceKind,
 } from "@workspace/db";
 
@@ -267,6 +270,58 @@ async function loadSources(): Promise<SourceRow[]> {
       url: `/polaris/${e.slug}`,
       text,
       updatedAt: e.updatedAt,
+    });
+  }
+
+  // Landing pages — hero/richText/cardGrid/cta/faq blocks extracted as plain
+  // text so Ask Synozur can surface resource pages like "AI Training" or
+  // "Microsoft Partner Journey" in cited answers. Image blocks are skipped
+  // (no indexable text). Uses the same isPublic predicate as the public
+  // landing-page route (status=published, active, within publish window).
+  const landingPages = await db.select().from(landingPagesTable);
+  for (const lp of landingPages) {
+    if (!isPublic(lp, { activeRequired: true })) continue;
+    const blocks = landingPageBlocks(lp);
+    const parts: string[] = [];
+    for (const block of blocks as LandingPageBlock[]) {
+      if (block.type === "hero") {
+        if (block.eyebrow) parts.push(block.eyebrow);
+        parts.push(block.title);
+        if (block.subtitle) parts.push(block.subtitle);
+      } else if (block.type === "richText") {
+        if (block.heading) parts.push(block.heading);
+        parts.push(stripHtml(block.bodyHtml));
+      } else if (block.type === "cardGrid") {
+        if (block.heading) parts.push(block.heading);
+        if (block.intro) parts.push(block.intro);
+        for (const card of block.cards) {
+          parts.push(card.title);
+          if (card.description) parts.push(card.description);
+        }
+      } else if (block.type === "cta") {
+        parts.push(block.heading);
+        if (block.body) parts.push(block.body);
+      } else if (block.type === "faq") {
+        if (block.heading) parts.push(block.heading);
+        for (const item of block.items) {
+          parts.push(item.q);
+          parts.push(item.a);
+        }
+      }
+      // "image" blocks have no indexable text — skipped intentionally.
+    }
+    const text = parts
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!text.trim()) continue;
+    out.push({
+      kind: "landing_page",
+      id: lp.id,
+      title: lp.title,
+      url: `/${lp.slug}`,
+      text,
+      updatedAt: lp.updatedAt,
     });
   }
 
