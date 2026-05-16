@@ -210,21 +210,21 @@ export default function CaseStudyDetail() {
           <div className="container mx-auto px-4 max-w-5xl">
             <div className={`grid grid-cols-1 gap-4 ${[study.atAGlance, study.whatWeDid, study.whyItWorked].filter(Boolean).length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
               {study.atAGlance && (
-                <div className="rounded-xl border border-border bg-card p-6">
+                <div className="rounded-xl border border-border bg-white/5 dark:bg-white/[0.07] p-6">
                   <p className="text-xs uppercase tracking-widest text-primary mb-3 font-medium">At a Glance</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{study.atAGlance}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{study.atAGlance}</p>
                 </div>
               )}
               {study.whatWeDid && (
-                <div className="rounded-xl border border-border bg-card p-6">
+                <div className="rounded-xl border border-border bg-white/5 dark:bg-white/[0.07] p-6">
                   <p className="text-xs uppercase tracking-widest text-primary mb-3 font-medium">What We Did</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{study.whatWeDid}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{study.whatWeDid}</p>
                 </div>
               )}
               {study.whyItWorked && (
-                <div className="rounded-xl border border-border bg-card p-6">
+                <div className="rounded-xl border border-border bg-white/5 dark:bg-white/[0.07] p-6">
                   <p className="text-xs uppercase tracking-widest text-primary mb-3 font-medium">Why It Worked</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{study.whyItWorked}</p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{study.whyItWorked}</p>
                 </div>
               )}
             </div>
