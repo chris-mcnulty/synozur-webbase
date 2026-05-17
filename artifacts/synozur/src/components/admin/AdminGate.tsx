@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import type { CurrentUser } from "@workspace/api-client-react";
@@ -89,6 +88,7 @@ export function useAdminAccess(): {
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const { access, isLoading, signedIn } = useAdminAccess();
+  const { signIn } = useAuth();
 
   if (isLoading) {
     return (
@@ -105,9 +105,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
         <p className="text-muted-foreground mb-6">
           You need to sign in to access the admin area.
         </p>
-        <Link href="/sign-in?returnTo=/admin">
-          <Button data-testid="button-go-sign-in">Sign in</Button>
-        </Link>
+        <Button data-testid="button-go-sign-in" onClick={() => signIn("/admin")}>
+          Sign in
+        </Button>
       </div>
     );
   }
