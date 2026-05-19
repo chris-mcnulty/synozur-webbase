@@ -378,21 +378,25 @@ export default function PostEditor({ id }: Props) {
   };
 
   const addTagFromInput = async () => {
-    const name = tagInput.trim();
-    if (!name) return;
-    const all = tags.data ?? [];
-    const existingT = all.find((t) => t.name.toLowerCase() === name.toLowerCase());
-    let tag: Tag | null = existingT ?? null;
-    if (!tag) {
-      const created = await createTagMut.mutateAsync({
-        data: { slug: slugify(name), name },
-      });
-      tag = created;
-    }
-    if (tag && !form.tagIds.includes(tag.id)) {
-      update({ tagIds: [...form.tagIds, tag.id] });
-    }
+    const parts = tagInput.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!parts.length) return;
     setTagInput("");
+    const all = tags.data ?? [];
+    const nextIds = [...form.tagIds];
+    for (const name of parts) {
+      const existingT = all.find((t) => t.name.toLowerCase() === name.toLowerCase());
+      let tag: Tag | null = existingT ?? null;
+      if (!tag) {
+        const created = await createTagMut.mutateAsync({
+          data: { slug: slugify(name), name },
+        });
+        tag = created;
+      }
+      if (tag && !nextIds.includes(tag.id)) {
+        nextIds.push(tag.id);
+      }
+    }
+    update({ tagIds: nextIds });
   };
 
   const tagsById = useMemo(() => {
@@ -820,11 +824,11 @@ export default function PostEditor({ id }: Props) {
             </div>
             <div className="flex gap-1">
               <Input
-                placeholder="Add tag…"
+                placeholder="Add tag… (comma-separate multiple)"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" || e.key === ",") {
                     e.preventDefault();
                     void addTagFromInput();
                   }
