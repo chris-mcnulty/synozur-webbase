@@ -147,6 +147,7 @@ function DefaultOverview() {
       <Meta
         title="Services Overview"
         description="Three flagship solutions — AI Strategy & Design, GTM Strategy & Execution, and Company OS — plus a consulting bench that composes around your situation."
+        image="/opengraph.jpg"
       />
       <JsonLd data={breadcrumbJsonLd} id="services-overview-breadcrumb-jsonld" />
       {itemListJsonLd ? (
