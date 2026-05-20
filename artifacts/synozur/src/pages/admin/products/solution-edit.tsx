@@ -583,6 +583,10 @@ export default function SolutionEdit({ id }: Props) {
 
           {id ? <HighlightsCard solutionId={id} canWrite={canWrite} /> : null}
 
+          {id ? (
+            <LinkedCollateralCard solutionId={id} canWrite={canWrite} />
+          ) : null}
+
           <Card className="p-4 space-y-3">
             <div>
               <Label className="text-sm font-medium">Accelerators / Zenith (legacy)</Label>
@@ -1187,6 +1191,310 @@ function HighlightsCard({ solutionId, canWrite }: HighlightsCardProps) {
               {picker.trim() && pickerMatches.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   No matches in the collateral library.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+// Task #321 — Bulk-attach Collateral to a solution from the solution
+// editor. Mirrors `CollateralSolutionsEditor` but from the solution
+// side: stage edits locally, save with a single replace-all PUT to
+// `/cms/solutions/:id/linked-collateral`. Writes the same join table
+// as the per-collateral editor, so edits stay in sync regardless of
+// which side they're made from.
+interface LinkedCollateralCardProps {
+  solutionId: string;
+  canWrite: boolean;
+}
+
+interface DraftLinkedCollateral {
+  collateralId: string;
+  active: boolean;
+  title: string;
+  type: string;
+}
+
+function LinkedCollateralCard({
+  solutionId,
+  canWrite,
+}: LinkedCollateralCardProps) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [draft, setDraft] = useState<DraftLinkedCollateral[] | null>(null);
+  const [picker, setPicker] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const linkedQ = useQuery({
+    queryKey: ["solution-linked-collateral", solutionId],
+    queryFn: () => api.listSolutionLinkedCollateral(solutionId),
+  });
+
+  const collateralQ = useCmsListCollateral();
+  const collateralItems = useMemo(() => {
+    const items = (collateralQ.data?.items ?? []) as Array<{
+      id: string;
+      title: string;
+      type: string;
+      active?: boolean;
+    }>;
+    return items.filter((c) => c.active !== false);
+  }, [collateralQ.data]);
+
+  useEffect(() => {
+    if (linkedQ.data && draft === null) {
+      setDraft(
+        linkedQ.data.items.map((r) => ({
+          collateralId: r.collateralId,
+          active: r.active,
+          title: r.collateralTitle,
+          type: r.collateralType,
+        })),
+      );
+    }
+  }, [linkedQ.data, draft]);
+
+  const draftIds = useMemo(
+    () => new Set((draft ?? []).map((d) => d.collateralId)),
+    [draft],
+  );
+
+  const pickerMatches = useMemo(() => {
+    const q = picker.trim().toLowerCase();
+    if (!q) return [] as typeof collateralItems;
+    return collateralItems
+      .filter((c) => !draftIds.has(c.id))
+      .filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) || c.type.toLowerCase().includes(q),
+      )
+      .slice(0, 8);
+  }, [collateralItems, draftIds, picker]);
+
+  const addItem = (id: string) => {
+    const item = collateralItems.find((c) => c.id === id);
+    if (!item || !draft) return;
+    setDraft([
+      ...draft,
+      { collateralId: id, active: true, title: item.title, type: item.type },
+    ]);
+    setPicker("");
+  };
+
+  const move = (idx: number, delta: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    const target = idx + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setDraft(next);
+  };
+
+  const remove = (idx: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    next.splice(idx, 1);
+    setDraft(next);
+  };
+
+  const toggleActive = (idx: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    next[idx] = { ...next[idx], active: !next[idx].active };
+    setDraft(next);
+  };
+
+  const isDirty = useMemo(() => {
+    if (!draft || !linkedQ.data) return false;
+    const a = draft;
+    const b = linkedQ.data.items;
+    if (a.length !== b.length) return true;
+    return a.some(
+      (r, i) =>
+        r.collateralId !== b[i].collateralId || r.active !== b[i].active,
+    );
+  }, [draft, linkedQ.data]);
+
+  const save = async () => {
+    if (!draft) return;
+    setSaving(true);
+    try {
+      const resp = await api.replaceSolutionLinkedCollateral(
+        solutionId,
+        draft.map((d, i) => ({
+          collateralId: d.collateralId,
+          displayOrder: i,
+          active: d.active,
+        })),
+      );
+      setDraft(
+        resp.items.map((r) => ({
+          collateralId: r.collateralId,
+          active: r.active,
+          title: r.collateralTitle,
+          type: r.collateralType,
+        })),
+      );
+      await qc.invalidateQueries({
+        queryKey: ["solution-linked-collateral", solutionId],
+      });
+      toast({ title: "Related resources saved" });
+    } catch (e) {
+      toast({
+        title: "Save failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card
+      className="p-4 space-y-3"
+      data-testid="card-solution-linked-collateral"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Label className="text-sm font-medium">Related resources</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Bulk-attach Collateral items to this solution. Order controls
+            the public Related-resources listing. Inactive rows stay
+            attached but are hidden from the public site. Edits made here
+            are mirrored in each library item's solutions editor.
+          </p>
+        </div>
+        {canWrite && (
+          <Button
+            size="sm"
+            onClick={save}
+            disabled={saving || draft === null || !isDirty}
+            data-testid="button-save-linked-collateral"
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {saving ? "Saving…" : "Save related"}
+          </Button>
+        )}
+      </div>
+
+      {linkedQ.isLoading || draft === null ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : (
+        <>
+          {draft.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              No related resources yet. Use the picker below to attach
+              Collateral items.
+            </div>
+          ) : (
+            <ol className="space-y-2">
+              {draft.map((r, idx) => (
+                <li
+                  key={r.collateralId}
+                  className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                  data-testid={`linked-collateral-row-${idx}`}
+                >
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground w-20 truncate">
+                    {r.type}
+                  </span>
+                  <span className="flex-1 truncate text-sm">{r.title}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(idx)}
+                      disabled={!canWrite}
+                      className={`text-xs rounded px-2 py-0.5 border ${
+                        r.active
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                          : "border-muted-foreground/40 bg-muted text-muted-foreground"
+                      }`}
+                      data-testid={`button-toggle-linked-active-${idx}`}
+                    >
+                      {r.active ? "Active" : "Hidden"}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => move(idx, -1)}
+                      disabled={!canWrite || idx === 0}
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => move(idx, +1)}
+                      disabled={!canWrite || idx === draft.length - 1}
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(idx)}
+                      disabled={!canWrite}
+                      aria-label="Remove"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {canWrite && (
+            <div className="space-y-2">
+              <Label htmlFor="linked-collateral-picker" className="text-xs">
+                Add a related resource
+              </Label>
+              <Input
+                id="linked-collateral-picker"
+                value={picker}
+                onChange={(e) => setPicker(e.target.value)}
+                placeholder="Search the collateral library by title or type…"
+                data-testid="input-linked-collateral-picker"
+              />
+              {pickerMatches.length > 0 && (
+                <ul className="rounded-md border border-border bg-background divide-y divide-border">
+                  {pickerMatches.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => addItem(c.id)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted"
+                        data-testid={`button-add-linked-collateral-${c.id}`}
+                      >
+                        <Plus className="h-4 w-4 text-primary" />
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground w-20 truncate">
+                          {c.type}
+                        </span>
+                        <span className="flex-1 truncate text-sm">
+                          {c.title}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {picker.trim() && pickerMatches.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No matches in the collateral library.
+                </p>
+              )}
+              {isDirty && (
+                <p className="text-[11px] text-muted-foreground">
+                  Unsaved changes
                 </p>
               )}
             </div>

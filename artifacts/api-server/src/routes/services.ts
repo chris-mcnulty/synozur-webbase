@@ -7,6 +7,7 @@ import {
   solutionsTable,
   solutionHighlightsTable,
   collateralTable,
+  collateralSolutionsTable,
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
   serviceRevisionsTable,
@@ -655,6 +656,124 @@ router.put(
       entityId: id,
     });
     res.json({ items: await loadHighlights(id) });
+  },
+);
+
+// Task #321 — Symmetric "linked collateral" admin endpoints. Mirrors the
+// per-collateral `/cms/collateral/:id/solutions` PUT but from the
+// solution side so admins editing a solution can bulk-attach Collateral
+// items in one round-trip. Writes the same `collateral_solutions` join
+// table as the per-collateral editor, so edits stay in sync regardless
+// of which side they're made from.
+const SolutionLinkedCollateralBody = z.object({
+  items: z
+    .array(
+      z.object({
+        collateralId: z.string().uuid(),
+        displayOrder: z.number().int().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(200),
+});
+
+async function loadLinkedCollateralForSolution(solutionId: string) {
+  const rows = await db
+    .select({
+      link: collateralSolutionsTable,
+      c: collateralTable,
+    })
+    .from(collateralSolutionsTable)
+    .innerJoin(
+      collateralTable,
+      eq(collateralSolutionsTable.collateralId, collateralTable.id),
+    )
+    .where(eq(collateralSolutionsTable.solutionId, solutionId))
+    .orderBy(
+      asc(collateralSolutionsTable.displayOrder),
+      asc(collateralTable.title),
+    );
+  return rows.map((r) => ({
+    collateralId: r.c.id,
+    displayOrder: r.link.displayOrder,
+    active: r.link.active,
+    collateralTitle: r.c.title,
+    collateralType: r.c.type,
+    collateralSlug: r.c.slug,
+  }));
+}
+
+router.get(
+  "/cms/solutions/:id/linked-collateral",
+  ...readGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ items: await loadLinkedCollateralForSolution(id) });
+  },
+);
+
+router.put(
+  "/cms/solutions/:id/linked-collateral",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const parsed = SolutionLinkedCollateralBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    // Normalize by payload position; collapse duplicate collateralIds to
+    // the last entry seen. Mirrors the per-collateral PUT semantics.
+    const seen = new Map<
+      string,
+      { collateralId: string; displayOrder: number; active: boolean }
+    >();
+    parsed.data.items.forEach((item, idx) => {
+      seen.set(item.collateralId, {
+        collateralId: item.collateralId,
+        displayOrder: idx,
+        active: item.active ?? true,
+      });
+    });
+    const desired = Array.from(seen.values());
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(collateralSolutionsTable)
+        .where(eq(collateralSolutionsTable.solutionId, id));
+      if (desired.length > 0) {
+        await tx.insert(collateralSolutionsTable).values(
+          desired.map((d) => ({
+            collateralId: d.collateralId,
+            solutionId: id,
+            displayOrder: d.displayOrder,
+            active: d.active,
+          })),
+        );
+      }
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "solution.linked_collateral.replace",
+      entity: "solution",
+      entityId: id,
+    });
+    res.json({ items: await loadLinkedCollateralForSolution(id) });
   },
 );
 

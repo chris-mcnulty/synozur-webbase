@@ -956,6 +956,43 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ items }),
     }),
+  // Task #321 — Symmetric "linked collateral" helpers. Lets the
+  // solution editor bulk-attach Collateral items in one round-trip
+  // instead of round-tripping through each per-collateral list.
+  listSolutionLinkedCollateral: (solutionId: string) =>
+    jsonFetch<{
+      items: {
+        collateralId: string;
+        displayOrder: number;
+        active: boolean;
+        collateralTitle: string;
+        collateralType: string;
+        collateralSlug: string;
+      }[];
+    }>(
+      url(
+        `/cms/solutions/${encodeURIComponent(solutionId)}/linked-collateral`,
+      ),
+    ),
+  replaceSolutionLinkedCollateral: (
+    solutionId: string,
+    items: { collateralId: string; displayOrder?: number; active?: boolean }[],
+  ) =>
+    jsonFetch<{
+      items: {
+        collateralId: string;
+        displayOrder: number;
+        active: boolean;
+        collateralTitle: string;
+        collateralType: string;
+        collateralSlug: string;
+      }[];
+    }>(
+      url(
+        `/cms/solutions/${encodeURIComponent(solutionId)}/linked-collateral`,
+      ),
+      { method: "PUT", body: JSON.stringify({ items }) },
+    ),
   restoreSolutionRevision: (id: string, revisionId: string) =>
     jsonFetch<SolutionDto>(
       url(
