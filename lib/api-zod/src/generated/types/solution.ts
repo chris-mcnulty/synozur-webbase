@@ -5,7 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { SolutionPillar } from "./solutionPillar";
+import type { SolutionSolutionGroup } from "./solutionSolutionGroup";
 import type { SolutionStatus } from "./solutionStatus";
 import type { Tag } from "./tag";
 
@@ -69,8 +69,15 @@ export interface Solution {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  /** @nullable */
-  pillar?: SolutionPillar;
+  /** Market-facing grouping that drives the public Solutions menu,
+footer, and services-overview hero tiles. Replaces the legacy
+`pillar` column dropped in task #317.
+ */
+  solutionGroup?: SolutionSolutionGroup;
+  /** When true the solution is surfaced in the public Solutions
+mega-menu and the marketing site's primary nav.
+ */
+  showInMenu?: boolean;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;

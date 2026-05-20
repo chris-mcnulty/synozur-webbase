@@ -10,8 +10,6 @@ import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { useOverride } from "@/lib/experiments";
 
-const OVERVIEW_HERO_SLUG = "our-services";
-
 function PillarIcon({ url, fallback }: { url: string | null; fallback?: React.ReactNode }) {
   if (url) {
     return (
@@ -59,10 +57,40 @@ function ErrorBlock({ message }: { message: string }) {
   );
 }
 
+const FEATURED_GROUP_META: Record<
+  "ai_strategy" | "gtm" | "company_os",
+  { label: string; phase: string; tagline: string }
+> = {
+  ai_strategy: {
+    label: "AI Strategy & Design",
+    phase: "Orient · Align",
+    tagline:
+      "Find the AI plays that actually move the number — and the guardrails that let you ship them.",
+  },
+  gtm: {
+    label: "GTM Strategy & Execution",
+    phase: "Activate",
+    tagline:
+      "Reposition, repackage, and take the story to market with motions that prove it in revenue.",
+  },
+  company_os: {
+    label: "Company OS",
+    phase: "Adopt",
+    tagline:
+      "Embed the operating habits, measurement, and rhythm so the change keeps compounding.",
+  },
+};
+
 function DefaultOverview() {
   const list = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+    queryKey: ["solutions", "menu"],
+    queryFn: () => api.listSolutions({ showInMenu: true }),
+  });
+  // Also fetch the full set so we can render hidden/lower-tier consulting
+  // solutions on the overview (they're public, just not in the nav).
+  const allList = useQuery({
+    queryKey: ["solutions", "all"],
+    queryFn: () => api.listSolutions({}),
   });
   const heroEyebrow = useOverride<string>(
     "services.hero.eyebrow",
@@ -70,18 +98,26 @@ function DefaultOverview() {
   );
   const heroHeadlineOverride = useOverride<string | null>(
     "services.hero.headline",
-    null,
+    "AI-native. Human-centered. Built to land.",
   );
   const heroBodyOverride = useOverride<string | null>(
     "services.hero.body",
-    null,
+    "Three flagship solutions cover the arc from AI strategy through GTM execution to Company OS adoption. A consulting bench composes around whatever piece you need next.",
   );
 
-  const heroService = list.data?.items.find((s) => s.slug === OVERVIEW_HERO_SLUG);
-  const pillars = (list.data?.items ?? []).filter((s) => s.slug !== OVERVIEW_HERO_SLUG);
+  const items = list.data?.items ?? [];
+  const featuredTrio = (["ai_strategy", "gtm", "company_os"] as const)
+    .map((g) => ({
+      group: g,
+      meta: FEATURED_GROUP_META[g],
+      solution: items.find((s) => s.solutionGroup === g),
+    }))
+    .filter((row) => row.solution != null);
 
-  // Hub-level breadcrumbs (Home › Services) and an ItemList of pillars so
-  // search engines can render the four pillars as a sitelinks-style rail.
+  const consultingAll = (allList.data?.items ?? []).filter(
+    (s) => s.solutionGroup === "consulting_services",
+  );
+
   const overviewUrl = `${SITE_ORIGIN}/services-overview/default`;
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -91,17 +127,17 @@ function DefaultOverview() {
       { "@type": "ListItem", position: 2, name: "Services", item: overviewUrl },
     ],
   };
-  const pillarsItemListJsonLd =
-    pillars.length > 0
+  const itemListJsonLd =
+    featuredTrio.length > 0
       ? {
           "@context": "https://schema.org",
           "@type": "ItemList",
-          name: "Service pillars",
-          itemListElement: pillars.map((p, i) => ({
+          name: "Flagship solutions",
+          itemListElement: featuredTrio.map((row, i) => ({
             "@type": "ListItem",
             position: i + 1,
-            url: `${SITE_ORIGIN}/services/${p.slug}`,
-            name: p.title,
+            url: `${SITE_ORIGIN}/solutions/${row.solution!.slug}`,
+            name: row.solution!.title,
           })),
         }
       : null;
@@ -109,121 +145,152 @@ function DefaultOverview() {
   return (
     <PageShell>
       <Meta
-        title={heroService?.seoTitle || "Services Overview"}
-        description={
-          heroService?.seoDescription ||
-          stripHtml(heroService?.heroTextHtml) ||
-          stripHtml(heroService?.blurbHtml) ||
-          "Four service pillars built to power transformation that is rooted in people, powered by technology, and driven by purpose."
-        }
-        image={heroService?.iconUrl ?? undefined}
-        rawTitle={!!heroService?.seoTitle}
+        title="Services Overview"
+        description="Three flagship solutions — AI Strategy & Design, GTM Strategy & Execution, and Company OS — plus a consulting bench that composes around your situation."
       />
       <JsonLd data={breadcrumbJsonLd} id="services-overview-breadcrumb-jsonld" />
-      {pillarsItemListJsonLd ? (
-        <JsonLd data={pillarsItemListJsonLd} id="services-overview-itemlist-jsonld" />
+      {itemListJsonLd ? (
+        <JsonLd data={itemListJsonLd} id="services-overview-itemlist-jsonld" />
       ) : null}
 
-      {list.isLoading ? (
-        <LoadingHero />
-      ) : (
-        <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-          <div className="absolute inset-0 nebula-gradient opacity-25" />
-          <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-            <p className="text-sm uppercase tracking-widest text-primary mb-4">
-              {heroEyebrow}
-            </p>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8">
-              {heroHeadlineOverride ??
-                heroService?.title ??
-                "Four pillars. One destination."}
-            </h1>
-            {heroBodyOverride ? (
-              <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-                {heroBodyOverride}
-              </p>
-            ) : heroService?.heroTextHtml ? (
-              <RichText
-                html={heroService.heroTextHtml}
-                invert
-                className="prose-lg prose-p:text-zinc-300 prose-strong:text-white"
-              />
-            ) : (
-              <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-                Every engagement is shaped from the same set of disciplines. We compose them around your situation — never the other way around.
-              </p>
-            )}
-          </div>
-        </section>
-      )}
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
+        <div className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4">
+            {heroEyebrow}
+          </p>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8">
+            {heroHeadlineOverride ?? "AI-native. Human-centered. Built to land."}
+          </h1>
+          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
+            {heroBodyOverride}
+          </p>
+        </div>
+      </section>
 
       {list.isError ? (
         <ErrorBlock message="The services list could not be loaded right now." />
       ) : (
-        <section className="py-24 bg-background">
-          <div className="container mx-auto px-4 space-y-8">
-            {list.isLoading
-              ? [0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-40 rounded-2xl border border-border/60 bg-card animate-pulse"
-                  />
-                ))
-              : pillars.map((p, i) => (
-                  <motion.div
-                    key={p.slug}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.05 }}
-                  >
-                    <Link
-                      href={`/services/${p.slug}`}
-                      className="group block rounded-2xl border border-border/60 bg-card p-8 md:p-12 hover:border-primary/40 hover:bg-card/80 transition-all nebula-card"
-                    >
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                        <div className="lg:col-span-1">
-                          <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                            <PillarIcon url={p.iconUrl} />
-                          </div>
-                        </div>
-                        <div className="lg:col-span-7">
-                          <h2 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-primary transition-colors">
-                            {p.title}
-                          </h2>
-                          {p.blurbHtml ? (
-                            <RichText
-                              html={p.blurbHtml}
-                              className="prose-p:text-muted-foreground prose-p:text-lg"
-                            />
-                          ) : null}
-                        </div>
-                        <div className="lg:col-span-4">
-                          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-                            Solutions
-                          </p>
-                          <ul className="space-y-2">
-                            {p.solutions.slice(0, 6).map((s) => (
-                              <li
-                                key={s.slug}
-                                className="text-sm text-foreground/90 flex items-center gap-2"
-                              >
-                                <span className="h-1 w-1 rounded-full bg-primary" />
+        <>
+          <section className="py-24 bg-background">
+            <div className="container mx-auto px-4">
+              <div className="max-w-3xl mb-12">
+                <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                  Flagship Solutions
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold">
+                  Three engagements. One Method.
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {list.isLoading
+                  ? [0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="h-72 rounded-2xl border border-border/60 bg-card animate-pulse"
+                      />
+                    ))
+                  : featuredTrio.map((row, i) => {
+                      const sol = row.solution!;
+                      return (
+                        <motion.div
+                          key={sol.slug}
+                          initial={{ opacity: 0, y: 24 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.5, delay: i * 0.06 }}
+                        >
+                          <Link
+                            href={`/solutions/${sol.slug}`}
+                            className="group block h-full rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 hover:bg-card/80 transition-all nebula-card"
+                          >
+                            <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6">
+                              <PillarIcon url={sol.iconUrl} />
+                            </div>
+                            <p className="text-xs uppercase tracking-widest text-primary mb-2">
+                              {row.meta.phase}
+                            </p>
+                            <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">
+                              {sol.title}
+                            </h3>
+                            <p className="text-base text-muted-foreground mb-6">
+                              {row.meta.tagline}
+                            </p>
+                            <span className="inline-flex items-center text-sm font-semibold text-primary">
+                              Explore
+                              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </span>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+              </div>
+            </div>
+          </section>
+
+          <section className="py-24 bg-card border-y border-border">
+            <div className="container mx-auto px-4">
+              <div className="max-w-3xl mb-12">
+                <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                  Consulting Services
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                  Specialist benches that plug into any phase
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  When the flagship engagements aren't the right shape, our
+                  consulting bench composes around the specific gap — leadership,
+                  brand, Microsoft, delivery, or design.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {allList.isLoading
+                  ? [0, 1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="h-32 rounded-xl border border-border/60 bg-background/50 animate-pulse"
+                      />
+                    ))
+                  : consultingAll.map((s, i) => (
+                      <motion.div
+                        key={s.slug}
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: i * 0.04 }}
+                      >
+                        <Link
+                          href={`/solutions/${s.slug}`}
+                          className="group block h-full rounded-xl border border-border/60 bg-background/50 p-6 hover:border-primary/40 transition-colors"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <PillarIcon url={s.iconUrl} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base font-semibold mb-1 group-hover:text-primary transition-colors">
                                 {s.title}
-                              </li>
-                            ))}
-                          </ul>
-                          <span className="mt-6 inline-flex items-center text-sm font-semibold text-primary">
-                            Browse solutions
-                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-          </div>
-        </section>
+                                {s.showInMenu === false ? (
+                                  <span className="ml-2 inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                    On request
+                                  </span>
+                                ) : null}
+                              </h3>
+                              {s.blurbHtml ? (
+                                <RichText
+                                  html={s.blurbHtml}
+                                  className="prose-sm prose-p:text-muted-foreground prose-p:text-sm prose-p:my-0"
+                                />
+                              ) : null}
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    ))}
+              </div>
+            </div>
+          </section>
+        </>
       )}
     </PageShell>
   );

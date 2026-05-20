@@ -2030,15 +2030,23 @@ export const ListServicesResponse = zod.object({
                 .optional(),
               publishedAt: zod.string().nullish(),
               unpublishedAt: zod.string().nullish(),
-              pillar: zod
-                .union([
-                  zod.literal("strategic"),
-                  zod.literal("technology"),
-                  zod.literal("experiences"),
-                  zod.literal("gtm"),
-                  zod.literal(null),
+              solutionGroup: zod
+                .enum([
+                  "ai_strategy",
+                  "gtm",
+                  "company_os",
+                  "consulting_services",
                 ])
-                .nullish(),
+                .optional()
+                .describe(
+                  "Market-facing grouping that drives the public Solutions menu,\nfooter, and services-overview hero tiles. Replaces the legacy\n`pillar` column dropped in task #317.\n",
+                ),
+              showInMenu: zod
+                .boolean()
+                .optional()
+                .describe(
+                  "When true the solution is surfaced in the public Solutions\nmega-menu and the marketing site's primary nav.\n",
+                ),
               tags: zod
                 .array(
                   zod.object({
@@ -2121,6 +2129,81 @@ export const GetServiceResponse = zod
     }),
   );
 
+/**
+ * Public listing of published, active solutions. Returns the flat
+solution rows (without parent service expansion) used by the
+marketing-site Solutions menu and footer. Pass `showInMenu=true`
+to limit results to solutions surfaced in the public nav.
+
+ */
+export const ListSolutionsQueryParams = zod.object({
+  showInMenu: zod.coerce.boolean().optional(),
+});
+
+export const ListSolutionsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      title: zod.string(),
+      active: zod.boolean(),
+      displayOrder: zod.number().nullish(),
+      parentServiceId: zod.string().nullish(),
+      iconId: zod.string().nullish(),
+      iconUrl: zod.string().nullish(),
+      routePath: zod.string().nullish(),
+      buttonText: zod.string().nullish(),
+      heroTextHtml: zod.string().nullish(),
+      secondaryTitle: zod.string().nullish(),
+      secondaryTextHtml: zod.string().nullish(),
+      ourApproachTitle: zod.string().nullish(),
+      ourApproachTextHtml: zod.string().nullish(),
+      blurbHtml: zod.string().nullish(),
+      blurbCopy: zod.string().nullish(),
+      heroTextColor: zod.string().nullish(),
+      tagsText: zod.string().nullish(),
+      blogCategory: zod.string().nullish(),
+      blogTag: zod.string().nullish(),
+      primaryBlogCategoryFilter: zod.string().nullish(),
+      buttonUrl: zod.string().nullish(),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
+      acceleratorsHtml: zod.string().nullish(),
+      faqHtml: zod.string().nullish(),
+      bookingId: zod.string().uuid().nullish(),
+      sourceId: zod.string().nullish(),
+      status: zod
+        .enum(["draft", "scheduled", "published", "archived"])
+        .optional(),
+      publishedAt: zod.string().nullish(),
+      unpublishedAt: zod.string().nullish(),
+      solutionGroup: zod
+        .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+        .optional()
+        .describe(
+          "Market-facing grouping that drives the public Solutions menu,\nfooter, and services-overview hero tiles. Replaces the legacy\n`pillar` column dropped in task #317.\n",
+        ),
+      showInMenu: zod
+        .boolean()
+        .optional()
+        .describe(
+          "When true the solution is surfaced in the public Solutions\nmega-menu and the marketing site's primary nav.\n",
+        ),
+      tags: zod
+        .array(
+          zod.object({
+            id: zod.string().uuid(),
+            slug: zod.string(),
+            name: zod.string(),
+          }),
+        )
+        .optional(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
 export const GetSolutionParams = zod.object({
   slug: zod.coerce.string(),
 });
@@ -2161,15 +2244,18 @@ export const GetSolutionResponse = zod
       .optional(),
     publishedAt: zod.string().nullish(),
     unpublishedAt: zod.string().nullish(),
-    pillar: zod
-      .union([
-        zod.literal("strategic"),
-        zod.literal("technology"),
-        zod.literal("experiences"),
-        zod.literal("gtm"),
-        zod.literal(null),
-      ])
-      .nullish(),
+    solutionGroup: zod
+      .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+      .optional()
+      .describe(
+        "Market-facing grouping that drives the public Solutions menu,\nfooter, and services-overview hero tiles. Replaces the legacy\n`pillar` column dropped in task #317.\n",
+      ),
+    showInMenu: zod
+      .boolean()
+      .optional()
+      .describe(
+        "When true the solution is surfaced in the public Solutions\nmega-menu and the marketing site's primary nav.\n",
+      ),
     tags: zod
       .array(
         zod.object({
@@ -2243,6 +2329,38 @@ export const GetSolutionResponse = zod
           updatedAt: zod.string(),
         }),
       ),
+      highlights: zod
+        .array(
+          zod.object({
+            id: zod.string(),
+            solutionId: zod.string(),
+            collateralId: zod.string(),
+            displayOrder: zod.number(),
+            active: zod.boolean(),
+            collateralType: zod
+              .string()
+              .describe(
+                "Mirrors `collateral.type` (workshop, white_paper, video, application, …).",
+              ),
+            collateralSlug: zod.string(),
+            collateralTitle: zod.string(),
+            collateralSubtitle: zod.string().nullish(),
+            collateralDescription: zod.string().nullish(),
+            collateralHeroImage: zod.string().nullish(),
+            collateralUrl: zod
+              .string()
+              .nullish()
+              .describe(
+                "Internal route or external URL for the highlighted item.",
+              ),
+            collateralExternal: zod.boolean(),
+            collateralDownloadUrl: zod.string().nullish(),
+            collateralVideoUrl: zod.string().nullish(),
+          }),
+        )
+        .describe(
+          "Task #317 — Ordered list of Collateral items pinned to this\nsolution. The public solution page picks one at random per\npage load and renders it in place of the legacy accelerator\nblock. Admin\/preview responses include inactive rows; the\npublic response filters them out.\n",
+        ),
     }),
   );
 
@@ -2853,15 +2971,18 @@ export const CmsListSolutionsResponse = zod.object({
         .optional(),
       publishedAt: zod.string().nullish(),
       unpublishedAt: zod.string().nullish(),
-      pillar: zod
-        .union([
-          zod.literal("strategic"),
-          zod.literal("technology"),
-          zod.literal("experiences"),
-          zod.literal("gtm"),
-          zod.literal(null),
-        ])
-        .nullish(),
+      solutionGroup: zod
+        .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+        .optional()
+        .describe(
+          "Market-facing grouping that drives the public Solutions menu,\nfooter, and services-overview hero tiles. Replaces the legacy\n`pillar` column dropped in task #317.\n",
+        ),
+      showInMenu: zod
+        .boolean()
+        .optional()
+        .describe(
+          "When true the solution is surfaced in the public Solutions\nmega-menu and the marketing site's primary nav.\n",
+        ),
       tags: zod
         .array(
           zod.object({
@@ -2906,15 +3027,10 @@ export const CmsCreateSolutionBody = zod.object({
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
-  pillar: zod
-    .union([
-      zod.literal("strategic"),
-      zod.literal("technology"),
-      zod.literal("experiences"),
-      zod.literal("gtm"),
-      zod.literal(null),
-    ])
-    .nullish(),
+  solutionGroup: zod
+    .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+    .optional(),
+  showInMenu: zod.boolean().optional(),
   tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
@@ -2952,15 +3068,10 @@ export const CmsUpdateSolutionBody = zod.object({
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
-  pillar: zod
-    .union([
-      zod.literal("strategic"),
-      zod.literal("technology"),
-      zod.literal("experiences"),
-      zod.literal("gtm"),
-      zod.literal(null),
-    ])
-    .nullish(),
+  solutionGroup: zod
+    .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+    .optional(),
+  showInMenu: zod.boolean().optional(),
   tagIds: zod.array(zod.string().uuid()).optional(),
   active: zod.boolean().optional(),
 });
@@ -2998,15 +3109,18 @@ export const CmsUpdateSolutionResponse = zod.object({
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
-  pillar: zod
-    .union([
-      zod.literal("strategic"),
-      zod.literal("technology"),
-      zod.literal("experiences"),
-      zod.literal("gtm"),
-      zod.literal(null),
-    ])
-    .nullish(),
+  solutionGroup: zod
+    .enum(["ai_strategy", "gtm", "company_os", "consulting_services"])
+    .optional()
+    .describe(
+      "Market-facing grouping that drives the public Solutions menu,\nfooter, and services-overview hero tiles. Replaces the legacy\n`pillar` column dropped in task #317.\n",
+    ),
+  showInMenu: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true the solution is surfaced in the public Solutions\nmega-menu and the marketing site's primary nav.\n",
+    ),
   tags: zod
     .array(
       zod.object({
@@ -3022,6 +3136,92 @@ export const CmsUpdateSolutionResponse = zod.object({
 
 export const CmsDeleteSolutionParams = zod.object({
   id: zod.coerce.string(),
+});
+
+export const CmsListSolutionHighlightsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListSolutionHighlightsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      solutionId: zod.string(),
+      collateralId: zod.string(),
+      displayOrder: zod.number(),
+      active: zod.boolean(),
+      collateralType: zod
+        .string()
+        .describe(
+          "Mirrors `collateral.type` (workshop, white_paper, video, application, …).",
+        ),
+      collateralSlug: zod.string(),
+      collateralTitle: zod.string(),
+      collateralSubtitle: zod.string().nullish(),
+      collateralDescription: zod.string().nullish(),
+      collateralHeroImage: zod.string().nullish(),
+      collateralUrl: zod
+        .string()
+        .nullish()
+        .describe("Internal route or external URL for the highlighted item."),
+      collateralExternal: zod.boolean(),
+      collateralDownloadUrl: zod.string().nullish(),
+      collateralVideoUrl: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * Replace-all upsert. Existing highlights for the solution that are
+not in the payload are removed; matching rows are updated in place
+so primary keys remain stable.
+
+ */
+export const CmsReplaceSolutionHighlightsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsReplaceSolutionHighlightsBody = zod.object({
+  items: zod
+    .array(
+      zod.object({
+        collateralId: zod.string(),
+        displayOrder: zod.number().optional(),
+        active: zod.boolean().optional(),
+      }),
+    )
+    .describe(
+      "Replace-all payload. Each entry references an existing\nCollateral row by id; `displayOrder` is normalized server-side.\n",
+    ),
+});
+
+export const CmsReplaceSolutionHighlightsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      solutionId: zod.string(),
+      collateralId: zod.string(),
+      displayOrder: zod.number(),
+      active: zod.boolean(),
+      collateralType: zod
+        .string()
+        .describe(
+          "Mirrors `collateral.type` (workshop, white_paper, video, application, …).",
+        ),
+      collateralSlug: zod.string(),
+      collateralTitle: zod.string(),
+      collateralSubtitle: zod.string().nullish(),
+      collateralDescription: zod.string().nullish(),
+      collateralHeroImage: zod.string().nullish(),
+      collateralUrl: zod
+        .string()
+        .nullish()
+        .describe("Internal route or external URL for the highlighted item."),
+      collateralExternal: zod.boolean(),
+      collateralDownloadUrl: zod.string().nullish(),
+      collateralVideoUrl: zod.string().nullish(),
+    }),
+  ),
 });
 
 export const CmsListServiceMethodologiesParams = zod.object({

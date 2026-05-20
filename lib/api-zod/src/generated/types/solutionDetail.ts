@@ -8,8 +8,16 @@
 import type { Capability } from "./capability";
 import type { Service } from "./service";
 import type { Solution } from "./solution";
+import type { SolutionHighlight } from "./solutionHighlight";
 
 export type SolutionDetail = Solution & {
   parentService?: Service | null;
   capabilities: Capability[];
+  /** Task #317 — Ordered list of Collateral items pinned to this
+solution. The public solution page picks one at random per
+page load and renders it in place of the legacy accelerator
+block. Admin/preview responses include inactive rows; the
+public response filters them out.
+ */
+  highlights: SolutionHighlight[];
 };

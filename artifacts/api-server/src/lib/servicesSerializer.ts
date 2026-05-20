@@ -5,6 +5,8 @@ import {
   solutionsTable,
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
+  solutionHighlightsTable,
+  collateralTable,
   mediaTable,
   tagsTable,
   entityTagsTable,
@@ -149,7 +151,8 @@ function shapeSolution(s: Solution, icon: IconRef, tags: TagRef[], booking: Link
     status: s.status,
     publishedAt: s.publishedAt ? s.publishedAt.toISOString() : null,
     unpublishedAt: s.unpublishedAt ? s.unpublishedAt.toISOString() : null,
-    pillar: s.pillar,
+    solutionGroup: s.solutionGroup,
+    showInMenu: s.showInMenu,
     active: s.active,
     tags,
     createdAt: s.createdAt.toISOString(),
@@ -196,9 +199,28 @@ export type CapabilityDto = ReturnType<typeof shapeCapability>;
 
 export type ServiceWithSolutions = ServiceDto & { solutions: SolutionDto[] };
 export type ServiceWithMethodologies = ServiceDto & { methodologies: MethodologyDto[] };
+export type SolutionHighlightDto = {
+  id: string;
+  solutionId: string;
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  collateralSubtitle: string | null;
+  collateralDescription: string | null;
+  collateralHeroImage: string | null;
+  collateralUrl: string | null;
+  collateralExternal: boolean;
+  collateralDownloadUrl: string | null;
+  collateralVideoUrl: string | null;
+};
+
 export type SolutionWithCapabilities = SolutionDto & {
   parentService: ServiceDto | null;
   capabilities: CapabilityDto[];
+  highlights: SolutionHighlightDto[];
 };
 
 export async function serializeService(s: Service): Promise<ServiceDto> {
@@ -447,6 +469,42 @@ export async function getSolutionWithCapabilities(
     .where(eq(solutionCapabilitiesTable.solutionId, solution.id))
     .orderBy(asc(solutionCapabilitiesTable.displayOrder), asc(solutionCapabilitiesTable.title));
   const visible = capabilities.filter((c) => !c.hidden);
+  // Task #317 — Per-solution rotating highlights. Joined with collateral
+  // so the public renderer can present a fully-shaped card without a
+  // second round-trip. Public responses (no preview) drop inactive rows;
+  // preview returns everything so editors can audit the full list.
+  const highlightRows = await db
+    .select({
+      h: solutionHighlightsTable,
+      c: collateralTable,
+    })
+    .from(solutionHighlightsTable)
+    .innerJoin(
+      collateralTable,
+      eq(solutionHighlightsTable.collateralId, collateralTable.id),
+    )
+    .where(eq(solutionHighlightsTable.solutionId, solution.id))
+    .orderBy(asc(solutionHighlightsTable.displayOrder), asc(collateralTable.title));
+  const visibleHighlights = opts.preview
+    ? highlightRows
+    : highlightRows.filter((r) => r.h.active && r.c.active);
+  const highlights: SolutionHighlightDto[] = visibleHighlights.map((r) => ({
+    id: r.h.id,
+    solutionId: r.h.solutionId,
+    collateralId: r.h.collateralId,
+    displayOrder: r.h.displayOrder,
+    active: r.h.active,
+    collateralType: r.c.type,
+    collateralSlug: r.c.slug,
+    collateralTitle: r.c.title,
+    collateralSubtitle: r.c.subtitle ?? null,
+    collateralDescription: r.c.description ?? null,
+    collateralHeroImage: r.c.heroImage ?? null,
+    collateralUrl: r.c.url ?? null,
+    collateralExternal: r.c.external,
+    collateralDownloadUrl: r.c.downloadUrl ?? null,
+    collateralVideoUrl: r.c.videoUrl ?? null,
+  }));
   const parentService = solution.parentServiceId
     ? await db.query.servicesTable.findFirst({
         where: eq(servicesTable.id, solution.parentServiceId),
@@ -486,6 +544,7 @@ export async function getSolutionWithCapabilities(
       capabilities: visible.map((c) =>
         shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null),
       ),
+      highlights,
     },
   };
 }

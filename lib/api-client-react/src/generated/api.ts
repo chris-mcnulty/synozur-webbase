@@ -91,6 +91,7 @@ import type {
   ListPortalApps200,
   ListPortalDocumentsParams,
   ListPortalEngagements200,
+  ListSolutionsParams,
   MediaItem,
   MediaListResponse,
   Methodology,
@@ -148,6 +149,7 @@ import type {
   SiteSettingsInput,
   Solution,
   SolutionDetail,
+  SolutionHighlightItemsResponse,
   SolutionItemsResponse,
   StartFormInput,
   SubmitCommentBody,
@@ -171,6 +173,7 @@ import type {
   UpsertMethodologyBody,
   UpsertServiceBody,
   UpsertSolutionBody,
+  UpsertSolutionHighlightsBody,
   UpsertTagBody,
 } from "./api.schemas";
 
@@ -3942,6 +3945,100 @@ export function useGetService<
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+/**
+ * Public listing of published, active solutions. Returns the flat
+solution rows (without parent service expansion) used by the
+marketing-site Solutions menu and footer. Pass `showInMenu=true`
+to limit results to solutions surfaced in the public nav.
+
+ */
+export const getListSolutionsUrl = (params?: ListSolutionsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/solutions?${stringifiedParams}`
+    : `/api/solutions`;
+};
+
+export const listSolutions = async (
+  params?: ListSolutionsParams,
+  options?: RequestInit,
+): Promise<SolutionItemsResponse> => {
+  return customFetch<SolutionItemsResponse>(getListSolutionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSolutionsQueryKey = (params?: ListSolutionsParams) => {
+  return [`/api/solutions`, ...(params ? [params] : [])] as const;
+};
+
+export const getListSolutionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSolutions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSolutionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSolutions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSolutionsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSolutions>>> = ({
+    signal,
+  }) => listSolutions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSolutions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSolutionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSolutions>>
+>;
+export type ListSolutionsQueryError = ErrorType<unknown>;
+
+export function useListSolutions<
+  TData = Awaited<ReturnType<typeof listSolutions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSolutionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSolutions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSolutionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 export const getGetSolutionUrl = (slug: string) => {
   return `/api/solutions/${slug}`;
 };
@@ -5590,6 +5687,183 @@ export const useCmsDeleteSolution = <
   TContext
 > => {
   return useMutation(getCmsDeleteSolutionMutationOptions(options));
+};
+
+export const getCmsListSolutionHighlightsUrl = (id: string) => {
+  return `/api/cms/solutions/${id}/highlights`;
+};
+
+export const cmsListSolutionHighlights = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SolutionHighlightItemsResponse> => {
+  return customFetch<SolutionHighlightItemsResponse>(
+    getCmsListSolutionHighlightsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListSolutionHighlightsQueryKey = (id: string) => {
+  return [`/api/cms/solutions/${id}/highlights`] as const;
+};
+
+export const getCmsListSolutionHighlightsQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListSolutionHighlights>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListSolutionHighlights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListSolutionHighlightsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListSolutionHighlights>>
+  > = ({ signal }) =>
+    cmsListSolutionHighlights(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListSolutionHighlights>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListSolutionHighlightsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListSolutionHighlights>>
+>;
+export type CmsListSolutionHighlightsQueryError = ErrorType<NotFoundResponse>;
+
+export function useCmsListSolutionHighlights<
+  TData = Awaited<ReturnType<typeof cmsListSolutionHighlights>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListSolutionHighlights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListSolutionHighlightsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Replace-all upsert. Existing highlights for the solution that are
+not in the payload are removed; matching rows are updated in place
+so primary keys remain stable.
+
+ */
+export const getCmsReplaceSolutionHighlightsUrl = (id: string) => {
+  return `/api/cms/solutions/${id}/highlights`;
+};
+
+export const cmsReplaceSolutionHighlights = async (
+  id: string,
+  upsertSolutionHighlightsBody: UpsertSolutionHighlightsBody,
+  options?: RequestInit,
+): Promise<SolutionHighlightItemsResponse> => {
+  return customFetch<SolutionHighlightItemsResponse>(
+    getCmsReplaceSolutionHighlightsUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(upsertSolutionHighlightsBody),
+    },
+  );
+};
+
+export const getCmsReplaceSolutionHighlightsMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>,
+    TError,
+    { id: string; data: BodyType<UpsertSolutionHighlightsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>,
+  TError,
+  { id: string; data: BodyType<UpsertSolutionHighlightsBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsReplaceSolutionHighlights"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>,
+    { id: string; data: BodyType<UpsertSolutionHighlightsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsReplaceSolutionHighlights(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsReplaceSolutionHighlightsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>
+>;
+export type CmsReplaceSolutionHighlightsMutationBody =
+  BodyType<UpsertSolutionHighlightsBody>;
+export type CmsReplaceSolutionHighlightsMutationError =
+  ErrorType<NotFoundResponse>;
+
+export const useCmsReplaceSolutionHighlights = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>,
+    TError,
+    { id: string; data: BodyType<UpsertSolutionHighlightsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsReplaceSolutionHighlights>>,
+  TError,
+  { id: string; data: BodyType<UpsertSolutionHighlightsBody> },
+  TContext
+> => {
+  return useMutation(getCmsReplaceSolutionHighlightsMutationOptions(options));
 };
 
 export const getCmsListServiceMethodologiesUrl = (serviceId: string) => {

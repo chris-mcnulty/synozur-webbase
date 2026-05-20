@@ -18,6 +18,7 @@ export * from "./auditLog";
 export * from "./siteSettings";
 export * from "./services";
 export * from "./collateral";
+export * from "./solutionHighlights";
 export * from "./collateralResources";
 export * from "./teamMembers";
 export * from "./analytics";

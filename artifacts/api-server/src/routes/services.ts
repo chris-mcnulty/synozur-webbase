@@ -5,6 +5,8 @@ import {
   db,
   servicesTable,
   solutionsTable,
+  solutionHighlightsTable,
+  collateralTable,
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
   serviceRevisionsTable,
@@ -13,7 +15,7 @@ import {
   solutionCapabilityRevisionsTable,
   usersTable,
   ARTIFACT_STATUSES,
-  COLLATERAL_PILLARS,
+  SOLUTION_GROUPS,
   type Service,
   type Solution,
   type ServiceMethodology,
@@ -73,6 +75,34 @@ router.get("/services/:slug", async (req, res) => {
     return;
   }
   res.json(result.data);
+});
+
+// Task #317 — Public list of published, active solutions. Drives the
+// marketing-site Solutions mega-menu and footer; `showInMenu=true`
+// trims the result to nav-visible rows.
+router.get("/solutions", async (req, res) => {
+  const showInMenuParam = req.query["showInMenu"];
+  const onlyMenu =
+    showInMenuParam === "true" || showInMenuParam === "1";
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(solutionsTable)
+    .where(
+      and(
+        eq(solutionsTable.active, true),
+        eq(solutionsTable.status, "published"),
+      ),
+    )
+    .orderBy(asc(solutionsTable.displayOrder), asc(solutionsTable.title));
+  const visible = rows.filter(
+    (r) =>
+      !r.deletedAt &&
+      (!r.publishedAt || r.publishedAt <= now) &&
+      (!r.unpublishedAt || r.unpublishedAt > now) &&
+      (!onlyMenu || r.showInMenu),
+  );
+  res.json({ items: await Promise.all(visible.map((r) => serializeSolution(r))) });
 });
 
 router.get("/solutions/:slug", async (req, res) => {
@@ -190,7 +220,11 @@ const SolutionBody = z.object({
   status: z.enum(ARTIFACT_STATUSES).optional(),
   publishedAt: z.string().nullish(),
   unpublishedAt: z.string().nullish(),
-  pillar: z.enum(COLLATERAL_PILLARS).nullish(),
+  // Task #317 — `pillar` removed; the four pillars now live on services
+  // (admin-only editorial tag). Solutions instead carry a market-facing
+  // solution_group and a show_in_menu flag.
+  solutionGroup: z.enum(SOLUTION_GROUPS).optional(),
+  showInMenu: z.boolean().optional(),
   tagIds: z.array(z.string().uuid()).optional(),
   active: z.boolean().optional(),
   bookingId: z.string().uuid().nullish(),
@@ -415,7 +449,8 @@ router.post("/cms/solutions", ...adminGuard, async (req, res) => {
       status: d.status ?? "draft",
       publishedAt: parseDate(d.publishedAt),
       unpublishedAt: parseDate(d.unpublishedAt),
-      pillar: d.pillar ?? null,
+      solutionGroup: d.solutionGroup ?? "consulting_services",
+      showInMenu: d.showInMenu ?? false,
       active: d.active ?? true,
       bookingId: d.bookingId ?? null,
     })
@@ -456,7 +491,7 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
     "heroTextColor", "tagsText", "blogCategory", "blogTag",
     "primaryBlogCategoryFilter", "buttonUrl", "seoTitle", "seoDescription",
     "acceleratorsHtml", "faqHtml",
-    "status", "pillar", "active",
+    "status", "solutionGroup", "showInMenu", "active",
   ] as const) {
     if (d[k] !== undefined) updates[k] = d[k];
   }
@@ -500,6 +535,128 @@ router.patch("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   });
   res.json(await serializeSolution(updated));
 });
+
+// Task #317 — Per-solution rotating highlights. Admin endpoints to list
+// and replace-all the ordered set of Collateral references that the
+// public solution page rotates through.
+const SolutionHighlightsBody = z.object({
+  items: z
+    .array(
+      z.object({
+        collateralId: z.string().uuid(),
+        displayOrder: z.number().int().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(50),
+});
+
+async function loadHighlights(solutionId: string) {
+  const rows = await db
+    .select({ h: solutionHighlightsTable, c: collateralTable })
+    .from(solutionHighlightsTable)
+    .innerJoin(
+      collateralTable,
+      eq(solutionHighlightsTable.collateralId, collateralTable.id),
+    )
+    .where(eq(solutionHighlightsTable.solutionId, solutionId))
+    .orderBy(
+      asc(solutionHighlightsTable.displayOrder),
+      asc(collateralTable.title),
+    );
+  return rows.map((r) => ({
+    id: r.h.id,
+    solutionId: r.h.solutionId,
+    collateralId: r.h.collateralId,
+    displayOrder: r.h.displayOrder,
+    active: r.h.active,
+    collateralType: r.c.type,
+    collateralSlug: r.c.slug,
+    collateralTitle: r.c.title,
+    collateralSubtitle: r.c.subtitle ?? null,
+    collateralDescription: r.c.description ?? null,
+    collateralHeroImage: r.c.heroImage ?? null,
+    collateralUrl: r.c.url ?? null,
+    collateralExternal: r.c.external,
+    collateralDownloadUrl: r.c.downloadUrl ?? null,
+    collateralVideoUrl: r.c.videoUrl ?? null,
+  }));
+}
+
+router.get(
+  "/cms/solutions/:id/highlights",
+  ...readGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ items: await loadHighlights(id) });
+  },
+);
+
+router.put(
+  "/cms/solutions/:id/highlights",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.solutionsTable.findFirst({
+      where: eq(solutionsTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const parsed = SolutionHighlightsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    // Normalize ordering by payload position; ignore client-sent
+    // displayOrder so the array order is the source of truth and
+    // duplicate collateralIds are collapsed to the last entry seen.
+    const seen = new Map<
+      string,
+      { collateralId: string; displayOrder: number; active: boolean }
+    >();
+    parsed.data.items.forEach((item, idx) => {
+      seen.set(item.collateralId, {
+        collateralId: item.collateralId,
+        displayOrder: idx,
+        active: item.active ?? true,
+      });
+    });
+    const desired = Array.from(seen.values());
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(solutionHighlightsTable)
+        .where(eq(solutionHighlightsTable.solutionId, id));
+      if (desired.length > 0) {
+        await tx.insert(solutionHighlightsTable).values(
+          desired.map((d) => ({
+            solutionId: id,
+            collateralId: d.collateralId,
+            displayOrder: d.displayOrder,
+            active: d.active,
+          })),
+        );
+      }
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "solution.highlights.replace",
+      entity: "solution",
+      entityId: id,
+    });
+    res.json({ items: await loadHighlights(id) });
+  },
+);
 
 router.delete("/cms/solutions/:id", ...adminGuard, async (req, res) => {
   const id = String(req.params.id);

@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   uuid,
   text,
   integer,
@@ -13,9 +14,23 @@ import {
 import { relations, sql } from "drizzle-orm";
 import { mediaTable } from "./media";
 import { usersTable } from "./users";
-import { artifactStatusEnum, collateralPillarEnum } from "./_artifactBase";
+import { artifactStatusEnum } from "./_artifactBase";
 import { bookingsTable } from "./bookings";
 import { tsvector } from "./_searchTsv";
+
+// Task #317 — Post-Board messaging realignment. Each solution now carries
+// a single market-facing grouping that drives the public Solutions menu
+// and the services-overview hero tiles. The legacy `parent_service_id`
+// remains as an admin-only editorial tag (the four pillars) and no longer
+// drives nav, search, or filters.
+export const SOLUTION_GROUPS = [
+  "ai_strategy",
+  "gtm",
+  "company_os",
+  "consulting_services",
+] as const;
+export type SolutionGroup = (typeof SOLUTION_GROUPS)[number];
+export const solutionGroupEnum = pgEnum("solution_group", SOLUTION_GROUPS);
 
 export const servicesTable = pgTable(
   "services",
@@ -107,14 +122,22 @@ export const solutionsTable = pgTable(
     bookingId: uuid("booking_id").references(() => bookingsTable.id, {
       onDelete: "set null",
     }),
-    // #56: publish/draft lifecycle + pillar assignment. Default matches
-    // the shared artifact pattern (`draft`); existing rows are backfilled
-    // to `published` by migration. Pillar reuses `collateral_pillar` so
-    // solution→library rails line up without a separate taxonomy.
+    // #56: publish/draft lifecycle. Default matches the shared artifact
+    // pattern (`draft`); existing rows are backfilled to `published` by
+    // migration.
     status: artifactStatusEnum("status").notNull().default("draft"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     unpublishedAt: timestamp("unpublished_at", { withTimezone: true }),
-    pillar: collateralPillarEnum("pillar"),
+    // Task #317 — Solution group is the market-facing taxonomy that drives
+    // the public Solutions menu, footer, and services-overview hero tiles.
+    // The legacy `pillar` column (collateral_pillar) has been dropped; the
+    // four pillars now live only on the `services` table as an admin-only
+    // editorial tag via `parent_service_id`.
+    solutionGroup: solutionGroupEnum("solution_group").notNull(),
+    // When true the solution is surfaced in the public Solutions mega-menu
+    // and the marketing site's primary nav. Hidden solutions are still
+    // routable at /solutions/:slug and remain searchable.
+    showInMenu: boolean("show_in_menu").notNull().default(false),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -130,7 +153,8 @@ export const solutionsTable = pgTable(
     index("solutions_parent_service_idx").on(t.parentServiceId),
     index("solutions_display_order_idx").on(t.displayOrder),
     index("solutions_status_idx").on(t.status),
-    index("solutions_pillar_idx").on(t.pillar),
+    index("solutions_solution_group_idx").on(t.solutionGroup),
+    index("solutions_show_in_menu_idx").on(t.showInMenu),
   ],
 );
 

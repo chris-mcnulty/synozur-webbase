@@ -26,11 +26,11 @@ import { useAuth, type AuthedUser } from "@/context/auth";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
 import {
   LOGO_COLOR_URL,
-  STATIC_SERVICE_PILLARS,
   STATIC_NAV_GROUPS_BASE,
-  buildServicesGroup,
+  buildSolutionsMenuGroup,
   buildApplicationsNestedSection,
-  type NavService,
+  type NavSolutionItem,
+  type NavSolutionGroup,
   type NavGroup,
   type NavLink,
 } from "@workspace/synozur-nav";
@@ -318,9 +318,11 @@ export function Header() {
     return groups;
   })();
 
-  const servicesQuery = useQuery({
-    queryKey: ["services"],
-    queryFn: () => api.listServices(),
+  // Task #317 — Solutions menu is driven directly by the CMS solutions
+  // table (the `showInMenu` rows), partitioned by `solutionGroup`.
+  const solutionsMenuQuery = useQuery({
+    queryKey: ["solutions", "menu"],
+    queryFn: () => api.listSolutions({ showInMenu: true }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -347,10 +349,15 @@ export function Header() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }));
   })();
 
-  const apiServiceItems = servicesQuery.data?.items;
-  const pillars: NavService[] = apiServiceItems
-    ? apiServiceItems.filter((s) => s.slug !== "our-services")
-    : STATIC_SERVICE_PILLARS;
+  const solutionItems: NavSolutionItem[] = (
+    solutionsMenuQuery.data?.items ?? []
+  )
+    .filter((s) => !!s.solutionGroup)
+    .map((s) => ({
+      title: s.title,
+      slug: s.slug,
+      solutionGroup: s.solutionGroup as NavSolutionGroup,
+    }));
 
   const navGroups: NavGroup[] = [
     {
@@ -364,7 +371,7 @@ export function Header() {
       ],
     },
     STATIC_NAV_GROUPS_BASE.ourStory,
-    buildServicesGroup(pillars),
+    buildSolutionsMenuGroup(solutionItems),
     STATIC_NAV_GROUPS_BASE.theFeed,
     {
       ...STATIC_NAV_GROUPS_BASE.resources,

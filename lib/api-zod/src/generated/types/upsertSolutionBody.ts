@@ -5,7 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { UpsertSolutionBodyPillar } from "./upsertSolutionBodyPillar";
+import type { UpsertSolutionBodySolutionGroup } from "./upsertSolutionBodySolutionGroup";
 import type { UpsertSolutionBodyStatus } from "./upsertSolutionBodyStatus";
 
 export interface UpsertSolutionBody {
@@ -63,8 +63,8 @@ export interface UpsertSolutionBody {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  /** @nullable */
-  pillar?: UpsertSolutionBodyPillar;
+  solutionGroup?: UpsertSolutionBodySolutionGroup;
+  showInMenu?: boolean;
   tagIds?: string[];
   active?: boolean;
 }

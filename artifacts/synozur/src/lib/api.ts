@@ -342,6 +342,16 @@ export interface SolutionDto {
   bookingId: string | null;
   booking?: LinkedBookingDto | null;
   active: boolean;
+  // Task #317 — market-facing taxonomy that replaces `pillar` on solutions.
+  // `solutionGroup` is what the marketing site partitions the menu/footer
+  // by; `showInMenu` is the per-solution toggle the admin uses to curate
+  // the public Solutions navigation.
+  solutionGroup?:
+    | "ai_strategy"
+    | "gtm"
+    | "company_os"
+    | "consulting_services";
+  showInMenu?: boolean;
 }
 
 export interface MethodologyDto {
@@ -584,9 +594,31 @@ export interface WhitePaperListResult {
 
 export type ServiceWithSolutions = ServiceDto & { solutions: SolutionDto[] };
 export type ServiceWithMethodologies = ServiceDto & { methodologies: MethodologyDto[] };
+// Task #317 — Per-solution rotating highlights. Joined with collateral
+// server-side so the public renderer has everything it needs to draw a
+// card without a second round-trip.
+export interface SolutionHighlightDto {
+  id: string;
+  solutionId: string;
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  collateralSubtitle: string | null;
+  collateralDescription: string | null;
+  collateralHeroImage: string | null;
+  collateralUrl: string | null;
+  collateralExternal: boolean;
+  collateralDownloadUrl: string | null;
+  collateralVideoUrl: string | null;
+}
+
 export type SolutionWithCapabilities = SolutionDto & {
   parentService: ServiceDto | null;
   capabilities: CapabilityDto[];
+  highlights: SolutionHighlightDto[];
 };
 
 export interface UpdateSiteSettingsBody {
@@ -781,6 +813,21 @@ export interface SeoCoverageUrlRow {
 
 export const api = {
   listServices: () => jsonFetch<{ items: ServiceWithSolutions[] }>(url("/services")),
+  // Task #317 — public list of solutions, used by the marketing header
+  // and footer to render the post-Board taxonomy directly from the CMS.
+  // No filter by default — returns every published+active solution.
+  // Pass `showInMenu: true` to restrict to nav-visible rows (used by the
+  // header/footer + featured-trio query). Callers that want the full set
+  // (e.g. the Consulting grid on Services Overview) just omit the option.
+  listSolutions: (opts: { showInMenu?: boolean } = {}) => {
+    const qs =
+      opts.showInMenu === true
+        ? "?showInMenu=true"
+        : opts.showInMenu === false
+          ? "?showInMenu=false"
+          : "";
+    return jsonFetch<{ items: SolutionDto[] }>(url(`/solutions${qs}`));
+  },
   listServicesAdmin: () =>
     jsonFetch<{ items: ServiceWithSolutions[] }>(url("/cms/services-with-solutions")),
   getService: (slug: string, previewToken?: string | null) =>
@@ -832,6 +879,19 @@ export const api = {
       url(
         `/cms/posts/${encodeURIComponent(postId)}/revisions/${encodeURIComponent(revisionId)}`,
       ),
+    ),
+  // Task #317 — rotating highlights admin helpers.
+  listSolutionHighlights: (id: string) =>
+    jsonFetch<{ items: SolutionHighlightDto[] }>(
+      url(`/cms/solutions/${encodeURIComponent(id)}/highlights`),
+    ),
+  replaceSolutionHighlights: (
+    id: string,
+    items: { collateralId: string; displayOrder?: number; active?: boolean }[],
+  ) =>
+    jsonFetch<{ items: SolutionHighlightDto[] }>(
+      url(`/cms/solutions/${encodeURIComponent(id)}/highlights`),
+      { method: "PUT", body: JSON.stringify({ items }) },
     ),
   restoreSolutionRevision: (id: string, revisionId: string) =>
     jsonFetch<SolutionDto>(

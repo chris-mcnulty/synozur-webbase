@@ -284,7 +284,7 @@ export default function Home() {
   );
   const taglineText = useOverride<string>(
     "home.hero.tagline.text",
-    "We help organizations move from intent to measurable progress—guiding leaders to their North Star with human‑centered, AI‑augmented transformation that’s built for real‑world adoption.",
+    "Transformation with momentum — AI‑native, human‑centered. We guide leaders through the North Star Method™ (Orient · Align · Activate · Adopt) so strategy lands as measurable progress, not slideware.",
   );
   const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
   const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
@@ -456,28 +456,101 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Find Your North Star */}
+      {/* Our Method — North Star Method™ */}
       <section className="py-24 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-3xl mb-12"
+          >
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Our Method
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              The North Star Method™
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Four phases that turn a board-room ambition into compounding,
+              real-world progress. We meet you at the phase you need and stay
+              until the change sticks — AI-augmented, human-centered, and
+              guarded by critical thinking at every step.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                phase: "Orient",
+                body: "Pressure-test the destination. Surface gaps, risks, and the AI plays that actually move the number.",
+                href: "/solutions/ai-strategy-and-design",
+                cta: "AI Strategy & Design",
+              },
+              {
+                phase: "Align",
+                body: "Get leaders, teams, and AI on one plan. Clear ownership, clear guardrails, no hidden agendas.",
+                href: "/solutions/ai-strategy-and-design",
+                cta: "AI Strategy & Design",
+              },
+              {
+                phase: "Activate",
+                body: "Ship the work. GTM motions, pilots, and operating changes that prove the case in the market.",
+                href: "/solutions/gtm-strategy-and-execution",
+                cta: "GTM Strategy & Execution",
+              },
+              {
+                phase: "Adopt",
+                body: "Embed it. Habits, measurement, and the Company OS that compounds the gains across the org.",
+                href: "/solutions/company-os",
+                cta: "Company OS",
+              },
+            ].map((p, i) => (
+              <motion.div
+                key={p.phase}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: i * 0.06 }}
+                className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col"
+              >
+                <div className="text-xs uppercase tracking-widest text-primary mb-2">
+                  Phase {i + 1}
+                </div>
+                <h3 className="text-xl font-bold mb-3">{p.phase}</h3>
+                <p className="text-sm text-muted-foreground mb-6 flex-1">
+                  {p.body}
+                </p>
+                <Link
+                  href={p.href}
+                  className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                >
+                  {p.cta} <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Find Your North Star</h2>
-              <div className="space-y-4 text-lg text-muted-foreground">
-                <p>
-                  Synozur is an advisory firm that transforms business for our clients. The name 'Synozur' is inspired by the ancient Greek term for the North Star, symbolizing our unwavering commitment to guide you to success.
-                </p>
-                <p>
-                  Our team of leaders from across the Fortune 500 delivers high-impact outcomes for our clients. We believe in empathetic approaches, ensuring that your unique journey is supported with the right strategies and solutions. From efficiency and ROI to market success and adoption, we'll help you find the tangible results you're seeking.
-                </p>
-              </div>
-              <div className="mt-8">
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">
+                Where it lands first
+              </h3>
+              <ul className="space-y-3 text-base text-muted-foreground">
+                <li><span className="font-semibold text-foreground">Insurance:</span> AI underwriting copilots that protect loss ratios without scaring the regulator.</li>
+                <li><span className="font-semibold text-foreground">Tech &amp; Software:</span> GTM repositioning when the old category story stops closing deals.</li>
+                <li><span className="font-semibold text-foreground">Energy:</span> Operating-model redesign for a workforce that's half on the truck, half on the laptop.</li>
+                <li><span className="font-semibold text-foreground">Life Sciences:</span> Commercial readiness and field-team enablement that survives the launch window.</li>
+              </ul>
+              <div className="mt-6">
                 <Link href="/about" className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors">
-                  Our Story <ArrowRight className="ml-2 h-4 w-4" />
+                  Why Synozur <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </motion.div>

@@ -1,7 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +33,8 @@ import {
   uploadAndRegisterImage,
 } from "@/components/admin/MediaPickerModal";
 import { useToast } from "@/hooks/use-toast";
-import { api, type BookingDto } from "@/lib/api";
+import { api, type BookingDto, type SolutionHighlightDto } from "@/lib/api";
+import { useCmsListCollateral } from "@workspace/api-client-react";
 import { RevisionsPanel } from "@/components/admin/RevisionsPanel";
 import {
   useCmsListServices,
@@ -37,7 +46,6 @@ import {
   type Solution,
   type UpsertSolutionBody,
   type MediaItem,
-  type CollateralPillar,
 } from "@workspace/api-client-react";
 import { type ArtifactStatus } from "@/lib/api";
 
@@ -48,11 +56,20 @@ const STATUS_OPTIONS: { value: ArtifactStatus; label: string }[] = [
   { value: "archived", label: "Archived" },
 ];
 
-const PILLAR_OPTIONS: { value: CollateralPillar; label: string }[] = [
-  { value: "strategic", label: "Strategic" },
-  { value: "technology", label: "Technology" },
-  { value: "experiences", label: "Experiences" },
-  { value: "gtm", label: "GTM" },
+// Task #317 — post-Board taxonomy. Solutions now carry a market-facing
+// solution_group + show_in_menu. The four pillars stay as an admin-only
+// editorial tag on the parent service.
+type SolutionGroupValue =
+  | "ai_strategy"
+  | "gtm"
+  | "company_os"
+  | "consulting_services";
+
+const SOLUTION_GROUP_OPTIONS: { value: SolutionGroupValue; label: string }[] = [
+  { value: "ai_strategy", label: "AI Strategy & Design" },
+  { value: "gtm", label: "Go-to-Market" },
+  { value: "company_os", label: "Company OS" },
+  { value: "consulting_services", label: "Consulting Services" },
 ];
 
 function toDatetimeLocal(iso: string | null | undefined): string {
@@ -113,7 +130,8 @@ interface FormState {
   status: ArtifactStatus;
   publishedAt: string;
   unpublishedAt: string;
-  pillar: CollateralPillar | null;
+  solutionGroup: SolutionGroupValue;
+  showInMenu: boolean;
   tagIds: string[];
   bookingId: string;
   active: boolean;
@@ -148,7 +166,8 @@ const EMPTY: FormState = {
   status: "published",
   publishedAt: "",
   unpublishedAt: "",
-  pillar: null,
+  solutionGroup: "consulting_services",
+  showInMenu: false,
   tagIds: [],
   bookingId: "",
   active: true,
@@ -184,7 +203,9 @@ function fromSolution(s: Solution): FormState {
     status: (s.status ?? "draft") as ArtifactStatus,
     publishedAt: toDatetimeLocal(s.publishedAt),
     unpublishedAt: toDatetimeLocal(s.unpublishedAt),
-    pillar: s.pillar ?? null,
+    solutionGroup:
+      (s.solutionGroup as SolutionGroupValue | undefined) ?? "consulting_services",
+    showInMenu: s.showInMenu ?? false,
     tagIds: (s.tags ?? []).map((t) => t.id),
     bookingId: s.bookingId ?? "",
     active: s.active,
@@ -220,7 +241,8 @@ function toBody(f: FormState): UpsertSolutionBody {
     status: f.status,
     publishedAt: fromDatetimeLocal(f.publishedAt),
     unpublishedAt: fromDatetimeLocal(f.unpublishedAt),
-    pillar: f.pillar,
+    solutionGroup: f.solutionGroup,
+    showInMenu: f.showInMenu,
     tagIds: f.tagIds,
     bookingId: f.bookingId || null,
     active: f.active,
@@ -387,30 +409,6 @@ export default function SolutionEdit({ id }: Props) {
                   data-testid="input-solution-slug"
                 />
               </div>
-              <div>
-                <Label htmlFor="parent">Parent service</Label>
-                <Select
-                  value={form.parentServiceId || "__none__"}
-                  onValueChange={(v) =>
-                    update({ parentServiceId: v === "__none__" ? "" : v })
-                  }
-                  disabled={!canWrite}
-                >
-                  <SelectTrigger id="parent" data-testid="select-solution-parent">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {services.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="displayOrder">Display order</Label>
                 <Input
@@ -583,12 +581,15 @@ export default function SolutionEdit({ id }: Props) {
             </div>
           </Card>
 
+          {id ? <HighlightsCard solutionId={id} canWrite={canWrite} /> : null}
+
           <Card className="p-4 space-y-3">
             <div>
-              <Label className="text-sm font-medium">Accelerators / Zenith</Label>
+              <Label className="text-sm font-medium">Accelerators / Zenith (legacy)</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Rich-text content for the Zenith callout section. Leave empty
-                to hide the section on the public page.
+                Rich-text content for the legacy accelerator callout. Used as
+                a fallback when no rotating highlights are attached above.
+                Leave empty (and add highlights) to retire the section.
               </p>
             </div>
             <div data-testid="editor-solution-accelerators">
@@ -718,22 +719,19 @@ export default function SolutionEdit({ id }: Props) {
           </Card>
 
           <Card className="p-4 space-y-3">
-            <Label className="text-sm font-medium">Pillar</Label>
+            <Label className="text-sm font-medium">Solution group</Label>
             <Select
-              value={form.pillar ?? "__none__"}
+              value={form.solutionGroup}
               onValueChange={(v) =>
-                update({
-                  pillar: v === "__none__" ? null : (v as CollateralPillar),
-                })
+                update({ solutionGroup: v as SolutionGroupValue })
               }
               disabled={!canWrite}
             >
-              <SelectTrigger data-testid="select-solution-pillar">
-                <SelectValue placeholder="None" />
+              <SelectTrigger data-testid="select-solution-group">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
-                {PILLAR_OPTIONS.map((o) => (
+                {SOLUTION_GROUP_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
                   </SelectItem>
@@ -741,8 +739,56 @@ export default function SolutionEdit({ id }: Props) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Used to group solutions into the library's pillar rails.
+              Market-facing taxonomy used by the public Solutions menu and
+              footer. AI Strategy &amp; Design, Go-to-Market, and Company OS
+              are the three featured solutions; everything else lives under
+              Consulting Services.
             </p>
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <div>
+                <Label className="text-sm font-medium">Show in menu</Label>
+                <p className="text-xs text-muted-foreground">
+                  When on, this solution appears in the public Solutions
+                  mega-menu and footer column.
+                </p>
+              </div>
+              <Switch
+                checked={form.showInMenu}
+                onCheckedChange={(v) => update({ showInMenu: v })}
+                disabled={!canWrite}
+                data-testid="switch-solution-show-in-menu"
+              />
+            </div>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Editorial — internal</Label>
+              <p className="text-xs text-muted-foreground">
+                Optional pairing with one of the legacy service pillars.
+                Used for internal reporting and library rails only — does
+                not affect the public Solutions menu.
+              </p>
+            </div>
+            <Select
+              value={form.parentServiceId || "__none__"}
+              onValueChange={(v) =>
+                update({ parentServiceId: v === "__none__" ? "" : v })
+              }
+              disabled={!canWrite}
+            >
+              <SelectTrigger data-testid="select-solution-parent-editorial">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {services.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Card>
 
           <Card className="p-4 space-y-2">
@@ -875,5 +921,278 @@ export default function SolutionEdit({ id }: Props) {
         <ActivityTab entity="solution" entityId={id} />
       </div>
     </AdminLayout>
+  );
+}
+
+// Task #317 — Rotating highlights editor. Loads attached highlights for
+// the solution, lets editors pick from the Collateral library, reorder
+// them, toggle active, and save with a single replace-all PUT.
+interface HighlightsCardProps {
+  solutionId: string;
+  canWrite: boolean;
+}
+
+interface DraftHighlight {
+  collateralId: string;
+  active: boolean;
+  // Cached display fields so the row keeps rendering after edits before
+  // the next server round-trip.
+  title: string;
+  type: string;
+}
+
+function HighlightsCard({ solutionId, canWrite }: HighlightsCardProps) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [draft, setDraft] = useState<DraftHighlight[] | null>(null);
+  const [picker, setPicker] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const highlightsQ = useQuery({
+    queryKey: ["solution-highlights", solutionId],
+    queryFn: () => api.listSolutionHighlights(solutionId),
+  });
+
+  // Fetch the full collateral library for the picker. The list endpoint is
+  // bounded server-side; a small solution will only ever pin a handful.
+  const collateralQ = useCmsListCollateral();
+  const collateralItems = useMemo(() => {
+    const items = (collateralQ.data?.items ?? []) as Array<{
+      id: string;
+      title: string;
+      type: string;
+      active?: boolean;
+    }>;
+    return items.filter((c) => c.active !== false);
+  }, [collateralQ.data]);
+
+  useEffect(() => {
+    if (highlightsQ.data && draft === null) {
+      setDraft(
+        highlightsQ.data.items.map((h: SolutionHighlightDto) => ({
+          collateralId: h.collateralId,
+          active: h.active,
+          title: h.collateralTitle,
+          type: h.collateralType,
+        })),
+      );
+    }
+  }, [highlightsQ.data, draft]);
+
+  const draftIds = useMemo(
+    () => new Set((draft ?? []).map((d) => d.collateralId)),
+    [draft],
+  );
+  const pickerMatches = useMemo(() => {
+    const q = picker.trim().toLowerCase();
+    if (!q) return [] as typeof collateralItems;
+    return collateralItems
+      .filter((c) => !draftIds.has(c.id))
+      .filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) || c.type.toLowerCase().includes(q),
+      )
+      .slice(0, 8);
+  }, [collateralItems, draftIds, picker]);
+
+  const addHighlight = (id: string) => {
+    const item = collateralItems.find((c) => c.id === id);
+    if (!item || !draft) return;
+    setDraft([
+      ...draft,
+      { collateralId: id, active: true, title: item.title, type: item.type },
+    ]);
+    setPicker("");
+  };
+
+  const move = (idx: number, delta: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    const target = idx + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setDraft(next);
+  };
+
+  const remove = (idx: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    next.splice(idx, 1);
+    setDraft(next);
+  };
+
+  const toggleActive = (idx: number) => {
+    if (!draft) return;
+    const next = [...draft];
+    next[idx] = { ...next[idx], active: !next[idx].active };
+    setDraft(next);
+  };
+
+  const save = async () => {
+    if (!draft) return;
+    setSaving(true);
+    try {
+      await api.replaceSolutionHighlights(
+        solutionId,
+        draft.map((d, i) => ({
+          collateralId: d.collateralId,
+          displayOrder: i,
+          active: d.active,
+        })),
+      );
+      await qc.invalidateQueries({
+        queryKey: ["solution-highlights", solutionId],
+      });
+      toast({ title: "Highlights saved" });
+    } catch (e) {
+      toast({
+        title: "Save failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-4 space-y-3" data-testid="card-solution-highlights">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Label className="text-sm font-medium">Highlights (rotating)</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pin Collateral items here and the public solution page picks one
+            at random on each visit. Order is the rotation order shown to
+            editors. Inactive rows are hidden from the public site but kept
+            for later.
+          </p>
+        </div>
+        {canWrite && (
+          <Button
+            size="sm"
+            onClick={save}
+            disabled={saving || draft === null}
+            data-testid="button-save-highlights"
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {saving ? "Saving…" : "Save highlights"}
+          </Button>
+        )}
+      </div>
+
+      {highlightsQ.isLoading || draft === null ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : (
+        <>
+          {draft.length === 0 ? (
+            <div className="text-sm text-muted-foreground">
+              No highlights yet. Use the picker below to add Collateral items.
+            </div>
+          ) : (
+            <ol className="space-y-2">
+              {draft.map((h, idx) => (
+                <li
+                  key={h.collateralId}
+                  className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                  data-testid={`highlight-row-${idx}`}
+                >
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground w-20 truncate">
+                    {h.type}
+                  </span>
+                  <span className="flex-1 truncate text-sm">{h.title}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(idx)}
+                      disabled={!canWrite}
+                      className={`text-xs rounded px-2 py-0.5 border ${
+                        h.active
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                          : "border-muted-foreground/40 bg-muted text-muted-foreground"
+                      }`}
+                      data-testid={`button-toggle-active-${idx}`}
+                    >
+                      {h.active ? "Active" : "Hidden"}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => move(idx, -1)}
+                      disabled={!canWrite || idx === 0}
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => move(idx, +1)}
+                      disabled={!canWrite || idx === draft.length - 1}
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(idx)}
+                      disabled={!canWrite}
+                      aria-label="Remove"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {canWrite && (
+            <div className="space-y-2">
+              <Label htmlFor="highlight-picker" className="text-xs">
+                Add a highlight
+              </Label>
+              <Input
+                id="highlight-picker"
+                value={picker}
+                onChange={(e) => setPicker(e.target.value)}
+                placeholder="Search the collateral library by title or type…"
+                data-testid="input-highlight-picker"
+              />
+              {pickerMatches.length > 0 && (
+                <ul className="rounded-md border border-border bg-background divide-y divide-border">
+                  {pickerMatches.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => addHighlight(c.id)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted"
+                        data-testid={`button-add-collateral-${c.id}`}
+                      >
+                        <Plus className="h-4 w-4 text-primary" />
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground w-20 truncate">
+                          {c.type}
+                        </span>
+                        <span className="flex-1 truncate text-sm">
+                          {c.title}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {picker.trim() && pickerMatches.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No matches in the collateral library.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </Card>
   );
 }

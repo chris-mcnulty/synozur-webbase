@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
 import { ArrowRight, ExternalLink, Layers, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, type SolutionHighlightDto } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
 import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
@@ -247,6 +248,72 @@ export default function SolutionDetail() {
         </section>
       ) : null}
 
+      {sol ? (() => {
+        const phases = [
+          { key: "Orient", body: "Clarify the destination, the gaps, and the risks worth taking." },
+          { key: "Align", body: "Get leaders, teams, and AI on the same plan — no hidden agendas." },
+          { key: "Activate", body: "Ship the work. Pilots, GTM motions, and operating changes that prove the case." },
+          { key: "Adopt", body: "Embed it. Habits, guardrails, and measurement so progress compounds." },
+        ] as const;
+        const phaseMap: Record<string, readonly string[]> = {
+          ai_strategy: ["Orient", "Align"],
+          gtm: ["Activate"],
+          company_os: ["Adopt"],
+          consulting_services: ["Orient", "Align", "Activate", "Adopt"],
+        };
+        const group = sol.solutionGroup ?? "consulting_services";
+        const active = new Set(phaseMap[group] ?? phaseMap.consulting_services);
+        const leadCopy =
+          group === "ai_strategy"
+            ? "This engagement lives at the front of the Method — we Orient on the AI opportunity and Align the organization around the plan that earns the investment."
+            : group === "gtm"
+            ? "This engagement is where the Method Activates — we take the strategy into the market and prove it with revenue, not slideware."
+            : group === "company_os"
+            ? "This engagement is how the Method sticks — we Adopt the change as operating habits, measurement, and rhythm."
+            : "This consulting engagement plugs into whichever phase of the Method you need most — from initial Orient through long-tail Adoption.";
+        return (
+          <section className="py-16 bg-card border-y border-border">
+            <div className="container mx-auto px-4 max-w-5xl">
+              <p className="text-sm uppercase tracking-widest text-primary mb-3">
+                The North Star Method™
+              </p>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">
+                Where this engagement lives in the Method
+              </h2>
+              <p className="text-base text-muted-foreground mb-8 max-w-3xl">
+                {leadCopy}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {phases.map((p, i) => {
+                  const isActive = active.has(p.key);
+                  return (
+                    <div
+                      key={p.key}
+                      className={
+                        isActive
+                          ? "rounded-xl border-2 border-primary bg-primary/5 p-5 shadow-sm"
+                          : "rounded-xl border border-border/60 bg-background/50 p-5 opacity-60"
+                      }
+                    >
+                      <div className="text-xs uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+                        Phase {i + 1}
+                        {isActive ? (
+                          <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            This engagement
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="text-lg font-semibold mb-1">{p.key}</div>
+                      <p className="text-sm text-muted-foreground">{p.body}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })() : null}
+
       {sol?.secondaryTitle || sol?.secondaryTextHtml ? (
         <section className="py-24 bg-card border-y border-border">
           <div className="container mx-auto px-4 max-w-4xl">
@@ -276,54 +343,11 @@ export default function SolutionDetail() {
         </section>
       ) : null}
 
-      {sol?.acceleratorsHtml ? (
-        <section className="relative overflow-hidden py-20 bg-[#0B0B1A]">
-          <div className="absolute inset-0 nebula-gradient opacity-15" />
-          <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-            <div className="relative">
-              <div
-                aria-hidden="true"
-                className="absolute -inset-[1.5px] rounded-2xl nebula-gradient opacity-90"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute -inset-6 rounded-3xl nebula-gradient opacity-25 blur-2xl"
-              />
-              <div className="relative rounded-2xl bg-[#0B0B1A]/95 p-8 md:p-12 shadow-2xl">
-                <div className="flex flex-wrap items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 ring-1 ring-primary/40">
-                    <Zap className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm uppercase tracking-widest text-primary font-semibold">
-                    Accelerator
-                  </p>
-                  <span className="inline-flex items-center rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wider text-primary font-semibold">
-                    Add-on product
-                  </span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                  Zenith — M365 Governance Command Center
-                </h2>
-                <div className="mb-8">
-                  <RichText
-                    html={sol.acceleratorsHtml}
-                    invert
-                    className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
-                  />
-                </div>
-                <a
-                  href="https://zenith.synozur.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-primary/60 bg-primary/10 px-6 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-                >
-                  Explore Zenith <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <HighlightSection
+        highlights={sol?.highlights ?? []}
+        fallbackHtml={sol?.acceleratorsHtml ?? null}
+      />
+
 
       {sol?.capabilities && sol.capabilities.length > 0 ? (
         <section className="py-24 bg-card border-y border-border">
@@ -436,4 +460,209 @@ export default function SolutionDetail() {
       />
     </div>
   );
+}
+
+// Task #317 — Rotating highlights renderer. Picks one attached Collateral
+// item per page load (random when multiple are pinned) and renders it
+// using the existing nebula-bordered card chrome. Falls back to the
+// legacy acceleratorsHtml block when no highlights are attached, so
+// solutions that still depend on the Zenith copy keep rendering.
+function HighlightSection({
+  highlights,
+  fallbackHtml,
+}: {
+  highlights: SolutionHighlightDto[];
+  fallbackHtml: string | null;
+}) {
+  // Pick a stable random index for this mount so the page doesn't flicker
+  // between renders. A fresh visit (mount) re-rolls; that's the "rotate"
+  // semantics editors asked for.
+  const picked = useMemo<SolutionHighlightDto | null>(() => {
+    if (!highlights || highlights.length === 0) return null;
+    const idx = Math.floor(Math.random() * highlights.length);
+    return highlights[idx] ?? highlights[0];
+  }, [highlights]);
+
+  if (picked) {
+    const eyebrow = labelForCollateralType(picked.collateralType);
+    const cta = ctaForHighlight(picked);
+    return (
+      <section className="relative overflow-hidden py-20 bg-[#0B0B1A]">
+        <div className="absolute inset-0 nebula-gradient opacity-15" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <div className="relative">
+            <div
+              aria-hidden="true"
+              className="absolute -inset-[1.5px] rounded-2xl nebula-gradient opacity-90"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute -inset-6 rounded-3xl nebula-gradient opacity-25 blur-2xl"
+            />
+            <div className="relative rounded-2xl bg-[#0B0B1A]/95 p-8 md:p-12 shadow-2xl">
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 ring-1 ring-primary/40">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <p className="text-sm uppercase tracking-widest text-primary font-semibold">
+                  {eyebrow}
+                </p>
+                {highlights.length > 1 ? (
+                  <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wider text-primary font-semibold">
+                    {highlights.length} pinned
+                  </span>
+                ) : null}
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                {picked.collateralTitle}
+              </h2>
+              {picked.collateralSubtitle ? (
+                <p className="text-lg text-zinc-300 mb-4">
+                  {picked.collateralSubtitle}
+                </p>
+              ) : null}
+              {picked.collateralDescription ? (
+                <p className="text-base text-zinc-300 mb-8 max-w-2xl">
+                  {picked.collateralDescription}
+                </p>
+              ) : null}
+              {cta ? (
+                <a
+                  href={cta.href}
+                  target={cta.external ? "_blank" : undefined}
+                  rel={cta.external ? "noopener noreferrer" : undefined}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-primary/60 bg-primary/10 px-6 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                  data-testid="link-highlight-cta"
+                >
+                  {cta.label}{" "}
+                  {cta.external ? (
+                    <ExternalLink className="h-4 w-4" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4" />
+                  )}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Legacy fallback — keeps the Zenith-shaped chrome for any solution
+  // that still relies on the old `acceleratorsHtml` field and hasn't been
+  // migrated to rotating highlights yet.
+  if (!fallbackHtml) return null;
+  return (
+    <section className="relative overflow-hidden py-20 bg-[#0B0B1A]">
+      <div className="absolute inset-0 nebula-gradient opacity-15" />
+      <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+        <div className="relative">
+          <div
+            aria-hidden="true"
+            className="absolute -inset-[1.5px] rounded-2xl nebula-gradient opacity-90"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute -inset-6 rounded-3xl nebula-gradient opacity-25 blur-2xl"
+          />
+          <div className="relative rounded-2xl bg-[#0B0B1A]/95 p-8 md:p-12 shadow-2xl">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 ring-1 ring-primary/40">
+                <Zap className="h-5 w-5" />
+              </div>
+              <p className="text-sm uppercase tracking-widest text-primary font-semibold">
+                Accelerator
+              </p>
+            </div>
+            <RichText
+              html={fallbackHtml}
+              invert
+              className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function labelForCollateralType(type: string): string {
+  switch (type) {
+    case "workshop":
+      return "Workshop";
+    case "white_paper":
+      return "White Paper";
+    case "case_study":
+      return "Case Study";
+    case "webinar":
+      return "Webinar";
+    case "podcast":
+      return "Podcast";
+    case "model":
+      return "Model";
+    case "training":
+      return "Training";
+    case "event":
+      return "Event";
+    case "insight":
+      return "Insight";
+    case "video":
+      return "Video";
+    case "ebook":
+      return "eBook";
+    case "application":
+      return "Accelerator";
+    case "landing_page":
+      return "Featured";
+    default:
+      return "Highlight";
+  }
+}
+
+function ctaForHighlight(
+  h: SolutionHighlightDto,
+): { href: string; label: string; external: boolean } | null {
+  // Prefer the explicit canonical url, then a download (white papers /
+  // ebooks), then video. If nothing is set there's no CTA to render.
+  if (h.collateralUrl && h.collateralUrl.length > 0) {
+    return {
+      href: h.collateralUrl,
+      label: ctaLabel(h.collateralType, h.collateralTitle),
+      external: h.collateralExternal,
+    };
+  }
+  if (h.collateralDownloadUrl) {
+    return {
+      href: h.collateralDownloadUrl,
+      label: "Download",
+      external: true,
+    };
+  }
+  if (h.collateralVideoUrl) {
+    return { href: h.collateralVideoUrl, label: "Watch", external: true };
+  }
+  return null;
+}
+
+function ctaLabel(type: string, title: string): string {
+  switch (type) {
+    case "workshop":
+    case "training":
+    case "event":
+    case "webinar":
+      return `Register for ${title}`;
+    case "white_paper":
+    case "ebook":
+    case "case_study":
+    case "insight":
+      return "Read more";
+    case "video":
+    case "podcast":
+      return "Watch";
+    case "application":
+      return `Explore ${title}`;
+    default:
+      return `Explore ${title}`;
+  }
 }

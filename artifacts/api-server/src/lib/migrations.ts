@@ -3123,6 +3123,145 @@ export async function runMigrations(): Promise<void> {
        WHERE body_markdown LIKE '%(/objects/uploads/%';
     `);
 
+    // 58. Task #317 — Post-Board messaging realignment: collapse the
+    //     `solutions.pillar` taxonomy into a market-facing `solution_group`
+    //     enum and add a `show_in_menu` flag that drives the public
+    //     Solutions mega-menu / footer. The legacy `pillar` column is
+    //     dropped — the four service pillars now live only on the
+    //     `services` table as an admin-only editorial tag via
+    //     `parent_service_id`.
+    //
+    // Order matters:
+    //   1. Create the new enum + columns with safe defaults.
+    //   2. Backfill explicit groupings from the curated slug map below.
+    //   3. Mark the three featured solutions as menu-visible.
+    //   4. Promote the consulting-services slate (admin-editable later).
+    //   5. Archive the placeholder `service-XXXXX` stub solutions left
+    //      behind by the Wix crawler so they don't pollute the new menu.
+    //   6. Drop the old `pillar` column + its index (idempotent guards).
+    //
+    // All statements are idempotent — re-running this block on a
+    // post-migration DB is a no-op.
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE solution_group AS ENUM (
+          'ai_strategy', 'gtm', 'company_os', 'consulting_services'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS solution_group solution_group
+          NOT NULL DEFAULT 'consulting_services';
+    `);
+    await db.execute(sql`
+      ALTER TABLE solutions
+        ADD COLUMN IF NOT EXISTS show_in_menu boolean NOT NULL DEFAULT false;
+    `);
+
+    // Featured trio — the three hero solutions surfaced at the top of the
+    // public Solutions menu. Each maps 1:1 to a solution_group so the
+    // menu can render a single "marquee" card per group.
+    await db.execute(sql`
+      UPDATE solutions SET solution_group = 'ai_strategy', show_in_menu = true
+       WHERE slug = 'ai-strategy-and-design';
+    `);
+    await db.execute(sql`
+      UPDATE solutions SET solution_group = 'gtm', show_in_menu = true
+       WHERE slug = 'gtm-strategy-and-execution';
+    `);
+    await db.execute(sql`
+      UPDATE solutions SET solution_group = 'company_os', show_in_menu = true
+       WHERE slug = 'company-os';
+    `);
+
+    // Consulting-services slate — the durable "everything else" slate
+    // promoted into the menu's fourth column.
+    await db.execute(sql`
+      UPDATE solutions SET solution_group = 'consulting_services', show_in_menu = true
+       WHERE slug IN (
+         'brand-and-messaging',
+         'microsoft-partner-development',
+         'strategic-roadmaps',
+         'microsoft-365-optimization',
+         'fractional-leadership'
+       );
+    `);
+
+    // Lower-tier consulting solutions remain visible at /solutions/:slug
+    // and remain searchable, but stay out of the primary nav.
+    await db.execute(sql`
+      UPDATE solutions SET solution_group = 'consulting_services', show_in_menu = false
+       WHERE slug IN (
+         'delivery-management',
+         'employee-strategies',
+         'communication-strategies',
+         'design-strategies',
+         'employee-effectiveness'
+       );
+    `);
+
+    // Archive placeholder stubs left over from the Wix crawl on the
+    // `services` table. These have no copy and pollute admin/editorial
+    // selectors (e.g. parentService) if they remain active.
+    await db.execute(sql`
+      UPDATE services SET status = 'archived', active = false
+       WHERE slug LIKE 'service-_____'
+         AND (blurb_html IS NULL OR blurb_html = '')
+         AND (hero_text_html IS NULL OR hero_text_html = '');
+    `);
+
+    // Drop the legacy pillar column + its index. Guarded by IF EXISTS so
+    // re-running after the drop is a no-op.
+    await db.execute(sql`DROP INDEX IF EXISTS solutions_pillar_idx;`);
+    await db.execute(sql`ALTER TABLE solutions DROP COLUMN IF EXISTS pillar;`);
+
+    // Post-backfill: remove the temporary default on solution_group now
+    // that every row carries an explicit value. New rows must specify
+    // solution_group at insert time (zod-enforced via UpsertSolutionBody).
+    await db.execute(sql`
+      ALTER TABLE solutions ALTER COLUMN solution_group DROP DEFAULT;
+    `);
+
+    // Helpful query-shape indexes for the new menu filter.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solutions_solution_group_idx
+        ON solutions (solution_group);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solutions_show_in_menu_idx
+        ON solutions (show_in_menu);
+    `);
+
+    // 59. Task #317 — Per-solution rotating highlights. Each solution can
+    //     attach an ordered list of Collateral items; the public solution
+    //     page picks one (random) to render in place of the legacy
+    //     hard-coded Zenith block. Cascade-deletes keep the join clean
+    //     when either side is removed.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solution_highlights (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        solution_id uuid NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+        collateral_id uuid NOT NULL REFERENCES collateral(id) ON DELETE CASCADE,
+        display_order integer NOT NULL DEFAULT 0,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS solution_highlights_solution_collateral_key
+        ON solution_highlights (solution_id, collateral_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solution_highlights_solution_idx
+        ON solution_highlights (solution_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solution_highlights_display_order_idx
+        ON solution_highlights (display_order);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

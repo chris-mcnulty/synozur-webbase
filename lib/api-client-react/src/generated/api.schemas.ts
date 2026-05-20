@@ -1731,17 +1731,19 @@ export const SolutionStatus = {
 } as const;
 
 /**
- * @nullable
- */
-export type SolutionPillar =
-  | (typeof SolutionPillar)[keyof typeof SolutionPillar]
-  | null;
+ * Market-facing grouping that drives the public Solutions menu,
+footer, and services-overview hero tiles. Replaces the legacy
+`pillar` column dropped in task #317.
 
-export const SolutionPillar = {
-  strategic: "strategic",
-  technology: "technology",
-  experiences: "experiences",
+ */
+export type SolutionSolutionGroup =
+  (typeof SolutionSolutionGroup)[keyof typeof SolutionSolutionGroup];
+
+export const SolutionSolutionGroup = {
+  ai_strategy: "ai_strategy",
   gtm: "gtm",
+  company_os: "company_os",
+  consulting_services: "consulting_services",
 } as const;
 
 export interface Solution {
@@ -1804,8 +1806,15 @@ export interface Solution {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  /** @nullable */
-  pillar?: SolutionPillar;
+  /** Market-facing grouping that drives the public Solutions menu,
+footer, and services-overview hero tiles. Replaces the legacy
+`pillar` column dropped in task #317.
+ */
+  solutionGroup?: SolutionSolutionGroup;
+  /** When true the solution is surfaced in the public Solutions
+mega-menu and the marketing site's primary nav.
+ */
+  showInMenu?: boolean;
   tags?: Tag[];
   createdAt: string;
   updatedAt: string;
@@ -1859,10 +1868,62 @@ export type ServiceDetail = Service & {
   methodologies: Methodology[];
 };
 
+export interface SolutionHighlight {
+  id: string;
+  solutionId: string;
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  /** Mirrors `collateral.type` (workshop, white_paper, video, application, …). */
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  /** @nullable */
+  collateralSubtitle?: string | null;
+  /** @nullable */
+  collateralDescription?: string | null;
+  /** @nullable */
+  collateralHeroImage?: string | null;
+  /**
+   * Internal route or external URL for the highlighted item.
+   * @nullable
+   */
+  collateralUrl?: string | null;
+  collateralExternal: boolean;
+  /** @nullable */
+  collateralDownloadUrl?: string | null;
+  /** @nullable */
+  collateralVideoUrl?: string | null;
+}
+
 export type SolutionDetail = Solution & {
   parentService?: Service | null;
   capabilities: Capability[];
+  /** Task #317 — Ordered list of Collateral items pinned to this
+solution. The public solution page picks one at random per
+page load and renders it in place of the legacy accelerator
+block. Admin/preview responses include inactive rows; the
+public response filters them out.
+ */
+  highlights: SolutionHighlight[];
 };
+
+export type UpsertSolutionHighlightsBodyItemsItem = {
+  collateralId: string;
+  displayOrder?: number;
+  active?: boolean;
+};
+
+export interface UpsertSolutionHighlightsBody {
+  /** Replace-all payload. Each entry references an existing
+Collateral row by id; `displayOrder` is normalized server-side.
+ */
+  items: UpsertSolutionHighlightsBodyItemsItem[];
+}
+
+export interface SolutionHighlightItemsResponse {
+  items: SolutionHighlight[];
+}
 
 export interface ServiceItemsResponse {
   items: Service[];
@@ -1943,18 +2004,14 @@ export const UpsertSolutionBodyStatus = {
   archived: "archived",
 } as const;
 
-/**
- * @nullable
- */
-export type UpsertSolutionBodyPillar =
-  | (typeof UpsertSolutionBodyPillar)[keyof typeof UpsertSolutionBodyPillar]
-  | null;
+export type UpsertSolutionBodySolutionGroup =
+  (typeof UpsertSolutionBodySolutionGroup)[keyof typeof UpsertSolutionBodySolutionGroup];
 
-export const UpsertSolutionBodyPillar = {
-  strategic: "strategic",
-  technology: "technology",
-  experiences: "experiences",
+export const UpsertSolutionBodySolutionGroup = {
+  ai_strategy: "ai_strategy",
   gtm: "gtm",
+  company_os: "company_os",
+  consulting_services: "consulting_services",
 } as const;
 
 export interface UpsertSolutionBody {
@@ -2012,8 +2069,8 @@ export interface UpsertSolutionBody {
   publishedAt?: string | null;
   /** @nullable */
   unpublishedAt?: string | null;
-  /** @nullable */
-  pillar?: UpsertSolutionBodyPillar;
+  solutionGroup?: UpsertSolutionBodySolutionGroup;
+  showInMenu?: boolean;
   tagIds?: string[];
   active?: boolean;
 }
@@ -3579,6 +3636,10 @@ export type ListInsightsParams = {
    * @maximum 50
    */
   pageSize?: number;
+};
+
+export type ListSolutionsParams = {
+  showInMenu?: boolean;
 };
 
 export type CmsListCollateralParams = {

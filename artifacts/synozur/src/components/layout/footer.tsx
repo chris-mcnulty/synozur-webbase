@@ -15,11 +15,14 @@ import {
 import { BotCheckCallout } from "@/components/bot-check-callout";
 import {
   pickSocialLinks,
-  FOOTER_STATIC_SERVICES,
   FOOTER_COMPANY_LINKS,
   FOOTER_LEGAL_LINKS,
   ORG_ADDRESS,
   ORG_COPYRIGHT_NAME,
+  SOLUTION_GROUP_LABELS,
+  partitionSolutionsByGroup,
+  type NavSolutionItem,
+  type NavSolutionGroup,
 } from "@workspace/synozur-nav";
 
 function FooterSubscribeForm() {
@@ -127,12 +130,35 @@ export function Footer() {
       : getActiveApplications().map((a) => ({ slug: a.slug, name: a.name }))
   ).slice(0, 4);
 
-  const servicesQuery = useQuery({
-    queryKey: ["services", "footer"],
-    queryFn: () => api.listServices(),
+  // Task #317 — footer Solutions column is the same post-Board taxonomy
+  // as the header: featured trio first, then a single link to the full
+  // Consulting Services list.
+  const solutionsMenuQuery = useQuery({
+    queryKey: ["solutions", "menu"],
+    queryFn: () => api.listSolutions({ showInMenu: true }),
     staleTime: 5 * 60 * 1000,
   });
-  const footerServices = servicesQuery.data?.items ?? [];
+  const solutionItems: NavSolutionItem[] = (
+    solutionsMenuQuery.data?.items ?? []
+  )
+    .filter((s) => !!s.solutionGroup)
+    .map((s) => ({
+      title: s.title,
+      slug: s.slug,
+      solutionGroup: s.solutionGroup as NavSolutionGroup,
+    }));
+  const groupedSolutions = partitionSolutionsByGroup(solutionItems);
+  const footerFeatured = (
+    ["ai_strategy", "gtm", "company_os"] as const
+  )
+    .map((k) => {
+      const first = groupedSolutions[k][0];
+      return first
+        ? { label: SOLUTION_GROUP_LABELS[k], slug: first.slug }
+        : null;
+    })
+    .filter((x): x is { label: string; slug: string } => !!x);
+  const hasConsulting = groupedSolutions.consulting_services.length > 0;
 
   // #268: pull social URLs from public site settings (same query key the
   // header/JSON-LD already share so this hits the cache).
@@ -164,20 +190,18 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4 text-foreground">Services</h3>
+            <h3 className="font-semibold mb-4 text-foreground">Solutions</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              {footerServices.length > 0
-                ? footerServices.map((s) => (
-                    <li key={s.slug}>
-                      <Link href={s.servicePath ?? `/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</Link>
-                    </li>
-                  ))
-                : FOOTER_STATIC_SERVICES.map((s) => (
-                    <li key={s.slug}>
-                      <Link href={`/services/${s.slug}`} className="hover:text-primary transition-colors">{s.title}</Link>
-                    </li>
-                  ))
-              }
+              {footerFeatured.map((f) => (
+                <li key={f.slug}>
+                  <Link href={`/solutions/${f.slug}`} className="hover:text-primary transition-colors">{f.label}</Link>
+                </li>
+              ))}
+              {hasConsulting && (
+                <li>
+                  <Link href="/services-overview/default" className="hover:text-primary transition-colors">Consulting Services</Link>
+                </li>
+              )}
             </ul>
           </div>
 

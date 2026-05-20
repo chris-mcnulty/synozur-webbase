@@ -164,6 +164,89 @@ export const STATIC_NAV_GROUPS_BASE = {
   },
 } as const satisfies Record<string, { title: string; links: NavLink[] }>;
 
+// Task #317 — post-Board taxonomy. Solutions now carry a `solutionGroup`
+// (one of these four values) which is what the marketing site partitions
+// the Solutions menu and footer by. `pillar` on services is preserved as
+// an admin-only editorial tag and is no longer reflected in public nav.
+export const SOLUTION_GROUP_ORDER = [
+  "ai_strategy",
+  "gtm",
+  "company_os",
+  "consulting_services",
+] as const;
+export type NavSolutionGroup = (typeof SOLUTION_GROUP_ORDER)[number];
+
+export const SOLUTION_GROUP_LABELS: Record<NavSolutionGroup, string> = {
+  ai_strategy: "AI Strategy & Design",
+  gtm: "Go-to-Market",
+  company_os: "Company OS",
+  consulting_services: "Consulting Services",
+};
+
+export type NavSolutionItem = {
+  title: string;
+  slug: string;
+  solutionGroup: NavSolutionGroup;
+};
+
+export function partitionSolutionsByGroup(
+  solutions: NavSolutionItem[],
+): Record<NavSolutionGroup, NavSolutionItem[]> {
+  const out: Record<NavSolutionGroup, NavSolutionItem[]> = {
+    ai_strategy: [],
+    gtm: [],
+    company_os: [],
+    consulting_services: [],
+  };
+  for (const s of solutions) {
+    if (out[s.solutionGroup]) out[s.solutionGroup].push(s);
+  }
+  return out;
+}
+
+// Builds the Solutions mega-menu directly from the CMS solution rows.
+// Featured trio (`ai_strategy`, `gtm`, `company_os`) each get a top-level
+// link to their flagship solution. Consulting Services is rendered as a
+// nested section with one child per `consulting_services` solution.
+export function buildSolutionsMenuGroup(
+  solutions: NavSolutionItem[],
+): NavGroup {
+  const grouped = partitionSolutionsByGroup(solutions);
+  const featuredLinks: NavLink[] = [];
+  for (const key of ["ai_strategy", "gtm", "company_os"] as const) {
+    const first = grouped[key][0];
+    if (first) {
+      featuredLinks.push({
+        label: SOLUTION_GROUP_LABELS[key],
+        href: `/solutions/${first.slug}`,
+      });
+    }
+  }
+  const consulting = grouped.consulting_services;
+  const nested: NestedSection[] | undefined =
+    consulting.length > 0
+      ? [
+          {
+            sectionTitle: "Consulting Services",
+            label: "All Consulting Services",
+            href: "/services-overview/default",
+            children: consulting.map((s) => ({
+              label: s.title,
+              href: `/solutions/${s.slug}`,
+            })),
+          },
+        ]
+      : undefined;
+  return {
+    title: "Solutions",
+    links: [
+      { label: "Solutions Overview", href: "/services-overview/default" },
+      ...featuredLinks,
+    ],
+    nested,
+  };
+}
+
 export function buildServicesGroup(pillars: NavService[]): NavGroup {
   return {
     title: "Services",

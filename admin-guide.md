@@ -168,6 +168,24 @@ Managed at `/admin/insights/posts`. The Insights section is a full CMS with:
 
 **Importing from Wix**: The `tools/insights-crawler` standalone tool mirrors the legacy Wix-hosted blog into a typed JSON dataset. Run it before database ingestion when initially migrating posts.
 
+### Solutions (Services menu)
+
+Managed at `/admin/products/solutions`. Solutions drive the public Services dropdown in the header, the Services column in the footer, and every `/solutions/:slug` detail page. Public listing is `GET /solutions`; surface-controlling fields are:
+
+- **`solutionGroup`** (required) — one of `ai_strategy`, `gtm`, `company_os`, `consulting_services`. This is the **market-facing taxonomy** (post-Board, May 2026). It replaced the legacy `pillar` enum, which has been dropped.
+- **`showInMenu`** (toggle) — when true, the solution appears in the public Services menu group for its `solutionGroup`. Use to keep a solution published but hidden from the menu (e.g. legacy/internal). The solutions list has a column toggle for fast curation.
+- **`parentService`** (editorial, internal) — demoted to an "Editorial — internal" card on the edit page. Used for grouping/reporting only; **not** rendered in the public menu. Safe to leave blank.
+
+The Services dropdown order is fixed: AI Strategy → GTM → Company OS → Consulting Services. Inside each group, items sort by `displayOrder` then title. The first three groups should each contain the single flagship solution; `consulting_services` holds the multi-row consulting menu.
+
+#### Rotating highlights
+
+Each solution edit page has a **Highlights (rotating)** card. Pin one or more items from the Collateral library; the public `/solutions/:slug` page picks one at random per page load and renders it inside the nebula-bordered callout card (the slot that used to be hard-coded to "Zenith — M365 Governance Command Center"). Drag-style reorder is via the up/down arrows; toggle a row to **Hidden** to keep it pinned but hide from the public site; remove with the ✕ button. Save with the per-card **Save highlights** button — this issues a replace-all `PUT /api/cms/solutions/:id/highlights` and triggers an `audit` entry of action `solution.highlights.replace`.
+
+The renderer pulls the card title, subtitle, description, and CTA URL straight from the linked `collateral` row, so editing the source item in `/admin/library/collateral` (or the type-specific source table for synced types — white papers, videos, workshops, Polaris) auto-updates every solution page that pins it. The CTA falls back to `downloadUrl` then `videoUrl` when no canonical `url` is set; if all three are blank the card renders without a button.
+
+When **no highlights are attached**, the page falls back to the legacy `acceleratorsHtml` rich-text field so older solutions keep rendering until they're migrated.
+
 ---
 
 ## Library & Collateral

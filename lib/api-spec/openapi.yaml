@@ -1264,6 +1264,29 @@ paths:
                 $ref: '#/components/schemas/ServiceDetail'
         '404':
           $ref: '#/components/responses/NotFound'
+  /solutions:
+    get:
+      operationId: listSolutions
+      tags:
+        - Services
+      description: |
+        Public listing of published, active solutions. Returns the flat
+        solution rows (without parent service expansion) used by the
+        marketing-site Solutions menu and footer. Pass `showInMenu=true`
+        to limit results to solutions surfaced in the public nav.
+      parameters:
+        - in: query
+          name: showInMenu
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Published, active solutions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionItemsResponse'
   /solutions/{slug}:
     get:
       operationId: getSolution
@@ -1683,6 +1706,56 @@ paths:
           description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
+  /cms/solutions/{id}/highlights:
+    get:
+      operationId: cmsListSolutionHighlights
+      tags:
+        - CmsServices
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: All highlights for the solution (incl. inactive).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionHighlightItemsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: cmsReplaceSolutionHighlights
+      tags:
+        - CmsServices
+      description: |
+        Replace-all upsert. Existing highlights for the solution that are
+        not in the payload are removed; matching rows are updated in place
+        so primary keys remain stable.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSolutionHighlightsBody'
+      responses:
+        '200':
+          description: Updated highlights list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolutionHighlightItemsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /cms/services/{serviceId}/methodologies:
     get:
       operationId: cmsListServiceMethodologies
@@ -7195,11 +7268,18 @@ components:
           type:
             - string
             - 'null'
-        pillar:
-          type:
-            - string
-            - 'null'
-          enum: [strategic, technology, experiences, gtm, null]
+        solutionGroup:
+          type: string
+          enum: [ai_strategy, gtm, company_os, consulting_services]
+          description: |
+            Market-facing grouping that drives the public Solutions menu,
+            footer, and services-overview hero tiles. Replaces the legacy
+            `pillar` column dropped in task #317.
+        showInMenu:
+          type: boolean
+          description: |
+            When true the solution is surfaced in the public Solutions
+            mega-menu and the marketing site's primary nav.
         tags:
           type: array
           items:
@@ -7333,6 +7413,7 @@ components:
         - type: object
           required:
             - capabilities
+            - highlights
           properties:
             parentService:
               oneOf:
@@ -7342,6 +7423,106 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Capability'
+            highlights:
+              type: array
+              description: |
+                Task #317 — Ordered list of Collateral items pinned to this
+                solution. The public solution page picks one at random per
+                page load and renders it in place of the legacy accelerator
+                block. Admin/preview responses include inactive rows; the
+                public response filters them out.
+              items:
+                $ref: '#/components/schemas/SolutionHighlight'
+
+    SolutionHighlight:
+      type: object
+      required:
+        - id
+        - solutionId
+        - collateralId
+        - displayOrder
+        - active
+        - collateralType
+        - collateralSlug
+        - collateralTitle
+        - collateralExternal
+      properties:
+        id:
+          type: string
+        solutionId:
+          type: string
+        collateralId:
+          type: string
+        displayOrder:
+          type: integer
+        active:
+          type: boolean
+        collateralType:
+          type: string
+          description: Mirrors `collateral.type` (workshop, white_paper, video, application, …).
+        collateralSlug:
+          type: string
+        collateralTitle:
+          type: string
+        collateralSubtitle:
+          type:
+            - string
+            - 'null'
+        collateralDescription:
+          type:
+            - string
+            - 'null'
+        collateralHeroImage:
+          type:
+            - string
+            - 'null'
+        collateralUrl:
+          type:
+            - string
+            - 'null'
+          description: Internal route or external URL for the highlighted item.
+        collateralExternal:
+          type: boolean
+        collateralDownloadUrl:
+          type:
+            - string
+            - 'null'
+        collateralVideoUrl:
+          type:
+            - string
+            - 'null'
+
+    UpsertSolutionHighlightsBody:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          description: |
+            Replace-all payload. Each entry references an existing
+            Collateral row by id; `displayOrder` is normalized server-side.
+          items:
+            type: object
+            required:
+              - collateralId
+            properties:
+              collateralId:
+                type: string
+              displayOrder:
+                type: integer
+              active:
+                type: boolean
+
+    SolutionHighlightItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SolutionHighlight'
 
     ServiceItemsResponse:
       type: object
@@ -7588,11 +7769,11 @@ components:
           type:
             - string
             - 'null'
-        pillar:
-          type:
-            - string
-            - 'null'
-          enum: [strategic, technology, experiences, gtm, null]
+        solutionGroup:
+          type: string
+          enum: [ai_strategy, gtm, company_os, consulting_services]
+        showInMenu:
+          type: boolean
         tagIds:
           type: array
           items:

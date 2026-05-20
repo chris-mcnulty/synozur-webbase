@@ -100,6 +100,11 @@ const DEFAULT_VALUES: AboutValue[] = [
     title: "Excellence",
     body: "Quality over speed. High standards and continuous improvement. Client satisfaction delivered with the highest level of professionalism and care.",
   },
+  {
+    icon: Lightbulb,
+    title: "Critical Thinking & AI Guardrails",
+    body: "We bring AI fluency paired with rigorous critical thinking. Every recommendation is pressure‑tested against ethics, risk, and real‑world adoption — so AI accelerates outcomes without outpacing judgment.",
+  },
 ];
 
 export default function About() {

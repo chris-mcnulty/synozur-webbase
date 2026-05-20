@@ -41,8 +41,17 @@ export default function AdminSolutionsList() {
 
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const serviceFilter = params.get("service") ?? "all";
+  // Task #317 — let admins filter by the new market-facing taxonomy.
+  const groupFilter = params.get("group") ?? "all";
 
   const [query, setQuery] = useState("");
+
+  const SOLUTION_GROUP_LABEL: Record<string, string> = {
+    ai_strategy: "AI Strategy & Design",
+    gtm: "Go-to-Market",
+    company_os: "Company OS",
+    consulting_services: "Consulting Services",
+  };
 
   const servicesQ = useCmsListServices();
   const solutionsQ = useCmsListSolutions();
@@ -54,14 +63,20 @@ export default function AdminSolutionsList() {
     serviceFilter === "all"
       ? allSolutions
       : allSolutions.filter((s) => s.parentServiceId === serviceFilter);
+  const filteredByGroup =
+    groupFilter === "all"
+      ? filteredByService
+      : filteredByService.filter(
+          (s) => (s.solutionGroup ?? null) === groupFilter,
+        );
   const solutions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return filteredByService;
-    return filteredByService.filter((s) => {
+    if (!q) return filteredByGroup;
+    return filteredByGroup.filter((s) => {
       const hay = `${s.title ?? ""} ${s.slug ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [filteredByService, query]);
+  }, [filteredByGroup, query]);
 
   const capabilityQueries = useQueries({
     queries: solutions.map((s) => ({
@@ -104,6 +119,21 @@ export default function AdminSolutionsList() {
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
+  const setGroupFilterParam = (v: string) => {
+    const next = new URLSearchParams(search);
+    if (v === "all") next.delete("group");
+    else next.set("group", v);
+    const qs = next.toString();
+    const url = `/admin/products/solutions${qs ? `?${qs}` : ""}`;
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  const toggleShowInMenu = (s: Solution, next: boolean) => {
+    if (!canWrite) return;
+    updateMut.mutate({ id: s.id, data: { title: s.title, showInMenu: next } });
+  };
+
   const toggleActive = (s: Solution, next: boolean) => {
     if (!canWrite) return;
     updateMut.mutate({ id: s.id, data: { title: s.title, active: next } });
@@ -140,12 +170,25 @@ export default function AdminSolutionsList() {
             data-testid="input-solutions-search"
           />
         </div>
+        <Select value={groupFilter} onValueChange={setGroupFilterParam}>
+          <SelectTrigger className="w-[220px]" data-testid="select-solutions-group-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All groups</SelectItem>
+            {Object.entries(SOLUTION_GROUP_LABEL).map(([v, label]) => (
+              <SelectItem key={v} value={v}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={serviceFilter} onValueChange={setFilter}>
           <SelectTrigger className="w-[260px]" data-testid="select-solutions-service-filter">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All services</SelectItem>
+            <SelectItem value="all">All services (editorial)</SelectItem>
             {services.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.title}
@@ -153,7 +196,7 @@ export default function AdminSolutionsList() {
             ))}
           </SelectContent>
         </Select>
-        {(query || serviceFilter !== "all") && (
+        {(query || serviceFilter !== "all" || groupFilter !== "all") && (
           <span className="text-xs text-muted-foreground">
             {solutions.length} of {allSolutions.length} matching
           </span>
@@ -166,10 +209,10 @@ export default function AdminSolutionsList() {
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Slug</TableHead>
-              <TableHead>Parent service</TableHead>
+              <TableHead>Group</TableHead>
               <TableHead className="w-20 text-right">Order</TableHead>
               <TableHead className="w-28 text-right">Capabilities</TableHead>
-              <TableHead>Blog category</TableHead>
+              <TableHead className="w-24">In menu</TableHead>
               <TableHead className="w-20">Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -184,7 +227,7 @@ export default function AdminSolutionsList() {
             ) : solutions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  {query || serviceFilter !== "all"
+                  {query || serviceFilter !== "all" || groupFilter !== "all"
                     ? "No solutions match this filter."
                     : "No solutions yet."}
                 </TableCell>
@@ -193,9 +236,9 @@ export default function AdminSolutionsList() {
               solutions.map((s, i) => {
                 const cq = capabilityQueries[i];
                 const cCount = cq?.data?.items?.length ?? null;
-                const parent = s.parentServiceId
-                  ? serviceById.get(s.parentServiceId)
-                  : undefined;
+                const groupLabel = s.solutionGroup
+                  ? SOLUTION_GROUP_LABEL[s.solutionGroup]
+                  : null;
                 return (
                   <TableRow key={s.id} data-testid={`row-solution-${s.id}`}>
                     <TableCell className="font-medium">
@@ -209,7 +252,9 @@ export default function AdminSolutionsList() {
                     <TableCell className="text-xs text-muted-foreground font-mono">
                       /{s.slug}
                     </TableCell>
-                    <TableCell className="text-sm">{parent?.title ?? "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {groupLabel ?? <span className="text-muted-foreground">—</span>}
+                    </TableCell>
                     <TableCell className="text-right text-sm">
                       {s.displayOrder ?? "—"}
                     </TableCell>
@@ -222,8 +267,13 @@ export default function AdminSolutionsList() {
                         {cCount ?? "…"}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {s.blogCategory ?? "—"}
+                    <TableCell>
+                      <Switch
+                        checked={s.showInMenu ?? false}
+                        onCheckedChange={(v) => toggleShowInMenu(s, v)}
+                        disabled={!canWrite}
+                        data-testid={`switch-solution-show-in-menu-${s.id}`}
+                      />
                     </TableCell>
                     <TableCell>
                       <Switch
