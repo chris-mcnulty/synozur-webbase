@@ -1,3 +1,4 @@
+import { Meta } from "@/lib/meta";
 import { useQuery } from "@tanstack/react-query";
 import { Briefcase, MapPin, Clock, ExternalLink } from "lucide-react";
 import { careersApi } from "@/lib/careers-api";
@@ -25,6 +26,7 @@ export default function CareersEmbedJobs() {
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
       className="min-h-screen bg-[#0d0d14] text-white p-4"
     >
+      <Meta title="Careers — open positions" noindex />
       {isLoading && (
         <div className="text-[#8b8ba8] text-sm py-8 text-center">Loading positions…</div>
       )}

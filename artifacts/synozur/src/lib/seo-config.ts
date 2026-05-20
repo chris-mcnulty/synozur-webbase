@@ -14,7 +14,7 @@
 
 export const SITE_NAME = "The Synozur Alliance";
 export const SITE_ORIGIN = "https://www.synozur.com";
-export const DEFAULT_OG_IMAGE = "/images/hero-bg.png";
+export const DEFAULT_OG_IMAGE = "/opengraph.jpg";
 
 export type PageType =
   | "home"

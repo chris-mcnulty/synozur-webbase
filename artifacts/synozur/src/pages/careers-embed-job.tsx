@@ -1,3 +1,4 @@
+import { Meta } from "@/lib/meta";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Briefcase, MapPin, Clock, ExternalLink } from "lucide-react";
@@ -46,6 +47,7 @@ export default function CareersEmbedJob() {
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
       className="min-h-screen bg-[#0d0d14] text-white"
     >
+      <Meta title="Careers — position detail" noindex />
       <div className="max-w-2xl mx-auto p-6">
         {/* Header */}
         <div className="mb-6">
