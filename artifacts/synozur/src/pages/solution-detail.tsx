@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
@@ -597,6 +597,13 @@ function HighlightSection({
 // entirely when no items are linked — the existing rotating highlight
 // above and the "More from this solution" tail below already cover
 // that case.
+//
+// Task #324 — Items are grouped by collateralType in editorial priority
+// order with filter chips so visitors can scan by format. Selecting a
+// chip shows only that group's flat grid; "All" restores the grouped view.
+// Empty groups are always hidden; the section is hidden entirely when no
+// active items are linked.
+
 function linkedCollateralToCard(item: LinkedCollateralDto): Collateral {
   return {
     id: item.collateralId,
@@ -617,30 +624,135 @@ function linkedCollateralToCard(item: LinkedCollateralDto): Collateral {
   };
 }
 
+const COLLATERAL_GROUP_ORDER: CollateralType[] = [
+  "case_study",
+  "white_paper",
+  "ebook",
+  "webinar",
+  "workshop",
+  "training",
+  "event",
+  "insight",
+  "video",
+  "podcast",
+  "model",
+  "application",
+  "landing_page",
+];
+
+const COLLATERAL_GROUP_LABELS: Record<CollateralType, string> = {
+  case_study: "Case Studies",
+  white_paper: "White Papers",
+  ebook: "eBooks",
+  webinar: "Webinars",
+  workshop: "Workshops",
+  training: "Training",
+  event: "Events",
+  insight: "Insights",
+  video: "Videos",
+  podcast: "Podcasts",
+  model: "Models",
+  application: "Accelerators",
+  landing_page: "Featured",
+};
+
 function RelatedResourcesSection({ items }: { items: LinkedCollateralDto[] }) {
+  const [activeFilter, setActiveFilter] = useState<CollateralType | null>(null);
+
   const active = useMemo(
     () => items.filter((i) => i.active).slice().sort((a, b) => a.displayOrder - b.displayOrder),
     [items],
   );
+
+  const groups = useMemo(() => {
+    const byType = new Map<CollateralType, LinkedCollateralDto[]>();
+    for (const item of active) {
+      const t = item.collateralType as CollateralType;
+      const existing = byType.get(t);
+      if (existing) {
+        existing.push(item);
+      } else {
+        byType.set(t, [item]);
+      }
+    }
+    return COLLATERAL_GROUP_ORDER
+      .filter((t) => byType.has(t))
+      .map((t) => ({ type: t, items: byType.get(t)! }));
+  }, [active]);
+
   if (active.length === 0) return null;
+
+  const visibleGroups =
+    activeFilter === null
+      ? groups
+      : groups.filter((g) => g.type === activeFilter);
+
+  const showGroupHeadings = activeFilter === null && groups.length > 1;
+
   return (
     <section className="py-24 bg-background" data-testid="solution-related-resources">
       <div className="container mx-auto px-4">
-        <div className="max-w-2xl mb-12">
-          <p className="text-sm uppercase tracking-widest text-primary mb-3">
-            Related resources
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold">
-            Dive deeper
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10">
+          <div className="max-w-2xl">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Related resources
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Dive deeper
+            </h2>
+          </div>
+          {groups.length > 1 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by resource type">
+              <button
+                type="button"
+                onClick={() => setActiveFilter(null)}
+                aria-pressed={activeFilter === null}
+                className={`inline-flex h-8 items-center rounded-full border px-4 text-xs font-semibold tracking-wide transition-colors ${
+                  activeFilter === null
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                All
+              </button>
+              {groups.map((g) => (
+                <button
+                  key={g.type}
+                  type="button"
+                  onClick={() => setActiveFilter(g.type === activeFilter ? null : g.type)}
+                  aria-pressed={activeFilter === g.type}
+                  className={`inline-flex h-8 items-center rounded-full border px-4 text-xs font-semibold tracking-wide transition-colors ${
+                    activeFilter === g.type
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  {COLLATERAL_GROUP_LABELS[g.type]}
+                  <span className="ml-1.5 tabular-nums opacity-60">{g.items.length}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {active.map((item) => (
-            <CollateralCard
-              key={item.collateralId}
-              item={linkedCollateralToCard(item)}
-              variant="grid"
-            />
+
+        <div className="space-y-14">
+          {visibleGroups.map((g) => (
+            <div key={g.type}>
+              {showGroupHeadings && (
+                <h3 className="text-base font-semibold uppercase tracking-widest text-muted-foreground mb-6 border-b border-border/60 pb-3">
+                  {COLLATERAL_GROUP_LABELS[g.type]}
+                </h3>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {g.items.map((item) => (
+                  <CollateralCard
+                    key={item.collateralId}
+                    item={linkedCollateralToCard(item)}
+                    variant="grid"
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
