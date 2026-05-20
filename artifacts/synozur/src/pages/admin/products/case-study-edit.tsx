@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -956,6 +957,24 @@ export default function CaseStudyEdit({ id }: Props) {
                 </SelectContent>
               </Select>
             </div>
+          </Card>
+
+          {/* Linked solutions — many-to-many */}
+          <Card className="p-5 space-y-3">
+            <div>
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-1">
+                Linked solutions
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Pin this case study to one or more solutions. It will appear in
+                each solution's "Related resources" section. Save first if this
+                is a new record.
+              </p>
+            </div>
+            <CollateralSolutionsEditor
+              sourceId={!isNew && id ? `case_study:${id}` : null}
+              canWrite={canWrite}
+            />
           </Card>
         </div>
       </div>

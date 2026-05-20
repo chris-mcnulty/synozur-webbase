@@ -40,6 +40,7 @@ import { useAdminAccess } from "@/components/admin/AdminGate";
 import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { MediaPickerModal, mediaUrl, uploadAndRegisterImage } from "@/components/admin/MediaPickerModal";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { sanitizeHtml } from "@/components/rich-text";
 import { useToast } from "@/hooks/use-toast";
 import { api, type PostRevisionDetail } from "@/lib/api";
@@ -729,6 +730,21 @@ export default function PostEditor({ id }: Props) {
               Explicitly pins this post to a solution in the collateral library.
               Leave blank to auto-detect from tag slugs.
             </p>
+          </Card>
+
+          <Card className="p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium mb-0.5">Linked solutions</p>
+              <p className="text-xs text-muted-foreground">
+                Pin this post to one or more solutions. It will appear in each
+                linked solution's "Related resources" section. Save the post
+                first if this is a new draft.
+              </p>
+            </div>
+            <CollateralSolutionsEditor
+              sourceId={postId ? `post:${postId}` : null}
+              canWrite={true}
+            />
           </Card>
 
           <Card className="p-4 space-y-3">
