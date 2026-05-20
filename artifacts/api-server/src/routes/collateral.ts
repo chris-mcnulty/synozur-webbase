@@ -4,6 +4,9 @@ import { and, asc, desc, eq, isNull, ne, inArray, sql } from "drizzle-orm";
 import {
   db,
   collateralTable,
+  collateralSolutionsTable,
+  solutionsTable,
+  servicesTable,
   COLLATERAL_TYPES,
   whitePapersTable,
   caseStudiesTable,
@@ -1182,5 +1185,151 @@ router.delete("/cms/collateral/:id", ...adminGuard, async (req, res) => {
   });
   res.status(204).end();
 });
+
+// Task #318 — Collateral × Solutions join admin endpoints. Mirrors the
+// shape of cmsReplaceSolutionHighlights but from the collateral side so
+// each library editor (collateral, white papers, videos, workshops,
+// Polaris episodes) can manage solution links inline.
+const CollateralSolutionsBody = z.object({
+  items: z
+    .array(
+      z.object({
+        solutionId: z.string().uuid(),
+        displayOrder: z.number().int().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(100),
+});
+
+async function loadCollateralSolutionsForAdmin(collateralId: string) {
+  const rows = await db
+    .select({
+      link: collateralSolutionsTable,
+      sol: solutionsTable,
+      svc: servicesTable,
+    })
+    .from(collateralSolutionsTable)
+    .innerJoin(
+      solutionsTable,
+      eq(collateralSolutionsTable.solutionId, solutionsTable.id),
+    )
+    .leftJoin(
+      servicesTable,
+      eq(solutionsTable.parentServiceId, servicesTable.id),
+    )
+    .where(eq(collateralSolutionsTable.collateralId, collateralId))
+    .orderBy(
+      asc(collateralSolutionsTable.displayOrder),
+      asc(solutionsTable.title),
+    );
+  return rows.map((r) => ({
+    solutionId: r.sol.id,
+    displayOrder: r.link.displayOrder,
+    active: r.link.active,
+    solutionTitle: r.sol.title,
+    solutionSlug: r.sol.slug,
+    parentServiceId: r.svc?.id ?? null,
+    parentServiceTitle: r.svc?.title ?? null,
+  }));
+}
+
+// Task #318 — Resolve a typed source row (white paper, video, workshop,
+// polaris episode, …) to its mirrored `collateralTable` id so the typed
+// editors can manage solution links without round-tripping through the
+// generic collateral list.
+router.get(
+  "/cms/collateral/by-source/:sourceId",
+  ...readGuard,
+  async (req, res) => {
+    const sourceId = String(req.params.sourceId);
+    const row = await db.query.collateralTable.findFirst({
+      where: and(
+        eq(collateralTable.sourceId, sourceId),
+        isNull(collateralTable.deletedAt),
+      ),
+    });
+    if (!row) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ collateralId: row.id });
+  },
+);
+
+router.get(
+  "/cms/collateral/:id/solutions",
+  ...readGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.collateralTable.findFirst({
+      where: eq(collateralTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({ items: await loadCollateralSolutionsForAdmin(id) });
+  },
+);
+
+router.put(
+  "/cms/collateral/:id/solutions",
+  ...adminGuard,
+  async (req, res) => {
+    const id = String(req.params.id);
+    const existing = await db.query.collateralTable.findFirst({
+      where: eq(collateralTable.id, id),
+    });
+    if (!existing || existing.deletedAt) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const parsed = CollateralSolutionsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    // Normalize ordering by payload position; collapse duplicate
+    // solutionIds to the last entry seen. Mirrors the
+    // cmsReplaceSolutionHighlights upsert semantics.
+    const seen = new Map<
+      string,
+      { solutionId: string; displayOrder: number; active: boolean }
+    >();
+    parsed.data.items.forEach((item, idx) => {
+      seen.set(item.solutionId, {
+        solutionId: item.solutionId,
+        displayOrder: idx,
+        active: item.active ?? true,
+      });
+    });
+    const desired = Array.from(seen.values());
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(collateralSolutionsTable)
+        .where(eq(collateralSolutionsTable.collateralId, id));
+      if (desired.length > 0) {
+        await tx.insert(collateralSolutionsTable).values(
+          desired.map((d) => ({
+            collateralId: id,
+            solutionId: d.solutionId,
+            displayOrder: d.displayOrder,
+            active: d.active,
+          })),
+        );
+      }
+    });
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "collateral.solutions.replace",
+      entity: "collateral",
+      entityId: id,
+    });
+    res.json({ items: await loadCollateralSolutionsForAdmin(id) });
+  },
+);
 
 export default router;

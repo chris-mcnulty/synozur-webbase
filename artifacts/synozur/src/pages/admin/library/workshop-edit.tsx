@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import {
   Select,
   SelectContent,
@@ -1021,6 +1022,22 @@ export default function WorkshopEdit({ id }: Props) {
               </div>
             )}
           </Card>
+
+          {id && (
+            <Card className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                Linked solutions
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Show this workshop in the "Related resources" section of
+                each selected solution.
+              </p>
+              <CollateralSolutionsEditor
+                sourceId={`workshop:${id}`}
+                canWrite={!!access?.isEditorOrAbove}
+              />
+            </Card>
+          )}
 
           <Card className="p-4 space-y-3">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">

@@ -45,6 +45,7 @@ import type {
   CollateralResource,
   CollateralResourceReorderBody,
   CollateralResourcesResponse,
+  CollateralSolutionItemsResponse,
   Comment,
   CommentListResponse,
   ContactFormInput,
@@ -170,6 +171,7 @@ import type {
   UpsertCapabilityBody,
   UpsertCategoryBody,
   UpsertCollateralBody,
+  UpsertCollateralSolutionsBody,
   UpsertMethodologyBody,
   UpsertServiceBody,
   UpsertSolutionBody,
@@ -4615,6 +4617,190 @@ export const useCmsDeleteCollateral = <
   TContext
 > => {
   return useMutation(getCmsDeleteCollateralMutationOptions(options));
+};
+
+/**
+ * Task #318 — List the solutions a collateral item is linked to via
+the `collateral_solutions` join. Returns all rows (incl. inactive)
+so admins can audit.
+
+ */
+export const getCmsListCollateralSolutionsUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/solutions`;
+};
+
+export const cmsListCollateralSolutions = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CollateralSolutionItemsResponse> => {
+  return customFetch<CollateralSolutionItemsResponse>(
+    getCmsListCollateralSolutionsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCmsListCollateralSolutionsQueryKey = (id: string) => {
+  return [`/api/cms/collateral/${id}/solutions`] as const;
+};
+
+export const getCmsListCollateralSolutionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof cmsListCollateralSolutions>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralSolutions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCmsListCollateralSolutionsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof cmsListCollateralSolutions>>
+  > = ({ signal }) =>
+    cmsListCollateralSolutions(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof cmsListCollateralSolutions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CmsListCollateralSolutionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof cmsListCollateralSolutions>>
+>;
+export type CmsListCollateralSolutionsQueryError = ErrorType<NotFoundResponse>;
+
+export function useCmsListCollateralSolutions<
+  TData = Awaited<ReturnType<typeof cmsListCollateralSolutions>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof cmsListCollateralSolutions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCmsListCollateralSolutionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Task #318 — Replace-all upsert of the collateral × solutions join.
+Existing links not in the payload are removed; matching rows are
+updated in place. `displayOrder` is normalized server-side by
+payload position so duplicates collapse to the last entry seen.
+
+ */
+export const getCmsReplaceCollateralSolutionsUrl = (id: string) => {
+  return `/api/cms/collateral/${id}/solutions`;
+};
+
+export const cmsReplaceCollateralSolutions = async (
+  id: string,
+  upsertCollateralSolutionsBody: UpsertCollateralSolutionsBody,
+  options?: RequestInit,
+): Promise<CollateralSolutionItemsResponse> => {
+  return customFetch<CollateralSolutionItemsResponse>(
+    getCmsReplaceCollateralSolutionsUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(upsertCollateralSolutionsBody),
+    },
+  );
+};
+
+export const getCmsReplaceCollateralSolutionsMutationOptions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>,
+    TError,
+    { id: string; data: BodyType<UpsertCollateralSolutionsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>,
+  TError,
+  { id: string; data: BodyType<UpsertCollateralSolutionsBody> },
+  TContext
+> => {
+  const mutationKey = ["cmsReplaceCollateralSolutions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>,
+    { id: string; data: BodyType<UpsertCollateralSolutionsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return cmsReplaceCollateralSolutions(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CmsReplaceCollateralSolutionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>
+>;
+export type CmsReplaceCollateralSolutionsMutationBody =
+  BodyType<UpsertCollateralSolutionsBody>;
+export type CmsReplaceCollateralSolutionsMutationError =
+  ErrorType<NotFoundResponse>;
+
+export const useCmsReplaceCollateralSolutions = <
+  TError = ErrorType<NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>,
+    TError,
+    { id: string; data: BodyType<UpsertCollateralSolutionsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cmsReplaceCollateralSolutions>>,
+  TError,
+  { id: string; data: BodyType<UpsertCollateralSolutionsBody> },
+  TContext
+> => {
+  return useMutation(getCmsReplaceCollateralSolutionsMutationOptions(options));
 };
 
 /**

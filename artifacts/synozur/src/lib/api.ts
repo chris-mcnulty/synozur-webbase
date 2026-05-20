@@ -615,10 +615,35 @@ export interface SolutionHighlightDto {
   collateralVideoUrl: string | null;
 }
 
+// Task #318 — Auto-listed related resources on each solution page.
+// Joined server-side from `collateral_solutions` against `collateral`
+// so the public renderer can feed each row straight into the existing
+// CollateralCard component without a second round-trip.
+export interface LinkedCollateralDto {
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  collateralSubtitle: string | null;
+  collateralDescription: string | null;
+  collateralHeroImage: string | null;
+  collateralPillar: string | null;
+  collateralTags: string[];
+  collateralUrl: string | null;
+  collateralExternal: boolean;
+  collateralDownloadUrl: string | null;
+  collateralVideoUrl: string | null;
+  collateralPublishedAt: string | null;
+  collateralFeatured: boolean;
+}
+
 export type SolutionWithCapabilities = SolutionDto & {
   parentService: ServiceDto | null;
   capabilities: CapabilityDto[];
   highlights: SolutionHighlightDto[];
+  linkedCollateral: LinkedCollateralDto[];
 };
 
 export interface UpdateSiteSettingsBody {
@@ -893,6 +918,44 @@ export const api = {
       url(`/cms/solutions/${encodeURIComponent(id)}/highlights`),
       { method: "PUT", body: JSON.stringify({ items }) },
     ),
+  // Task #318 — Collateral × Solutions join admin helpers. Each typed
+  // library editor (white paper, video, workshop, polaris episode) needs
+  // its mirrored `collateral.id` to manage solution links; the generic
+  // collateral editor just passes its own id straight through.
+  lookupCollateralBySource: (sourceId: string) =>
+    jsonFetch<{ collateralId: string }>(
+      url(`/cms/collateral/by-source/${encodeURIComponent(sourceId)}`),
+    ),
+  listCollateralSolutions: (collateralId: string) =>
+    jsonFetch<{
+      items: {
+        solutionId: string;
+        displayOrder: number;
+        active: boolean;
+        solutionTitle: string;
+        solutionSlug: string;
+        parentServiceId: string | null;
+        parentServiceTitle: string | null;
+      }[];
+    }>(url(`/cms/collateral/${encodeURIComponent(collateralId)}/solutions`)),
+  replaceCollateralSolutions: (
+    collateralId: string,
+    items: { solutionId: string; displayOrder?: number; active?: boolean }[],
+  ) =>
+    jsonFetch<{
+      items: {
+        solutionId: string;
+        displayOrder: number;
+        active: boolean;
+        solutionTitle: string;
+        solutionSlug: string;
+        parentServiceId: string | null;
+        parentServiceTitle: string | null;
+      }[];
+    }>(url(`/cms/collateral/${encodeURIComponent(collateralId)}/solutions`), {
+      method: "PUT",
+      body: JSON.stringify({ items }),
+    }),
   restoreSolutionRevision: (id: string, revisionId: string) =>
     jsonFetch<SolutionDto>(
       url(

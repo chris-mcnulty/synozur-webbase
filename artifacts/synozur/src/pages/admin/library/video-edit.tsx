@@ -19,6 +19,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@workspace/api-client-react";
 import {
@@ -632,6 +633,22 @@ export default function VideoEdit({ id }: Props) {
               <TaxonomyPicker
                 entityType="video"
                 entityId={id ?? null}
+                canWrite={canWrite}
+              />
+            </Card>
+          )}
+
+          {!isNew && id && (
+            <Card className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                Linked solutions
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Show this video in the "Related resources" section of
+                each selected solution.
+              </p>
+              <CollateralSolutionsEditor
+                sourceId={`video:${id}`}
                 canWrite={canWrite}
               />
             </Card>

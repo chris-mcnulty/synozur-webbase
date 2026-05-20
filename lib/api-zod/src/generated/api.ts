@@ -2361,6 +2361,38 @@ export const GetSolutionResponse = zod
         .describe(
           "Task #317 — Ordered list of Collateral items pinned to this\nsolution. The public solution page picks one at random per\npage load and renders it in place of the legacy accelerator\nblock. Admin\/preview responses include inactive rows; the\npublic response filters them out.\n",
         ),
+      linkedCollateral: zod
+        .array(
+          zod
+            .object({
+              collateralId: zod.string(),
+              displayOrder: zod.number(),
+              active: zod.boolean(),
+              collateralType: zod.string(),
+              collateralSlug: zod.string(),
+              collateralTitle: zod.string(),
+              collateralSubtitle: zod.string().nullish(),
+              collateralDescription: zod.string().nullish(),
+              collateralHeroImage: zod.string().nullish(),
+              collateralPillar: zod.string().nullish(),
+              collateralTags: zod.array(zod.string()),
+              collateralUrl: zod.string().nullish(),
+              collateralExternal: zod.boolean(),
+              collateralDownloadUrl: zod.string().nullish(),
+              collateralVideoUrl: zod.string().nullish(),
+              collateralPublishedAt: zod
+                .string()
+                .nullish()
+                .describe("Date-only string (YYYY-MM-DD) or null."),
+              collateralFeatured: zod.boolean(),
+            })
+            .describe(
+              "Task #318 — One row from the auto-listed related-resources join.\nFlattened against the source collateral row so the public renderer\ncan hand it straight to a CollateralCard without a second round-trip.\n",
+            ),
+        )
+        .describe(
+          "Task #318 — Auto-listed related resources. Every Collateral\nitem tagged to this solution via the `collateral_solutions`\njoin, ordered by `displayOrder` then title. Independent of\nthe curated `highlights` slot. Public responses hide\ninactive or soft-deleted rows; preview includes everything.\n",
+        ),
     }),
   );
 
@@ -2704,6 +2736,77 @@ export const CmsUpdateCollateralResponse = zod.object({
 
 export const CmsDeleteCollateralParams = zod.object({
   id: zod.coerce.string(),
+});
+
+/**
+ * Task #318 — List the solutions a collateral item is linked to via
+the `collateral_solutions` join. Returns all rows (incl. inactive)
+so admins can audit.
+
+ */
+export const CmsListCollateralSolutionsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsListCollateralSolutionsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        solutionId: zod.string(),
+        displayOrder: zod.number(),
+        active: zod.boolean(),
+        solutionTitle: zod.string(),
+        solutionSlug: zod.string(),
+        parentServiceId: zod.string().nullish(),
+        parentServiceTitle: zod.string().nullish(),
+      })
+      .describe(
+        "Task #318 — One row of the collateral × solution join from the\ncollateral side, with the solution's title\/slug joined in so the\nadmin UI can render the picker without a second fetch.\n",
+      ),
+  ),
+});
+
+/**
+ * Task #318 — Replace-all upsert of the collateral × solutions join.
+Existing links not in the payload are removed; matching rows are
+updated in place. `displayOrder` is normalized server-side by
+payload position so duplicates collapse to the last entry seen.
+
+ */
+export const CmsReplaceCollateralSolutionsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CmsReplaceCollateralSolutionsBody = zod.object({
+  items: zod
+    .array(
+      zod.object({
+        solutionId: zod.string(),
+        displayOrder: zod.number().optional(),
+        active: zod.boolean().optional(),
+      }),
+    )
+    .describe(
+      "Replace-all payload. Each entry references an existing solution\nby id. `displayOrder` is normalized server-side by payload\nposition; duplicate `solutionId`s collapse to the last entry.\n",
+    ),
+});
+
+export const CmsReplaceCollateralSolutionsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        solutionId: zod.string(),
+        displayOrder: zod.number(),
+        active: zod.boolean(),
+        solutionTitle: zod.string(),
+        solutionSlug: zod.string(),
+        parentServiceId: zod.string().nullish(),
+        parentServiceTitle: zod.string().nullish(),
+      })
+      .describe(
+        "Task #318 — One row of the collateral × solution join from the\ncollateral side, with the solution's title\/slug joined in so the\nadmin UI can render the picker without a second fetch.\n",
+      ),
+  ),
 });
 
 /**

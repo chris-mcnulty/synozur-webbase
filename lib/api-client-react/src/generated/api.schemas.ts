@@ -1896,6 +1896,43 @@ export interface SolutionHighlight {
   collateralVideoUrl?: string | null;
 }
 
+/**
+ * Task #318 — One row from the auto-listed related-resources join.
+Flattened against the source collateral row so the public renderer
+can hand it straight to a CollateralCard without a second round-trip.
+
+ */
+export interface LinkedCollateralItem {
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  /** @nullable */
+  collateralSubtitle?: string | null;
+  /** @nullable */
+  collateralDescription?: string | null;
+  /** @nullable */
+  collateralHeroImage?: string | null;
+  /** @nullable */
+  collateralPillar?: string | null;
+  collateralTags: string[];
+  /** @nullable */
+  collateralUrl?: string | null;
+  collateralExternal: boolean;
+  /** @nullable */
+  collateralDownloadUrl?: string | null;
+  /** @nullable */
+  collateralVideoUrl?: string | null;
+  /**
+   * Date-only string (YYYY-MM-DD) or null.
+   * @nullable
+   */
+  collateralPublishedAt?: string | null;
+  collateralFeatured: boolean;
+}
+
 export type SolutionDetail = Solution & {
   parentService?: Service | null;
   capabilities: Capability[];
@@ -1906,6 +1943,13 @@ block. Admin/preview responses include inactive rows; the
 public response filters them out.
  */
   highlights: SolutionHighlight[];
+  /** Task #318 — Auto-listed related resources. Every Collateral
+item tagged to this solution via the `collateral_solutions`
+join, ordered by `displayOrder` then title. Independent of
+the curated `highlights` slot. Public responses hide
+inactive or soft-deleted rows; preview includes everything.
+ */
+  linkedCollateral: LinkedCollateralItem[];
 };
 
 export type UpsertSolutionHighlightsBodyItemsItem = {
@@ -1923,6 +1967,42 @@ Collateral row by id; `displayOrder` is normalized server-side.
 
 export interface SolutionHighlightItemsResponse {
   items: SolutionHighlight[];
+}
+
+/**
+ * Task #318 — One row of the collateral × solution join from the
+collateral side, with the solution's title/slug joined in so the
+admin UI can render the picker without a second fetch.
+
+ */
+export interface CollateralSolutionLink {
+  solutionId: string;
+  displayOrder: number;
+  active: boolean;
+  solutionTitle: string;
+  solutionSlug: string;
+  /** @nullable */
+  parentServiceId?: string | null;
+  /** @nullable */
+  parentServiceTitle?: string | null;
+}
+
+export interface CollateralSolutionItemsResponse {
+  items: CollateralSolutionLink[];
+}
+
+export type UpsertCollateralSolutionsBodyItemsItem = {
+  solutionId: string;
+  displayOrder?: number;
+  active?: boolean;
+};
+
+export interface UpsertCollateralSolutionsBody {
+  /** Replace-all payload. Each entry references an existing solution
+by id. `displayOrder` is normalized server-side by payload
+position; duplicate `solutionId`s collapse to the last entry.
+ */
+  items: UpsertCollateralSolutionsBodyItemsItem[];
 }
 
 export interface ServiceItemsResponse {

@@ -6,6 +6,7 @@ import {
   serviceMethodologiesTable,
   solutionCapabilitiesTable,
   solutionHighlightsTable,
+  collateralSolutionsTable,
   collateralTable,
   mediaTable,
   tagsTable,
@@ -217,10 +218,36 @@ export type SolutionHighlightDto = {
   collateralVideoUrl: string | null;
 };
 
+// Task #318 — Auto-listed related resources. Distinct from `highlights`
+// (curated rotating slot) — this is the full set of collateral tagged
+// to a solution via the `collateral_solutions` join. Shaped flat so the
+// public renderer can drop them straight into the existing
+// CollateralCard without a second round-trip.
+export type LinkedCollateralDto = {
+  collateralId: string;
+  displayOrder: number;
+  active: boolean;
+  collateralType: string;
+  collateralSlug: string;
+  collateralTitle: string;
+  collateralSubtitle: string | null;
+  collateralDescription: string | null;
+  collateralHeroImage: string | null;
+  collateralPillar: string | null;
+  collateralTags: string[];
+  collateralUrl: string | null;
+  collateralExternal: boolean;
+  collateralDownloadUrl: string | null;
+  collateralVideoUrl: string | null;
+  collateralPublishedAt: string | null;
+  collateralFeatured: boolean;
+};
+
 export type SolutionWithCapabilities = SolutionDto & {
   parentService: ServiceDto | null;
   capabilities: CapabilityDto[];
   highlights: SolutionHighlightDto[];
+  linkedCollateral: LinkedCollateralDto[];
 };
 
 export async function serializeService(s: Service): Promise<ServiceDto> {
@@ -488,6 +515,47 @@ export async function getSolutionWithCapabilities(
   const visibleHighlights = opts.preview
     ? highlightRows
     : highlightRows.filter((r) => r.h.active && r.c.active);
+  // Task #318 — Auto-listed related resources. Independent of the
+  // curated highlights slot: an item linked via collateral_solutions
+  // need not be pinned, and a pinned highlight need not be linked here.
+  // Public responses hide rows that are inactive on either side or
+  // soft-deleted; preview shows everything so editors can audit.
+  const linkedRows = await db
+    .select({ link: collateralSolutionsTable, c: collateralTable })
+    .from(collateralSolutionsTable)
+    .innerJoin(
+      collateralTable,
+      eq(collateralSolutionsTable.collateralId, collateralTable.id),
+    )
+    .where(eq(collateralSolutionsTable.solutionId, solution.id))
+    .orderBy(
+      asc(collateralSolutionsTable.displayOrder),
+      asc(collateralTable.title),
+    );
+  const visibleLinked = opts.preview
+    ? linkedRows
+    : linkedRows.filter((r) => r.link.active && r.c.active && !r.c.deletedAt);
+  const linkedCollateral: LinkedCollateralDto[] = visibleLinked.map((r) => ({
+    collateralId: r.c.id,
+    displayOrder: r.link.displayOrder,
+    active: r.link.active,
+    collateralType: r.c.type,
+    collateralSlug: r.c.slug,
+    collateralTitle: r.c.title,
+    collateralSubtitle: r.c.subtitle ?? null,
+    collateralDescription: r.c.description ?? null,
+    collateralHeroImage: r.c.heroImage ?? null,
+    collateralPillar: r.c.pillar ?? null,
+    collateralTags: Array.isArray(r.c.tags) ? r.c.tags : [],
+    collateralUrl: r.c.url ?? null,
+    collateralExternal: r.c.external,
+    collateralDownloadUrl: r.c.downloadUrl ?? null,
+    collateralVideoUrl: r.c.videoUrl ?? null,
+    collateralPublishedAt: r.c.publishedAt
+      ? r.c.publishedAt.toISOString().slice(0, 10)
+      : null,
+    collateralFeatured: r.c.featured,
+  }));
   const highlights: SolutionHighlightDto[] = visibleHighlights.map((r) => ({
     id: r.h.id,
     solutionId: r.h.solutionId,
@@ -545,6 +613,7 @@ export async function getSolutionWithCapabilities(
         shapeCapability(c, c.iconId ? icons.get(c.iconId) ?? null : null),
       ),
       highlights,
+      linkedCollateral,
     },
   };
 }

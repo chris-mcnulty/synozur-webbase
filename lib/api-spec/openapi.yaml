@@ -1437,6 +1437,60 @@ paths:
           description: Deleted
         '404':
           $ref: '#/components/responses/NotFound'
+  /cms/collateral/{id}/solutions:
+    get:
+      operationId: cmsListCollateralSolutions
+      tags:
+        - CmsCollateral
+      description: |
+        Task #318 — List the solutions a collateral item is linked to via
+        the `collateral_solutions` join. Returns all rows (incl. inactive)
+        so admins can audit.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked solutions for the collateral item.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralSolutionItemsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: cmsReplaceCollateralSolutions
+      tags:
+        - CmsCollateral
+      description: |
+        Task #318 — Replace-all upsert of the collateral × solutions join.
+        Existing links not in the payload are removed; matching rows are
+        updated in place. `displayOrder` is normalized server-side by
+        payload position so duplicates collapse to the last entry seen.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCollateralSolutionsBody'
+      responses:
+        '200':
+          description: Updated linked solutions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralSolutionItemsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /cms/collateral/{id}/resources:
     get:
       operationId: cmsListCollateralResources
@@ -7414,6 +7468,7 @@ components:
           required:
             - capabilities
             - highlights
+            - linkedCollateral
           properties:
             parentService:
               oneOf:
@@ -7433,6 +7488,16 @@ components:
                 public response filters them out.
               items:
                 $ref: '#/components/schemas/SolutionHighlight'
+            linkedCollateral:
+              type: array
+              description: |
+                Task #318 — Auto-listed related resources. Every Collateral
+                item tagged to this solution via the `collateral_solutions`
+                join, ordered by `displayOrder` then title. Independent of
+                the curated `highlights` slot. Public responses hide
+                inactive or soft-deleted rows; preview includes everything.
+              items:
+                $ref: '#/components/schemas/LinkedCollateralItem'
 
     SolutionHighlight:
       type: object
@@ -7523,6 +7588,142 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SolutionHighlight'
+
+    LinkedCollateralItem:
+      type: object
+      description: |
+        Task #318 — One row from the auto-listed related-resources join.
+        Flattened against the source collateral row so the public renderer
+        can hand it straight to a CollateralCard without a second round-trip.
+      required:
+        - collateralId
+        - displayOrder
+        - active
+        - collateralType
+        - collateralSlug
+        - collateralTitle
+        - collateralExternal
+        - collateralTags
+        - collateralFeatured
+      properties:
+        collateralId:
+          type: string
+        displayOrder:
+          type: integer
+        active:
+          type: boolean
+        collateralType:
+          type: string
+        collateralSlug:
+          type: string
+        collateralTitle:
+          type: string
+        collateralSubtitle:
+          type:
+            - string
+            - 'null'
+        collateralDescription:
+          type:
+            - string
+            - 'null'
+        collateralHeroImage:
+          type:
+            - string
+            - 'null'
+        collateralPillar:
+          type:
+            - string
+            - 'null'
+        collateralTags:
+          type: array
+          items:
+            type: string
+        collateralUrl:
+          type:
+            - string
+            - 'null'
+        collateralExternal:
+          type: boolean
+        collateralDownloadUrl:
+          type:
+            - string
+            - 'null'
+        collateralVideoUrl:
+          type:
+            - string
+            - 'null'
+        collateralPublishedAt:
+          type:
+            - string
+            - 'null'
+          description: Date-only string (YYYY-MM-DD) or null.
+        collateralFeatured:
+          type: boolean
+
+    CollateralSolutionLink:
+      type: object
+      description: |
+        Task #318 — One row of the collateral × solution join from the
+        collateral side, with the solution's title/slug joined in so the
+        admin UI can render the picker without a second fetch.
+      required:
+        - solutionId
+        - displayOrder
+        - active
+        - solutionTitle
+        - solutionSlug
+      properties:
+        solutionId:
+          type: string
+        displayOrder:
+          type: integer
+        active:
+          type: boolean
+        solutionTitle:
+          type: string
+        solutionSlug:
+          type: string
+        parentServiceId:
+          type:
+            - string
+            - 'null'
+        parentServiceTitle:
+          type:
+            - string
+            - 'null'
+
+    CollateralSolutionItemsResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollateralSolutionLink'
+
+    UpsertCollateralSolutionsBody:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          description: |
+            Replace-all payload. Each entry references an existing solution
+            by id. `displayOrder` is normalized server-side by payload
+            position; duplicate `solutionId`s collapse to the last entry.
+          items:
+            type: object
+            required:
+              - solutionId
+            properties:
+              solutionId:
+                type: string
+              displayOrder:
+                type: integer
+              active:
+                type: boolean
 
     ServiceItemsResponse:
       type: object

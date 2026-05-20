@@ -145,6 +145,48 @@ export const collateralServicesRelations = relations(collateralServicesTable, ({
   }),
 }));
 
+// Task #318 — Many-to-many between collateral and the new Solutions
+// taxonomy. Mirrors collateralServicesTable but adds displayOrder + active
+// flags so editors can curate the auto-list ordering on a solution page
+// and temporarily hide an item without unlinking it. Independent of the
+// single-FK `collateralTable.solutionId` (primary solution) and of the
+// curated `solution_highlights` join used for the rotating slot.
+export const collateralSolutionsTable = pgTable(
+  "collateral_solutions",
+  {
+    collateralId: uuid("collateral_id")
+      .notNull()
+      .references(() => collateralTable.id, { onDelete: "cascade" }),
+    solutionId: uuid("solution_id")
+      .notNull()
+      .references(() => solutionsTable.id, { onDelete: "cascade" }),
+    displayOrder: integer("display_order").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.collateralId, t.solutionId] }),
+    index("collateral_solutions_solution_idx").on(t.solutionId),
+    index("collateral_solutions_display_order_idx").on(t.displayOrder),
+  ],
+);
+
+export const collateralSolutionsRelations = relations(
+  collateralSolutionsTable,
+  ({ one }) => ({
+    collateral: one(collateralTable, {
+      fields: [collateralSolutionsTable.collateralId],
+      references: [collateralTable.id],
+    }),
+    solution: one(solutionsTable, {
+      fields: [collateralSolutionsTable.solutionId],
+      references: [solutionsTable.id],
+    }),
+  }),
+);
+
 export type Collateral = typeof collateralTable.$inferSelect;
 export type InsertCollateral = typeof collateralTable.$inferInsert;
 export type CollateralServiceLink = typeof collateralServicesTable.$inferSelect;
+export type CollateralSolutionLink = typeof collateralSolutionsTable.$inferSelect;

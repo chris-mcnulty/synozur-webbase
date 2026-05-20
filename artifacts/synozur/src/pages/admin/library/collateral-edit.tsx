@@ -24,6 +24,7 @@ import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal"
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { CollateralResourcesEditor } from "@/components/admin/CollateralResourcesEditor";
 import { PublishBlocksBanner } from "@/components/admin/PublishBlocksBanner";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
@@ -833,6 +834,23 @@ export default function CollateralEdit({ id }: Props) {
         categorySlug="case-study"
         kind="image"
       />
+      {id && (
+        <Card className="p-4 space-y-3 mt-6">
+          <div>
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              Linked solutions
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Pin this item to one or more solutions. It will appear in
+              each linked solution's "Related resources" section.
+            </p>
+          </div>
+          <CollateralSolutionsEditor
+            collateralId={id}
+            canWrite={canWrite}
+          />
+        </Card>
+      )}
       <div className="mt-6">
         <ActivityTab entity="collateral" entityId={id} />
       </div>

@@ -20,6 +20,7 @@ import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
+import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useToast } from "@/hooks/use-toast";
 import {
   api,
@@ -648,6 +649,22 @@ export default function PolarisEpisodeEdit({ id }: Props) {
               </>
             )}
           </Card>
+
+          {id && (
+            <Card className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                Linked solutions
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Show this episode in the "Related resources" section of
+                each selected solution.
+              </p>
+              <CollateralSolutionsEditor
+                sourceId={`polaris_episode:${id}`}
+                canWrite={canWrite}
+              />
+            </Card>
+          )}
 
           <Card className="p-4 space-y-3" data-testid="linked-post-card">
             <div className="flex items-center gap-2">

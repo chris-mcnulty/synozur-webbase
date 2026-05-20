@@ -19,6 +19,9 @@ export * from "./siteSettings";
 export * from "./services";
 export * from "./collateral";
 export * from "./solutionHighlights";
+// collateral.ts already exports collateralSolutionsTable but re-listed here
+// for visibility — it lives in the collateral module to keep all collateral
+// FK joins together.
 export * from "./collateralResources";
 export * from "./teamMembers";
 export * from "./analytics";

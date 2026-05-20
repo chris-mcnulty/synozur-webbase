@@ -3262,6 +3262,43 @@ export async function runMigrations(): Promise<void> {
         ON solution_highlights (display_order);
     `);
 
+    // 60. Task #318 — Auto-listed related resources on each solution page.
+    //     New `collateral_solutions` join (collateral × solution) mirrors
+    //     collateral_services but carries displayOrder + active so editors
+    //     can curate the order and temporarily hide a row. Backfill from
+    //     the single-FK `collateral.solution_id` so existing primary links
+    //     show up automatically without an editor having to re-tag.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS collateral_solutions (
+        collateral_id uuid NOT NULL REFERENCES collateral(id) ON DELETE CASCADE,
+        solution_id uuid NOT NULL REFERENCES solutions(id) ON DELETE CASCADE,
+        display_order integer NOT NULL DEFAULT 0,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (collateral_id, solution_id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS collateral_solutions_solution_idx
+        ON collateral_solutions (solution_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS collateral_solutions_display_order_idx
+        ON collateral_solutions (display_order);
+    `);
+    // Idempotent backfill: any collateral row that already names a primary
+    // solution via collateral.solution_id gets a matching join row. ON
+    // CONFLICT DO NOTHING means re-runs and admin-curated rows survive.
+    await db.execute(sql`
+      INSERT INTO collateral_solutions (collateral_id, solution_id, display_order, active)
+      SELECT c.id, c.solution_id, 0, true
+        FROM collateral c
+       WHERE c.solution_id IS NOT NULL
+         AND c.deleted_at IS NULL
+      ON CONFLICT (collateral_id, solution_id) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Capability } from "./capability";
+import type { LinkedCollateralItem } from "./linkedCollateralItem";
 import type { Service } from "./service";
 import type { Solution } from "./solution";
 import type { SolutionHighlight } from "./solutionHighlight";
@@ -20,4 +21,11 @@ block. Admin/preview responses include inactive rows; the
 public response filters them out.
  */
   highlights: SolutionHighlight[];
+  /** Task #318 — Auto-listed related resources. Every Collateral
+item tagged to this solution via the `collateral_solutions`
+join, ordered by `displayOrder` then title. Independent of
+the curated `highlights` slot. Public responses hide
+inactive or soft-deleted rows; preview includes everything.
+ */
+  linkedCollateral: LinkedCollateralItem[];
 };

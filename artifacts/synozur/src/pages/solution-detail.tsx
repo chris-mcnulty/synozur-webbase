@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
 import { ArrowRight, ExternalLink, Layers, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type SolutionHighlightDto } from "@/lib/api";
+import { api, type SolutionHighlightDto, type LinkedCollateralDto } from "@/lib/api";
+import { CollateralCard } from "@/components/collateral-card";
+import type { Collateral, CollateralType, Pillar } from "@/data/collateral";
 import { RichText } from "@/components/rich-text";
 import { RelatedContent } from "@/components/related-content";
 import NotFound from "./not-found";
@@ -348,6 +350,7 @@ export default function SolutionDetail() {
         fallbackHtml={sol?.acceleratorsHtml ?? null}
       />
 
+      <RelatedResourcesSection items={sol?.linkedCollateral ?? []} />
 
       {sol?.capabilities && sol.capabilities.length > 0 ? (
         <section className="py-24 bg-card border-y border-border">
@@ -581,6 +584,64 @@ function HighlightSection({
               className="prose-lg prose-p:text-zinc-300 prose-strong:text-white prose-a:text-primary"
             />
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Task #318 — Auto-listed related resources. Renders every active row
+// from `linkedCollateral` (server-joined `collateral_solutions` × the
+// canonical `collateral` row) using the same CollateralCard the
+// /library grid uses, so visual consistency comes for free. Hidden
+// entirely when no items are linked — the existing rotating highlight
+// above and the "More from this solution" tail below already cover
+// that case.
+function linkedCollateralToCard(item: LinkedCollateralDto): Collateral {
+  return {
+    id: item.collateralId,
+    slug: item.collateralSlug,
+    type: item.collateralType as CollateralType,
+    title: item.collateralTitle,
+    subtitle: item.collateralSubtitle ?? undefined,
+    description: item.collateralDescription ?? "",
+    heroImage: item.collateralHeroImage ?? "",
+    pillar: (item.collateralPillar as Pillar | undefined) ?? undefined,
+    tags: item.collateralTags ?? [],
+    url: item.collateralUrl ?? "#",
+    external: item.collateralExternal,
+    publishedAt: item.collateralPublishedAt ?? "",
+    featured: item.collateralFeatured,
+    videoUrl: item.collateralVideoUrl ?? undefined,
+    downloadUrl: item.collateralDownloadUrl ?? undefined,
+  };
+}
+
+function RelatedResourcesSection({ items }: { items: LinkedCollateralDto[] }) {
+  const active = useMemo(
+    () => items.filter((i) => i.active).slice().sort((a, b) => a.displayOrder - b.displayOrder),
+    [items],
+  );
+  if (active.length === 0) return null;
+  return (
+    <section className="py-24 bg-background" data-testid="solution-related-resources">
+      <div className="container mx-auto px-4">
+        <div className="max-w-2xl mb-12">
+          <p className="text-sm uppercase tracking-widest text-primary mb-3">
+            Related resources
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold">
+            Dive deeper
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {active.map((item) => (
+            <CollateralCard
+              key={item.collateralId}
+              item={linkedCollateralToCard(item)}
+              variant="grid"
+            />
+          ))}
         </div>
       </div>
     </section>
