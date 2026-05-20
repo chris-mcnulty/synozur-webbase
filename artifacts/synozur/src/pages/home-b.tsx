@@ -32,7 +32,7 @@ const DEFAULTS = {
   heroHeadlineAccent: "Transformation",
   heroHeadlineSuffix: "Company",
   heroSubheadline:
-    "Built tools, models, and methods for executives navigating complex change — from first assessment to measurable outcome.",
+    "Real tools. Documented models. Tested methods. Built for executives who need to move — not just plan.",
   pillarsEyebrow: "How we work",
   pillarsHeadline: "A disciplined approach. Not a methodology deck.",
   closingEyebrow: "Ready to begin",
@@ -49,10 +49,10 @@ const PILLARS = [
     proofHref: "/applications/orion",
   },
   {
-    headline: "Assessment is the first act of leadership.",
-    body: "We listen before we advise. The Orion diagnostic gives leadership teams a shared, honest account of where things stand before committing to direction.",
-    proofLabel: "Explore Orion",
-    proofHref: "/applications/orion",
+    headline: "IP that's built, not borrowed.",
+    body: "Our models aren't recycled frameworks. They're built from specific problems, tested with real clients, and documented enough to use again.",
+    proofLabel: "Explore our models",
+    proofHref: "/models",
   },
   {
     headline: "Strategy lives in execution.",
@@ -254,7 +254,7 @@ export default function HomeB() {
         rawTitle
         description="Synozur is The Transformation Company. Built tools, models, and methods for executives leading complex change — from organizational assessment to market intelligence to execution."
         path="/home-b"
-        image="/images/hero-bg.png"
+        image="/opengraph.jpg"
       />
 
       {/* ── Hero: two-column ── */}
@@ -416,9 +416,9 @@ export default function HomeB() {
                 Built software, not just slides.
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                Synozur's three platforms make strategy operational — from the first diagnostic
-                to ongoing execution to market positioning. Each addresses a distinct view of
-                your organization's challenge.
+                Three purpose-built platforms, each with a specific job: Orion starts with
+                honest diagnosis, Vega tracks strategy through execution, and Orbit reads the
+                market you're navigating.
               </p>
               <div className="flex flex-col gap-2 mt-6">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -516,10 +516,10 @@ export default function HomeB() {
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Workshops</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-5 leading-tight">
-              Commit to direction. Leave with a plan.
+              A locked decision beats another plan.<br className="hidden md:block" /> Our workshops produce both.
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Synozur workshops are designed for leadership teams that need to move from open questions to locked decisions. Not seminars. Not training. Facilitated intensives built around your specific challenge — that end with clarity, commitment, and a next step you can act on.
+              Synozur workshops move leadership teams from open questions to committed next steps — in a single day. Not seminars. Facilitated intensives built around the people who own the outcome, structured to end with something you can act on before the week is out.
             </p>
           </motion.div>
 
