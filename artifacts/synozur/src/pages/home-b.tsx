@@ -39,6 +39,9 @@ const DEFAULTS = {
   closingHeadline: "Every engagement starts with a real conversation.",
   closingBody:
     "If you're navigating a market shift, an AI transformation, or a leadership reorganization — we'd like to understand it with you. Not pitch to you.",
+  workshopsHeadline: "The decision that ends the drift.",
+  workshopsBody:
+    "Most leadership teams leave offsites with notes. Synozur workshops end with a named owner, a committed decision, and a next step that's already in motion. One day. Real stakes. No deck to take home and translate.",
 } as const;
 
 const PILLARS = [
@@ -416,9 +419,9 @@ export default function HomeB() {
                 Built software, not just slides.
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                Three purpose-built platforms, each with a specific job: Orion starts with
-                honest diagnosis, Vega tracks strategy through execution, and Orbit reads the
-                market you're navigating.
+                Orion diagnoses where you actually are before any strategy is set. Vega makes
+                that strategy visible and trackable inside the organization. Orbit reads the
+                competitive landscape the strategy must navigate. Three jobs. Three tools. No overlap.
               </p>
               <div className="flex flex-col gap-2 mt-6">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -491,13 +494,13 @@ export default function HomeB() {
             className="mb-10"
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-3">
-              In practice
+              From the archive
             </p>
             <h2 className="text-2xl md:text-3xl font-bold max-w-2xl mb-3">
-              Models, applications, cases, and conversations — how the system works in the real world.
+              Models, applications, case work, and documented thinking — built, not drafted.
             </h2>
             <p className="text-muted-foreground max-w-xl">
-              Synozur's IP isn't advisory opinion. It's documented thinking — built into tools, tested with clients, and refined through real engagements.
+              Every item here is something Synozur actually built or used with a client. Not opinion. Not frameworks borrowed from somewhere else.
             </p>
           </motion.div>
           <FromTheFeedCarousel />
@@ -516,10 +519,10 @@ export default function HomeB() {
           >
             <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">Workshops</p>
             <h2 className="text-3xl md:text-4xl font-bold mb-5 leading-tight">
-              A locked decision beats another plan.<br className="hidden md:block" /> Our workshops produce both.
+              {DEFAULTS.workshopsHeadline}
             </h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Synozur workshops move leadership teams from open questions to committed next steps — in a single day. Not seminars. Facilitated intensives built around the people who own the outcome, structured to end with something you can act on before the week is out.
+              {DEFAULTS.workshopsBody}
             </p>
           </motion.div>
 

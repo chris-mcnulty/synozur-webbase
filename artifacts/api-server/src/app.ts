@@ -15,6 +15,7 @@ import { handlePolarisRss } from "./routes/polaris";
 import oauthRouter from "./routes/oauth";
 import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 import { securityHeadersMiddleware } from "./lib/securityHeaders";
+import { spaFallbackMiddleware } from "./middlewares/spaFallback";
 
 const app: Express = express();
 
@@ -128,5 +129,13 @@ app.use((req, res, next) => {
 app.get("/polaris/rss.xml", handlePolarisRss);
 
 app.use("/api", router);
+
+// SPA fallback — fires for any request not handled above. In dev it proxies
+// to the Synozur Vite dev server; in production it serves the pre-built
+// index.html from artifacts/synozur/dist/public so the React SPA boots
+// normally for human visitors on content paths the api-server now owns
+// (e.g. /insights/:slug, /solutions/:slug).  The socialBotRendererMiddleware
+// above already short-circuits for social crawlers before this is reached.
+app.use(spaFallbackMiddleware());
 
 export default app;

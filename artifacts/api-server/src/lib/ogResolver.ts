@@ -34,7 +34,7 @@ import { siteOrigin } from "./siteOrigin";
 export const SITE_NAME = "The Synozur Alliance";
 export const DEFAULT_DESCRIPTION =
   "Strategy, AI, and Microsoft 365 advisory from The Synozur Alliance — practical guidance for leaders shaping the modern workplace.";
-const DEFAULT_IMAGE_PATH = "/images/hero-bg.png";
+const DEFAULT_IMAGE_PATH = "/opengraph.jpg";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
