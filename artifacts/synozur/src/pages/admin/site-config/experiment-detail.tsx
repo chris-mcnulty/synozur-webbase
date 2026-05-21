@@ -800,6 +800,36 @@ const OVERRIDE_GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
     ],
   },
   {
+    title: "Method — aside copy",
+    fields: [
+      {
+        kind: "text",
+        key: "home.method.aside.headline",
+        label: "Headline",
+        help: 'Overrides "Where it lands first". Leave blank to show the default industry list.',
+        siteDefault: "Where it lands first",
+      },
+      {
+        kind: "longtext",
+        key: "home.method.aside.body",
+        label: "Body (paragraphs separated by \\n\\n)",
+        help: "When set, replaces the industry bullet list with plain paragraphs. Split paragraphs with a blank line (\\n\\n).",
+      },
+      {
+        kind: "text",
+        key: "home.method.aside.cta",
+        label: "CTA label",
+        siteDefault: "Why Synozur",
+      },
+      {
+        kind: "url",
+        key: "home.method.aside.ctaHref",
+        label: "CTA href",
+        siteDefault: "/about",
+      },
+    ],
+  },
+  {
     title: "Partners area",
     fields: [
       {
