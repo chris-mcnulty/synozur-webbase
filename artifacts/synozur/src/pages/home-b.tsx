@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FromTheFeedCarousel, HomeShortcuts } from "@/pages/home";
 import { HomeConfigWedge } from "@/components/home-config-wedge";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useOverride } from "@/lib/experiments";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 const DEFAULT_HERO_BG = "/images/hero-bg.png";
@@ -225,6 +226,10 @@ export default function HomeB() {
   const closingEyebrow = override(settings?.homeBClosingEyebrow, DEFAULTS.closingEyebrow);
   const closingHeadline = override(settings?.homeBClosingHeadline, DEFAULTS.closingHeadline);
   const closingBody = override(settings?.homeBClosingBody, DEFAULTS.closingBody);
+
+  // Experiment-controllable: set home-b.northstar.visible = false on a
+  // variant to hide this section, or true to show it. Defaults to true.
+  const northStarVisible = useOverride("home-b.northstar.visible", true);
 
   const reducedMotion = useReducedMotion();
   const [videoReady, setVideoReady] = useState(false);
@@ -629,7 +634,7 @@ export default function HomeB() {
       </section>
 
       {/* ── Find Your North Star — editorial interstitial ── */}
-      <section className="py-24 bg-background border-b border-border">
+      {northStarVisible ? <section className="py-24 bg-background border-b border-border">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
@@ -695,7 +700,7 @@ export default function HomeB() {
 
           </div>
         </div>
-      </section>
+      </section> : null}
 
       {/* ── Closing CTA ── */}
       <section className="py-24 bg-background">
