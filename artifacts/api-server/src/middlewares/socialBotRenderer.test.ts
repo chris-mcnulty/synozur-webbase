@@ -180,3 +180,54 @@ test("socialBotRenderer: .png asset passes through for social UA", async () => {
   const { body } = await getPage("/opengraph.png", SOCIAL_UAS[0][1]);
   assert.ok(body.includes(REACT_SHELL_MARKER), ".png should not be intercepted");
 });
+
+// ─── Error-fallback path: resolver throws ─────────────────────────────────────
+
+test("socialBotRenderer: renders site-level fallback OG HTML when resolver throws", async () => {
+  // Spin up a separate app that uses a resolver that always rejects.
+  const failingResolver = (_pathname: string): Promise<never> =>
+    Promise.reject(new Error("simulated DB failure"));
+
+  const app2 = express();
+  app2.use(socialBotRendererMiddleware(failingResolver));
+  app2.use((_req, res) => res.status(200).send(REACT_SHELL_MARKER));
+
+  let server2: http.Server;
+  let baseUrl2: string;
+
+  await new Promise<void>((resolve) => {
+    server2 = app2.listen(0, "127.0.0.1", () => resolve());
+  });
+  const addr2 = (server2!.address() as AddressInfo);
+  baseUrl2 = `http://127.0.0.1:${addr2.port}`;
+
+  try {
+    const res = await fetch(`${baseUrl2}/insights/some-slug`, {
+      headers: { "User-Agent": SOCIAL_UAS[0][1] },
+    });
+    const body = await res.text();
+    const contentType = res.headers.get("content-type") ?? "";
+
+    assert.equal(res.status, 200, "expected 200 even when resolver throws");
+    assert.ok(
+      contentType.includes("text/html"),
+      `expected text/html on fallback, got: ${contentType}`,
+    );
+    assert.ok(
+      body.includes('<meta property="og:title"'),
+      "fallback response must contain og:title",
+    );
+    assert.ok(
+      body.includes('<meta name="twitter:card"'),
+      "fallback response must contain twitter:card",
+    );
+    assert.ok(
+      !body.includes(REACT_SHELL_MARKER),
+      "fallback must NOT fall through to the React shell",
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server2!.close((err) => (err ? reject(err) : resolve()));
+    });
+  }
+});

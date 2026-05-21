@@ -10,12 +10,23 @@
  *  2. Returns a minimal HTML document with correct OG + Twitter Card tags.
  *  3. Adds a short Cache-Control header (5 min) to absorb repeated unfurls.
  *
+ * If the resolver throws for any reason (DB down, schema mismatch, etc.),
+ * the middleware renders the site-level defaults instead of falling through
+ * to next() — so social bots always see a meaningful preview.
+ *
  * All other requests (humans, search crawlers) pass straight through.
  */
 
 import type { RequestHandler } from "express";
 import { detectBot } from "../lib/traffic";
-import { resolveOgData, renderOgHtml } from "../lib/ogResolver";
+import {
+  resolveOgData,
+  renderOgHtml,
+  SITE_NAME,
+  DEFAULT_DESCRIPTION,
+  type OgData,
+} from "../lib/ogResolver";
+import { siteOrigin } from "../lib/siteOrigin";
 
 // Paths that should never be intercepted by this middleware.
 const SKIP_PREFIXES = [
@@ -31,7 +42,9 @@ const SKIP_PREFIXES = [
 const ASSET_EXT_RE =
   /\.(?:js|mjs|ts|css|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|mp4|webm|pdf|xml|txt|json)(?:\?|$)/i;
 
-export function socialBotRendererMiddleware(): RequestHandler {
+export function socialBotRendererMiddleware(
+  resolver: (pathname: string) => Promise<OgData> = resolveOgData,
+): RequestHandler {
   return (req, res, next) => {
     if (req.method !== "GET") return next();
 
@@ -48,7 +61,7 @@ export function socialBotRendererMiddleware(): RequestHandler {
 
     const pathname = url.split("?")[0] || "/";
 
-    resolveOgData(pathname)
+    resolver(pathname)
       .then((og) => {
         const html = renderOgHtml(og);
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -56,8 +69,22 @@ export function socialBotRendererMiddleware(): RequestHandler {
         res.send(html);
       })
       .catch((err) => {
-        req.log?.warn?.({ err }, "socialBotRenderer failed — falling through");
-        next();
+        req.log?.warn?.(
+          { err },
+          "socialBotRenderer: resolveOgData failed — serving site-level fallback",
+        );
+        const origin = siteOrigin();
+        const fallback: OgData = {
+          title: SITE_NAME,
+          description: DEFAULT_DESCRIPTION,
+          image: `${origin}/opengraph.jpg`,
+          ogType: "website",
+          url: `${origin}${pathname}`,
+        };
+        const html = renderOgHtml(fallback);
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+        res.send(html);
       });
   };
 }
