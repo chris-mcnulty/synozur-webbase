@@ -63,19 +63,19 @@ const FEATURED_GROUP_META: Record<
 > = {
   ai_strategy: {
     label: "AI Strategy & Design",
-    phase: "Orient · Align",
+    phase: "Assess · Define",
     tagline:
       "Find the AI plays that actually move the number — and the guardrails that let you ship them.",
   },
   gtm: {
     label: "GTM Strategy & Execution",
-    phase: "Activate",
+    phase: "Deliver",
     tagline:
       "Reposition, repackage, and take the story to market with motions that prove it in revenue.",
   },
   company_os: {
     label: "Company OS",
-    phase: "Adopt",
+    phase: "Outcomes",
     tagline:
       "Embed the operating habits, measurement, and rhythm so the change keeps compounding.",
   },

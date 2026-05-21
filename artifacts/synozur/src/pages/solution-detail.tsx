@@ -252,27 +252,27 @@ export default function SolutionDetail() {
 
       {sol ? (() => {
         const phases = [
-          { key: "Orient", body: "Clarify the destination, the gaps, and the risks worth taking." },
-          { key: "Align", body: "Get leaders, teams, and AI on the same plan — no hidden agendas." },
-          { key: "Activate", body: "Ship the work. Pilots, GTM motions, and operating changes that prove the case." },
-          { key: "Adopt", body: "Embed it. Habits, guardrails, and measurement so progress compounds." },
+          { key: "Assess", body: "Where are we starting? Surface the gaps, risks, and market signals before any strategy is set." },
+          { key: "Define", body: "What's the strategy and readiness? Get leaders, teams, and AI on the same plan — no hidden agendas." },
+          { key: "Deliver", body: "What are we building together? Pilots, GTM motions, and operating changes that prove the case." },
+          { key: "Outcomes", body: "Did the transformation stick? Habits, guardrails, and measurement so progress compounds." },
         ] as const;
         const phaseMap: Record<string, readonly string[]> = {
-          ai_strategy: ["Orient", "Align"],
-          gtm: ["Activate"],
-          company_os: ["Adopt"],
-          consulting_services: ["Orient", "Align", "Activate", "Adopt"],
+          ai_strategy: ["Assess", "Define"],
+          gtm: ["Deliver"],
+          company_os: ["Outcomes"],
+          consulting_services: ["Assess", "Define", "Deliver", "Outcomes"],
         };
         const group = sol.solutionGroup ?? "consulting_services";
         const active = new Set(phaseMap[group] ?? phaseMap.consulting_services);
         const leadCopy =
           group === "ai_strategy"
-            ? "This engagement lives at the front of the Method — we Orient on the AI opportunity and Align the organization around the plan that earns the investment."
+            ? "This engagement lives at the front of the Method — we Assess the AI opportunity and Define the organization's strategy and readiness around the plan that earns the investment."
             : group === "gtm"
-            ? "This engagement is where the Method Activates — we take the strategy into the market and prove it with revenue, not slideware."
+            ? "This engagement is where the Method Delivers — we take the strategy into the market and prove it with revenue, not slideware."
             : group === "company_os"
-            ? "This engagement is how the Method sticks — we Adopt the change as operating habits, measurement, and rhythm."
-            : "This consulting engagement plugs into whichever phase of the Method you need most — from initial Orient through long-tail Adoption.";
+            ? "This engagement is how the Method produces Outcomes — we embed the change as operating habits, measurement, and rhythm."
+            : "This consulting engagement plugs into whichever phase of the Method you need most — from initial Assessment through measurable Outcomes.";
         return (
           <section className="py-16 bg-card border-y border-border">
             <div className="container mx-auto px-4 max-w-5xl">

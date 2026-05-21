@@ -284,7 +284,7 @@ export default function Home() {
   );
   const taglineText = useOverride<string>(
     "home.hero.tagline.text",
-    "Transformation with momentum — AI‑native, human‑centered. We guide leaders through the North Star Method™ (Orient · Align · Activate · Adopt) so strategy lands as measurable progress, not slideware.",
+    "Transformation with momentum — AI‑native, human‑centered. We guide leaders through the North Star Method™ (Assess · Define · Deliver · Outcomes) so strategy lands as measurable progress, not slideware.",
   );
   const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
   const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
@@ -483,26 +483,26 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                phase: "Orient",
-                body: "Pressure-test the destination. Surface gaps, risks, and the AI plays that actually move the number.",
+                phase: "Assess",
+                body: "Where are we starting? Surface the gaps, the risks, and the market signals that make the case before any strategy is set.",
                 href: "/solutions/ai-strategy-and-design",
                 cta: "AI Strategy & Design",
               },
               {
-                phase: "Align",
-                body: "Get leaders, teams, and AI on one plan. Clear ownership, clear guardrails, no hidden agendas.",
+                phase: "Define",
+                body: "What's the strategy and readiness? Get leaders, teams, and AI on one plan — clear ownership, clear guardrails, no hidden agendas.",
                 href: "/solutions/ai-strategy-and-design",
                 cta: "AI Strategy & Design",
               },
               {
-                phase: "Activate",
-                body: "Ship the work. GTM motions, pilots, and operating changes that prove the case in the market.",
+                phase: "Deliver",
+                body: "What are we building together? GTM motions, pilots, and operating changes that prove the case with revenue, not slideware.",
                 href: "/solutions/gtm-strategy-and-execution",
                 cta: "GTM Strategy & Execution",
               },
               {
-                phase: "Adopt",
-                body: "Embed it. Habits, measurement, and the Company OS that compounds the gains across the org.",
+                phase: "Outcomes",
+                body: "Did the transformation stick? Embed the habits, measurement, and operating rhythm so progress compounds across the org.",
                 href: "/solutions/company-os",
                 cta: "Company OS",
               },
