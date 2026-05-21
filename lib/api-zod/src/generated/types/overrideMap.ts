@@ -62,5 +62,13 @@ export interface OverrideMap {
   "case-studies.hero.headline"?: string;
   /** @maxLength 2000 */
   "case-studies.hero.body"?: string;
+  /** @maxLength 200 */
+  "home.method.aside.headline"?: string;
+  /** @maxLength 1000 */
+  "home.method.aside.body"?: string;
+  /** @maxLength 80 */
+  "home.method.aside.cta"?: string;
+  /** @maxLength 2048 */
+  "home.method.aside.ctaHref"?: string;
   [key: string]: unknown;
 }

@@ -9954,6 +9954,18 @@ components:
         case-studies.hero.body:
           type: string
           maxLength: 2000
+        home.method.aside.headline:
+          type: string
+          maxLength: 200
+        home.method.aside.body:
+          type: string
+          maxLength: 1000
+        home.method.aside.cta:
+          type: string
+          maxLength: 80
+        home.method.aside.ctaHref:
+          type: string
+          maxLength: 2048
 
     PublicExperimentVariant:
       type: object

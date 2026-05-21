@@ -5778,6 +5778,14 @@ export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCas
 
 export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
 
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
 export const GetActiveExperimentsResponse = zod.object({
   experiments: zod.array(
     zod.object({
@@ -6010,6 +6018,30 @@ export const GetActiveExperimentsResponse = zod.object({
                     getActiveExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax,
                   )
                   .optional(),
+                "home.method.aside.headline": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideHeadlineMax,
+                  )
+                  .optional(),
+                "home.method.aside.body": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideBodyMax,
+                  )
+                  .optional(),
+                "home.method.aside.cta": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaMax,
+                  )
+                  .optional(),
+                "home.method.aside.ctaHref": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+                  )
+                  .optional(),
               })
               .describe(
                 "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -6135,6 +6167,14 @@ export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCas
 export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const ListAdminExperimentsResponse = zod.object({
   experiments: zod.array(
@@ -6396,6 +6436,30 @@ export const ListAdminExperimentsResponse = zod.object({
                   listAdminExperimentsResponseExperimentsItemVariantsItemOverridesCaseStudiesHeroBodyMax,
                 )
                 .optional(),
+              "home.method.aside.headline": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideHeadlineMax,
+                )
+                .optional(),
+              "home.method.aside.body": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideBodyMax,
+                )
+                .optional(),
+              "home.method.aside.cta": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaMax,
+                )
+                .optional(),
+              "home.method.aside.ctaHref": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+                )
+                .optional(),
             })
             .describe(
               "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -6559,6 +6623,14 @@ export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebr
 export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const GetAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -6802,6 +6874,30 @@ export const GetAdminExperimentResponse = zod.object({
               getAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
             )
             .optional(),
+          "home.method.aside.headline": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax,
+            )
+            .optional(),
+          "home.method.aside.body": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax,
+            )
+            .optional(),
+          "home.method.aside.cta": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax,
+            )
+            .optional(),
+          "home.method.aside.ctaHref": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -6958,6 +7054,14 @@ export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEy
 export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -7201,6 +7305,30 @@ export const UpdateAdminExperimentResponse = zod.object({
               updateAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
             )
             .optional(),
+          "home.method.aside.headline": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax,
+            )
+            .optional(),
+          "home.method.aside.body": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax,
+            )
+            .optional(),
+          "home.method.aside.cta": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax,
+            )
+            .optional(),
+          "home.method.aside.ctaHref": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7297,6 +7425,14 @@ export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEye
 export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const StartAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -7540,6 +7676,30 @@ export const StartAdminExperimentResponse = zod.object({
               startAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
             )
             .optional(),
+          "home.method.aside.headline": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax,
+            )
+            .optional(),
+          "home.method.aside.body": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax,
+            )
+            .optional(),
+          "home.method.aside.cta": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax,
+            )
+            .optional(),
+          "home.method.aside.ctaHref": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7632,6 +7792,14 @@ export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEye
 export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const PauseAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -7875,6 +8043,30 @@ export const PauseAdminExperimentResponse = zod.object({
               pauseAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
             )
             .optional(),
+          "home.method.aside.headline": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax,
+            )
+            .optional(),
+          "home.method.aside.body": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax,
+            )
+            .optional(),
+          "home.method.aside.cta": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax,
+            )
+            .optional(),
+          "home.method.aside.ctaHref": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7967,6 +8159,14 @@ export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroEyebr
 export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax = 1000;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const EndAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -8210,6 +8410,30 @@ export const EndAdminExperimentResponse = zod.object({
               endAdminExperimentResponseVariantsItemOverridesCaseStudiesHeroBodyMax,
             )
             .optional(),
+          "home.method.aside.headline": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideHeadlineMax,
+            )
+            .optional(),
+          "home.method.aside.body": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyMax,
+            )
+            .optional(),
+          "home.method.aside.cta": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax,
+            )
+            .optional(),
+          "home.method.aside.ctaHref": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -8359,6 +8583,14 @@ export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax 
 export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const createAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const createAdminExperimentVariantBodyOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax = 1000;
+
+export const createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const CreateAdminExperimentVariantBody = zod.object({
   key: zod
@@ -8523,6 +8755,24 @@ export const CreateAdminExperimentVariantBody = zod.object({
         .string()
         .max(createAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax)
         .optional(),
+      "home.method.aside.headline": zod
+        .string()
+        .max(
+          createAdminExperimentVariantBodyOverridesHomeMethodAsideHeadlineMax,
+        )
+        .optional(),
+      "home.method.aside.body": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax)
+        .optional(),
+      "home.method.aside.cta": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax)
+        .optional(),
+      "home.method.aside.ctaHref": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax)
+        .optional(),
     })
     .optional()
     .describe(
@@ -8595,6 +8845,14 @@ export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroEyebrowMax 
 export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const updateAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax = 1000;
+
+export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentVariantBody = zod.object({
   name: zod
@@ -8757,6 +9015,24 @@ export const UpdateAdminExperimentVariantBody = zod.object({
         .string()
         .max(updateAdminExperimentVariantBodyOverridesCaseStudiesHeroBodyMax)
         .optional(),
+      "home.method.aside.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantBodyOverridesHomeMethodAsideHeadlineMax,
+        )
+        .optional(),
+      "home.method.aside.body": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax)
+        .optional(),
+      "home.method.aside.cta": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax)
+        .optional(),
+      "home.method.aside.ctaHref": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax)
+        .optional(),
     })
     .optional()
     .describe(
@@ -8823,6 +9099,14 @@ export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroEyebrow
 export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroHeadlineMax = 200;
 
 export const updateAdminExperimentVariantResponseOverridesCaseStudiesHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideHeadlineMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideBodyMax = 1000;
+
+export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentVariantResponse = zod.object({
   id: zod.string().uuid(),
@@ -8999,6 +9283,28 @@ export const UpdateAdminExperimentVariantResponse = zod.object({
         .string()
         .max(
           updateAdminExperimentVariantResponseOverridesCaseStudiesHeroBodyMax,
+        )
+        .optional(),
+      "home.method.aside.headline": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeMethodAsideHeadlineMax,
+        )
+        .optional(),
+      "home.method.aside.body": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeMethodAsideBodyMax,
+        )
+        .optional(),
+      "home.method.aside.cta": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaMax)
+        .optional(),
+      "home.method.aside.ctaHref": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaHrefMax,
         )
         .optional(),
     })

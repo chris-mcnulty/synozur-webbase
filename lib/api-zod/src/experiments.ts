@@ -90,6 +90,12 @@ export const OverrideMap = z
     "case-studies.hero.eyebrow": z.string().max(80).optional(),
     "case-studies.hero.headline": z.string().max(200).optional(),
     "case-studies.hero.body": z.string().max(2000).optional(),
+
+    // Home — Method aside copy (experiment engine: home.method.aside.*)
+    "home.method.aside.headline": z.string().max(200).optional(),
+    "home.method.aside.body": z.string().max(1000).optional(),
+    "home.method.aside.cta": z.string().max(80).optional(),
+    "home.method.aside.ctaHref": z.string().max(2048).optional(),
   })
   .catchall(z.unknown());
 export type OverrideMap = z.infer<typeof OverrideMap>;
