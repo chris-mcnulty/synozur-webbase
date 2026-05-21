@@ -74,6 +74,7 @@ const BOT_SIGNATURES: Array<{
   { match: /Discordbot/i, name: "Discordbot", category: "social" },
   { match: /TelegramBot/i, name: "TelegramBot", category: "social" },
   { match: /WhatsApp/i, name: "WhatsApp", category: "social" },
+  { match: /SkypeUriPreview/i, name: "SkypeUriPreview", category: "social" },
 
   // Generic catch-alls (MUST be last)
   { match: /bot\b|crawler|spider|slurp|curl\/|wget\/|python-requests|HeadlessChrome/i, name: "generic-bot", category: "other" },
