@@ -44,7 +44,7 @@ export function socialBotRendererMiddleware(): RequestHandler {
 
     const ua = (req.headers["user-agent"] as string | undefined) ?? "";
     const bot = detectBot(ua);
-    if (!bot.isBot || bot.category !== "social") return next();
+    if (!bot.isBot || bot.botCategory !== "social") return next();
 
     const pathname = url.split("?")[0] || "/";
 
