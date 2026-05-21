@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock, Monitor, Lock, Settings2 } from "lucide-react";
+import { ArrowRight, Clock, Monitor, Lock, Settings2, Star } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/auth";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -289,6 +289,7 @@ export default function Home() {
   const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
   const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
   const heroCtaHref = useOverride<string>("home.hero.cta.href", "/start");
+  const northStarVisible = useOverride<boolean>("home.northstar.visible", true);
   const partnersVisible = useOverride<boolean>("home.partners.visible", true);
   const partnersHeading = useOverride<string>("home.partners.heading", "Trusted by");
   const partnersSubtext = useOverride<string>("home.partners.subtext", "");
@@ -575,6 +576,78 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Find Your North Star — brand/purpose interstitial.
+          Toggled by home.northstar.visible (default true). */}
+      {northStarVisible ? (
+        <section className="py-24 bg-card border-y border-border">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+              {/* Image */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                className="relative aspect-square rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
+              >
+                <img
+                  src={editorial}
+                  alt="A leader finding their North Star"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-30 mix-blend-overlay" />
+              </motion.div>
+
+              {/* Copy */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+              >
+                <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-8">
+                  <Star className="h-7 w-7" />
+                </div>
+                <p className="text-sm uppercase tracking-widest text-primary mb-4">
+                  Our purpose
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
+                  Find Your North Star
+                </h2>
+                <div className="space-y-5 text-lg text-muted-foreground leading-relaxed">
+                  <p>
+                    Synozur is an advisory firm that transforms business for our clients. The name
+                    'Synozur' is inspired by the ancient Greek term for the North Star, symbolizing
+                    our unwavering commitment to guide you to success.
+                  </p>
+                  <p>
+                    Our team of leaders from across the Fortune 500 delivers high-impact outcomes
+                    for our clients. We believe in empathetic approaches, ensuring that your unique
+                    journey is supported with the right strategies and solutions.
+                  </p>
+                  <p>
+                    From efficiency and ROI to market success and adoption, we'll help you find
+                    the tangible results you're seeking.
+                  </p>
+                </div>
+                <div className="mt-8">
+                  <Link
+                    href="/about"
+                    className="inline-flex items-center gap-2 text-primary font-semibold hover:text-primary/80 transition-colors"
+                  >
+                    About Synozur <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </motion.div>
+
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Trusted by — client/partner logo rotator. The default logo set
           comes from data/logos.ts; experiments may swap in a different
