@@ -289,6 +289,14 @@ export default function Home() {
   const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
   const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
   const heroCtaHref = useOverride<string>("home.hero.cta.href", "/start");
+  // Method section aside — overridable so a variant can swap the
+  // "Where it lands first" industry list for alternate copy (e.g.
+  // "Find Your North Star"). Set home.method.aside.body to a non-empty
+  // string (paragraphs separated by \n\n) to replace the default list.
+  const methodAsideHeadline = useOverride<string>("home.method.aside.headline", "");
+  const methodAsideBody = useOverride<string>("home.method.aside.body", "");
+  const methodAsideCtaLabel = useOverride<string>("home.method.aside.cta", "");
+  const methodAsideCtaHref = useOverride<string>("home.method.aside.ctaHref", "");
   const partnersVisible = useOverride<boolean>("home.partners.visible", true);
   const partnersHeading = useOverride<string>("home.partners.heading", "Trusted by");
   const partnersSubtext = useOverride<string>("home.partners.subtext", "");
@@ -540,17 +548,25 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                Where it lands first
+                {methodAsideHeadline || "Where it lands first"}
               </h3>
-              <ul className="space-y-3 text-base text-muted-foreground">
-                <li><span className="font-semibold text-foreground">Insurance:</span> AI underwriting copilots that protect loss ratios without scaring the regulator.</li>
-                <li><span className="font-semibold text-foreground">Tech &amp; Software:</span> GTM repositioning when the old category story stops closing deals.</li>
-                <li><span className="font-semibold text-foreground">Energy:</span> Operating-model redesign for a workforce that's half on the truck, half on the laptop.</li>
-                <li><span className="font-semibold text-foreground">Life Sciences:</span> Commercial readiness and field-team enablement that survives the launch window.</li>
-              </ul>
+              {methodAsideBody ? (
+                <div className="space-y-4 text-base text-muted-foreground">
+                  {methodAsideBody.split("\n\n").map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-3 text-base text-muted-foreground">
+                  <li><span className="font-semibold text-foreground">Insurance:</span> AI underwriting copilots that protect loss ratios without scaring the regulator.</li>
+                  <li><span className="font-semibold text-foreground">Tech &amp; Software:</span> GTM repositioning when the old category story stops closing deals.</li>
+                  <li><span className="font-semibold text-foreground">Energy:</span> Operating-model redesign for a workforce that's half on the truck, half on the laptop.</li>
+                  <li><span className="font-semibold text-foreground">Life Sciences:</span> Commercial readiness and field-team enablement that survives the launch window.</li>
+                </ul>
+              )}
               <div className="mt-6">
-                <Link href="/about" className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors">
-                  Why Synozur <ArrowRight className="ml-2 h-4 w-4" />
+                <Link href={methodAsideCtaHref || "/about"} className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors">
+                  {methodAsideCtaLabel || "Why Synozur"} <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </motion.div>
