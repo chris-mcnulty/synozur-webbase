@@ -108,7 +108,9 @@ export default function AdminExperimentDetail({ id }: Props) {
         {data.status === "running" || data.status === "paused" ? (
           <a
             href={`${previewPathForPageKey(data.pageKey)}?_exp=${encodeURIComponent(data.key)}:${
-              encodeURIComponent(data.variants[0]?.key ?? "control")
+              encodeURIComponent(
+                (data.variants.find((v) => !v.isControl) ?? data.variants[0])?.key ?? "treatment"
+              )
             }`}
             target="_blank"
             rel="noopener noreferrer"
