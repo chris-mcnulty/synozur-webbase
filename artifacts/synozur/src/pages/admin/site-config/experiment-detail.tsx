@@ -106,16 +106,17 @@ export default function AdminExperimentDetail({ id }: Props) {
           page: <code>{data.pageKey}</code>
         </span>
         {data.status === "running" || data.status === "paused" ? (
-          <Link
+          <a
             href={`${previewPathForPageKey(data.pageKey)}?_exp=${encodeURIComponent(data.key)}:${
               encodeURIComponent(data.variants[0]?.key ?? "control")
             }`}
             target="_blank"
+            rel="noopener noreferrer"
             className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
             <ExternalLink className="h-3 w-3" />
             Preview as variant
-          </Link>
+          </a>
         ) : null}
       </div>
 

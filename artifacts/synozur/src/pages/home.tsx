@@ -552,7 +552,7 @@ export default function Home() {
               </h3>
               {methodAsideBody ? (
                 <div className="space-y-4 text-base text-muted-foreground">
-                  {methodAsideBody.split("\n\n").map((para, i) => (
+                  {methodAsideBody.replace(/\\n/g, "\n").split("\n\n").map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
                 </div>
