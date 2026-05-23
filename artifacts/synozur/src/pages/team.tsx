@@ -52,9 +52,9 @@ export default function Team() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4 max-w-7xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
-            Team Members
+            Team
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold mb-12">Leadership</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-12">Our team</h2>
           {isLoading ? (
             <div className="text-muted-foreground">Loading…</div>
           ) : (
@@ -77,28 +77,27 @@ export default function Team() {
                   >
                     <Link
                       href={`/team/${encodeURIComponent(p.slug)}`}
-                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
+                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
                     >
-                      <div className="relative aspect-square rounded-2xl overflow-hidden bg-card mb-5 border border-border/50">
+                      <div className="relative aspect-square rounded-full overflow-hidden bg-card mb-5 border border-border/50 mx-auto max-w-[220px]">
                         {imageSrc ? (
                           <img
                             src={imageSrc}
                             alt={p.name}
-                            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
                             {p.name}
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                       </div>
                       <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors">
                         {p.name}
                       </h3>
-                      <p className="text-base text-primary mb-3">{p.jobTitle}</p>
+                      <p className="text-lg text-primary mb-3">{p.jobTitle}</p>
                       {bio && (
-                        <p className="text-base text-muted-foreground leading-relaxed mb-4">
+                        <p className="text-lg text-muted-foreground leading-relaxed mb-4">
                           {bio}
                         </p>
                       )}

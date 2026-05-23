@@ -195,21 +195,12 @@ export default function SolutionDetail() {
       <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
         <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-          {sol?.parentService ? (
-            <Link
-              href={`/services/${sol.parentService.slug}`}
-              className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
-            >
-              ← Back to {sol.parentService.title}
-            </Link>
-          ) : (
-            <Link
-              href="/services-overview/default"
-              className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
-            >
-              ← All Solutions
-            </Link>
-          )}
+          <Link
+            href="/services-overview/default"
+            className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
+          >
+            ← All Solutions
+          </Link>
           {q.isLoading || !sol ? (
             <>
               <div className="h-12 w-2/3 bg-white/10 rounded mb-6 animate-pulse" />
@@ -260,14 +251,14 @@ export default function SolutionDetail() {
         const active = new Set(phaseMap[group] ?? phaseMap.consulting_services);
         const leadCopy =
           group === "ai_strategy"
-            ? "This engagement lives at the front of the Method — we Assess the AI opportunity and Define the organization's strategy and readiness around the plan that earns the investment."
+            ? "Lives at the front of the Method — we Assess the AI opportunity and Define the strategy and readiness around the plan that earns the investment."
             : group === "gtm"
-            ? "This engagement is where the Method Delivers — we take the strategy into the market and prove it with revenue, not slideware."
+            ? "Where the Method Delivers — we take the strategy into the market and prove it with revenue, not slideware."
             : group === "company_os"
-            ? "This engagement is how the Method produces Outcomes — we embed the change as operating habits, measurement, and rhythm."
-            : "This consulting engagement plugs into whichever phase of the Method you need most — from initial Assessment through measurable Outcomes.";
+            ? "How the Method produces Outcomes — we embed the change as operating habits, measurement, and rhythm."
+            : "Plugs into whichever phase of the Method you need most — from initial Assessment through measurable Outcomes.";
         return (
-          <section className="py-16 bg-card border-y border-border">
+          <section className="py-16 bg-background border-y border-border">
             <div className="container mx-auto px-4 max-w-4xl">
               <p className="text-sm uppercase tracking-widest text-primary mb-3">
                 The North Star Method™
@@ -275,7 +266,7 @@ export default function SolutionDetail() {
               <h2 className="text-2xl md:text-3xl font-bold mb-4">
                 Where this engagement lives in the Method
               </h2>
-              <p className="text-base text-muted-foreground mb-8 max-w-3xl">
+              <p className="text-base text-foreground/80 mb-8 max-w-3xl">
                 {leadCopy}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -286,20 +277,24 @@ export default function SolutionDetail() {
                       key={p.key}
                       className={
                         isActive
-                          ? "rounded-xl border-2 border-primary bg-primary/5 p-5 shadow-sm"
-                          : "rounded-xl border border-border/60 bg-background/50 p-5 opacity-60"
+                          ? "rounded-xl border-2 border-primary bg-primary/10 p-5 shadow-sm"
+                          : "rounded-xl border border-border/60 bg-card p-5"
                       }
                     >
                       <div className="text-xs uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
                         Phase {i + 1}
                         {isActive ? (
-                          <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                            This engagement
+                          <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            Focus
                           </span>
                         ) : null}
                       </div>
-                      <div className="text-lg font-semibold mb-1">{p.key}</div>
-                      <p className="text-sm text-muted-foreground">{p.body}</p>
+                      <div className={`text-lg font-semibold mb-1 ${isActive ? "text-foreground" : "text-foreground/80"}`}>
+                        {p.key}
+                      </div>
+                      <p className={`text-sm leading-relaxed ${isActive ? "text-foreground/85" : "text-muted-foreground"}`}>
+                        {p.body}
+                      </p>
                     </div>
                   );
                 })}
@@ -343,11 +338,9 @@ export default function SolutionDetail() {
         fallbackHtml={sol?.acceleratorsHtml ?? null}
       />
 
-      <RelatedResourcesSection items={sol?.linkedCollateral ?? []} />
-
       {sol?.capabilities && sol.capabilities.length > 0 ? (
         <section className="py-24 bg-card border-y border-border">
-          <div className="container mx-auto px-4 max-w-7xl">
+          <div className="container mx-auto px-4 max-w-6xl">
             <div className="max-w-3xl mb-12">
               <p className="text-sm uppercase tracking-widest text-primary mb-3">
                 Capabilities
@@ -401,16 +394,25 @@ export default function SolutionDetail() {
         </section>
       ) : null}
 
-      {sol ? (
-        <RelatedContent
-          solutionId={sol.id}
-          title={sol.title}
-          fallback={
-            sol.parentService ? { serviceId: sol.parentService.id } : undefined
-          }
-          fallbackExcludeSolutionItems
-        />
-      ) : null}
+      {/* Consolidated related resources — manually-pinned items grouped by
+          type. Replaces the prior two separate "Related Resources" and
+          "Related Content" sections; the auto-tagged rollup that used to
+          live below the booking card is now folded into this single block. */}
+      <RelatedResourcesSection
+        items={sol?.linkedCollateral ?? []}
+        fallback={
+          sol ? (
+            <RelatedContent
+              solutionId={sol.id}
+              title={sol.title}
+              fallback={
+                sol.parentService ? { serviceId: sol.parentService.id } : undefined
+              }
+              fallbackExcludeSolutionItems
+            />
+          ) : null
+        }
+      />
 
       {sol?.booking && (
         <section className="py-16 border-t border-border">
@@ -435,14 +437,12 @@ export default function SolutionDetail() {
             >
               Get Started <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-            {sol?.parentService ? (
-              <Link
-                href={`/services/${sol.parentService.slug}`}
-                className="inline-flex h-12 items-center justify-center rounded-md border border-border px-8 text-base font-medium text-foreground hover:bg-muted/50"
-              >
-                Back to {sol.parentService.title}
-              </Link>
-            ) : null}
+            <Link
+              href="/services-overview/default"
+              className="inline-flex h-12 items-center justify-center rounded-md border border-border px-8 text-base font-medium text-foreground hover:bg-muted/50"
+            >
+              All Solutions
+            </Link>
           </div>
         </div>
       </section>
@@ -649,7 +649,13 @@ const COLLATERAL_GROUP_LABELS: Record<CollateralType, string> = {
   landing_page: "Featured",
 };
 
-function RelatedResourcesSection({ items }: { items: LinkedCollateralDto[] }) {
+function RelatedResourcesSection({
+  items,
+  fallback,
+}: {
+  items: LinkedCollateralDto[];
+  fallback?: React.ReactNode;
+}) {
   const [activeFilter, setActiveFilter] = useState<CollateralType | null>(null);
 
   const active = useMemo(
@@ -673,7 +679,9 @@ function RelatedResourcesSection({ items }: { items: LinkedCollateralDto[] }) {
       .map((t) => ({ type: t, items: byType.get(t)! }));
   }, [active]);
 
-  if (active.length === 0) return null;
+  // When no items have been manually pinned, defer to the auto-tagged
+  // related-content rollup so the page still surfaces something to read.
+  if (active.length === 0) return <>{fallback}</>;
 
   const visibleGroups =
     activeFilter === null
@@ -684,7 +692,7 @@ function RelatedResourcesSection({ items }: { items: LinkedCollateralDto[] }) {
 
   return (
     <section className="py-24 bg-background" data-testid="solution-related-resources">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 max-w-6xl">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10">
           <div className="max-w-2xl">
             <p className="text-sm uppercase tracking-widest text-primary mb-3">

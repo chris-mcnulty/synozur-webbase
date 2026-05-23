@@ -99,11 +99,11 @@ export default function Partners() {
       />
 
       {/* Microsoft */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-6 max-w-5xl">
           <motion.h2
             {...fade(0)}
-            className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-14"
+            className="text-3xl md:text-4xl font-bold text-center mb-14"
           >
             Microsoft
           </motion.h2>
@@ -118,7 +118,7 @@ export default function Partners() {
               aria-label="Microsoft Partner"
             >
               <MicrosoftSquares size={38} />
-              <span className="text-2xl font-semibold text-gray-600 group-hover:text-gray-900 transition-colors tracking-tight">
+              <span className="text-2xl font-semibold text-muted-foreground group-hover:text-foreground transition-colors tracking-tight">
                 Microsoft Partner
               </span>
             </motion.a>
@@ -134,10 +134,10 @@ export default function Partners() {
             >
               <MicrosoftSquares size={28} />
               <div className="flex flex-col leading-tight">
-                <span className="text-xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors">
+                <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
                   Preferred
                 </span>
-                <span className="text-base text-gray-700 border-b-2 border-gray-700 pb-0.5">
+                <span className="text-base text-muted-foreground border-b-2 border-border pb-0.5">
                   Content AI
                 </span>
               </div>
@@ -147,11 +147,11 @@ export default function Partners() {
       </section>
 
       {/* Alliance Implementation Partners */}
-      <section className="py-20 bg-gray-50 border-t border-gray-100">
+      <section className="py-20 bg-card border-y border-border">
         <div className="container mx-auto px-6 max-w-5xl">
           <motion.h2
             {...fade(0)}
-            className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-14"
+            className="text-3xl md:text-4xl font-bold text-center mb-14"
           >
             Alliance Implementation Partners
           </motion.h2>
@@ -179,9 +179,9 @@ export default function Partners() {
       </section>
 
       {/* Why we partner the way we do */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-6 max-w-5xl">
-          <motion.h2 {...fade(0)} className="text-3xl md:text-4xl font-bold text-gray-900 mb-12 text-center">
+          <motion.h2 {...fade(0)} className="text-3xl md:text-4xl font-bold mb-12 text-center">
             How we work with partners
           </motion.h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -205,10 +205,10 @@ export default function Partners() {
               <motion.div
                 key={card.title}
                 {...fade(i + 1)}
-                className="rounded-2xl border border-gray-200 bg-white p-8 hover:border-violet-200 hover:shadow-sm transition-all"
+                className="rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 transition-colors"
               >
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{card.body}</p>
+                <h3 className="text-xl font-bold mb-3">{card.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{card.body}</p>
               </motion.div>
             ))}
           </div>

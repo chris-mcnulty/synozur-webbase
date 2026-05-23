@@ -185,8 +185,8 @@ export default function WhitePapers() {
         </div>
       </section>
 
-      <section className="bg-background py-12">
-        <div className="container mx-auto px-4 max-w-6xl">
+      <section className="bg-background py-8 md:py-12">
+        <div className="container mx-auto px-4 max-w-7xl">
           <div className="mb-8 flex flex-col md:flex-row md:items-center gap-4 justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <button
