@@ -79,6 +79,7 @@ export default function CareersPage() {
         }
         subtitle="Join the transformation team. We guide organizations through change
             rooted in people, powered by technology, and driven by purpose."
+        image="/careers-hero.png"
         data-testid="careers-hero"
       >
         <div className="flex flex-col sm:flex-row gap-3 max-w-xl">

@@ -13,6 +13,11 @@ type PageHeroProps = Omit<ComponentPropsWithoutRef<"section">, "title"> & {
   children?: ReactNode;
   /** Animate the heading on mount. Defaults to true. */
   animated?: boolean;
+  /**
+   * Optional hero background image URL. When provided the image is rendered
+   * cover-fit behind the nebula gradient overlay so text remains legible.
+   */
+  image?: string;
 };
 
 /**
@@ -39,6 +44,7 @@ export function PageHero({
   subtitle,
   children,
   animated = true,
+  image,
   className,
   ...rest
 }: PageHeroProps) {
@@ -70,6 +76,24 @@ export function PageHero({
         className,
       )}
     >
+      {image && (
+        <img
+          src={image}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+      )}
+      {/* Dark scrim — stronger when a photo is present so text stays readable */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0",
+          image
+            ? "bg-gradient-to-b from-[#0B0B1A]/70 via-[#0B0B1A]/55 to-[#0B0B1A]/85"
+            : "bg-transparent",
+        )}
+      />
       <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
       <div className="container relative z-10 mx-auto px-4 max-w-4xl">
         {animated ? (
