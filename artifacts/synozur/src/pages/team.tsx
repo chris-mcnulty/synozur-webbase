@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Linkedin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { PageHero } from "@/components/layout/page-hero";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -35,29 +36,21 @@ export default function Team() {
   return (
     <div className="w-full">
       <Meta
-        title="Our Team"
+        title="Team"
         description="The leaders behind The Synozur Alliance — partners drawn from across the Fortune 500."
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
-        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Our Team
-          </p>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            Operators who became advisors.
-          </h1>
-          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            At Synozur, we specialize in guiding organizations toward success
+      <PageHero
+        eyebrow="Team"
+        title="Operators who became advisors."
+        subtitle="At Synozur, we specialize in guiding organizations toward success
             through tailored solutions that optimize performance and maximize
-            growth. Our partners sit alongside your team — not above it.
-          </p>
-        </div>
-      </section>
+            growth. Our partners sit alongside your team — not above it."
+        data-testid="team-hero"
+      />
 
       <section className="py-24 bg-background">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 max-w-7xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
             Team Members
           </p>
@@ -100,12 +93,12 @@ export default function Team() {
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                       </div>
-                      <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">
+                      <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors">
                         {p.name}
                       </h3>
-                      <p className="text-sm text-primary mb-3">{p.jobTitle}</p>
+                      <p className="text-base text-primary mb-3">{p.jobTitle}</p>
                       {bio && (
-                        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                        <p className="text-base text-muted-foreground leading-relaxed mb-4">
                           {bio}
                         </p>
                       )}
@@ -115,7 +108,7 @@ export default function Team() {
                         href={p.linkedinUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                         aria-label={`${p.name} on LinkedIn`}
                       >
                         <Linkedin className="h-4 w-4" /> LinkedIn

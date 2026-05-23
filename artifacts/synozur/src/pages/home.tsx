@@ -328,9 +328,23 @@ export default function Home() {
     settings?.homeHeroBackgroundType === "video" && !reducedMotion;
 
   useEffect(() => {
-    if (videoReady && videoRef.current) {
-      videoRef.current.load();
-    }
+    if (!videoReady || !videoRef.current) return;
+    videoRef.current.load();
+    // P1 #6 — Slow the cosmic/starfield background to ~0.5x. The
+    // bundled clip plays back too fast at native speed and reads as
+    // dizzying motion rather than ambient. We also re-apply the rate
+    // on `play` because some browsers reset playbackRate during a
+    // `load()` cycle or after the video stalls and recovers.
+    const v = videoRef.current;
+    const SLOW = 0.5;
+    v.playbackRate = SLOW;
+    const onPlay = () => {
+      v.playbackRate = SLOW;
+    };
+    v.addEventListener("play", onPlay);
+    return () => {
+      v.removeEventListener("play", onPlay);
+    };
   }, [videoReady]);
 
   useEffect(() => {
@@ -369,7 +383,11 @@ export default function Home() {
 
       {/* Hero Section */}
       <section ref={heroRef} className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B0B1A]">
-        <div className="absolute inset-0 z-0 opacity-60">
+        {/* P1 #6 — bumped from opacity-60 → opacity-80 so the cosmic
+            background reads as crisp ambient motion instead of soft
+            focus. The dark gradient overlay below still keeps copy
+            readable. */}
+        <div className="absolute inset-0 z-0 opacity-80">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
           {useHeroVideo ? (
             <video
@@ -422,7 +440,9 @@ export default function Home() {
               <img
                 src={`${BASE_PATH_HOME}/images/sa-logo-horizontal-white.png`}
                 alt="The Synozur Alliance"
-                className="h-28 md:h-32 w-auto mb-10"
+                width={460}
+                height={125}
+                className="h-28 md:h-32 w-auto max-w-full mb-10"
                 style={{ mixBlendMode: "screen" }}
                 fetchPriority="high"
               />

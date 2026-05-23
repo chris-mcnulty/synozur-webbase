@@ -126,13 +126,14 @@ export default function Library() {
         image={copy.ogImage}
       />
 
-      <section className="bg-[#0B0B1A] pt-20 pb-8 md:pt-24 md:pb-12">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">{copy.heroEyebrow}</p>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4">{copy.heroEyebrow}</p>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
             {copy.heroHeadline}
           </h1>
-          <p className="text-lg md:text-xl text-zinc-300 max-w-3xl">
+          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
             {copy.heroSubhead}
           </p>
           {copy.introHtml && (
@@ -145,7 +146,7 @@ export default function Library() {
       </section>
 
       <section className="bg-background py-8 md:py-12">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto px-4 max-w-7xl">
           {/* Search */}
           <form onSubmit={submitSearch} className="mb-8">
             <label htmlFor="library-search" className="sr-only">

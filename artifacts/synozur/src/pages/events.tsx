@@ -132,11 +132,10 @@ export default function EventsPage() {
         description="Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events."
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-28 md:py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
-        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4 inline-flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4">
             Gatherings
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
@@ -149,7 +148,7 @@ export default function EventsPage() {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+      <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl">
         {isLoading && <div className="text-muted-foreground">Loading events…</div>}
         {error && (
           <div className="text-destructive">Failed to load events. Please try again.</div>

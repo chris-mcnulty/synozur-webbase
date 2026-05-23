@@ -2,10 +2,9 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
-import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
+import { PageHero } from "@/components/layout/page-hero";
 
 const MicrosoftSquares = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -87,22 +86,17 @@ export default function Partners() {
         description="Synozur adopts a strategic and transparent approach to partnerships by maintaining regular communication and leveraging continuous improvement practices."
       />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-24 md:py-32" style={{ background: "linear-gradient(135deg, #6B1FA8 0%, #C026D3 100%)" }}>
-        <div className="container relative z-10 mx-auto px-6 max-w-4xl">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-            Our Partners
-          </h1>
-          <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-2xl">
-            Synozur adopts a strategic and transparent approach to partnerships
+      <PageHero
+        eyebrow="Partners"
+        title="Our Partners"
+        subtitle="Synozur adopts a strategic and transparent approach to partnerships
             by maintaining regular communication and leveraging continuous
             improvement practices. By aligning strategies with evolving market
             conditions and fostering a culture of proactive research and
             learning, Synozur ensures long-term success in collaborations with
-            industry leaders like Microsoft.
-          </p>
-        </div>
-      </section>
+            industry leaders like Microsoft."
+        data-testid="partners-hero"
+      />
 
       {/* Microsoft */}
       <section className="py-20 bg-white">

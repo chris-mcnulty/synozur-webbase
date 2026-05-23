@@ -109,8 +109,8 @@ test.describe("Services hierarchy navigation", () => {
     const pillarH1 = page.getByRole("heading", { level: 1, name: pillar.title });
     await expect(pillarH1).toBeVisible();
 
-    // Back-link — "← All Services" returns to the overview.
-    const backToOverview = page.getByRole("link", { name: /all services/i }).first();
+    // Back-link — "← All Solutions" returns to the overview.
+    const backToOverview = page.getByRole("link", { name: /all solutions/i }).first();
     await expect(backToOverview).toBeVisible();
     await expect(backToOverview).toHaveAttribute("href", "/services-overview/default");
 

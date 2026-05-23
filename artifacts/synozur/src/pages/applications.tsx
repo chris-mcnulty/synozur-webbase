@@ -84,8 +84,8 @@ export default function Applications() {
         image={copy.ogImage}
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-widest text-primary mb-4">
             {heroEyebrow}

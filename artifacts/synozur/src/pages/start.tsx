@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowRight, CalendarDays, PenLine } from "lucide-react";
+import { ArrowRight, PenLine } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
@@ -33,11 +33,10 @@ export default function Start() {
     <>
       <Meta title={copy.seoTitle} description={copy.seoDescription} />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-28 md:py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
-        <div className="container relative z-10 mx-auto px-4 max-w-5xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4 inline-flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <p className="text-sm uppercase tracking-widest text-primary mb-4">
             {copy.heroEyebrow}
           </p>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
@@ -49,7 +48,7 @@ export default function Start() {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-12 md:py-16 max-w-5xl">
+      <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl">
         {isLoading && (
           <div className="text-muted-foreground">Loading bookings…</div>
         )}
