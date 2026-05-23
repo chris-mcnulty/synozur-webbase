@@ -190,6 +190,21 @@ export function Header() {
   const headerCtaHref = useOverride<string>("header.cta.href", "/start");
   const trackConversion = useTrackConversion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Platform-specific keybinding hint. The handler accepts both metaKey
+  // and ctrlKey so behaviour is identical across platforms; only the
+  // visible kbd label differs. SSR defaults to the Ctrl variant; once
+  // the client mounts we switch to ⌘ on Apple hardware. `navigator.platform`
+  // is deprecated but still the most reliable signal for this; UA-CH's
+  // `navigator.userAgentData.platform` is gated and not widely supported.
+  const [isMacPlatform, setIsMacPlatform] = useState(false);
+  useEffect(() => {
+    const platform =
+      (navigator as Navigator & { userAgentData?: { platform?: string } })
+        .userAgentData?.platform ?? navigator.platform ?? "";
+    setIsMacPlatform(/Mac|iPhone|iPad|iPod/i.test(platform));
+  }, []);
+  const shortcutModLabel = isMacPlatform ? "⌘" : "Ctrl";
+  const shortcutAria = isMacPlatform ? "⌘K" : "Ctrl+K";
   // #170 — Cmd-K command palette. Live results from `/api/search` while
   // the user types; ⌘K / Ctrl-K opens it from anywhere on the page, "/"
   // also opens (when not already typing in an input). Selecting a result
@@ -503,7 +518,7 @@ export function Header() {
           <div className="hidden lg:flex items-center">
             <button
               type="button"
-              aria-label="Open search (⌘K)"
+              aria-label={`Open search (${shortcutAria})`}
               onClick={() => setSearchOpen(true)}
               data-testid="header-search-button"
               className="h-9 inline-flex items-center gap-2 rounded-md border border-border/60 px-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -511,7 +526,8 @@ export function Header() {
               <Search className="h-4 w-4" />
               <span className="hidden xl:inline">Search…</span>
               <kbd className="hidden xl:inline-flex h-5 select-none items-center gap-1 rounded border border-border/50 bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                <span className="text-xs">⌘</span>K
+                <span className={isMacPlatform ? "text-xs" : ""}>{shortcutModLabel}</span>
+                {isMacPlatform ? "K" : "+K"}
               </kbd>
             </button>
           </div>
