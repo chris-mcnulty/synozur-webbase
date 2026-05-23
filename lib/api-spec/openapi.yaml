@@ -746,6 +746,7 @@ paths:
                   enum:
                     - approve
                     - reject
+                    - pending
                     - spam
                     - delete
       responses:
@@ -7168,6 +7169,11 @@ components:
           type:
             - string
             - 'null'
+        bookingId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         sourceId:
           type:
             - string
@@ -7836,6 +7842,11 @@ components:
           type:
             - string
             - 'null'
+        bookingId:
+          type:
+            - string
+            - 'null'
+          format: uuid
         status:
           type: string
           enum: [draft, scheduled, published, archived]

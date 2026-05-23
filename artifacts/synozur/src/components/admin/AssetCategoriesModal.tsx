@@ -41,7 +41,7 @@ export function AssetCategoriesModal({ open, onClose }: Props) {
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListAssetCategoriesQueryKey() });
 
-  const { data } = useListAssetCategories({ query: { enabled: open } });
+  const { data } = useListAssetCategories({ query: { queryKey: getListAssetCategoriesQueryKey(), enabled: open } });
   const categories = [...(data?.items ?? [])].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
   );

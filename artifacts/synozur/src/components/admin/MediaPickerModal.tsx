@@ -21,6 +21,7 @@ import {
   useListCmsMedia,
   useRegisterCmsMedia,
   useListAssetCategories,
+  getListAssetCategoriesQueryKey,
 } from "@workspace/api-client-react";
 import type { MediaItem } from "@workspace/api-client-react";
 import { api } from "@/lib/api";
@@ -109,7 +110,7 @@ export function MediaPickerModal({ open, onClose, onSelect, selectedId, title = 
     debounceRef.current = setTimeout(() => setDebouncedSearch(value), 350);
   };
 
-  const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
+  const { data: catsData } = useListAssetCategories({ query: { queryKey: getListAssetCategoriesQueryKey(), enabled: open } });
   const categories = catsData?.items ?? [];
 
   const initialCategoryId = categorySlug

@@ -1709,6 +1709,8 @@ export interface Service {
   /** @nullable */
   seoDescription?: string | null;
   /** @nullable */
+  bookingId?: string | null;
+  /** @nullable */
   sourceId?: string | null;
   status?: ServiceStatus;
   /** @nullable */
@@ -2065,6 +2067,8 @@ export interface UpsertServiceBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   status?: UpsertServiceBodyStatus;
   /** @nullable */
   publishedAt?: string | null;
@@ -3601,6 +3605,7 @@ export type ModerateCmsCommentBodyAction =
 export const ModerateCmsCommentBodyAction = {
   approve: "approve",
   reject: "reject",
+  pending: "pending",
   spam: "spam",
   delete: "delete",
 } as const;

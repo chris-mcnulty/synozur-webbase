@@ -46,6 +46,8 @@ export interface Service {
   /** @nullable */
   seoDescription?: string | null;
   /** @nullable */
+  bookingId?: string | null;
+  /** @nullable */
   sourceId?: string | null;
   status?: ServiceStatus;
   /** @nullable */

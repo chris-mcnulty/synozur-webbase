@@ -97,7 +97,7 @@ export function AssetLibraryModal({
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: catsData } = useListAssetCategories({ query: { enabled: open } });
+  const { data: catsData } = useListAssetCategories({ query: { queryKey: getListAssetCategoriesQueryKey(), enabled: open } });
   const categories = [...(catsData?.items ?? [])].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
   );

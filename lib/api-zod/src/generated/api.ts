@@ -857,7 +857,7 @@ export const ModerateCmsCommentParams = zod.object({
 });
 
 export const ModerateCmsCommentBody = zod.object({
-  action: zod.enum(["approve", "reject", "spam", "delete"]),
+  action: zod.enum(["approve", "reject", "pending", "spam", "delete"]),
 });
 
 export const ModerateCmsCommentResponse = zod.object({
@@ -1974,6 +1974,7 @@ export const ListServicesResponse = zod.object({
         blogCategory: zod.string().nullish(),
         seoTitle: zod.string().nullish(),
         seoDescription: zod.string().nullish(),
+        bookingId: zod.string().uuid().nullish(),
         sourceId: zod.string().nullish(),
         status: zod
           .enum(["draft", "scheduled", "published", "archived"])
@@ -2091,6 +2092,7 @@ export const GetServiceResponse = zod
     blogCategory: zod.string().nullish(),
     seoTitle: zod.string().nullish(),
     seoDescription: zod.string().nullish(),
+    bookingId: zod.string().uuid().nullish(),
     sourceId: zod.string().nullish(),
     status: zod
       .enum(["draft", "scheduled", "published", "archived"])
@@ -2293,6 +2295,7 @@ export const GetSolutionResponse = zod
             blogCategory: zod.string().nullish(),
             seoTitle: zod.string().nullish(),
             seoDescription: zod.string().nullish(),
+            bookingId: zod.string().uuid().nullish(),
             sourceId: zod.string().nullish(),
             status: zod
               .enum(["draft", "scheduled", "published", "archived"])
@@ -2920,6 +2923,7 @@ export const CmsListServicesResponse = zod.object({
       blogCategory: zod.string().nullish(),
       seoTitle: zod.string().nullish(),
       seoDescription: zod.string().nullish(),
+      bookingId: zod.string().uuid().nullish(),
       sourceId: zod.string().nullish(),
       status: zod
         .enum(["draft", "scheduled", "published", "archived"])
@@ -2959,6 +2963,7 @@ export const CmsCreateServiceBody = zod.object({
   blogCategory: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -2988,6 +2993,7 @@ export const CmsUpdateServiceBody = zod.object({
   blogCategory: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),
   unpublishedAt: zod.string().nullish(),
@@ -3016,6 +3022,7 @@ export const CmsUpdateServiceResponse = zod.object({
   blogCategory: zod.string().nullish(),
   seoTitle: zod.string().nullish(),
   seoDescription: zod.string().nullish(),
+  bookingId: zod.string().uuid().nullish(),
   sourceId: zod.string().nullish(),
   status: zod.enum(["draft", "scheduled", "published", "archived"]).optional(),
   publishedAt: zod.string().nullish(),

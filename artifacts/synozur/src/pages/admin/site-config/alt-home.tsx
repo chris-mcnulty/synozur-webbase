@@ -423,8 +423,8 @@ export default function AdminAltHome() {
       <MediaPickerModal
         open={pickerOpen !== null}
         onClose={() => setPickerOpen(null)}
-        onPick={handlePickMedia}
-        filter={pickerOpen === "homeb-video" ? "video" : "image"}
+        onSelect={handlePickMedia}
+        kind={pickerOpen === "homeb-video" ? "video" : "image"}
       />
 
       {/* Floating save indicator for the copy section (shown via showSaved above) */}

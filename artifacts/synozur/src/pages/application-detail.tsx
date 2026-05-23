@@ -80,6 +80,8 @@ function staticAsDto(
     seoDescription: null,
     ogImage: null,
     active: s.isActive,
+    serviceId: null,
+    solutionId: null,
     sourceId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

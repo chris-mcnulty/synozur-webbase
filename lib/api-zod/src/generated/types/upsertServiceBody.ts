@@ -41,6 +41,8 @@ export interface UpsertServiceBody {
   seoTitle?: string | null;
   /** @nullable */
   seoDescription?: string | null;
+  /** @nullable */
+  bookingId?: string | null;
   status?: UpsertServiceBodyStatus;
   /** @nullable */
   publishedAt?: string | null;

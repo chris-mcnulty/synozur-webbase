@@ -28,7 +28,7 @@ export function OrganizationJsonLd() {
     const id = "org-jsonld";
 
     // Resolve logo URL — prefer DB org logo, fall back to default.
-    let logoUrl = ORG_DEFAULTS.logo;
+    let logoUrl: string = ORG_DEFAULTS.logo;
     if (settings?.orgLogoUrl) {
       const raw = settings.orgLogoUrl;
       try {

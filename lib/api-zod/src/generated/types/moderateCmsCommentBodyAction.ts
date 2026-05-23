@@ -12,6 +12,7 @@ export type ModerateCmsCommentBodyAction =
 export const ModerateCmsCommentBodyAction = {
   approve: "approve",
   reject: "reject",
+  pending: "pending",
   spam: "spam",
   delete: "delete",
 } as const;

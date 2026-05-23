@@ -987,7 +987,7 @@ export default function CaseStudyEdit({ id }: Props) {
           set("heroImage", mediaUrl(item));
           setHeroPickerOpen(false);
         }}
-        filter="image"
+        kind="image"
       />
       <MediaPickerModal
         open={logoPickerOpen}
@@ -996,7 +996,7 @@ export default function CaseStudyEdit({ id }: Props) {
           set("clientLogo", mediaUrl(item));
           setLogoPickerOpen(false);
         }}
-        filter="image"
+        kind="image"
       />
       <MediaPickerModal
         open={ogPickerOpen}
@@ -1005,7 +1005,7 @@ export default function CaseStudyEdit({ id }: Props) {
           set("ogImage", mediaUrl(item));
           setOgPickerOpen(false);
         }}
-        filter="image"
+        kind="image"
       />
       <div className="mt-6">
         <ActivityTab entity="case_study" entityId={id} />

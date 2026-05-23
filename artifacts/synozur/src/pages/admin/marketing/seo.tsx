@@ -70,15 +70,16 @@ function Field({
   const helperId = `${generatedId}-helper`;
 
   const childElement = React.isValidElement(children) ? children : null;
-  const existingId = childElement?.props?.id as string | undefined;
+  const childProps = childElement?.props as { id?: string; "aria-describedby"?: string } | undefined;
+  const existingId = childProps?.id;
   const controlId = existingId ?? `${generatedId}-control`;
-  const existingDescribedBy = childElement?.props?.["aria-describedby"] as string | undefined;
+  const existingDescribedBy = childProps?.["aria-describedby"];
   const describedBy = helper
     ? [existingDescribedBy, helperId].filter(Boolean).join(" ")
     : existingDescribedBy;
 
   const content = childElement
-    ? React.cloneElement(childElement, {
+    ? React.cloneElement(childElement as React.ReactElement<{ id?: string; "aria-describedby"?: string }>, {
         id: controlId,
         ...(describedBy ? { "aria-describedby": describedBy } : {}),
       })
@@ -271,21 +272,22 @@ export default function MarketingSeo() {
 
   // ── build payload helper ───────────────────────────────────────────────────
   const buildPayload = (overrides: Partial<UpdateSiteSettingsBody> = {}): UpdateSiteSettingsBody => {
+    const d = data!; // buildPayload is only invoked on save, by which point data is loaded
     const paths = excludedPaths
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
     return {
-      requireCookieConsent: data.requireCookieConsent,
-      homeHeroImageAssetId: data.homeHeroImageAssetId ?? null,
-      homeHeroImageMediaId: data.homeHeroImageMediaId ?? null,
-      homeEditorialImageAssetId: data.homeEditorialImageAssetId ?? null,
-      homeEditorialImageMediaId: data.homeEditorialImageMediaId ?? null,
-      polarisFeedUrl: data.polarisFeedUrl ?? null,
+      requireCookieConsent: d.requireCookieConsent,
+      homeHeroImageAssetId: d.homeHeroImageAssetId ?? null,
+      homeHeroImageMediaId: d.homeHeroImageMediaId ?? null,
+      homeEditorialImageAssetId: d.homeEditorialImageAssetId ?? null,
+      homeEditorialImageMediaId: d.homeEditorialImageMediaId ?? null,
+      polarisFeedUrl: d.polarisFeedUrl ?? null,
       seoDefaultTitleTemplate: titleTemplate.trim() || null,
       seoDefaultDescription: description.trim() || null,
-      seoDefaultOgImageAssetId: data.seoDefaultOgImageAssetId ?? null,
-      seoDefaultOgImageMediaId: data.seoDefaultOgImageMediaId ?? null,
+      seoDefaultOgImageAssetId: d.seoDefaultOgImageAssetId ?? null,
+      seoDefaultOgImageMediaId: d.seoDefaultOgImageMediaId ?? null,
       seoTwitterHandle: twitterHandle.trim() || null,
       seoTwitterCardType: twitterCard || null,
       seoLinkedinCompanyUrl: linkedinCompanyUrl.trim() || null,
@@ -293,8 +295,8 @@ export default function MarketingSeo() {
       seoBingSiteVerification: bingVerification.trim() || null,
       orgName: orgName.trim() || null,
       orgLegalName: orgLegalName.trim() || null,
-      orgLogoAssetId: data.orgLogoAssetId ?? null,
-      orgLogoMediaId: data.orgLogoMediaId ?? null,
+      orgLogoAssetId: d.orgLogoAssetId ?? null,
+      orgLogoMediaId: d.orgLogoMediaId ?? null,
       orgStreetAddress: orgStreet.trim() || null,
       orgAddressLocality: orgLocality.trim() || null,
       orgAddressRegion: orgRegion.trim() || null,
@@ -430,10 +432,10 @@ export default function MarketingSeo() {
             <ImagePickerInline
               label="Default OG image"
               helper="Fallback Open Graph / Twitter card image for pages that don't set one."
-              previewUrl={data.seoDefaultOgImageUrl ?? null}
+              previewUrl={data?.seoDefaultOgImageUrl ?? null}
               isOverridden={
-                data.seoDefaultOgImageMediaId != null ||
-                data.seoDefaultOgImageAssetId != null
+                data?.seoDefaultOgImageMediaId != null ||
+                data?.seoDefaultOgImageAssetId != null
               }
               testIdPrefix="seo-og-image"
               onPick={() => setPickerOpen("og-image")}
@@ -661,9 +663,9 @@ export default function MarketingSeo() {
             <ImagePickerInline
               label="Organization logo"
               helper="SVG or PNG logo used in the JSON-LD and OG markup."
-              previewUrl={data.orgLogoUrl ?? null}
+              previewUrl={data?.orgLogoUrl ?? null}
               isOverridden={
-                data.orgLogoMediaId != null || data.orgLogoAssetId != null
+                data?.orgLogoMediaId != null || data?.orgLogoAssetId != null
               }
               testIdPrefix="org-logo"
               onPick={() => setPickerOpen("org-logo")}
@@ -958,7 +960,7 @@ export default function MarketingSeo() {
               <p>
                 Last saved:{" "}
                 <span className="text-foreground">
-                  {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—"}
+                  {data?.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—"}
                 </span>
               </p>
               <p>

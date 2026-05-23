@@ -854,7 +854,7 @@ export default function WhitePaperEdit({ id }: Props) {
                   <SelectItem value="__none__">None</SelectItem>
                   {allServices.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {s.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -875,7 +875,7 @@ export default function WhitePaperEdit({ id }: Props) {
                     <SelectItem value="__none__">None</SelectItem>
                     {availableSolutions.map((sol) => (
                       <SelectItem key={sol.id} value={sol.id}>
-                        {sol.name}
+                        {sol.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
