@@ -184,7 +184,7 @@ export type NavSolutionGroup = (typeof SOLUTION_GROUP_ORDER)[number];
 
 export const SOLUTION_GROUP_LABELS: Record<NavSolutionGroup, string> = {
   ai_strategy: "AI Strategy & Design",
-  gtm: "Go-to-Market",
+  gtm: "GTM Strategy & Execution",
   company_os: "Company OS",
   consulting_services: "Consulting Services",
 };
@@ -291,7 +291,7 @@ export const FOOTER_STATIC_APPLICATIONS = [
 
 export const FOOTER_COMPANY_LINKS: NavLink[] = [
   { label: "Our Story", href: "/about" },
-  { label: "Leadership", href: "/team" },
+  { label: "Team", href: "/team" },
   { label: "Partners", href: "/partners" },
   { label: "Clients", href: "/clients" },
   { label: "Careers", href: "/careers" },

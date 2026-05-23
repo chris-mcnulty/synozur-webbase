@@ -108,6 +108,79 @@ export default function Clients() {
         </div>
       </section>
 
+      {/* Industries served */}
+      <section className="py-24 bg-background border-b border-border">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mb-12">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Industries served
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Patterns we've seen — across sectors
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+              We work with Fortune 500 enterprises and breakout growth
+              companies. The vocabulary changes by industry; the operating
+              questions rarely do.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                title: "Technology & Software",
+                body:
+                  "Platforms, ISVs, and Microsoft partners moving from product-led to AI-native.",
+              },
+              {
+                title: "Financial Services",
+                body:
+                  "Banks, insurers, and asset managers modernizing distribution and the workplace around it.",
+              },
+              {
+                title: "Energy & Industrials",
+                body:
+                  "Operators bringing transformation programs into engineering, field, and back-office teams.",
+              },
+              {
+                title: "Consumer & Retail",
+                body:
+                  "Brands aligning go-to-market, content, and digital workplace with the pace of category change.",
+              },
+              {
+                title: "Manufacturing & Automotive",
+                body:
+                  "Global manufacturers connecting strategy to shop-floor adoption and supplier collaboration.",
+              },
+              {
+                title: "Healthcare & Life Sciences",
+                body:
+                  "Providers, payers, and pharma teams adopting governed AI and modern collaboration patterns.",
+              },
+              {
+                title: "Media & Entertainment",
+                body:
+                  "Studios and publishers reshaping creative operations around AI-assisted workflows.",
+              },
+              {
+                title: "Professional Services",
+                body:
+                  "Consultancies and agencies industrializing delivery with shared frameworks and tooling.",
+              },
+            ].map((row) => (
+              <div
+                key={row.title}
+                className="rounded-2xl border border-border/60 bg-card p-6"
+              >
+                <h3 className="text-base font-semibold mb-2">{row.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {row.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Case Studies preview */}
       <section className="py-24 bg-card border-y border-border">
         <div className="container mx-auto px-4">

@@ -257,12 +257,12 @@ function DefaultOverview() {
                           href={`/solutions/${s.slug}`}
                           className="group block h-full rounded-xl border border-border/60 bg-background/50 p-6 hover:border-primary/40 transition-colors"
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4 h-full">
                             <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                               <PillarIcon url={s.iconUrl} />
                             </div>
-                            <div className="min-w-0">
-                              <h3 className="text-base font-semibold mb-1 group-hover:text-primary transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-semibold mb-1 group-hover:text-primary transition-colors leading-snug line-clamp-2">
                                 {s.title}
                                 {s.showInMenu === false ? (
                                   <span className="ml-2 inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -273,7 +273,7 @@ function DefaultOverview() {
                               {s.blurbHtml ? (
                                 <RichText
                                   html={s.blurbHtml}
-                                  className="prose-sm prose-p:text-muted-foreground prose-p:text-sm prose-p:my-0"
+                                  className="prose-sm prose-p:text-muted-foreground prose-p:text-sm prose-p:my-0 [&_p]:line-clamp-3"
                                 />
                               ) : null}
                             </div>

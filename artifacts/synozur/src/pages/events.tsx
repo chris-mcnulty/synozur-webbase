@@ -199,12 +199,64 @@ export default function EventsPage() {
           </>
         )}
 
-        <div className="mt-16 text-center">
-          <Link href="/contact">
-            <Button variant="outline">Contact us about an event</Button>
-          </Link>
-        </div>
       </div>
+
+      {/* Work with us on events */}
+      <section className="relative overflow-hidden bg-card border-t border-border py-24">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-10" />
+        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
+          <div className="text-center mb-12">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              Work with us
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Bring Synozur to your next event
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Our partners speak, teach, and host gatherings across the
+              transformation, AI, and digital workplace community. If you are
+              planning something where our perspective fits, we would like to
+              hear from you.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            {[
+              {
+                title: "Speaking & keynotes",
+                body:
+                  "Conferences, summits, and industry events. Our partners keynote on AI strategy, the future of work, and operating-model change.",
+              },
+              {
+                title: "Workshops & roundtables",
+                body:
+                  "Half- and full-day working sessions for executive teams, partner networks, and customer councils — facilitated by senior practitioners.",
+              },
+              {
+                title: "Sponsorships & co-hosted events",
+                body:
+                  "Microsoft, ISV, and partner-ecosystem events where Synozur sponsors, hosts, or co-produces alongside the organizing team.",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="rounded-2xl border border-border/60 bg-background/60 p-6"
+              >
+                <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {card.body}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <Link href="/contact">
+              <Button size="lg" data-testid="events-contact-cta">
+                Tell us about your event
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
