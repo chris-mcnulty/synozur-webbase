@@ -204,7 +204,7 @@ export function Header() {
     setIsMacPlatform(/Mac|iPhone|iPad|iPod/i.test(platform));
   }, []);
   const shortcutModLabel = isMacPlatform ? "⌘" : "Ctrl";
-  const shortcutAria = isMacPlatform ? "⌘K" : "Ctrl+K";
+  const shortcutAria = isMacPlatform ? "Command+K" : "Control+K";
   // #170 — Cmd-K command palette. Live results from `/api/search` while
   // the user types; ⌘K / Ctrl-K opens it from anywhere on the page, "/"
   // also opens (when not already typing in an input). Selecting a result

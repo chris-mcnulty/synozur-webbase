@@ -273,7 +273,7 @@ function DefaultOverview() {
                               {s.blurbHtml ? (
                                 <RichText
                                   html={s.blurbHtml}
-                                  className="prose-sm prose-p:text-muted-foreground prose-p:text-sm prose-p:my-0 line-clamp-3"
+                                  className="prose-sm prose-p:text-muted-foreground prose-p:text-sm prose-p:my-0 [&_p]:line-clamp-3"
                                 />
                               ) : null}
                             </div>
