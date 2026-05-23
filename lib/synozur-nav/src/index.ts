@@ -1,4 +1,4 @@
-import { Linkedin, Twitter, Youtube, type LucideIcon } from "lucide-react";
+import { Linkedin, Twitter, Youtube, Instagram, Facebook, type LucideIcon } from "lucide-react";
 
 export const LOGO_COLOR_URL =
   "https://static.wixstatic.com/media/b805ce_7a5d9f47e6df42c6a2dab307ce8c4cf3~mv2.png/v1/fill/w_231,h_63,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/SA-Logo-Horizontal-color.png";
@@ -79,6 +79,10 @@ export const STATIC_APPLICATIONS: NavApplication[] = [
 
 export const SAME_AS_FALLBACK: readonly string[] = [
   "https://www.linkedin.com/company/synozur",
+  "https://x.com/synozur/",
+  "https://www.instagram.com/synozur",
+  "https://www.facebook.com/synozur",
+  "https://www.youtube.com/@SynozurVideos",
 ];
 
 export type SocialLink = { href: string; label: string; Icon: LucideIcon };
@@ -94,9 +98,11 @@ const SOCIAL_MATCHERS: {
   { test: (h) => matchesDomain(h, "linkedin.com"), label: "LinkedIn", Icon: Linkedin },
   {
     test: (h) => matchesDomain(h, "twitter.com") || matchesDomain(h, "x.com"),
-    label: "Twitter",
+    label: "X",
     Icon: Twitter,
   },
+  { test: (h) => matchesDomain(h, "instagram.com"), label: "Instagram", Icon: Instagram },
+  { test: (h) => matchesDomain(h, "facebook.com"), label: "Facebook", Icon: Facebook },
   {
     test: (h) => matchesDomain(h, "youtube.com") || h === "youtu.be",
     label: "YouTube",
