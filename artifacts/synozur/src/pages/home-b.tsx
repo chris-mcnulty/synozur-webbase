@@ -310,8 +310,10 @@ export default function HomeB() {
               <img
                 src={`${BASE_PATH}/images/sa-logo-horizontal-white.png`}
                 alt="The Synozur Alliance"
-                className="h-28 md:h-32 w-auto mb-10"
-                style={{ mixBlendMode: "screen" }}
+                width={460}
+                height={125}
+                className="h-28 md:h-32 w-auto max-w-full mb-10"
+                style={{ mixBlendMode: "screen", aspectRatio: "460 / 125" }}
                 fetchPriority="high"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.06]">

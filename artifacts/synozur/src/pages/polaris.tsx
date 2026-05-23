@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
-import { Headphones, Play, Pause, Mail, ArrowRight } from "lucide-react";
+import { Play, Pause, Mail, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
@@ -151,18 +151,17 @@ export default function Polaris() {
       />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-28 md:py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-30" />
-        <div className="container relative z-10 mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
+        <div className="container relative z-10 mx-auto px-4 max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7">
-            <p className="text-sm uppercase tracking-widest text-primary mb-4 inline-flex items-center gap-2">
-              <Headphones className="h-4 w-4" />
+            <p className="text-sm uppercase tracking-widest text-primary mb-4">
               Polaris Pathways
             </p>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
               Polaris Pathways Podcast
             </h1>
-            <p className="text-lg md:text-xl text-zinc-300 leading-relaxed max-w-2xl">
+            <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-2xl">
               All our episodes are shared below. You can also find us on Apple,
               Spotify, Amazon, YouTube or wherever you get your favorite
               podcasts. And you can subscribe to be alerted when we add new

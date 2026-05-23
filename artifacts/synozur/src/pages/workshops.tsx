@@ -47,19 +47,19 @@ export default function Workshops() {
         image={copy.ogImage}
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-24">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           {copy.heroEyebrow && (
-            <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
+            <p className="text-sm uppercase tracking-widest text-primary mb-4">
               {copy.heroEyebrow}
             </p>
           )}
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
             {copy.heroHeadline}
           </h1>
           {copy.heroSubhead && (
-            <p className="mt-4 text-lg md:text-xl text-zinc-300 max-w-3xl">
+            <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
               {copy.heroSubhead}
             </p>
           )}

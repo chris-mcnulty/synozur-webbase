@@ -10,6 +10,7 @@ import { clientLogos } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { ReviewJsonLd } from "@/components/review-jsonld";
 import { SITE_ORIGIN } from "@/lib/seo-config";
+import { PageHero } from "@/components/layout/page-hero";
 
 type DisplayQuote = { quote: string; name: string; org: string };
 
@@ -88,22 +89,14 @@ export default function Clients() {
         }))}
       />
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
-        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            Our Clients
-          </p>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            Global experience and deep expertise.
-          </h1>
-          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            With years of experience working with global customers across various
+      <PageHero
+        eyebrow="Our Clients"
+        title="Global experience and deep expertise."
+        subtitle="With years of experience working with global customers across various
             industries, we have the insights to tackle complex challenges and
-            drive meaningful change.
-          </p>
-        </div>
-      </section>
+            drive meaningful change."
+        data-testid="clients-hero"
+      />
 
       {/* Logo rotator */}
       <section className="py-12 md:py-16 bg-[hsl(240_35%_10%)] border-b border-border">

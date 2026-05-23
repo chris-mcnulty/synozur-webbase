@@ -237,8 +237,26 @@
     @apply border-border;
   }
 
+  html {
+    /* P1 typography baseline — bumps the inherited rem so Tailwind's
+       text-* utilities map to a more readable scale (text-sm = 15px,
+       text-base = 17px) without rewriting every page. */
+    font-size: 17px;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-primary;
+    /* Prevent long words / unbroken strings from clipping outside
+       their containers on narrow mobile widths. */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+
+  /* Avoid horizontal page scroll caused by full-bleed background
+     wrappers whose children overflow on mobile portrait. */
+  body, #root {
+    overflow-x: clip;
   }
 }
 

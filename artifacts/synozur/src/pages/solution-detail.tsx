@@ -192,8 +192,8 @@ export default function SolutionDetail() {
         <JsonLd data={breadcrumbJsonLd} id="solution-breadcrumb-jsonld" />
       ) : null}
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           {sol?.parentService ? (
             <Link
@@ -207,16 +207,9 @@ export default function SolutionDetail() {
               href="/services-overview/default"
               className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
             >
-              ← All Services
+              ← All Solutions
             </Link>
           )}
-          <div className="h-16 w-16 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-8">
-            {sol?.iconUrl ? (
-              <img src={sol.iconUrl} alt="" className="h-8 w-8 object-contain" loading="lazy" />
-            ) : (
-              <Layers className="h-8 w-8" />
-            )}
-          </div>
           {q.isLoading || !sol ? (
             <>
               <div className="h-12 w-2/3 bg-white/10 rounded mb-6 animate-pulse" />
@@ -275,7 +268,7 @@ export default function SolutionDetail() {
             : "This consulting engagement plugs into whichever phase of the Method you need most — from initial Assessment through measurable Outcomes.";
         return (
           <section className="py-16 bg-card border-y border-border">
-            <div className="container mx-auto px-4 max-w-5xl">
+            <div className="container mx-auto px-4 max-w-4xl">
               <p className="text-sm uppercase tracking-widest text-primary mb-3">
                 The North Star Method™
               </p>
@@ -354,8 +347,8 @@ export default function SolutionDetail() {
 
       {sol?.capabilities && sol.capabilities.length > 0 ? (
         <section className="py-24 bg-card border-y border-border">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mb-12">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="max-w-3xl mb-12">
               <p className="text-sm uppercase tracking-widest text-primary mb-3">
                 Capabilities
               </p>

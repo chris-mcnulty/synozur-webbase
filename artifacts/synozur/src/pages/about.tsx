@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { PageHero } from "@/components/layout/page-hero";
 
 // Map the text icon name stored on `about_values.icon` back to a lucide
 // component. New icons can be added here without changing the schema —
@@ -130,40 +131,20 @@ export default function About() {
         description="Synozur, named for the North Star, guides organizations through the complexities of strategic transformation with decades of global advisory experience."
       />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-30" />
-        <div className="container relative z-10 mx-auto px-4 max-w-4xl text-center">
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-sm uppercase tracking-widest text-primary mb-4"
-          >
-            Our Story
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.05 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8"
-          >
+      <PageHero
+        eyebrow="Our Story"
+        title={
+          <>
             Transforming business through{" "}
             <span className="nebula-text">culture and innovation</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.15 }}
-            className="text-xl md:text-2xl text-zinc-300 leading-relaxed"
-          >
-            Our empathetic approach is tailored to your unique journey,
+          </>
+        }
+        subtitle="Our empathetic approach is tailored to your unique journey,
             navigating the complexities of transformation with ease. We have
             decades of experience delivering global strategic advisory services
-            that elevate you to achieve breakthrough innovation.
-          </motion.p>
-        </div>
-      </section>
+            that elevate you to achieve breakthrough innovation."
+        data-testid="about-hero"
+      />
 
       {/* Our Mission */}
       <section className="py-24 bg-background">

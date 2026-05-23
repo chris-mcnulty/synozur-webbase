@@ -34,11 +34,6 @@ function stripHtml(html: string | null | undefined): string {
   return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
 }
 
-function Icon({ url }: { url: string | null }) {
-  if (url) return <img src={url} alt="" className="h-7 w-7 object-contain" loading="lazy" />;
-  return <Layers className="h-7 w-7" />;
-}
-
 function RelatedWorkshopsRail({
   serviceId,
   serviceTitle,
@@ -280,18 +275,15 @@ export default function ServiceDetail() {
         <JsonLd data={breadcrumbJsonLd} id="service-breadcrumb-jsonld" />
       ) : null}
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
+      <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
         <div className="container relative z-10 mx-auto px-4 max-w-4xl">
           <Link
             href="/services-overview/default"
             className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
           >
-            ← All Services
+            ← All Solutions
           </Link>
-          <div className="h-16 w-16 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-8">
-            <Icon url={service?.iconUrl ?? null} />
-          </div>
           {detail.isLoading ? (
             <>
               <div className="h-12 w-2/3 bg-white/10 rounded mb-6 animate-pulse" />

@@ -9,6 +9,7 @@ import NotFound from "./not-found";
 import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { useOverride } from "@/lib/experiments";
+import { PageHero } from "@/components/layout/page-hero";
 
 function PillarIcon({ url, fallback }: { url: string | null; fallback?: React.ReactNode }) {
   if (url) {
@@ -94,7 +95,7 @@ function DefaultOverview() {
   });
   const heroEyebrow = useOverride<string>(
     "services.hero.eyebrow",
-    "Our Services",
+    "Solutions",
   );
   const heroHeadlineOverride = useOverride<string | null>(
     "services.hero.headline",
@@ -145,7 +146,7 @@ function DefaultOverview() {
   return (
     <PageShell>
       <Meta
-        title="Services Overview"
+        title="Solutions Overview"
         description="Three flagship solutions — AI Strategy & Design, GTM Strategy & Execution, and Company OS — plus a consulting bench that composes around your situation."
         image="/opengraph.jpg"
       />
@@ -154,20 +155,12 @@ function DefaultOverview() {
         <JsonLd data={itemListJsonLd} id="services-overview-itemlist-jsonld" />
       ) : null}
 
-      <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-        <div className="absolute inset-0 nebula-gradient opacity-25" />
-        <div className="container relative z-10 mx-auto px-4 max-w-4xl">
-          <p className="text-sm uppercase tracking-widest text-primary mb-4">
-            {heroEyebrow}
-          </p>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8">
-            {heroHeadlineOverride ?? "AI-native. Human-centered. Built to land."}
-          </h1>
-          <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            {heroBodyOverride}
-          </p>
-        </div>
-      </section>
+      <PageHero
+        eyebrow={heroEyebrow}
+        title={heroHeadlineOverride ?? "AI-native. Human-centered. Built to land."}
+        subtitle={heroBodyOverride}
+        data-testid="solutions-overview-hero"
+      />
 
       {list.isError ? (
         <ErrorBlock message="The services list could not be loaded right now." />
@@ -396,18 +389,15 @@ function PillarOverview({ slug }: { slug: string }) {
       {detail.isLoading || !service ? (
         <LoadingHero />
       ) : (
-        <section className="relative overflow-hidden bg-[#0B0B1A] py-32">
-          <div className="absolute inset-0 nebula-gradient opacity-25" />
+        <section className="relative overflow-hidden bg-[#0B0B1A] py-24 md:py-32">
+          <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-25" />
           <div className="container relative z-10 mx-auto px-4 max-w-4xl">
             <Link
               href="/services-overview/default"
               className="text-sm text-zinc-400 hover:text-white inline-flex items-center mb-8"
             >
-              ← All Services
+              ← All Solutions
             </Link>
-            <div className="h-16 w-16 rounded-2xl bg-primary/20 text-primary flex items-center justify-center mb-8">
-              <PillarIcon url={service.iconUrl} />
-            </div>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
               {service.title}
             </h1>
