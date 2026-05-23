@@ -443,7 +443,7 @@ export default function Home() {
                 width={460}
                 height={125}
                 className="h-28 md:h-32 w-auto max-w-full mb-10"
-                style={{ mixBlendMode: "screen", aspectRatio: "460 / 125" }}
+                style={{ mixBlendMode: "screen" }}
                 fetchPriority="high"
               />
               {positioningVisible ? (

@@ -398,11 +398,12 @@ export function Header() {
         </button>
 
         {/* ── Logo ──
-            P1 #7 — Explicit intrinsic width/height + `[aspect-ratio:_]`
-            keep the logo from being squished by the flex parent on
-            mobile portrait (the original `h-10 w-auto` alone produced
-            anamorphic distortion before the network image had loaded
-            its intrinsic dimensions). */}
+            P1 #7 — Explicit intrinsic width/height keep the logo from
+            being squished by the flex parent on mobile portrait (the
+            original `h-10 w-auto` alone produced anamorphic distortion
+            before the network image had loaded its intrinsic
+            dimensions). Browsers derive `aspect-ratio` from width/height
+            attrs automatically, so no inline style is needed. */}
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80 flex-shrink-0 min-w-0">
           {isHome ? (
             <img
@@ -411,16 +412,14 @@ export function Header() {
               width={40}
               height={40}
               className="h-10 w-auto max-w-full"
-              style={{ aspectRatio: "1 / 1" }}
             />
           ) : (
             <img
               src={LOGO_COLOR_URL}
               alt="The Synozur Alliance Logo"
-              width={147}
-              height={40}
+              width={231}
+              height={63}
               className="h-10 w-auto max-w-full"
-              style={{ aspectRatio: "231 / 63" }}
             />
           )}
         </Link>

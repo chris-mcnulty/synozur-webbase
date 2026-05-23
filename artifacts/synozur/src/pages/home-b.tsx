@@ -313,7 +313,7 @@ export default function HomeB() {
                 width={460}
                 height={125}
                 className="h-28 md:h-32 w-auto max-w-full mb-10"
-                style={{ mixBlendMode: "screen", aspectRatio: "460 / 125" }}
+                style={{ mixBlendMode: "screen" }}
                 fetchPriority="high"
               />
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.06]">
