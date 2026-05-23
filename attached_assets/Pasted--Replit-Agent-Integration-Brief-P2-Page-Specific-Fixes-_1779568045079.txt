@@ -1,0 +1,220 @@
+# Replit Agent — Integration Brief: P2 Page-Specific Fixes
+
+> Branch: `claude/website-redesign-page-fixes-0Plnv`
+> Scope: design-review P2 fixes across Team, Solutions, Partners, Careers,
+> Polaris, Events, Resources, Clients, plus a Cmd-K shortcut fix.
+> Staging: <https://synozur-baseline.replit.app>
+
+## Your environment vs. what this branch ships
+
+This branch ships **code-only** changes. A handful of follow-ups need
+CMS rows or asset replacements that can only be done where you sit:
+
+| You have                       | What that unlocks                                |
+| ------------------------------ | ------------------------------------------------ |
+| Direct DB access in **dev**    | Update CMS rows: solutions, capabilities, icons. |
+| **Read-only** prod DB + logs   | Verify on prod, diff dev vs. prod, read errors.  |
+
+**Do not run write SQL against production.** All DB changes below are
+dev-only; promote via the normal release path.
+
+## How to integrate the code
+
+1. `git fetch origin claude/website-redesign-page-fixes-0Plnv`
+2. `git checkout claude/website-redesign-page-fixes-0Plnv`
+3. `pnpm install`
+4. `pnpm --filter @workspace/synozur run typecheck`
+   (api-server typecheck has pre-existing errors unrelated to this branch
+   — they do **not** need to be green to merge this work.)
+5. Bring up the Replit dev workspace and visit each page in the
+   verification checklist below.
+
+## DB follow-ups (dev only)
+
+These are the items I flagged in the design review that I couldn't
+fix from a code-only environment. Run them as **dev**-only writes,
+then promote through your normal release path.
+
+### 1. GTM solution title alignment
+
+The nav label is now `"GTM Strategy & Execution"`
+(`lib/synozur-nav/src/index.ts` → `SOLUTION_GROUP_LABELS.gtm`). The
+solution row that drives the GTM tile on Solutions Overview should
+match. Check the row first:
+
+```sql
+-- dev only
+SELECT id, slug, title, solution_group
+FROM solutions
+WHERE solution_group = 'gtm' AND show_in_menu = true
+ORDER BY display_order NULLS LAST;
+```
+
+If `title` is already `"GTM Strategy & Execution"`, you're done. If it
+isn't (e.g. it's `"Go-to-Market Strategy"`), update it so the page hero,
+breadcrumbs, nav, and overview tile all match:
+
+```sql
+-- dev only
+UPDATE solutions
+SET title = 'GTM Strategy & Execution', updated_at = now()
+WHERE slug = '<slug-from-the-SELECT-above>';
+```
+
+### 2. Solution icons → crisp SVGs on transparent backgrounds
+
+The Solutions Overview and per-solution pages read `solutions.icon_url`.
+Today some of those are PNGs with opaque white backgrounds that clash
+with the dark theme. Replace each one with a transparent SVG.
+
+```sql
+-- dev only — survey what's in use
+SELECT slug, title, icon_url
+FROM solutions
+WHERE icon_url IS NOT NULL AND icon_url <> ''
+ORDER BY slug;
+```
+
+Per slug, upload the new SVG via the admin UI (or `object-storage-web`)
+and update the row:
+
+```sql
+-- dev only
+UPDATE solutions
+SET icon_url = '<new-svg-url>', updated_at = now()
+WHERE slug = '<slug>';
+```
+
+Same pattern applies to `services.icon_url` if any pillar icons are
+still PNGs.
+
+### 3. Application listing icons (Applications page)
+
+`/applications` reads `applications.logo`. The design review called the
+icon set "low quality and unprofessional". Replace each `logo` URL with
+the standardized icon set the rest of the site uses.
+
+```sql
+-- dev only
+SELECT slug, name, logo FROM applications WHERE active = true ORDER BY slug;
+```
+
+Update per slug after the asset is uploaded.
+
+### 4. Company OS "What's Included" copy
+
+`solutions.capabilities` is rendered as the "What's included" grid on
+each solution page. The review flagged that the Company OS rows are
+inconsistent in tone/structure. Pull the rows, rewrite them to match
+the AI Strategy pattern (single-sentence capability, present tense,
+verb-led), and update.
+
+```sql
+-- dev only — find Company OS capabilities
+SELECT c.id, c.title, c.body_html, c.display_order
+FROM solution_capabilities c
+JOIN solutions s ON s.id = c.solution_id
+WHERE s.solution_group = 'company_os'
+ORDER BY c.display_order;
+```
+
+Update body copy via the admin editor; do not hand-edit HTML in SQL
+unless you have to.
+
+### 5. Solution back-link audit
+
+This branch makes every back-link on a solution page go to
+`/services-overview/default` (the Solutions Overview). If you also
+expose **service** pages elsewhere (e.g. footer or mega-menu), make
+sure no surviving back-link points at a path that 404s. Search
+production logs:
+
+```text
+# read-only prod logs
+filter: path matches "^/services/" AND status = 404
+window: last 7 days
+```
+
+If you see hits, surface them — they likely come from old cached
+sitemaps or external links, not from this branch.
+
+## Read-only checks against production
+
+After the branch is deployed to staging, use your prod read-only
+access to compare dev/prod state and watch for regressions.
+
+### Smoke queries
+
+```sql
+-- read-only prod — confirm the GTM solution title matches the nav label
+SELECT slug, title FROM solutions WHERE solution_group = 'gtm';
+
+-- read-only prod — make sure the team page has expected rows for the
+-- new circle-card treatment (image_url should be populated)
+SELECT slug, name, image_url IS NOT NULL AS has_image
+FROM team_members
+WHERE is_published = true
+ORDER BY display_order NULLS LAST;
+
+-- read-only prod — confirm linked collateral still exists for the
+-- solutions that previously rendered the second "Related Content"
+-- block. With this branch the auto-tagged fallback only fires when
+-- nothing is pinned, so empty pin-lists are still OK.
+SELECT s.slug, COUNT(cs.collateral_id) AS pinned
+FROM solutions s
+LEFT JOIN collateral_solutions cs ON cs.solution_id = s.id AND cs.active = true
+GROUP BY s.slug
+ORDER BY pinned ASC, s.slug;
+```
+
+### Log signals to watch for the first 24h after release
+
+- `path matches "^/team/"` + 500s — circle-card image rendering.
+- `path matches "^/solutions/"` + 500s — consolidated related block.
+- `path = "/polaris"` — make sure the libsyn removal didn't break the
+  CSP or trip the analytics ping.
+- Any new client-side errors mentioning `RelatedResourcesSection`,
+  `RelatedContent`, or `PillarIcon`.
+
+## Manual verification checklist
+
+Run through these on staging before merging to main:
+
+- [ ] **Team** — Headshots render as a single circle (no outer rounded
+  rectangle). Name/title/bio are noticeably larger than before. Hero
+  eyebrow, section heading, footer link all say "Team".
+- [ ] **Solutions Overview** — GTM tile reads "GTM Strategy &
+  Execution"; matches the nav menu label.
+- [ ] **Each Solutions detail page** (AI Strategy, GTM, Company OS,
+  one consulting service):
+  - Back link in hero goes to Solutions Overview.
+  - Method-alignment section is readable (not dimmed to 60%).
+  - Only **one** related-resources block on the page.
+  - No "wide → narrow → wide" snap on scroll (sections cap at
+    `max-w-4xl` for prose, `max-w-6xl` for grids).
+- [ ] **Partners** — No bright white sections; everything sits on the
+  dark theme. Hero is the standard `PageHero`.
+- [ ] **Careers** — Hero is the standard treatment with `nebula-text`
+  on "North Star". Benefit icons match the Lucide set used elsewhere.
+- [ ] **Polaris** — Order is: hero → featured cards → full archive
+  list. No purple Libsyn embed block in the middle.
+- [ ] **Events** — Bottom of the page is the new "Bring Synozur to
+  your next event" section with speaking / workshops / sponsorships
+  cards and a single CTA.
+- [ ] **Clients** — New "Industries served" 8-card section sits
+  between the logo rotator and case-studies grid.
+- [ ] **White Papers** — Listing container is the same width as
+  Webinars and Library (`max-w-7xl`).
+- [ ] **Header search button** — On Windows/Linux the kbd hint reads
+  `Ctrl+K`; on macOS it reads `⌘K`. Both Cmd-K and Ctrl-K open the
+  palette regardless of platform.
+
+## Things explicitly **not** changed (per the brief's constraints)
+
+- No taglines or slogans were edited.
+- No pages were removed.
+- Navigation structure and mega-menu shape are unchanged.
+- Animated section borders, the homepage background video, the purple
+  palette, and existing carousels are all preserved.
+
+If the design team asks for any of those, they're a separate ticket.

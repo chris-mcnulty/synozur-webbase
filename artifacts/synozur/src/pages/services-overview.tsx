@@ -1,7 +1,27 @@
 import { Meta } from "@/lib/meta";
 import { motion } from "framer-motion";
 import { Link, useRoute } from "wouter";
-import { ArrowRight, Layers } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Award,
+  BarChart2,
+  Brain,
+  Building2,
+  Cpu,
+  Layers,
+  LayoutGrid,
+  Map,
+  Megaphone,
+  MessageCircle,
+  PackageCheck,
+  PenTool,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  Users,
+  type LucideProps,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ServiceWithSolutions } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
@@ -11,18 +31,49 @@ import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { useOverride } from "@/lib/experiments";
 import { PageHero } from "@/components/layout/page-hero";
 
-function PillarIcon({ url, fallback }: { url: string | null; fallback?: React.ReactNode }) {
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt=""
-        className="h-7 w-7 object-contain"
-        loading="lazy"
-      />
-    );
+const SLUG_ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  // flagship solutions
+  "ai-strategy-and-design": Brain,
+  "gtm-strategy-and-execution": TrendingUp,
+  "company-os": Building2,
+  // consulting solutions
+  "brand-and-messaging": Megaphone,
+  "strategic-roadmaps": Map,
+  "employee-strategies": Users,
+  "communication-strategies": MessageCircle,
+  "fractional-leadership": UserCheck,
+  "employee-effectiveness": BarChart2,
+  "delivery-management": PackageCheck,
+  "design-strategies": PenTool,
+  "microsoft-partner-development": Award,
+  "microsoft-365-optimization": LayoutGrid,
+  // services
+  "experiences": Sparkles,
+  "go-to-market-transformation": TrendingUp,
+  "strategic-transformation": ArrowUpRight,
+  "technology-transformation": Cpu,
+};
+
+function PillarIcon({
+  slug,
+  url,
+  size = "md",
+  fallback,
+}: {
+  slug?: string | null;
+  url?: string | null;
+  size?: "sm" | "md";
+  fallback?: React.ReactNode;
+}) {
+  const cls = size === "sm" ? "h-6 w-6" : "h-7 w-7";
+  if (slug) {
+    const Icon = SLUG_ICON_MAP[slug];
+    if (Icon) return <Icon className={cls} />;
   }
-  return <>{fallback ?? <Layers className="h-7 w-7" />}</>;
+  if (url) {
+    return <img src={url} alt="" className={`${cls} object-contain`} loading="lazy" />;
+  }
+  return <>{fallback ?? <Layers className={cls} />}</>;
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -199,7 +250,7 @@ function DefaultOverview() {
                             className="group block h-full rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 hover:bg-card/80 transition-all nebula-card"
                           >
                             <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-6">
-                              <PillarIcon url={sol.iconUrl} />
+                              <PillarIcon slug={sol.slug} url={sol.iconUrl} />
                             </div>
                             <p className="text-xs uppercase tracking-widest text-primary mb-2">
                               {row.meta.phase}
@@ -259,7 +310,7 @@ function DefaultOverview() {
                         >
                           <div className="flex items-start gap-4 h-full">
                             <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                              <PillarIcon url={s.iconUrl} />
+                              <PillarIcon slug={s.slug} url={s.iconUrl} />
                             </div>
                             <div className="min-w-0 flex-1">
                               <h3 className="text-base font-semibold mb-1 group-hover:text-primary transition-colors leading-snug line-clamp-2">
@@ -467,11 +518,7 @@ function PillarOverview({ slug }: { slug: string }) {
                     className="group flex flex-col h-full rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 transition-colors nebula-card"
                   >
                     <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
-                      {s.iconUrl ? (
-                        <img src={s.iconUrl} alt="" className="h-6 w-6 object-contain" loading="lazy" />
-                      ) : (
-                        <Layers className="h-6 w-6" />
-                      )}
+                      <PillarIcon slug={s.slug} url={s.iconUrl} size="sm" />
                     </div>
                     <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">
                       {s.title}

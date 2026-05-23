@@ -3,10 +3,37 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
 import { Link } from "wouter";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Compass,
+  ExternalLink,
+  Gift,
+  Layers,
+  Lightbulb,
+  Network,
+  Shield,
+  type LucideProps,
+} from "lucide-react";
 import { api, type ApplicationDto } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
 import { useOverride } from "@/lib/experiments";
+
+const APP_ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  vega: BarChart3,
+  nebula: Lightbulb,
+  constellation: Network,
+  orion: Compass,
+  orbit: Activity,
+  zenith: Shield,
+  "holidays-and-birthdays-web-part": Gift,
+};
+
+function AppIcon({ slug, className }: { slug: string; className?: string }) {
+  const Icon = APP_ICON_MAP[slug] ?? Layers;
+  return <Icon className={className ?? "h-6 w-6"} />;
+}
 
 function staticAsDto(
   s: ReturnType<typeof getActiveApplications>[number],
@@ -141,16 +168,8 @@ export default function Applications() {
                   </Link>
                   <div className="p-7 flex-1 flex flex-col">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="h-12 w-12 rounded-lg overflow-hidden bg-card border border-border shrink-0">
-                        <img
-                          src={app.logo}
-                          alt=""
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <AppIcon slug={app.slug} className="h-6 w-6" />
                       </div>
                       <div>
                         <h2 className="text-xl font-bold leading-snug group-hover:text-primary transition-colors">

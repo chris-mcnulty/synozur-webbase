@@ -1,0 +1,83 @@
+Pull branch `claude/website-redesign-page-fixes-0Plnv` and integrate it,
+then finish the icon work that branch could not do from a code-only
+environment.
+
+Branch context (already shipped in code, no action needed from you):
+- Team page redesigned (circle headshots), Partners switched to dark
+  theme, Polaris duplicate Libsyn embed removed, Events CTA expanded,
+  Clients gained an "Industries served" section, solution-detail back
+  links normalized and the two related-content blocks consolidated.
+- SOLUTION_GROUP_LABELS.gtm in lib/synozur-nav/src/index.ts is now
+  "GTM Strategy & Execution".
+- Header Cmd-K hint is platform-aware (⌘K on macOS, Ctrl+K elsewhere).
+- See docs/replit-agent-integration-brief.md for the full file list,
+  verification checklist, and read-only prod queries.
+
+What I need you to do (dev DB has write access, prod is read-only):
+
+1. SOLUTIONS ICONS
+   - Survey current state in dev:
+       SELECT slug, title, icon_url
+       FROM solutions
+       WHERE icon_url IS NOT NULL AND icon_url <> ''
+       ORDER BY slug;
+   - For every row whose icon_url ends in .png (or is a PNG with an
+     opaque white background that clashes with the dark theme),
+     replace it with a crisp SVG on a transparent background, sized to
+     fit the 28×28 render box on Solutions Overview. Match the visual
+     style of the existing Lucide icons elsewhere on the site (single
+     stroke weight, no fills, currentColor-friendly so the bg-primary/10
+     container tints it correctly).
+   - Upload each SVG via the admin asset uploader (or
+     object-storage-web), then UPDATE the row's icon_url to the new URL.
+
+2. APPLICATIONS LOGOS
+   - Survey:
+       SELECT slug, name, logo
+       FROM applications
+       WHERE active = true
+       ORDER BY slug;
+   - Replace any low-resolution or JPEG logos with crisp transparent
+     PNGs or SVGs at 2x density (~192px square minimum) so the 12×12
+     bounding box on /applications doesn't look fuzzy on retina.
+   - UPDATE the logo column per row after the asset is uploaded.
+
+3. SERVICES PILLAR ICONS (if any are still PNGs)
+       SELECT slug, title, icon_url FROM services
+       WHERE icon_url IS NOT NULL AND icon_url <> '' ORDER BY slug;
+   - Same treatment: transparent SVGs that match the icon style.
+
+4. GTM SOLUTION TITLE — confirm the row matches the new nav label
+       SELECT id, slug, title FROM solutions WHERE solution_group = 'gtm';
+   - If title is not exactly "GTM Strategy & Execution", update it so
+     the nav, breadcrumbs, hero, and overview tile all match:
+       UPDATE solutions
+       SET title = 'GTM Strategy & Execution', updated_at = now()
+       WHERE slug = '<slug>';
+
+5. M365 CARD SIZING — the design review flagged that the M365 card on
+   Solutions Overview looks larger than the others. The branch already
+   line-clamps long titles to two lines in services-overview.tsx, but
+   if the row's title is unusually long ("Microsoft 365 Adoption,
+   Strategy & Optimization"), consider shortening it (e.g. "Microsoft
+   365 Optimization") so the card matches the rest of the row. Confirm
+   with chris before changing.
+
+Verification (use read-only prod access AFTER promoting through your
+normal release path):
+- /services-overview/default — every consulting card has a crisp icon
+  with no white box around it; M365 card height matches its row.
+- /applications — every logo is crisp on retina; no fuzzy JPEGs.
+- /solutions/<gtm-slug> — hero title matches the nav label.
+- Production logs for the first 24h, filter path matches "^/solutions/"
+  or "^/applications/" and status >= 500 — should stay flat.
+
+Do NOT:
+- Run UPDATE/INSERT against the production database. Everything above
+  is dev-only; promote through the normal release path.
+- Touch the solutions.solution_group values — the taxonomy is fixed.
+- Replace the homepage video, the purple palette, or any carousel.
+- Rename pages or change nav structure.
+
+When done, post a short summary of which rows you updated (slug + old
+icon_url → new icon_url) so I can spot-check against staging.
