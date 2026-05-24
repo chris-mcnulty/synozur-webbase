@@ -287,3 +287,21 @@ id = "XzvY9YX7l3yDsmDDx5PIv"
 uri = "file://research/entra-multitenant-auth-architecture.md"
 type = "text"
 title = "Entra Multi-Tenant Auth Architecture — Research Brief"
+
+[[outputs]]
+id = "QeFyR0xzJADNBf24Yp90N"
+uri = "file://artifacts/synozur/public/opengraph.jpg"
+type = "image"
+title = "opengraph.jpg (OG card, 1200×630)"
+
+[[outputs]]
+id = "W_ysknvgcRZl3TRxzOuPa"
+uri = "file://artifacts/synozur/public/logo-square.png"
+type = "image"
+title = "logo-square.png (300×300)"
+
+[[outputs]]
+id = "xUNFmv0t30FpWVYEhA0Hf"
+uri = "file://artifacts/synozur/public/logo-horizontal.png"
+type = "image"
+title = "logo-horizontal.png"
