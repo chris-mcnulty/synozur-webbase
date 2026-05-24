@@ -193,8 +193,11 @@ router.post(
       res.status(201).json(shapeAdminExperiment(created!, []));
     } catch (err) {
       // Postgres unique-violation = 23505. Most likely the `key` collision.
-      const e = err as { code?: string };
-      if (e?.code === "23505") {
+      // Drizzle wraps pg errors as DrizzleQueryError — code lives on .cause.
+      const pgCode =
+        (err as { code?: string })?.code ??
+        (err as { cause?: { code?: string } })?.cause?.code;
+      if (pgCode === "23505") {
         res.status(409).json({ error: "Experiment key already exists." });
         return;
       }
@@ -318,9 +321,12 @@ router.post(
       res.json(shapeAdminExperiment(updated!, loaded.variants));
     } catch (err) {
       // Partial unique index — another experiment is already running for
-      // this pageKey.
-      const e = err as { code?: string };
-      if (e?.code === "23505") {
+      // this pageKey. Drizzle wraps pg errors as DrizzleQueryError, so the
+      // Postgres error code lives on .cause, not on the top-level error.
+      const pgCode =
+        (err as { code?: string })?.code ??
+        (err as { cause?: { code?: string } })?.cause?.code;
+      if (pgCode === "23505") {
         res.status(409).json({
           error: `Another experiment is already running for page "${loaded.exp.pageKey}".`,
         });
@@ -546,8 +552,11 @@ router.post(
       });
       res.status(201).json(created);
     } catch (err) {
-      const e = err as { code?: string };
-      if (e?.code === "23505") {
+      // Drizzle wraps pg errors as DrizzleQueryError — code lives on .cause.
+      const pgCode =
+        (err as { code?: string })?.code ??
+        (err as { cause?: { code?: string } })?.cause?.code;
+      if (pgCode === "23505") {
         res.status(409).json({ error: "Variant key already exists." });
         return;
       }
