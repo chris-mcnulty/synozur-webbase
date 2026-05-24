@@ -7,7 +7,7 @@ const SITE_URL = "https://www.synozur.com";
 const ORG_DEFAULTS = {
   name: "The Synozur Alliance",
   legalName: "The Synozur Alliance, LLC",
-  logo: `${SITE_URL}/favicon.svg`,
+  logo: `${SITE_URL}/logo-square.png`,
   streetAddress: "13300 Bothell Everett Hwy, Suite 303",
   addressLocality: "Mill Creek",
   addressRegion: "WA",
