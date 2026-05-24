@@ -696,17 +696,21 @@ router.get(
     // count: only naturally-bucketed visitors (forced_by IS NULL) and
     // events emitted at-or-after their assignedAt count.
     function matchClauseFor(cp: (typeof conversions)[number]) {
+      // Use the alias "e" (from the LEFT JOIN below) rather than Drizzle table
+      // column refs, which expand to "traffic_events"."col" — PostgreSQL rejects
+      // bare table-name references inside FILTER clauses when the table is
+      // accessed via an alias.
       if (cp.kind === "path") {
-        return sql`${trafficEventsTable.eventName} = 'conversion.path.visit'
-          AND ${trafficEventsTable.properties}->>'path' = ${cp.value}`;
+        return sql`e.event_name = 'conversion.path.visit'
+          AND e.properties->>'path' = ${cp.value}`;
       }
       if (cp.kind === "booking") {
-        return sql`${trafficEventsTable.eventName} = 'conversion.booking.click'
-          AND ${trafficEventsTable.properties}->>'eventId' = ${cp.value}`;
+        return sql`e.event_name = 'conversion.booking.click'
+          AND e.properties->>'eventId' = ${cp.value}`;
       }
-      // cta — eventName equals the configured value (e.g.
+      // cta / carousel — eventName equals the configured value (e.g.
       // "conversion.cta.get_started").
-      return sql`${trafficEventsTable.eventName} = ${cp.value}`;
+      return sql`e.event_name = ${cp.value}`;
     }
 
     // Single query: visitors per variant + overall + per-conversion
