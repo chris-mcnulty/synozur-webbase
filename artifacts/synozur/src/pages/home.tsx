@@ -3,10 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock, Monitor, Lock, Settings2 } from "lucide-react";
+import { ArrowRight, Clock, Monitor, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/auth";
-import { useAdminAccess } from "@/components/admin/AdminGate";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { HomeConfigWedge } from "@/components/home-config-wedge";
 
@@ -195,36 +194,20 @@ function CarouselNextProxy({ api }: { api: CarouselApi | null }) {
 
 export function HomeShortcuts() {
   const { isSignedIn, isLoaded, signIn } = useAuth();
-  const { access, isLoading: accessLoading } = useAdminAccess();
-  const basePath = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
-  if (!isLoaded || accessLoading) return null;
-
-  const isAdmin = access?.isAllowListed || access?.hasCmsRole;
+  if (!isLoaded || isSignedIn) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
-      {isSignedIn && isAdmin && (
-        <a
-          href={`${basePath}/admin`}
-          className="flex items-center gap-1.5 rounded-full bg-[#810FFB]/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 shadow-lg hover:bg-[#810FFB] transition-colors"
-          title="Open admin panel"
-        >
-          <Settings2 className="h-3 w-3" />
-          Admin
-        </a>
-      )}
-      {!isSignedIn && (
-        <button
-          type="button"
-          onClick={() => signIn("/admin")}
-          className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/40 text-xs px-3 py-1.5 hover:text-white/70 hover:bg-white/10 transition-colors"
-          title="Sign in"
-        >
-          <Lock className="h-3 w-3" />
-          Sign in
-        </button>
-      )}
+    <div className="fixed bottom-5 right-5 z-50">
+      <button
+        type="button"
+        onClick={() => signIn("/admin")}
+        className="flex items-center gap-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-white/40 text-xs px-3 py-1.5 hover:text-white/70 hover:bg-white/10 transition-colors"
+        title="Sign in"
+      >
+        <Lock className="h-3 w-3" />
+        Sign in
+      </button>
     </div>
   );
 }
