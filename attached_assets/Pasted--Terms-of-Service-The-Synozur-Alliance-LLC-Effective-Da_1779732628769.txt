@@ -1,0 +1,247 @@
+ 
+Terms of Service
+The Synozur Alliance LLC
+Effective Date: May 25, 2026
+Last Modified: May 25, 2026
+
+1. Welcome to Synozur
+We're glad you're here. At Synozur, we believe in clarity and transparency. These Terms of Service ("Terms") govern your access to and use of Synozur's website (www.synozur.com), free public tools (such as Orion), commercial software subscriptions (such as Vega and Orbit), and related services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.
+
+Synozur, inspired by the ancient Greek term for the North Star, is dedicated to guiding organizations through transformation with empathy and precision. Our mission is to make the desirable achievable. These Terms reflect our commitment to building trust through genuine care and partnership.
+2. Acceptance of Terms
+By accessing, browsing, or using any of our Services—whether free or paid—you acknowledge that you have read, understood, and agree to be bound by these Terms, as well as our Privacy Policy (available at https://www.synozur.com/privacy). If you do not agree to these Terms, please do not use our Services.
+
+If you are using our Services on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these Terms, and references to "you" or "your" will apply to both you as an individual and the organization.
+3. Free Public Tools (Including Orion)
+Synozur offers certain tools and resources at no cost to the public, including but not limited to Orion, our AI-powered transformation assessment tool. These free tools are designed to help you explore transformation opportunities and gain insights into your organization's readiness for change.
+3.1 Availability and Access
+Free public tools are provided on an "as is" and "as available" basis. While we design our tools with care and empathy for your needs, we cannot guarantee:
+•	Continuous, uninterrupted, or secure access to the tools
+•	That the tools will be error-free or free from bugs or defects
+•	Specific uptime, performance metrics, or availability schedules
+•	That your use of the tools will meet your specific requirements or expectations
+We reserve the right to modify, suspend, temporarily disable, or permanently discontinue any free tool at any time, with or without notice, for any reason.
+We also reserve the right to remove any free tool from public access and requirements commercial terms, payments, or subscriptions in our sole discretion, at any time, with or without notice, for any reason.
+3.2 No Warranty
+Free public tools are provided WITHOUT ANY WARRANTY OF ANY KIND, either express or implied, including but not limited to:
+
+• Warranties of merchantability, fitness for a particular purpose, or non-infringement
+• Warranties regarding the accuracy, reliability, completeness, or timeliness of any content, data, or results
+• Warranties that the tools will operate without interruption or error
+
+You use free public tools entirely at your own risk. Synozur does not warrant that the tools will meet your needs or produce any particular outcomes.
+3.3 Changes to Free Tools
+We may change, update, modify, or enhance free public tools at any time without prior notice. We may also add or remove features, change functionality, or alter the user interface as we continue to improve our offerings. Your continued use of the tools after any changes constitutes your acceptance of those changes.
+4. Commercial and Paid Software Subscriptions (Including Vega)
+Synozur also offers commercial software subscriptions and paid services, including Orbit (our market analytics and GTM platform), Vega (our strategic operating system platform), advisory services, and other premium offerings. These services are tailored to help organizations implement comprehensive transformation strategies with dedicated support.
+4.1 Separate Commercial Agreements
+Use of commercial or paid software subscriptions is governed by separate written agreements entered into between you (or your organization) and Synozur. These agreements will specify:
+
+• Subscription terms, service levels, and support commitments
+• Pricing, payment terms, and billing procedures
+• Specific warranties, if any, applicable to the commercial service
+• License scope, permitted users, and usage restrictions
+• Term, renewal, and termination provisions
+• Confidentiality and data protection obligations
+• Data processing addendum (DPA) covering processing of personal data on behalf of customers, including subprocessor disclosures and international transfer mechanisms
+
+In the event of any conflict between these Terms and a separate written commercial agreement, the commercial agreement will control with respect to the paid services covered by that agreement.
+4.2 Trial Access
+From time to time, Synozur may offer trial or pilot access to commercial software or services at no cost or at a reduced rate. Please note:
+
+• Trial access is offered at Synozur's sole discretion and is not guaranteed
+• We may revoke, modify, limit, or terminate trial access at any time for any reason, with or without notice
+• Trial periods may be subject to specific terms, conditions, or restrictions communicated at the time of the trial offer
+• Trial access does not guarantee conversion to a paid subscription or ongoing availability
+• Features available during trial periods may differ from those available in full commercial subscriptions
+4.3 Changes to Commercial Terms
+Synozur reserves the right to modify pricing, features, service levels, or other terms applicable to commercial subscriptions. For existing customers:
+
+• Material changes to pricing or core functionality will be communicated with reasonable advance notice
+• Notice of changes will be provided via website updates, email notifications, or other appropriate means
+• Your continued use of commercial services after the effective date of changes constitutes acceptance of those changes
+• If you do not accept changes to commercial terms, you may terminate your subscription in accordance with your commercial agreement
+
+For new commercial subscriptions, the terms in effect at the time of your subscription will apply.
+5. User Accounts and Registration
+Some Services may require you to create an account by providing certain information. You agree to:
+•	Provide accurate, current, and complete information during registration
+•	Maintain and promptly update your account information to keep it accurate and current
+•	Maintain the security of your account credentials and notify us immediately of any unauthorized access
+•	Accept responsibility for all activities that occur under your account
+•	Not share your account credentials with others or allow others to access your account
+We reserve the right to suspend or terminate accounts that violate these Terms or are inactive for extended periods.
+6. Your Consent and Our Communications
+At Synozur, we value our relationship with you and want to keep you informed about how we can help guide you to your North Star.
+6.1 Consent to Contact
+By using our Services, providing your contact information through our website, or registering for any of our tools or resources, you expressly consent to be contacted by Synozur for the following purposes:
+
+• Product updates, new features, and service announcements related to tools or services you have used
+• Marketing communications, promotional offers, and information about Synozur's offerings that may be of interest to you
+• Educational content, including whitepapers, webinars, workshops, events, and thought leadership materials
+• Surveys, feedback requests, and opportunities to participate in research or user experience studies
+• Information about advisory services, consulting opportunities, and strategic transformation initiatives
+• Newsletters, blog updates, and content from our Polaris podcast
+• Technical support, account-related communications, and important notices about the Services
+
+Communications may be delivered via email, phone, SMS/text message (where you have provided such information), or other electronic means.
+6.2 Communication Preferences
+We respect your communication preferences. You may:
+
+• Opt out of marketing communications at any time by following the unsubscribe instructions in any marketing email, contacting us at contactus@synozur.com, or updating your account preferences
+• Continue to receive transactional or service-related communications (such as account notifications or responses to support inquiries) even if you opt out of marketing communications
+• Request to be removed from specific communication channels while remaining subscribed to others
+
+We will honor your opt-out requests within a reasonable timeframe, typically within 10 business days.
+6.3 Privacy Policy
+All communications and use of your personal information are subject to our Privacy Policy, available at https://www.synozur.com/privacy. Our Privacy Policy explains:
+
+• What information we collect and how we collect it
+• How we use, share, and protect your information
+• Your rights regarding your personal information
+• How to contact us with privacy questions or concerns
+
+By using our Services, you also consent to the collection, use, and sharing of your information as described in our Privacy Policy.
+6.4 Use of Data
+Synozur is committed to respecting the privacy and confidentiality of all customer information. We do not disclose personally identifiable data without consent, and all communications and data handling are governed by our Privacy Policy. As part of our mission to improve transformation outcomes and industry understanding, we reserve the right to conduct anonymized research using aggregated data collected through our tools. This research is designed to identify generalized trends across industries and will never include or expose individual customer identities or sensitive information. The scope and nature of such research will be appropriate to the tool and context in which the data was collected.
+
+7. Intellectual Property Rights
+All content, software, tools, designs, graphics, text, code, trademarks, service marks, and other materials available through our Services (collectively, "Synozur Content") are owned by or licensed to Synozur and are protected by copyright, trademark, patent, trade secret, and other intellectual property laws.
+
+The Synozur name, logo, and all related names, logos, product and service names, designs, and slogans are trademarks of Synozur LLC or its affiliates. You may not use these marks without our prior written permission.
+
+Subject to your compliance with these Terms, Synozur grants you a limited, non-exclusive, non-transferable, non-sublicensable, revocable license to access and use the Services for their intended purposes. This license does not include any right to:
+
+• Copy, modify, create derivative works from, distribute, or publicly display any Synozur Content
+• Use any automated means to access the Services or collect data from them
+• Reverse engineer, decompile, or disassemble any software or tools
+• Remove, alter, or obscure any proprietary notices on the Services or Synozur Content
+8. Your Responsibilities and Prohibited Conduct
+When using our Services, you agree to:
+
+• Use the Services only for lawful purposes and in accordance with these Terms
+• Provide accurate and truthful information when using our tools or services
+• Comply with all applicable local, state, national, and international laws and regulations
+• Respect the intellectual property rights of Synozur and others
+• Not use the Services in any manner that could disable, overburden, damage, or impair them
+• Not attempt to gain unauthorized access to any part of the Services, other accounts, or connected systems
+• Not use the Services to transmit any harmful code, malware, viruses, or other malicious software
+• Not harass, abuse, threaten, or intimidate other users or Synozur personnel
+• Not use the Services for any fraudulent, illegal, or unauthorized purpose
+• Not scrape, data mine, or use automated tools to extract data from the Services without permission
+• Not use the Services to publish, transmit, or distribute content that is unlawful, defamatory, harassing, infringing, fraudulent, deceptive, spam, or that violates the rights of any third party
+• Not use the Services to publish content to any connected third-party platform in violation of that platform's terms of service, community guidelines, or applicable policies (including LinkedIn's Professional Community Policies, X's Rules, and similar policies of other connected platforms)
+• Not impersonate any person, organization, or entity, or misrepresent your affiliation with any person or entity, when publishing content through the Services
+9. Content You Publish Through the Services
+Some Services — including Orbit — allow you to author, schedule, and publish content to your own communication channels, including third-party social media platforms you connect to the Services (such as LinkedIn, X, Facebook, Instagram, and Bluesky).
+
+9.1 Your Content
+You retain all ownership rights in content you create, upload, or publish through the Services ("Your Content"). You grant Synozur a limited, non-exclusive, royalty-free license to host, store, process, display, and transmit Your Content solely as needed to operate the Services for you — for example, to draft, schedule, preview, and publish posts you have authorized.
+9.2 Your Representations
+By submitting Your Content through the Services, you represent and warrant that:
+• You own Your Content or have all necessary rights, licenses, and permissions to use, publish, and authorize Synozur to transmit it
+• Your Content does not infringe any third party's intellectual property, privacy, publicity, or other rights
+• Your Content complies with all applicable laws and with the terms of service of any platform to which it is published through the Services
+• You are authorized to act on behalf of any organization, page, or account you connect to or post from through the Services
+9.3 Connected Third-Party Accounts
+When you connect a third-party account (such as a LinkedIn member account or company page, an X account, or a Meta page) to the Services, you represent that you are authorized by that account's owner to make the connection and that Synozur may act on the account's behalf within the scopes you authorize during the connection process.
+You may disconnect a connected account at any time through the Services or by revoking access directly through the third-party platform. Disconnection deletes Synozur's stored credentials for that account; it does not retroactively unpublish content that has already been posted to the third-party platform.
+9.4 Enforcement
+Synozur is not obligated to monitor Your Content, but we may review, remove, or refuse to publish content that we believe in good faith violates these Terms or the policies of a connected third-party platform. We may also suspend or terminate your access to the Services, or to specific integrations, if your use causes a connected platform to issue warnings, suspend the integration, or threaten enforcement against Synozur.
+10. Third-Party Services and Links
+Our Services may contain links to third-party websites, applications, or services that are not owned or controlled by Synozur. We may also integrate with third-party platforms such as Microsoft 365, SharePoint, or other systems.
+
+We have no control over, and assume no responsibility for, the content, privacy policies, or practices of any third-party websites or services. You acknowledge and agree that Synozur is not responsible or liable for any damage or loss caused by or in connection with your use of any third-party services.
+For integrations where you authorize Synozur to access a third-party service on your behalf (such as Microsoft 365, SharePoint, or social media platforms connected via OAuth), your use of those third-party services remains subject to the third-party's own terms and privacy policies. Synozur acts only within the permissions you grant during the authorization flow and stores credentials only as needed to provide the Services to you. We have no responsibility for changes to third-party APIs, scope availability, or service interruptions on the third-party side.
+
+We encourage you to review the terms of service and privacy policies of any third-party services you access through or in connection with our Services.
+11. Limitation of Liability
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW:
+FOR FREE PUBLIC TOOLS: IN NO EVENT WILL SYNOZUR, ITS AFFILIATES, OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, OR LICENSORS BE LIABLE TO YOU FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF FREE PUBLIC TOOLS, WHETHER BASED ON WARRANTY, CONTRACT, TORT (INCLUDING NEGLIGENCE), OR ANY OTHER LEGAL THEORY, EVEN IF SYNOZUR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+IN ANY CASE, SYNOZUR'S TOTAL LIABILITY TO YOU FOR ALL CLAIMS ARISING OUT OF OR RELATED TO FREE PUBLIC TOOLS WILL NOT EXCEED TEN DOLLARS ($10.00 USD).
+
+FOR COMMERCIAL SUBSCRIPTIONS: Liability for commercial or paid services will be as specified in your separate written commercial agreement. In the absence of such specification, the limitations above will apply.
+
+THE LIMITATIONS AND EXCLUSIONS IN THIS SECTION APPLY REGARDLESS OF THE FORM OF ACTION, WHETHER IN CONTRACT, TORT, STRICT LIABILITY, OR OTHERWISE, AND WILL SURVIVE AND APPLY EVEN IF ANY LIMITED REMEDY SPECIFIED IN THESE TERMS IS FOUND TO HAVE FAILED OF ITS ESSENTIAL PURPOSE.
+
+SOME JURISDICTIONS DO NOT ALLOW THE LIMITATION OR EXCLUSION OF LIABILITY FOR INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATIONS MAY NOT APPLY TO YOU.
+12. Disclaimer of Warranties
+EXCEPT AS EXPRESSLY PROVIDED IN A SEPARATE WRITTEN COMMERCIAL AGREEMENT FOR PAID SERVICES, THE SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+
+TO THE FULLEST EXTENT PERMISSIBLE UNDER APPLICABLE LAW, SYNOZUR DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+SYNOZUR DOES NOT WARRANT THAT:
+• The Services will be uninterrupted, secure, or error-free
+• The results obtained from using the Services will be accurate or reliable
+• Any errors or defects in the Services will be corrected
+• The Services will meet your requirements or expectations
+
+YOU ACKNOWLEDGE THAT YOUR USE OF THE SERVICES IS AT YOUR SOLE RISK AND THAT YOU ARE SOLELY RESPONSIBLE FOR ANY DAMAGE TO YOUR COMPUTER SYSTEM, LOSS OF DATA, OR OTHER HARM THAT RESULTS FROM YOUR USE OF THE SERVICES.
+13. Indemnification
+You agree to defend, indemnify, and hold harmless Synozur, its affiliates, and their respective officers, directors, employees, agents, licensors, and suppliers from and against any claims, liabilities, damages, losses, costs, expenses, or fees (including reasonable attorneys' fees) arising out of or relating to:
+
+• Your use or misuse of the Services
+• Your violation of these Terms
+• Your violation of any rights of another party, including any intellectual property rights
+• Your violation of any applicable law or regulation
+• Any content or information you submit, post, or transmit through the Services
+• Any breach of your representations and warranties set forth in these Terms
+
+This indemnification obligation will survive termination of these Terms and your use of the Services.
+14. Termination
+We may suspend or terminate your access to the Services, in whole or in part, at any time and for any reason, with or without notice, including if we believe you have violated these Terms or engaged in conduct that we deem inappropriate.
+
+You may stop using the Services at any time. If you wish to terminate your account (if applicable), please contact us at contactus@synozur.com.
+
+For commercial subscriptions, termination will be governed by the terms of your separate written commercial agreement.
+
+Upon termination:
+• Your right to use the Services will immediately cease
+• We may delete your account and all associated data
+• All provisions of these Terms that by their nature should survive termination will survive, including but not limited to intellectual property rights, disclaimers, indemnification, and limitations of liability
+15. Changes to These Terms
+We reserve the right to modify or update these Terms at any time. When we make changes, we will:
+
+• Update the "Effective Date" at the top of these Terms
+• Post the revised Terms on our website at www.synozur.com
+• Notify users of material changes via email (if we have your email address) or through a notice on our website
+
+Your continued use of the Services after the effective date of any changes constitutes your acceptance of the revised Terms. If you do not agree to the modified Terms, you must stop using the Services.
+
+We encourage you to review these Terms periodically to stay informed about our practices and your rights and obligations.
+16. Governing Law and Jurisdiction
+These Terms and any dispute or claim arising out of or related to these Terms or the Services will be governed by and construed in accordance with the laws of the State of Washington, United States of America, without regard to its conflict of law principles.
+
+You agree that any legal action or proceeding arising out of or related to these Terms or the Services will be brought exclusively in the state or federal courts located in Snohomish County, Washington, and you hereby consent and submit to the personal jurisdiction of such courts for the purposes of litigating any such action.
+
+You waive any objection to venue in Snohomish County, Washington, and any claim that such venue is inconvenient.
+17. Dispute Resolution and Arbitration
+For any dispute, claim, or controversy arising out of or relating to these Terms or the Services with a value less than $10,000, the parties agree to attempt in good faith to resolve the dispute through informal negotiation. Either party may initiate negotiation by sending a written notice describing the dispute to the other party.
+
+If the dispute cannot be resolved through negotiation within 30 days, either party may pursue the matter in the courts described in Section 15 (Governing Law and Jurisdiction).
+
+Nothing in this section will prevent either party from seeking injunctive or other equitable relief in court to prevent irreparable harm.
+18. Additional Terms
+The following provisions apply to all aspects of these Terms:
+18.1 Entire Agreement
+These Terms, together with our Privacy Policy and any separate written commercial agreement you have entered into with Synozur, constitute the entire agreement between you and Synozur regarding the Services and supersede all prior or contemporaneous understandings and agreements, whether written or oral.
+18.2 Waiver
+No waiver of any term of these Terms will be deemed a further or continuing waiver of such term or any other term. Synozur's failure to assert any right or provision under these Terms will not constitute a waiver of such right or provision.
+18.3 Severability
+If any provision of these Terms is held to be invalid, illegal, or unenforceable, the validity, legality, and enforceability of the remaining provisions will not be affected or impaired in any way. The invalid provision will be modified to the minimum extent necessary to make it valid and enforceable.
+18.4 Assignment
+You may not assign or transfer these Terms or your rights and obligations under these Terms, in whole or in part, without Synozur's prior written consent. Synozur may assign or transfer these Terms at any time without restriction and without notice to you.
+18.5 Force Majeure
+Synozur will not be liable for any delay or failure to perform resulting from causes outside its reasonable control, including but not limited to acts of God, war, terrorism, riots, embargoes, acts of civil or military authorities, fire, floods, accidents, pandemics, strikes, or shortages of transportation facilities, fuel, energy, labor, or materials.
+19. Contact Information
+If you have any questions, concerns, or feedback about these Terms or our Services, we're here to help. Please contact us:
+The Synozur Alliance LLC
+13300 Bothell-Everett Highway, Suite 303
+Mill Creek, WA 98012
+United States
+
+Email: contactus@synozur.com
+Website: https://www.synozur.com
+Privacy Policy: https://www.synozur.com/privacy
+Thank you for choosing Synozur. Together, we'll help you find your North Star and make the desirable achievable. 
