@@ -1,0 +1,84 @@
+Privacy Statement
+Effective Date: May 25, 2026
+Last Modified: May 25, 2026
+At The Synozur Alliance, we are committed to protecting the privacy and security of our customers and partners. This privacy statement outlines our practices regarding the collection, use, and sharing of personal information.
+Collection of Information: We collect personal information such as name, email address, phone number, and company affiliation when you:
+•	Register for our webinars, events, or newsletters.
+•	Request information or assistance through our website.
+•	Participate in surveys, promotions, or other marketing activities.
+•	Provide contact information at a Synozur sponsored event.
+We receive, collect, and store any information you enter on our website or provide us in any other way. In addition, we collect the Internet protocol (IP) address used to connect your computer to the Internet; e-mail address; computer and connection information. We may use software tools to measure and collect session information, including page response times, length of visits to certain pages, page interaction information, and methods used to browse away from the page. 
+Use of Information: The information we collect is used to:
+•	Provide you with the services or information you have requested.
+•	Improve our products, services, and customer experience.
+•	Communicate with you about updates, offers, and events that might interest you.
+•	Conduct market research and analysis.
+•	To comply with any applicable laws and regulations
+Our online services data is stored on secure servers protected by firewalls and industry standard privacy and security systems. Any direct payment gateways used by our company adhere to the standards set by PCI-DSS as managed by the PCI Security Standards Council, which is a joint effort of brands like Visa, MasterCard, American Express and Discover. PCI-DSS requirements help ensure the secure handling of credit card information by our store and its service providers.
+Cookie Handling: Synozur uses cookies to enhance your browsing experience on our website. Cookies are small text files that are stored on your device when you visit our site. They help us understand how you interact with our website, remember your preferences, and improve our services.
+Types of Cookies We Use:
+1.	Essential Cookies: These cookies are necessary for the website to function properly. They enable you to navigate the site and use its features, such as accessing secure areas.
+2.	Performance Cookies: These cookies collect information about how visitors use our website, such as which pages are visited most often. This data helps us improve the website's performance and user experience.
+3.	Functional Cookies: These cookies allow the website to remember choices you make (such as your username, language, or region) and provide enhanced, more personalized features.
+4.	Targeting Cookies: These cookies are used to deliver advertisements that are relevant to you and your interests. They also help measure the effectiveness of advertising campaigns.
+Managing Cookies: You can manage your cookie preferences through your browser settings. Most browsers allow you to refuse cookies or alert you when cookies are being sent. However, please note that disabling cookies may affect the functionality of our website and your ability to access certain features.
+Third-Party Cookies: We may also use third-party cookies from trusted partners to help us analyze website usage and deliver personalized content and advertisements. These third-party cookies are subject to the privacy policies of the respective partners.
+Your Consent: By using our website, you consent to the use of cookies as described in this section. If you do not agree to the use of cookies, please adjust your browser settings accordingly or refrain from using our website.
+Sharing of Information: We may share your personal information with our trusted partners to:
+•	Facilitate the provision of requested services or information.
+•	Enhance our offerings through collaborative efforts.
+•	Inform you about products or services that may be of interest.
+We ensure that our partners are committed to maintaining the confidentiality and security of your information and use it only for the purposes for which we have shared it.
+For customers of our Synozur Orbit platform and other Synozur apps, we use a limited set of trusted service providers (subprocessors) to operate the service — for example, cloud hosting, email delivery, AI model providers, and the social media platforms our customers connect to. We share only the data necessary to provide the service, and our contracts with these providers require equivalent confidentiality and security protections. A current subprocessor list is available on request at privacy@synozur.com.
+Communication: We may contact you to notify you regarding your account, to troubleshoot problems with your account, to resolve a dispute, to collect fees or monies owed, to poll your opinions through surveys or questionnaires, to send updates about our company, or as otherwise necessary to contact you to enforce our User Agreement, applicable national laws, and any agreement we may have with you. For these purposes we may contact you via email, telephone, text messages, and postal mail.
+Your Choices: You have the right to:
+•	Opt-out of receiving marketing communications from us at any time.
+•	Request access to, correction of, or deletion of your personal information.
+Security: We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+Customer credentials and access tokens stored by Synozur Orbit, Vega, Galaxy and other Synozur apps (including tokens issued by connected services such as LinkedIn) are encrypted at rest using AES-256-GCM. Plaintext tokens are never written to logs.
+Synozur Orbit Product Data
+Synozur Orbit is our multi-tenant marketing platform. This section describes how we handle data when your organization uses Orbit.
+Customer data ownership. All content, prospect data, brand materials, and other information your team uploads or generates inside Orbit remains the property of your organization. We process it only to operate the service for you.
+Tenant isolation. Each customer's data is stored in a logically isolated tenant. Synozur staff access customer tenant data only when necessary to provide support, investigate a security incident, or comply with law.
+Retention and deletion. Customer data is retained for the life of your Orbit subscription. On termination, data is deleted within 90 days unless you request earlier deletion or a data export. To request export or deletion, email privacy@synozur.com.
+Third-Party Platform Integrations
+Orbit lets your authorized users connect third-party accounts (such as LinkedIn, X/Twitter, Facebook, Instagram, and Bluesky) so Orbit can publish content those users have written and approved.
+When you connect a third-party account, Orbit uses that platform's official API and the standard OAuth authorization flow. Specifically:
+What we access. The minimum data required to identify your account on the platform (member ID, display name) and an access token used solely to publish content you have authored inside Orbit. For LinkedIn specifically, we also enumerate the LinkedIn Pages on which you have administrator role, so Orbit can offer them as publishing destinations.
+What we do not access. We do not read your inbox, direct messages, notifications, connections, follower lists, or other users' feeds. We do not collect data about users of those platforms other than the authenticated user.
+How we store it. Access tokens are encrypted at rest (see Security) and are deleted immediately when you click Disconnect inside Orbit or revoke access through the platform's own settings.
+What we do not do. We do not sell, share, transfer, or otherwise disclose data obtained from connected platforms to any third party for any purpose. We do not use this data to train AI models.
+How to revoke. You can disconnect any account inside Orbit at any time, or revoke access directly through the platform — for example, on LinkedIn at https://www.linkedin.com/psettings/permitted-services.
+AI and Machine Learning
+Orbit uses AI models from third-party providers (such as Microsoft, Anthropic and OpenAI) to generate drafts, suggestions, and summaries on behalf of your team. We send only the data needed to complete each request — for example, your prompt plus brand or context documents you have chosen to include — and our provider agreements prohibit those providers from using your data to train their models.
+We do not train our own AI models on customer data, content authored in Orbit, or data obtained from any connected third-party platform.
+Synozur Apps Product Data
+Synozur also publishes other public and commercial apps, including but not limited to (the “Synozur Apps”):
+•	Comet – Intranet portal web parts for employee experience, such as holiday lists and team birthdays
+•	Constellation — AI-powered consulting delivery, financials, and operations platform 
+•	Galaxy — Unified client portal and shared services layer for identity, access, and cross-app experiences
+•	Nebula — Collaborative envisioning and strategy mapping workspace 
+•	Orbit — Go-to-market intelligence and competitive insights engine (covered above and included here for context
+•	Orion — AI-driven maturity assessment and transformation mapping platform 
+•	Vega — AI-augmented company operating system for strategy, OKRs, and execution 
+•	Zenith — Microsoft 365 governance control plane for policy and Copilot readiness 
+This section describes how we handle data when your organization uses Synozur Apps.
+Customer data ownership. All content, prospect data, brand materials, and other information your team uploads or generates inside the Synozur Apps remains the property of your organization. We process it only to operate the service for you.
+Tenant isolation. Each customer's data is stored in a logically isolated tenant. Synozur staff access customer tenant data only when necessary to provide support, investigate a security incident, or comply with law.
+Retention and deletion. Customer data is retained for the life of your subscription. On termination, data is deleted within 90 days unless you request earlier deletion or a data export. To request export or deletion, email privacy@synozur.com.
+Third-Party Platform Integrations
+Synozur Apps let your authorized users connect third-party accounts for communications and collaboration. 
+When you connect a third-party account, the Synozur Apps use that platform's official API and the standard OAuth authorization flow. Specifically:
+What we access. The minimum data required to identify your account on the platform (member ID, display name) and an access token used solely to publish content you have authored inside the Synozur Apps.
+What we do not access. We do not read your inbox, direct messages, notifications, connections, follower lists, or other users' feeds. We do not collect data about users of those platforms other than the authenticated user.
+How we store it. Access tokens are encrypted at rest (see Security) and are deleted immediately when you click Disconnect or revoke access through the platform's own settings.
+File content such as images, reports, invoices, receipts, and related files may be stored inside the service, but we encourage all customers to make use of our SharePoint Embedded integrations to store your content inside your Microsoft 365 tenant and its trust boundaries.
+What we do not do. We do not sell, share, transfer, or otherwise disclose data obtained from connected platforms to any third party for any purpose. We do not use this data to train AI models.
+How to revoke. You can disconnect any account inside Orbit at any time, or revoke access directly through the platform — for example, on LinkedIn at https://www.linkedin.com/psettings/permitted-services.
+AI and Machine Learning
+Synozur Apps use AI models from third-party providers (such as Microsoft, Anthropic and OpenAI) to generate drafts, suggestions, and summaries on behalf of your team. We send only the data needed to complete each request — for example, your prompt plus brand or context documents you have chosen to include — and our provider agreements prohibit those providers from using your data to train their models.
+We do not train our own AI models on customer data, content authored in the Synozur Apps, or data obtained from any connected third-party platform.
+Other Terms
+Changes to This Privacy Statement: We may update this privacy statement from time to time. We will notify you of any significant changes via updates to our website policy at www.synour.com/privacy, and obtain your consent where required by law.
+Contact Us: If you have any questions or concerns about our privacy practices, please contact us at privacy@synozur.com.
+By providing your personal information to The Synozur Alliance, you consent to the collection, use, and sharing of your information as described in this privacy statement.
