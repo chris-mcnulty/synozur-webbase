@@ -461,7 +461,18 @@ function Toolbar({
       <ToolbarButton
         onClick={async () => {
           const url = await onOpenImagePicker();
-          if (url) editor.chain().focus().setImage({ src: url }).run();
+          if (!url) return;
+          // Defer one macrotask so the Radix Dialog fully releases its
+          // focus-trap before we try to re-focus the editor. Without this,
+          // editor.chain().focus() fires while the trap is still active and
+          // setImage() silently returns false (no insert, no error).
+          await new Promise<void>((r) => setTimeout(r, 0));
+          const inserted = editor.chain().focus().setImage({ src: url }).run();
+          if (!inserted) {
+            // Fallback: cursor may be in a context that blocks block-level
+            // nodes (e.g. inside a code block). Jump to the end and retry.
+            editor.chain().focus("end").setImage({ src: url }).run();
+          }
         }}
         label="Insert image"
         testId="rt-image"
