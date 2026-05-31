@@ -26,6 +26,11 @@ export interface TeamMemberInput {
   phone?: string | null;
   /** @nullable */
   linkedinUrl?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page.
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   active?: boolean;
   manualSort?: string;
   tags?: string[];

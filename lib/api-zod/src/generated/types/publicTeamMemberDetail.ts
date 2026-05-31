@@ -23,6 +23,11 @@ export interface PublicTeamMemberDetail {
   linkedinUrl?: string | null;
   /** @nullable */
   website?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page (e.g. a personal booking page).
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   /** @nullable */
   email?: string | null;
   active: boolean;

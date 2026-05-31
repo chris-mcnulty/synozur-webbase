@@ -3917,6 +3917,12 @@ export const ListPublicTeamMembersResponseItem = zod.object({
   imageUrl: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
   website: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      "URL for the speaker booking or inquiry page (e.g. a personal booking page).",
+    ),
   email: zod.string().nullish(),
   active: zod.boolean(),
 });
@@ -3941,6 +3947,12 @@ export const GetPublicTeamMemberResponse = zod.object({
   imageUrl: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
   website: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      "URL for the speaker booking or inquiry page (e.g. a personal booking page).",
+    ),
   email: zod.string().nullish(),
   active: zod.boolean(),
   tags: zod.array(zod.string()),
@@ -4008,6 +4020,10 @@ export const ListAdminTeamMembersResponseItem = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),
@@ -4034,6 +4050,10 @@ export const CreateTeamMemberBody = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
@@ -4056,6 +4076,10 @@ export const GetAdminTeamMemberResponse = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),
@@ -4079,6 +4103,10 @@ export const UpdateTeamMemberBody = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
@@ -4097,6 +4125,10 @@ export const UpdateTeamMemberResponse = zod.object({
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
   linkedinUrl: zod.string().nullish(),
+  speakerBookingUrl: zod
+    .string()
+    .nullish()
+    .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean(),
   manualSort: zod.string(),
   tags: zod.array(zod.string()),

@@ -24,6 +24,7 @@ const EMPTY: TeamMemberInput = {
   longDescription: null,
   imageUrl: null,
   website: null,
+  speakerBookingUrl: null,
   email: null,
   phone: null,
   linkedinUrl: null,
@@ -61,6 +62,7 @@ export default function TeamForm({ id }: Props) {
         longDescription: existing.longDescription ?? null,
         imageUrl: existing.imageUrl ?? null,
         website: existing.website ?? null,
+        speakerBookingUrl: existing.speakerBookingUrl ?? null,
         email: existing.email ?? null,
         phone: existing.phone ?? null,
         linkedinUrl: existing.linkedinUrl ?? null,
@@ -245,12 +247,13 @@ export default function TeamForm({ id }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="website">Website</Label>
+            <Label htmlFor="website">Personal Website</Label>
             <Input
               id="website"
               type="url"
               value={form.website ?? ""}
               onChange={(e) => setForm({ ...form, website: e.target.value || null })}
+              placeholder="https://example.com"
               data-testid="input-website"
             />
           </div>
@@ -266,6 +269,23 @@ export default function TeamForm({ id }: Props) {
               data-testid="input-linkedinUrl"
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="speakerBookingUrl">Speaker Booking Page</Label>
+          <Input
+            id="speakerBookingUrl"
+            type="url"
+            value={form.speakerBookingUrl ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, speakerBookingUrl: e.target.value || null })
+            }
+            placeholder="https://booking.example.com"
+            data-testid="input-speakerBookingUrl"
+          />
+          <p className="text-xs text-muted-foreground">
+            A link to a speaker booking or inquiry page. Shown as a "Book [Name]" button on their public profile.
+          </p>
         </div>
 
         <div className="space-y-2">

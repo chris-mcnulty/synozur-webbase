@@ -2359,6 +2359,11 @@ export interface PublicTeamMember {
   linkedinUrl?: string | null;
   /** @nullable */
   website?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page (e.g. a personal booking page).
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   /** @nullable */
   email?: string | null;
   active: boolean;
@@ -2403,6 +2408,11 @@ export interface PublicTeamMemberDetail {
   linkedinUrl?: string | null;
   /** @nullable */
   website?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page (e.g. a personal booking page).
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   /** @nullable */
   email?: string | null;
   active: boolean;
@@ -2435,6 +2445,11 @@ export interface AdminTeamMember {
   phone?: string | null;
   /** @nullable */
   linkedinUrl?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page.
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   active: boolean;
   manualSort: string;
   tags: string[];
@@ -2463,6 +2478,11 @@ export interface TeamMemberInput {
   phone?: string | null;
   /** @nullable */
   linkedinUrl?: string | null;
+  /**
+   * URL for the speaker booking or inquiry page.
+   * @nullable
+   */
+  speakerBookingUrl?: string | null;
   active?: boolean;
   manualSort?: string;
   tags?: string[];

@@ -15,6 +15,7 @@ export const teamMembersTable = pgTable("team_members", {
   email: text("email"),
   phone: text("phone"),
   linkedinUrl: text("linkedin_url"),
+  speakerBookingUrl: text("speaker_booking_url"),
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
   manualSort: text("manual_sort").notNull().default(""),

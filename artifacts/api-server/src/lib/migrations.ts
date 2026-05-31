@@ -3299,6 +3299,12 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (collateral_id, solution_id) DO NOTHING;
     `);
 
+    // speakerBookingUrl on team_members
+    await db.execute(sql`
+      ALTER TABLE team_members
+        ADD COLUMN IF NOT EXISTS speaker_booking_url text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

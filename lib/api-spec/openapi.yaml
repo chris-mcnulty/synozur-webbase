@@ -8390,6 +8390,11 @@ components:
           type:
             - string
             - 'null'
+        speakerBookingUrl:
+          type:
+            - string
+            - 'null'
+          description: URL for the speaker booking or inquiry page (e.g. a personal booking page).
         email:
           type:
             - string
@@ -8496,6 +8501,11 @@ components:
           type:
             - string
             - 'null'
+        speakerBookingUrl:
+          type:
+            - string
+            - 'null'
+          description: URL for the speaker booking or inquiry page (e.g. a personal booking page).
         email:
           type:
             - string
@@ -8572,6 +8582,11 @@ components:
           type:
             - string
             - 'null'
+        speakerBookingUrl:
+          type:
+            - string
+            - 'null'
+          description: URL for the speaker booking or inquiry page.
         active:
           type: boolean
         manualSort:
@@ -8633,6 +8648,11 @@ components:
           type:
             - string
             - 'null'
+        speakerBookingUrl:
+          type:
+            - string
+            - 'null'
+          description: URL for the speaker booking or inquiry page.
         active:
           type: boolean
         manualSort:

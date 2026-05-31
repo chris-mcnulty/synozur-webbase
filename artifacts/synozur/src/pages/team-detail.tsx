@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Calendar, ChevronDown, ChevronUp, Linkedin, Mail, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, ChevronDown, ChevronUp, Linkedin, Mail, Globe, Mic2 } from "lucide-react";
 import { api } from "@/lib/api";
 import NotFound from "@/pages/not-found";
 import { RichText } from "@/components/rich-text";
@@ -423,6 +423,16 @@ export default function TeamDetail() {
                       <Globe className="h-4 w-4" /> Website
                     </a>
                   )}
+                {safeHref(person.speakerBookingUrl) && (
+                  <a
+                    href={safeHref(person.speakerBookingUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Mic2 className="h-4 w-4" /> Book {person.name.split(" ")[0]}
+                  </a>
+                )}
               </div>
             </motion.div>
           </div>
