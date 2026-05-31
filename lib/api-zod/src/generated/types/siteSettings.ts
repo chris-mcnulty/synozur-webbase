@@ -193,5 +193,12 @@ export interface SiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  announcementEnabled?: boolean;
+  /** @nullable */
+  announcementText?: string | null;
+  /** @nullable */
+  announcementLinkText?: string | null;
+  /** @nullable */
+  announcementLinkUrl?: string | null;
   updatedAt: Date;
 }

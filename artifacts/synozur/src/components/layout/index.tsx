@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "./header";
 import { Footer } from "./footer";
+import { AnnouncementBar } from "./AnnouncementBar";
 import { Analytics } from "@/components/analytics";
 import { OrganizationJsonLd } from "@/components/organization-jsonld";
 import { BreadcrumbJsonLd } from "@/components/breadcrumb-jsonld";
@@ -67,10 +68,20 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   }, [settings?.seoGoogleSiteVerification, settings?.seoBingSiteVerification]);
 
+  const showAnnouncement =
+    settings?.announcementEnabled === true && !!settings.announcementText;
+
   return (
     <div className={cn("min-h-[100dvh] flex flex-col w-full bg-background text-foreground", theme)}>
       <OrganizationJsonLd />
       <BreadcrumbJsonLd />
+      {showAnnouncement && (
+        <AnnouncementBar
+          text={settings.announcementText!}
+          linkText={settings.announcementLinkText}
+          linkUrl={settings.announcementLinkUrl}
+        />
+      )}
       <Header />
       <main className="flex-1 flex flex-col w-full">
         {children}

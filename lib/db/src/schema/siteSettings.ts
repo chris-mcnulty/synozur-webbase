@@ -254,6 +254,17 @@ export const siteSettingsTable = pgTable("site_settings", {
   // falls back to a hard-coded default map.
   searchKindBoosts: jsonb("search_kind_boosts").$type<Record<string, number>>(),
 
+  // Dismissable announcement bar. When `announcementEnabled` is true and
+  // `announcementText` is non-null, a single-line bar renders above the
+  // main site header. `announcementLinkText` / `announcementLinkUrl` are
+  // optional — when both are set, an inline link appears at the end of the
+  // message. Dismissal is persisted client-side (localStorage) keyed to
+  // the text content so changing the message re-shows the bar.
+  announcementEnabled: boolean("announcement_enabled").notNull().default(false),
+  announcementText: text("announcement_text"),
+  announcementLinkText: text("announcement_link_text"),
+  announcementLinkUrl: text("announcement_link_url"),
+
   // Branded short-link service (aka.synozur.com/<slug>) — admin-tunable so
   // we don't ship hostnames or fallback URLs in env vars.
   // `shortLinkPublicBase` is the canonical https origin embedded in QR

@@ -201,6 +201,10 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeBClosingEyebrow: settings.homeBClosingEyebrow,
     homeBClosingHeadline: settings.homeBClosingHeadline,
     homeBClosingBody: settings.homeBClosingBody,
+    announcementEnabled: settings.announcementEnabled,
+    announcementText: settings.announcementText,
+    announcementLinkText: settings.announcementLinkText,
+    announcementLinkUrl: settings.announcementLinkUrl,
     updatedAt: settings.updatedAt,
   });
 }
@@ -273,6 +277,10 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       homeBClosingEyebrow: settings.homeBClosingEyebrow,
       homeBClosingHeadline: settings.homeBClosingHeadline,
       homeBClosingBody: settings.homeBClosingBody,
+      announcementEnabled: settings.announcementEnabled,
+      announcementText: settings.announcementText,
+      announcementLinkText: settings.announcementLinkText,
+      announcementLinkUrl: settings.announcementLinkUrl,
     }),
   );
 });
@@ -522,6 +530,19 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     if (field in input) {
       updates[field] = trimOrNull(input[field]);
     }
+  }
+
+  if ("announcementEnabled" in input && typeof input.announcementEnabled === "boolean") {
+    updates.announcementEnabled = input.announcementEnabled;
+  }
+  if ("announcementText" in input) {
+    updates.announcementText = trimOrNull(input.announcementText);
+  }
+  if ("announcementLinkText" in input) {
+    updates.announcementLinkText = trimOrNull(input.announcementLinkText);
+  }
+  if ("announcementLinkUrl" in input) {
+    updates.announcementLinkUrl = trimOrNull(input.announcementLinkUrl);
   }
 
   let spamRulesChanged = false;

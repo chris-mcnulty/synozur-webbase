@@ -1289,6 +1289,7 @@ export const getPublicSiteSettingsResponseOrgOpeningHoursItemOpensRegExp =
   new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 export const getPublicSiteSettingsResponseOrgOpeningHoursItemClosesRegExp =
   new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$");
+export const getPublicSiteSettingsResponseAnnouncementEnabledDefault = false;
 
 export const GetPublicSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1407,6 +1408,28 @@ export const GetPublicSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  announcementEnabled: zod
+    .boolean()
+    .default(getPublicSiteSettingsResponseAnnouncementEnabledDefault)
+    .describe(
+      "When true, the dismissable announcement bar is shown at the top of every public page.\n",
+    ),
+  announcementText: zod
+    .string()
+    .nullish()
+    .describe(
+      "Body text of the announcement bar. Ignored when announcementEnabled is false or this field is null.\n",
+    ),
+  announcementLinkText: zod
+    .string()
+    .nullish()
+    .describe("Optional label for the call-to-action link in the bar."),
+  announcementLinkUrl: zod
+    .string()
+    .nullish()
+    .describe(
+      "Optional URL for the call-to-action link. Both announcementLinkText and announcementLinkUrl must be set for the link to render.\n",
+    ),
 });
 
 /**
@@ -1430,6 +1453,8 @@ export const getAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
 export const getAdminSiteSettingsResponseAuditLogRetentionDaysMin = 30;
 export const getAdminSiteSettingsResponseAuditLogRetentionDaysMax = 3650;
+
+export const getAdminSiteSettingsResponseAnnouncementEnabledDefault = false;
 
 export const GetAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1592,6 +1617,12 @@ export const GetAdminSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  announcementEnabled: zod
+    .boolean()
+    .default(getAdminSiteSettingsResponseAnnouncementEnabledDefault),
+  announcementText: zod.string().nullish(),
+  announcementLinkText: zod.string().nullish(),
+  announcementLinkUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 
@@ -1761,6 +1792,10 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  announcementEnabled: zod.boolean().optional(),
+  announcementText: zod.string().nullish(),
+  announcementLinkText: zod.string().nullish(),
+  announcementLinkUrl: zod.string().nullish(),
 });
 
 export const updateAdminSiteSettingsResponseHomeHeroBackgroundTypeDefault = `image`;
@@ -1781,6 +1816,8 @@ export const updateAdminSiteSettingsResponseIdleTimeoutMsMax = 2592000000;
 
 export const updateAdminSiteSettingsResponseAuditLogRetentionDaysMin = 30;
 export const updateAdminSiteSettingsResponseAuditLogRetentionDaysMax = 3650;
+
+export const updateAdminSiteSettingsResponseAnnouncementEnabledDefault = false;
 
 export const UpdateAdminSiteSettingsResponse = zod.object({
   requireCookieConsent: zod.boolean(),
@@ -1947,6 +1984,12 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  announcementEnabled: zod
+    .boolean()
+    .default(updateAdminSiteSettingsResponseAnnouncementEnabledDefault),
+  announcementText: zod.string().nullish(),
+  announcementLinkText: zod.string().nullish(),
+  announcementLinkUrl: zod.string().nullish(),
   updatedAt: zod.coerce.date(),
 });
 

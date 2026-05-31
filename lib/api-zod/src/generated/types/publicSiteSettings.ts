@@ -129,4 +129,24 @@ export interface PublicSiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  /** When true, the dismissable announcement bar is shown at the top of every public page.
+   */
+  announcementEnabled?: boolean;
+  /**
+   * Body text of the announcement bar. Ignored when announcementEnabled is false or this field is null.
+
+   * @nullable
+   */
+  announcementText?: string | null;
+  /**
+   * Optional label for the call-to-action link in the bar.
+   * @nullable
+   */
+  announcementLinkText?: string | null;
+  /**
+   * Optional URL for the call-to-action link. Both announcementLinkText and announcementLinkUrl must be set for the link to render.
+
+   * @nullable
+   */
+  announcementLinkUrl?: string | null;
 }

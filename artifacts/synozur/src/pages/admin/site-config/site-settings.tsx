@@ -70,6 +70,20 @@ export default function AdminSiteSettings() {
     }
   }, [data, spamDomainDraft]);
 
+  const [announcementEnabledDraft, setAnnouncementEnabledDraft] = useState<boolean | null>(null);
+  const [announcementTextDraft, setAnnouncementTextDraft] = useState<string | null>(null);
+  const [announcementLinkTextDraft, setAnnouncementLinkTextDraft] = useState<string | null>(null);
+  const [announcementLinkUrlDraft, setAnnouncementLinkUrlDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data && announcementEnabledDraft === null) {
+      setAnnouncementEnabledDraft(data.announcementEnabled ?? false);
+      setAnnouncementTextDraft(data.announcementText ?? "");
+      setAnnouncementLinkTextDraft(data.announcementLinkText ?? "");
+      setAnnouncementLinkUrlDraft(data.announcementLinkUrl ?? "");
+    }
+  }, [data, announcementEnabledDraft]);
+
   const updateMutation = useMutation({
     mutationFn: (next: UpdateSiteSettingsBody) => api.updateAdminSiteSettings(next),
     onSuccess: (result) => {
@@ -82,6 +96,10 @@ export default function AdminSiteSettings() {
       );
       setSpamKeywordsDraft(result.spamKeywords ?? []);
       setSpamDomainDraft(result.spamDomainBlocklist ?? []);
+      setAnnouncementEnabledDraft(result.announcementEnabled ?? false);
+      setAnnouncementTextDraft(result.announcementText ?? "");
+      setAnnouncementLinkTextDraft(result.announcementLinkText ?? "");
+      setAnnouncementLinkUrlDraft(result.announcementLinkUrl ?? "");
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     },
@@ -160,6 +178,10 @@ export default function AdminSiteSettings() {
     spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
     auditLogRetentionDays: data?.auditLogRetentionDays ?? 365,
     constellationDemoEnabled: data?.constellationDemoEnabled ?? true,
+    announcementEnabled: announcementEnabledDraft ?? data?.announcementEnabled ?? false,
+    announcementText: announcementTextDraft ?? data?.announcementText ?? null,
+    announcementLinkText: announcementLinkTextDraft ?? data?.announcementLinkText ?? null,
+    announcementLinkUrl: announcementLinkUrlDraft ?? data?.announcementLinkUrl ?? null,
     ...overrides,
   });
 
@@ -213,6 +235,99 @@ export default function AdminSiteSettings() {
         <div className="text-muted-foreground">Loading…</div>
       ) : (
         <div className="space-y-6 max-w-3xl">
+          {/* Announcement bar */}
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h2 className="text-lg font-semibold mb-1">Announcement bar</h2>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  A dismissable single-line banner that appears at the very top of every
+                  public page. Visitors can dismiss it; changing the message text resets
+                  that dismissal so the new announcement is shown again.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={announcementEnabledDraft ?? false}
+                disabled={updateMutation.isPending}
+                onClick={() => {
+                  const next = !(announcementEnabledDraft ?? false);
+                  setAnnouncementEnabledDraft(next);
+                  updateMutation.mutate(buildPayload({ announcementEnabled: next }));
+                }}
+                data-testid="toggle-announcement-enabled"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  (announcementEnabledDraft ?? false) ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
+                    (announcementEnabledDraft ?? false) ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium" htmlFor="announcement-text">
+                  Message text
+                </label>
+                <Input
+                  id="announcement-text"
+                  value={announcementTextDraft ?? ""}
+                  onChange={(e) => setAnnouncementTextDraft(e.target.value)}
+                  placeholder="We just released something big — check it out!"
+                  data-testid="input-announcement-text"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="announcement-link-text">
+                    Link label (optional)
+                  </label>
+                  <Input
+                    id="announcement-link-text"
+                    value={announcementLinkTextDraft ?? ""}
+                    onChange={(e) => setAnnouncementLinkTextDraft(e.target.value)}
+                    placeholder="Learn more"
+                    data-testid="input-announcement-link-text"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium" htmlFor="announcement-link-url">
+                    Link URL (optional)
+                  </label>
+                  <Input
+                    id="announcement-link-url"
+                    type="url"
+                    value={announcementLinkUrlDraft ?? ""}
+                    onChange={(e) => setAnnouncementLinkUrlDraft(e.target.value)}
+                    placeholder="https://synozur.com/..."
+                    data-testid="input-announcement-link-url"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                disabled={updateMutation.isPending}
+                onClick={() =>
+                  updateMutation.mutate(
+                    buildPayload({
+                      announcementText: announcementTextDraft || null,
+                      announcementLinkText: announcementLinkTextDraft || null,
+                      announcementLinkUrl: announcementLinkUrlDraft || null,
+                    }),
+                  )
+                }
+                data-testid="button-save-announcement"
+              >
+                Save announcement
+              </Button>
+            </div>
+          </div>
+
           <div className="rounded-md border border-border p-6 space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-1">Site theme</h2>
