@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import { api } from "@/lib/api";
-import { useListCmsUsers, type CmsUser } from "@workspace/api-client-react";
+import { useListCmsUsers, type CmsUser, type MediaItem } from "@workspace/api-client-react";
 import type { TeamMemberInput } from "@workspace/api-zod/types";
 
 interface Props {
@@ -43,6 +44,7 @@ export default function TeamForm({ id }: Props) {
   const [form, setForm] = useState<TeamMemberInput>(EMPTY);
   const [tagsInput, setTagsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-team-member", memberId],
@@ -195,21 +197,48 @@ export default function TeamForm({ id }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="imageUrl">Photo URL</Label>
-            <Input
-              id="imageUrl"
-              value={form.imageUrl ?? ""}
-              onChange={(e) => setForm({ ...form, imageUrl: e.target.value || null })}
-              placeholder="/images/team/josh-brantley.png"
-              data-testid="input-imageUrl"
+            <Label>Photo</Label>
+            <div className="flex items-start gap-3">
+              {form.imageUrl && (
+                <img
+                  src={form.imageUrl}
+                  alt=""
+                  className="w-20 h-20 rounded-md object-cover border border-border flex-shrink-0"
+                />
+              )}
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPhotoPicker(true)}
+                  data-testid="button-pick-photo"
+                >
+                  {form.imageUrl ? "Change photo" : "Pick from library"}
+                </Button>
+                {form.imageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, imageUrl: null })}
+                    data-testid="button-clear-photo"
+                  >
+                    Remove photo
+                  </Button>
+                )}
+              </div>
+            </div>
+            <MediaPickerModal
+              open={showPhotoPicker}
+              onClose={() => setShowPhotoPicker(false)}
+              onSelect={(m: MediaItem) => {
+                setForm({ ...form, imageUrl: mediaUrl(m) });
+                setShowPhotoPicker(false);
+              }}
+              title="Pick team member photo"
+              kind="image"
             />
-            {form.imageUrl && (
-              <img
-                src={form.imageUrl}
-                alt="Preview"
-                className="mt-2 w-32 h-32 rounded-md object-cover border border-border"
-              />
-            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="manualSort">Manual Sort Key</Label>

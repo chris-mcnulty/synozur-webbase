@@ -199,6 +199,10 @@ export interface PublicSiteSettings {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  announcementEnabled?: boolean;
+  announcementText?: string | null;
+  announcementLinkText?: string | null;
+  announcementLinkUrl?: string | null;
 }
 
 export interface AdminSiteSettings {
@@ -278,6 +282,10 @@ export interface AdminSiteSettings {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  announcementEnabled?: boolean;
+  announcementText?: string | null;
+  announcementLinkText?: string | null;
+  announcementLinkUrl?: string | null;
   updatedAt: string;
 }
 
@@ -715,6 +723,10 @@ export interface UpdateSiteSettingsBody {
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
   constellationDemoEnabled?: boolean;
+  announcementEnabled?: boolean;
+  announcementText?: string | null;
+  announcementLinkText?: string | null;
+  announcementLinkUrl?: string | null;
 }
 
 export interface BulkCollateralBody {

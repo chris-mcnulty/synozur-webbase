@@ -201,6 +201,10 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeBClosingEyebrow: settings.homeBClosingEyebrow,
     homeBClosingHeadline: settings.homeBClosingHeadline,
     homeBClosingBody: settings.homeBClosingBody,
+    announcementEnabled: settings.announcementEnabled,
+    announcementText: settings.announcementText,
+    announcementLinkText: settings.announcementLinkText,
+    announcementLinkUrl: settings.announcementLinkUrl,
     updatedAt: settings.updatedAt,
   });
 }
@@ -210,6 +214,18 @@ function trimOrNull(value: string | null | undefined): string | null {
   if (typeof value !== "string") return value ?? null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+// Validate that a URL is safe to persist into a public <a href>. Accepts
+// relative paths and http(s) URLs; rejects javascript: and other schemes.
+function isSafeUrl(value: string): boolean {
+  if (value.startsWith("/")) return true;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 router.get("/site-settings", async (_req, res): Promise<void> => {
@@ -273,6 +289,10 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       homeBClosingEyebrow: settings.homeBClosingEyebrow,
       homeBClosingHeadline: settings.homeBClosingHeadline,
       homeBClosingBody: settings.homeBClosingBody,
+      announcementEnabled: settings.announcementEnabled,
+      announcementText: settings.announcementText,
+      announcementLinkText: settings.announcementLinkText,
+      announcementLinkUrl: settings.announcementLinkUrl,
     }),
   );
 });
@@ -522,6 +542,24 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     if (field in input) {
       updates[field] = trimOrNull(input[field]);
     }
+  }
+
+  if ("announcementEnabled" in input && typeof input.announcementEnabled === "boolean") {
+    updates.announcementEnabled = input.announcementEnabled;
+  }
+  if ("announcementText" in input) {
+    updates.announcementText = trimOrNull(input.announcementText);
+  }
+  if ("announcementLinkText" in input) {
+    updates.announcementLinkText = trimOrNull(input.announcementLinkText);
+  }
+  if ("announcementLinkUrl" in input) {
+    const raw = trimOrNull(input.announcementLinkUrl);
+    if (raw !== null && !isSafeUrl(raw)) {
+      res.status(400).json({ error: "announcementLinkUrl must be a relative path or http(s) URL" });
+      return;
+    }
+    updates.announcementLinkUrl = raw;
   }
 
   let spamRulesChanged = false;

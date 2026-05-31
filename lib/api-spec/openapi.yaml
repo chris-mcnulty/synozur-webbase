@@ -5921,6 +5921,31 @@ components:
           type:
             - string
             - 'null'
+        announcementEnabled:
+          description: >
+            When true, the dismissable announcement bar is shown at the top of
+            every public page.
+          type: boolean
+          default: false
+        announcementText:
+          description: >
+            Body text of the announcement bar. Ignored when announcementEnabled
+            is false or this field is null.
+          type:
+            - string
+            - 'null'
+        announcementLinkText:
+          description: Optional label for the call-to-action link in the bar.
+          type:
+            - string
+            - 'null'
+        announcementLinkUrl:
+          description: >
+            Optional URL for the call-to-action link. Both announcementLinkText
+            and announcementLinkUrl must be set for the link to render.
+          type:
+            - string
+            - 'null'
     SiteSettings:
       type: object
       required: [requireCookieConsent, updatedAt]
@@ -6267,6 +6292,21 @@ components:
           type:
             - string
             - 'null'
+        announcementEnabled:
+          type: boolean
+          default: false
+        announcementText:
+          type:
+            - string
+            - 'null'
+        announcementLinkText:
+          type:
+            - string
+            - 'null'
+        announcementLinkUrl:
+          type:
+            - string
+            - 'null'
         updatedAt:
           type: string
           format: date-time
@@ -6575,6 +6615,20 @@ components:
             - string
             - 'null'
         homeBClosingBody:
+          type:
+            - string
+            - 'null'
+        announcementEnabled:
+          type: boolean
+        announcementText:
+          type:
+            - string
+            - 'null'
+        announcementLinkText:
+          type:
+            - string
+            - 'null'
+        announcementLinkUrl:
           type:
             - string
             - 'null'
