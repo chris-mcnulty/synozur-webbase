@@ -202,7 +202,7 @@ export default function TeamForm({ id }: Props) {
               {form.imageUrl && (
                 <img
                   src={form.imageUrl}
-                  alt="Preview"
+                  alt=""
                   className="w-20 h-20 rounded-md object-cover border border-border flex-shrink-0"
                 />
               )}

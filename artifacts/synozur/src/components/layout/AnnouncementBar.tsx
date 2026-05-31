@@ -9,28 +9,42 @@ interface Props {
 
 const STORAGE_KEY = "synozur_announcement_dismissed";
 
-export function AnnouncementBar({ text, linkText, linkUrl }: Props) {
-  const [dismissed, setDismissed] = useState(true);
+function isSafeUrl(url: string): boolean {
+  if (url.startsWith("/")) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const { text: storedText } = JSON.parse(stored) as { text: string };
-        if (storedText === text) {
-          setDismissed(true);
-          return;
-        }
-      }
-    } catch {
-      // ignore corrupt storage
+function readDismissed(text: string): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const { text: storedText } = JSON.parse(stored) as { text: string };
+      return storedText === text;
     }
-    setDismissed(false);
+  } catch {
+    // ignore corrupt storage
+  }
+  return false;
+}
+
+export function AnnouncementBar({ text, linkText, linkUrl }: Props) {
+  const [dismissed, setDismissed] = useState(() => readDismissed(text));
+
+  // Re-evaluate when the text prop changes (admin updated the message).
+  useEffect(() => {
+    setDismissed(readDismissed(text));
   }, [text]);
 
   if (dismissed) return null;
 
-  const showLink = linkText && linkUrl;
+  const safeUrl = linkUrl && isSafeUrl(linkUrl) ? linkUrl : null;
+  const showLink = linkText && safeUrl;
 
   function dismiss() {
     try {
@@ -50,7 +64,7 @@ export function AnnouncementBar({ text, linkText, linkUrl }: Props) {
         <span>{text}</span>
         {showLink && (
           <a
-            href={linkUrl}
+            href={safeUrl}
             className="underline underline-offset-2 font-semibold hover:opacity-80 transition-opacity whitespace-nowrap"
           >
             {linkText}

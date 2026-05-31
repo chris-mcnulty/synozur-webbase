@@ -3305,6 +3305,15 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS speaker_booking_url text;
     `);
 
+    // Dismissable announcement bar on site_settings.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS announcement_enabled boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS announcement_text text,
+        ADD COLUMN IF NOT EXISTS announcement_link_text text,
+        ADD COLUMN IF NOT EXISTS announcement_link_url text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

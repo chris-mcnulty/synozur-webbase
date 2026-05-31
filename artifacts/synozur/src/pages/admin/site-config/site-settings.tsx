@@ -178,10 +178,11 @@ export default function AdminSiteSettings() {
     spamDomainBlocklist: data?.spamDomainBlocklist ?? [],
     auditLogRetentionDays: data?.auditLogRetentionDays ?? 365,
     constellationDemoEnabled: data?.constellationDemoEnabled ?? true,
-    announcementEnabled: announcementEnabledDraft ?? data?.announcementEnabled ?? false,
-    announcementText: announcementTextDraft ?? data?.announcementText ?? null,
-    announcementLinkText: announcementLinkTextDraft ?? data?.announcementLinkText ?? null,
-    announcementLinkUrl: announcementLinkUrlDraft ?? data?.announcementLinkUrl ?? null,
+    // Round-trip from server data so unrelated saves don't touch announcement.
+    announcementEnabled: data?.announcementEnabled ?? false,
+    announcementText: data?.announcementText ?? null,
+    announcementLinkText: data?.announcementLinkText ?? null,
+    announcementLinkUrl: data?.announcementLinkUrl ?? null,
     ...overrides,
   });
 

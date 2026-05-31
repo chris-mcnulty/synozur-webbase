@@ -216,6 +216,18 @@ function trimOrNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+// Validate that a URL is safe to persist into a public <a href>. Accepts
+// relative paths and http(s) URLs; rejects javascript: and other schemes.
+function isSafeUrl(value: string): boolean {
+  if (value.startsWith("/")) return true;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 router.get("/site-settings", async (_req, res): Promise<void> => {
   const settings = await loadOrCreateSettings();
   const urls = await resolveImageUrls(settings);
@@ -542,7 +554,12 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
     updates.announcementLinkText = trimOrNull(input.announcementLinkText);
   }
   if ("announcementLinkUrl" in input) {
-    updates.announcementLinkUrl = trimOrNull(input.announcementLinkUrl);
+    const raw = trimOrNull(input.announcementLinkUrl);
+    if (raw !== null && !isSafeUrl(raw)) {
+      res.status(400).json({ error: "announcementLinkUrl must be a relative path or http(s) URL" });
+      return;
+    }
+    updates.announcementLinkUrl = raw;
   }
 
   let spamRulesChanged = false;
