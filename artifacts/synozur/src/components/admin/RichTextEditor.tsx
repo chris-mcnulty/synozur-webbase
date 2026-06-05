@@ -231,7 +231,7 @@ export function RichTextEditor({ value, onChange, placeholder: _placeholder }: P
     editorProps: {
       attributes: {
         class:
-          "prose prose-invert max-w-none min-h-[400px] px-4 py-3 focus:outline-none",
+          "prose dark:prose-invert max-w-none min-h-[400px] px-4 py-3 focus:outline-none",
         "data-testid": "post-editor-content",
       },
     },
