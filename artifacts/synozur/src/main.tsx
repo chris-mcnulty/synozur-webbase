@@ -1,12 +1,15 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AuthProvider } from "./context/auth";
+import { ErrorBoundary, FullPageErrorFallback } from "./components/error-boundary";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <AuthProvider>
-    <App />
-  </AuthProvider>,
+  <ErrorBoundary fallback={(args) => <FullPageErrorFallback {...args} />}>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </ErrorBoundary>,
 );
 
 // Register the service worker for offline support and faster repeat visits

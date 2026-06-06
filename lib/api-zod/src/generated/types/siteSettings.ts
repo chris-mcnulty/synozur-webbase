@@ -26,6 +26,12 @@ export interface SiteSettings {
   /** #133 — A/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.
    */
   constellationDemoEnabled?: boolean;
+  /** Launch Readiness (TRUST group) sign-off: the /trust page "Compliance & documentation" wording has been confirmed and any formal attestations named.
+   */
+  trustComplianceReviewed?: boolean;
+  /** Launch Readiness (TRUST group) sign-off: a monitored security@ disclosure mailbox is live for the /trust page.
+   */
+  trustSecurityMailboxReady?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

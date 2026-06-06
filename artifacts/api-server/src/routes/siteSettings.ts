@@ -134,6 +134,8 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeRootVariant: settings.homeRootVariant ?? "a",
     bookingsRenderMode: settings.bookingsRenderMode ?? "iframe",
     constellationDemoEnabled: settings.constellationDemoEnabled,
+    trustComplianceReviewed: settings.trustComplianceReviewed,
+    trustSecurityMailboxReady: settings.trustSecurityMailboxReady,
     homeHeroImageAssetId: settings.homeHeroImageAssetId,
     homeHeroImageMediaId: settings.homeHeroImageMediaId,
     homeHeroImageUrl: urls.homeHeroImageUrl,
@@ -361,6 +363,14 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
 
   if ("constellationDemoEnabled" in input && typeof input.constellationDemoEnabled === "boolean") {
     updates.constellationDemoEnabled = input.constellationDemoEnabled;
+  }
+
+  if ("trustComplianceReviewed" in input && typeof input.trustComplianceReviewed === "boolean") {
+    updates.trustComplianceReviewed = input.trustComplianceReviewed;
+  }
+
+  if ("trustSecurityMailboxReady" in input && typeof input.trustSecurityMailboxReady === "boolean") {
+    updates.trustSecurityMailboxReady = input.trustSecurityMailboxReady;
   }
 
   if ("homeHeroImageAssetId" in input) {

@@ -15,7 +15,11 @@ import { reindexEditorialCorpus } from "../lib/ai/editorialIndex";
 import { requireAuth, requireCapability } from "../middlewares/auth";
 import { verifyTurnstile, isTurnstileActive } from "../lib/turnstile";
 import { audit } from "../lib/audit";
-import { recordTokenUsage } from "../lib/aiChatSession";
+import {
+  recordTokenUsage,
+  checkBudget,
+  pageOnCallGlobalCapBreach,
+} from "../lib/aiChatSession";
 import {
   emptyCacheUsage,
   mergeMessageStartUsage,
@@ -41,6 +45,17 @@ const ALLOWED_MODELS = [
 ] as const;
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
 const DEFAULT_MODEL: AllowedModel = "claude-haiku-4-5";
+
+// Ops kill switch for the public Ask surface. Flipping AI_ASK_DISABLED (any
+// value other than "0", "false", "no", or empty) instantly takes the endpoint offline
+// without a code deploy — the intended lever if the endpoint is being abused
+// or Anthropic spend spikes. The DB-backed daily token caps
+// (`site_settings.ai_chat_daily_token_cap_*`, enforced below via checkBudget)
+// are the graduated throttle; this is the hard stop.
+function isAskDisabled(): boolean {
+  const raw = (process.env["AI_ASK_DISABLED"] ?? "").trim().toLowerCase();
+  return raw !== "" && raw !== "0" && raw !== "false" && raw !== "no";
+}
 
 const HistoryTurnSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -186,6 +201,16 @@ const REFUSAL_TEXT =
 // ---------------------------------------------------------------------------
 
 router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
+  // Ops hard stop. Return 503 before parsing/auth/model so a disabled
+  // endpoint costs nothing. The UI keys off `code: "disabled"` to render a
+  // friendly "temporarily unavailable" state instead of a generic error.
+  if (isAskDisabled()) {
+    res
+      .status(503)
+      .json({ error: "Ask Synozur is temporarily unavailable.", code: "disabled" });
+    return;
+  }
+
   const parsed = AskRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request", issues: parsed.error.issues });
@@ -250,6 +275,35 @@ router.post("/ai/ask", askLimiter, askDailyLimiter, async (req, res) => {
       return;
     }
     markBotCheckPassed(sessionId, ipForCheck);
+  }
+
+  // Token budget — daily rollup vs site_settings caps, shared with /ai/chat.
+  // /ai/ask previously only *recorded* usage; it never enforced the ceiling,
+  // so a distributed caller could run up unbounded Anthropic spend past the
+  // per-IP rate limiter. Block before the corpus search and model call so the
+  // cost never lands. scopeKey mirrors the rollup key used below (session when
+  // present, else IP). A global breach also pages on-call, matching /ai/chat.
+  const budgetScopeKey = sessionId ? `s:${sessionId}` : `ip:${ipForCheck}`;
+  const verdict = await checkBudget(budgetScopeKey, ipForCheck);
+  if (!verdict.ok) {
+    void audit({
+      action: "ai.ask.budget_exceeded",
+      entity: "ip",
+      entityId: ipForCheck,
+      diff: { reason: verdict.reason },
+    });
+    if (verdict.reason === "global") {
+      pageOnCallGlobalCapBreach({ global: verdict.used, cap: verdict.cap });
+    }
+    res.setHeader("Retry-After", String(verdict.retryAfterSeconds));
+    res.status(429).json({
+      error:
+        verdict.reason === "global"
+          ? "Ask Synozur is temporarily unavailable due to capacity limits."
+          : "Daily Ask Synozur quota reached. Try again after midnight UTC.",
+      code: "budget_exceeded",
+    });
+    return;
   }
 
   let hits: CorpusHit[] = [];

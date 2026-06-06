@@ -98,6 +98,7 @@ const PAGE_KEY_PATHS: Record<string, string[] | "*"> = {
   services: ["/services-overview", "/services"],
   applications: ["/applications"],
   "case-studies": ["/case-studies"],
+  trust: ["/trust"],
   header: "*",
 };
 

@@ -5978,6 +5978,19 @@ components:
             See PublicSiteSettings.
           type: boolean
           default: true
+        trustComplianceReviewed:
+          description: >
+            Launch Readiness (TRUST group) sign-off: the /trust page
+            "Compliance & documentation" wording has been confirmed and any
+            formal attestations named.
+          type: boolean
+          default: false
+        trustSecurityMailboxReady:
+          description: >
+            Launch Readiness (TRUST group) sign-off: a monitored security@
+            disclosure mailbox is live for the /trust page.
+          type: boolean
+          default: false
         homeHeroImageAssetId:
           type:
             - integer
@@ -6329,6 +6342,10 @@ components:
           type: string
           enum: [iframe, native]
         constellationDemoEnabled:
+          type: boolean
+        trustComplianceReviewed:
+          type: boolean
+        trustSecurityMailboxReady:
           type: boolean
         homeHeroImageAssetId:
           type:
@@ -10049,6 +10066,34 @@ components:
           type: string
           maxLength: 80
         home.method.aside.ctaHref:
+          type: string
+          maxLength: 2048
+        home.socialProof.visible:
+          type: boolean
+        home.socialProof.eyebrow:
+          type: string
+          maxLength: 80
+        home.socialProof.heading:
+          type: string
+          maxLength: 200
+        trust.hero.eyebrow:
+          type: string
+          maxLength: 80
+        trust.hero.headline:
+          type: string
+          maxLength: 200
+        trust.hero.body:
+          type: string
+          maxLength: 2000
+        trust.cta.visible:
+          type: boolean
+        trust.cta.heading:
+          type: string
+          maxLength: 200
+        trust.cta.label:
+          type: string
+          maxLength: 80
+        trust.cta.href:
           type: string
           maxLength: 2048
 

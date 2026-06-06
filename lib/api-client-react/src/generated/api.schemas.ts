@@ -1003,6 +1003,12 @@ export interface SiteSettings {
   /** #133 — A/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.
    */
   constellationDemoEnabled?: boolean;
+  /** Launch Readiness (TRUST group) sign-off: the /trust page "Compliance & documentation" wording has been confirmed and any formal attestations named.
+   */
+  trustComplianceReviewed?: boolean;
+  /** Launch Readiness (TRUST group) sign-off: a monitored security@ disclosure mailbox is live for the /trust page.
+   */
+  trustSecurityMailboxReady?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -1240,6 +1246,8 @@ export interface SiteSettingsInput {
   homeRootVariant?: SiteSettingsInputHomeRootVariant;
   bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   constellationDemoEnabled?: boolean;
+  trustComplianceReviewed?: boolean;
+  trustSecurityMailboxReady?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */
@@ -3271,6 +3279,24 @@ export interface OverrideMap {
   "home.method.aside.cta"?: string;
   /** @maxLength 2048 */
   "home.method.aside.ctaHref"?: string;
+  "home.socialProof.visible"?: boolean;
+  /** @maxLength 80 */
+  "home.socialProof.eyebrow"?: string;
+  /** @maxLength 200 */
+  "home.socialProof.heading"?: string;
+  /** @maxLength 80 */
+  "trust.hero.eyebrow"?: string;
+  /** @maxLength 200 */
+  "trust.hero.headline"?: string;
+  /** @maxLength 2000 */
+  "trust.hero.body"?: string;
+  "trust.cta.visible"?: boolean;
+  /** @maxLength 200 */
+  "trust.cta.heading"?: string;
+  /** @maxLength 80 */
+  "trust.cta.label"?: string;
+  /** @maxLength 2048 */
+  "trust.cta.href"?: string;
   [key: string]: unknown;
 }
 

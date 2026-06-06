@@ -508,6 +508,93 @@ export default function AdminSiteSettings() {
             </div>
           </div>
 
+          <div className="rounded-md border border-border p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-1">
+                Trust &amp; Security page launch sign-off
+              </h2>
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Pre-launch review items for the public{" "}
+                <code>/trust</code> page. These surface on the{" "}
+                <Link href="/site-config/launch-readiness" className="underline">
+                  Launch Readiness
+                </Link>{" "}
+                dashboard and stay flagged as &ldquo;Action needed&rdquo; until checked.
+              </p>
+            </div>
+
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h3 className="text-sm font-medium mb-1">Compliance copy reviewed</h3>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  The &ldquo;Compliance &amp; documentation&rdquo; section wording is
+                  confirmed and any formal attestations (SOC 2 / ISO 27001 / DPA) are named.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Compliance copy reviewed"
+                aria-checked={data?.trustComplianceReviewed ?? false}
+                disabled={updateMutation.isPending}
+                onClick={() =>
+                  updateMutation.mutate(
+                    buildPayload({
+                      trustComplianceReviewed: !(data?.trustComplianceReviewed ?? false),
+                    }),
+                  )
+                }
+                data-testid="toggle-trust-compliance-reviewed"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  (data?.trustComplianceReviewed ?? false) ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
+                    (data?.trustComplianceReviewed ?? false) ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-start justify-between gap-6 border-t border-border pt-4">
+              <div>
+                <h3 className="text-sm font-medium mb-1">
+                  Security disclosure mailbox live
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  A monitored <code>security@</code> inbox is live. Until then{" "}
+                  <code>/trust</code> routes disclosures to{" "}
+                  <code>privacy@synozur.com</code>.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Security disclosure mailbox live"
+                aria-checked={data?.trustSecurityMailboxReady ?? false}
+                disabled={updateMutation.isPending}
+                onClick={() =>
+                  updateMutation.mutate(
+                    buildPayload({
+                      trustSecurityMailboxReady: !(data?.trustSecurityMailboxReady ?? false),
+                    }),
+                  )
+                }
+                data-testid="toggle-trust-security-mailbox-ready"
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+                  (data?.trustSecurityMailboxReady ?? false) ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow ring-0 transition ${
+                    (data?.trustSecurityMailboxReady ?? false) ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Home page media */}
           <HomePageSection
             title="Home page"

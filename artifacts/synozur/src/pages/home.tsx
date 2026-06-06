@@ -36,6 +36,7 @@ import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-
 import { clientLogos, type LogoEntry } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { BookingLinks } from "@/components/home/BookingLinks";
+import { SocialProof } from "@/components/social-proof";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
 import type { PartnerItem } from "@workspace/api-zod/types";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
@@ -287,6 +288,11 @@ export default function Home() {
     "home.partners.items",
     null,
   );
+  // Client social-proof band (experiment engine: home.socialProof.*). Empty
+  // string framing-copy overrides fall back to the component's own defaults.
+  const socialProofVisible = useOverride<boolean>("home.socialProof.visible", true);
+  const socialProofEyebrow = useOverride<string>("home.socialProof.eyebrow", "");
+  const socialProofHeading = useOverride<string>("home.socialProof.heading", "");
   const {
     data: workshopsData,
     isLoading: workshopsLoading,
@@ -662,6 +668,17 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Client social proof — real pull-quotes + outcomes from published
+          case studies. Renders nothing when no case study has a quote.
+          Visibility + framing copy are experiment-overridable
+          (home.socialProof.*). */}
+      {socialProofVisible ? (
+        <SocialProof
+          {...(socialProofEyebrow ? { eyebrow: socialProofEyebrow } : {})}
+          {...(socialProofHeading ? { heading: socialProofHeading } : {})}
+        />
+      ) : null}
 
       {/* Workshops Teaser */}
       <section className="py-24 bg-background">

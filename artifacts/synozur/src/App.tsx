@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { MotionConfig } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
@@ -48,6 +48,7 @@ import Events from "@/pages/events";
 import EventDetail from "@/pages/event-detail";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
+import Trust from "@/pages/trust";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import VerifyEmailPage from "@/pages/verify-email";
@@ -147,6 +148,7 @@ import MarketingSeoCoverage from "@/pages/admin/marketing/seo-coverage";
 import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
+import { ErrorBoundary, RouteErrorFallback } from "@/components/error-boundary";
 import Library from "@/pages/library";
 import SearchPage from "@/pages/search";
 import LibraryDetail from "@/pages/library-detail";
@@ -519,6 +521,10 @@ function RootHomeRoute() {
 }
 
 function Router() {
+  // Key the marketing-route error boundary on the current location so a single
+  // crashed page recovers automatically when the visitor navigates away,
+  // rather than wedging the session until a hard reload.
+  const [location] = useLocation();
   return (
     <Switch>
       {/* Admin routes render outside the marketing site Layout. */}
@@ -530,6 +536,10 @@ function Router() {
       <Route path="/careers/embed/job/:slug" component={CareersEmbedJob} />
       <Route>
         <Layout>
+          <ErrorBoundary
+            resetKey={location}
+            fallback={(args) => <RouteErrorFallback {...args} />}
+          >
           <Switch>
             <Route path="/" component={RootHomeRoute} />
             <Route path="/home-a" component={Home} />
@@ -590,6 +600,7 @@ function Router() {
             <Route path="/events/:slug" component={EventDetail} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/trust" component={Trust} />
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
             <Route path="/verify-email" component={VerifyEmailPage} />
@@ -605,6 +616,7 @@ function Router() {
             </Route>
             <Route component={NotFound} />
           </Switch>
+          </ErrorBoundary>
         </Layout>
       </Route>
     </Switch>

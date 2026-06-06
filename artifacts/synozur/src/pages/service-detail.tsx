@@ -12,6 +12,7 @@ import { JsonLd } from "@/components/jsonld";
 import { SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
 import { BookingCard } from "@/components/BookingCard";
 import { EditWedge } from "@/components/edit-wedge";
+import { SocialProof } from "@/components/social-proof";
 
 // The former string-matching map that paired service slugs with
 // workshop categories is gone (#105). The "related workshops" rail now
@@ -443,6 +444,15 @@ export default function ServiceDetail() {
           </div>
         </section>
       )}
+
+      {/* Client proof scoped to this service — renders nothing when none of
+          this service's case studies carry a quote. */}
+      <SocialProof
+        serviceId={service?.id ?? null}
+        eyebrow="Proof, not promises"
+        heading={service ? `Results from ${service.title}` : "What our clients say"}
+        limit={2}
+      />
 
       <section className="relative overflow-hidden bg-card border-t border-border py-24">
         <div className="absolute inset-0 nebula-gradient opacity-10" />
