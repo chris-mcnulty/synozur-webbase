@@ -213,6 +213,8 @@ export interface AdminSiteSettings {
   bookingsRenderMode?: BookingsRenderMode | null;
   // #133 — see PublicSiteSettings.
   constellationDemoEnabled?: boolean;
+  trustComplianceReviewed?: boolean;
+  trustSecurityMailboxReady?: boolean;
   homeHeroImageAssetId?: number | null;
   homeHeroImageMediaId?: string | null;
   homeHeroImageUrl?: string | null;
@@ -723,6 +725,8 @@ export interface UpdateSiteSettingsBody {
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
   constellationDemoEnabled?: boolean;
+  trustComplianceReviewed?: boolean;
+  trustSecurityMailboxReady?: boolean;
   announcementEnabled?: boolean;
   announcementText?: string | null;
   announcementLinkText?: string | null;

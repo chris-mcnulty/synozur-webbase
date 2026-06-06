@@ -20,6 +20,8 @@ export interface SiteSettingsInput {
   homeRootVariant?: SiteSettingsInputHomeRootVariant;
   bookingsRenderMode?: SiteSettingsInputBookingsRenderMode;
   constellationDemoEnabled?: boolean;
+  trustComplianceReviewed?: boolean;
+  trustSecurityMailboxReady?: boolean;
   /** @nullable */
   homeHeroImageAssetId?: number | null;
   /** @nullable */

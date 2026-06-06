@@ -23,10 +23,10 @@ import { siteOrigin } from "./siteOrigin";
 //        (DB-backed siteSettings.tag* columns OR fallback VITE_* env vars
 //         consumed by the SPA's components/analytics.tsx).
 //   TRUST — Trust & Security page (/trust) pre-launch content sign-off:
-//        the two REVIEW-BEFORE-LAUNCH items flagged in trust.tsx. Operators
-//        flip TRUST_COMPLIANCE_REVIEWED once the compliance wording is
-//        confirmed, and set SECURITY_CONTACT_EMAIL once a monitored
-//        security@ disclosure mailbox is live.
+//        the two REVIEW-BEFORE-LAUNCH items flagged in trust.tsx. Admins flip
+//        the site_settings.trust_compliance_reviewed and
+//        trust_security_mailbox_ready toggles from Site Settings once each is
+//        done.
 //
 // All checks are non-fatal; misconfigured channels just log a warning.
 
@@ -247,35 +247,50 @@ async function checkMarketingTags(): Promise<ChannelStatus[]> {
 
 // TRUST — manual pre-launch sign-off for the two REVIEW-BEFORE-LAUNCH items
 // on the /trust page. Unlike the other tiers these are content/ops tasks with
-// no automatic signal, so each is gated on an explicit operator-set value:
-//   - TRUST_COMPLIANCE_REVIEWED — set (to any truthy value) once the Trust
-//     page's "Compliance & documentation" wording has been confirmed and any
-//     formal attestations (SOC 2 / ISO 27001 / DPA) named.
-//   - SECURITY_CONTACT_EMAIL — set once a monitored security@ disclosure
-//     mailbox is live (the page currently routes reports to privacy@synozur.com).
-function checkTrustPageSignoff(): ChannelStatus[] {
-  const raw = (process.env.TRUST_COMPLIANCE_REVIEWED ?? "").trim().toLowerCase();
-  const complianceReviewed =
-    raw !== "" && raw !== "0" && raw !== "false" && raw !== "no";
-  const securityEmail = (process.env.SECURITY_CONTACT_EMAIL ?? "").trim();
+// no automatic signal, so each is backed by a DB-toggled site-settings flag an
+// admin flips from Site Settings:
+//   - trust_compliance_reviewed — flip once the Trust page's "Compliance &
+//     documentation" wording has been confirmed and any formal attestations
+//     (SOC 2 / ISO 27001 / DPA) named.
+//   - trust_security_mailbox_ready — flip once a monitored security@
+//     disclosure mailbox is live (the page currently routes reports to
+//     privacy@synozur.com).
+async function checkTrustPageSignoff(): Promise<ChannelStatus[]> {
+  let complianceReviewed = false;
+  let securityMailboxReady = false;
+  try {
+    const [row] = await db
+      .select({
+        compliance: siteSettingsTable.trustComplianceReviewed,
+        security: siteSettingsTable.trustSecurityMailboxReady,
+      })
+      .from(siteSettingsTable)
+      .where(sql`${siteSettingsTable.id} = 1`)
+      .limit(1);
+    if (row) {
+      complianceReviewed = row.compliance ?? false;
+      securityMailboxReady = row.security ?? false;
+    }
+  } catch {
+    // Site settings row may not exist yet on a fresh database; both stay false.
+  }
 
   return [
     {
       name: "Trust page compliance copy reviewed",
       configured: complianceReviewed,
-      source: "TRUST_COMPLIANCE_REVIEWED",
+      source: "Site Settings → Trust & Security launch sign-off",
       detail: complianceReviewed
         ? undefined
-        : "Confirm the /trust 'Compliance & documentation' wording and name any formal attestations (SOC 2 / ISO 27001 / DPA), then set TRUST_COMPLIANCE_REVIEWED.",
+        : "Confirm the /trust 'Compliance & documentation' wording and name any formal attestations (SOC 2 / ISO 27001 / DPA), then toggle this on in Site Settings.",
     },
     {
       name: "Security disclosure mailbox live (security@)",
-      configured: securityEmail.length > 0,
-      source: "SECURITY_CONTACT_EMAIL",
-      detail:
-        securityEmail.length > 0
-          ? undefined
-          : "Stand up a monitored security@ inbox and set SECURITY_CONTACT_EMAIL; /trust currently routes disclosures to privacy@synozur.com.",
+      configured: securityMailboxReady,
+      source: "Site Settings → Trust & Security launch sign-off",
+      detail: securityMailboxReady
+        ? undefined
+        : "Stand up a monitored security@ inbox (and update /trust), then toggle this on in Site Settings. The page currently routes disclosures to privacy@synozur.com.",
     },
   ];
 }
@@ -325,7 +340,7 @@ export async function getLaunchReadinessReport(): Promise<LaunchReadinessReport>
     {
       tier: "TRUST",
       label: "Trust & Security page pre-launch sign-off",
-      channels: checkTrustPageSignoff(),
+      channels: await checkTrustPageSignoff(),
     },
   ];
   return { generatedAt: new Date().toISOString(), groups };

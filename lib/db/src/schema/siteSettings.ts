@@ -220,6 +220,14 @@ export const siteSettingsTable = pgTable("site_settings", {
   // gate that the bucketing framework consults before assigning treatments.
   constellationDemoEnabled: boolean("constellation_demo_enabled").notNull().default(true),
 
+  // Pre-launch sign-off flags for the /trust page's two REVIEW-BEFORE-LAUNCH
+  // items, surfaced on the admin Launch Readiness dashboard (TRUST group).
+  // trustComplianceReviewed: the "Compliance & documentation" wording has been
+  // confirmed (and any formal attestations named). trustSecurityMailboxReady:
+  // a monitored security@ disclosure mailbox is live.
+  trustComplianceReviewed: boolean("trust_compliance_reviewed").notNull().default(false),
+  trustSecurityMailboxReady: boolean("trust_security_mailbox_ready").notNull().default(false),
+
   // #223 — Careers section. `careersMode` controls whether `/careers/*` is
   // hosted natively from this site or 301-redirected to an external careers
   // host (preserving the path tail). `careersExternalUrl` is the redirect

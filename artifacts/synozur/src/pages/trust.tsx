@@ -8,17 +8,18 @@ import { useOverride, useTrackConversion } from "@/lib/experiments";
 // token storage, bot protection, rate limiting, audit logging). Nothing here
 // asserts a formal certification we don't hold.
 //
-// REVIEW BEFORE LAUNCH (both tracked on the admin Launch Readiness dashboard
-// under the "TRUST" group — /admin/site-config/launch-readiness):
+// REVIEW BEFORE LAUNCH — both are tracked as admin toggles under
+// Site Settings → "Trust & Security page launch sign-off" and surface on the
+// Launch Readiness dashboard ("TRUST" group, /admin/site-config/launch-readiness):
 //   - "Compliance & documentation" section: if Synozur holds formal
 //     attestations (SOC 2, ISO 27001, a published DPA, etc.), name them
 //     there. Until then the copy stays non-committal ("available on
 //     request"), which matches the Privacy Statement's subprocessor wording.
-//     Operators set TRUST_COMPLIANCE_REVIEWED once this is confirmed.
+//     Flip "Compliance copy reviewed" once confirmed.
 //   - Confirm a monitored security-reporting mailbox. This page currently
 //     routes disclosures to privacy@synozur.com + the contact page; swap in
-//     security@synozur.com once that inbox is live and set
-//     SECURITY_CONTACT_EMAIL.
+//     security@synozur.com once that inbox is live and flip "Security
+//     disclosure mailbox live".
 
 export default function Trust() {
   // Experiment-overridable hero + CTA (page key: "trust"). Defaults below are

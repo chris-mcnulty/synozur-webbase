@@ -3314,6 +3314,15 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS announcement_link_url text;
     `);
 
+    // Trust & Security page pre-launch sign-off flags (Launch Readiness
+    // "TRUST" group). Manual operator sign-offs for the two
+    // REVIEW-BEFORE-LAUNCH items on /trust.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS trust_compliance_reviewed boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS trust_security_mailbox_ready boolean NOT NULL DEFAULT false;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

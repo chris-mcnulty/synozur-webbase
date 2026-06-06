@@ -5978,6 +5978,19 @@ components:
             See PublicSiteSettings.
           type: boolean
           default: true
+        trustComplianceReviewed:
+          description: >
+            Launch Readiness (TRUST group) sign-off: the /trust page
+            "Compliance & documentation" wording has been confirmed and any
+            formal attestations named.
+          type: boolean
+          default: false
+        trustSecurityMailboxReady:
+          description: >
+            Launch Readiness (TRUST group) sign-off: a monitored security@
+            disclosure mailbox is live for the /trust page.
+          type: boolean
+          default: false
         homeHeroImageAssetId:
           type:
             - integer
@@ -6329,6 +6342,10 @@ components:
           type: string
           enum: [iframe, native]
         constellationDemoEnabled:
+          type: boolean
+        trustComplianceReviewed:
+          type: boolean
+        trustSecurityMailboxReady:
           type: boolean
         homeHeroImageAssetId:
           type:

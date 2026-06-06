@@ -1440,6 +1440,8 @@ export const getAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const getAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const getAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const getAdminSiteSettingsResponseConstellationDemoEnabledDefault = true;
+export const getAdminSiteSettingsResponseTrustComplianceReviewedDefault = false;
+export const getAdminSiteSettingsResponseTrustSecurityMailboxReadyDefault = false;
 export const getAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const getAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1481,6 +1483,18 @@ export const GetAdminSiteSettingsResponse = zod.object({
     .default(getAdminSiteSettingsResponseConstellationDemoEnabledDefault)
     .describe(
       "#133 — A\/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.\n",
+    ),
+  trustComplianceReviewed: zod
+    .boolean()
+    .default(getAdminSiteSettingsResponseTrustComplianceReviewedDefault)
+    .describe(
+      'Launch Readiness (TRUST group) sign-off: the \/trust page \"Compliance & documentation\" wording has been confirmed and any formal attestations named.\n',
+    ),
+  trustSecurityMailboxReady: zod
+    .boolean()
+    .default(getAdminSiteSettingsResponseTrustSecurityMailboxReadyDefault)
+    .describe(
+      "Launch Readiness (TRUST group) sign-off: a monitored security@ disclosure mailbox is live for the \/trust page.\n",
     ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
@@ -1656,6 +1670,8 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   homeRootVariant: zod.enum(["a", "b"]).optional(),
   bookingsRenderMode: zod.enum(["iframe", "native"]).optional(),
   constellationDemoEnabled: zod.boolean().optional(),
+  trustComplianceReviewed: zod.boolean().optional(),
+  trustSecurityMailboxReady: zod.boolean().optional(),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
   homeHeroVideoAssetId: zod.number().nullish(),
@@ -1803,6 +1819,8 @@ export const updateAdminSiteSettingsResponseSiteThemeDefault = `cosmic`;
 export const updateAdminSiteSettingsResponseHomeRootVariantDefault = `a`;
 export const updateAdminSiteSettingsResponseBookingsRenderModeDefault = `iframe`;
 export const updateAdminSiteSettingsResponseConstellationDemoEnabledDefault = true;
+export const updateAdminSiteSettingsResponseTrustComplianceReviewedDefault = false;
+export const updateAdminSiteSettingsResponseTrustSecurityMailboxReadyDefault = false;
 export const updateAdminSiteSettingsResponseSeoDefaultTitleTemplateMax = 120;
 
 export const updateAdminSiteSettingsResponseSeoDefaultDescriptionMax = 160;
@@ -1844,6 +1862,18 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
     .default(updateAdminSiteSettingsResponseConstellationDemoEnabledDefault)
     .describe(
       "#133 — A\/B kill-switch for the Constellation interactive demo. See PublicSiteSettings.\n",
+    ),
+  trustComplianceReviewed: zod
+    .boolean()
+    .default(updateAdminSiteSettingsResponseTrustComplianceReviewedDefault)
+    .describe(
+      'Launch Readiness (TRUST group) sign-off: the \/trust page \"Compliance & documentation\" wording has been confirmed and any formal attestations named.\n',
+    ),
+  trustSecurityMailboxReady: zod
+    .boolean()
+    .default(updateAdminSiteSettingsResponseTrustSecurityMailboxReadyDefault)
+    .describe(
+      "Launch Readiness (TRUST group) sign-off: a monitored security@ disclosure mailbox is live for the \/trust page.\n",
     ),
   homeHeroImageAssetId: zod.number().nullish(),
   homeHeroImageMediaId: zod.string().uuid().nullish(),
@@ -5868,6 +5898,22 @@ export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHom
 
 export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
 
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHrefMax = 2048;
+
 export const GetActiveExperimentsResponse = zod.object({
   experiments: zod.array(
     zod.object({
@@ -6124,6 +6170,56 @@ export const GetActiveExperimentsResponse = zod.object({
                     getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax,
                   )
                   .optional(),
+                "home.socialProof.visible": zod.boolean().optional(),
+                "home.socialProof.eyebrow": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofEyebrowMax,
+                  )
+                  .optional(),
+                "home.socialProof.heading": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofHeadingMax,
+                  )
+                  .optional(),
+                "trust.hero.eyebrow": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroEyebrowMax,
+                  )
+                  .optional(),
+                "trust.hero.headline": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroHeadlineMax,
+                  )
+                  .optional(),
+                "trust.hero.body": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroBodyMax,
+                  )
+                  .optional(),
+                "trust.cta.visible": zod.boolean().optional(),
+                "trust.cta.heading": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHeadingMax,
+                  )
+                  .optional(),
+                "trust.cta.label": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaLabelMax,
+                  )
+                  .optional(),
+                "trust.cta.href": zod
+                  .string()
+                  .max(
+                    getActiveExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHrefMax,
+                  )
+                  .optional(),
               })
               .describe(
                 "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -6257,6 +6353,22 @@ export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHom
 export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const ListAdminExperimentsResponse = zod.object({
   experiments: zod.array(
@@ -6542,6 +6654,56 @@ export const ListAdminExperimentsResponse = zod.object({
                   listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeMethodAsideCtaHrefMax,
                 )
                 .optional(),
+              "home.socialProof.visible": zod.boolean().optional(),
+              "home.socialProof.eyebrow": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofEyebrowMax,
+                )
+                .optional(),
+              "home.socialProof.heading": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesHomeSocialProofHeadingMax,
+                )
+                .optional(),
+              "trust.hero.eyebrow": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroEyebrowMax,
+                )
+                .optional(),
+              "trust.hero.headline": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroHeadlineMax,
+                )
+                .optional(),
+              "trust.hero.body": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustHeroBodyMax,
+                )
+                .optional(),
+              "trust.cta.visible": zod.boolean().optional(),
+              "trust.cta.heading": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHeadingMax,
+                )
+                .optional(),
+              "trust.cta.label": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaLabelMax,
+                )
+                .optional(),
+              "trust.cta.href": zod
+                .string()
+                .max(
+                  listAdminExperimentsResponseExperimentsItemVariantsItemOverridesTrustCtaHrefMax,
+                )
+                .optional(),
             })
             .describe(
               "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -6713,6 +6875,22 @@ export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyM
 export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const getAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const GetAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -6980,6 +7158,54 @@ export const GetAdminExperimentResponse = zod.object({
               getAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
             )
             .optional(),
+          "home.socialProof.visible": zod.boolean().optional(),
+          "home.socialProof.eyebrow": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax,
+            )
+            .optional(),
+          "home.socialProof.heading": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax,
+            )
+            .optional(),
+          "trust.hero.eyebrow": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax,
+            )
+            .optional(),
+          "trust.hero.headline": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax,
+            )
+            .optional(),
+          "trust.hero.body": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax,
+            )
+            .optional(),
+          "trust.cta.visible": zod.boolean().optional(),
+          "trust.cta.heading": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax,
+            )
+            .optional(),
+          "trust.cta.label": zod
+            .string()
+            .max(
+              getAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax,
+            )
+            .optional(),
+          "trust.cta.href": zod
+            .string()
+            .max(getAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax)
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7144,6 +7370,22 @@ export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBo
 export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const updateAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -7411,6 +7653,56 @@ export const UpdateAdminExperimentResponse = zod.object({
               updateAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
             )
             .optional(),
+          "home.socialProof.visible": zod.boolean().optional(),
+          "home.socialProof.eyebrow": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax,
+            )
+            .optional(),
+          "home.socialProof.heading": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax,
+            )
+            .optional(),
+          "trust.hero.eyebrow": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax,
+            )
+            .optional(),
+          "trust.hero.headline": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax,
+            )
+            .optional(),
+          "trust.hero.body": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax,
+            )
+            .optional(),
+          "trust.cta.visible": zod.boolean().optional(),
+          "trust.cta.heading": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax,
+            )
+            .optional(),
+          "trust.cta.label": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax,
+            )
+            .optional(),
+          "trust.cta.href": zod
+            .string()
+            .max(
+              updateAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7515,6 +7807,22 @@ export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBod
 export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const startAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const StartAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -7782,6 +8090,56 @@ export const StartAdminExperimentResponse = zod.object({
               startAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
             )
             .optional(),
+          "home.socialProof.visible": zod.boolean().optional(),
+          "home.socialProof.eyebrow": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax,
+            )
+            .optional(),
+          "home.socialProof.heading": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax,
+            )
+            .optional(),
+          "trust.hero.eyebrow": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax,
+            )
+            .optional(),
+          "trust.hero.headline": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax,
+            )
+            .optional(),
+          "trust.hero.body": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax,
+            )
+            .optional(),
+          "trust.cta.visible": zod.boolean().optional(),
+          "trust.cta.heading": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax,
+            )
+            .optional(),
+          "trust.cta.label": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax,
+            )
+            .optional(),
+          "trust.cta.href": zod
+            .string()
+            .max(
+              startAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -7882,6 +8240,22 @@ export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBod
 export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const pauseAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const PauseAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -8149,6 +8523,56 @@ export const PauseAdminExperimentResponse = zod.object({
               pauseAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
             )
             .optional(),
+          "home.socialProof.visible": zod.boolean().optional(),
+          "home.socialProof.eyebrow": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax,
+            )
+            .optional(),
+          "home.socialProof.heading": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax,
+            )
+            .optional(),
+          "trust.hero.eyebrow": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax,
+            )
+            .optional(),
+          "trust.hero.headline": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax,
+            )
+            .optional(),
+          "trust.hero.body": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax,
+            )
+            .optional(),
+          "trust.cta.visible": zod.boolean().optional(),
+          "trust.cta.heading": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax,
+            )
+            .optional(),
+          "trust.cta.label": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax,
+            )
+            .optional(),
+          "trust.cta.href": zod
+            .string()
+            .max(
+              pauseAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax,
+            )
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -8249,6 +8673,22 @@ export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideBodyM
 export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaMax = 80;
 
 export const endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax = 2000;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax = 200;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax = 80;
+
+export const endAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax = 2048;
 
 export const EndAdminExperimentResponse = zod.object({
   id: zod.string().uuid(),
@@ -8516,6 +8956,54 @@ export const EndAdminExperimentResponse = zod.object({
               endAdminExperimentResponseVariantsItemOverridesHomeMethodAsideCtaHrefMax,
             )
             .optional(),
+          "home.socialProof.visible": zod.boolean().optional(),
+          "home.socialProof.eyebrow": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeSocialProofEyebrowMax,
+            )
+            .optional(),
+          "home.socialProof.heading": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesHomeSocialProofHeadingMax,
+            )
+            .optional(),
+          "trust.hero.eyebrow": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesTrustHeroEyebrowMax,
+            )
+            .optional(),
+          "trust.hero.headline": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesTrustHeroHeadlineMax,
+            )
+            .optional(),
+          "trust.hero.body": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesTrustHeroBodyMax,
+            )
+            .optional(),
+          "trust.cta.visible": zod.boolean().optional(),
+          "trust.cta.heading": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesTrustCtaHeadingMax,
+            )
+            .optional(),
+          "trust.cta.label": zod
+            .string()
+            .max(
+              endAdminExperimentResponseVariantsItemOverridesTrustCtaLabelMax,
+            )
+            .optional(),
+          "trust.cta.href": zod
+            .string()
+            .max(endAdminExperimentResponseVariantsItemOverridesTrustCtaHrefMax)
+            .optional(),
         })
         .describe(
           "Keyed override map. Documented well-known keys are listed below; unknown keys pass through so a deploy that doesn't know about a newer key can still serve the variant.\n",
@@ -8673,6 +9161,22 @@ export const createAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax = 1
 export const createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax = 80;
 
 export const createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const createAdminExperimentVariantBodyOverridesHomeSocialProofEyebrowMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesHomeSocialProofHeadingMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesTrustHeroEyebrowMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesTrustHeroHeadlineMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesTrustHeroBodyMax = 2000;
+
+export const createAdminExperimentVariantBodyOverridesTrustCtaHeadingMax = 200;
+
+export const createAdminExperimentVariantBodyOverridesTrustCtaLabelMax = 80;
+
+export const createAdminExperimentVariantBodyOverridesTrustCtaHrefMax = 2048;
 
 export const CreateAdminExperimentVariantBody = zod.object({
   key: zod
@@ -8855,6 +9359,40 @@ export const CreateAdminExperimentVariantBody = zod.object({
         .string()
         .max(createAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax)
         .optional(),
+      "home.socialProof.visible": zod.boolean().optional(),
+      "home.socialProof.eyebrow": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeSocialProofEyebrowMax)
+        .optional(),
+      "home.socialProof.heading": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesHomeSocialProofHeadingMax)
+        .optional(),
+      "trust.hero.eyebrow": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustHeroEyebrowMax)
+        .optional(),
+      "trust.hero.headline": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustHeroHeadlineMax)
+        .optional(),
+      "trust.hero.body": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustHeroBodyMax)
+        .optional(),
+      "trust.cta.visible": zod.boolean().optional(),
+      "trust.cta.heading": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustCtaHeadingMax)
+        .optional(),
+      "trust.cta.label": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustCtaLabelMax)
+        .optional(),
+      "trust.cta.href": zod
+        .string()
+        .max(createAdminExperimentVariantBodyOverridesTrustCtaHrefMax)
+        .optional(),
     })
     .optional()
     .describe(
@@ -8935,6 +9473,22 @@ export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideBodyMax = 1
 export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaMax = 80;
 
 export const updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantBodyOverridesHomeSocialProofEyebrowMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesHomeSocialProofHeadingMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesTrustHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesTrustHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesTrustHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantBodyOverridesTrustCtaHeadingMax = 200;
+
+export const updateAdminExperimentVariantBodyOverridesTrustCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantBodyOverridesTrustCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentVariantBody = zod.object({
   name: zod
@@ -9115,6 +9669,40 @@ export const UpdateAdminExperimentVariantBody = zod.object({
         .string()
         .max(updateAdminExperimentVariantBodyOverridesHomeMethodAsideCtaHrefMax)
         .optional(),
+      "home.socialProof.visible": zod.boolean().optional(),
+      "home.socialProof.eyebrow": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeSocialProofEyebrowMax)
+        .optional(),
+      "home.socialProof.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesHomeSocialProofHeadingMax)
+        .optional(),
+      "trust.hero.eyebrow": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustHeroEyebrowMax)
+        .optional(),
+      "trust.hero.headline": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustHeroHeadlineMax)
+        .optional(),
+      "trust.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustHeroBodyMax)
+        .optional(),
+      "trust.cta.visible": zod.boolean().optional(),
+      "trust.cta.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustCtaHeadingMax)
+        .optional(),
+      "trust.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustCtaLabelMax)
+        .optional(),
+      "trust.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantBodyOverridesTrustCtaHrefMax)
+        .optional(),
     })
     .optional()
     .describe(
@@ -9189,6 +9777,22 @@ export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideBodyMax
 export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaMax = 80;
 
 export const updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaHrefMax = 2048;
+
+export const updateAdminExperimentVariantResponseOverridesHomeSocialProofEyebrowMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesHomeSocialProofHeadingMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesTrustHeroEyebrowMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesTrustHeroHeadlineMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesTrustHeroBodyMax = 2000;
+
+export const updateAdminExperimentVariantResponseOverridesTrustCtaHeadingMax = 200;
+
+export const updateAdminExperimentVariantResponseOverridesTrustCtaLabelMax = 80;
+
+export const updateAdminExperimentVariantResponseOverridesTrustCtaHrefMax = 2048;
 
 export const UpdateAdminExperimentVariantResponse = zod.object({
   id: zod.string().uuid(),
@@ -9388,6 +9992,44 @@ export const UpdateAdminExperimentVariantResponse = zod.object({
         .max(
           updateAdminExperimentVariantResponseOverridesHomeMethodAsideCtaHrefMax,
         )
+        .optional(),
+      "home.socialProof.visible": zod.boolean().optional(),
+      "home.socialProof.eyebrow": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeSocialProofEyebrowMax,
+        )
+        .optional(),
+      "home.socialProof.heading": zod
+        .string()
+        .max(
+          updateAdminExperimentVariantResponseOverridesHomeSocialProofHeadingMax,
+        )
+        .optional(),
+      "trust.hero.eyebrow": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustHeroEyebrowMax)
+        .optional(),
+      "trust.hero.headline": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustHeroHeadlineMax)
+        .optional(),
+      "trust.hero.body": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustHeroBodyMax)
+        .optional(),
+      "trust.cta.visible": zod.boolean().optional(),
+      "trust.cta.heading": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustCtaHeadingMax)
+        .optional(),
+      "trust.cta.label": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustCtaLabelMax)
+        .optional(),
+      "trust.cta.href": zod
+        .string()
+        .max(updateAdminExperimentVariantResponseOverridesTrustCtaHrefMax)
         .optional(),
     })
     .describe(
