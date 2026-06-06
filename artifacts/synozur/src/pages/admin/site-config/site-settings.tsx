@@ -516,9 +516,9 @@ export default function AdminSiteSettings() {
               <p className="text-sm text-muted-foreground max-w-xl">
                 Pre-launch review items for the public{" "}
                 <code>/trust</code> page. These surface on the{" "}
-                <a href="/admin/site-config/launch-readiness" className="underline">
+                <Link href="/site-config/launch-readiness" className="underline">
                   Launch Readiness
-                </a>{" "}
+                </Link>{" "}
                 dashboard and stay flagged as &ldquo;Action needed&rdquo; until checked.
               </p>
             </div>
