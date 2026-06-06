@@ -36,6 +36,7 @@ import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-
 import { clientLogos, type LogoEntry } from "@/data/logos";
 import { LogoRotator } from "@/components/logo-rotator";
 import { BookingLinks } from "@/components/home/BookingLinks";
+import { SocialProof } from "@/components/social-proof";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
 import type { PartnerItem } from "@workspace/api-zod/types";
 import { workshopsApi, type WorkshopDto } from "@/lib/api-workshops";
@@ -662,6 +663,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Client social proof — real pull-quotes + outcomes from published
+          case studies. Renders nothing when no case study has a quote. */}
+      <SocialProof />
 
       {/* Workshops Teaser */}
       <section className="py-24 bg-background">
