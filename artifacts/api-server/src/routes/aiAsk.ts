@@ -47,7 +47,7 @@ type AllowedModel = (typeof ALLOWED_MODELS)[number];
 const DEFAULT_MODEL: AllowedModel = "claude-haiku-4-5";
 
 // Ops kill switch for the public Ask surface. Flipping AI_ASK_DISABLED (any
-// value other than "0"/"false"/"") instantly takes the endpoint offline
+// value other than "0", "false", "no", or empty) instantly takes the endpoint offline
 // without a code deploy — the intended lever if the endpoint is being abused
 // or Anthropic spend spikes. The DB-backed daily token caps
 // (`site_settings.ai_chat_daily_token_cap_*`, enforced below via checkBudget)

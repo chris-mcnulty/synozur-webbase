@@ -111,18 +111,20 @@ export function SocialProof({
                 className="flex flex-col border-border/50 bg-card hover-elevate"
               >
                 <CardContent className="flex flex-1 flex-col p-8">
-                  <Quote
-                    className="h-7 w-7 text-primary/60 mb-4"
-                    aria-hidden="true"
-                  />
-                  <blockquote className="text-lg leading-relaxed flex-1">
-                    “{cs.quote.text}”
-                  </blockquote>
-                  {attribution ? (
-                    <figcaption className="mt-5 text-sm font-semibold text-muted-foreground">
-                      — {attribution}
-                    </figcaption>
-                  ) : null}
+                  <figure className="m-0 flex flex-1 flex-col">
+                    <Quote
+                      className="h-7 w-7 text-primary/60 mb-4"
+                      aria-hidden="true"
+                    />
+                    <blockquote className="text-lg leading-relaxed flex-1">
+                      “{cs.quote.text}”
+                    </blockquote>
+                    {attribution ? (
+                      <figcaption className="mt-5 text-sm font-semibold text-muted-foreground">
+                        — {attribution}
+                      </figcaption>
+                    ) : null}
+                  </figure>
 
                   {metrics.length > 0 ? (
                     <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-t border-border/60 pt-5">

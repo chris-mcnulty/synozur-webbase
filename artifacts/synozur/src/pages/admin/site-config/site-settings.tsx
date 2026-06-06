@@ -534,6 +534,7 @@ export default function AdminSiteSettings() {
               <button
                 type="button"
                 role="switch"
+                aria-label="Compliance copy reviewed"
                 aria-checked={data?.trustComplianceReviewed ?? false}
                 disabled={updateMutation.isPending}
                 onClick={() =>
@@ -570,6 +571,7 @@ export default function AdminSiteSettings() {
               <button
                 type="button"
                 role="switch"
+                aria-label="Security disclosure mailbox live"
                 aria-checked={data?.trustSecurityMailboxReady ?? false}
                 disabled={updateMutation.isPending}
                 onClick={() =>
