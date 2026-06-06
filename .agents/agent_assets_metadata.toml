@@ -305,3 +305,9 @@ id = "xUNFmv0t30FpWVYEhA0Hf"
 uri = "file://artifacts/synozur/public/logo-horizontal.png"
 type = "image"
 title = "logo-horizontal.png"
+
+[[outputs]]
+id = "x0lB-beSUAzMIDQsJzSDO"
+uri = "file://attached_assets/wix_traffic_preprocessed.csv"
+type = "table"
+title = "wix_traffic_preprocessed.csv — ready to import"
