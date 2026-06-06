@@ -220,6 +220,19 @@ export default function Applications() {
         </div>
       </section>
 
+      <section className="py-12 bg-background border-t border-border/50">
+        <div className="container mx-auto px-4 max-w-3xl text-center">
+          <p className="text-sm text-muted-foreground">
+            All Synozur applications are hosted in SOC&nbsp;2 Type&nbsp;II certified data centers.
+            For details on how we protect your data, see our{" "}
+            <Link href="/trust" className="text-primary hover:text-primary/80 transition-colors">
+              Trust &amp; Security page
+            </Link>
+            .
+          </p>
+        </div>
+      </section>
+
       <section className="relative overflow-hidden bg-card border-t border-border py-24">
         <div className="absolute inset-0 nebula-gradient opacity-10" />
         <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">

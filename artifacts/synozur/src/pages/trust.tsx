@@ -147,10 +147,15 @@ export default function Trust() {
               non-committal until those are confirmed. */}
           <h2>Compliance &amp; documentation</h2>
           <p>
+            Our application infrastructure is hosted in SOC 2 Type II certified
+            data centers. A copy of the current certificate is available to
+            prospective and current customers on request.
+          </p>
+          <p>
             We&rsquo;re happy to support your security and procurement review.
             Our security documentation, subprocessor list, and data processing
-            terms are available to prospective and current customers on request.
-            For details specific to a particular Synozur application, see our{" "}
+            terms are available on request. For details specific to a particular
+            Synozur application, see our{" "}
             <Link href="/privacy">Privacy Statement</Link>.
           </p>
 

@@ -218,12 +218,18 @@ export default function Privacy() {
           <h2>Security</h2>
           <p>
             We implement appropriate technical and organizational measures to protect your personal
-            information against unauthorized access, alteration, disclosure, or destruction.
+            information against unauthorized access, alteration, disclosure, or destruction. Our
+            application infrastructure is hosted in SOC 2 Type II certified data centers; a copy
+            of the current certificate is available on request.
           </p>
           <p>
             Customer credentials and access tokens stored by Synozur Orbit, Vega, Galaxy and other
             Synozur apps (including tokens issued by connected services such as LinkedIn) are
             encrypted at rest using AES-256-GCM. Plaintext tokens are never written to logs.
+          </p>
+          <p>
+            For a full overview of our security controls, certifications, and responsible AI
+            practices, see our <a href="/trust">Trust &amp; Security page</a>.
           </p>
 
           <h2>Synozur Orbit Product Data</h2>
