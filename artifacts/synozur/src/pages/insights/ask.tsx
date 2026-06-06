@@ -193,6 +193,23 @@ export default function InsightsAskPage() {
         }
         throw new Error(`Request failed (${res.status})`);
       }
+      // Kill switch (503 `disabled`) or budget ceiling reached (429
+      // `budget_exceeded` / daily quota). The server sends a friendly,
+      // display-ready message — surface it and drop the optimistic turn so
+      // the visitor isn't left with an empty answer block.
+      if (res.status === 503 || res.status === 429) {
+        let message =
+          "Ask Synozur is temporarily unavailable. Please try again later, or talk to a human.";
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {
+          /* keep default */
+        }
+        setError(message);
+        setTurns((prev) => prev.filter((_, idx) => idx !== turnIndex));
+        return;
+      }
       if (!res.ok || !res.body) {
         throw new Error(`Request failed (${res.status})`);
       }
