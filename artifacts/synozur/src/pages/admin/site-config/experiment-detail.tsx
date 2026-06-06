@@ -4,7 +4,7 @@
    them. Form inputs all have visible labels and are usable; this rule's
    strict structural requirement is at odds with the inline-form layout. */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -916,6 +916,36 @@ const OVERRIDE_GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
       { kind: "text", key: "case-studies.hero.eyebrow", label: "Eyebrow" },
       { kind: "text", key: "case-studies.hero.headline", label: "Headline" },
       { kind: "longtext", key: "case-studies.hero.body", label: "Body" },
+    ],
+  },
+  {
+    title: "Home — client social proof (page key: home)",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.socialProof.visible",
+        label: "Social-proof band",
+        help: 'Default is "Show". The band still only renders when a published case study has a quote.',
+      },
+      { kind: "text", key: "home.socialProof.eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "home.socialProof.heading", label: "Heading" },
+    ],
+  },
+  {
+    title: "Trust & Security page (page key: trust)",
+    fields: [
+      { kind: "text", key: "trust.hero.eyebrow", label: "Hero eyebrow" },
+      { kind: "text", key: "trust.hero.headline", label: "Hero headline" },
+      { kind: "longtext", key: "trust.hero.body", label: "Hero body" },
+      {
+        kind: "boolean",
+        key: "trust.cta.visible",
+        label: "Closing CTA",
+        help: 'Default is "Show". Hides the bottom "talk to us about security" CTA when off.',
+      },
+      { kind: "text", key: "trust.cta.heading", label: "CTA heading" },
+      { kind: "text", key: "trust.cta.label", label: "CTA button label" },
+      { kind: "url", key: "trust.cta.href", label: "CTA link" },
     ],
   },
 ];

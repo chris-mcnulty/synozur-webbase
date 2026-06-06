@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Meta } from "@/lib/meta";
+import { useOverride, useTrackConversion } from "@/lib/experiments";
 
 // Trust & Security overview for enterprise buyers. Every claim below is
 // either drawn from the published Privacy Statement (/privacy) or from the
@@ -17,6 +18,27 @@ import { Meta } from "@/lib/meta";
 //     security@synozur.com once that inbox is live.
 
 export default function Trust() {
+  // Experiment-overridable hero + CTA (page key: "trust"). Defaults below are
+  // the control copy; running experiments can swap eyebrow/headline/body and
+  // the closing CTA via trust.* overrides.
+  const heroEyebrow = useOverride<string>("trust.hero.eyebrow", "Trust & Security");
+  const heroHeadline = useOverride<string>(
+    "trust.hero.headline",
+    "Security and trust at Synozur",
+  );
+  const heroBody = useOverride<string>(
+    "trust.hero.body",
+    "Enterprises trust us with their strategy, their data, and their Microsoft 365 environments. This page summarizes how we protect that trust — across identity, data protection, tenant isolation, and responsible AI.",
+  );
+  const ctaVisible = useOverride<boolean>("trust.cta.visible", true);
+  const ctaHeading = useOverride<string>(
+    "trust.cta.heading",
+    "Questions from your security team?",
+  );
+  const ctaLabel = useOverride<string>("trust.cta.label", "Talk to us about security");
+  const ctaHref = useOverride<string>("trust.cta.href", "/contact");
+  const trackConversion = useTrackConversion();
+
   return (
     <div className="w-full" data-testid="trust-page">
       <Meta
@@ -27,17 +49,12 @@ export default function Trust() {
       <section className="bg-[#0B0B1A] py-20">
         <div className="container mx-auto px-4 max-w-4xl">
           <p className="text-sm uppercase tracking-[0.25em] text-primary mb-4">
-            Trust &amp; Security
+            {heroEyebrow}
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
-            Security and trust at Synozur
+            {heroHeadline}
           </h1>
-          <p className="text-zinc-300 text-lg max-w-2xl">
-            Enterprises trust us with their strategy, their data, and their
-            Microsoft 365 environments. This page summarizes how we protect
-            that trust — across identity, data protection, tenant isolation,
-            and responsible AI.
-          </p>
+          <p className="text-zinc-300 text-lg max-w-2xl">{heroBody}</p>
         </div>
       </section>
 
@@ -152,24 +169,28 @@ export default function Trust() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-card border-t border-border py-20">
-        <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-10" />
-        <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Questions from your security team?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            We&rsquo;re glad to walk through our controls and provide the
-            documentation your review needs.
-          </p>
-          <Link
-            href="/contact"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Talk to us about security
-          </Link>
-        </div>
-      </section>
+      {ctaVisible ? (
+        <section className="relative overflow-hidden bg-card border-t border-border py-20">
+          <div aria-hidden="true" className="absolute inset-0 nebula-gradient opacity-10" />
+          <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">{ctaHeading}</h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              We&rsquo;re glad to walk through our controls and provide the
+              documentation your review needs.
+            </p>
+            <Link
+              href={ctaHref}
+              onClick={() =>
+                trackConversion("conversion.trust.contact", { href: ctaHref })
+              }
+              className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+              data-testid="trust-cta"
+            >
+              {ctaLabel}
+            </Link>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

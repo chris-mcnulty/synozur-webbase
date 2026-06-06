@@ -288,6 +288,11 @@ export default function Home() {
     "home.partners.items",
     null,
   );
+  // Client social-proof band (experiment engine: home.socialProof.*). Empty
+  // string framing-copy overrides fall back to the component's own defaults.
+  const socialProofVisible = useOverride<boolean>("home.socialProof.visible", true);
+  const socialProofEyebrow = useOverride<string>("home.socialProof.eyebrow", "");
+  const socialProofHeading = useOverride<string>("home.socialProof.heading", "");
   const {
     data: workshopsData,
     isLoading: workshopsLoading,
@@ -665,8 +670,15 @@ export default function Home() {
       </section>
 
       {/* Client social proof — real pull-quotes + outcomes from published
-          case studies. Renders nothing when no case study has a quote. */}
-      <SocialProof />
+          case studies. Renders nothing when no case study has a quote.
+          Visibility + framing copy are experiment-overridable
+          (home.socialProof.*). */}
+      {socialProofVisible ? (
+        <SocialProof
+          {...(socialProofEyebrow ? { eyebrow: socialProofEyebrow } : {})}
+          {...(socialProofHeading ? { heading: socialProofHeading } : {})}
+        />
+      ) : null}
 
       {/* Workshops Teaser */}
       <section className="py-24 bg-background">

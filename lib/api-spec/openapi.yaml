@@ -10051,6 +10051,34 @@ components:
         home.method.aside.ctaHref:
           type: string
           maxLength: 2048
+        home.socialProof.visible:
+          type: boolean
+        home.socialProof.eyebrow:
+          type: string
+          maxLength: 80
+        home.socialProof.heading:
+          type: string
+          maxLength: 200
+        trust.hero.eyebrow:
+          type: string
+          maxLength: 80
+        trust.hero.headline:
+          type: string
+          maxLength: 200
+        trust.hero.body:
+          type: string
+          maxLength: 2000
+        trust.cta.visible:
+          type: boolean
+        trust.cta.heading:
+          type: string
+          maxLength: 200
+        trust.cta.label:
+          type: string
+          maxLength: 80
+        trust.cta.href:
+          type: string
+          maxLength: 2048
 
     PublicExperimentVariant:
       type: object

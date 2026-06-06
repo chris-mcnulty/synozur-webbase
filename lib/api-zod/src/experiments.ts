@@ -96,6 +96,22 @@ export const OverrideMap = z
     "home.method.aside.body": z.string().max(1000).optional(),
     "home.method.aside.cta": z.string().max(80).optional(),
     "home.method.aside.ctaHref": z.string().max(2048).optional(),
+
+    // Home — client social-proof band (case-study pull-quotes + metrics).
+    // The band itself only renders when a published case study has a quote;
+    // these control its visibility and framing copy.
+    "home.socialProof.visible": z.boolean().optional(),
+    "home.socialProof.eyebrow": z.string().max(80).optional(),
+    "home.socialProof.heading": z.string().max(200).optional(),
+
+    // /trust Trust & Security page (page key: "trust")
+    "trust.hero.eyebrow": z.string().max(80).optional(),
+    "trust.hero.headline": z.string().max(200).optional(),
+    "trust.hero.body": z.string().max(2000).optional(),
+    "trust.cta.visible": z.boolean().optional(),
+    "trust.cta.heading": z.string().max(200).optional(),
+    "trust.cta.label": z.string().max(80).optional(),
+    "trust.cta.href": z.string().max(2048).optional(),
   })
   .catchall(z.unknown());
 export type OverrideMap = z.infer<typeof OverrideMap>;
