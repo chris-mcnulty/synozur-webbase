@@ -833,3 +833,69 @@ Owner/tracking: open a project task once the Wix-platform parity backlog and
 launch-readiness checklist are clear; this is a medium-complexity infra change
 with no user-visible feature delta, so it should be batched with the next
 artifact-routing or server-consolidation effort.
+
+---
+
+## Pre-launch review: deferred items (June 2026)
+
+Context: a June 2026 pre-launch review proposed ten "beyond the backlog"
+additions for the public go-live of synozur.com. Five were taken into the
+launch branch (`claude/pre-launch-feature-priorities-UH0aB`): the top-level
+React error boundary, public-LLM-endpoint cost/kill-switch guardrails, the
+home/services social-proof layer, the `/trust` Trust & Security page, and a
+pre-launch editorial/QA sweep. The five items below were the explicitly
+deferred remainder — none are launch blockers, but each is recommended for
+week-one-to-month-one after go-live. Listed in recommended order.
+
+1. **Client-side error tracking (Sentry or equivalent).** Today the SPA
+   reports Core Web Vitals to GA4 (`components/analytics.tsx`) but captures
+   no JavaScript exceptions anywhere. A single unhandled error on a
+   high-traffic route can silently suppress conversions with no signal.
+   Scope: add a browser SDK to `artifacts/synozur/` and a Node SDK to
+   `artifacts/api-server/`, tagged with a release identifier per deploy, with
+   source-map upload wired into the build. Pairs naturally with the
+   error-boundary work already on the launch branch (the boundary's
+   `componentDidCatch` should forward to the SDK once it exists).
+   Out of scope: session replay, performance tracing (decide after baseline
+   error volume is known).
+
+2. **External uptime + synthetic monitoring with real alerting.** The
+   existing `/admin/site-config/health` dashboard is internal and unwatched
+   out of hours. Scope: an external probe (Better Stack / UptimeRobot /
+   Pingdom) against the home page, a lightweight `/healthz` API endpoint, and
+   the contact-form POST path, wired to email/SMS/Slack on failure. Add the
+   `/healthz` endpoint to the api-server if one does not already back the
+   internal health page. Ops task more than engineering, but the `/healthz`
+   surface is a small code change.
+
+3. **UTM / campaign attribution captured into submissions + HubSpot.** Launch
+   traffic will arrive with `utm_*` params from LinkedIn, email, and the
+   marketing pixels, but nothing persists first-touch attribution onto the
+   `audience_submissions` row or the synced HubSpot contact. Marketing cannot
+   prove channel ROI without it. Scope: capture `utm_*` + referrer + landing
+   path into a first-party cookie on first visit; attach them as hidden
+   fields on every form submit; persist to `audience_submissions` and map to
+   HubSpot contact properties in the existing sync path
+   (`/admin/marketing/hubspot`). Out of scope: multi-touch attribution
+   modelling.
+
+4. **Google Consent Mode v2 wiring for GA4 + LinkedIn/Meta pixels.** The
+   current cookie-consent gate hides a banner, but it should be verified
+   that it actually signals Consent Mode v2 (`gtag('consent', ...)`
+   default/update) to GA4 and gates the LinkedIn Insight Tag and Meta Pixel
+   until consent — pixels firing pre-consent is a compliance exposure for any
+   EU/UK traffic, and Consent Mode preserves modelled conversions. Scope:
+   audit `components/analytics.tsx` consent flow; add default-denied consent
+   state + update-on-grant; gate pixel injection on consent. Verify-or-build:
+   may be partially present already.
+
+5. **Tested database backup + restore runbook (DR).** Not a site feature, but
+   a launch-readiness item in spirit: confirm Replit Postgres automated
+   backups are enabled and rehearse a full restore once before go-live. The
+   first exercise of a restore should not be a live incident. Scope: document
+   the restore procedure in `admin-guide.md`, verify backup cadence/retention,
+   and run one restore drill against a throwaway database.
+
+Owner/tracking: open project tasks once the launch branch merges; sequence 1
+and 2 first (launch-week observability), then 3 (first marketing-reporting
+cycle), then 4 and 5.
