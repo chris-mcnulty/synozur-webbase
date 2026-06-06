@@ -22,6 +22,11 @@ import { siteOrigin } from "./siteOrigin";
 //   L5 — GA4 + LinkedIn + Meta pixel IDs
 //        (DB-backed siteSettings.tag* columns OR fallback VITE_* env vars
 //         consumed by the SPA's components/analytics.tsx).
+//   TRUST — Trust & Security page (/trust) pre-launch content sign-off:
+//        the two REVIEW-BEFORE-LAUNCH items flagged in trust.tsx. Operators
+//        flip TRUST_COMPLIANCE_REVIEWED once the compliance wording is
+//        confirmed, and set SECURITY_CONTACT_EMAIL once a monitored
+//        security@ disclosure mailbox is live.
 //
 // All checks are non-fatal; misconfigured channels just log a warning.
 
@@ -43,7 +48,7 @@ export interface ChannelStatus {
 }
 
 export interface LaunchReadinessGroup {
-  tier: "L2" | "L3" | "L5";
+  tier: "L2" | "L3" | "L5" | "TRUST";
   label: string;
   channels: ChannelStatus[];
 }
@@ -240,6 +245,41 @@ async function checkMarketingTags(): Promise<ChannelStatus[]> {
   ];
 }
 
+// TRUST — manual pre-launch sign-off for the two REVIEW-BEFORE-LAUNCH items
+// on the /trust page. Unlike the other tiers these are content/ops tasks with
+// no automatic signal, so each is gated on an explicit operator-set value:
+//   - TRUST_COMPLIANCE_REVIEWED — set (to any truthy value) once the Trust
+//     page's "Compliance & documentation" wording has been confirmed and any
+//     formal attestations (SOC 2 / ISO 27001 / DPA) named.
+//   - SECURITY_CONTACT_EMAIL — set once a monitored security@ disclosure
+//     mailbox is live (the page currently routes reports to privacy@synozur.com).
+function checkTrustPageSignoff(): ChannelStatus[] {
+  const raw = (process.env.TRUST_COMPLIANCE_REVIEWED ?? "").trim().toLowerCase();
+  const complianceReviewed =
+    raw !== "" && raw !== "0" && raw !== "false" && raw !== "no";
+  const securityEmail = (process.env.SECURITY_CONTACT_EMAIL ?? "").trim();
+
+  return [
+    {
+      name: "Trust page compliance copy reviewed",
+      configured: complianceReviewed,
+      source: "TRUST_COMPLIANCE_REVIEWED",
+      detail: complianceReviewed
+        ? undefined
+        : "Confirm the /trust 'Compliance & documentation' wording and name any formal attestations (SOC 2 / ISO 27001 / DPA), then set TRUST_COMPLIANCE_REVIEWED.",
+    },
+    {
+      name: "Security disclosure mailbox live (security@)",
+      configured: securityEmail.length > 0,
+      source: "SECURITY_CONTACT_EMAIL",
+      detail:
+        securityEmail.length > 0
+          ? undefined
+          : "Stand up a monitored security@ inbox and set SECURITY_CONTACT_EMAIL; /trust currently routes disclosures to privacy@synozur.com.",
+    },
+  ];
+}
+
 function logChannel(label: string, status: ChannelStatus): void {
   if (status.configured) {
     logger.info(`launch-readiness: ${label} — ${status.name}: configured (${status.source})`);
@@ -281,6 +321,11 @@ export async function getLaunchReadinessReport(): Promise<LaunchReadinessReport>
       tier: "L5",
       label: "GA4 + LinkedIn + Meta marketing tags",
       channels: await checkMarketingTags(),
+    },
+    {
+      tier: "TRUST",
+      label: "Trust & Security page pre-launch sign-off",
+      channels: checkTrustPageSignoff(),
     },
   ];
   return { generatedAt: new Date().toISOString(), groups };

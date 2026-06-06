@@ -43,7 +43,7 @@ function formatRelative(iso: string): string {
 }
 
 interface LaunchReadinessGroup {
-  tier: "L2" | "L3" | "L5";
+  tier: "L2" | "L3" | "L5" | "TRUST";
   label: string;
   channels: ChannelStatus[];
 }
