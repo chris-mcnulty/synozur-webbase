@@ -299,6 +299,7 @@ export const FOOTER_COMPANY_LINKS: NavLink[] = [
 ];
 
 export const FOOTER_LEGAL_LINKS: NavLink[] = [
+  { label: "Trust & Security", href: "/trust" },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
 ];

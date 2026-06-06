@@ -48,6 +48,7 @@ import Events from "@/pages/events";
 import EventDetail from "@/pages/event-detail";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
+import Trust from "@/pages/trust";
 import SignInPage from "@/pages/sign-in";
 import SignUpPage from "@/pages/sign-up";
 import VerifyEmailPage from "@/pages/verify-email";
@@ -599,6 +600,7 @@ function Router() {
             <Route path="/events/:slug" component={EventDetail} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />
+            <Route path="/trust" component={Trust} />
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
             <Route path="/verify-email" component={VerifyEmailPage} />
