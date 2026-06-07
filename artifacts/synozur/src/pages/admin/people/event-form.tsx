@@ -36,6 +36,28 @@ import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal"
 import type { MediaItem } from "@workspace/api-client-react";
 import type { EventInput } from "@workspace/api-zod/types";
 
+const COMMON_TIMEZONES: { label: string; value: string }[] = [
+  { label: "UTC", value: "UTC" },
+  { label: "Eastern Time — New York, Miami", value: "America/New_York" },
+  { label: "Central Time — Chicago, Dallas", value: "America/Chicago" },
+  { label: "Mountain Time — Denver", value: "America/Denver" },
+  { label: "Pacific Time — Los Angeles, Seattle", value: "America/Los_Angeles" },
+  { label: "Alaska (AKT)", value: "America/Anchorage" },
+  { label: "Hawaii (HST)", value: "Pacific/Honolulu" },
+  { label: "Atlantic — Halifax (AT)", value: "America/Halifax" },
+  { label: "São Paulo (BRT)", value: "America/Sao_Paulo" },
+  { label: "London (GMT/BST)", value: "Europe/London" },
+  { label: "Paris / Berlin (CET)", value: "Europe/Paris" },
+  { label: "Helsinki / Kyiv (EET)", value: "Europe/Helsinki" },
+  { label: "Dubai (GST)", value: "Asia/Dubai" },
+  { label: "Mumbai / New Delhi (IST)", value: "Asia/Kolkata" },
+  { label: "Bangkok / Jakarta (ICT)", value: "Asia/Bangkok" },
+  { label: "Singapore / KL (SGT)", value: "Asia/Singapore" },
+  { label: "Tokyo / Osaka (JST)", value: "Asia/Tokyo" },
+  { label: "Sydney / Melbourne (AEST)", value: "Australia/Sydney" },
+  { label: "Auckland / Wellington (NZST)", value: "Pacific/Auckland" },
+];
+
 type SessionDraft = EventSessionInput & { _id: string };
 
 function blankSession(idx: number): SessionDraft {
@@ -109,6 +131,7 @@ export default function EventForm({ id }: Props) {
     imageMediaId: null,
     recordingVideoId: null,
     speakerIds: [],
+    timezone: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
@@ -147,6 +170,7 @@ export default function EventForm({ id }: Props) {
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((s) => s.teamMemberId) ?? [],
+        timezone: existing.timezone ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
     }
@@ -392,6 +416,31 @@ export default function EventForm({ id }: Props) {
             onChange={(e) => setForm({ ...form, location: e.target.value || null })}
             data-testid="input-location"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="timezone">Event Timezone</Label>
+          <Select
+            value={form.timezone ?? "__unset__"}
+            onValueChange={(v) =>
+              setForm({ ...form, timezone: v === "__unset__" ? null : v })
+            }
+          >
+            <SelectTrigger id="timezone" data-testid="select-timezone">
+              <SelectValue placeholder="— not set (UTC) —" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unset__">— not set (UTC) —</SelectItem>
+              {COMMON_TIMEZONES.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>
+                  {tz.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Used for correct time display on the schedule page and ICS calendar downloads.
+          </p>
         </div>
 
         <div className="space-y-2">

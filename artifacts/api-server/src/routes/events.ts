@@ -346,6 +346,67 @@ function sessionShape(s: EventSession) {
   };
 }
 
+// ── ICS helpers ──────────────────────────────────────────────────────────────
+
+function icspad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Format a real UTC Date as local wall-clock time for DTSTART;TZID=... form. */
+function icsLocalTime(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const g = (t: Intl.DateTimeFormatPartTypes) => {
+    const v = parts.find((p) => p.type === t)?.value ?? "00";
+    return v === "24" ? "00" : v;
+  };
+  return `${g("year")}${g("month")}${g("day")}T${g("hour")}${g("minute")}${g("second")}`;
+}
+
+/** Format a Date as UTC for DTSTART:...Z form. */
+function icsUtcTime(date: Date): string {
+  return (
+    `${date.getUTCFullYear()}${icspad(date.getUTCMonth() + 1)}${icspad(date.getUTCDate())}` +
+    `T${icspad(date.getUTCHours())}${icspad(date.getUTCMinutes())}${icspad(date.getUTCSeconds())}Z`
+  );
+}
+
+/**
+ * Session startTime values are stored as naive local-time timestamps
+ * (the DB column is `timestamp`, not `timestamptz`). Extract the wall-clock
+ * digits via UTC getters — they are the correct local-time digits.
+ */
+function icsNaiveLocalDigits(date: Date): string {
+  return (
+    `${date.getUTCFullYear()}${icspad(date.getUTCMonth() + 1)}${icspad(date.getUTCDate())}` +
+    `T${icspad(date.getUTCHours())}${icspad(date.getUTCMinutes())}${icspad(date.getUTCSeconds())}`
+  );
+}
+
+function foldIcsLine(line: string): string {
+  const out: string[] = [];
+  while (line.length > 75) {
+    out.push(line.slice(0, 75));
+    line = " " + line.slice(75);
+  }
+  out.push(line);
+  return out.join("\r\n");
+}
+
+function escapeIcs(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+
+// ── Shape helpers ─────────────────────────────────────────────────────────────
+
 function publicShape(enriched: EnrichedEvent) {
   const { event, imageUrl, recordingVideo, speakers, hasSessions } = enriched;
   return {
@@ -367,6 +428,7 @@ function publicShape(enriched: EnrichedEvent) {
     recordingVideoTitle: recordingVideo?.title ?? null,
     speakers,
     hasSessions,
+    timezone: event.timezone ?? null,
   };
 }
 
@@ -396,6 +458,7 @@ function adminShape(enriched: EnrichedEvent) {
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
     speakers,
+    timezone: event.timezone ?? null,
   };
 }
 
@@ -485,6 +548,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       imageAssetId: parsed.data.imageAssetId ?? null,
       imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
+      timezone: parsed.data.timezone ?? null,
     })
     .returning();
   if (parsed.data.speakerIds !== undefined) {
@@ -554,6 +618,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       imageAssetId: parsed.data.imageAssetId ?? null,
       imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
+      timezone: parsed.data.timezone ?? null,
     })
     .where(eq(eventsTable.id, params.data.id))
     .returning();
@@ -659,6 +724,102 @@ router.get("/events/:slug/schedule", async (req, res): Promise<void> => {
     .where(eq(eventSessionsTable.eventId, event.id))
     .orderBy(asc(eventSessionsTable.sortOrder), asc(eventSessionsTable.startTime));
   res.json(GetEventScheduleResponse.parse({ items: sessions.map(sessionShape) }));
+});
+
+// ICS calendar download for an event
+router.get("/events/:slug/calendar.ics", async (req, res): Promise<void> => {
+  const slug = String(req.params.slug);
+  const [event] = await db
+    .select()
+    .from(eventsTable)
+    .where(eq(eventsTable.slug, slug));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  const sessions = await db
+    .select()
+    .from(eventSessionsTable)
+    .where(eq(eventSessionsTable.eventId, event.id))
+    .orderBy(asc(eventSessionsTable.sortOrder), asc(eventSessionsTable.startTime));
+
+  const tz = event.timezone ?? null;
+  const now = new Date();
+  const lines: string[] = [];
+  const add = (line: string) => lines.push(foldIcsLine(line));
+
+  lines.push("BEGIN:VCALENDAR");
+  lines.push("VERSION:2.0");
+  lines.push("PRODID:-//Synozur Alliance//Events//EN");
+  lines.push("CALSCALE:GREGORIAN");
+  lines.push("METHOD:PUBLISH");
+  if (tz) add(`X-WR-TIMEZONE:${tz}`);
+  add(`X-WR-CALNAME:${escapeIcs(event.title)}`);
+
+  // Main event VEVENT (start + 1 day as end when no explicit end time)
+  const startDate = new Date(event.startDate);
+  const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+  lines.push("BEGIN:VEVENT");
+  add(`UID:${event.slug}@synozur.com`);
+  if (tz) {
+    add(`DTSTART;TZID=${tz}:${icsLocalTime(startDate, tz)}`);
+    add(`DTEND;TZID=${tz}:${icsLocalTime(endDate, tz)}`);
+  } else {
+    add(`DTSTART:${icsUtcTime(startDate)}`);
+    add(`DTEND:${icsUtcTime(endDate)}`);
+  }
+  add(`SUMMARY:${escapeIcs(event.title)}`);
+  if (event.location) add(`LOCATION:${escapeIcs(event.location)}`);
+  if (event.teaser || event.description) {
+    add(`DESCRIPTION:${escapeIcs(event.teaser ?? event.description ?? "")}`);
+  }
+  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+  const eventUrl = domain
+    ? `https://${domain}/events/${event.slug}`
+    : `/events/${event.slug}`;
+  add(`URL:${eventUrl}`);
+  add(`DTSTAMP:${icsUtcTime(now)}`);
+  lines.push("END:VEVENT");
+
+  // One VEVENT per session
+  for (const session of sessions) {
+    if (!session.startTime) continue;
+    const st = new Date(session.startTime as unknown as string);
+    // Session end: 1 hour after start (no duration stored)
+    const et = new Date(st.getTime() + 60 * 60 * 1000);
+    lines.push("BEGIN:VEVENT");
+    add(`UID:${event.slug}-session-${session.id}@synozur.com`);
+    if (tz) {
+      // startTime is stored as naive local — UTC digits = local time digits
+      add(`DTSTART;TZID=${tz}:${icsNaiveLocalDigits(st)}`);
+      add(`DTEND;TZID=${tz}:${icsNaiveLocalDigits(et)}`);
+    } else {
+      add(`DTSTART:${icsNaiveLocalDigits(st)}Z`);
+      add(`DTEND:${icsNaiveLocalDigits(et)}Z`);
+    }
+    add(`SUMMARY:${escapeIcs(session.title)}`);
+    if (session.room) add(`LOCATION:${escapeIcs(session.room)}`);
+    const descParts: string[] = [];
+    if (session.speakers) descParts.push(`Speakers: ${session.speakers}`);
+    if (session.track) descParts.push(`Track: ${session.track}`);
+    if (session.sessionUrl) descParts.push(`Details: ${session.sessionUrl}`);
+    if (descParts.length > 0) {
+      add(`DESCRIPTION:${escapeIcs(descParts.join("\n"))}`);
+    }
+    add(`DTSTAMP:${icsUtcTime(now)}`);
+    lines.push("END:VEVENT");
+  }
+
+  lines.push("END:VCALENDAR");
+
+  const icsContent = lines.join("\r\n") + "\r\n";
+  res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${event.slug}.ics"`,
+  );
+  res.setHeader("Cache-Control", "no-cache, no-store");
+  res.send(icsContent);
 });
 
 // Replace all sessions for an event (admin)

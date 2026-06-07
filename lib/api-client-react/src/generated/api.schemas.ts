@@ -1503,6 +1503,11 @@ export interface PublicEvent {
   speakers?: EventSpeaker[];
   /** True when the event has at least one session in its schedule. */
   hasSessions?: boolean;
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }
 
 export interface AdminEvent {
@@ -1542,6 +1547,11 @@ export interface AdminEvent {
   updatedAt?: string;
   /** Team members speaking or appearing at this event. */
   speakers?: EventSpeaker[];
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }
 
 export type AdminFormSubmissionPayload = { [key: string]: unknown };
@@ -1741,6 +1751,11 @@ export interface EventInput {
   recordingVideoId?: string | null;
   /** Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder. */
   speakerIds?: number[];
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }
 
 export type ServiceStatus = (typeof ServiceStatus)[keyof typeof ServiceStatus];

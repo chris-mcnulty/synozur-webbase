@@ -37,4 +37,9 @@ export interface PublicEvent {
   speakers?: EventSpeaker[];
   /** True when the event has at least one session in its schedule. */
   hasSessions?: boolean;
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }

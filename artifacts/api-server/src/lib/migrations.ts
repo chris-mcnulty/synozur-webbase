@@ -3342,6 +3342,9 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS event_sessions_event_idx ON event_sessions (event_id);
     `);
+    await db.execute(sql`
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS timezone TEXT;
+    `);
 
     logger.info("Startup migrations complete");
   } catch (err) {

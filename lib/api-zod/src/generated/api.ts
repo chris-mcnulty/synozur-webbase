@@ -3797,6 +3797,12 @@ export const ListPublicEventsResponseItem = zod.object({
     .boolean()
     .optional()
     .describe("True when the event has at least one session in its schedule."),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
+    ),
 });
 export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
 
@@ -3839,6 +3845,12 @@ export const ListAdminEventsResponseItem = zod.object({
     )
     .optional()
     .describe("Team members speaking or appearing at this event."),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
+    ),
 });
 export const ListAdminEventsResponse = zod.array(ListAdminEventsResponseItem);
 
@@ -3867,6 +3879,12 @@ export const CreateEventBody = zod.object({
     .optional()
     .describe(
       "Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.",
+    ),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means UTC.",
     ),
 });
 
@@ -3910,6 +3928,12 @@ export const GetAdminEventResponse = zod.object({
     )
     .optional()
     .describe("Team members speaking or appearing at this event."),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
+    ),
 });
 
 export const UpdateEventParams = zod.object({
@@ -3937,6 +3961,12 @@ export const UpdateEventBody = zod.object({
     .optional()
     .describe(
       "Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.",
+    ),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means UTC.",
     ),
 });
 
@@ -3976,6 +4006,12 @@ export const UpdateEventResponse = zod.object({
     )
     .optional()
     .describe("Team members speaking or appearing at this event."),
+  timezone: zod
+    .string()
+    .nullish()
+    .describe(
+      "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
+    ),
 });
 
 export const DeleteEventParams = zod.object({

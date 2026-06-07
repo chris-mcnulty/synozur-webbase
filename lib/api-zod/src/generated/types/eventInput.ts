@@ -34,4 +34,9 @@ export interface EventInput {
   recordingVideoId?: string | null;
   /** Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder. */
   speakerIds?: number[];
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }

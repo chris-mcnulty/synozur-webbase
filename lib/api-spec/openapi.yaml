@@ -6913,6 +6913,11 @@ components:
         hasSessions:
           type: boolean
           description: True when the event has at least one session in its schedule.
+        timezone:
+          type:
+            - string
+            - 'null'
+          description: IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
     AdminEvent:
       type: object
       required:
@@ -7001,6 +7006,11 @@ components:
           items:
             $ref: '#/components/schemas/EventSpeaker'
           description: Team members speaking or appearing at this event.
+        timezone:
+          type:
+            - string
+            - 'null'
+          description: IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
     AdminFormSubmission:
       type: object
       required: [id, formType, payload, createdAt]
@@ -7282,6 +7292,11 @@ components:
           items:
             type: integer
           description: Ordered list of team_member.id values speaking at this event. Order is preserved as sortOrder.
+        timezone:
+          type:
+            - string
+            - 'null'
+          description: IANA timezone identifier (e.g. America/Chicago). Null means UTC.
 
     Service:
       type: object

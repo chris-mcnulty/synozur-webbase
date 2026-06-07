@@ -6,6 +6,7 @@ import {
   ExternalLink,
   ArrowLeft,
   Clock,
+  Download,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import Gone from "@/pages/gone";
@@ -39,12 +40,14 @@ function formatDate(iso: string | Date): string {
   });
 }
 
-function formatTime(iso: string | Date): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+function formatTime(iso: string | Date, timezone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",
-  });
+  };
+  if (timezone) opts.timeZone = timezone;
+  return new Date(iso).toLocaleTimeString("en-US", opts);
 }
 
 export default function EventDetail() {
@@ -299,7 +302,7 @@ export default function EventDetail() {
                   <p className="text-sm font-medium">{formatDate(event.startDate)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {formatTime(event.startDate)}
+                    {formatTime(event.startDate, (event as { timezone?: string | null }).timezone)}
                   </p>
                 </div>
               </div>
@@ -340,6 +343,15 @@ export default function EventDetail() {
                 View Session Schedule
               </Link>
             )}
+
+            <a
+              href={`/api/events/${event.slug}/calendar.ics`}
+              download={`${event.slug}.ics`}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/60 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Add to Calendar
+            </a>
 
             <div className="text-center">
               <Link href="/contact">

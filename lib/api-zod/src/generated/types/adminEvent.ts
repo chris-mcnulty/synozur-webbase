@@ -44,4 +44,9 @@ export interface AdminEvent {
   updatedAt?: Date;
   /** Team members speaking or appearing at this event. */
   speakers?: EventSpeaker[];
+  /**
+   * IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+   * @nullable
+   */
+  timezone?: string | null;
 }

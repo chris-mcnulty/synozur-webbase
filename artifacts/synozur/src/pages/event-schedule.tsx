@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { Calendar, MapPin, ArrowLeft, Clock, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, ArrowLeft, Clock, ExternalLink, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { Meta } from "@/lib/meta";
+
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 function formatDate(iso: string | Date): string {
   return new Date(iso as string).toLocaleDateString("en-US", {
@@ -15,22 +17,49 @@ function formatDate(iso: string | Date): string {
 
 type WithStartTime = { startTime?: Date | string | null };
 
+/**
+ * Session startTimes are stored as naive local timestamps (UTC hour = local
+ * wall-clock hour). Group by the UTC date components which represent the
+ * local event date.
+ */
 function toDateStr(startTime: Date | string | null | undefined): string | null {
   if (startTime == null) return null;
-  return new Date(startTime as string | Date).toLocaleDateString("en-US", {
+  const d = new Date(startTime as string | Date);
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  ).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
-function toTimeStr(startTime: Date | string | null | undefined): string | null {
+/**
+ * Format a session time. Session startTime values are stored as naive local
+ * timestamps — the UTC hour/minute equal the wall-clock local time. We
+ * extract UTC components directly and append the timezone abbreviation.
+ */
+function toTimeStr(
+  startTime: Date | string | null | undefined,
+  timezone?: string | null,
+): string | null {
   if (startTime == null) return null;
-  return new Date(startTime as string | Date).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+  const d = new Date(startTime as string | Date);
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  const mStr = String(m).padStart(2, "0");
+  if (!timezone) return `${h12}:${mStr} ${ampm}`;
+  const abbr =
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    })
+      .formatToParts(d)
+      .find((p) => p.type === "timeZoneName")?.value ?? "";
+  return `${h12}:${mStr} ${ampm}${abbr ? ` ${abbr}` : ""}`;
 }
 
 function groupByDate<T extends WithStartTime>(items: T[]) {
@@ -148,6 +177,16 @@ export default function EventSchedule() {
               </span>
             )}
           </div>
+          <div className="mt-4">
+            <a
+              href={`${BASE_PATH}/api/events/${slug}/calendar.ics`}
+              download={`${slug}.ics`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border/60 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download .ics
+            </a>
+          </div>
         </div>
       </div>
 
@@ -187,7 +226,7 @@ export default function EventSchedule() {
                           {s.startTime != null ? (
                             <p className="text-sm font-medium text-primary flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5" />
-                              {toTimeStr(s.startTime)}
+                              {toTimeStr(s.startTime, event.timezone)}
                             </p>
                           ) : (
                             <p className="text-xs text-muted-foreground">TBD</p>
