@@ -850,7 +850,7 @@ router.put("/admin/events/:id/sessions", requireAdmin, async (req, res): Promise
     speakers: s.speakers ?? null,
     track: s.track ?? null,
     room: s.room ?? null,
-    startTime: s.startTime ? new Date(s.startTime) : null,
+    startTime: (() => { const d = s.startTime ? new Date(s.startTime) : null; return d && !isNaN(d.getTime()) ? d : null; })(),
     sessionUrl: s.sessionUrl ?? null,
     sortOrder: s.sortOrder ?? idx,
   }));

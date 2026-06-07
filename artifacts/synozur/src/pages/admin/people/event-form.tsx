@@ -420,24 +420,22 @@ export default function EventForm({ id }: Props) {
 
         <div className="space-y-2">
           <Label htmlFor="timezone">Event Timezone</Label>
-          <Select
-            value={form.timezone ?? "__unset__"}
-            onValueChange={(v) =>
-              setForm({ ...form, timezone: v === "__unset__" ? null : v })
+          <select
+            id="timezone"
+            data-testid="select-timezone"
+            value={form.timezone ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, timezone: e.target.value || null })
             }
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            <SelectTrigger id="timezone" data-testid="select-timezone">
-              <SelectValue placeholder="— not set (UTC) —" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__unset__">— not set (UTC) —</SelectItem>
-              {COMMON_TIMEZONES.map((tz) => (
-                <SelectItem key={tz.value} value={tz.value}>
-                  {tz.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="">— not set (UTC) —</option>
+            {COMMON_TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
           <p className="text-xs text-muted-foreground">
             Used for correct time display on the schedule page and ICS calendar downloads.
           </p>
