@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,6 +10,13 @@ import {
   ChevronUp,
   ChevronDown,
   Users,
+  Link2,
+  CheckCircle2,
+  CalendarDays,
+  Plus,
+  Trash2,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
@@ -24,10 +31,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/api";
+import { api, type EventSessionInput } from "@/lib/api";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
 import type { MediaItem } from "@workspace/api-client-react";
 import type { EventInput } from "@workspace/api-zod/types";
+
+type SessionDraft = EventSessionInput & { _id: string };
+
+function blankSession(idx: number): SessionDraft {
+  return {
+    _id: crypto.randomUUID(),
+    title: "",
+    sessionType: null,
+    speakers: null,
+    track: null,
+    room: null,
+    startTime: null,
+    sessionUrl: null,
+    sortOrder: idx,
+  };
+}
+
+function parseCsv(text: string): SessionDraft[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  return lines.slice(1).map((line, idx) => {
+    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const get = (key: string) => {
+      const i = headers.indexOf(key);
+      return i >= 0 && cols[i] ? cols[i] : null;
+    };
+    return {
+      _id: crypto.randomUUID(),
+      title: get("title") ?? `Session ${idx + 1}`,
+      sessionType: get("sessiontype") ?? get("type"),
+      speakers: get("speakers"),
+      track: get("track"),
+      room: get("room"),
+      startTime: get("starttime") ?? get("start_time") ?? get("start"),
+      sessionUrl: get("sessionurl") ?? get("url"),
+      sortOrder: idx,
+    };
+  });
+}
 
 interface Props {
   id?: string;
@@ -67,6 +114,9 @@ export default function EventForm({ id }: Props) {
   const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<SessionDraft[]>([]);
+  const [sessionSaveStatus, setSessionSaveStatus] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-event", eventId],
@@ -101,6 +151,67 @@ export default function EventForm({ id }: Props) {
       setImagePreview(existing.imageUrl ?? null);
     }
   }, [existing]);
+
+  const scheduleQ = useQuery({
+    queryKey: ["event-schedule-admin", existing?.slug],
+    queryFn: () => api.getEventSchedule(existing!.slug),
+    enabled: Boolean(existing?.slug),
+  });
+
+  useEffect(() => {
+    if (scheduleQ.data?.items) {
+      setSessions(
+        scheduleQ.data.items.map((s) => ({
+          _id: s.id.toString(),
+          title: s.title,
+          sessionType: s.sessionType ?? null,
+          speakers: s.speakers ?? null,
+          track: s.track ?? null,
+          room: s.room ?? null,
+          startTime:
+            s.startTime != null
+              ? new Date(s.startTime as unknown as string | Date).toISOString()
+              : null,
+          sessionUrl: s.sessionUrl ?? null,
+          sortOrder: s.sortOrder,
+        }))
+      );
+    }
+  }, [scheduleQ.data]);
+
+  const sessionsMutation = useMutation({
+    mutationFn: () =>
+      api.replaceEventSessions(
+        eventId!,
+        sessions.map((s, idx) => ({
+          title: s.title,
+          sessionType: s.sessionType,
+          speakers: s.speakers,
+          track: s.track,
+          room: s.room,
+          startTime: s.startTime,
+          sessionUrl: s.sessionUrl,
+          sortOrder: idx,
+        }))
+      ),
+    onSuccess: () => {
+      setSessionSaveStatus(`Schedule saved — ${sessions.length} session${sessions.length !== 1 ? "s" : ""}.`);
+      scheduleQ.refetch();
+    },
+    onError: (e: Error) => setSessionSaveStatus(`Error: ${e.message}`),
+  });
+
+  const handleCsvFile = useCallback((file: File) => {
+    file.text().then((text) => {
+      const parsed = parseCsv(text);
+      if (parsed.length > 0) {
+        setSessions((prev) => [...prev, ...parsed]);
+        setSessionSaveStatus(`Imported ${parsed.length} session${parsed.length !== 1 ? "s" : ""} from CSV — click Save Schedule to persist.`);
+      } else {
+        setSessionSaveStatus("No sessions found in CSV. Expected a header row with at least a 'title' column.");
+      }
+    });
+  }, []);
 
   const teamMembersQ = useQuery({
     queryKey: ["admin-team-members-for-event"],
@@ -311,67 +422,96 @@ export default function EventForm({ id }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="registrationUrl">Registration URL</Label>
-          <Input
-            id="registrationUrl"
-            type="url"
-            value={form.registrationUrl ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, registrationUrl: e.target.value || null })
-            }
-            data-testid="input-registrationUrl"
-          />
+          <Label>Event Status</Label>
+          <Select
+            value={form.status ?? "UPCOMING"}
+            onValueChange={(v) => setForm({ ...form, status: v })}
+          >
+            <SelectTrigger data-testid="select-status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="UPCOMING">Upcoming</SelectItem>
+              <SelectItem value="ENDED">Ended</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={form.status ?? "UPCOMING"}
-              onValueChange={(v) => setForm({ ...form, status: v })}
-            >
-              <SelectTrigger data-testid="select-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="UPCOMING">Upcoming</SelectItem>
-                <SelectItem value="ENDED">Ended</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Registration card */}
+        <div className="rounded-md border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Registration</span>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Set a URL and open the status to show a <strong>Register</strong> button on the public event page.
+          </p>
+
           <div className="space-y-2">
-            <Label>Event Type</Label>
-            <Select
-              value={form.eventType ?? "RSVP"}
-              onValueChange={(v) => setForm({ ...form, eventType: v })}
-            >
-              <SelectTrigger data-testid="select-eventType">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="RSVP">RSVP</SelectItem>
-                <SelectItem value="TICKETED">Ticketed</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="registrationUrl">Registration URL</Label>
+            <Input
+              id="registrationUrl"
+              type="url"
+              placeholder="https://lu.ma/your-event or https://eventbrite.com/…"
+              value={form.registrationUrl ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, registrationUrl: e.target.value || null })
+              }
+              data-testid="input-registrationUrl"
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Registration</Label>
-            <Select
-              value={form.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS"}
-              onValueChange={(v) => setForm({ ...form, registrationStatus: v })}
-            >
-              <SelectTrigger data-testid="select-registrationStatus">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="OPEN_EXTERNAL">Open (External)</SelectItem>
-                <SelectItem value="CLOSED_AUTOMATICALLY">Closed</SelectItem>
-                <SelectItem value="UNKNOWN_REGISTRATION_STATUS">Unknown</SelectItem>
-              </SelectContent>
-            </Select>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Registration status</Label>
+              <Select
+                value={form.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS"}
+                onValueChange={(v) => setForm({ ...form, registrationStatus: v })}
+              >
+                <SelectTrigger data-testid="select-registrationStatus">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">Open — show Register button</SelectItem>
+                  <SelectItem value="OPEN_EXTERNAL">Open (External link)</SelectItem>
+                  <SelectItem value="CLOSED_AUTOMATICALLY">Closed</SelectItem>
+                  <SelectItem value="UNKNOWN_REGISTRATION_STATUS">Not set</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Event type</Label>
+              <Select
+                value={form.eventType ?? "RSVP"}
+                onValueChange={(v) => setForm({ ...form, eventType: v })}
+              >
+                <SelectTrigger data-testid="select-eventType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RSVP">RSVP</SelectItem>
+                  <SelectItem value="TICKETED">Ticketed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {form.registrationUrl &&
+            (form.registrationStatus === "OPEN" || form.registrationStatus === "OPEN_EXTERNAL") && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                Register button will appear on the public event page.
+                <a
+                  href={form.registrationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-1 inline-flex items-center gap-1 underline hover:text-foreground"
+                >
+                  Preview link <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            )}
         </div>
 
         <div className="rounded-md border border-border p-4 space-y-3">
@@ -557,6 +697,191 @@ export default function EventForm({ id }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Session Schedule panel — only shown when editing an existing event */}
+        {!isNew && (
+          <div className="rounded-md border border-border p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Session Schedule</span>
+                {sessions.length > 0 && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {sessions.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvFile(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => csvInputRef.current?.click()}
+                  title="Import sessions from a CSV file with columns: title, sessionType, speakers, track, room, startTime, sessionUrl"
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  Import CSV
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSessions((prev) => [...prev, blankSession(prev.length)])}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add Row
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sessions are saved separately from event metadata. Use <strong>Save Schedule</strong> below to persist them. CSV columns: <code>title, sessionType, speakers, track, room, startTime, sessionUrl</code>.
+            </p>
+
+            {sessions.length > 0 ? (
+              <div className="space-y-2">
+                <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] text-xs font-medium text-muted-foreground gap-2 px-2">
+                  <span>Title *</span>
+                  <span>Type</span>
+                  <span>Speakers</span>
+                  <span>Room</span>
+                  <span>Start time</span>
+                  <span />
+                </div>
+                {sessions.map((sess, idx) => (
+                  <div
+                    key={sess._id}
+                    className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center rounded-md border border-border px-2 py-2"
+                  >
+                    <Input
+                      placeholder="Session title"
+                      value={sess.title}
+                      className="h-8 text-sm"
+                      onChange={(e) =>
+                        setSessions((prev) =>
+                          prev.map((s, i) =>
+                            i === idx ? { ...s, title: e.target.value } : s
+                          )
+                        )
+                      }
+                    />
+                    <Input
+                      placeholder="Talk / Panel…"
+                      value={sess.sessionType ?? ""}
+                      className="h-8 text-sm"
+                      onChange={(e) =>
+                        setSessions((prev) =>
+                          prev.map((s, i) =>
+                            i === idx ? { ...s, sessionType: e.target.value || null } : s
+                          )
+                        )
+                      }
+                    />
+                    <Input
+                      placeholder="Jane Doe, …"
+                      value={sess.speakers ?? ""}
+                      className="h-8 text-sm"
+                      onChange={(e) =>
+                        setSessions((prev) =>
+                          prev.map((s, i) =>
+                            i === idx ? { ...s, speakers: e.target.value || null } : s
+                          )
+                        )
+                      }
+                    />
+                    <Input
+                      placeholder="Main Stage"
+                      value={sess.room ?? ""}
+                      className="h-8 text-sm"
+                      onChange={(e) =>
+                        setSessions((prev) =>
+                          prev.map((s, i) =>
+                            i === idx ? { ...s, room: e.target.value || null } : s
+                          )
+                        )
+                      }
+                    />
+                    <Input
+                      type="datetime-local"
+                      value={
+                        sess.startTime
+                          ? toLocalInput(sess.startTime)
+                          : ""
+                      }
+                      className="h-8 text-sm"
+                      onChange={(e) =>
+                        setSessions((prev) =>
+                          prev.map((s, i) =>
+                            i === idx
+                              ? {
+                                  ...s,
+                                  startTime: e.target.value
+                                    ? new Date(e.target.value).toISOString()
+                                    : null,
+                                }
+                              : s
+                          )
+                        )
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() =>
+                        setSessions((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No sessions yet. Add rows manually or import from CSV.
+              </p>
+            )}
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setSessionSaveStatus(null);
+                  sessionsMutation.mutate();
+                }}
+                disabled={sessionsMutation.isPending}
+              >
+                {sessionsMutation.isPending ? "Saving…" : "Save Schedule"}
+              </Button>
+              {existing?.slug && sessions.length > 0 && (
+                <a
+                  href={`/events/${existing.slug}/schedule`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  View public schedule <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {sessionSaveStatus && (
+                <span className="text-xs text-muted-foreground">{sessionSaveStatus}</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label>Event Image</Label>

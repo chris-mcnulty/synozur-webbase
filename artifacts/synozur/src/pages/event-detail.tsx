@@ -331,6 +331,16 @@ export default function EventDetail() {
               )}
             </div>
 
+            {(event as { hasSessions?: boolean }).hasSessions && (
+              <Link
+                href={`/events/${event.slug}/schedule`}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+              >
+                <Calendar className="h-4 w-4" />
+                View Session Schedule
+              </Link>
+            )}
+
             <div className="text-center">
               <Link href="/contact">
                 <Button variant="outline" size="sm" className="w-full">

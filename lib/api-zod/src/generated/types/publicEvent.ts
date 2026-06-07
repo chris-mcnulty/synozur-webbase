@@ -35,4 +35,6 @@ export interface PublicEvent {
   recordingVideoTitle?: string | null;
   /** Team members speaking or appearing at this event. */
   speakers?: EventSpeaker[];
+  /** True when the event has at least one session in its schedule. */
+  hasSessions?: boolean;
 }

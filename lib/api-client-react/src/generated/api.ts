@@ -68,6 +68,7 @@ import type {
   GetCmsAnalyticsOverviewParams,
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
+  GetEventSchedule200,
   GetExperimentResultsResponse,
   HealthStatus,
   IngestTrafficBatch202,
@@ -135,6 +136,8 @@ import type {
   PublishBlockResolveBody,
   PublishBlockScanResult,
   RegisterMediaBody,
+  ReplaceEventSessions200,
+  ReplaceEventSessionsBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   RetryFailedAdminFormSubmissionsParams,
@@ -8268,6 +8271,181 @@ export const useDeleteEvent = <
   TContext
 > => {
   return useMutation(getDeleteEventMutationOptions(options));
+};
+
+/**
+ * @summary Get session schedule for an event
+ */
+export const getGetEventScheduleUrl = (slug: string) => {
+  return `/api/events/${slug}/schedule`;
+};
+
+export const getEventSchedule = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<GetEventSchedule200> => {
+  return customFetch<GetEventSchedule200>(getGetEventScheduleUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEventScheduleQueryKey = (slug: string) => {
+  return [`/api/events/${slug}/schedule`] as const;
+};
+
+export const getGetEventScheduleQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEventSchedule>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEventSchedule>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEventScheduleQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getEventSchedule>>
+  > = ({ signal }) => getEventSchedule(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEventSchedule>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEventScheduleQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEventSchedule>>
+>;
+export type GetEventScheduleQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get session schedule for an event
+ */
+
+export function useGetEventSchedule<
+  TData = Awaited<ReturnType<typeof getEventSchedule>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEventSchedule>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEventScheduleQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Replace all sessions for an event (admin)
+ */
+export const getReplaceEventSessionsUrl = (id: number) => {
+  return `/api/admin/events/${id}/sessions`;
+};
+
+export const replaceEventSessions = async (
+  id: number,
+  replaceEventSessionsBody: ReplaceEventSessionsBody,
+  options?: RequestInit,
+): Promise<ReplaceEventSessions200> => {
+  return customFetch<ReplaceEventSessions200>(getReplaceEventSessionsUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(replaceEventSessionsBody),
+  });
+};
+
+export const getReplaceEventSessionsMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceEventSessions>>,
+    TError,
+    { id: number; data: BodyType<ReplaceEventSessionsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replaceEventSessions>>,
+  TError,
+  { id: number; data: BodyType<ReplaceEventSessionsBody> },
+  TContext
+> => {
+  const mutationKey = ["replaceEventSessions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replaceEventSessions>>,
+    { id: number; data: BodyType<ReplaceEventSessionsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return replaceEventSessions(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReplaceEventSessionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replaceEventSessions>>
+>;
+export type ReplaceEventSessionsMutationBody =
+  BodyType<ReplaceEventSessionsBody>;
+export type ReplaceEventSessionsMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Replace all sessions for an event (admin)
+ */
+export const useReplaceEventSessions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceEventSessions>>,
+    TError,
+    { id: number; data: BodyType<ReplaceEventSessionsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof replaceEventSessions>>,
+  TError,
+  { id: number; data: BodyType<ReplaceEventSessionsBody> },
+  TContext
+> => {
+  return useMutation(getReplaceEventSessionsMutationOptions(options));
 };
 
 /**

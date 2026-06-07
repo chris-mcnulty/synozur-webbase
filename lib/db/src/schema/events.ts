@@ -108,3 +108,32 @@ export const eventSpeakersTable = pgTable(
 
 export type EventSpeaker = typeof eventSpeakersTable.$inferSelect;
 export type InsertEventSpeaker = typeof eventSpeakersTable.$inferInsert;
+
+// Per-event session schedule — imported from conference CSV or entered
+// manually. Each row is one session slot (talk, workshop, breakout, etc.)
+// at the event. Used to power the public shareable schedule page at
+// /events/:slug/schedule.
+export const eventSessionsTable = pgTable(
+  "event_sessions",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => eventsTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    sessionType: text("session_type"),
+    speakers: text("speakers"),
+    track: text("track"),
+    room: text("room"),
+    startTime: timestamp("start_time", { withTimezone: false }),
+    sessionUrl: text("session_url"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("event_sessions_event_idx").on(t.eventId),
+  ],
+);
+
+export type EventSession = typeof eventSessionsTable.$inferSelect;
+export type InsertEventSession = typeof eventSessionsTable.$inferInsert;

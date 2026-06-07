@@ -46,6 +46,7 @@ import StartBrief from "@/pages/start-brief";
 import StartDetail from "@/pages/start-detail";
 import Events from "@/pages/events";
 import EventDetail from "@/pages/event-detail";
+import EventSchedule from "@/pages/event-schedule";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import Trust from "@/pages/trust";
@@ -597,6 +598,7 @@ function Router() {
               {(params) => <StartDetail slug={params.slug} />}
             </Route>
             <Route path="/events" component={Events} />
+            <Route path="/events/:slug/schedule" component={EventSchedule} />
             <Route path="/events/:slug" component={EventDetail} />
             <Route path="/privacy" component={Privacy} />
             <Route path="/terms" component={Terms} />

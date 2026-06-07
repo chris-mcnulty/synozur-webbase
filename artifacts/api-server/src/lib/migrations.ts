@@ -3323,6 +3323,26 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS trust_security_mailbox_ready boolean NOT NULL DEFAULT false;
     `);
 
+    // Event session schedule — per-event rows for shareable at-event schedule.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS event_sessions (
+        id            serial PRIMARY KEY,
+        event_id      integer NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        title         text NOT NULL,
+        session_type  text,
+        speakers      text,
+        track         text,
+        room          text,
+        start_time    timestamp,
+        session_url   text,
+        sort_order    integer NOT NULL DEFAULT 0,
+        created_at    timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS event_sessions_event_idx ON event_sessions (event_id);
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

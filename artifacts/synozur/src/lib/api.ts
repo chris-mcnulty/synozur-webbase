@@ -3,6 +3,8 @@ import type {
   AdminEvent,
   Asset,
   EventInput,
+  EventSession,
+  EventSessionInput,
   AssetInput,
   ContactFormInput,
   SubscribeFormInput,
@@ -16,6 +18,7 @@ import type {
   TeamMemberInput,
   RetryFailedSubmissionsResult,
 } from "@workspace/api-zod/types";
+export type { EventSession, EventSessionInput };
 import { attributionPayload, type AttributionPayload } from "./attribution";
 
 // #131: enrich any form submission body with first-touch attribution + the
@@ -1049,6 +1052,14 @@ export const api = {
   updateEvent: (id: number, body: EventInput) =>
     jsonFetch<AdminEvent>(url(`/admin/events/${id}`), { method: "PATCH", body: JSON.stringify(body) }),
   deleteEvent: (id: number) => jsonFetch<void>(url(`/admin/events/${id}`), { method: "DELETE" }),
+  getEventSchedule: (slug: string) =>
+    jsonFetch<{ items: EventSession[] }>(url(`/events/${slug}/schedule`)),
+  replaceEventSessions: (id: number, sessions: EventSessionInput[]) =>
+    jsonFetch<{ items: EventSession[] }>(url(`/admin/events/${id}/sessions`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessions }),
+    }),
   syncEventToCollateral: (id: number) =>
     jsonFetch<{ ok: boolean }>(url(`/admin/events/${id}/sync-to-collateral`), {
       method: "POST",

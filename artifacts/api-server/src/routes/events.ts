@@ -9,11 +9,13 @@ import {
   mediaTable,
   videosTable,
   eventSpeakersTable,
+  eventSessionsTable,
   teamMembersTable,
   type Event,
   type Asset,
   type Media,
   type Video,
+  type EventSession,
 } from "@workspace/db";
 import {
   ListPublicEventsResponse,
@@ -25,6 +27,11 @@ import {
   GetAdminEventParams,
   UpdateEventParams,
   DeleteEventParams,
+  GetEventScheduleParams,
+  GetEventScheduleResponse,
+  ReplaceEventSessionsParams,
+  ReplaceEventSessionsBody,
+  ReplaceEventSessionsResponse,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { sendGone } from "../lib/goneResponse";
@@ -103,6 +110,7 @@ interface EnrichedEvent {
   imageUrl: string | null;
   recordingVideo: Pick<Video, "id" | "slug" | "title" | "videoUrl"> | null;
   speakers: EventSpeakerRow[];
+  hasSessions: boolean;
 }
 
 interface EventSpeakerRow {
@@ -254,11 +262,16 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
   const [video] = videoRows;
   const assetsById = new Map(asset ? [[asset.id, asset]] : []);
   const mediaById = new Map(media ? [[media.id, media]] : []);
+  const sessionCountRows = await db
+    .select({ cnt: sql<number>`count(*)::int` })
+    .from(eventSessionsTable)
+    .where(eq(eventSessionsTable.eventId, event.id));
   return {
     event,
     imageUrl: resolveEventImageUrl(event, mediaById, assetsById),
     recordingVideo: video ?? null,
     speakers: speakerMap.get(event.id) ?? [],
+    hasSessions: Number(sessionCountRows[0]?.cnt ?? 0) > 0,
   };
 }
 
@@ -314,11 +327,27 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
       ? videosById.get(event.recordingVideoId) ?? null
       : null,
     speakers: speakerMap.get(event.id) ?? [],
+    hasSessions: false, // not needed on the list page; only populated by loadEventEnriched
   }));
 }
 
+function sessionShape(s: EventSession) {
+  return {
+    id: s.id,
+    eventId: s.eventId,
+    title: s.title,
+    sessionType: s.sessionType ?? null,
+    speakers: s.speakers ?? null,
+    track: s.track ?? null,
+    room: s.room ?? null,
+    startTime: s.startTime ? new Date(s.startTime).toISOString() : null,
+    sessionUrl: s.sessionUrl ?? null,
+    sortOrder: s.sortOrder,
+  };
+}
+
 function publicShape(enriched: EnrichedEvent) {
-  const { event, imageUrl, recordingVideo, speakers } = enriched;
+  const { event, imageUrl, recordingVideo, speakers, hasSessions } = enriched;
   return {
     id: event.id,
     title: event.title,
@@ -337,6 +366,7 @@ function publicShape(enriched: EnrichedEvent) {
     recordingVideoUrl: recordingVideo?.videoUrl || null,
     recordingVideoTitle: recordingVideo?.title ?? null,
     speakers,
+    hasSessions,
   };
 }
 
@@ -607,6 +637,75 @@ router.post(
     res.json({ ok: true });
   },
 );
+
+// Public schedule for an event
+router.get("/events/:slug/schedule", async (req, res): Promise<void> => {
+  const params = GetEventScheduleParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [event] = await db
+    .select({ id: eventsTable.id })
+    .from(eventsTable)
+    .where(eq(eventsTable.slug, params.data.slug));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  const sessions = await db
+    .select()
+    .from(eventSessionsTable)
+    .where(eq(eventSessionsTable.eventId, event.id))
+    .orderBy(asc(eventSessionsTable.sortOrder), asc(eventSessionsTable.startTime));
+  res.json(GetEventScheduleResponse.parse({ items: sessions.map(sessionShape) }));
+});
+
+// Replace all sessions for an event (admin)
+router.put("/admin/events/:id/sessions", requireAdmin, async (req, res): Promise<void> => {
+  const params = ReplaceEventSessionsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = ReplaceEventSessionsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const [event] = await db
+    .select({ id: eventsTable.id })
+    .from(eventsTable)
+    .where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  await db.delete(eventSessionsTable).where(eq(eventSessionsTable.eventId, event.id));
+  const toInsert = body.data.sessions.map((s, idx) => ({
+    eventId: event.id,
+    title: s.title,
+    sessionType: s.sessionType ?? null,
+    speakers: s.speakers ?? null,
+    track: s.track ?? null,
+    room: s.room ?? null,
+    startTime: s.startTime ? new Date(s.startTime) : null,
+    sessionUrl: s.sessionUrl ?? null,
+    sortOrder: s.sortOrder ?? idx,
+  }));
+  const inserted =
+    toInsert.length > 0
+      ? await db.insert(eventSessionsTable).values(toInsert).returning()
+      : [];
+  await audit({
+    actorId: req.authedUser?.id,
+    action: "event.sessions.replace",
+    entity: "event",
+    entityId: String(event.id),
+    diff: { sessionCount: inserted.length },
+  });
+  res.json(ReplaceEventSessionsResponse.parse({ items: inserted.map(sessionShape) }));
+});
 
 router.post("/admin/seed-events", requireAdmin, async (_req, res): Promise<void> => {
   try {

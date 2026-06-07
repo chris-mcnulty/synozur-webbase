@@ -3793,6 +3793,10 @@ export const ListPublicEventsResponseItem = zod.object({
     )
     .optional()
     .describe("Team members speaking or appearing at this event."),
+  hasSessions: zod
+    .boolean()
+    .optional()
+    .describe("True when the event has at least one session in its schedule."),
 });
 export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
 
@@ -3976,6 +3980,69 @@ export const UpdateEventResponse = zod.object({
 
 export const DeleteEventParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get session schedule for an event
+ */
+export const GetEventScheduleParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetEventScheduleResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      eventId: zod.number(),
+      title: zod.string(),
+      sessionType: zod.string().nullish(),
+      speakers: zod.string().nullish(),
+      track: zod.string().nullish(),
+      room: zod.string().nullish(),
+      startTime: zod.coerce.date().nullish(),
+      sessionUrl: zod.string().nullish(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Replace all sessions for an event (admin)
+ */
+export const ReplaceEventSessionsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ReplaceEventSessionsBody = zod.object({
+  sessions: zod.array(
+    zod.object({
+      title: zod.string().min(1),
+      sessionType: zod.string().nullish(),
+      speakers: zod.string().nullish(),
+      track: zod.string().nullish(),
+      room: zod.string().nullish(),
+      startTime: zod.string().nullish(),
+      sessionUrl: zod.string().nullish(),
+      sortOrder: zod.number().optional(),
+    }),
+  ),
+});
+
+export const ReplaceEventSessionsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      eventId: zod.number(),
+      title: zod.string(),
+      sessionType: zod.string().nullish(),
+      speakers: zod.string().nullish(),
+      track: zod.string().nullish(),
+      room: zod.string().nullish(),
+      startTime: zod.coerce.date().nullish(),
+      sessionUrl: zod.string().nullish(),
+      sortOrder: zod.number(),
+    }),
+  ),
 });
 
 /**

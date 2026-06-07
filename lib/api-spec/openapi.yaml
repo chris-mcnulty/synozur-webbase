@@ -2428,6 +2428,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /events/{slug}/schedule:
+    get:
+      tags:
+        - Events
+      operationId: getEventSchedule
+      summary: Get session schedule for an event
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventSession'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/events/{id}/sessions:
+    put:
+      tags:
+        - Events
+      operationId: replaceEventSessions
+      summary: Replace all sessions for an event (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessions]
+              properties:
+                sessions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EventSessionInput'
+      responses:
+        '200':
+          description: Replaced
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventSession'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /team-members:
     get:
       tags:
@@ -6836,6 +6910,9 @@ components:
           items:
             $ref: '#/components/schemas/EventSpeaker'
           description: Team members speaking or appearing at this event.
+        hasSessions:
+          type: boolean
+          description: True when the event has at least one session in its schedule.
     AdminEvent:
       type: object
       required:
@@ -7095,6 +7172,54 @@ components:
             - string
             - 'null'
           description: Honeypot field — must be empty.
+    EventSession:
+      type: object
+      required: [id, eventId, title, sortOrder]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        title:
+          type: string
+        sessionType:
+          type: ['string', 'null']
+        speakers:
+          type: ['string', 'null']
+        track:
+          type: ['string', 'null']
+        room:
+          type: ['string', 'null']
+        startTime:
+          type: ['string', 'null']
+          format: date-time
+        sessionUrl:
+          type: ['string', 'null']
+        sortOrder:
+          type: integer
+
+    EventSessionInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        sessionType:
+          type: ['string', 'null']
+        speakers:
+          type: ['string', 'null']
+        track:
+          type: ['string', 'null']
+        room:
+          type: ['string', 'null']
+        startTime:
+          type: ['string', 'null']
+        sessionUrl:
+          type: ['string', 'null']
+        sortOrder:
+          type: integer
+
     EventInput:
       type: object
       required:

@@ -1501,6 +1501,8 @@ export interface PublicEvent {
   recordingVideoTitle?: string | null;
   /** Team members speaking or appearing at this event. */
   speakers?: EventSpeaker[];
+  /** True when the event has at least one session in its schedule. */
+  hasSessions?: boolean;
 }
 
 export interface AdminEvent {
@@ -1672,6 +1674,43 @@ export interface StartFormInput {
    * @nullable
    */
   website?: string | null;
+}
+
+export interface EventSession {
+  id: number;
+  eventId: number;
+  title: string;
+  /** @nullable */
+  sessionType?: string | null;
+  /** @nullable */
+  speakers?: string | null;
+  /** @nullable */
+  track?: string | null;
+  /** @nullable */
+  room?: string | null;
+  /** @nullable */
+  startTime?: string | null;
+  /** @nullable */
+  sessionUrl?: string | null;
+  sortOrder: number;
+}
+
+export interface EventSessionInput {
+  /** @minLength 1 */
+  title: string;
+  /** @nullable */
+  sessionType?: string | null;
+  /** @nullable */
+  speakers?: string | null;
+  /** @nullable */
+  track?: string | null;
+  /** @nullable */
+  room?: string | null;
+  /** @nullable */
+  startTime?: string | null;
+  /** @nullable */
+  sessionUrl?: string | null;
+  sortOrder?: number;
 }
 
 export interface EventInput {
@@ -3847,6 +3886,18 @@ export type ListAssetsParams = {
    * Filter by asset_categories.id
    */
   categoryId?: string;
+};
+
+export type GetEventSchedule200 = {
+  items: EventSession[];
+};
+
+export type ReplaceEventSessionsBody = {
+  sessions: EventSessionInput[];
+};
+
+export type ReplaceEventSessions200 = {
+  items: EventSession[];
 };
 
 export type ListAdminFormSubmissionsParams = {
