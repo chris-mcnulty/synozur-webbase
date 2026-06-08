@@ -140,15 +140,18 @@ export default function EventForm({ id }: Props) {
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [sessionSaveStatus, setSessionSaveStatus] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const formInitializedRef = useRef(false);
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-event", eventId],
     queryFn: () => api.getEvent(eventId!),
     enabled: eventId != null,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (existing) {
+    if (existing && !formInitializedRef.current) {
+      formInitializedRef.current = true;
       setForm({
         title: existing.title,
         slug: existing.slug,
