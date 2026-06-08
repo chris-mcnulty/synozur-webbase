@@ -221,20 +221,6 @@ export default function EventDetail() {
               </div>
             )}
 
-            {mapSrc && (
-              <div className="mt-10" data-testid="event-map">
-                <iframe
-                  title={`Map of ${event.location}`}
-                  src={mapSrc}
-                  width="100%"
-                  height="320"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="rounded-lg border border-border"
-                />
-              </div>
-            )}
-
             {(event.speakers?.length ?? 0) > 0 && (
               <div className="mt-10" data-testid="event-speakers">
                 <h2 className="text-xl font-semibold mb-4">Speakers</h2>
@@ -283,6 +269,20 @@ export default function EventDetail() {
                   );
                   })}
                 </ul>
+              </div>
+            )}
+
+            {event.location && mapSrc && (
+              <div className="mt-10" data-testid="event-map">
+                <iframe
+                  title={`Map of ${event.location}`}
+                  src={mapSrc}
+                  width="100%"
+                  height="320"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="rounded-lg border border-border"
+                />
               </div>
             )}
 

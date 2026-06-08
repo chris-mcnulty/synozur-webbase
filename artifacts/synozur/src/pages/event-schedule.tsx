@@ -254,13 +254,17 @@ export default function EventSchedule() {
                           </div>
                           {s.speakers && (
                             <p className="text-sm text-muted-foreground mt-1">
-                              {s.speakers}
+                              {s.speakers
+                                .split(";")
+                                .map((sp) => sp.replace(/\s*\*+\s*$/g, "").trim())
+                                .filter(Boolean)
+                                .join("; ")}
                             </p>
                           )}
                         </div>
 
                         {/* Session link */}
-                        {s.sessionUrl && (
+                        {s.sessionUrl?.trim() && (
                           <div className="shrink-0">
                             <a
                               href={s.sessionUrl}
