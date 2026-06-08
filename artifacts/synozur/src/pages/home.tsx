@@ -270,6 +270,14 @@ export default function Home() {
     "home.hero.tagline.text",
     "Transformation with momentum — AI‑native, human‑centered. We guide leaders through the North Star Method™ (Assess · Define · Deliver · Outcomes) so strategy lands as measurable progress, not slideware.",
   );
+  const heroLadderVisible = useOverride<boolean>(
+    "home.hero.ladder.visible",
+    true,
+  );
+  const heroLadderText = useOverride<string>(
+    "home.hero.ladder.text",
+    "AI-ready → AI-enabled → AI-first",
+  );
   const heroCtaVisible = useOverride<boolean>("home.hero.cta.visible", true);
   const heroCtaLabel = useOverride<string>("home.hero.cta.label", "Get Started");
   const heroCtaHref = useOverride<string>("home.hero.cta.href", "/start");
@@ -440,9 +448,27 @@ export default function Home() {
                   <HeroHeadline text={positioningText} accentWord={positioningAccent} />
                 </h1>
               ) : null}
-              <p className="text-xl md:text-2xl text-zinc-300 mb-10 max-w-2xl leading-relaxed">
+              <p className="text-xl md:text-2xl text-zinc-300 mb-8 max-w-2xl leading-relaxed">
                 {taglineText}
               </p>
+              {heroLadderVisible && heroLadderText ? (
+                <p className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-zinc-400 mb-10">
+                  {heroLadderText.split("→").map((part, i, arr) => (
+                    <span key={i}>
+                      <span
+                        className={
+                          i === arr.length - 1 ? "text-primary" : undefined
+                        }
+                      >
+                        {part.trim()}
+                      </span>
+                      {i < arr.length - 1 ? (
+                        <span className="mx-2 text-zinc-600">→</span>
+                      ) : null}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
               {heroCtaVisible ? (
                 <Link
                   href={heroCtaHref}
