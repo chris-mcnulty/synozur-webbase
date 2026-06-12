@@ -73,8 +73,10 @@ export type EntitySnapshot = {
   // Image fields. Public payload may carry id, URL, or both.
   heroImageId?: string | null;
   heroImage?: string | null;
+  heroImageUrl?: string | null;
   ogImageId?: string | null;
   ogImage?: string | null;
+  ogImageUrl?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
 } & { [key: string]: unknown };

@@ -1,0 +1,2 @@
+- [Edit-wedge image snapshot fields](edit-wedge-image-snapshot.md) — public detail payloads carry image URLs but not image IDs; wedge display must key off URL, PATCH off ID.
+- [North Star Method phases](north-star-method-phases.md) — canonical phase names; live site + Galaxy are source of truth over the MPF proposal.

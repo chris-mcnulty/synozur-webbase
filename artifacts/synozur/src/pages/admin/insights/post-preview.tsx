@@ -47,7 +47,7 @@ export default function PostPreview({ id }: Props) {
           )}
           {post.bodyHtml ? (
             <div
-              className="prose prose-invert max-w-none"
+              className="prose dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
               data-testid="preview-body"
             />

@@ -30,6 +30,7 @@ import {
   getEntityRegistration,
 } from "@/lib/entity-registry";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/insights";
 import type { EntitySnapshot } from "./edit-wedge";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -153,6 +154,10 @@ interface FormState {
   status: string;
   heroImageId: string | null;
   ogImageId: string | null;
+  // Display-only URLs so the modal can show the current images as
+  // thumbnails. The public payload often carries the URL but not the id.
+  heroImageUrl: string | null;
+  ogImageUrl: string | null;
 }
 
 function readSubtitle(s: EntitySnapshot, key: string | null): string {
@@ -170,6 +175,8 @@ function snapshotToForm(s: EntitySnapshot, subtitleKey: string | null): FormStat
     status: s.status ?? (s.active === false ? "inactive" : ""),
     heroImageId: s.heroImageId ?? null,
     ogImageId: s.ogImageId ?? null,
+    heroImageUrl: s.heroImageUrl ?? s.heroImage ?? null,
+    ogImageUrl: s.ogImageUrl ?? s.ogImage ?? null,
   };
 }
 
@@ -226,6 +233,9 @@ function EditModal({
 
   const patch = diffPatch(initial, form, reg);
   const hasChanges = Object.keys(patch).length > 0;
+
+  const heroPreview = resolveMediaUrl(form.heroImageUrl, { width: 200 }) ?? undefined;
+  const ogPreview = resolveMediaUrl(form.ogImageUrl, { width: 200 }) ?? undefined;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -374,6 +384,17 @@ function EditModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Hero image</Label>
+                {heroPreview ? (
+                  <img
+                    src={heroPreview}
+                    alt=""
+                    className="h-20 w-full rounded-md border border-border object-cover bg-muted"
+                  />
+                ) : (
+                  <div className="flex h-20 w-full items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                    No image
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -381,11 +402,22 @@ function EditModal({
                   onClick={() => setPickingHero(true)}
                   className="w-full justify-start"
                 >
-                  {form.heroImageId ? "Change…" : "Pick image…"}
+                  {form.heroImageId || form.heroImageUrl ? "Change…" : "Pick image…"}
                 </Button>
               </div>
               <div className="space-y-1.5">
                 <Label>OG image</Label>
+                {ogPreview ? (
+                  <img
+                    src={ogPreview}
+                    alt=""
+                    className="h-20 w-full rounded-md border border-border object-cover bg-muted"
+                  />
+                ) : (
+                  <div className="flex h-20 w-full items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                    No image
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -393,7 +425,7 @@ function EditModal({
                   onClick={() => setPickingOg(true)}
                   className="w-full justify-start"
                 >
-                  {form.ogImageId ? "Change…" : "Pick image…"}
+                  {form.ogImageId || form.ogImageUrl ? "Change…" : "Pick image…"}
                 </Button>
               </div>
             </div>
@@ -460,7 +492,7 @@ function EditModal({
           open={pickingHero}
           onClose={() => setPickingHero(false)}
           onSelect={(m) => {
-            setForm((f) => ({ ...f, heroImageId: m.id }));
+            setForm((f) => ({ ...f, heroImageId: m.id, heroImageUrl: m.publicUrl }));
             setPickingHero(false);
           }}
           selectedId={form.heroImageId ?? undefined}
@@ -470,7 +502,7 @@ function EditModal({
           open={pickingOg}
           onClose={() => setPickingOg(false)}
           onSelect={(m) => {
-            setForm((f) => ({ ...f, ogImageId: m.id }));
+            setForm((f) => ({ ...f, ogImageId: m.id, ogImageUrl: m.publicUrl }));
             setPickingOg(false);
           }}
           selectedId={form.ogImageId ?? undefined}

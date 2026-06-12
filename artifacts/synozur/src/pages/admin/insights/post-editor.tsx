@@ -427,12 +427,6 @@ export default function PostEditor({ id }: Props) {
         { label: "Posts", href: "/insights/posts" },
         { label: isNew ? "New" : existing?.title ?? "Edit" },
       ]}
-      previewEntity={{
-        kind: "post",
-        id: postId,
-        slug: form.slug,
-        isDraft: status !== "published",
-      }}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate("/insights/posts")}>
