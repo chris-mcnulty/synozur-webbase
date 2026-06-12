@@ -62,6 +62,45 @@ export function absUrl(raw: string | null | undefined, origin: string): string |
   return `${origin}${raw.startsWith("/") ? "" : "/"}${raw}`;
 }
 
+// Target width for OG share images. 1200px is the long edge most social
+// platforms recommend (LinkedIn/Twitter render 1200×630). The storage
+// route caps at 2048 and never enlarges, so smaller originals pass through
+// untouched.
+const OG_IMAGE_WIDTH = 1200;
+
+// Storage paths the api-server can resize on the fly (the routes that flow
+// through sharp). Mirrors `RESIZABLE_PATH_RE` in the synozur frontend's
+// `lib/media-url.ts`. External hosts and static `/images/...` paths are
+// excluded — appending `?w=`/`?fmt=` to them would be ignored at best.
+const RESIZABLE_STORAGE_RE = /\/api\/storage\/(?:public-)?objects\//i;
+
+/**
+ * Point an OG image at a resized JPEG variant when it's a storage-backed
+ * image the server can resize. The full-size original of a hero photo can
+ * exceed LinkedIn's ~5 MB cap (and is wasteful for every unfurl); a 1200px
+ * JPEG is typically a few hundred KB and renders reliably across LinkedIn,
+ * Teams, Slack, and Twitter. URLs the server can't resize (external hosts,
+ * the dynamic `/api/og/image` card, static assets) are returned unchanged.
+ */
+function ogImageVariant(url: string | null, origin: string): string | null {
+  if (!url) return null;
+  // Only rewrite our own storage URLs the api-server can actually resize.
+  // An external absolute URL (even one that happens to contain the storage
+  // path) is left untouched, matching the contract above. Every caller
+  // resolves through `absUrl`/`${origin}...` first, so same-origin URLs are
+  // the ones we built and can serve resized.
+  if (!url.startsWith(origin) || !RESIZABLE_STORAGE_RE.test(url)) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("w", String(OG_IMAGE_WIDTH));
+    u.searchParams.set("fmt", "jpeg");
+    return u.toString();
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}w=${OG_IMAGE_WIDTH}&fmt=jpeg`;
+  }
+}
+
 /**
  * Build the dynamic-OG-image URL for an artifact (#161). Encodes two
  * cache-busting params so upstream caches (LinkedIn, Slack, browsers,
@@ -105,8 +144,10 @@ async function resolveMediaUrl(
       .where(eq(mediaTable.id, mediaId))
       .limit(1);
     if (!media) return null;
-    if (media.publicUrl) return absUrl(media.publicUrl, origin);
-    if (media.storageKey) return `${origin}/api/storage${media.storageKey}`;
+    if (media.publicUrl)
+      return ogImageVariant(absUrl(media.publicUrl, origin), origin);
+    if (media.storageKey)
+      return ogImageVariant(`${origin}/api/storage${media.storageKey}`, origin);
     return null;
   } catch {
     return null;
@@ -131,7 +172,7 @@ async function resolveAssetUrl(
       .where(eq(assetsTable.id, assetId))
       .limit(1);
     if (!asset?.storageKey) return null;
-    return `${origin}/api/storage${asset.storageKey}`;
+    return ogImageVariant(`${origin}/api/storage${asset.storageKey}`, origin);
   } catch {
     return null;
   }
@@ -237,7 +278,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
             title: row.seoTitle || row.title,
             description: row.seoDescription || defaults.description,
             image:
-              absUrl(editorImage, origin) ??
+              ogImageVariant(absUrl(editorImage, origin), origin) ??
               dynamicOgImageUrl("landing-page", row.id, row.updatedAt, origin),
             ogType: "website",
           };
@@ -343,7 +384,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           title: row.headline || SITE_NAME,
           description: row.summary || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("case-study", row.id, row.updatedAt, origin),
           ogType: "article",
         };
@@ -376,7 +417,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description:
             row.seoDescription || row.shortSummary || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("application", row.id, row.updatedAt, origin),
         };
       }
@@ -407,7 +448,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description:
             row.seoDescription || row.shortDescription || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("model", row.id, row.updatedAt, origin),
         };
       }
@@ -435,7 +476,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description:
             seoDescription || row.shortDescription || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("workshop", row.id, row.updatedAt, origin),
         };
       }
@@ -461,7 +502,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           ...fallback,
           title: row.title || SITE_NAME,
           description,
-          image: absUrl(row.heroImage, origin) ?? defaults.image,
+          image: ogImageVariant(absUrl(row.heroImage, origin), origin) ?? defaults.image,
           ogType: "article",
         };
       }
@@ -487,7 +528,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           title: row.title || SITE_NAME,
           description: row.shortDescription || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("white-paper", row.id, row.updatedAt, origin),
         };
       }
@@ -523,7 +564,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description:
             row.seoDescription || row.summary || defaults.description,
           image:
-            absUrl(editorImage, origin) ??
+            ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("polaris", row.id, row.updatedAt, origin),
           ogType: "article",
         };
@@ -550,7 +591,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           ...fallback,
           title: `${row.name} | The Synozur Alliance`,
           description,
-          image: absUrl(row.imageUrl, origin) ?? defaults.image,
+          image: ogImageVariant(absUrl(row.imageUrl, origin), origin) ?? defaults.image,
           ogType: "article",
         };
       }

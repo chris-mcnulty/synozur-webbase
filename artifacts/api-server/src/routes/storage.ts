@@ -85,6 +85,22 @@ function parseWidth(req: Request): number | null {
   return n;
 }
 
+// Output format for the on-the-fly resize path. Defaults to WebP (smallest,
+// used by the responsive-image helpers on the public site). `?fmt=jpeg`
+// forces a JPEG instead — needed for Open Graph share images because
+// LinkedIn reliably renders JPG/PNG but often silently drops WebP previews.
+type ThumbnailFormat = "jpeg" | "webp";
+
+function parseFormat(req: Request): ThumbnailFormat {
+  const raw = req.query.fmt;
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof s === "string") {
+    const v = s.toLowerCase();
+    if (v === "jpeg" || v === "jpg") return "jpeg";
+  }
+  return "webp";
+}
+
 function isThumbnailable(contentType: string): boolean {
   if (!contentType.startsWith("image/")) return false;
   // SVG flows through sharp fine but re-rasterising it defeats the purpose.
@@ -96,6 +112,7 @@ function streamObjectToResponse(
   source: globalThis.Response,
   res: Response,
   width: number | null,
+  format: ThumbnailFormat = "webp",
 ): void {
   const contentType = source.headers.get("content-type") ?? "application/octet-stream";
   const canThumb = width != null && isThumbnailable(contentType);
@@ -149,12 +166,15 @@ function streamObjectToResponse(
       ? "public, max-age=31536000, immutable"
       : "private, max-age=3600";
     res.status(source.status);
-    res.setHeader("Content-Type", "image/webp");
+    res.setHeader("Content-Type", format === "jpeg" ? "image/jpeg" : "image/webp");
     res.setHeader("Cache-Control", thumbnailCacheControl);
-    transform = sharp()
+    const resized = sharp()
       .rotate()
-      .resize({ width: width!, withoutEnlargement: true })
-      .webp({ quality: 80 });
+      .resize({ width: width!, withoutEnlargement: true });
+    transform =
+      format === "jpeg"
+        ? resized.flatten({ background: "#ffffff" }).jpeg({ quality: 82, mozjpeg: true })
+        : resized.webp({ quality: 80 });
     transform.on("error", handleStreamError);
     nodeStream.pipe(transform).pipe(res);
     return;
@@ -345,7 +365,7 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
     }
 
     const response = await objectStorageService.downloadObject(file);
-    streamObjectToResponse(response, res, parseWidth(req));
+    streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
   } catch (error) {
     req.log.error({ err: error }, "Error serving public object");
     res.status(500).json({ error: "Failed to serve public object" });
@@ -417,7 +437,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     //   return;
     // }
 
-    streamObjectToResponse(response, res, parseWidth(req));
+    streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");
