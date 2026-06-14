@@ -670,6 +670,13 @@ export function computeTimelineTokens(
         timeline: str("timeline"),
         budget: str("budget"),
       };
+    case "event_registration":
+      return {
+        event_title: str("eventTitle"),
+        event_slug: str("eventSlug"),
+        company: str("company"),
+        job_title: str("jobTitle"),
+      };
     case "contact":
     case "subscribe":
     default:

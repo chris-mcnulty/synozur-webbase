@@ -306,6 +306,17 @@ const EVENT_TEMPLATES: TimelineEventTemplateDefinition[] = [
       { name: "landing_page", type: "string", label: "Landing page" },
     ],
   },
+  {
+    name: "synozur_event_registered",
+    headerTemplate: "Registered for event: {{event_title}}",
+    detailTemplate: "Slug: {{event_slug}} · Company: {{company}} · Title: {{job_title}}",
+    tokens: [
+      { name: "event_title", type: "string", label: "Event title" },
+      { name: "event_slug", type: "string", label: "Event slug" },
+      { name: "company", type: "string", label: "Company" },
+      { name: "job_title", type: "string", label: "Job title" },
+    ],
+  },
 ];
 
 interface TimelineEventTemplate {
