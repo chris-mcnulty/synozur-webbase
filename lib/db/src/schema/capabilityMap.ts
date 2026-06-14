@@ -26,6 +26,8 @@ export const CAPABILITY_NAMES = [
   // from `users.manage` so account managers can onboard clients without
   // also gaining the ability to mutate site-staff role grants.
   "client_orgs.manage",
+  // API key management for machine-to-machine access.
+  "api_keys.manage",
   // #223 — Careers (HR audience class).
   "careers.jobs.read",
   "careers.jobs.write",
@@ -51,6 +53,8 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
     "Manage AI grounding documents that ground every AI call across the site.",
   "client_orgs.manage":
     "Manage client organizations, their members, and invitations (#225).",
+  "api_keys.manage":
+    "Create, list, and revoke API keys for machine-to-machine access (e.g. Orbit).",
   "careers.jobs.read": "View careers job postings (admin).",
   "careers.jobs.write": "Create, edit, publish, and close job postings.",
   "careers.applications.read": "View inbound job applications and résumés.",
@@ -70,13 +74,13 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
 // nothing admin-side (they exist for portal authorization, not the CMS).
 export const DEFAULT_ROLE_CAPABILITIES: Record<RoleName, readonly CapabilityName[]> = {
   // Legacy roles (preserved as-is for back-compat)
-  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "ai.grounding.manage", "client_orgs.manage", "careers.jobs.read", "careers.jobs.write", "careers.applications.read", "careers.applications.write", "careers.eeo.read", "careers.content.manage", "careers.settings.manage"],
+  admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "api_keys.manage", "ai.grounding.manage", "client_orgs.manage", "careers.jobs.read", "careers.jobs.write", "careers.applications.read", "careers.applications.write", "careers.eeo.read", "careers.content.manage", "careers.settings.manage"],
   editor: ["content.view", "content.author", "content.publish", "content.moderate", "ai.grounding.manage"],
   author: ["content.view", "content.author"],
   contributor: ["content.view", "content.author"],
   client: [],
   // #110 — audience classes
-  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "ai.grounding.manage", "client_orgs.manage", "careers.jobs.read", "careers.jobs.write", "careers.applications.read", "careers.applications.write", "careers.eeo.read", "careers.content.manage", "careers.settings.manage"],
+  site_admin: ["content.view", "content.author", "content.publish", "content.moderate", "users.manage", "site.manage", "oauth.manage", "api_keys.manage", "ai.grounding.manage", "client_orgs.manage", "careers.jobs.read", "careers.jobs.write", "careers.applications.read", "careers.applications.write", "careers.eeo.read", "careers.content.manage", "careers.settings.manage"],
   content_author: ["content.view", "content.author", "content.publish", "ai.grounding.manage", "careers.content.manage"],
   hr: ["content.view", "users.manage", "careers.jobs.read", "careers.jobs.write", "careers.applications.read", "careers.applications.write", "careers.eeo.read", "careers.content.manage"],
   internal: ["content.view"],

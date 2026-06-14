@@ -10188,3 +10188,82 @@ export const UpdateAdminExperimentVariantResponse = zod.object({
 export const DeleteAdminExperimentVariantParams = zod.object({
   variantId: zod.coerce.string().uuid(),
 });
+
+/**
+ * @summary List all API keys
+ */
+export const listCmsApiKeysResponseUseCountMin = 0;
+
+export const ListCmsApiKeysResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  prefix: zod
+    .string()
+    .describe(
+      'First 8 hex chars of the random key portion (for display as \"syn_<prefix>…\")',
+    ),
+  grantedCapabilities: zod.array(zod.string()),
+  createdByUserId: zod.string().uuid().nullish(),
+  expiresAt: zod.coerce.date().nullish(),
+  lastUsedAt: zod.coerce.date().nullish(),
+  useCount: zod.number().min(listCmsApiKeysResponseUseCountMin),
+  revokedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  isRevoked: zod.boolean(),
+  isExpired: zod.boolean(),
+});
+export const ListCmsApiKeysResponse = zod.array(ListCmsApiKeysResponseItem);
+
+/**
+ * @summary Create a new API key (plaintext returned once)
+ */
+export const createCmsApiKeyBodyNameMax = 200;
+
+export const createCmsApiKeyBodyDescriptionMax = 2000;
+
+export const CreateCmsApiKeyBody = zod.object({
+  name: zod.string().min(1).max(createCmsApiKeyBodyNameMax),
+  description: zod.string().max(createCmsApiKeyBodyDescriptionMax).optional(),
+  grantedCapabilities: zod.array(zod.string()),
+  expiresAt: zod.coerce
+    .date()
+    .optional()
+    .describe("Optional expiry. Omit for a non-expiring key."),
+});
+
+/**
+ * @summary Get a single API key by ID
+ */
+export const GetCmsApiKeyParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const getCmsApiKeyResponseUseCountMin = 0;
+
+export const GetCmsApiKeyResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  prefix: zod
+    .string()
+    .describe(
+      'First 8 hex chars of the random key portion (for display as \"syn_<prefix>…\")',
+    ),
+  grantedCapabilities: zod.array(zod.string()),
+  createdByUserId: zod.string().uuid().nullish(),
+  expiresAt: zod.coerce.date().nullish(),
+  lastUsedAt: zod.coerce.date().nullish(),
+  useCount: zod.number().min(getCmsApiKeyResponseUseCountMin),
+  revokedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  isRevoked: zod.boolean(),
+  isExpired: zod.boolean(),
+});
+
+/**
+ * @summary Revoke an API key
+ */
+export const RevokeCmsApiKeyParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});

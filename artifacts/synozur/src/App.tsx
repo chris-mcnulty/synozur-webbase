@@ -73,6 +73,7 @@ import SecurityLogPage from "@/pages/admin/access/security-log";
 import AuditLogPage from "@/pages/admin/access/audit-log";
 import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import OAuthClientsPage from "@/pages/admin/access/oauth-clients";
+import ApiKeysPage from "@/pages/admin/access/api-keys";
 import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
 import SpeAdminPage from "@/pages/admin/site-config/spe";
 import AdminServicesList from "@/pages/admin/products/services-list";
@@ -478,6 +479,7 @@ function AdminRoutes() {
         <Route path="/access/audit-log" component={AuditLogPage} />
         <Route path="/access/capabilities" component={CapabilitiesPage} />
         <Route path="/access/oauth-clients" component={OAuthClientsPage} />
+        <Route path="/access/api-keys" component={ApiKeysPage} />
         <Route path="/users"><Redirect to="/access/users" /></Route>
 
         {/* Marketing integrations */}

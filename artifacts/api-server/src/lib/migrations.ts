@@ -3393,6 +3393,48 @@ export async function runMigrations(): Promise<void> {
         WHERE sent_at IS NULL;
     `);
 
+    // API keys — machine-to-machine access for Orbit and future service integrations.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        description text,
+        key_hash text NOT NULL,
+        prefix text NOT NULL,
+        granted_capabilities text[] NOT NULL DEFAULT '{}',
+        created_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        expires_at timestamptz,
+        last_used_at timestamptz,
+        use_count integer NOT NULL DEFAULT 0,
+        revoked_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS api_keys_hash_key ON api_keys (key_hash);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS api_keys_prefix_idx ON api_keys (prefix);
+    `);
+
+    // Seed api_keys.manage capability and grant it to admin + site_admin roles.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description)
+      VALUES (
+        'api_keys.manage',
+        'Create, list, and revoke API keys for machine-to-machine access (e.g. Orbit).'
+      )
+      ON CONFLICT (name) DO NOTHING;
+    `);
+    await db.execute(sql`
+      INSERT INTO role_capabilities (role_id, capability_id)
+      SELECT r.id, c.id
+      FROM (VALUES ('admin'), ('site_admin')) AS g(role_name)
+      JOIN roles r ON r.name = g.role_name
+      JOIN capabilities c ON c.name = 'api_keys.manage'
+      ON CONFLICT DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

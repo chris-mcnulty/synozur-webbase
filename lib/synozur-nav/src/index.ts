@@ -39,7 +39,7 @@ export const STATIC_SERVICE_PILLARS: NavService[] = [
       { title: "Strategic Roadmaps", slug: "strategic-roadmaps" },
       { title: "AI Strategy and Design", slug: "ai-strategy-and-design" },
       { title: "Employee Effectiveness", slug: "employee-effectiveness" },
-      { title: "Microsoft 365 Adoption, Strategy & Optimization", slug: "microsoft-365-optimization" },
+      { title: "Microsoft 365 Strategy", slug: "microsoft-365-optimization" },
     ],
   },
   {
@@ -56,7 +56,7 @@ export const STATIC_SERVICE_PILLARS: NavService[] = [
     slug: "go-to-market-transformation",
     solutions: [
       { title: "Brand and Messaging", slug: "brand-and-messaging" },
-      { title: "GTM Strategy and Execution", slug: "gtm-strategy-and-execution" },
+      { title: "GTM Strategy & Execution", slug: "gtm-strategy-and-execution" },
       { title: "Microsoft Partner Development", slug: "microsoft-partner-development" },
     ],
   },

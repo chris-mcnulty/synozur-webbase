@@ -3689,6 +3689,42 @@ export interface GetExperimentResultsResponse {
   variants: VariantResult[];
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  description?: string | null;
+  /** First 8 hex chars of the random key portion (for display as "syn_<prefix>…") */
+  prefix: string;
+  grantedCapabilities: string[];
+  createdByUserId?: string | null;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  /** @minimum 0 */
+  useCount: number;
+  revokedAt?: string | null;
+  createdAt: string;
+  isRevoked: boolean;
+  isExpired: boolean;
+}
+
+export type ApiKeyCreateResponse = ApiKey & {
+  /** The full API key — shown exactly once. Store securely. */
+  plaintext: string;
+};
+
+export interface CreateApiKeyBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  /** @maxLength 2000 */
+  description?: string;
+  grantedCapabilities: string[];
+  /** Optional expiry. Omit for a non-expiring key. */
+  expiresAt?: string;
+}
+
 /**
  * Unauthorized
  */

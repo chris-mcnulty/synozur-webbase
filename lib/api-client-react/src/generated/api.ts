@@ -25,6 +25,8 @@ import type {
   AdminTeamMember,
   AdminUser,
   AnalyticsOverview,
+  ApiKey,
+  ApiKeyCreateResponse,
   Asset,
   AssetCategory,
   AssetCategoryListResponse,
@@ -49,6 +51,7 @@ import type {
   Comment,
   CommentListResponse,
   ContactFormInput,
+  CreateApiKeyBody,
   CreateAssetCategoryBody,
   CreateCollateralResourceBody,
   CreateExperimentBody,
@@ -14120,4 +14123,356 @@ export const useDeleteAdminExperimentVariant = <
   TContext
 > => {
   return useMutation(getDeleteAdminExperimentVariantMutationOptions(options));
+};
+
+/**
+ * @summary List all API keys
+ */
+export const getListCmsApiKeysUrl = () => {
+  return `/api/cms/api-keys`;
+};
+
+export const listCmsApiKeys = async (
+  options?: RequestInit,
+): Promise<ApiKey[]> => {
+  return customFetch<ApiKey[]>(getListCmsApiKeysUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCmsApiKeysQueryKey = () => {
+  return [`/api/cms/api-keys`] as const;
+};
+
+export const getListCmsApiKeysQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCmsApiKeys>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsApiKeys>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCmsApiKeysQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsApiKeys>>> = ({
+    signal,
+  }) => listCmsApiKeys({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsApiKeys>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCmsApiKeysQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCmsApiKeys>>
+>;
+export type ListCmsApiKeysQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List all API keys
+ */
+
+export function useListCmsApiKeys<
+  TData = Awaited<ReturnType<typeof listCmsApiKeys>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCmsApiKeys>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsApiKeysQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new API key (plaintext returned once)
+ */
+export const getCreateCmsApiKeyUrl = () => {
+  return `/api/cms/api-keys`;
+};
+
+export const createCmsApiKey = async (
+  createApiKeyBody: CreateApiKeyBody,
+  options?: RequestInit,
+): Promise<ApiKeyCreateResponse> => {
+  return customFetch<ApiKeyCreateResponse>(getCreateCmsApiKeyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createApiKeyBody),
+  });
+};
+
+export const getCreateCmsApiKeyMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsApiKey>>,
+    TError,
+    { data: BodyType<CreateApiKeyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCmsApiKey>>,
+  TError,
+  { data: BodyType<CreateApiKeyBody> },
+  TContext
+> => {
+  const mutationKey = ["createCmsApiKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCmsApiKey>>,
+    { data: BodyType<CreateApiKeyBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCmsApiKey(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCmsApiKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCmsApiKey>>
+>;
+export type CreateCmsApiKeyMutationBody = BodyType<CreateApiKeyBody>;
+export type CreateCmsApiKeyMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a new API key (plaintext returned once)
+ */
+export const useCreateCmsApiKey = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCmsApiKey>>,
+    TError,
+    { data: BodyType<CreateApiKeyBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCmsApiKey>>,
+  TError,
+  { data: BodyType<CreateApiKeyBody> },
+  TContext
+> => {
+  return useMutation(getCreateCmsApiKeyMutationOptions(options));
+};
+
+/**
+ * @summary Get a single API key by ID
+ */
+export const getGetCmsApiKeyUrl = (id: string) => {
+  return `/api/cms/api-keys/${id}`;
+};
+
+export const getCmsApiKey = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ApiKey> => {
+  return customFetch<ApiKey>(getGetCmsApiKeyUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCmsApiKeyQueryKey = (id: string) => {
+  return [`/api/cms/api-keys/${id}`] as const;
+};
+
+export const getGetCmsApiKeyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCmsApiKey>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsApiKey>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCmsApiKeyQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCmsApiKey>>> = ({
+    signal,
+  }) => getCmsApiKey(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCmsApiKey>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCmsApiKeyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCmsApiKey>>
+>;
+export type GetCmsApiKeyQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get a single API key by ID
+ */
+
+export function useGetCmsApiKey<
+  TData = Awaited<ReturnType<typeof getCmsApiKey>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCmsApiKey>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCmsApiKeyQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Revoke an API key
+ */
+export const getRevokeCmsApiKeyUrl = (id: string) => {
+  return `/api/cms/api-keys/${id}`;
+};
+
+export const revokeCmsApiKey = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRevokeCmsApiKeyUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRevokeCmsApiKeyMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeCmsApiKey>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeCmsApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["revokeCmsApiKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeCmsApiKey>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return revokeCmsApiKey(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeCmsApiKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeCmsApiKey>>
+>;
+
+export type RevokeCmsApiKeyMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+>;
+
+/**
+ * @summary Revoke an API key
+ */
+export const useRevokeCmsApiKey = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorEnvelope
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeCmsApiKey>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof revokeCmsApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRevokeCmsApiKeyMutationOptions(options));
 };

@@ -72,6 +72,7 @@ import constellationDemoRouter from "./constellationDemo";
 import portalConstellationRouter from "./portalConstellation";
 import experimentsRouter from "./experiments";
 import adminExperimentsRouter from "./adminExperiments";
+import cmsApiKeysRouter from "./cms/apiKeys";
 
 const router: IRouter = Router();
 
@@ -148,5 +149,6 @@ router.use(constellationDemoRouter);
 router.use(portalConstellationRouter);
 router.use(experimentsRouter);
 router.use(adminExperimentsRouter);
+router.use(cmsApiKeysRouter);
 
 export default router;

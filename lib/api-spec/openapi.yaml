@@ -65,6 +65,8 @@ tags:
     description: Public A/B experiments runtime endpoints.
   - name: AdminExperiments
     description: Admin A/B experiments CRUD, lifecycle, and results.
+  - name: CmsApiKeys
+    description: Admin API key management for machine-to-machine access.
 paths:
   /healthz:
     get:
@@ -4371,6 +4373,102 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /cms/api-keys:
+    get:
+      operationId: listCmsApiKeys
+      tags:
+        - CmsApiKeys
+      summary: List all API keys
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createCmsApiKey
+      tags:
+        - CmsApiKeys
+      summary: Create a new API key (plaintext returned once)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyBody'
+      responses:
+        '201':
+          description: Created — plaintext key included once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cms/api-keys/{id}:
+    get:
+      operationId: getCmsApiKey
+      tags:
+        - CmsApiKeys
+      summary: Get a single API key by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: revokeCmsApiKey
+      tags:
+        - CmsApiKeys
+      summary: Revoke an API key
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Already revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 components:
   securitySchemes:
     trafficPropertyApiKey:
@@ -10737,3 +10835,79 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VariantResult'
+
+    ApiKey:
+      type: object
+      required: [id, name, prefix, grantedCapabilities, useCount, isRevoked, isExpired, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        prefix:
+          type: string
+          description: First 8 hex chars of the random key portion (for display as "syn_<prefix>…")
+        grantedCapabilities:
+          type: array
+          items:
+            type: string
+        createdByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        useCount:
+          type: integer
+          minimum: 0
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        isRevoked:
+          type: boolean
+        isExpired:
+          type: boolean
+
+    ApiKeyCreateResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiKey'
+        - type: object
+          required: [plaintext]
+          properties:
+            plaintext:
+              type: string
+              description: The full API key — shown exactly once. Store securely.
+
+    CreateApiKeyBody:
+      type: object
+      required: [name, grantedCapabilities]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        grantedCapabilities:
+          type: array
+          items:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional expiry. Omit for a non-expiring key.

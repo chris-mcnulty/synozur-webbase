@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction, type RequestHandler } from "express";
 import { eq, inArray } from "drizzle-orm";
+import { createHash } from "crypto";
 import {
   db,
   usersTable,
@@ -7,6 +8,7 @@ import {
   userRoles,
   capabilitiesTable,
   roleCapabilities,
+  apiKeysTable,
   type RoleName,
   ROLE_NAMES,
 } from "@workspace/db";
@@ -110,6 +112,44 @@ export const attachUserIfPresent: RequestHandler = async (req, res, next) => {
     if (authHeader && typeof authHeader === "string" && authHeader.toLowerCase().startsWith("bearer ")) {
       const bearer = authHeader.slice(7).trim();
       if (bearer) {
+        // 2a. API key — `syn_` prefix indicates a static machine-to-machine key.
+        //     Hash it, look up in api_keys, confirm not revoked/expired, then
+        //     synthesise a virtual authedUser carrying the key's capabilities.
+        if (bearer.startsWith("syn_")) {
+          const keyHash = createHash("sha256").update(bearer).digest("hex");
+          const [keyRow] = await db
+            .select()
+            .from(apiKeysTable)
+            .where(eq(apiKeysTable.keyHash, keyHash))
+            .limit(1);
+          if (keyRow && !keyRow.revokedAt && !(keyRow.expiresAt && keyRow.expiresAt < new Date())) {
+            // Synthesise a virtual authedUser scoped to the key's granted capabilities.
+            req.authedUser = {
+              id: keyRow.id,
+              externalSubject: null,
+              authProvider: "api_key",
+              email: null,
+              displayName: keyRow.name,
+              avatarUrl: null,
+              bio: null,
+              roles: [],
+              effectiveCapabilities: keyRow.grantedCapabilities,
+            };
+            // Fire-and-forget usage telemetry — never fails the request.
+            db.update(apiKeysTable)
+              .set({
+                lastUsedAt: new Date(),
+                useCount: (keyRow.useCount ?? 0) + 1,
+              })
+              .where(eq(apiKeysTable.id, keyRow.id))
+              .catch(() => {});
+            return next();
+          }
+          // Invalid/revoked/expired syn_ key → do not fall through to OAuth.
+          return next();
+        }
+
+        // 2b. OAuth access token (JWKS-verified JWT).
         const claims = await verifyOAuthAccessToken(bearer);
         if (claims) {
           const user = await loadUserById(claims.sub);
@@ -134,6 +174,28 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   next();
 };
 
+// For API-key callers (roles: []), map each role name to the capability
+// that represents it so that existing `hasRole`/`requireRole` guards work
+// transparently without touching every route file.
+const ROLE_CAPABILITY_EQUIVALENT: Record<string, string> = {
+  admin: "site.manage",
+  site_admin: "site.manage",
+  editor: "content.publish",
+  content_author: "content.author",
+  author: "content.author",
+  contributor: "content.author",
+  hr: "careers.jobs.read",
+  internal: "content.view",
+  customer: "portal.view",
+};
+
+function apiKeyMatchesRoles(user: AuthedUser, allowed: readonly RoleName[]): boolean {
+  return allowed.some((role) => {
+    const equiv = ROLE_CAPABILITY_EQUIVALENT[role];
+    return equiv ? user.effectiveCapabilities.includes(equiv) : false;
+  });
+}
+
 export function requireRole(...allowed: RoleName[]): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.authedUser;
@@ -141,7 +203,11 @@ export function requireRole(...allowed: RoleName[]): RequestHandler {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    if (!user.roles.some((r) => allowed.includes(r))) {
+    const satisfied =
+      user.authProvider === "api_key"
+        ? apiKeyMatchesRoles(user, allowed)
+        : user.roles.some((r) => allowed.includes(r));
+    if (!satisfied) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -150,7 +216,9 @@ export function requireRole(...allowed: RoleName[]): RequestHandler {
 }
 
 export function hasRole(user: AuthedUser | undefined, ...allowed: RoleName[]): boolean {
-  return !!user && user.roles.some((r) => allowed.includes(r));
+  if (!user) return false;
+  if (user.authProvider === "api_key") return apiKeyMatchesRoles(user, allowed);
+  return user.roles.some((r) => allowed.includes(r));
 }
 
 // #111 — capability-based gate. Prefer this over requireRole() in new code:

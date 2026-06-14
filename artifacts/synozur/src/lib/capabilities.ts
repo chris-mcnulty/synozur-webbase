@@ -16,6 +16,7 @@ export const CAPABILITIES = [
   "site.manage",
   "ai.grounding.manage",
   "oauth.manage",
+  "api_keys.manage",
   "client_orgs.manage",
   "careers.jobs.read",
   "careers.jobs.write",

@@ -197,6 +197,7 @@ const SECTIONS: NavSection[] = [
       { href: "/access/security-log", label: "Security Log", icon: Activity, capability: "users.manage", testId: "nav-admin-security-log" },
       { href: "/access/audit-log", label: "Audit Log", icon: FileSearch, capability: "users.manage", testId: "nav-admin-audit-log" },
       { href: "/access/oauth-clients", label: "OAuth Clients", icon: AppWindow, capability: "oauth.manage", testId: "nav-admin-oauth-clients" },
+      { href: "/access/api-keys", label: "API Keys", icon: KeyRound, capability: "api_keys.manage", testId: "nav-admin-api-keys" },
     ],
   },
   {
