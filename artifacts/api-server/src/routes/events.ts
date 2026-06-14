@@ -11,6 +11,10 @@ import {
   eventSpeakersTable,
   eventSessionsTable,
   teamMembersTable,
+  eventRegistrationsTable,
+  pendingEmailRemindersTable,
+  formSubmissionsTable,
+  siteSettingsTable,
   type Event,
   type Asset,
   type Media,
@@ -32,6 +36,9 @@ import {
   ReplaceEventSessionsParams,
   ReplaceEventSessionsBody,
   ReplaceEventSessionsResponse,
+  RegisterForEventParams,
+  RegisterForEventBody,
+  RegisterForEventResponse,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { sendGone } from "../lib/goneResponse";
@@ -41,6 +48,12 @@ import {
   softDeleteCollateralForEvent,
 } from "../lib/syncCollateral";
 import { seedEventsFromCsv } from "../scripts/seedEvents";
+import { verifyTurnstile } from "../lib/turnstile";
+import {
+  enqueueContactSubmission,
+  computeTimelineTokens,
+} from "../lib/hubspotSync";
+import { sendEventRegistrationConfirmation } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -820,6 +833,184 @@ router.get("/events/:slug/calendar.ics", async (req, res): Promise<void> => {
   );
   res.setHeader("Cache-Control", "no-cache, no-store");
   res.send(icsContent);
+});
+
+// Register for an event (native modal — registrationStatus === 'OPEN')
+router.post("/events/:slug/register", async (req, res): Promise<void> => {
+  const params = RegisterForEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid parameters" });
+    return;
+  }
+  const body = RegisterForEventBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const ip = typeof req.headers["x-forwarded-for"] === "string"
+    ? req.headers["x-forwarded-for"].split(",")[0]!.trim()
+    : (req.ip ?? null);
+
+  const turnstileOk = await verifyTurnstile(body.data.turnstileToken, ip);
+  if (!turnstileOk) {
+    res.status(400).json({ error: "Bot check failed", code: "bot_check_failed" });
+    return;
+  }
+
+  const [event] = await db
+    .select()
+    .from(eventsTable)
+    .where(eq(eventsTable.slug, params.data.slug));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  if (event.registrationStatus !== "OPEN") {
+    res.status(400).json({ error: "Registration is not open for this event" });
+    return;
+  }
+
+  const email = body.data.email.toLowerCase().trim();
+
+  const existing = await db
+    .select({ id: eventRegistrationsTable.id })
+    .from(eventRegistrationsTable)
+    .innerJoin(
+      formSubmissionsTable,
+      eq(formSubmissionsTable.id, eventRegistrationsTable.formSubmissionId),
+    )
+    .where(
+      and(
+        eq(eventRegistrationsTable.eventId, event.id),
+        eq(formSubmissionsTable.email, email),
+      ),
+    )
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(409).json({ error: "You are already registered for this event" });
+    return;
+  }
+
+  const firstName = body.data.firstName.trim();
+  const lastName = body.data.lastName.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  let marketingOptIn = body.data.marketingOptIn ?? null;
+  if (marketingOptIn === null) {
+    const settings = await db
+      .select({ hubspotEuOptInDefault: siteSettingsTable.hubspotEuOptInDefault })
+      .from(siteSettingsTable)
+      .limit(1);
+    marketingOptIn = settings[0]?.hubspotEuOptInDefault === true ? false : true;
+  }
+
+  const payload: Record<string, unknown> = {
+    firstName,
+    lastName,
+    company: body.data.company,
+    jobTitle: body.data.jobTitle,
+    eventSlug: event.slug,
+    eventTitle: event.title,
+  };
+
+  const [submission] = await db
+    .insert(formSubmissionsTable)
+    .values({
+      formType: "event_registration",
+      email,
+      name: fullName,
+      company: body.data.company || null,
+      payload,
+      ipAddress: ip,
+      userAgent: typeof req.headers["user-agent"] === "string"
+        ? req.headers["user-agent"].slice(0, 1000)
+        : null,
+      marketingOptIn: Boolean(marketingOptIn),
+      utmSource: body.data.utmSource ?? null,
+      utmMedium: body.data.utmMedium ?? null,
+      utmCampaign: body.data.utmCampaign ?? null,
+      utmTerm: body.data.utmTerm ?? null,
+      utmContent: body.data.utmContent ?? null,
+      landingPage: body.data.landingPage ?? null,
+      referrer: body.data.referrer ?? null,
+    })
+    .returning({ id: formSubmissionsTable.id });
+
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  const eventStart = new Date(event.startDate);
+  const now = new Date();
+  const msUntilEvent = eventStart.getTime() - now.getTime();
+  const remindAt =
+    (body.data.wantsReminder ?? false) && msUntilEvent > TWENTY_FOUR_HOURS_MS
+      ? new Date(eventStart.getTime() - TWENTY_FOUR_HOURS_MS)
+      : null;
+
+  await db.insert(eventRegistrationsTable).values({
+    eventId: event.id,
+    formSubmissionId: submission.id,
+    remindAt,
+  });
+
+  if (remindAt) {
+    const eventDateLabel = eventStart.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    await db.insert(pendingEmailRemindersTable).values({
+      kind: "event_reminder",
+      recipientEmail: email,
+      recipientName: firstName,
+      payload: {
+        eventTitle: event.title,
+        eventSlug: event.slug,
+        eventDate: eventDateLabel,
+        eventLocation: event.location ?? null,
+      },
+      scheduledFor: remindAt,
+    });
+  }
+
+  void enqueueContactSubmission({
+    formType: "event_registration",
+    submissionId: submission.id,
+    email,
+    name: fullName,
+    company: body.data.company || null,
+    marketingOptIn: Boolean(marketingOptIn),
+    payload,
+    utm: {
+      source: body.data.utmSource ?? null,
+      medium: body.data.utmMedium ?? null,
+      campaign: body.data.utmCampaign ?? null,
+      term: body.data.utmTerm ?? null,
+      content: body.data.utmContent ?? null,
+      landingPage: body.data.landingPage ?? null,
+      referrer: body.data.referrer ?? null,
+    },
+    timelineTokens: computeTimelineTokens("event_registration", payload),
+  });
+
+  void sendEventRegistrationConfirmation({
+    to: email,
+    firstName,
+    eventTitle: event.title,
+    eventDate: eventStart.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+    eventLocation: event.location ?? null,
+    eventSlug: event.slug,
+    wantsReminder: body.data.wantsReminder ?? false,
+  }).catch((err) => {
+    req.log?.error({ err }, "event registration confirmation email failed");
+  });
+
+  res.json(RegisterForEventResponse.parse({ message: "Registration successful", registered: true }));
 });
 
 // Replace all sessions for an event (admin)

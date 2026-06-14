@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   uuid,
+  jsonb,
   primaryKey,
   index,
 } from "drizzle-orm/pg-core";
@@ -138,3 +139,54 @@ export const eventSessionsTable = pgTable(
 
 export type EventSession = typeof eventSessionsTable.$inferSelect;
 export type InsertEventSession = typeof eventSessionsTable.$inferInsert;
+
+// Native event registrations — collected via the in-page modal when
+// registrationStatus === 'OPEN'. One row per registrant per event.
+// `formSubmissionId` is a FK to form_submissions (plain integer, no
+// Drizzle reference because the table lives in a different schema file
+// and circular imports in barrel re-exports cause build issues).
+export const eventRegistrationsTable = pgTable(
+  "event_registrations",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => eventsTable.id, { onDelete: "cascade" }),
+    formSubmissionId: integer("form_submission_id").notNull(),
+    remindAt: timestamp("remind_at", { withTimezone: true }),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("event_registrations_event_idx").on(t.eventId),
+    index("event_registrations_remind_at_idx").on(t.remindAt),
+  ],
+);
+
+export type EventRegistration = typeof eventRegistrationsTable.$inferSelect;
+export type InsertEventRegistration = typeof eventRegistrationsTable.$inferInsert;
+
+// Generic deferred email queue. `kind` is a stable slug (e.g.
+// "event_reminder") that the drain worker dispatches to the correct
+// send function. `payload` carries the data the send function needs
+// (event title, slug, date, location, recipient first name, etc.).
+export const pendingEmailRemindersTable = pgTable(
+  "pending_email_reminders",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind").notNull(),
+    recipientEmail: text("recipient_email").notNull(),
+    recipientName: text("recipient_name"),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("pending_email_reminders_scheduled_idx").on(t.scheduledFor),
+  ],
+);
+
+export type PendingEmailReminder = typeof pendingEmailRemindersTable.$inferSelect;
+export type InsertPendingEmailReminder = typeof pendingEmailRemindersTable.$inferInsert;

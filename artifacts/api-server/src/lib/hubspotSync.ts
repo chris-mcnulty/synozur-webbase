@@ -74,7 +74,8 @@ export type FormType =
   | "white-paper"
   | "webinar"
   | "partner"
-  | "demo";
+  | "demo"
+  | "event_registration";
 
 export const ALL_FORM_TYPES: readonly FormType[] = [
   "contact",
@@ -84,6 +85,7 @@ export const ALL_FORM_TYPES: readonly FormType[] = [
   "webinar",
   "partner",
   "demo",
+  "event_registration",
 ];
 
 export type LifecycleStage = "subscriber" | "lead" | "marketingqualifiedlead" | "salesqualifiedlead" | "opportunity" | "customer" | "evangelist" | "other";
@@ -177,6 +179,7 @@ const TIMELINE_TEMPLATE_FOR_FORM: Record<FormType, string> = {
   webinar: "synozur_webinar_registered",
   partner: "synozur_form_submitted",
   demo: "synozur_application_demo_requested",
+  event_registration: "synozur_event_registered",
 };
 
 function splitName(name: string | null): { firstname?: string; lastname?: string } {

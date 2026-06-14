@@ -751,6 +751,115 @@ export async function sendPasswordReset(args: {
   });
 }
 
+export async function sendEventRegistrationConfirmation(args: {
+  to: string;
+  firstName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string | null;
+  eventSlug: string;
+  wantsReminder: boolean;
+}): Promise<SendEmailResult> {
+  const eventUrl = `${SITE_URL}/events/${encodeURIComponent(args.eventSlug)}`;
+  const greeting = `Hi ${escapeHtml(args.firstName)},`;
+  const locationLine = args.eventLocation
+    ? `<p style="margin:0 0 8px;"><strong>Location:</strong> ${escapeHtml(args.eventLocation)}</p>`
+    : "";
+  const reminderNote = args.wantsReminder
+    ? `<p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">We'll send you a reminder 24 hours before the event.</p>`
+    : "";
+  const html = brandedShell({
+    preheader: `You're registered for ${args.eventTitle}.`,
+    heading: "You're registered!",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Thanks for registering. We look forward to seeing you at <strong>${escapeHtml(args.eventTitle)}</strong>.</p>
+      <div style="margin:20px 0;padding:16px;background:#f7f7fc;border-radius:8px;border-left:4px solid #810FFB;">
+        <p style="margin:0 0 8px;"><strong>Event:</strong> ${escapeHtml(args.eventTitle)}</p>
+        <p style="margin:0 0 8px;"><strong>Date:</strong> ${escapeHtml(args.eventDate)}</p>
+        ${locationLine}
+      </div>
+      <p style="margin:16px 0;">
+        <a href="${escapeHtml(eventUrl)}" style="display:inline-block;background:#810FFB;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">View Event Details</a>
+      </p>
+      ${reminderNote}
+      <p style="margin:16px 0 0;font-size:13px;color:#6b6b80;">If you have any questions, reply to this email or visit <a href="${escapeHtml(SITE_URL)}/contact" style="color:#810FFB;">our contact page</a>.</p>
+    `,
+  });
+  const text = [
+    greeting,
+    "",
+    `Thanks for registering for ${args.eventTitle}.`,
+    "",
+    `Event: ${args.eventTitle}`,
+    `Date: ${args.eventDate}`,
+    ...(args.eventLocation ? [`Location: ${args.eventLocation}`] : []),
+    "",
+    `View event details: ${eventUrl}`,
+    ...(args.wantsReminder ? ["", "We'll send you a reminder 24 hours before the event."] : []),
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `You're registered — ${args.eventTitle}`,
+    html,
+    text,
+    template: "event-registration-confirmation",
+  });
+}
+
+export async function sendEventReminderEmail(args: {
+  to: string;
+  firstName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string | null;
+  eventSlug: string;
+}): Promise<SendEmailResult> {
+  const eventUrl = `${SITE_URL}/events/${encodeURIComponent(args.eventSlug)}`;
+  const greeting = `Hi ${escapeHtml(args.firstName)},`;
+  const locationLine = args.eventLocation
+    ? `<p style="margin:0 0 8px;"><strong>Location:</strong> ${escapeHtml(args.eventLocation)}</p>`
+    : "";
+  const html = brandedShell({
+    preheader: `Reminder: ${args.eventTitle} is tomorrow.`,
+    heading: "Event reminder",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Just a reminder that <strong>${escapeHtml(args.eventTitle)}</strong> is happening tomorrow. We look forward to seeing you there!</p>
+      <div style="margin:20px 0;padding:16px;background:#f7f7fc;border-radius:8px;border-left:4px solid #810FFB;">
+        <p style="margin:0 0 8px;"><strong>Event:</strong> ${escapeHtml(args.eventTitle)}</p>
+        <p style="margin:0 0 8px;"><strong>Date:</strong> ${escapeHtml(args.eventDate)}</p>
+        ${locationLine}
+      </div>
+      <p style="margin:16px 0;">
+        <a href="${escapeHtml(eventUrl)}" style="display:inline-block;background:#810FFB;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">View Event Details</a>
+      </p>
+    `,
+  });
+  const text = [
+    greeting,
+    "",
+    `This is a reminder that ${args.eventTitle} is happening tomorrow.`,
+    "",
+    `Event: ${args.eventTitle}`,
+    `Date: ${args.eventDate}`,
+    ...(args.eventLocation ? [`Location: ${args.eventLocation}`] : []),
+    "",
+    `View event details: ${eventUrl}`,
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `Reminder: ${args.eventTitle} is tomorrow`,
+    html,
+    text,
+    template: "event-reminder",
+  });
+}
+
 export async function sendInternalNotification(args: {
   formType: "contact" | "subscribe" | "start";
   submissionId: number;

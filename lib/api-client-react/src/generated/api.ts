@@ -60,6 +60,8 @@ import type {
   DownloadPortalDocumentVersionParams,
   ErrorEnvelope,
   EventInput,
+  EventRegistrationBody,
+  EventRegistrationResponse,
   ExportAdminFormSubmissionsParams,
   ExportAuditLogCsvParams,
   ForbiddenResponse,
@@ -8271,6 +8273,93 @@ export const useDeleteEvent = <
   TContext
 > => {
   return useMutation(getDeleteEventMutationOptions(options));
+};
+
+/**
+ * @summary Register for an event (native modal)
+ */
+export const getRegisterForEventUrl = (slug: string) => {
+  return `/api/events/${slug}/register`;
+};
+
+export const registerForEvent = async (
+  slug: string,
+  eventRegistrationBody: EventRegistrationBody,
+  options?: RequestInit,
+): Promise<EventRegistrationResponse> => {
+  return customFetch<EventRegistrationResponse>(getRegisterForEventUrl(slug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(eventRegistrationBody),
+  });
+};
+
+export const getRegisterForEventMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerForEvent>>,
+    TError,
+    { slug: string; data: BodyType<EventRegistrationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerForEvent>>,
+  TError,
+  { slug: string; data: BodyType<EventRegistrationBody> },
+  TContext
+> => {
+  const mutationKey = ["registerForEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerForEvent>>,
+    { slug: string; data: BodyType<EventRegistrationBody> }
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return registerForEvent(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterForEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerForEvent>>
+>;
+export type RegisterForEventMutationBody = BodyType<EventRegistrationBody>;
+export type RegisterForEventMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Register for an event (native modal)
+ */
+export const useRegisterForEvent = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerForEvent>>,
+    TError,
+    { slug: string; data: BodyType<EventRegistrationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerForEvent>>,
+  TError,
+  { slug: string; data: BodyType<EventRegistrationBody> },
+  TContext
+> => {
+  return useMutation(getRegisterForEventMutationOptions(options));
 };
 
 /**

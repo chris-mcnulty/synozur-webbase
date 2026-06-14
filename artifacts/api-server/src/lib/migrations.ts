@@ -3346,6 +3346,53 @@ export async function runMigrations(): Promise<void> {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS timezone TEXT;
     `);
 
+    // #332 — native event registration + 24-hour email reminders.
+    // event_registrations: one row per registrant per event, linked to the
+    // corresponding form_submission. remind_at is set when the visitor opts
+    // in to a 24-hour reminder; reminder_sent_at is stamped by the drain.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS event_registrations (
+        id                 serial PRIMARY KEY,
+        event_id           integer NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        form_submission_id integer NOT NULL,
+        remind_at          timestamptz,
+        reminder_sent_at   timestamptz,
+        created_at         timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS event_registrations_event_idx
+        ON event_registrations (event_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS event_registrations_remind_at_idx
+        ON event_registrations (remind_at)
+        WHERE remind_at IS NOT NULL AND reminder_sent_at IS NULL;
+    `);
+
+    // pending_email_reminders: generic deferred-email queue. kind = stable
+    // slug (e.g. 'event_reminder') that the scheduler drain dispatches to the
+    // correct send function. Capped at 5 attempts; rows older than sent_at are
+    // kept for auditing.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS pending_email_reminders (
+        id              serial PRIMARY KEY,
+        kind            text NOT NULL,
+        recipient_email text NOT NULL,
+        recipient_name  text,
+        payload         jsonb NOT NULL,
+        scheduled_for   timestamptz NOT NULL,
+        sent_at         timestamptz,
+        attempts        integer NOT NULL DEFAULT 0,
+        created_at      timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS pending_email_reminders_scheduled_idx
+        ON pending_email_reminders (scheduled_for)
+        WHERE sent_at IS NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

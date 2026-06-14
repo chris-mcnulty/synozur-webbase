@@ -1,5 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
+import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Calendar,
   MapPin,
@@ -7,18 +11,209 @@ import {
   ArrowLeft,
   Clock,
   Download,
+  CheckCircle2,
 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, type EventRegistrationInput } from "@/lib/api";
 import Gone from "@/pages/gone";
 import { Meta } from "@/lib/meta";
 import { EventJsonLd } from "@/components/event-jsonld";
 import { ShareRail } from "@/components/share-rail";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { EditWedge } from "@/components/edit-wedge";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 import { toEmbedUrl } from "@/lib/video-embed";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Turnstile,
+  TURNSTILE_SITE_KEY,
+  isBotCheckError,
+  type TurnstileHandle,
+} from "@/components/turnstile";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+
+const registrationSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
+  email: z.string().email("Valid email required"),
+  company: z.string().min(1, "Company is required").max(200),
+  jobTitle: z.string().min(1, "Job title is required").max(200),
+  wantsReminder: z.boolean().default(false),
+});
+type RegistrationForm = z.infer<typeof registrationSchema>;
+
+function EventRegistrationModal({
+  open,
+  onOpenChange,
+  eventSlug,
+  eventTitle,
+  eventDate,
+  showReminderOption,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  eventSlug: string;
+  eventTitle: string;
+  eventDate: string;
+  showReminderOption: boolean;
+}) {
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [registered, setRegistered] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<RegistrationForm>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { wantsReminder: false },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: EventRegistrationInput) =>
+      api.registerForEvent(eventSlug, data),
+    onSuccess: () => {
+      setRegistered(true);
+      setServerError(null);
+    },
+    onError: (err) => {
+      if (isBotCheckError(err)) {
+        setServerError("Bot check failed — please try again.");
+      } else if (err instanceof ApiError && err.status === 409) {
+        setServerError("You're already registered for this event.");
+      } else {
+        setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      }
+      turnstileRef.current?.reset();
+    },
+  });
+
+  function onSubmit(data: RegistrationForm) {
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setServerError("Please complete the bot check.");
+      return;
+    }
+    setServerError(null);
+    mutation.mutate({
+      ...data,
+      turnstileToken: turnstileToken ?? "no-turnstile",
+    });
+  }
+
+  function handleOpenChange(v: boolean) {
+    if (!v) {
+      reset();
+      setRegistered(false);
+      setServerError(null);
+      setTurnstileToken(null);
+    }
+    onOpenChange(v);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        {registered ? (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <CheckCircle2 className="h-14 w-14 text-green-500" />
+            <DialogHeader>
+              <DialogTitle>You're registered!</DialogTitle>
+              <DialogDescription>
+                A confirmation email is on its way. We look forward to seeing you at {eventTitle}.
+              </DialogDescription>
+            </DialogHeader>
+            <Button className="mt-2 w-full" onClick={() => handleOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Register for {eventTitle}</DialogTitle>
+              <DialogDescription>{eventDate}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-firstName">First name</Label>
+                  <Input id="reg-firstName" {...register("firstName")} />
+                  {errors.firstName && (
+                    <p className="text-xs text-destructive">{errors.firstName.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reg-lastName">Last name</Label>
+                  <Input id="reg-lastName" {...register("lastName")} />
+                  {errors.lastName && (
+                    <p className="text-xs text-destructive">{errors.lastName.message}</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-email">Work email</Label>
+                <Input id="reg-email" type="email" {...register("email")} />
+                {errors.email && (
+                  <p className="text-xs text-destructive">{errors.email.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-company">Company</Label>
+                <Input id="reg-company" {...register("company")} />
+                {errors.company && (
+                  <p className="text-xs text-destructive">{errors.company.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-jobTitle">Job title</Label>
+                <Input id="reg-jobTitle" {...register("jobTitle")} />
+                {errors.jobTitle && (
+                  <p className="text-xs text-destructive">{errors.jobTitle.message}</p>
+                )}
+              </div>
+              {showReminderOption && (
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    {...register("wantsReminder")}
+                    className="h-4 w-4 rounded border border-border accent-primary"
+                  />
+                  <span className="text-sm">Remind me 24 hours before the event</span>
+                </label>
+              )}
+              <Turnstile
+                ref={turnstileRef}
+                onVerify={setTurnstileToken}
+                theme="auto"
+                className="mt-1"
+              />
+              {serverError && (
+                <p className="text-sm text-destructive">{serverError}</p>
+              )}
+              <Button
+                type="submit"
+                disabled={isSubmitting || mutation.isPending}
+                className="w-full"
+              >
+                {isSubmitting || mutation.isPending ? "Registering…" : "Complete Registration"}
+              </Button>
+            </form>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Speaker `imageUrl` values come straight from `team_members.image_url`
 // and can be relative (e.g. `/images/...`). Resolve against BASE_PATH so
@@ -52,6 +247,7 @@ function formatTime(iso: string | Date, timezone?: string | null): string {
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   const { data: event, isLoading, error } = useQuery({
     queryKey: ["event", slug],
@@ -90,11 +286,17 @@ export default function EventDetail() {
   const weekStart = startOfCurrentWeek();
   const isPast =
     new Date(event.startDate).getTime() < weekStart || event.status === "ENDED";
-  const canRegister =
+  const canRegisterNative = !isPast && event.registrationStatus === "OPEN";
+  const canRegisterExternal =
     !isPast &&
-    (event.registrationStatus === "OPEN" ||
-      event.registrationStatus === "OPEN_EXTERNAL") &&
+    event.registrationStatus === "OPEN_EXTERNAL" &&
     event.registrationUrl;
+
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  const showReminderOption =
+    new Date(event.startDate).getTime() - Date.now() > TWENTY_FOUR_HOURS_MS;
+
+  const eventDateLabel = formatDate(event.startDate);
 
   const mapSrc = event.location
     ? `https://www.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`
@@ -318,7 +520,15 @@ export default function EventDetail() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground pt-2 border-t border-border">
                   Past Event
                 </p>
-              ) : canRegister ? (
+              ) : canRegisterNative ? (
+                <button
+                  type="button"
+                  onClick={() => setRegisterOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+                >
+                  Register Now
+                </button>
+              ) : canRegisterExternal ? (
                 <a
                   href={event.registrationUrl ?? "#"}
                   target="_blank"
@@ -371,6 +581,17 @@ export default function EventDetail() {
         snapshot={event}
         queryKey={["event", slug]}
       />
+
+      {canRegisterNative && (
+        <EventRegistrationModal
+          open={registerOpen}
+          onOpenChange={setRegisterOpen}
+          eventSlug={event.slug}
+          eventTitle={event.title}
+          eventDate={eventDateLabel}
+          showReminderOption={showReminderOption}
+        />
+      )}
     </div>
   );
 }

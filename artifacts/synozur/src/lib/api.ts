@@ -18,6 +18,17 @@ import type {
   TeamMemberInput,
   RetryFailedSubmissionsResult,
 } from "@workspace/api-zod/types";
+
+export interface EventRegistrationInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string;
+  jobTitle: string;
+  wantsReminder?: boolean;
+  turnstileToken: string;
+  marketingOptIn?: boolean | null;
+}
 export type { EventSession, EventSessionInput };
 import { attributionPayload, type AttributionPayload } from "./attribution";
 
@@ -1044,6 +1055,11 @@ export const api = {
     ),
   publicEvents: () => jsonFetch<PublicEvent[]>(url("/events")),
   publicEvent: (slug: string) => jsonFetch<PublicEvent>(url(`/events/${slug}`)),
+  registerForEvent: (slug: string, body: EventRegistrationInput) =>
+    jsonFetch<{ message: string; registered: boolean }>(url(`/events/${encodeURIComponent(slug)}/register`), {
+      method: "POST",
+      body: JSON.stringify(withAttribution(body, { marketingOptIn: body.marketingOptIn ?? undefined })),
+    }),
   me: () => jsonFetch<AdminMe>(url("/admin/me")),
   adminEvents: () => jsonFetch<AdminEvent[]>(url("/admin/events")),
   getEvent: (id: number) => jsonFetch<AdminEvent>(url(`/admin/events/${id}`)),

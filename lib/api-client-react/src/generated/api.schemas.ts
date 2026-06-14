@@ -1723,6 +1723,49 @@ export interface EventSessionInput {
   sortOrder?: number;
 }
 
+export interface EventRegistrationBody {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  firstName: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  lastName: string;
+  email: string;
+  /** @maxLength 200 */
+  company: string;
+  /** @maxLength 200 */
+  jobTitle: string;
+  wantsReminder?: boolean;
+  turnstileToken: string;
+  /** @nullable */
+  marketingOptIn?: boolean | null;
+  /** @nullable */
+  utmSource?: string | null;
+  /** @nullable */
+  utmMedium?: string | null;
+  /** @nullable */
+  utmCampaign?: string | null;
+  /** @nullable */
+  utmTerm?: string | null;
+  /** @nullable */
+  utmContent?: string | null;
+  /** @nullable */
+  landingPage?: string | null;
+  /** @nullable */
+  referrer?: string | null;
+  /** @nullable */
+  hubspotutk?: string | null;
+}
+
+export interface EventRegistrationResponse {
+  message: string;
+  registered: boolean;
+}
+
 export interface EventInput {
   /** @minLength 1 */
   title: string;

@@ -69,6 +69,8 @@ export * from "./downloadPortalDocumentVersionInline";
 export * from "./downloadPortalDocumentVersionParams";
 export * from "./errorEnvelope";
 export * from "./eventInput";
+export * from "./eventRegistrationBody";
+export * from "./eventRegistrationResponse";
 export * from "./eventSession";
 export * from "./eventSessionInput";
 export * from "./eventSpeaker";

@@ -2428,6 +2428,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /events/{slug}/register:
+    post:
+      tags:
+        - Events
+      operationId: registerForEvent
+      summary: Register for an event (native modal)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRegistrationBody'
+      responses:
+        '200':
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventRegistrationResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /events/{slug}/schedule:
     get:
       tags:
@@ -7229,6 +7272,60 @@ components:
           type: ['string', 'null']
         sortOrder:
           type: integer
+
+    EventRegistrationBody:
+      type: object
+      required: [firstName, lastName, email, company, jobTitle, turnstileToken]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+          maxLength: 200
+        jobTitle:
+          type: string
+          maxLength: 200
+        wantsReminder:
+          type: boolean
+          default: false
+        turnstileToken:
+          type: string
+        marketingOptIn:
+          type: ['boolean', 'null']
+        utmSource:
+          type: ['string', 'null']
+        utmMedium:
+          type: ['string', 'null']
+        utmCampaign:
+          type: ['string', 'null']
+        utmTerm:
+          type: ['string', 'null']
+        utmContent:
+          type: ['string', 'null']
+        landingPage:
+          type: ['string', 'null']
+        referrer:
+          type: ['string', 'null']
+        hubspotutk:
+          type: ['string', 'null']
+
+    EventRegistrationResponse:
+      type: object
+      required: [message, registered]
+      properties:
+        message:
+          type: string
+        registered:
+          type: boolean
 
     EventInput:
       type: object

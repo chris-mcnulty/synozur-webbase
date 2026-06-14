@@ -4019,6 +4019,49 @@ export const DeleteEventParams = zod.object({
 });
 
 /**
+ * @summary Register for an event (native modal)
+ */
+export const RegisterForEventParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const registerForEventBodyFirstNameMax = 100;
+
+export const registerForEventBodyLastNameMax = 100;
+
+export const registerForEventBodyCompanyMax = 200;
+
+export const registerForEventBodyJobTitleMax = 200;
+
+export const registerForEventBodyWantsReminderDefault = false;
+
+export const RegisterForEventBody = zod.object({
+  firstName: zod.string().min(1).max(registerForEventBodyFirstNameMax),
+  lastName: zod.string().min(1).max(registerForEventBodyLastNameMax),
+  email: zod.string().email(),
+  company: zod.string().max(registerForEventBodyCompanyMax),
+  jobTitle: zod.string().max(registerForEventBodyJobTitleMax),
+  wantsReminder: zod
+    .boolean()
+    .default(registerForEventBodyWantsReminderDefault),
+  turnstileToken: zod.string(),
+  marketingOptIn: zod.boolean().nullish(),
+  utmSource: zod.string().nullish(),
+  utmMedium: zod.string().nullish(),
+  utmCampaign: zod.string().nullish(),
+  utmTerm: zod.string().nullish(),
+  utmContent: zod.string().nullish(),
+  landingPage: zod.string().nullish(),
+  referrer: zod.string().nullish(),
+  hubspotutk: zod.string().nullish(),
+});
+
+export const RegisterForEventResponse = zod.object({
+  message: zod.string(),
+  registered: zod.boolean(),
+});
+
+/**
  * @summary Get session schedule for an event
  */
 export const GetEventScheduleParams = zod.object({

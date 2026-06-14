@@ -1,6 +1,7 @@
 import { and, eq, lte, isNull, lt, not, or, like, sql } from "drizzle-orm";
-import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable } from "@workspace/db";
+import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable, pendingEmailRemindersTable } from "@workspace/db";
 import { audit } from "./audit";
+import { sendEventReminderEmail } from "./email";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
 import { flushPortalDocumentNotifications } from "./portalDocumentNotifications";
 import { reindexEditorialSourceSafe } from "./ai/reindexHook";
@@ -286,6 +287,78 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
     SEO_COVERAGE_INTERVAL_MS,
   );
 
+  // #332 — drain pending_email_reminders every 5 minutes. Sends event
+  // reminder emails 24 hours before the event starts. Max 5 attempts per row;
+  // after that the row is left unsent for admin review.
+  const REMINDER_DRAIN_INTERVAL_MS = 5 * 60_000;
+  const REMINDER_DRAIN_INITIAL_DELAY_MS = 30_000;
+  const REMINDER_MAX_ATTEMPTS = 5;
+
+  let reminderDrainRunning = false;
+  async function reminderDrainTick() {
+    if (stopping || reminderDrainRunning) return;
+    reminderDrainRunning = true;
+    try {
+      const now = new Date();
+      const due = await db
+        .select()
+        .from(pendingEmailRemindersTable)
+        .where(
+          and(
+            lte(pendingEmailRemindersTable.scheduledFor, now),
+            isNull(pendingEmailRemindersTable.sentAt),
+            lt(pendingEmailRemindersTable.attempts, REMINDER_MAX_ATTEMPTS),
+          ),
+        )
+        .limit(20);
+
+      for (const row of due) {
+        try {
+          if (row.kind === "event_reminder") {
+            const p = (row.payload ?? {}) as Record<string, string | null>;
+            await sendEventReminderEmail({
+              to: row.recipientEmail,
+              firstName: row.recipientName ?? row.recipientEmail.split("@")[0] ?? "there",
+              eventTitle: p["eventTitle"] ?? "Upcoming event",
+              eventDate: p["eventDate"] ?? "",
+              eventLocation: p["eventLocation"] ?? null,
+              eventSlug: p["eventSlug"] ?? "",
+            });
+          }
+          await db
+            .update(pendingEmailRemindersTable)
+            .set({ sentAt: now })
+            .where(eq(pendingEmailRemindersTable.id, row.id));
+          logger.info(
+            { kind: row.kind, id: row.id, to: row.recipientEmail },
+            "pending email reminder sent",
+          );
+        } catch (err) {
+          await db
+            .update(pendingEmailRemindersTable)
+            .set({ attempts: row.attempts + 1 })
+            .where(eq(pendingEmailRemindersTable.id, row.id));
+          logger.warn(
+            { err, kind: row.kind, id: row.id, attempts: row.attempts + 1 },
+            "pending email reminder send failed",
+          );
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, "reminder-drain tick failed");
+    } finally {
+      reminderDrainRunning = false;
+    }
+  }
+  const reminderDrainInitial = setTimeout(
+    reminderDrainTick,
+    REMINDER_DRAIN_INITIAL_DELAY_MS,
+  );
+  const reminderDrainInterval = setInterval(
+    reminderDrainTick,
+    REMINDER_DRAIN_INTERVAL_MS,
+  );
+
   return {
     stop() {
       stopping = true;
@@ -303,6 +376,8 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
       clearInterval(auditPruneInterval);
       clearTimeout(autoStopInitial);
       clearInterval(autoStopInterval);
+      clearTimeout(reminderDrainInitial);
+      clearInterval(reminderDrainInterval);
     },
   };
 }
