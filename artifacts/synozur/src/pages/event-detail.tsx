@@ -46,7 +46,7 @@ const registrationSchema = z.object({
   email: z.string().email("Valid email required"),
   company: z.string().min(1, "Company is required").max(200),
   jobTitle: z.string().min(1, "Job title is required").max(200),
-  wantsReminder: z.boolean().default(false),
+  wantsReminder: z.boolean(),
 });
 type RegistrationForm = z.infer<typeof registrationSchema>;
 
@@ -77,7 +77,7 @@ function EventRegistrationModal({
     formState: { errors, isSubmitting },
   } = useForm<RegistrationForm>({
     resolver: zodResolver(registrationSchema),
-    defaultValues: { wantsReminder: false },
+    defaultValues: { wantsReminder: showReminderOption },
   });
 
   const mutation = useMutation({
