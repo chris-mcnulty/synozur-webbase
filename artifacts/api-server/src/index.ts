@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduledPublishWorker } from "./lib/scheduler";
 import { startRevisionRetentionWorker } from "./lib/revisionRetention";
+import { startBriefingSubscriptionWorker } from "./lib/briefingSubscriptionWorker";
 import { startHubspotWorker, stopHubspotWorker, bootstrapHubspotOnStartup } from "./lib/hubspotSync";
 import { pruneExpiredSessions } from "./lib/sessions";
 import { pruneExpiredAuthStates } from "./lib/authStateStore";
@@ -48,6 +49,7 @@ const server = app.listen(port, (err) => {
 
 const worker = startScheduledPublishWorker(logger);
 const retentionWorker = startRevisionRetentionWorker(logger);
+const briefingSubscriptionWorker = startBriefingSubscriptionWorker(logger);
 startHubspotWorker();
 // #131 — On first deploy / launch, register custom HubSpot properties +
 // timeline-event templates and enqueue the historical form_submissions
@@ -68,6 +70,7 @@ function shutdown(signal: string) {
   logger.info({ signal }, "Shutting down");
   worker.stop();
   retentionWorker.stop();
+  briefingSubscriptionWorker.stop();
   stopHubspotWorker();
   clearInterval(sessionGc);
   server.close(() => process.exit(0));

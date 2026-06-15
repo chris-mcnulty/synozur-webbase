@@ -860,6 +860,70 @@ export async function sendEventReminderEmail(args: {
   });
 }
 
+// Briefing Podcast — delivers the audio version of a morning briefing. The
+// MP3 lives in SharePoint Embedded; `audioUrl` is a streaming proxy on our
+// API (not a raw SPE URL) so the player works without leaking credentials.
+// `purgeUrl` is a signed one-click link that deletes the MP3 from the server.
+export async function sendBriefingPodcastEmail(args: {
+  to: string;
+  recipientName: string | null;
+  briefingSubject: string;
+  audioUrl: string;
+  purgeUrl: string;
+  durationLabel: string | null;
+}): Promise<SendEmailResult> {
+  const greeting =
+    args.recipientName && args.recipientName.trim().length > 0
+      ? `Hi ${escapeHtml(args.recipientName.trim())},`
+      : "Hello,";
+  const durationLine = args.durationLabel
+    ? `<p style="margin:0 0 16px;font-size:13px;color:#6b6b80;">Approximate listening time: ${escapeHtml(args.durationLabel)}.</p>`
+    : "";
+  const html = brandedShell({
+    preheader: `The audio version of your briefing is ready.`,
+    heading: "Your briefing podcast is ready",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Here's the audio version of <strong>${escapeHtml(args.briefingSubject)}</strong>. Press play below, or download it to listen on the go.</p>
+      <p style="margin:20px 0;">
+        <audio controls preload="none" style="width:100%;">
+          <source src="${escapeHtml(args.audioUrl)}" type="audio/mpeg" />
+        </audio>
+      </p>
+      <p style="margin:16px 0;">
+        <a href="${escapeHtml(args.audioUrl)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Listen / Download</a>
+      </p>
+      ${durationLine}
+      <p style="margin:24px 0 8px;border-top:1px solid #ececf5;padding-top:16px;font-size:13px;color:#6b6b80;">Done listening? You can remove this recording from our server:</p>
+      <p style="margin:0 0 16px;">
+        <a href="${escapeHtml(args.purgeUrl)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">Purge this recording →</a>
+      </p>
+      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
+    `,
+  });
+  const text = [
+    greeting,
+    "",
+    `Here's the audio version of "${args.briefingSubject}".`,
+    "",
+    `Listen / download: ${args.audioUrl}`,
+    ...(args.durationLabel
+      ? ["", `Approximate listening time: ${args.durationLabel}.`]
+      : []),
+    "",
+    `Done listening? Purge this recording from our server: ${args.purgeUrl}`,
+    "",
+    "— The Synozur Alliance",
+  ].join("\n");
+  return sendEmail({
+    to: args.to,
+    subject: `Your briefing podcast — ${args.briefingSubject}`,
+    html,
+    text,
+    template: "briefing-podcast",
+  });
+}
+
 export async function sendInternalNotification(args: {
   formType: "contact" | "subscribe" | "start";
   submissionId: number;

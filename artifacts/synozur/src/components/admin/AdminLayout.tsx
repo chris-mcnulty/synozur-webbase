@@ -148,6 +148,7 @@ const SECTIONS: NavSection[] = [
     icon: Radio,
     items: [
       { href: "/audience/submissions", label: "Submissions", icon: Inbox, capability: "site.manage", testId: "nav-admin-submissions" },
+      { href: "/audience/briefing-podcast", label: "Briefing Podcast", icon: Headphones, capability: "client_orgs.manage", testId: "nav-admin-briefing-podcast" },
     ],
   },
   {

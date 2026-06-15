@@ -128,6 +128,7 @@ import AdminEmailLog from "@/pages/admin/site-config/email";
 import AdminActiveSessions from "@/pages/admin/account/sessions";
 import AdminProfile from "@/pages/admin/account/profile";
 import AdminSubmissionsList from "@/pages/admin/audience/submissions";
+import AdminBriefingPodcast from "@/pages/admin/audience/briefing-podcast";
 import MarketingContentAnalytics from "@/pages/admin/marketing/traffic";
 import AdminTraffic from "@/pages/admin/traffic";
 import TrafficPropertiesPage from "@/pages/admin/marketing/traffic-properties";
@@ -404,6 +405,7 @@ function AdminRoutes() {
 
         {/* Audience section */}
         <Route path="/audience/submissions" component={AdminSubmissionsList} />
+        <Route path="/audience/briefing-podcast" component={AdminBriefingPodcast} />
         <Route path="/submissions"><Redirect to="/audience/submissions" /></Route>
 
         {/* Careers section */}
