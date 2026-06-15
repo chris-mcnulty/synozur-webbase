@@ -73,6 +73,7 @@ import portalConstellationRouter from "./portalConstellation";
 import experimentsRouter from "./experiments";
 import adminExperimentsRouter from "./adminExperiments";
 import cmsApiKeysRouter from "./cms/apiKeys";
+import briefingPodcastRouter from "./briefingPodcast";
 
 const router: IRouter = Router();
 
@@ -150,5 +151,6 @@ router.use(portalConstellationRouter);
 router.use(experimentsRouter);
 router.use(adminExperimentsRouter);
 router.use(cmsApiKeysRouter);
+router.use(briefingPodcastRouter);
 
 export default router;

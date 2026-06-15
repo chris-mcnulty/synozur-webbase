@@ -1682,7 +1682,89 @@ export const api = {
       headers: { "Content-Type": "application/octet-stream" },
     });
   },
+
+  // Briefing Podcast — approved-sender allow-list and generated-podcast
+  // history. Admin only (gated server-side by client_orgs.manage).
+  getBriefingPodcastSettings: () =>
+    jsonFetch<{ briefingMailbox: string | null }>(
+      url("/admin/briefing-podcast/settings"),
+    ),
+  updateBriefingPodcastSettings: (body: { briefingMailbox: string | null }) =>
+    jsonFetch<{ briefingMailbox: string | null }>(
+      url("/admin/briefing-podcast/settings"),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  listBriefingPodcastClients: () =>
+    jsonFetch<{ clients: BriefingPodcastClientDto[] }>(
+      url("/admin/briefing-podcast/clients"),
+    ),
+  upsertBriefingPodcastClient: (body: {
+    email: string;
+    displayName?: string | null;
+    organizationLabel?: string | null;
+    status?: "approved" | "revoked";
+    retainRecording?: boolean;
+  }) =>
+    jsonFetch<{ client: BriefingPodcastClientDto }>(
+      url("/admin/briefing-podcast/clients"),
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  patchBriefingPodcastClient: (
+    id: string,
+    body: {
+      displayName?: string | null;
+      organizationLabel?: string | null;
+      status?: "approved" | "revoked";
+      retainRecording?: boolean;
+    },
+  ) =>
+    jsonFetch<{ client: BriefingPodcastClientDto }>(
+      url(`/admin/briefing-podcast/clients/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteBriefingPodcastClient: (id: string) =>
+    jsonFetch<void>(
+      url(`/admin/briefing-podcast/clients/${encodeURIComponent(id)}`),
+      { method: "DELETE" },
+    ),
+  listBriefingPodcasts: (limit = 50) =>
+    jsonFetch<{ podcasts: BriefingPodcastDto[] }>(
+      url(`/admin/briefing-podcast/history?limit=${limit}`),
+    ),
+  purgeBriefingPodcast: (id: string) =>
+    jsonFetch<{ ok: boolean }>(
+      url(`/admin/briefing-podcast/${encodeURIComponent(id)}/purge`),
+      { method: "POST", body: JSON.stringify({}) },
+    ),
 };
+
+export interface BriefingPodcastClientDto {
+  id: string;
+  email: string;
+  displayName: string | null;
+  organizationLabel: string | null;
+  status: string;
+  retainRecording: boolean;
+  approvedByUserId: string | null;
+  approvedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BriefingPodcastDto {
+  id: string;
+  recipientEmail: string;
+  source: string;
+  subject: string;
+  status: string;
+  speContainerId: string | null;
+  speItemId: string | null;
+  durationSeconds: number | null;
+  byteSize: number | null;
+  error: string | null;
+  purgedAt: string | null;
+  createdAt: string;
+}
 
 export const GROUNDING_CATEGORIES = [
   "methodology",

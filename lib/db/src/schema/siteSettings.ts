@@ -298,6 +298,11 @@ export const siteSettingsTable = pgTable("site_settings", {
   // accidentally re-saving the form doesn't clobber it.
   shortLinkRebrandlyApiKey: text("short_link_rebrandly_api_key"),
 
+  // Briefing Podcast — M365 mailbox address that the Graph subscription
+  // watches for inbound briefing emails. Stored here so admins can update it
+  // without a redeploy. Null means the feature is inactive.
+  briefingMailbox: text("briefing_mailbox"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

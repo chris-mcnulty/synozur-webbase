@@ -243,3 +243,57 @@ per IP:
 
 - `availability`: 30 / minute
 - `appointments`: 10 / hour
+
+## Briefing Podcast
+
+Generates an audio ("podcast") version of a morning briefing email and
+delivers it back to the recipient. Two entry points share one pipeline:
+
+1. **Owner's own briefing** — the Copilot Worker that produces the daily
+   briefing also sends (or BCCs) a copy to the watched mailbox. The sender
+   is recognized as `BRIEFING_OWNER_EMAIL` and processed unconditionally.
+2. **Approved clients** — external senders on the allow-list email the
+   watched mailbox and receive an audio version back. Manage the allow-list
+   in **Admin → Audience → Briefing Podcast** (`client_orgs.manage`).
+
+### Pipeline
+
+`M365 mailbox → Graph change notification → /api/briefing-podcast/webhook`
+→ fetch message body → **delete the inbound message** → strip HTML to a
+narration script (Claude, with a plain-text fallback) → OpenAI TTS (MP3) →
+upload to SharePoint Embedded → email the recipient a streaming link
+(`/api/briefing-podcast/:id/audio`) plus a signed one-click **purge** link
+(`/api/briefing-podcast/purge?token=…`).
+
+The MP3 lives in the existing SPE container under `/briefing/…` and can be
+purged by the recipient (email link) or an admin (history view). Purging
+deletes the SPE item and flips the `briefing_podcasts` row to `purged`.
+
+### Configuration
+
+The **watched mailbox** is stored in `site_settings.briefing_mailbox` and set
+from the admin portal (Admin → Audience → Briefing Podcast) — no redeploy
+required.
+
+The **webhook URL** is derived automatically from the existing `SITE_URL` env
+var (`{SITE_URL}/api/briefing-podcast/webhook`). The **clientState** (the
+shared secret echoed in Graph notifications) is derived from `SESSION_SECRET`
+via HMAC — no extra secret env var is needed.
+
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Required for TTS (already set) |
+| `OPENAI_TTS_MODEL` | Optional, default `tts-1-hd` |
+| `OPENAI_TTS_VOICE` | Optional, default `onyx` |
+
+Reuses the existing Entra app registration (`ENTRA_TENANT_ID` /
+`ENTRA_APP_CLIENT_ID` / `ENTRA_APP_CLIENT_SECRET`) for Graph access. The
+narration rewrite reuses the Anthropic integration env.
+
+### Graph application permission
+
+The app registration needs **`Mail.ReadWrite`** (application) with admin
+consent so it can read and delete messages in the watched mailbox. The
+subscription is created/renewed automatically on startup by
+`startBriefingSubscriptionWorker` (mail subscriptions expire in <3 days; it
+renews every 12h and re-creates if the subscription has lapsed).

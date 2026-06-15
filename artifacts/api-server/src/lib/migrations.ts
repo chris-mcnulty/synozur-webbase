@@ -3435,6 +3435,68 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT DO NOTHING;
     `);
 
+    // Briefing Podcast — allow-list of approved external senders + the log of
+    // generated MP3s (with their SharePoint Embedded location for purge).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS briefing_podcast_clients (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email text NOT NULL,
+        display_name text,
+        organization_label text,
+        status text NOT NULL DEFAULT 'approved',
+        approved_by_user_id uuid,
+        approved_at timestamptz NOT NULL DEFAULT now(),
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS briefing_podcast_clients_email_key
+        ON briefing_podcast_clients (email);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS briefing_podcast_clients_status_idx
+        ON briefing_podcast_clients (status);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS briefing_podcasts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        recipient_email text NOT NULL,
+        source text NOT NULL DEFAULT 'client',
+        subject text NOT NULL,
+        status text NOT NULL DEFAULT 'processing',
+        spe_container_id text,
+        spe_item_id text,
+        duration_seconds integer,
+        byte_size integer,
+        error text,
+        purged_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS briefing_podcasts_recipient_idx
+        ON briefing_podcasts (recipient_email);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS briefing_podcasts_created_at_idx
+        ON briefing_podcasts (created_at);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS briefing_podcasts_status_idx
+        ON briefing_podcasts (status);
+    `);
+
+    // Briefing Podcast — phase 2 additions.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS briefing_mailbox text;
+    `);
+    await db.execute(sql`
+      ALTER TABLE briefing_podcast_clients
+        ADD COLUMN IF NOT EXISTS retain_recording boolean NOT NULL DEFAULT true;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
