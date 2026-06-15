@@ -51,7 +51,7 @@ async function getWatchedMailbox(): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 router.post(
-  "/api/briefing-podcast/webhook",
+  "/briefing-podcast/webhook",
   async (req: Request, res: Response) => {
     // Subscription validation handshake: Graph POSTs with ?validationToken
     // and expects a 200 echoing the token as text/plain within 10s.
@@ -170,7 +170,7 @@ async function handleInboundMessage(
 // ---------------------------------------------------------------------------
 
 router.get(
-  "/api/briefing-podcast/:id/audio",
+  "/briefing-podcast/:id/audio",
   async (req: Request, res: Response) => {
     const id = String(req.params.id ?? "");
     if (!id) {
@@ -236,7 +236,7 @@ function purgePage(title: string, message: string): string {
 }
 
 router.get(
-  "/api/briefing-podcast/purge",
+  "/briefing-podcast/purge",
   async (req: Request, res: Response) => {
     const token = typeof req.query["token"] === "string" ? req.query["token"] : null;
     const payload = verifyBriefingPurgeToken(token);
@@ -305,7 +305,7 @@ router.get(
 // ---------------------------------------------------------------------------
 
 router.get(
-  "/api/admin/briefing-podcast/clients",
+  "/admin/briefing-podcast/clients",
   requireAuth,
   requireManage,
   async (_req: Request, res: Response) => {
@@ -326,7 +326,7 @@ const UpsertClientBody = z.object({
 });
 
 router.post(
-  "/api/admin/briefing-podcast/clients",
+  "/admin/briefing-podcast/clients",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
@@ -375,7 +375,7 @@ const PatchClientBody = z.object({
 });
 
 router.patch(
-  "/api/admin/briefing-podcast/clients/:id",
+  "/admin/briefing-podcast/clients/:id",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
@@ -411,7 +411,7 @@ router.patch(
 );
 
 router.delete(
-  "/api/admin/briefing-podcast/clients/:id",
+  "/admin/briefing-podcast/clients/:id",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
@@ -428,7 +428,7 @@ router.delete(
 );
 
 router.get(
-  "/api/admin/briefing-podcast/history",
+  "/admin/briefing-podcast/history",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
@@ -444,7 +444,7 @@ router.get(
 
 // Manual purge from the admin history view.
 router.post(
-  "/api/admin/briefing-podcast/:id/purge",
+  "/admin/briefing-podcast/:id/purge",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
@@ -521,7 +521,7 @@ function settingsResponse(row: {
 }
 
 router.get(
-  "/api/admin/briefing-podcast/settings",
+  "/admin/briefing-podcast/settings",
   requireAuth,
   requireManage,
   async (_req: Request, res: Response) => {
@@ -545,7 +545,7 @@ const BriefingSettingsBody = z.object({
 });
 
 router.patch(
-  "/api/admin/briefing-podcast/settings",
+  "/admin/briefing-podcast/settings",
   requireAuth,
   requireManage,
   async (req: Request, res: Response) => {
