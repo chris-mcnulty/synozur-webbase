@@ -303,6 +303,12 @@ export const siteSettingsTable = pgTable("site_settings", {
   // without a redeploy. Null means the feature is inactive.
   briefingMailbox: text("briefing_mailbox"),
 
+  // When true, inbound briefing messages are deleted from the watched mailbox
+  // after processing (keeping it clean). When false (the default), messages
+  // are left in place so admins can inspect them. Toggle centrally from the
+  // Briefing Podcast settings page when ready.
+  briefingDeleteInbound: boolean("briefing_delete_inbound").notNull().default(false),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

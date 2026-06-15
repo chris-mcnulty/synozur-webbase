@@ -1686,11 +1686,14 @@ export const api = {
   // Briefing Podcast — approved-sender allow-list and generated-podcast
   // history. Admin only (gated server-side by client_orgs.manage).
   getBriefingPodcastSettings: () =>
-    jsonFetch<{ briefingMailbox: string | null }>(
+    jsonFetch<{ briefingMailbox: string | null; briefingDeleteInbound: boolean }>(
       url("/admin/briefing-podcast/settings"),
     ),
-  updateBriefingPodcastSettings: (body: { briefingMailbox: string | null }) =>
-    jsonFetch<{ briefingMailbox: string | null }>(
+  updateBriefingPodcastSettings: (body: {
+    briefingMailbox?: string | null;
+    briefingDeleteInbound?: boolean;
+  }) =>
+    jsonFetch<{ briefingMailbox: string | null; briefingDeleteInbound: boolean }>(
       url("/admin/briefing-podcast/settings"),
       { method: "PATCH", body: JSON.stringify(body) },
     ),

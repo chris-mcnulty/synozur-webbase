@@ -3497,6 +3497,12 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS retain_recording boolean NOT NULL DEFAULT true;
     `);
 
+    // Briefing Podcast — phase 3: central delete-inbound toggle.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS briefing_delete_inbound boolean NOT NULL DEFAULT false;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

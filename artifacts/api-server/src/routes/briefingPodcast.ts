@@ -103,11 +103,26 @@ async function handleInboundMessage(
   const mail = new GraphMailClient();
   const message = await mail.getMessage(mailbox, messageId);
 
-  // Always delete the inbound message first — even filtered ones — so the
-  // mailbox stays clean regardless of outcome.
-  await mail.deleteMessage(mailbox, messageId).catch((err) => {
-    logger.warn({ err, messageId }, "Failed to delete inbound briefing message");
-  });
+  // Read the central delete-inbound toggle. Default false = leave messages in
+  // the mailbox so admins can inspect them. Set to true in Site Settings when
+  // ready to have the mailbox auto-cleaned after each delivery.
+  const [settings] = await db
+    .select({ briefingDeleteInbound: siteSettingsTable.briefingDeleteInbound })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
+    .limit(1);
+  const shouldDelete = settings?.briefingDeleteInbound ?? false;
+
+  if (shouldDelete) {
+    await mail.deleteMessage(mailbox, messageId).catch((err) => {
+      logger.warn({ err, messageId }, "Failed to delete inbound briefing message");
+    });
+  } else {
+    logger.info(
+      { messageId },
+      "briefingDeleteInbound=false — inbound message left in mailbox",
+    );
+  }
 
   const sender = message.fromAddress;
   if (!sender) {
@@ -469,16 +484,23 @@ router.get(
   requireManage,
   async (_req: Request, res: Response) => {
     const [row] = await db
-      .select({ briefingMailbox: siteSettingsTable.briefingMailbox })
+      .select({
+        briefingMailbox: siteSettingsTable.briefingMailbox,
+        briefingDeleteInbound: siteSettingsTable.briefingDeleteInbound,
+      })
       .from(siteSettingsTable)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
       .limit(1);
-    res.json({ briefingMailbox: row?.briefingMailbox ?? null });
+    res.json({
+      briefingMailbox: row?.briefingMailbox ?? null,
+      briefingDeleteInbound: row?.briefingDeleteInbound ?? false,
+    });
   },
 );
 
 const BriefingSettingsBody = z.object({
-  briefingMailbox: z.string().email().max(320).nullable(),
+  briefingMailbox: z.string().email().max(320).nullable().optional(),
+  briefingDeleteInbound: z.boolean().optional(),
 });
 
 router.patch(
@@ -491,11 +513,31 @@ router.patch(
       res.status(400).json({ error: parsed.error.flatten() });
       return;
     }
+    const updates: Record<string, unknown> = {};
+    if (parsed.data.briefingMailbox !== undefined)
+      updates["briefingMailbox"] = parsed.data.briefingMailbox;
+    if (parsed.data.briefingDeleteInbound !== undefined)
+      updates["briefingDeleteInbound"] = parsed.data.briefingDeleteInbound;
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "no_fields" });
+      return;
+    }
     await db
       .update(siteSettingsTable)
-      .set({ briefingMailbox: parsed.data.briefingMailbox })
+      .set(updates)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
-    res.json({ briefingMailbox: parsed.data.briefingMailbox });
+    const [row] = await db
+      .select({
+        briefingMailbox: siteSettingsTable.briefingMailbox,
+        briefingDeleteInbound: siteSettingsTable.briefingDeleteInbound,
+      })
+      .from(siteSettingsTable)
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
+      .limit(1);
+    res.json({
+      briefingMailbox: row?.briefingMailbox ?? null,
+      briefingDeleteInbound: row?.briefingDeleteInbound ?? false,
+    });
   },
 );
 

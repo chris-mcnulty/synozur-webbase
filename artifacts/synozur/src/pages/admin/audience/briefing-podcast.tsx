@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2, RefreshCw, Headphones, Save } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Headphones,
+  Save,
+  Ban,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -41,11 +50,13 @@ function statusBadgeClass(status: string): string {
   }
 }
 
+type Settings = { briefingMailbox: string | null; briefingDeleteInbound: boolean };
+
 export default function AdminBriefingPodcast() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mailbox settings
+  // ── Settings ──────────────────────────────────────────────────────────────
   const [mailboxInput, setMailboxInput] = useState("");
   const [mailboxEditing, setMailboxEditing] = useState(false);
 
@@ -54,8 +65,10 @@ export default function AdminBriefingPodcast() {
     queryFn: () => api.getBriefingPodcastSettings(),
   });
 
-  // Sync mailbox input from server when not actively editing.
-  const serverMailbox = (settingsQuery.data as { briefingMailbox: string | null } | undefined)?.briefingMailbox ?? null;
+  const serverSettings = settingsQuery.data as Settings | undefined;
+  const serverMailbox = serverSettings?.briefingMailbox ?? null;
+  const deleteInbound = serverSettings?.briefingDeleteInbound ?? false;
+
   useEffect(() => {
     if (!mailboxEditing && serverMailbox !== null) {
       setMailboxInput(serverMailbox);
@@ -63,8 +76,8 @@ export default function AdminBriefingPodcast() {
   }, [serverMailbox, mailboxEditing]);
 
   const updateSettings = useMutation({
-    mutationFn: (mailbox: string | null) =>
-      api.updateBriefingPodcastSettings({ briefingMailbox: mailbox }),
+    mutationFn: (patch: { briefingMailbox?: string | null; briefingDeleteInbound?: boolean }) =>
+      api.updateBriefingPodcastSettings(patch),
     onSuccess: () => {
       toast({ title: "Settings saved" });
       setMailboxEditing(false);
@@ -78,7 +91,7 @@ export default function AdminBriefingPodcast() {
       }),
   });
 
-  // Approved senders
+  // ── Approved senders ──────────────────────────────────────────────────────
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [orgLabel, setOrgLabel] = useState("");
@@ -88,6 +101,7 @@ export default function AdminBriefingPodcast() {
     queryKey: ["briefing-podcast-clients"],
     queryFn: () => api.listBriefingPodcastClients(),
   });
+
   const historyQuery = useQuery({
     queryKey: ["briefing-podcasts"],
     queryFn: () => api.listBriefingPodcasts(50),
@@ -108,9 +122,7 @@ export default function AdminBriefingPodcast() {
       setDisplayName("");
       setOrgLabel("");
       setRetainRecording(true);
-      void queryClient.invalidateQueries({
-        queryKey: ["briefing-podcast-clients"],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
     },
     onError: (err: unknown) =>
       toast({
@@ -120,21 +132,25 @@ export default function AdminBriefingPodcast() {
       }),
   });
 
-  const toggleRetain = useMutation({
-    mutationFn: ({ id, retainRecording: r }: { id: string; retainRecording: boolean }) =>
-      api.patchBriefingPodcastClient(id, { retainRecording: r }),
+  const patchClient = useMutation({
+    mutationFn: (args: { id: string; patch: { status?: "approved" | "revoked"; retainRecording?: boolean } }) =>
+      api.patchBriefingPodcastClient(args.id, args.patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
     },
+    onError: (err: unknown) =>
+      toast({
+        title: "Could not update sender",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      }),
   });
 
   const removeClient = useMutation({
     mutationFn: (id: string) => api.deleteBriefingPodcastClient(id),
     onSuccess: () => {
       toast({ title: "Sender removed" });
-      void queryClient.invalidateQueries({
-        queryKey: ["briefing-podcast-clients"],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
     },
   });
 
@@ -148,7 +164,6 @@ export default function AdminBriefingPodcast() {
 
   const clients = clientsQuery.data?.clients ?? [];
   const podcasts = historyQuery.data?.podcasts ?? [];
-  const currentMailbox = serverMailbox;
 
   return (
     <AdminLayout
@@ -161,53 +176,77 @@ export default function AdminBriefingPodcast() {
           audio version back, and review generated recordings.
         </p>
 
-        {/* Watched mailbox */}
-        <section className="space-y-4">
+        {/* ── Settings ──────────────────────────────────────────────────── */}
+        <section className="space-y-6">
           <div className="flex items-center gap-2">
             <Headphones className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Watched mailbox</h2>
+            <h2 className="text-lg font-semibold">Settings</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Inbound briefing emails are received at this M365 address. Graph
-            change notifications deliver them to the webhook automatically.
-          </p>
-          <div className="flex items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium">Mailbox address</span>
-              <Input
-                type="email"
-                placeholder="briefing@synozur.com"
-                value={mailboxInput}
-                onChange={(e) => {
-                  setMailboxInput(e.target.value);
-                  setMailboxEditing(true);
-                }}
-                className="w-72"
-              />
-            </div>
-            <Button
-              onClick={() =>
-                updateSettings.mutate(mailboxInput.trim() || null)
-              }
-              disabled={!mailboxEditing || updateSettings.isPending}
-              variant="outline"
-            >
-              {updateSettings.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Save
-            </Button>
-          </div>
-          {currentMailbox && (
+
+          {/* Watched mailbox */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Watched mailbox</p>
             <p className="text-xs text-muted-foreground">
-              Currently watching: <span className="font-mono">{currentMailbox}</span>
+              Inbound briefing emails are received at this M365 address. Graph
+              change notifications deliver them to the webhook automatically.
             </p>
-          )}
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium">Mailbox address</span>
+                <Input
+                  type="email"
+                  placeholder="briefing@synozur.com"
+                  value={mailboxInput}
+                  onChange={(e) => {
+                    setMailboxInput(e.target.value);
+                    setMailboxEditing(true);
+                  }}
+                  className="w-72"
+                />
+              </div>
+              <Button
+                onClick={() =>
+                  updateSettings.mutate({ briefingMailbox: mailboxInput.trim() || null })
+                }
+                disabled={!mailboxEditing || updateSettings.isPending}
+                variant="outline"
+              >
+                {updateSettings.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save
+              </Button>
+            </div>
+            {serverMailbox && (
+              <p className="text-xs text-muted-foreground">
+                Currently watching: <span className="font-mono">{serverMailbox}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Delete inbound messages */}
+          <div className="flex items-start justify-between gap-6 rounded-lg border p-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Delete inbound messages after processing</p>
+              <p className="text-xs text-muted-foreground max-w-lg">
+                When on, each inbound briefing email is deleted from the watched
+                mailbox after it has been fetched — keeping the inbox clean. Leave
+                off while testing so you can inspect what arrives.
+              </p>
+            </div>
+            <Switch
+              checked={deleteInbound}
+              disabled={updateSettings.isPending || settingsQuery.isLoading}
+              onCheckedChange={(checked) =>
+                updateSettings.mutate({ briefingDeleteInbound: checked })
+              }
+            />
+          </div>
         </section>
 
-        {/* Approved senders */}
+        {/* ── Approved senders ──────────────────────────────────────────── */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Approved senders</h2>
           <p className="text-sm text-muted-foreground">
@@ -275,7 +314,7 @@ export default function AdminBriefingPodcast() {
                 <TableHead>Status</TableHead>
                 <TableHead>Retain</TableHead>
                 <TableHead>Approved</TableHead>
-                <TableHead className="w-12" />
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -302,24 +341,48 @@ export default function AdminBriefingPodcast() {
                       <Switch
                         checked={c.retainRecording}
                         onCheckedChange={(checked) =>
-                          toggleRetain.mutate({ id: c.id, retainRecording: checked })
+                          patchClient.mutate({ id: c.id, patch: { retainRecording: checked } })
                         }
-                        disabled={toggleRetain.isPending}
+                        disabled={patchClient.isPending}
                       />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(c.approvedAt)}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeClient.mutate(c.id)}
-                        disabled={removeClient.isPending}
-                        aria-label="Remove sender"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {/* Revoke / Re-approve toggle */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            patchClient.mutate({
+                              id: c.id,
+                              patch: { status: c.status === "approved" ? "revoked" : "approved" },
+                            })
+                          }
+                          disabled={patchClient.isPending}
+                          aria-label={c.status === "approved" ? "Revoke sender" : "Re-approve sender"}
+                          title={c.status === "approved" ? "Revoke" : "Re-approve"}
+                        >
+                          {c.status === "approved" ? (
+                            <Ban className="h-4 w-4 text-amber-500" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          )}
+                        </Button>
+                        {/* Permanent delete */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeClient.mutate(c.id)}
+                          disabled={removeClient.isPending}
+                          aria-label="Remove sender"
+                          title="Remove permanently"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -328,7 +391,7 @@ export default function AdminBriefingPodcast() {
           </Table>
         </section>
 
-        {/* Generated recordings */}
+        {/* ── Generated recordings ──────────────────────────────────────── */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Recent recordings</h2>
