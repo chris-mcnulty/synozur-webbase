@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Trash2, RefreshCw, Headphones, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,10 +55,12 @@ export default function AdminBriefingPodcast() {
   });
 
   // Sync mailbox input from server when not actively editing.
-  const serverMailbox = settingsQuery.data?.briefingMailbox ?? null;
-  if (!mailboxEditing && serverMailbox !== null && mailboxInput !== serverMailbox) {
-    setMailboxInput(serverMailbox);
-  }
+  const serverMailbox = (settingsQuery.data as { briefingMailbox: string | null } | undefined)?.briefingMailbox ?? null;
+  useEffect(() => {
+    if (!mailboxEditing && serverMailbox !== null) {
+      setMailboxInput(serverMailbox);
+    }
+  }, [serverMailbox, mailboxEditing]);
 
   const updateSettings = useMutation({
     mutationFn: (mailbox: string | null) =>
@@ -119,8 +121,8 @@ export default function AdminBriefingPodcast() {
   });
 
   const toggleRetain = useMutation({
-    mutationFn: ({ email: e, retainRecording: r }: { id: string; email: string; retainRecording: boolean }) =>
-      api.upsertBriefingPodcastClient({ email: e, retainRecording: r }),
+    mutationFn: ({ id, retainRecording: r }: { id: string; retainRecording: boolean }) =>
+      api.patchBriefingPodcastClient(id, { retainRecording: r }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
     },
@@ -146,7 +148,7 @@ export default function AdminBriefingPodcast() {
 
   const clients = clientsQuery.data?.clients ?? [];
   const podcasts = historyQuery.data?.podcasts ?? [];
-  const currentMailbox = (settingsQuery.data as { briefingMailbox: string | null } | undefined)?.briefingMailbox ?? null;
+  const currentMailbox = serverMailbox;
 
   return (
     <AdminLayout
@@ -300,11 +302,7 @@ export default function AdminBriefingPodcast() {
                       <Switch
                         checked={c.retainRecording}
                         onCheckedChange={(checked) =>
-                          toggleRetain.mutate({
-                            id: c.id,
-                            email: c.email,
-                            retainRecording: checked,
-                          })
+                          toggleRetain.mutate({ id: c.id, retainRecording: checked })
                         }
                         disabled={toggleRetain.isPending}
                       />

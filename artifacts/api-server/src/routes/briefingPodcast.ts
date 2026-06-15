@@ -170,10 +170,16 @@ router.get(
       );
       // Stream the Web ReadableStream body to the Express response.
       const reader = upstream.body.getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(Buffer.from(value));
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = Buffer.from(value);
+          const ok = res.write(chunk);
+          if (!ok) await new Promise<void>((r) => res.once("drain", r));
+        }
+      } finally {
+        reader.releaseLock();
       }
       res.end();
     } catch (err) {
@@ -324,6 +330,52 @@ router.post(
       })
       .returning();
     res.status(201).json({ client: row });
+  },
+);
+
+// Partial update — only updates the fields explicitly provided.
+// Used by the UI toggle (retainRecording) so a one-field change never
+// overwrites displayName/status/etc. with defaults.
+const PatchClientBody = z.object({
+  displayName: z.string().max(255).nullish(),
+  organizationLabel: z.string().max(255).nullish(),
+  status: z.enum(["approved", "revoked"]).optional(),
+  retainRecording: z.boolean().optional(),
+});
+
+router.patch(
+  "/api/admin/briefing-podcast/clients/:id",
+  requireAuth,
+  requireManage,
+  async (req: Request, res: Response) => {
+    const id = String(req.params.id ?? "");
+    if (!id) {
+      res.status(400).json({ error: "missing_id" });
+      return;
+    }
+    const parsed = PatchClientBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.data.displayName !== undefined)
+      updates["displayName"] = parsed.data.displayName ?? null;
+    if (parsed.data.organizationLabel !== undefined)
+      updates["organizationLabel"] = parsed.data.organizationLabel ?? null;
+    if (parsed.data.status !== undefined) updates["status"] = parsed.data.status;
+    if (parsed.data.retainRecording !== undefined)
+      updates["retainRecording"] = parsed.data.retainRecording;
+    const [row] = await db
+      .update(briefingPodcastClientsTable)
+      .set(updates)
+      .where(eq(briefingPodcastClientsTable.id, id))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ client: row });
   },
 );
 

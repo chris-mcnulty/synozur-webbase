@@ -127,10 +127,15 @@ export async function processBriefing(
     }
 
     if (emailResult.status === "error") {
+      await db
+        .update(briefingPodcastsTable)
+        .set({ status: "failed", error: `email: ${(emailResult.error ?? "unknown").slice(0, 1000)}` })
+        .where(eq(briefingPodcastsTable.id, podcastId));
       logger.warn(
         { podcastId, err: emailResult.error },
         "Briefing podcast generated but delivery email failed",
       );
+      return podcastId;
     }
     logger.info(
       { podcastId, recipient: args.recipientEmail, bytes: audio.length, retainRecording: args.retainRecording },

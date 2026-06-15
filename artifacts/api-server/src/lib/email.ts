@@ -962,7 +962,7 @@ export async function sendBriefingPodcastEmail(args: {
       const sendResult = await handle.client.send({
         to: args.to,
         from,
-        subject: `Your briefing podcast — ${escapeHtml(args.briefingSubject)}`,
+        subject: `Your briefing podcast — ${args.briefingSubject}`,
         html,
         text,
         attachments: [

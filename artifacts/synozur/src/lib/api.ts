@@ -1709,6 +1709,19 @@ export const api = {
       url("/admin/briefing-podcast/clients"),
       { method: "POST", body: JSON.stringify(body) },
     ),
+  patchBriefingPodcastClient: (
+    id: string,
+    body: {
+      displayName?: string | null;
+      organizationLabel?: string | null;
+      status?: "approved" | "revoked";
+      retainRecording?: boolean;
+    },
+  ) =>
+    jsonFetch<{ client: BriefingPodcastClientDto }>(
+      url(`/admin/briefing-podcast/clients/${encodeURIComponent(id)}`),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
   deleteBriefingPodcastClient: (id: string) =>
     jsonFetch<void>(
       url(`/admin/briefing-podcast/clients/${encodeURIComponent(id)}`),
