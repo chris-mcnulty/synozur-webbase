@@ -478,29 +478,67 @@ router.post(
 
 const SETTINGS_ROW_ID = 1;
 
+const VALID_PODCAST_FORMATS = ["single", "dialogue"] as const;
+const VALID_PODCAST_TONES   = ["formal", "conversational", "energetic"] as const;
+const VALID_TTS_VOICES      = [
+  "alloy", "ash", "coral", "echo", "fable",
+  "nova", "onyx", "sage", "shimmer",
+] as const;
+
+function settingsSelect() {
+  return {
+    briefingMailbox:          siteSettingsTable.briefingMailbox,
+    briefingDeleteInbound:    siteSettingsTable.briefingDeleteInbound,
+    briefingPodcastFormat:    siteSettingsTable.briefingPodcastFormat,
+    briefingPodcastTone:      siteSettingsTable.briefingPodcastTone,
+    briefingPodcastVoice:     siteSettingsTable.briefingPodcastVoice,
+    briefingPodcastHostVoice: siteSettingsTable.briefingPodcastHostVoice,
+    briefingPodcastCohostVoice: siteSettingsTable.briefingPodcastCohostVoice,
+  } as const;
+}
+
+function settingsResponse(row: {
+  briefingMailbox: string | null;
+  briefingDeleteInbound: boolean;
+  briefingPodcastFormat: string;
+  briefingPodcastTone: string;
+  briefingPodcastVoice: string;
+  briefingPodcastHostVoice: string;
+  briefingPodcastCohostVoice: string;
+} | undefined) {
+  return {
+    briefingMailbox:            row?.briefingMailbox          ?? null,
+    briefingDeleteInbound:      row?.briefingDeleteInbound    ?? false,
+    briefingPodcastFormat:      row?.briefingPodcastFormat    ?? "single",
+    briefingPodcastTone:        row?.briefingPodcastTone      ?? "conversational",
+    briefingPodcastVoice:       row?.briefingPodcastVoice     ?? "onyx",
+    briefingPodcastHostVoice:   row?.briefingPodcastHostVoice ?? "onyx",
+    briefingPodcastCohostVoice: row?.briefingPodcastCohostVoice ?? "nova",
+  };
+}
+
 router.get(
   "/api/admin/briefing-podcast/settings",
   requireAuth,
   requireManage,
   async (_req: Request, res: Response) => {
     const [row] = await db
-      .select({
-        briefingMailbox: siteSettingsTable.briefingMailbox,
-        briefingDeleteInbound: siteSettingsTable.briefingDeleteInbound,
-      })
+      .select(settingsSelect())
       .from(siteSettingsTable)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
       .limit(1);
-    res.json({
-      briefingMailbox: row?.briefingMailbox ?? null,
-      briefingDeleteInbound: row?.briefingDeleteInbound ?? false,
-    });
+    res.json(settingsResponse(row));
   },
 );
 
 const BriefingSettingsBody = z.object({
-  briefingMailbox: z.string().email().max(320).nullable().optional(),
-  briefingDeleteInbound: z.boolean().optional(),
+  briefingMailbox:            z.string().email().max(320).nullable().optional(),
+  briefingDeleteInbound:      z.boolean().optional(),
+  briefingPodcastFormat:      z.enum(VALID_PODCAST_FORMATS).optional(),
+  briefingPodcastTone:        z.enum(VALID_PODCAST_TONES).optional(),
+  briefingPodcastVoice:       z.enum(VALID_TTS_VOICES).optional(),
+  briefingPodcastHostVoice:   z.enum(VALID_TTS_VOICES).optional(),
+  briefingPodcastCohostVoice: z.enum(VALID_TTS_VOICES).optional(),
 });
 
 router.patch(
@@ -513,11 +551,15 @@ router.patch(
       res.status(400).json({ error: parsed.error.flatten() });
       return;
     }
+    const d = parsed.data;
     const updates: Record<string, unknown> = {};
-    if (parsed.data.briefingMailbox !== undefined)
-      updates["briefingMailbox"] = parsed.data.briefingMailbox;
-    if (parsed.data.briefingDeleteInbound !== undefined)
-      updates["briefingDeleteInbound"] = parsed.data.briefingDeleteInbound;
+    if (d.briefingMailbox            !== undefined) updates["briefingMailbox"]            = d.briefingMailbox;
+    if (d.briefingDeleteInbound      !== undefined) updates["briefingDeleteInbound"]      = d.briefingDeleteInbound;
+    if (d.briefingPodcastFormat      !== undefined) updates["briefingPodcastFormat"]      = d.briefingPodcastFormat;
+    if (d.briefingPodcastTone        !== undefined) updates["briefingPodcastTone"]        = d.briefingPodcastTone;
+    if (d.briefingPodcastVoice       !== undefined) updates["briefingPodcastVoice"]       = d.briefingPodcastVoice;
+    if (d.briefingPodcastHostVoice   !== undefined) updates["briefingPodcastHostVoice"]   = d.briefingPodcastHostVoice;
+    if (d.briefingPodcastCohostVoice !== undefined) updates["briefingPodcastCohostVoice"] = d.briefingPodcastCohostVoice;
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "no_fields" });
       return;
@@ -527,17 +569,11 @@ router.patch(
       .set(updates)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
     const [row] = await db
-      .select({
-        briefingMailbox: siteSettingsTable.briefingMailbox,
-        briefingDeleteInbound: siteSettingsTable.briefingDeleteInbound,
-      })
+      .select(settingsSelect())
       .from(siteSettingsTable)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
       .limit(1);
-    res.json({
-      briefingMailbox: row?.briefingMailbox ?? null,
-      briefingDeleteInbound: row?.briefingDeleteInbound ?? false,
-    });
+    res.json(settingsResponse(row));
   },
 );
 

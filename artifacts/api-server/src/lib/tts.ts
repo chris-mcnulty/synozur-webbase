@@ -4,25 +4,59 @@ import { logger } from "./logger";
 //
 // Two stages:
 //   1. `briefingHtmlToScript()` turns the briefing email's HTML body into a
-//      clean, spoken-word script. It strips markup to readable text and then
-//      (best-effort) asks Claude to rewrite it as a natural narration. If the
-//      Anthropic integration isn't configured or errors, it falls back to the
-//      stripped text so the pipeline still produces audio.
+//      clean, spoken-word script using Claude. Format (single vs dialogue) and
+//      tone are driven by PodcastConfig.
 //   2. `synthesizeSpeech()` calls OpenAI's TTS endpoint and returns an MP3
-//      Buffer. OpenAI caps input at ~4096 characters per request, so longer
-//      scripts are chunked on sentence boundaries and the resulting MP3
-//      segments are concatenated (MP3 frames are independently decodable, so
-//      naive buffer concatenation plays back correctly).
+//      Buffer. For single-narrator format a single voice is used throughout.
+//      For dialogue format the script is parsed into HOST / CO-HOST turns and
+//      each turn is synthesised with the matching voice, then concatenated in
+//      order. MP3 frames are independently decodable so naive concatenation
+//      plays back correctly.
 
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = process.env["OPENAI_TTS_MODEL"] ?? "tts-1-hd";
-const TTS_VOICE = process.env["OPENAI_TTS_VOICE"] ?? "onyx";
+// Legacy env-var override still honoured as the default single voice.
+const DEFAULT_VOICE = process.env["OPENAI_TTS_VOICE"] ?? "onyx";
 // Leave headroom under the 4096-char hard cap.
 const TTS_CHUNK_LIMIT = 3500;
 // ~150 spoken words/min ≈ ~900 chars/min → rough duration estimate.
 const CHARS_PER_SECOND = 15;
 
 const SCRIPT_MODEL = "claude-sonnet-4-6";
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export const OPENAI_TTS_VOICES = [
+  "alloy", "ash", "coral", "echo", "fable",
+  "nova", "onyx", "sage", "shimmer",
+] as const;
+export type OpenAiVoice = (typeof OPENAI_TTS_VOICES)[number];
+
+export type PodcastFormat = "single" | "dialogue";
+export type PodcastTone   = "formal" | "conversational" | "energetic";
+
+export interface PodcastConfig {
+  /** "single" — one narrator; "dialogue" — two-speaker HOST / CO-HOST exchange. */
+  format: PodcastFormat;
+  /** Overall delivery style applied to the Claude system prompt. */
+  tone: PodcastTone;
+  /** OpenAI voice used for the single-narrator format. */
+  voice: string;
+  /** HOST voice used in dialogue format. */
+  hostVoice: string;
+  /** CO-HOST voice used in dialogue format. */
+  cohostVoice: string;
+}
+
+export const DEFAULT_PODCAST_CONFIG: PodcastConfig = {
+  format: "single",
+  tone: "conversational",
+  voice: DEFAULT_VOICE,
+  hostVoice: DEFAULT_VOICE,
+  cohostVoice: "nova",
+};
 
 export class TtsNotConfiguredError extends Error {
   constructor() {
@@ -37,26 +71,20 @@ export interface SynthesisResult {
   estimatedDurationSeconds: number;
 }
 
-// Strip the briefing HTML down to readable plain text. The briefing emails
-// use a simple structure (h1/h2 headings, ul/li bullets, p paragraphs, a
-// table for the schedule), so a regex pass produces clean narration source
-// without pulling in an HTML parser dependency.
+// ---------------------------------------------------------------------------
+// HTML → plain text
+// ---------------------------------------------------------------------------
+
 export function stripBriefingHtml(html: string): string {
   let text = html;
-  // Drop head/style/script wholesale.
   text = text.replace(/<head[\s\S]*?<\/head>/gi, "");
   text = text.replace(/<style[\s\S]*?<\/style>/gi, "");
   text = text.replace(/<script[\s\S]*?<\/script>/gi, "");
-  // MSO conditional comments and HTML comments.
   text = text.replace(/<!--[\s\S]*?-->/g, "");
-  // Headings and block elements become paragraph breaks.
   text = text.replace(/<\/(h1|h2|h3|h4|p|li|tr|div)>/gi, "\n");
   text = text.replace(/<br\s*\/?>(?=)/gi, "\n");
-  // Table cells get a separating space so "8:00am | Meeting" reads sensibly.
   text = text.replace(/<\/td>/gi, ": ");
-  // Strip all remaining tags.
   text = text.replace(/<[^>]+>/g, "");
-  // Decode the handful of entities the briefing uses.
   text = text
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, "&")
@@ -65,7 +93,6 @@ export function stripBriefingHtml(html: string): string {
     .replace(/&middot;/g, "-")
     .replace(/&nbsp;/g, " ")
     .replace(/&#39;/g, "'");
-  // Collapse whitespace; keep paragraph breaks.
   text = text
     .split("\n")
     .map((line) => line.replace(/\s+/g, " ").trim())
@@ -74,32 +101,64 @@ export function stripBriefingHtml(html: string): string {
   return text.trim();
 }
 
-// Best-effort rewrite of the stripped text into a natural spoken narration.
-// Falls back to the stripped text on any error so the pipeline never fails
-// purely because the LLM rewrite was unavailable.
-export async function briefingHtmlToScript(html: string): Promise<string> {
+// ---------------------------------------------------------------------------
+// Claude script generation
+// ---------------------------------------------------------------------------
+
+const TONE_PHRASE: Record<PodcastTone, string> = {
+  formal:         "professional, precise, and concise",
+  conversational: "natural, warm, and approachable",
+  energetic:      "upbeat, punchy, and engaging",
+};
+
+function buildSystemPrompt(config: PodcastConfig): string {
+  const tone = TONE_PHRASE[config.tone] ?? TONE_PHRASE.conversational;
+
+  if (config.format === "dialogue") {
+    return (
+      `You convert a written executive morning briefing into a ${tone} ` +
+      `two-person podcast dialogue. ` +
+      `Use exactly two speakers labelled [HOST] and [CO-HOST]. ` +
+      `Format every line as:\n[HOST]: <spoken line>\n[CO-HOST]: <spoken line>\n` +
+      `The HOST introduces topics and drives the flow. The CO-HOST asks ` +
+      `clarifying questions, adds commentary, and highlights key takeaways. ` +
+      `Keep all facts, names, and numbers accurate — do not invent content. ` +
+      `Open with a brief welcome exchange, cover each section with natural ` +
+      `back-and-forth dialogue, and close with a short sign-off from both speakers. ` +
+      `Output ONLY the labelled dialogue lines — no headings, no markdown, ` +
+      `no stage directions, no blank lines between turns.`
+    );
+  }
+
+  return (
+    `You convert a written executive morning briefing into a ${tone} ` +
+    `spoken-word narration script for a single narrator. ` +
+    `Keep all the facts, names, and numbers. ` +
+    `Open with a brief friendly intro, read each section with smooth ` +
+    `transitions, and close with a short sign-off. ` +
+    `Do not invent content. Output only the narration text — ` +
+    `no headings, no markdown, no stage directions.`
+  );
+}
+
+export async function briefingHtmlToScript(
+  html: string,
+  config: PodcastConfig = DEFAULT_PODCAST_CONFIG,
+): Promise<string> {
   const stripped = stripBriefingHtml(html);
   if (!stripped) return "";
   try {
-    const { anthropic } = await import(
-      "@workspace/integrations-anthropic-ai"
-    );
+    const { anthropic } = await import("@workspace/integrations-anthropic-ai");
+    const userPrompt =
+      config.format === "dialogue"
+        ? `Here is today's briefing. Turn it into a HOST / CO-HOST podcast dialogue:\n\n${stripped}`
+        : `Here is today's briefing. Turn it into a narration script:\n\n${stripped}`;
+
     const response = await anthropic.messages.create({
       model: SCRIPT_MODEL,
       max_tokens: 4096,
-      system:
-        "You convert a written executive morning briefing into a natural, " +
-        "spoken-word audio narration script. Keep all the facts, names, and " +
-        "numbers. Open with a brief friendly intro, read each section " +
-        "conversationally with smooth transitions, and close with a short " +
-        "sign-off. Do not invent content. Output only the narration text — " +
-        "no headings, no markdown, no stage directions.",
-      messages: [
-        {
-          role: "user",
-          content: `Here is today's briefing. Turn it into a narration script:\n\n${stripped}`,
-        },
-      ],
+      system: buildSystemPrompt(config),
+      messages: [{ role: "user", content: userPrompt }],
     });
     const out = response.content
       .map((b) => (b.type === "text" ? b.text : ""))
@@ -117,12 +176,13 @@ export async function briefingHtmlToScript(html: string): Promise<string> {
   }
 }
 
-// Split a script into <=TTS_CHUNK_LIMIT pieces on sentence/paragraph
-// boundaries so no chunk exceeds OpenAI's input cap.
+// ---------------------------------------------------------------------------
+// Chunking
+// ---------------------------------------------------------------------------
+
 export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
   if (script.length <= limit) return [script];
   const chunks: string[] = [];
-  // Break into sentences (keep the delimiter) and greedily pack.
   const pieces = script.match(/[^.!?\n]+[.!?\n]*/g) ?? [script];
   let current = "";
   for (const piece of pieces) {
@@ -130,7 +190,6 @@ export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
       chunks.push(current.trim());
       current = "";
     }
-    // A single sentence longer than the limit gets hard-split.
     if (piece.length > limit) {
       for (let i = 0; i < piece.length; i += limit) {
         chunks.push(piece.slice(i, i + limit).trim());
@@ -143,7 +202,15 @@ export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
   return chunks.filter((c) => c.length > 0);
 }
 
-async function synthesizeChunk(apiKey: string, input: string): Promise<Buffer> {
+// ---------------------------------------------------------------------------
+// OpenAI TTS synthesis
+// ---------------------------------------------------------------------------
+
+async function synthesizeChunk(
+  apiKey: string,
+  input: string,
+  voice: string,
+): Promise<Buffer> {
   const res = await fetch(OPENAI_TTS_URL, {
     method: "POST",
     headers: {
@@ -152,7 +219,7 @@ async function synthesizeChunk(apiKey: string, input: string): Promise<Buffer> {
     },
     body: JSON.stringify({
       model: TTS_MODEL,
-      voice: TTS_VOICE,
+      voice,
       input,
       response_format: "mp3",
     }),
@@ -161,23 +228,62 @@ async function synthesizeChunk(apiKey: string, input: string): Promise<Buffer> {
     const excerpt = (await res.text().catch(() => "")).slice(0, 500);
     throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
   }
-  const arrayBuf = await res.arrayBuffer();
-  return Buffer.from(arrayBuf);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// Parse a dialogue script into ordered speaker turns.
+// Expected line format: "[HOST]: <text>" or "[CO-HOST]: <text>"
+function parseDialogueTurns(
+  script: string,
+): Array<{ speaker: "HOST" | "COHOST"; text: string }> {
+  return script
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("[HOST]:") || l.startsWith("[CO-HOST]:"))
+    .map((l) => {
+      if (l.startsWith("[HOST]:")) {
+        return { speaker: "HOST" as const, text: l.slice("[HOST]:".length).trim() };
+      }
+      return { speaker: "COHOST" as const, text: l.slice("[CO-HOST]:".length).trim() };
+    })
+    .filter((t) => t.text.length > 0);
 }
 
 export async function synthesizeSpeech(
   script: string,
+  config: PodcastConfig = DEFAULT_PODCAST_CONFIG,
 ): Promise<SynthesisResult> {
   const apiKey = process.env["OPENAI_API_KEY"];
   if (!apiKey) throw new TtsNotConfiguredError();
   const trimmed = script.trim();
   if (!trimmed) throw new Error("synthesizeSpeech called with empty script");
 
-  const chunks = chunkScript(trimmed);
   const buffers: Buffer[] = [];
-  for (const chunk of chunks) {
-    buffers.push(await synthesizeChunk(apiKey, chunk));
+
+  if (config.format === "dialogue") {
+    const turns = parseDialogueTurns(trimmed);
+    if (turns.length === 0) {
+      // Claude didn't produce labelled turns — fall back to single narrator.
+      logger.warn(
+        "Dialogue script parsing produced no turns — falling back to single narrator",
+      );
+      for (const chunk of chunkScript(trimmed)) {
+        buffers.push(await synthesizeChunk(apiKey, chunk, config.hostVoice));
+      }
+    } else {
+      for (const turn of turns) {
+        const voice = turn.speaker === "HOST" ? config.hostVoice : config.cohostVoice;
+        for (const chunk of chunkScript(turn.text)) {
+          buffers.push(await synthesizeChunk(apiKey, chunk, voice));
+        }
+      }
+    }
+  } else {
+    for (const chunk of chunkScript(trimmed)) {
+      buffers.push(await synthesizeChunk(apiKey, chunk, config.voice));
+    }
   }
+
   const audio = Buffer.concat(buffers);
   const estimatedDurationSeconds = Math.max(
     1,

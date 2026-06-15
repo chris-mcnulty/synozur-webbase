@@ -309,6 +309,19 @@ export const siteSettingsTable = pgTable("site_settings", {
   // Briefing Podcast settings page when ready.
   briefingDeleteInbound: boolean("briefing_delete_inbound").notNull().default(false),
 
+  // Podcast style — controls how Claude generates the script and which
+  // OpenAI voice(s) are used for synthesis.
+  //   format:       "single" (one narrator) | "dialogue" (HOST + CO-HOST)
+  //   tone:         "formal" | "conversational" | "energetic"
+  //   voice:        OpenAI voice for the single-narrator format
+  //   hostVoice:    HOST voice for dialogue format
+  //   cohostVoice:  CO-HOST voice for dialogue format
+  briefingPodcastFormat: text("briefing_podcast_format").notNull().default("single"),
+  briefingPodcastTone: text("briefing_podcast_tone").notNull().default("conversational"),
+  briefingPodcastVoice: text("briefing_podcast_voice").notNull().default("onyx"),
+  briefingPodcastHostVoice: text("briefing_podcast_host_voice").notNull().default("onyx"),
+  briefingPodcastCohostVoice: text("briefing_podcast_cohost_voice").notNull().default("nova"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

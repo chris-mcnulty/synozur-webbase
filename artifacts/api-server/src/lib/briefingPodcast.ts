@@ -1,7 +1,12 @@
 import { eq } from "drizzle-orm";
-import { db, briefingPodcastsTable } from "@workspace/db";
+import { db, briefingPodcastsTable, siteSettingsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { briefingHtmlToScript, synthesizeSpeech } from "./tts";
+import {
+  briefingHtmlToScript,
+  synthesizeSpeech,
+  DEFAULT_PODCAST_CONFIG,
+  type PodcastConfig,
+} from "./tts";
 import { speFileStorage } from "./storage/spe/fileStorage";
 import { signBriefingPurgeToken } from "./briefingPurgeToken";
 import { sendBriefingPodcastEmail } from "./email";
@@ -10,6 +15,7 @@ const SITE_URL = (process.env["SITE_URL"] ?? "https://synozur.com").replace(
   /\/$/,
   "",
 );
+const SETTINGS_ROW_ID = 1;
 
 export type BriefingSource = "client";
 
@@ -49,11 +55,32 @@ export async function processBriefing(
   const podcastId = row!.id;
 
   try {
-    const script = await briefingHtmlToScript(args.html);
+    // Read podcast style config from site_settings.
+    const [settingsRow] = await db
+      .select({
+        briefingPodcastFormat:      siteSettingsTable.briefingPodcastFormat,
+        briefingPodcastTone:        siteSettingsTable.briefingPodcastTone,
+        briefingPodcastVoice:       siteSettingsTable.briefingPodcastVoice,
+        briefingPodcastHostVoice:   siteSettingsTable.briefingPodcastHostVoice,
+        briefingPodcastCohostVoice: siteSettingsTable.briefingPodcastCohostVoice,
+      })
+      .from(siteSettingsTable)
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
+      .limit(1);
+
+    const podcastConfig: PodcastConfig = {
+      format:      (settingsRow?.briefingPodcastFormat ?? "single") as PodcastConfig["format"],
+      tone:        (settingsRow?.briefingPodcastTone ?? "conversational") as PodcastConfig["tone"],
+      voice:       settingsRow?.briefingPodcastVoice      ?? DEFAULT_PODCAST_CONFIG.voice,
+      hostVoice:   settingsRow?.briefingPodcastHostVoice  ?? DEFAULT_PODCAST_CONFIG.hostVoice,
+      cohostVoice: settingsRow?.briefingPodcastCohostVoice ?? DEFAULT_PODCAST_CONFIG.cohostVoice,
+    };
+
+    const script = await briefingHtmlToScript(args.html, podcastConfig);
     if (!script.trim()) {
       throw new Error("Briefing produced an empty script");
     }
-    const { audio, estimatedDurationSeconds } = await synthesizeSpeech(script);
+    const { audio, estimatedDurationSeconds } = await synthesizeSpeech(script, podcastConfig);
 
     const filename = `briefing-${new Date().toISOString().slice(0, 10)}-${podcastId.slice(0, 8)}.mp3`;
     const stored = await speFileStorage.storeFile({

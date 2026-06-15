@@ -3503,6 +3503,16 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS briefing_delete_inbound boolean NOT NULL DEFAULT false;
     `);
 
+    // Briefing Podcast — phase 4: podcast style config.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS briefing_podcast_format    text NOT NULL DEFAULT 'single',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_tone      text NOT NULL DEFAULT 'conversational',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_voice     text NOT NULL DEFAULT 'onyx',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_host_voice   text NOT NULL DEFAULT 'onyx',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_cohost_voice text NOT NULL DEFAULT 'nova';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

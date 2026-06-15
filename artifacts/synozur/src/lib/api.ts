@@ -1686,17 +1686,36 @@ export const api = {
   // Briefing Podcast — approved-sender allow-list and generated-podcast
   // history. Admin only (gated server-side by client_orgs.manage).
   getBriefingPodcastSettings: () =>
-    jsonFetch<{ briefingMailbox: string | null; briefingDeleteInbound: boolean }>(
-      url("/admin/briefing-podcast/settings"),
-    ),
+    jsonFetch<{
+      briefingMailbox: string | null;
+      briefingDeleteInbound: boolean;
+      briefingPodcastFormat: string;
+      briefingPodcastTone: string;
+      briefingPodcastVoice: string;
+      briefingPodcastHostVoice: string;
+      briefingPodcastCohostVoice: string;
+    }>(url("/admin/briefing-podcast/settings")),
   updateBriefingPodcastSettings: (body: {
     briefingMailbox?: string | null;
     briefingDeleteInbound?: boolean;
+    briefingPodcastFormat?: string;
+    briefingPodcastTone?: string;
+    briefingPodcastVoice?: string;
+    briefingPodcastHostVoice?: string;
+    briefingPodcastCohostVoice?: string;
   }) =>
-    jsonFetch<{ briefingMailbox: string | null; briefingDeleteInbound: boolean }>(
-      url("/admin/briefing-podcast/settings"),
-      { method: "PATCH", body: JSON.stringify(body) },
-    ),
+    jsonFetch<{
+      briefingMailbox: string | null;
+      briefingDeleteInbound: boolean;
+      briefingPodcastFormat: string;
+      briefingPodcastTone: string;
+      briefingPodcastVoice: string;
+      briefingPodcastHostVoice: string;
+      briefingPodcastCohostVoice: string;
+    }>(url("/admin/briefing-podcast/settings"), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   listBriefingPodcastClients: () =>
     jsonFetch<{ clients: BriefingPodcastClientDto[] }>(
       url("/admin/briefing-podcast/clients"),

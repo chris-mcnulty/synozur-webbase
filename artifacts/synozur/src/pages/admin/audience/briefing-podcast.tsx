@@ -6,6 +6,7 @@ import {
   Trash2,
   RefreshCw,
   Headphones,
+  Mic2,
   Save,
   Ban,
   CheckCircle2,
@@ -13,6 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   Table,
@@ -24,6 +32,18 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+
+const VOICE_OPTIONS: { value: string; label: string }[] = [
+  { value: "alloy",   label: "Alloy — neutral" },
+  { value: "ash",     label: "Ash — authoritative" },
+  { value: "coral",   label: "Coral — warm" },
+  { value: "echo",    label: "Echo — deep" },
+  { value: "fable",   label: "Fable — expressive" },
+  { value: "nova",    label: "Nova — upbeat" },
+  { value: "onyx",    label: "Onyx — deep, authoritative" },
+  { value: "sage",    label: "Sage — calm" },
+  { value: "shimmer", label: "Shimmer — bright" },
+];
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("en-US", {
@@ -50,7 +70,15 @@ function statusBadgeClass(status: string): string {
   }
 }
 
-type Settings = { briefingMailbox: string | null; briefingDeleteInbound: boolean };
+type Settings = {
+  briefingMailbox: string | null;
+  briefingDeleteInbound: boolean;
+  briefingPodcastFormat: string;
+  briefingPodcastTone: string;
+  briefingPodcastVoice: string;
+  briefingPodcastHostVoice: string;
+  briefingPodcastCohostVoice: string;
+};
 
 export default function AdminBriefingPodcast() {
   const { toast } = useToast();
@@ -66,8 +94,13 @@ export default function AdminBriefingPodcast() {
   });
 
   const serverSettings = settingsQuery.data as Settings | undefined;
-  const serverMailbox = serverSettings?.briefingMailbox ?? null;
-  const deleteInbound = serverSettings?.briefingDeleteInbound ?? false;
+  const serverMailbox     = serverSettings?.briefingMailbox          ?? null;
+  const deleteInbound     = serverSettings?.briefingDeleteInbound    ?? false;
+  const podcastFormat     = serverSettings?.briefingPodcastFormat    ?? "single";
+  const podcastTone       = serverSettings?.briefingPodcastTone      ?? "conversational";
+  const podcastVoice      = serverSettings?.briefingPodcastVoice     ?? "onyx";
+  const podcastHostVoice  = serverSettings?.briefingPodcastHostVoice ?? "onyx";
+  const podcastCohostVoice = serverSettings?.briefingPodcastCohostVoice ?? "nova";
 
   useEffect(() => {
     if (!mailboxEditing && serverMailbox !== null) {
@@ -76,7 +109,7 @@ export default function AdminBriefingPodcast() {
   }, [serverMailbox, mailboxEditing]);
 
   const updateSettings = useMutation({
-    mutationFn: (patch: { briefingMailbox?: string | null; briefingDeleteInbound?: boolean }) =>
+    mutationFn: (patch: Partial<Omit<Settings, "briefingMailbox"> & { briefingMailbox?: string | null }>) =>
       api.updateBriefingPodcastSettings(patch),
     onSuccess: () => {
       toast({ title: "Settings saved" });
@@ -244,6 +277,133 @@ export default function AdminBriefingPodcast() {
               }
             />
           </div>
+        </section>
+
+        {/* ── Podcast style ──────────────────────────────────────────────── */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Mic2 className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Podcast style</h2>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Controls how Claude writes the script and which voice(s) OpenAI uses
+            when generating audio. Changes take effect on the next briefing.
+          </p>
+
+          {/* Format + Tone */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Format</p>
+              <Select
+                value={podcastFormat}
+                onValueChange={(v) =>
+                  updateSettings.mutate({ briefingPodcastFormat: v })
+                }
+                disabled={settingsQuery.isLoading || updateSettings.isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single narrator</SelectItem>
+                  <SelectItem value="dialogue">Two-speaker dialogue (Host + Co-host)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Tone</p>
+              <Select
+                value={podcastTone}
+                onValueChange={(v) =>
+                  updateSettings.mutate({ briefingPodcastTone: v })
+                }
+                disabled={settingsQuery.isLoading || updateSettings.isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="formal">Formal — precise and concise</SelectItem>
+                  <SelectItem value="conversational">Conversational — warm and approachable</SelectItem>
+                  <SelectItem value="energetic">Energetic — upbeat and punchy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Voice config — single narrator */}
+          {podcastFormat === "single" && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Voice</p>
+              <Select
+                value={podcastVoice}
+                onValueChange={(v) =>
+                  updateSettings.mutate({ briefingPodcastVoice: v })
+                }
+                disabled={settingsQuery.isLoading || updateSettings.isPending}
+              >
+                <SelectTrigger className="w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VOICE_OPTIONS.map((v) => (
+                    <SelectItem key={v.value} value={v.value}>
+                      {v.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Voice config — dialogue */}
+          {podcastFormat === "dialogue" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Host voice</p>
+                <Select
+                  value={podcastHostVoice}
+                  onValueChange={(v) =>
+                    updateSettings.mutate({ briefingPodcastHostVoice: v })
+                  }
+                  disabled={settingsQuery.isLoading || updateSettings.isPending}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VOICE_OPTIONS.map((v) => (
+                      <SelectItem key={v.value} value={v.value}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Co-host voice</p>
+                <Select
+                  value={podcastCohostVoice}
+                  onValueChange={(v) =>
+                    updateSettings.mutate({ briefingPodcastCohostVoice: v })
+                  }
+                  disabled={settingsQuery.isLoading || updateSettings.isPending}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VOICE_OPTIONS.map((v) => (
+                      <SelectItem key={v.value} value={v.value}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── Approved senders ──────────────────────────────────────────── */}
