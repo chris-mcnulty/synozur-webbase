@@ -15,6 +15,7 @@ import { speFileStorage } from "../lib/storage/spe/fileStorage";
 import {
   GraphMailClient,
   buildGraphMailConfig,
+  isDirectInboundEmail,
 } from "../lib/storage/spe/graphMail";
 
 // Briefing Podcast routes.
@@ -101,15 +102,27 @@ async function handleInboundMessage(
 ): Promise<void> {
   const mail = new GraphMailClient();
   const message = await mail.getMessage(mailbox, messageId);
-  const sender = message.fromAddress;
 
-  // Per requirement: once the body is fetched, delete the inbound message.
+  // Always delete the inbound message first — even filtered ones — so the
+  // mailbox stays clean regardless of outcome.
   await mail.deleteMessage(mailbox, messageId).catch((err) => {
     logger.warn({ err, messageId }, "Failed to delete inbound briefing message");
   });
 
+  const sender = message.fromAddress;
   if (!sender) {
     logger.warn({ messageId }, "Inbound briefing had no sender; skipping");
+    return;
+  }
+
+  // Drop replies, forwards, auto-replies, OOF notices, NDRs, etc.
+  // This prevents a delivery-confirmation or vacation reply from looping back
+  // through the podcast pipeline and generating a new audio file.
+  if (!isDirectInboundEmail(message)) {
+    logger.info(
+      { sender, subject: message.subject, messageId },
+      "Inbound briefing message filtered out (reply / forward / auto-reply); discarded",
+    );
     return;
   }
 

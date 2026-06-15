@@ -35,6 +35,11 @@ export interface GraphMailConfig {
   clientState: string; // shared secret echoed in notifications
 }
 
+export interface GraphMessageHeader {
+  name: string;
+  value: string;
+}
+
 export interface GraphMessage {
   id: string;
   subject: string;
@@ -42,6 +47,56 @@ export interface GraphMessage {
   bodyContentType: string;
   fromAddress: string | null;
   fromName: string | null;
+  internetMessageHeaders: GraphMessageHeader[];
+}
+
+// Returns true only if the message is a fresh direct send — not a reply,
+// forward, or any flavour of auto-reply / vacation notice / delivery report.
+//
+// Checks, in order:
+//  1. Subject prefix  — Re: / Fw: / Fwd:  (catches most human replies/fwds)
+//  2. In-Reply-To     — RFC 2822 header present on all true replies
+//  3. Auto-Submitted  — RFC 3834; value other than "no" means auto-generated
+//  4. X-Auto-Response-Suppress — Exchange/M365 auto-reply marker
+//  5. X-MS-Exchange-Generated-Message-By — server-generated messages
+//
+// All checks are case-insensitive on both header names and values.
+export function isDirectInboundEmail(message: GraphMessage): boolean {
+  const subject = message.subject ?? "";
+
+  // 1. Subject-prefix guard
+  if (/^\s*(re|fw|fwd)\s*:/i.test(subject)) {
+    return false;
+  }
+
+  const headers = message.internetMessageHeaders ?? [];
+  const headerMap: Record<string, string> = {};
+  for (const h of headers) {
+    headerMap[h.name.toLowerCase()] = h.value;
+  }
+
+  // 2. Reply chain
+  if ("in-reply-to" in headerMap) {
+    return false;
+  }
+
+  // 3. RFC 3834 auto-response (auto-replied, auto-generated, auto-notified …)
+  const autoSubmitted = headerMap["auto-submitted"];
+  if (autoSubmitted && autoSubmitted.toLowerCase() !== "no") {
+    return false;
+  }
+
+  // 4. Exchange / M365 auto-reply suppress marker — presence alone is enough
+  if ("x-auto-response-suppress" in headerMap) {
+    return false;
+  }
+
+  // 5. Exchange server-generated message (NDRs, read receipts, OOF notices)
+  if ("x-ms-exchange-generated-message-by" in headerMap) {
+    return false;
+  }
+
+  return true;
 }
 
 export interface GraphSubscription {
@@ -143,17 +198,20 @@ export class GraphMailClient {
     );
   }
 
-  // Fetch a single message's body + sender. `mailbox` is the watched
-  // shared mailbox; `messageId` comes from the change notification.
+  // Fetch a single message's body + sender + internet headers.
+  // `mailbox` is the watched shared mailbox; `messageId` comes from the
+  // change notification. `internetMessageHeaders` is included so callers
+  // can detect replies, forwards, and auto-replies before processing.
   async getMessage(mailbox: string, messageId: string): Promise<GraphMessage> {
     const url =
       `${GRAPH_V1_URL}/users/${encodeURIComponent(mailbox)}/messages/${messageId}` +
-      `?$select=id,subject,body,from`;
+      `?$select=id,subject,body,from,internetMessageHeaders`;
     const raw = await this.graph.request<{
       id: string;
       subject?: string;
       body?: { contentType?: string; content?: string };
       from?: { emailAddress?: { address?: string; name?: string } };
+      internetMessageHeaders?: Array<{ name: string; value: string }>;
     }>(url);
     return {
       id: raw.id,
@@ -162,6 +220,7 @@ export class GraphMailClient {
       bodyContentType: raw.body?.contentType ?? "html",
       fromAddress: raw.from?.emailAddress?.address?.toLowerCase() ?? null,
       fromName: raw.from?.emailAddress?.name ?? null,
+      internetMessageHeaders: raw.internetMessageHeaders ?? [],
     };
   }
 
