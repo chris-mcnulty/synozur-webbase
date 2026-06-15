@@ -3487,6 +3487,16 @@ export async function runMigrations(): Promise<void> {
         ON briefing_podcasts (status);
     `);
 
+    // Briefing Podcast — phase 2 additions.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS briefing_mailbox text;
+    `);
+    await db.execute(sql`
+      ALTER TABLE briefing_podcast_clients
+        ADD COLUMN IF NOT EXISTS retain_recording boolean NOT NULL DEFAULT true;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

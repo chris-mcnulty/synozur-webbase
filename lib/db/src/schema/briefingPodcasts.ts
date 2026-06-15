@@ -4,6 +4,7 @@ import {
   text,
   timestamp,
   integer,
+  boolean,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -11,11 +12,9 @@ import {
 // Briefing Podcast feature.
 //
 // Two tables:
-//   • `briefing_podcast_clients` — the approved allow-list of external email
-//     addresses permitted to submit a briefing (by emailing the watched
-//     mailbox) and receive an audio version back. Internal owners (e.g. the
-//     Copilot Worker's own briefing) are processed regardless of this list;
-//     external senders must have an `approved` row here.
+//   • `briefing_podcast_clients` — the approved allow-list of senders
+//     permitted to submit a briefing (by emailing the watched mailbox) and
+//     receive an audio version back. All senders require an approved row here.
 //   • `briefing_podcasts` — one row per generated MP3, recording where the
 //     audio lives in SharePoint Embedded (container + drive item id) so the
 //     purge endpoint and admin history view can find and delete it.
@@ -37,6 +36,10 @@ export const briefingPodcastClientsTable = pgTable(
     // Free-form note for the approving admin (which client / engagement).
     organizationLabel: text("organization_label"),
     status: text("status").notNull().default("approved"),
+    // When true the MP3 is stored in SPE and streamed via the audio proxy.
+    // When false the MP3 is attached directly to the delivery email then
+    // deleted from SPE — no streaming URL or purge link is included.
+    retainRecording: boolean("retain_recording").notNull().default(true),
     // Admin user id (users.id) who approved/last-updated this entry.
     approvedByUserId: uuid("approved_by_user_id"),
     approvedAt: timestamp("approved_at", { withTimezone: true })

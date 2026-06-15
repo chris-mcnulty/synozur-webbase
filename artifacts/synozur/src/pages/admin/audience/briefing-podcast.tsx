@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2, RefreshCw, Headphones } from "lucide-react";
+import { Loader2, Plus, Trash2, RefreshCw, Headphones, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   Table,
@@ -44,9 +45,42 @@ export default function AdminBriefingPodcast() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Mailbox settings
+  const [mailboxInput, setMailboxInput] = useState("");
+  const [mailboxEditing, setMailboxEditing] = useState(false);
+
+  const settingsQuery = useQuery({
+    queryKey: ["briefing-podcast-settings"],
+    queryFn: () => api.getBriefingPodcastSettings(),
+  });
+
+  // Sync mailbox input from server when not actively editing.
+  const serverMailbox = settingsQuery.data?.briefingMailbox ?? null;
+  if (!mailboxEditing && serverMailbox !== null && mailboxInput !== serverMailbox) {
+    setMailboxInput(serverMailbox);
+  }
+
+  const updateSettings = useMutation({
+    mutationFn: (mailbox: string | null) =>
+      api.updateBriefingPodcastSettings({ briefingMailbox: mailbox }),
+    onSuccess: () => {
+      toast({ title: "Settings saved" });
+      setMailboxEditing(false);
+      void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-settings"] });
+    },
+    onError: (err: unknown) =>
+      toast({
+        title: "Could not save settings",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      }),
+  });
+
+  // Approved senders
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [orgLabel, setOrgLabel] = useState("");
+  const [retainRecording, setRetainRecording] = useState(true);
 
   const clientsQuery = useQuery({
     queryKey: ["briefing-podcast-clients"],
@@ -64,12 +98,14 @@ export default function AdminBriefingPodcast() {
         displayName: displayName.trim() || null,
         organizationLabel: orgLabel.trim() || null,
         status: "approved",
+        retainRecording,
       }),
     onSuccess: () => {
       toast({ title: "Sender approved" });
       setEmail("");
       setDisplayName("");
       setOrgLabel("");
+      setRetainRecording(true);
       void queryClient.invalidateQueries({
         queryKey: ["briefing-podcast-clients"],
       });
@@ -80,6 +116,14 @@ export default function AdminBriefingPodcast() {
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       }),
+  });
+
+  const toggleRetain = useMutation({
+    mutationFn: ({ email: e, retainRecording: r }: { id: string; email: string; retainRecording: boolean }) =>
+      api.upsertBriefingPodcastClient({ email: e, retainRecording: r }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
+    },
   });
 
   const removeClient = useMutation({
@@ -102,6 +146,7 @@ export default function AdminBriefingPodcast() {
 
   const clients = clientsQuery.data?.clients ?? [];
   const podcasts = historyQuery.data?.podcasts ?? [];
+  const currentMailbox = (settingsQuery.data as { briefingMailbox: string | null } | undefined)?.briefingMailbox ?? null;
 
   return (
     <AdminLayout
@@ -113,12 +158,56 @@ export default function AdminBriefingPodcast() {
           Approve external senders who can email a briefing and receive an
           audio version back, and review generated recordings.
         </p>
-        {/* Approved senders */}
+
+        {/* Watched mailbox */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Headphones className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Approved senders</h2>
+            <h2 className="text-lg font-semibold">Watched mailbox</h2>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Inbound briefing emails are received at this M365 address. Graph
+            change notifications deliver them to the webhook automatically.
+          </p>
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium">Mailbox address</span>
+              <Input
+                type="email"
+                placeholder="briefing@synozur.com"
+                value={mailboxInput}
+                onChange={(e) => {
+                  setMailboxInput(e.target.value);
+                  setMailboxEditing(true);
+                }}
+                className="w-72"
+              />
+            </div>
+            <Button
+              onClick={() =>
+                updateSettings.mutate(mailboxInput.trim() || null)
+              }
+              disabled={!mailboxEditing || updateSettings.isPending}
+              variant="outline"
+            >
+              {updateSettings.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          </div>
+          {currentMailbox && (
+            <p className="text-xs text-muted-foreground">
+              Currently watching: <span className="font-mono">{currentMailbox}</span>
+            </p>
+          )}
+        </section>
+
+        {/* Approved senders */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Approved senders</h2>
           <p className="text-sm text-muted-foreground">
             Only these addresses may submit a briefing to the watched mailbox
             and get a podcast in return. Other senders are ignored.
@@ -153,6 +242,15 @@ export default function AdminBriefingPodcast() {
                 className="w-48"
               />
             </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium">Retain recording</span>
+              <div className="flex h-10 items-center">
+                <Switch
+                  checked={retainRecording}
+                  onCheckedChange={setRetainRecording}
+                />
+              </div>
+            </div>
             <Button
               onClick={() => addClient.mutate()}
               disabled={!email.trim() || addClient.isPending}
@@ -173,6 +271,7 @@ export default function AdminBriefingPodcast() {
                 <TableHead>Name</TableHead>
                 <TableHead>Org / note</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Retain</TableHead>
                 <TableHead>Approved</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
@@ -180,7 +279,7 @@ export default function AdminBriefingPodcast() {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     No approved senders yet.
                   </TableCell>
                 </TableRow>
@@ -196,6 +295,19 @@ export default function AdminBriefingPodcast() {
                       >
                         {c.status}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={c.retainRecording}
+                        onCheckedChange={(checked) =>
+                          toggleRetain.mutate({
+                            id: c.id,
+                            email: c.email,
+                            retainRecording: checked,
+                          })
+                        }
+                        disabled={toggleRetain.isPending}
+                      />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(c.approvedAt)}
@@ -236,7 +348,6 @@ export default function AdminBriefingPodcast() {
               <TableRow>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Subject</TableHead>
-                <TableHead>Source</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="w-12" />
@@ -245,7 +356,7 @@ export default function AdminBriefingPodcast() {
             <TableBody>
               {podcasts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={5} className="text-muted-foreground">
                     No recordings yet.
                   </TableCell>
                 </TableRow>
@@ -256,7 +367,6 @@ export default function AdminBriefingPodcast() {
                       {p.recipientEmail}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{p.subject}</TableCell>
-                    <TableCell>{p.source}</TableCell>
                     <TableCell>
                       <span
                         className={`rounded px-2 py-0.5 text-xs ${statusBadgeClass(p.status)}`}

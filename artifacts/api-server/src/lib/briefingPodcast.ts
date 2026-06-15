@@ -11,7 +11,7 @@ const SITE_URL = (process.env["SITE_URL"] ?? "https://synozur.com").replace(
   "",
 );
 
-export type BriefingSource = "owner" | "client";
+export type BriefingSource = "client";
 
 export interface ProcessBriefingArgs {
   html: string;
@@ -19,6 +19,9 @@ export interface ProcessBriefingArgs {
   recipientEmail: string;
   recipientName: string | null;
   source: BriefingSource;
+  // When true: store MP3 in SPE, deliver streaming URL + purge link in email.
+  // When false: attach MP3 directly to email then delete from SPE immediately.
+  retainRecording: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -62,30 +65,67 @@ export async function processBriefing(
       extraFields: { SynozurDocumentType: "briefing" },
     });
 
-    await db
-      .update(briefingPodcastsTable)
-      .set({
-        status: "delivered",
-        speContainerId: stored.containerId,
-        speItemId: stored.itemId,
-        durationSeconds: estimatedDurationSeconds,
-        byteSize: audio.length,
-      })
-      .where(eq(briefingPodcastsTable.id, podcastId));
+    let emailResult;
+    if (args.retainRecording) {
+      // Keep MP3 in SPE — deliver streaming URL + purge link.
+      await db
+        .update(briefingPodcastsTable)
+        .set({
+          status: "delivered",
+          speContainerId: stored.containerId,
+          speItemId: stored.itemId,
+          durationSeconds: estimatedDurationSeconds,
+          byteSize: audio.length,
+        })
+        .where(eq(briefingPodcastsTable.id, podcastId));
 
-    const audioUrl = `${SITE_URL}/api/briefing-podcast/${podcastId}/audio`;
-    const purgeUrl = `${SITE_URL}/api/briefing-podcast/purge?token=${encodeURIComponent(
-      signBriefingPurgeToken(podcastId),
-    )}`;
+      const audioUrl = `${SITE_URL}/api/briefing-podcast/${podcastId}/audio`;
+      const purgeUrl = `${SITE_URL}/api/briefing-podcast/purge?token=${encodeURIComponent(
+        signBriefingPurgeToken(podcastId),
+      )}`;
 
-    const emailResult = await sendBriefingPodcastEmail({
-      to: args.recipientEmail,
-      recipientName: args.recipientName,
-      briefingSubject: args.subject,
-      audioUrl,
-      purgeUrl,
-      durationLabel: formatDuration(estimatedDurationSeconds),
-    });
+      emailResult = await sendBriefingPodcastEmail({
+        to: args.recipientEmail,
+        recipientName: args.recipientName,
+        briefingSubject: args.subject,
+        audioUrl,
+        purgeUrl,
+        durationLabel: formatDuration(estimatedDurationSeconds),
+      });
+    } else {
+      // Attach MP3 to email then delete from SPE — nothing retained on server.
+      emailResult = await sendBriefingPodcastEmail({
+        to: args.recipientEmail,
+        recipientName: args.recipientName,
+        briefingSubject: args.subject,
+        audioUrl: null,
+        purgeUrl: null,
+        durationLabel: formatDuration(estimatedDurationSeconds),
+        attachmentBuffer: audio,
+        attachmentFilename: filename,
+      });
+
+      // Delete from SPE immediately after the email is dispatched.
+      await speFileStorage
+        .deleteFile(stored.itemId, stored.containerId)
+        .catch((err) =>
+          logger.error(
+            { err, podcastId },
+            "Failed to delete SPE MP3 after attachment send",
+          ),
+        );
+
+      await db
+        .update(briefingPodcastsTable)
+        .set({
+          status: "purged",
+          purgedAt: new Date(),
+          durationSeconds: estimatedDurationSeconds,
+          byteSize: audio.length,
+        })
+        .where(eq(briefingPodcastsTable.id, podcastId));
+    }
+
     if (emailResult.status === "error") {
       logger.warn(
         { podcastId, err: emailResult.error },
@@ -93,7 +133,7 @@ export async function processBriefing(
       );
     }
     logger.info(
-      { podcastId, recipient: args.recipientEmail, bytes: audio.length },
+      { podcastId, recipient: args.recipientEmail, bytes: audio.length, retainRecording: args.retainRecording },
       "Briefing podcast delivered",
     );
     return podcastId;

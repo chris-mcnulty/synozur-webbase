@@ -868,9 +868,13 @@ export async function sendBriefingPodcastEmail(args: {
   to: string;
   recipientName: string | null;
   briefingSubject: string;
-  audioUrl: string;
-  purgeUrl: string;
+  // null when delivering as an attachment (retainRecording=false)
+  audioUrl: string | null;
+  purgeUrl: string | null;
   durationLabel: string | null;
+  // When set, attach the MP3 directly to the email instead of linking.
+  attachmentBuffer?: Buffer;
+  attachmentFilename?: string;
 }): Promise<SendEmailResult> {
   const greeting =
     args.recipientName && args.recipientName.trim().length > 0
@@ -879,12 +883,14 @@ export async function sendBriefingPodcastEmail(args: {
   const durationLine = args.durationLabel
     ? `<p style="margin:0 0 16px;font-size:13px;color:#6b6b80;">Approximate listening time: ${escapeHtml(args.durationLabel)}.</p>`
     : "";
-  const html = brandedShell({
-    preheader: `The audio version of your briefing is ready.`,
-    heading: "Your briefing podcast is ready",
-    bodyHtml: `
-      <p style="margin:0 0 16px;">${greeting}</p>
-      <p style="margin:0 0 16px;">Here's the audio version of <strong>${escapeHtml(args.briefingSubject)}</strong>. Press play below, or download it to listen on the go.</p>
+
+  let playerHtml: string;
+  let playerText: string;
+  let purgeHtml = "";
+  let purgeText = "";
+
+  if (args.audioUrl) {
+    playerHtml = `
       <p style="margin:20px 0;">
         <audio controls preload="none" style="width:100%;">
           <source src="${escapeHtml(args.audioUrl)}" type="audio/mpeg" />
@@ -892,12 +898,31 @@ export async function sendBriefingPodcastEmail(args: {
       </p>
       <p style="margin:16px 0;">
         <a href="${escapeHtml(args.audioUrl)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:15px;">Listen / Download</a>
-      </p>
-      ${durationLine}
+      </p>`;
+    playerText = `Listen / download: ${args.audioUrl}`;
+  } else {
+    playerHtml = `<p style="margin:0 0 16px;">The audio file is attached to this email.</p>`;
+    playerText = "The audio file is attached to this email.";
+  }
+
+  if (args.purgeUrl) {
+    purgeHtml = `
       <p style="margin:24px 0 8px;border-top:1px solid #ececf5;padding-top:16px;font-size:13px;color:#6b6b80;">Done listening? You can remove this recording from our server:</p>
       <p style="margin:0 0 16px;">
         <a href="${escapeHtml(args.purgeUrl)}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">Purge this recording →</a>
-      </p>
+      </p>`;
+    purgeText = `\nDone listening? Purge this recording from our server: ${args.purgeUrl}`;
+  }
+
+  const html = brandedShell({
+    preheader: `The audio version of your briefing is ready.`,
+    heading: "Your briefing podcast is ready",
+    bodyHtml: `
+      <p style="margin:0 0 16px;">${greeting}</p>
+      <p style="margin:0 0 16px;">Here's the audio version of <strong>${escapeHtml(args.briefingSubject)}</strong>. Press play below, or download it to listen on the go.</p>
+      ${playerHtml}
+      ${durationLine}
+      ${purgeHtml}
       <p style="margin:24px 0 0;">— The Synozur Alliance</p>
     `,
   });
@@ -906,15 +931,62 @@ export async function sendBriefingPodcastEmail(args: {
     "",
     `Here's the audio version of "${args.briefingSubject}".`,
     "",
-    `Listen / download: ${args.audioUrl}`,
+    playerText,
     ...(args.durationLabel
       ? ["", `Approximate listening time: ${args.durationLabel}.`]
       : []),
-    "",
-    `Done listening? Purge this recording from our server: ${args.purgeUrl}`,
+    purgeText,
     "",
     "— The Synozur Alliance",
   ].join("\n");
+
+  if (args.attachmentBuffer && args.attachmentFilename) {
+    // Deliver with attachment — bypass the standard sendEmail helper so we
+    // can pass the attachments array directly to SendGrid.
+    if (process.env["EMAIL_DISABLED"] === "1") {
+      return { status: "skipped", error: null };
+    }
+    let handle;
+    try {
+      handle = await getUncachableSendGridClient();
+    } catch (err) {
+      if (err instanceof SendGridNotConfiguredError) {
+        return { status: "skipped", error: null };
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      return { status: "error", error: msg };
+    }
+    const override = parseFromOverride(EMAIL_FROM_OVERRIDE);
+    const from = override ?? { email: handle.fromEmail, name: FROM_NAME };
+    try {
+      const sendResult = await handle.client.send({
+        to: args.to,
+        from,
+        subject: `Your briefing podcast — ${escapeHtml(args.briefingSubject)}`,
+        html,
+        text,
+        attachments: [
+          {
+            content: args.attachmentBuffer.toString("base64"),
+            filename: args.attachmentFilename,
+            type: "audio/mpeg",
+            disposition: "attachment",
+          },
+        ],
+      });
+      const messageId = extractMessageId(sendResult);
+      logger.info(
+        { to: args.to, template: "briefing-podcast-attachment", messageId },
+        "Briefing podcast attachment email sent",
+      );
+      return { status: "ok", error: null, messageId: messageId ?? null };
+    } catch (err) {
+      const e = err as { code?: number; message?: string };
+      const msg = e.message ?? String(err);
+      return { status: "error", error: msg };
+    }
+  }
+
   return sendEmail({
     to: args.to,
     subject: `Your briefing podcast — ${args.briefingSubject}`,

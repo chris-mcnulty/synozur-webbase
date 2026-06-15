@@ -5,6 +5,7 @@ import {
   db,
   briefingPodcastClientsTable,
   briefingPodcastsTable,
+  siteSettingsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { requireAuth, requireCapability } from "../middlewares/auth";
@@ -13,29 +14,35 @@ import { processBriefing } from "../lib/briefingPodcast";
 import { speFileStorage } from "../lib/storage/spe/fileStorage";
 import {
   GraphMailClient,
-  readGraphMailConfigFromEnv,
+  buildGraphMailConfig,
 } from "../lib/storage/spe/graphMail";
 
 // Briefing Podcast routes.
 //
-//   POST /api/briefing-podcast/webhook   — Graph change-notification receiver
-//   GET  /api/briefing-podcast/:id/audio — streaming MP3 proxy from SPE
-//   GET  /api/briefing-podcast/purge     — one-click signed purge link
-//   /api/admin/briefing-podcast/*        — allow-list CRUD + history (admin)
+//   POST /api/briefing-podcast/webhook      — Graph change-notification receiver
+//   GET  /api/briefing-podcast/:id/audio    — streaming MP3 proxy from SPE
+//   GET  /api/briefing-podcast/purge        — one-click signed purge link
+//   /api/admin/briefing-podcast/*           — allow-list CRUD + history (admin)
+//   GET/PATCH /api/admin/briefing-podcast/settings — mailbox config
 //
 // Reuses the SharePoint Embedded `client_orgs.manage` capability for the
-// admin surface — already granted to admin / site_admin / account_manager,
-// the same people who approve client organizations.
+// admin surface — already granted to admin / site_admin / account_manager.
 
 const router: IRouter = Router();
 const requireManage = requireCapability("client_orgs.manage");
 
-// The owner's own briefing arrives from the Copilot Worker; treat that
-// address (and the watched mailbox itself) as always-allowed.
-const OWNER_EMAIL = (process.env["BRIEFING_OWNER_EMAIL"] ?? "").toLowerCase();
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+// Read the watched mailbox from site_settings (null → feature inactive).
+async function getWatchedMailbox(): Promise<string | null> {
+  const [row] = await db
+    .select({ briefingMailbox: siteSettingsTable.briefingMailbox })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1))
+    .limit(1);
+  return row?.briefingMailbox ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,9 +60,9 @@ router.post(
       return;
     }
 
-    const cfg = readGraphMailConfigFromEnv();
-    if (!cfg) {
-      logger.warn("Briefing webhook hit but BRIEFING_* env not configured");
+    const mailbox = await getWatchedMailbox();
+    if (!mailbox) {
+      logger.warn("Briefing webhook hit but no mailbox configured");
       res.status(202).end();
       return;
     }
@@ -69,6 +76,7 @@ router.post(
     // Acknowledge fast; do the slow work (fetch/delete/TTS/email) async.
     res.status(202).end();
 
+    const cfg = buildGraphMailConfig(mailbox);
     for (const raw of notifications) {
       const note = raw as {
         clientState?: string;
@@ -80,7 +88,7 @@ router.post(
       }
       const messageId = note.resourceData?.id;
       if (!messageId) continue;
-      void handleInboundMessage(cfg.mailbox, messageId).catch((err) => {
+      void handleInboundMessage(mailbox, messageId).catch((err) => {
         logger.error({ err, messageId }, "Briefing inbound handling failed");
       });
     }
@@ -105,28 +113,24 @@ async function handleInboundMessage(
     return;
   }
 
-  const isOwner = OWNER_EMAIL && sender === OWNER_EMAIL;
-  let recipientName: string | null = message.fromName;
-  if (!isOwner) {
-    const client = await db.query.briefingPodcastClientsTable.findFirst({
-      where: eq(briefingPodcastClientsTable.email, sender),
-    });
-    if (!client || client.status !== "approved") {
-      logger.info(
-        { sender, messageId },
-        "Inbound briefing from non-approved sender; ignored",
-      );
-      return;
-    }
-    recipientName = client.displayName ?? message.fromName;
+  const client = await db.query.briefingPodcastClientsTable.findFirst({
+    where: eq(briefingPodcastClientsTable.email, sender),
+  });
+  if (!client || client.status !== "approved") {
+    logger.info(
+      { sender, messageId },
+      "Inbound briefing from non-approved sender; ignored",
+    );
+    return;
   }
 
   await processBriefing({
     html: message.bodyHtml,
     subject: message.subject,
     recipientEmail: sender,
-    recipientName,
-    source: isOwner ? "owner" : "client",
+    recipientName: client.displayName ?? message.fromName,
+    source: "client",
+    retainRecording: client.retainRecording,
   });
 }
 
@@ -281,6 +285,7 @@ const UpsertClientBody = z.object({
   displayName: z.string().max(255).nullish(),
   organizationLabel: z.string().max(255).nullish(),
   status: z.enum(["approved", "revoked"]).optional(),
+  retainRecording: z.boolean().optional(),
 });
 
 router.post(
@@ -295,6 +300,7 @@ router.post(
     }
     const email = normalizeEmail(parsed.data.email);
     const approvedByUserId = req.authedUser?.id ?? null;
+    const retainRecording = parsed.data.retainRecording ?? true;
     const [row] = await db
       .insert(briefingPodcastClientsTable)
       .values({
@@ -302,6 +308,7 @@ router.post(
         displayName: parsed.data.displayName ?? null,
         organizationLabel: parsed.data.organizationLabel ?? null,
         status: parsed.data.status ?? "approved",
+        retainRecording,
         approvedByUserId,
       })
       .onConflictDoUpdate({
@@ -310,6 +317,7 @@ router.post(
           displayName: parsed.data.displayName ?? null,
           organizationLabel: parsed.data.organizationLabel ?? null,
           status: parsed.data.status ?? "approved",
+          retainRecording,
           approvedByUserId,
           updatedAt: new Date(),
         },
@@ -381,6 +389,48 @@ router.post(
       .set({ status: "purged", purgedAt: new Date() })
       .where(eq(briefingPodcastsTable.id, id));
     res.json({ ok: true });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Briefing settings (watched mailbox)
+// ---------------------------------------------------------------------------
+
+const SETTINGS_ROW_ID = 1;
+
+router.get(
+  "/api/admin/briefing-podcast/settings",
+  requireAuth,
+  requireManage,
+  async (_req: Request, res: Response) => {
+    const [row] = await db
+      .select({ briefingMailbox: siteSettingsTable.briefingMailbox })
+      .from(siteSettingsTable)
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
+      .limit(1);
+    res.json({ briefingMailbox: row?.briefingMailbox ?? null });
+  },
+);
+
+const BriefingSettingsBody = z.object({
+  briefingMailbox: z.string().email().max(320).nullable(),
+});
+
+router.patch(
+  "/api/admin/briefing-podcast/settings",
+  requireAuth,
+  requireManage,
+  async (req: Request, res: Response) => {
+    const parsed = BriefingSettingsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    await db
+      .update(siteSettingsTable)
+      .set({ briefingMailbox: parsed.data.briefingMailbox })
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID));
+    res.json({ briefingMailbox: parsed.data.briefingMailbox });
   },
 );
 

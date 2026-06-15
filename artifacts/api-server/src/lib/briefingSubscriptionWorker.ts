@@ -1,21 +1,22 @@
 import type { Logger } from "pino";
+import { eq } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { siteSettingsTable } from "@workspace/db/schema";
 import {
   GraphMailClient,
-  readGraphMailConfigFromEnv,
+  buildGraphMailConfig,
   type GraphSubscription,
 } from "./storage/spe/graphMail";
 import { readSpeGraphConfigFromEnv } from "./storage/spe/graphClient";
 
 // Keeps the Graph mail subscription for the briefing mailbox alive.
 //
-// On startup (and every renewal interval) it ensures a subscription exists
-// pointing at our webhook, and renews it before Graph's ~3-day cap. Graph
-// silently drops subscriptions it can't renew, so we re-create if the
-// existing one has vanished.
+// On startup (and every renewal interval) it reads the watched mailbox from
+// site_settings.briefing_mailbox, then ensures a subscription exists pointing
+// at our webhook, renewing before Graph's ~3-day cap. Re-creates if lapsed.
 //
-// No-ops gracefully when either the Graph app credentials or the BRIEFING_*
-// env (mailbox / webhook url / secret) are absent, so local dev and
-// environments without the feature configured don't error.
+// No-ops gracefully when Graph credentials are absent or no mailbox is
+// configured, so local dev and unprovisioned environments don't error.
 
 const RENEW_INTERVAL_MS = 12 * 60 * 60 * 1000; // every 12h
 
@@ -24,15 +25,26 @@ export interface BriefingSubscriptionWorker {
 }
 
 async function ensureSubscription(log: Logger): Promise<void> {
-  const cfg = readGraphMailConfigFromEnv();
-  if (!cfg) {
-    log.info("Briefing subscription worker idle — BRIEFING_* env not set");
-    return;
-  }
   if (!readSpeGraphConfigFromEnv()) {
     log.warn("Briefing subscription worker idle — Graph credentials not set");
     return;
   }
+
+  // Read watched mailbox from site_settings (admin-managed, not env).
+  const [settings] = await db
+    .select({ briefingMailbox: siteSettingsTable.briefingMailbox })
+    .from(siteSettingsTable)
+    .where(eq(siteSettingsTable.id, 1))
+    .limit(1);
+  const mailbox = settings?.briefingMailbox;
+  if (!mailbox) {
+    log.info(
+      "Briefing subscription worker idle — no mailbox configured in site settings",
+    );
+    return;
+  }
+
+  const cfg = buildGraphMailConfig(mailbox);
   const client = new GraphMailClient();
   let existing: GraphSubscription | undefined;
   try {

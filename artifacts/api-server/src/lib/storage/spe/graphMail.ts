@@ -9,9 +9,14 @@
 // Reuses SpeGraphClient purely for its app-only token acquisition + retry
 // wrapper — the Graph credentials (ENTRA_TENANT_ID / ENTRA_APP_CLIENT_ID /
 // ENTRA_APP_CLIENT_SECRET) are the same app registration already used for
-// SharePoint Embedded. The app needs Mail.ReadWrite (application) granted to
-// read and delete from the mailbox.
+// SharePoint Embedded. The app needs Mail.ReadWrite (application permission,
+// admin-consented) to read and delete from the shared mailbox.
+//
+// The watched mailbox address is stored in site_settings.briefing_mailbox
+// (admin-managed), not in env vars. Webhook URL and clientState are derived
+// from SITE_URL and SESSION_SECRET respectively.
 
+import { createHmac } from "crypto";
 import {
   SpeGraphClient,
   readSpeGraphConfigFromEnv,
@@ -46,12 +51,25 @@ export interface GraphSubscription {
   notificationUrl: string;
 }
 
-export function readGraphMailConfigFromEnv(): GraphMailConfig | null {
-  const mailbox = process.env["BRIEFING_MAILBOX"];
-  const notificationUrl = process.env["BRIEFING_WEBHOOK_URL"];
-  const clientState = process.env["BRIEFING_WEBHOOK_SECRET"];
-  if (!mailbox || !notificationUrl || !clientState) return null;
-  return { mailbox, notificationUrl, clientState };
+// Build the Graph subscription config for a given watched mailbox. The
+// webhook URL is derived from SITE_URL (already required by the app); the
+// clientState is an HMAC of a fixed label so it never leaks as a separate
+// secret — changing SESSION_SECRET automatically rotates it.
+export function buildGraphMailConfig(mailbox: string): GraphMailConfig {
+  const siteUrl = (process.env["SITE_URL"] ?? "https://synozur.com").replace(
+    /\/$/,
+    "",
+  );
+  const secret = process.env["SESSION_SECRET"] ?? "dev-secret";
+  const clientState = createHmac("sha256", secret)
+    .update("briefing-subscription-v1")
+    .digest("hex")
+    .slice(0, 64);
+  return {
+    mailbox,
+    notificationUrl: `${siteUrl}/api/briefing-podcast/webhook`,
+    clientState,
+  };
 }
 
 export class GraphMailClient {

@@ -1685,6 +1685,15 @@ export const api = {
 
   // Briefing Podcast — approved-sender allow-list and generated-podcast
   // history. Admin only (gated server-side by client_orgs.manage).
+  getBriefingPodcastSettings: () =>
+    jsonFetch<{ briefingMailbox: string | null }>(
+      url("/admin/briefing-podcast/settings"),
+    ),
+  updateBriefingPodcastSettings: (body: { briefingMailbox: string | null }) =>
+    jsonFetch<{ briefingMailbox: string | null }>(
+      url("/admin/briefing-podcast/settings"),
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
   listBriefingPodcastClients: () =>
     jsonFetch<{ clients: BriefingPodcastClientDto[] }>(
       url("/admin/briefing-podcast/clients"),
@@ -1694,6 +1703,7 @@ export const api = {
     displayName?: string | null;
     organizationLabel?: string | null;
     status?: "approved" | "revoked";
+    retainRecording?: boolean;
   }) =>
     jsonFetch<{ client: BriefingPodcastClientDto }>(
       url("/admin/briefing-podcast/clients"),
@@ -1721,6 +1731,7 @@ export interface BriefingPodcastClientDto {
   displayName: string | null;
   organizationLabel: string | null;
   status: string;
+  retainRecording: boolean;
   approvedByUserId: string | null;
   approvedAt: string;
   createdAt: string;
