@@ -1,20 +1,24 @@
 /**
- * Social-bot OG renderer middleware.
+ * Bot prerenderer middleware (secondary net).
  *
- * Social link-preview crawlers (LinkedIn, Slack, Twitter/X, Facebook,
- * Discord, etc.) do not execute JavaScript, so they see the bare index.html
- * shell and cannot read OG tags written by the React app.
+ * Crawlers that do not execute JavaScript see the bare index.html shell and
+ * cannot read content/OG tags written by the React app. This middleware
+ * serves them server-rendered HTML instead, branching by bot category:
  *
- * When this middleware detects a social-category bot UA it:
- *  1. Looks up page-specific OG data from the DB via ogResolver.
- *  2. Returns a minimal HTML document with correct OG + Twitter Card tags.
- *  3. Adds a short Cache-Control header (5 min) to absorb repeated unfurls.
+ *  - social link-preview crawlers (LinkedIn, Slack, Twitter/X, Facebook,
+ *    Discord, etc.) → minimal OG/Twitter-Card document via renderOgHtml.
+ *  - AI agents, search engines, and other non-JS fetchers → a content-rich
+ *    document (real body sourced from the DB) via buildAgentPageHtml.
  *
- * If the resolver throws for any reason (DB down, schema mismatch, etc.),
- * the middleware renders the site-level defaults instead of falling through
- * to next() — so social bots always see a meaningful preview.
+ * Both branches add a short Cache-Control header (5 min). If a renderer
+ * throws (DB down, schema mismatch, etc.) the middleware degrades to the
+ * site-level OG defaults rather than falling through to next() — so bots
+ * always see a meaningful page.
  *
- * All other requests (humans, search crawlers) pass straight through.
+ * Note: in production the synozur edge (server.mjs) owns page paths and
+ * proxies bots to /api/og or /api/seo/page directly; this middleware is the
+ * secondary net for requests that reach the API server directly. Human
+ * requests always pass straight through.
  */
 
 import type { RequestHandler } from "express";
@@ -26,6 +30,7 @@ import {
   DEFAULT_DESCRIPTION,
   type OgData,
 } from "../lib/ogResolver";
+import { buildAgentPageHtml } from "../lib/agentRenderer";
 import { siteOrigin } from "../lib/siteOrigin";
 
 // Paths that should never be intercepted by this middleware.
@@ -44,6 +49,7 @@ const ASSET_EXT_RE =
 
 export function socialBotRendererMiddleware(
   resolver: (pathname: string) => Promise<OgData> = resolveOgData,
+  pageBuilder: (pathname: string) => Promise<string> = buildAgentPageHtml,
 ): RequestHandler {
   return (req, res, next) => {
     if (req.method !== "GET") return next();
@@ -57,34 +63,49 @@ export function socialBotRendererMiddleware(
 
     const ua = (req.headers["user-agent"] as string | undefined) ?? "";
     const bot = detectBot(ua);
-    if (!bot.isBot || bot.botCategory !== "social") return next();
+    if (!bot.isBot) return next();
 
     const pathname = url.split("?")[0] || "/";
 
-    resolver(pathname)
-      .then((og) => {
-        const html = renderOgHtml(og);
+    const sendFallback = (err: unknown) => {
+      req.log?.warn?.(
+        { err },
+        "socialBotRenderer: renderer failed — serving site-level fallback",
+      );
+      const origin = siteOrigin();
+      const fallback: OgData = {
+        title: SITE_NAME,
+        description: DEFAULT_DESCRIPTION,
+        image: `${origin}/opengraph.jpg`,
+        ogType: "website",
+        url: `${origin}${pathname}`,
+      };
+      const html = renderOgHtml(fallback);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.send(html);
+    };
+
+    // Social link-preview crawlers only need OG/Twitter meta. AI agents,
+    // search engines, and other non-JS fetchers get the content-rich body.
+    if (bot.botCategory === "social") {
+      resolver(pathname)
+        .then((og) => {
+          const html = renderOgHtml(og);
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+          res.send(html);
+        })
+        .catch(sendFallback);
+      return;
+    }
+
+    pageBuilder(pathname)
+      .then((html) => {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
         res.send(html);
       })
-      .catch((err) => {
-        req.log?.warn?.(
-          { err },
-          "socialBotRenderer: resolveOgData failed — serving site-level fallback",
-        );
-        const origin = siteOrigin();
-        const fallback: OgData = {
-          title: SITE_NAME,
-          description: DEFAULT_DESCRIPTION,
-          image: `${origin}/opengraph.jpg`,
-          ogType: "website",
-          url: `${origin}${pathname}`,
-        };
-        const html = renderOgHtml(fallback);
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
-        res.send(html);
-      });
+      .catch(sendFallback);
   };
 }

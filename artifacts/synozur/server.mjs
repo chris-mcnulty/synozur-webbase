@@ -191,6 +191,67 @@ function isSocialBot(ua) {
   return SOCIAL_BOT_PATTERNS.some((re) => re.test(ua));
 }
 
+// AI assistants/crawlers, search engines, and generic non-JS HTTP fetchers.
+// These clients don't execute JavaScript, so the bare SPA shell reads as an
+// empty page to them — they get the content-rich prerender from
+// `/api/seo/page` instead. Checked AFTER isSocialBot so link-unfurl crawlers
+// keep their dedicated OG path. Real browsers never match (their UAs contain
+// Mozilla/Chrome/Safari, none of these tokens).
+const AGENT_BOT_PATTERNS = [
+  // AI assistants & crawlers
+  /GPTBot/i,
+  /ChatGPT-User/i,
+  /OAI-SearchBot/i,
+  /ClaudeBot/i,
+  /Claude-Web/i,
+  /anthropic-ai/i,
+  /PerplexityBot/i,
+  /Perplexity-User/i,
+  /Google-Extended/i,
+  /GoogleOther/i,
+  /CCBot/i,
+  /Bytespider/i,
+  /Amazonbot/i,
+  /Meta-ExternalAgent/i,
+  /Meta-ExternalFetcher/i,
+  /cohere-ai/i,
+  /YouBot/i,
+  /DuckAssistBot/i,
+  /Diffbot/i,
+  /Applebot-Extended/i,
+  // Search engines
+  /Googlebot/i,
+  /bingbot/i,
+  /YandexBot/i,
+  /Baiduspider/i,
+  /DuckDuckBot/i,
+  /Sogou/i,
+  /AhrefsBot/i,
+  /SemrushBot/i,
+  /MJ12bot/i,
+  /DotBot/i,
+  // Generic non-JS fetchers (covers AI agents built on HTTP libraries)
+  /\bbot\b/i,
+  /crawler/i,
+  /spider/i,
+  /slurp/i,
+  /curl\//i,
+  /wget\//i,
+  /python-requests/i,
+  /python-httpx/i,
+  /aiohttp/i,
+  /node-fetch/i,
+  /\bgo-http-client\b/i,
+  /\bokhttp\b/i,
+  /\baxios\b/i,
+  /HeadlessChrome/i,
+];
+
+function isAgentBot(ua) {
+  if (!ua) return false;
+  return AGENT_BOT_PATTERNS.some((re) => re.test(ua));
+}
+
 // ─── Publish-status probe (#162 / launch-readiness L13) ──────────────────────
 
 // SPA URLs that map 1:1 to a DB-backed artifact. We only ask the API about
@@ -304,6 +365,16 @@ function fetchOgHtml(pathname) {
       headers: { Accept: "text/html" },
     };
     const req = http.request(options, (res) => {
+      const status = res.statusCode ?? 0;
+      const ctype = String(res.headers["content-type"] ?? "");
+      // Only relay a genuine HTML success. A non-2xx or JSON error payload
+      // (e.g. the API returning 500 {"error":...}) must trigger the caller's
+      // catch → static-shell fallback, never be served as text/html.
+      if (status < 200 || status >= 300 || !/text\/html/i.test(ctype)) {
+        res.resume();
+        reject(new Error(`OG API bad response: ${status} ${ctype}`));
+        return;
+      }
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (chunk) => { body += chunk; });
@@ -313,6 +384,43 @@ function fetchOgHtml(pathname) {
     req.setTimeout(4000, () => {
       req.destroy();
       reject(new Error("OG API timeout"));
+    });
+    req.end();
+  });
+}
+
+// Fetch the content-rich prerender for AI agents / search crawlers from the
+// API server's /api/seo/page endpoint. Mirrors fetchOgHtml but targets the
+// full-document renderer rather than the OG meta renderer.
+function fetchAgentHtml(pathname) {
+  return new Promise((resolve, reject) => {
+    const encoded = encodeURIComponent(pathname);
+    const options = {
+      hostname: "127.0.0.1",
+      port: API_PORT,
+      path: `/api/seo/page?path=${encoded}`,
+      method: "GET",
+      headers: { Accept: "text/html" },
+    };
+    const req = http.request(options, (res) => {
+      const status = res.statusCode ?? 0;
+      const ctype = String(res.headers["content-type"] ?? "");
+      // Only relay a genuine HTML success; a non-2xx or JSON error payload must
+      // fall through to the static SPA shell rather than be served as text/html.
+      if (status < 200 || status >= 300 || !/text\/html/i.test(ctype)) {
+        res.resume();
+        reject(new Error(`Agent page API bad response: ${status} ${ctype}`));
+        return;
+      }
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => { body += chunk; });
+      res.on("end", () => resolve(body));
+    });
+    req.on("error", reject);
+    req.setTimeout(6000, () => {
+      req.destroy();
+      reject(new Error("Agent page API timeout"));
     });
     req.end();
   });
@@ -413,6 +521,46 @@ function handler(req, res) {
         if (!html) {
           // OG endpoint failed — fall back to the static shell so the bot
           // still gets default OG tags. Status verdict still propagates.
+          const cached = getIndexHtml();
+          if (!cached) {
+            res.writeHead(503);
+            res.end("Service unavailable");
+            return;
+          }
+          res.writeHead(httpStatus, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Content-Length": cached.length,
+          });
+          res.end(cached.html);
+          return;
+        }
+        res.writeHead(httpStatus, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300, s-maxage=300",
+        });
+        res.end(html);
+      });
+    return;
+  }
+
+  // 2b. Intercept AI agents / search crawlers / generic non-JS fetchers —
+  //     proxy to the API server's /api/seo/page endpoint for a content-rich
+  //     prerender. Same publish-status verdict as social bots so an archived
+  //     URL still returns 410/404. Falls back to the static SPA shell if the
+  //     prerender API is unavailable.
+  if (isAgentBot(ua)) {
+    const statusProbe = isArtifactPath(pathname)
+      ? fetchRouteStatus(pathname)
+      : Promise.resolve("ok");
+    Promise.all([statusProbe, fetchAgentHtml(pathname).catch(() => null)])
+      .then(([routeStatus, html]) => {
+        applySecurityHeaders(res);
+        const httpStatus =
+          routeStatus === "gone" ? 410 : routeStatus === "not_found" ? 404 : 200;
+        if (!html) {
+          // Prerender endpoint failed — fall back to the static shell so the
+          // crawler still gets a valid page. Status verdict still propagates.
           const cached = getIndexHtml();
           if (!cached) {
             res.writeHead(503);

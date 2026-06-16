@@ -22,6 +22,7 @@ import { runAudit, applyAutofill } from "../lib/seoAudit";
 import { submitUrls } from "../lib/seoSubmit";
 import { siteOrigin } from "../lib/siteOrigin";
 import { resolveOgData, renderOgHtml } from "../lib/ogResolver";
+import { buildAgentPageHtml } from "../lib/agentRenderer";
 import { resolveRouteStatus } from "../lib/routeStatus";
 
 const router: IRouter = Router();
@@ -533,6 +534,27 @@ router.get("/og", async (req, res): Promise<void> => {
   try {
     const og = await resolveOgData(pathname);
     const html = renderOgHtml(og);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.send(html);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * Content-rich prerender for AI agents and search crawlers that issue plain
+ * HTTP fetches (no JS execution). Unlike /og (meta + minimal body), this
+ * returns a full document with the page's real content sourced from the DB,
+ * a shared nav, and sitemap/llms pointers. The synozur edge (server.mjs)
+ * proxies AI / search / generic bots here.
+ */
+router.get("/seo/page", async (req, res): Promise<void> => {
+  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
+  const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";
+  try {
+    const html = await buildAgentPageHtml(pathname);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
     res.send(html);
