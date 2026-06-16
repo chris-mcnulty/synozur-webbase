@@ -2,16 +2,12 @@ import { MailService } from "@sendgrid/mail";
 
 // Replit-Connector–backed SendGrid client.
 //
-// Mirrors the Constellation app's `getUncachableSendGridClient()` pattern:
-// every call hits the connector API fresh and returns a configured
-// `@sendgrid/mail` client plus the connector's `from_email`. We never cache
-// the credentials because the connector token can rotate; calling it on
-// every send is cheap relative to the SMTP round-trip.
+// Resolution order:
+//   1. SENDGRID_API_KEY + SENDGRID_FROM_EMAIL env vars — direct key, no connector needed.
+//   2. Replit Connector (REPLIT_CONNECTORS_HOSTNAME) — legacy connector path.
 //
-// When the connector isn't installed we throw a typed
-// `SendGridNotConfiguredError` so the email transport can convert it into a
-// graceful `{ status: "skipped" }` (matching the old "no-RESEND_API_KEY"
-// behaviour and keeping local dev / tests unblocked).
+// When neither is available, throws SendGridNotConfiguredError so the caller
+// can convert it into a graceful { status: "skipped" }.
 
 export class SendGridNotConfiguredError extends Error {
   constructor(message = "SendGrid connector is not configured") {
@@ -35,10 +31,20 @@ interface ConnectorResponse {
 }
 
 export async function getUncachableSendGridClient(): Promise<SendGridClientHandle> {
+  // --- Path 1: direct env vars (takes priority over connector) ---
+  const directApiKey   = process.env["SENDGRID_API_KEY"];
+  const directFromEmail = process.env["SENDGRID_FROM_EMAIL"];
+  if (directApiKey && directFromEmail) {
+    const client = new MailService();
+    client.setApiKey(directApiKey);
+    return { client, fromEmail: directFromEmail };
+  }
+
+  // --- Path 2: Replit Connector ---
   const hostname = process.env["REPLIT_CONNECTORS_HOSTNAME"];
   if (!hostname) {
     throw new SendGridNotConfiguredError(
-      "REPLIT_CONNECTORS_HOSTNAME is not set",
+      "REPLIT_CONNECTORS_HOSTNAME is not set and SENDGRID_API_KEY/SENDGRID_FROM_EMAIL are not configured",
     );
   }
 
@@ -81,8 +87,7 @@ export async function getUncachableSendGridClient(): Promise<SendGridClientHandl
     );
   }
 
-  // Fresh MailService instance per call — never reuse a cached client,
-  // matching Constellation's getUncachableSendGridClient() contract.
+  // Fresh MailService instance per call — never reuse a cached client.
   const client = new MailService();
   client.setApiKey(apiKey);
   return { client, fromEmail };
