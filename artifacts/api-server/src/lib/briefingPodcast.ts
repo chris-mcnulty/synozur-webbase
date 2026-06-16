@@ -84,6 +84,10 @@ export async function processBriefing(
     if (!script.trim()) {
       throw new Error("Briefing produced an empty script");
     }
+    logger.info(
+      { podcastId, scriptLength: script.length },
+      "processBriefing: script ready, starting TTS",
+    );
     const { audio, estimatedDurationSeconds } = await synthesizeSpeech(script, podcastConfig);
 
     const filename = `briefing-${new Date().toISOString().slice(0, 10)}-${podcastId.slice(0, 8)}.mp3`;

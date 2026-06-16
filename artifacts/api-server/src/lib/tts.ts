@@ -14,7 +14,9 @@ import { logger } from "./logger";
 //      plays back correctly.
 
 const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
-const TTS_MODEL = process.env["OPENAI_TTS_MODEL"] ?? "tts-1-hd";
+// tts-1 is faster and has better availability than tts-1-hd; quality is
+// sufficient for a spoken briefing. Override with OPENAI_TTS_MODEL if needed.
+const TTS_MODEL = process.env["OPENAI_TTS_MODEL"] ?? "tts-1";
 // Legacy env-var override still honoured as the default single voice.
 const DEFAULT_VOICE = process.env["OPENAI_TTS_VOICE"] ?? "onyx";
 // Leave headroom under the 4096-char hard cap.
@@ -206,39 +208,55 @@ export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
 // OpenAI TTS synthesis
 // ---------------------------------------------------------------------------
 
-// 3-minute timeout per TTS chunk — prevents hung fetch() from blocking forever.
-const TTS_CHUNK_TIMEOUT_MS = 3 * 60 * 1000;
+// 90-second timeout per TTS chunk attempt.
+const TTS_CHUNK_TIMEOUT_MS = 90 * 1000;
+// Retry up to 3 times with exponential backoff before giving up.
+const TTS_MAX_RETRIES = 3;
 
 async function synthesizeChunk(
   apiKey: string,
   input: string,
   voice: string,
 ): Promise<Buffer> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TTS_CHUNK_TIMEOUT_MS);
-  try {
-    const res = await fetch(OPENAI_TTS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: TTS_MODEL,
-        voice,
-        input,
-        response_format: "mp3",
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const excerpt = (await res.text().catch(() => "")).slice(0, 500);
-      throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= TTS_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TTS_CHUNK_TIMEOUT_MS);
+    try {
+      const res = await fetch(OPENAI_TTS_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: TTS_MODEL,
+          voice,
+          input,
+          response_format: "mp3",
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const excerpt = (await res.text().catch(() => "")).slice(0, 500);
+        throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
+      }
+      return Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      lastErr = err;
+      if (attempt < TTS_MAX_RETRIES) {
+        const backoffMs = attempt * 5000;
+        logger.warn(
+          { err, attempt, backoffMs },
+          `TTS chunk attempt ${attempt} failed — retrying in ${backoffMs / 1000}s`,
+        );
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
+    } finally {
+      clearTimeout(timer);
     }
-    return Buffer.from(await res.arrayBuffer());
-  } finally {
-    clearTimeout(timer);
   }
+  throw lastErr;
 }
 
 // Parse a dialogue script into ordered speaker turns.
