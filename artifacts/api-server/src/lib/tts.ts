@@ -156,12 +156,15 @@ export async function briefingHtmlToScript(
         ? `Here is today's briefing. Turn it into a HOST / CO-HOST podcast dialogue:\n\n${stripped}`
         : `Here is today's briefing. Turn it into a narration script:\n\n${stripped}`;
 
-    const response = await anthropic.messages.create({
-      model: SCRIPT_MODEL,
-      max_tokens: 4096,
-      system: buildSystemPrompt(config),
-      messages: [{ role: "user", content: userPrompt }],
-    });
+    const response = await anthropic.messages.create(
+      {
+        model: SCRIPT_MODEL,
+        max_tokens: 4096,
+        system: buildSystemPrompt(config),
+        messages: [{ role: "user", content: userPrompt }],
+      },
+      { timeout: 2 * 60 * 1000 }, // 2-minute timeout; catch block falls back to stripped text
+    );
     const out = response.content
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("\n")
