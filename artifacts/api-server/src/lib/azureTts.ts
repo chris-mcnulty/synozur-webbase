@@ -27,10 +27,10 @@ const DEFAULT_COHOST_VOICE = "en-US-AvaMultilingualNeural";
 const SYNOZUR_IPA = "ˈsɪnəʒər";
 
 export function isAzureTtsConfigured(): boolean {
-  return Boolean(
-    process.env["AZURE_SPEECH_KEY"] &&
-      (process.env["AZURE_SPEECH_REGION"] || process.env["AZURE_SPEECH_ENDPOINT"]),
-  );
+  const key = process.env["AZURE_SPEECH_KEY"]?.trim();
+  const region = process.env["AZURE_SPEECH_REGION"]?.trim();
+  const endpoint = process.env["AZURE_SPEECH_ENDPOINT"]?.trim();
+  return Boolean(key && (region || endpoint));
 }
 
 export function azureSingleVoice(): string {
