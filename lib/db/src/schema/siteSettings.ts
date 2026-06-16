@@ -322,6 +322,23 @@ export const siteSettingsTable = pgTable("site_settings", {
   briefingPodcastHostVoice: text("briefing_podcast_host_voice").notNull().default("onyx"),
   briefingPodcastCohostVoice: text("briefing_podcast_cohost_voice").notNull().default("nova"),
 
+  // Azure AI Speech voices. The columns above hold OpenAI voice names used by
+  // the gpt-audio fallback engine; these hold Azure Neural voice names used by
+  // the primary Azure engine. Kept separate because the two engines use
+  // different, non-interchangeable voice namespaces.
+  //   azureVoice:        single-narrator Azure voice
+  //   azureHostVoice:    HOST voice for dialogue format
+  //   azureCohostVoice:  CO-HOST voice for dialogue format
+  briefingPodcastAzureVoice: text("briefing_podcast_azure_voice")
+    .notNull()
+    .default("en-US-AndrewMultilingualNeural"),
+  briefingPodcastAzureHostVoice: text("briefing_podcast_azure_host_voice")
+    .notNull()
+    .default("en-US-AndrewMultilingualNeural"),
+  briefingPodcastAzureCohostVoice: text("briefing_podcast_azure_cohost_voice")
+    .notNull()
+    .default("en-US-AvaMultilingualNeural"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

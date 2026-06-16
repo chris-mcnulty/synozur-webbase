@@ -58,12 +58,18 @@ export interface PodcastConfig {
   format: PodcastFormat;
   /** Overall delivery style applied to the Claude system prompt. */
   tone: PodcastTone;
-  /** OpenAI voice used for the single-narrator format. */
+  /** OpenAI voice used for the single-narrator format (gpt-audio fallback). */
   voice: string;
-  /** HOST voice used in dialogue format. */
+  /** OpenAI HOST voice used in dialogue format (gpt-audio fallback). */
   hostVoice: string;
-  /** CO-HOST voice used in dialogue format. */
+  /** OpenAI CO-HOST voice used in dialogue format (gpt-audio fallback). */
   cohostVoice: string;
+  /** Azure Neural voice for the single-narrator format (primary engine). */
+  azureVoice?: string;
+  /** Azure Neural HOST voice for dialogue format (primary engine). */
+  azureHostVoice?: string;
+  /** Azure Neural CO-HOST voice for dialogue format (primary engine). */
+  azureCohostVoice?: string;
 }
 
 export const DEFAULT_PODCAST_CONFIG: PodcastConfig = {
@@ -666,10 +672,11 @@ export async function synthesizeSpeech(
   if (!trimmed) throw new Error("synthesizeSpeech called with empty script");
 
   // Voice resolution differs per engine: Azure uses Neural voice names (its own
-  // namespace), gpt-audio uses the OpenAI voice names from PodcastConfig.
-  const singleVoice = useAzure ? azureSingleVoice() : config.voice;
-  const hostVoice = useAzure ? azureSingleVoice() : config.hostVoice;
-  const cohostVoice = useAzure ? azureCohostVoice() : config.cohostVoice;
+  // namespace, configured via the azure* fields), gpt-audio uses the OpenAI
+  // voice names from PodcastConfig.
+  const singleVoice = useAzure ? azureSingleVoice(config.azureVoice) : config.voice;
+  const hostVoice = useAzure ? azureSingleVoice(config.azureHostVoice) : config.hostVoice;
+  const cohostVoice = useAzure ? azureCohostVoice(config.azureCohostVoice) : config.cohostVoice;
   const synth = (chunk: string, voice: string): Promise<Buffer> =>
     useAzure ? azureSynthesizeChunk(chunk, voice) : synthesizeChunk(chunk, voice);
 

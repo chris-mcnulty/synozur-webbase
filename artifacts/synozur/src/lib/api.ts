@@ -1694,6 +1694,10 @@ export const api = {
       briefingPodcastVoice: string;
       briefingPodcastHostVoice: string;
       briefingPodcastCohostVoice: string;
+      briefingPodcastAzureVoice: string;
+      briefingPodcastAzureHostVoice: string;
+      briefingPodcastAzureCohostVoice: string;
+      ttsEngine: "azure" | "openai";
     }>(url("/admin/briefing-podcast/settings")),
   updateBriefingPodcastSettings: (body: {
     briefingMailbox?: string | null;
@@ -1703,6 +1707,9 @@ export const api = {
     briefingPodcastVoice?: string;
     briefingPodcastHostVoice?: string;
     briefingPodcastCohostVoice?: string;
+    briefingPodcastAzureVoice?: string;
+    briefingPodcastAzureHostVoice?: string;
+    briefingPodcastAzureCohostVoice?: string;
   }) =>
     jsonFetch<{
       briefingMailbox: string | null;
@@ -1712,6 +1719,10 @@ export const api = {
       briefingPodcastVoice: string;
       briefingPodcastHostVoice: string;
       briefingPodcastCohostVoice: string;
+      briefingPodcastAzureVoice: string;
+      briefingPodcastAzureHostVoice: string;
+      briefingPodcastAzureCohostVoice: string;
+      ttsEngine: "azure" | "openai";
     }>(url("/admin/briefing-podcast/settings"), {
       method: "PATCH",
       body: JSON.stringify(body),

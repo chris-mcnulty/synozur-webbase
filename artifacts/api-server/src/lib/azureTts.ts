@@ -22,6 +22,38 @@ const AZURE_MAX_RETRIES = 3;
 const DEFAULT_SINGLE_VOICE = "en-US-AndrewMultilingualNeural";
 const DEFAULT_COHOST_VOICE = "en-US-AvaMultilingualNeural";
 
+// Curated allow-list of Azure Neural voices surfaced in the admin UI. Azure
+// offers 100+ voices, but these are the broadcast-quality English voices worth
+// offering for a daily briefing. The `:DragonHDLatest` entries are Azure's
+// higher-fidelity "Dragon HD" voices. Keep this list in sync with
+// AZURE_VOICE_OPTIONS in the synozur admin Briefing Podcast page.
+export const VALID_AZURE_VOICES = [
+  // Standard neural — male (US)
+  "en-US-AndrewMultilingualNeural",
+  "en-US-BrianMultilingualNeural",
+  "en-US-GuyNeural",
+  "en-US-DavisNeural",
+  "en-US-SteffanNeural",
+  "en-US-TonyNeural",
+  // Standard neural — female (US)
+  "en-US-AvaMultilingualNeural",
+  "en-US-EmmaMultilingualNeural",
+  "en-US-JennyNeural",
+  "en-US-AriaNeural",
+  "en-US-MichelleNeural",
+  // Dragon HD (high definition)
+  "en-US-Andrew:DragonHDLatestNeural",
+  "en-US-Ava:DragonHDLatestNeural",
+  "en-US-Emma:DragonHDLatestNeural",
+  "en-US-Steffan:DragonHDLatestNeural",
+  "en-US-Aria:DragonHDLatestNeural",
+  // Other accents
+  "en-GB-RyanNeural",
+  "en-GB-SoniaNeural",
+  "en-AU-NatashaNeural",
+] as const;
+export type AzureVoice = (typeof VALID_AZURE_VOICES)[number];
+
 // IPA for "Synozur" → SIN-uh-zhure: /ˈsɪnəʒər/ (final syllable uses the soft
 // "azure"/"measure" sound, not a hard Z).
 const SYNOZUR_IPA = "ˈsɪnəʒər";
@@ -33,12 +65,23 @@ export function isAzureTtsConfigured(): boolean {
   return Boolean(key && (region || endpoint));
 }
 
-export function azureSingleVoice(): string {
-  return process.env["AZURE_SPEECH_VOICE"]?.trim() || DEFAULT_SINGLE_VOICE;
+// Voice resolution precedence: explicit configured voice (from site settings) →
+// env override → built-in default. The configured value wins so admins can pick
+// a voice in the UI without an env var or redeploy.
+export function azureSingleVoice(configured?: string | null): string {
+  return (
+    configured?.trim() ||
+    process.env["AZURE_SPEECH_VOICE"]?.trim() ||
+    DEFAULT_SINGLE_VOICE
+  );
 }
 
-export function azureCohostVoice(): string {
-  return process.env["AZURE_SPEECH_COHOST_VOICE"]?.trim() || DEFAULT_COHOST_VOICE;
+export function azureCohostVoice(configured?: string | null): string {
+  return (
+    configured?.trim() ||
+    process.env["AZURE_SPEECH_COHOST_VOICE"]?.trim() ||
+    DEFAULT_COHOST_VOICE
+  );
 }
 
 function ttsEndpoint(): string {

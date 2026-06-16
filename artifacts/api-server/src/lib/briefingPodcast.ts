@@ -67,6 +67,9 @@ export async function processBriefing(
         briefingPodcastVoice:       siteSettingsTable.briefingPodcastVoice,
         briefingPodcastHostVoice:   siteSettingsTable.briefingPodcastHostVoice,
         briefingPodcastCohostVoice: siteSettingsTable.briefingPodcastCohostVoice,
+        briefingPodcastAzureVoice:       siteSettingsTable.briefingPodcastAzureVoice,
+        briefingPodcastAzureHostVoice:   siteSettingsTable.briefingPodcastAzureHostVoice,
+        briefingPodcastAzureCohostVoice: siteSettingsTable.briefingPodcastAzureCohostVoice,
       })
       .from(siteSettingsTable)
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
@@ -78,6 +81,9 @@ export async function processBriefing(
       voice:       settingsRow?.briefingPodcastVoice      ?? DEFAULT_PODCAST_CONFIG.voice,
       hostVoice:   settingsRow?.briefingPodcastHostVoice  ?? DEFAULT_PODCAST_CONFIG.hostVoice,
       cohostVoice: settingsRow?.briefingPodcastCohostVoice ?? DEFAULT_PODCAST_CONFIG.cohostVoice,
+      azureVoice:       settingsRow?.briefingPodcastAzureVoice       ?? undefined,
+      azureHostVoice:   settingsRow?.briefingPodcastAzureHostVoice   ?? undefined,
+      azureCohostVoice: settingsRow?.briefingPodcastAzureCohostVoice ?? undefined,
     };
 
     const script = await briefingHtmlToScript(args.html, podcastConfig);

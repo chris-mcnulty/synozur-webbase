@@ -3513,6 +3513,15 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS briefing_podcast_cohost_voice text NOT NULL DEFAULT 'nova';
     `);
 
+    // Briefing Podcast — phase 5: Azure AI Speech voices (separate namespace
+    // from the OpenAI voice columns above; used by the primary Azure engine).
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS briefing_podcast_azure_voice        text NOT NULL DEFAULT 'en-US-AndrewMultilingualNeural',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_azure_host_voice   text NOT NULL DEFAULT 'en-US-AndrewMultilingualNeural',
+        ADD COLUMN IF NOT EXISTS briefing_podcast_azure_cohost_voice text NOT NULL DEFAULT 'en-US-AvaMultilingualNeural';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

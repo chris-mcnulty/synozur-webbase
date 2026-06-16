@@ -11,6 +11,7 @@ import { logger } from "../lib/logger";
 import { requireAuth, requireCapability } from "../middlewares/auth";
 import { verifyBriefingPurgeToken } from "../lib/briefingPurgeToken";
 import { processBriefing } from "../lib/briefingPodcast";
+import { isAzureTtsConfigured, VALID_AZURE_VOICES } from "../lib/azureTts";
 import { speFileStorage } from "../lib/storage/spe/fileStorage";
 import {
   GraphMailClient,
@@ -502,6 +503,9 @@ function settingsSelect() {
     briefingPodcastVoice:     siteSettingsTable.briefingPodcastVoice,
     briefingPodcastHostVoice: siteSettingsTable.briefingPodcastHostVoice,
     briefingPodcastCohostVoice: siteSettingsTable.briefingPodcastCohostVoice,
+    briefingPodcastAzureVoice:       siteSettingsTable.briefingPodcastAzureVoice,
+    briefingPodcastAzureHostVoice:   siteSettingsTable.briefingPodcastAzureHostVoice,
+    briefingPodcastAzureCohostVoice: siteSettingsTable.briefingPodcastAzureCohostVoice,
   } as const;
 }
 
@@ -513,6 +517,9 @@ function settingsResponse(row: {
   briefingPodcastVoice: string;
   briefingPodcastHostVoice: string;
   briefingPodcastCohostVoice: string;
+  briefingPodcastAzureVoice: string;
+  briefingPodcastAzureHostVoice: string;
+  briefingPodcastAzureCohostVoice: string;
 } | undefined) {
   return {
     briefingMailbox:            row?.briefingMailbox          ?? null,
@@ -522,6 +529,13 @@ function settingsResponse(row: {
     briefingPodcastVoice:       row?.briefingPodcastVoice     ?? "onyx",
     briefingPodcastHostVoice:   row?.briefingPodcastHostVoice ?? "onyx",
     briefingPodcastCohostVoice: row?.briefingPodcastCohostVoice ?? "nova",
+    briefingPodcastAzureVoice:       row?.briefingPodcastAzureVoice       ?? "en-US-AndrewMultilingualNeural",
+    briefingPodcastAzureHostVoice:   row?.briefingPodcastAzureHostVoice   ?? "en-US-AndrewMultilingualNeural",
+    briefingPodcastAzureCohostVoice: row?.briefingPodcastAzureCohostVoice ?? "en-US-AvaMultilingualNeural",
+    // Which TTS engine will actually be used for the next briefing. Azure is
+    // primary when configured; otherwise gpt-audio (OpenAI) is the fallback.
+    // The admin UI uses this to show the relevant voice picker.
+    ttsEngine: isAzureTtsConfigured() ? ("azure" as const) : ("openai" as const),
   };
 }
 
@@ -547,6 +561,9 @@ const BriefingSettingsBody = z.object({
   briefingPodcastVoice:       z.enum(VALID_TTS_VOICES).optional(),
   briefingPodcastHostVoice:   z.enum(VALID_TTS_VOICES).optional(),
   briefingPodcastCohostVoice: z.enum(VALID_TTS_VOICES).optional(),
+  briefingPodcastAzureVoice:       z.enum(VALID_AZURE_VOICES).optional(),
+  briefingPodcastAzureHostVoice:   z.enum(VALID_AZURE_VOICES).optional(),
+  briefingPodcastAzureCohostVoice: z.enum(VALID_AZURE_VOICES).optional(),
 });
 
 router.patch(
@@ -568,6 +585,9 @@ router.patch(
     if (d.briefingPodcastVoice       !== undefined) updates["briefingPodcastVoice"]       = d.briefingPodcastVoice;
     if (d.briefingPodcastHostVoice   !== undefined) updates["briefingPodcastHostVoice"]   = d.briefingPodcastHostVoice;
     if (d.briefingPodcastCohostVoice !== undefined) updates["briefingPodcastCohostVoice"] = d.briefingPodcastCohostVoice;
+    if (d.briefingPodcastAzureVoice       !== undefined) updates["briefingPodcastAzureVoice"]       = d.briefingPodcastAzureVoice;
+    if (d.briefingPodcastAzureHostVoice   !== undefined) updates["briefingPodcastAzureHostVoice"]   = d.briefingPodcastAzureHostVoice;
+    if (d.briefingPodcastAzureCohostVoice !== undefined) updates["briefingPodcastAzureCohostVoice"] = d.briefingPodcastAzureCohostVoice;
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: "no_fields" });
       return;

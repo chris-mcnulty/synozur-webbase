@@ -21,12 +21,23 @@ SSML gives deterministic pronunciation control. ElevenLabs (available via
 Replit-managed billing, `external_apis` skill) is higher quality but ~10× the
 cost; OpenAI `tts-1` is cheap but needs a separate OpenAI key (not proxied).
 
-**Voice namespaces are NOT interchangeable.** Site-settings voices
-(`briefingPodcastVoice` etc.) hold OpenAI names like `onyx` — these are only used
-by the gpt-audio path. When Azure is active, voices come from
-`AZURE_SPEECH_VOICE` / `AZURE_SPEECH_COHOST_VOICE` env (defaults
-`en-US-AndrewMultilingualNeural` / `en-US-AvaMultilingualNeural`), NOT the DB
-settings. Don't try to feed an OpenAI voice id to Azure or vice-versa.
+**Voice namespaces are NOT interchangeable, and each engine has its own DB
+columns.** OpenAI voices (`briefingPodcastVoice`/`HostVoice`/`CohostVoice`, e.g.
+`onyx`) feed only the gpt-audio path. Azure voices have their own columns
+(`briefingPodcastAzureVoice`/`AzureHostVoice`/`AzureCohostVoice`, e.g.
+`en-US-AndrewMultilingualNeural`) and feed only the Azure path. Don't feed an
+OpenAI voice id to Azure or vice-versa.
+
+**Azure voice precedence (admin-configurable):** DB-configured Azure voice →
+`AZURE_SPEECH_VOICE`/`AZURE_SPEECH_COHOST_VOICE` env override → built-in defaults
+(`en-US-AndrewMultilingualNeural` / `en-US-AvaMultilingualNeural`). The resolver
+functions in `azureTts.ts` take an optional `configured?` arg; the briefing
+pipeline reads the DB columns and passes them through `PodcastConfig` →
+`synthesizeSpeech`. Valid Azure voices are a curated allow-list
+(`VALID_AZURE_VOICES` in `azureTts.ts`, incl. Dragon HD `…:DragonHDLatestNeural`)
+mirrored as friendly labels in the admin UI; the settings route validates against
+it and exposes a `ttsEngine: "azure"|"openai"` indicator (from
+`isAzureTtsConfigured()`) so the admin UI shows the right engine's voice picker.
 
 **Synozur pronunciation:** Azure encodes it deterministically via SSML
 `<phoneme alphabet="ipa" ph="ˈsɪnəʒər">Synozur</phoneme>` (built in

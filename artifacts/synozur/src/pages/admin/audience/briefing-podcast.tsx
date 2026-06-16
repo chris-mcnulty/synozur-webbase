@@ -45,6 +45,30 @@ const VOICE_OPTIONS: { value: string; label: string }[] = [
   { value: "shimmer", label: "Shimmer — bright" },
 ];
 
+// Curated Azure AI Speech neural voices. Keep in sync with VALID_AZURE_VOICES
+// in artifacts/api-server/src/lib/azureTts.ts.
+const AZURE_VOICE_OPTIONS: { value: string; label: string }[] = [
+  { value: "en-US-AndrewMultilingualNeural",      label: "Andrew — warm, conversational (US)" },
+  { value: "en-US-BrianMultilingualNeural",       label: "Brian — casual, friendly (US)" },
+  { value: "en-US-GuyNeural",                     label: "Guy — confident, newscast (US)" },
+  { value: "en-US-DavisNeural",                   label: "Davis — calm, measured (US)" },
+  { value: "en-US-SteffanNeural",                 label: "Steffan — deep, narration (US)" },
+  { value: "en-US-TonyNeural",                    label: "Tony — energetic (US)" },
+  { value: "en-US-AvaMultilingualNeural",         label: "Ava — natural, expressive (US)" },
+  { value: "en-US-EmmaMultilingualNeural",        label: "Emma — light, friendly (US)" },
+  { value: "en-US-JennyNeural",                   label: "Jenny — warm (US)" },
+  { value: "en-US-AriaNeural",                    label: "Aria — polished, newscast (US)" },
+  { value: "en-US-MichelleNeural",                label: "Michelle — professional (US)" },
+  { value: "en-US-Andrew:DragonHDLatestNeural",   label: "Andrew — Dragon HD (US)" },
+  { value: "en-US-Ava:DragonHDLatestNeural",      label: "Ava — Dragon HD (US)" },
+  { value: "en-US-Emma:DragonHDLatestNeural",     label: "Emma — Dragon HD (US)" },
+  { value: "en-US-Steffan:DragonHDLatestNeural",  label: "Steffan — Dragon HD (US)" },
+  { value: "en-US-Aria:DragonHDLatestNeural",     label: "Aria — Dragon HD (US)" },
+  { value: "en-GB-RyanNeural",                    label: "Ryan — British male (UK)" },
+  { value: "en-GB-SoniaNeural",                   label: "Sonia — British female (UK)" },
+  { value: "en-AU-NatashaNeural",                 label: "Natasha — Australian female (AU)" },
+];
+
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("en-US", {
     month: "short",
@@ -78,6 +102,10 @@ type Settings = {
   briefingPodcastVoice: string;
   briefingPodcastHostVoice: string;
   briefingPodcastCohostVoice: string;
+  briefingPodcastAzureVoice: string;
+  briefingPodcastAzureHostVoice: string;
+  briefingPodcastAzureCohostVoice: string;
+  ttsEngine: "azure" | "openai";
 };
 
 export default function AdminBriefingPodcast() {
@@ -101,6 +129,20 @@ export default function AdminBriefingPodcast() {
   const podcastVoice      = serverSettings?.briefingPodcastVoice     ?? "onyx";
   const podcastHostVoice  = serverSettings?.briefingPodcastHostVoice ?? "onyx";
   const podcastCohostVoice = serverSettings?.briefingPodcastCohostVoice ?? "nova";
+  const ttsEngine         = serverSettings?.ttsEngine ?? "openai";
+  const isAzure           = ttsEngine === "azure";
+  const azureVoice        = serverSettings?.briefingPodcastAzureVoice       ?? "en-US-AndrewMultilingualNeural";
+  const azureHostVoice    = serverSettings?.briefingPodcastAzureHostVoice   ?? "en-US-AndrewMultilingualNeural";
+  const azureCohostVoice  = serverSettings?.briefingPodcastAzureCohostVoice ?? "en-US-AvaMultilingualNeural";
+
+  // Pick the active engine's voice config so the UI shows what's actually used.
+  const voiceOptions      = isAzure ? AZURE_VOICE_OPTIONS : VOICE_OPTIONS;
+  const activeVoice       = isAzure ? azureVoice : podcastVoice;
+  const activeHostVoice   = isAzure ? azureHostVoice : podcastHostVoice;
+  const activeCohostVoice = isAzure ? azureCohostVoice : podcastCohostVoice;
+  const voiceField        = isAzure ? "briefingPodcastAzureVoice" : "briefingPodcastVoice";
+  const hostVoiceField    = isAzure ? "briefingPodcastAzureHostVoice" : "briefingPodcastHostVoice";
+  const cohostVoiceField  = isAzure ? "briefingPodcastAzureCohostVoice" : "briefingPodcastCohostVoice";
 
   useEffect(() => {
     if (!mailboxEditing && serverMailbox !== null) {
@@ -286,8 +328,15 @@ export default function AdminBriefingPodcast() {
             <h2 className="text-lg font-semibold">Podcast style</h2>
           </div>
           <p className="text-sm text-muted-foreground -mt-2">
-            Controls how Claude writes the script and which voice(s) OpenAI uses
-            when generating audio. Changes take effect on the next briefing.
+            Controls how Claude writes the script and which voice(s) are used when
+            generating audio. Changes take effect on the next briefing.
+          </p>
+          <p className="text-xs text-muted-foreground -mt-4">
+            Active speech engine:{" "}
+            <span className="font-medium text-foreground">
+              {isAzure ? "Azure AI Speech (Neural)" : "OpenAI (gpt-audio)"}
+            </span>
+            . The voice options below match this engine.
           </p>
 
           {/* Format + Tone */}
@@ -337,17 +386,17 @@ export default function AdminBriefingPodcast() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Voice</p>
               <Select
-                value={podcastVoice}
+                value={activeVoice}
                 onValueChange={(v) =>
-                  updateSettings.mutate({ briefingPodcastVoice: v })
+                  updateSettings.mutate({ [voiceField]: v })
                 }
                 disabled={settingsQuery.isLoading || updateSettings.isPending}
               >
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-72">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {VOICE_OPTIONS.map((v) => (
+                  {voiceOptions.map((v) => (
                     <SelectItem key={v.value} value={v.value}>
                       {v.label}
                     </SelectItem>
@@ -363,9 +412,9 @@ export default function AdminBriefingPodcast() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Host voice</p>
                 <Select
-                  value={podcastHostVoice}
+                  value={activeHostVoice}
                   onValueChange={(v) =>
-                    updateSettings.mutate({ briefingPodcastHostVoice: v })
+                    updateSettings.mutate({ [hostVoiceField]: v })
                   }
                   disabled={settingsQuery.isLoading || updateSettings.isPending}
                 >
@@ -373,7 +422,7 @@ export default function AdminBriefingPodcast() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {VOICE_OPTIONS.map((v) => (
+                    {voiceOptions.map((v) => (
                       <SelectItem key={v.value} value={v.value}>
                         {v.label}
                       </SelectItem>
@@ -384,9 +433,9 @@ export default function AdminBriefingPodcast() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Co-host voice</p>
                 <Select
-                  value={podcastCohostVoice}
+                  value={activeCohostVoice}
                   onValueChange={(v) =>
-                    updateSettings.mutate({ briefingPodcastCohostVoice: v })
+                    updateSettings.mutate({ [cohostVoiceField]: v })
                   }
                   disabled={settingsQuery.isLoading || updateSettings.isPending}
                 >
@@ -394,7 +443,7 @@ export default function AdminBriefingPodcast() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {VOICE_OPTIONS.map((v) => (
+                    {voiceOptions.map((v) => (
                       <SelectItem key={v.value} value={v.value}>
                         {v.label}
                       </SelectItem>
