@@ -11,10 +11,10 @@ import { speFileStorage } from "./storage/spe/fileStorage";
 import { signBriefingPurgeToken } from "./briefingPurgeToken";
 import { sendBriefingPodcastEmail } from "./email";
 
-const SITE_URL = (process.env["SITE_URL"] ?? "https://synozur.com").replace(
-  /\/$/,
-  "",
-);
+const _replitDomain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+const SITE_URL = (
+  _replitDomain ? `https://${_replitDomain}` : (process.env["SITE_URL"] ?? "https://synozur.com")
+).replace(/\/$/, "");
 const SETTINGS_ROW_ID = 1;
 
 export type BriefingSource = "client";
