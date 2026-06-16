@@ -578,16 +578,26 @@ async function synthesizeChunk(
         audio: { voice, format: "mp3" },
         messages: [
           {
+            // gpt-audio is a conversational speech-to-speech model, not a pure
+            // TTS engine. Framed as an assistant it "responds" to the script —
+            // prefacing chunks with "Understood."/"Got it", paraphrasing into
+            // summaries, appending "let me know if you need help", and dropping
+            // the outro. The only reliable override is to cast it explicitly as
+            // a verbatim TTS engine whose sole job is to speak the user's text.
+            // (Verified empirically against mid-script fragments.)
             role: "system",
             content:
-              "Read this script as written. Single narrator. Verbatim. " +
-              "Do not add hosts, guests, or conversational turns. " +
-              "Do not add acknowledgment words between sections. " +
-              "Do not omit, paraphrase, or summarise any content. " +
-              'Pronounce the company name "Synozur" as SIN-uh-zhure ' +
-              '(IPA /ˈsɪnəʒər/): first syllable "SIN" rhymes with "sin," ' +
-              'middle is a soft schwa, final syllable "zhure" uses the ' +
-              'soft sound in "azure" or "measure" — not a hard Z.',
+              "You are a text-to-speech engine, not an assistant. Convert the " +
+              "user's text to speech EXACTLY as written, word for word. Do not " +
+              "add, remove, reorder, summarize, or rephrase anything. Speak " +
+              "ONLY the user's text — no greeting, no acknowledgment (never " +
+              "'Sure', 'Got it', 'Understood', 'Noted'), no preface, no " +
+              "commentary, no closing remark, no offer to help. The user's " +
+              "text is the complete and only thing to be spoken. " +
+              "Pronunciation note (do not speak this note): pronounce the " +
+              'company name "Synozur" as SIN-uh-zhure — first syllable "SIN" ' +
+              "rhymes with \"sin,\" middle is a soft schwa, final syllable " +
+              "\"zhure\" uses the soft sound in \"azure\" or \"measure,\" not a hard Z.",
           },
           { role: "user", content: input },
         ],

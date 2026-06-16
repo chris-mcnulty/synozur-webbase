@@ -4,3 +4,4 @@
 - [SendGrid 401 billing](sendgrid-401-billing.md) — "not authorized to send mail" 401 = suspended account (billing), not a key scope issue; reconnect connector after billing fix.
 - [Email style standards](email-style-standards.md) — Avenir Next LT Pro font + SA_EmailHeader_short.jpg banner; apply to all transactional emails.
 - [Sister app repos](sister-app-repos.md) — Constellation=synozur-scdp, Orion=synozur-maturitymodeler; full read access for design/code reference.
+- [gpt-audio TTS drift](gpt-audio-tts-drift.md) — gpt-audio chat-completions "responds" to scripts (Understood./paraphrase/offers help); fix = frame system msg as a pure TTS engine; /v1/audio/speech not proxied.
