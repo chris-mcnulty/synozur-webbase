@@ -1,5 +1,11 @@
 import OpenAI from "openai";
 import { logger } from "./logger";
+import {
+  isAzureTtsConfigured,
+  azureSynthesizeChunk,
+  azureSingleVoice,
+  azureCohostVoice,
+} from "./azureTts";
 
 // Text-to-speech for the Briefing Podcast feature.
 //
@@ -7,18 +13,23 @@ import { logger } from "./logger";
 //   1. `briefingHtmlToScript()` turns the briefing email's HTML body into a
 //      clean, spoken-word script using Claude. Format (single vs dialogue) and
 //      tone are driven by PodcastConfig.
-//   2. `synthesizeSpeech()` calls the gpt-audio model via the Replit AI
-//      Integration proxy (chat completions) and returns an MP3 Buffer.
+//   2. `synthesizeSpeech()` synthesises the script to an MP3 Buffer.
 //      For single-narrator format a single voice is used throughout.
 //      For dialogue format the script is parsed into HOST / CO-HOST turns and
 //      each turn is synthesised with the matching voice, then concatenated.
 //      MP3 frames are independently decodable so naive concatenation plays back
 //      correctly.
 //
-// Why gpt-audio via chat completions and not /v1/audio/speech directly?
-// The dedicated TTS REST endpoint is not proxied by the Replit AI Integration;
-// gpt-audio via chat completions IS proxied and produces equivalent quality
-// for spoken briefing content.
+// TTS engine selection:
+//   - Azure AI Speech (Neural TTS) is the PRIMARY engine when configured
+//     (AZURE_SPEECH_KEY + region/endpoint). It is a purpose-built TTS engine
+//     that reads text verbatim and encodes "Synozur" pronunciation via SSML —
+//     see azureTts.ts.
+//   - gpt-audio (OpenAI via the Replit AI Integration chat-completions proxy)
+//     is the FALLBACK when Azure is not configured. The dedicated OpenAI TTS
+//     REST endpoint (/v1/audio/speech) is NOT proxied by the integration, so
+//     gpt-audio is used in chat-completions mode with a strict TTS-engine
+//     system prompt to keep it from "responding" to the script.
 
 // Legacy env-var override still honoured as the default single voice.
 const DEFAULT_VOICE = process.env["OPENAI_TTS_VOICE"] ?? "onyx";
@@ -645,11 +656,22 @@ export async function synthesizeSpeech(
   script: string,
   config: PodcastConfig = DEFAULT_PODCAST_CONFIG,
 ): Promise<SynthesisResult> {
-  // Eagerly validate config before doing any async work.
-  await getTtsClient();
+  // Azure is the primary engine when configured; gpt-audio is the fallback.
+  const useAzure = isAzureTtsConfigured();
+  // Eagerly validate the engine that will actually be used before async work.
+  if (!useAzure) await getTtsClient();
+  logger.info({ engine: useAzure ? "azure" : "gpt-audio" }, "TTS synthesis engine");
 
   const trimmed = script.trim();
   if (!trimmed) throw new Error("synthesizeSpeech called with empty script");
+
+  // Voice resolution differs per engine: Azure uses Neural voice names (its own
+  // namespace), gpt-audio uses the OpenAI voice names from PodcastConfig.
+  const singleVoice = useAzure ? azureSingleVoice() : config.voice;
+  const hostVoice = useAzure ? azureSingleVoice() : config.hostVoice;
+  const cohostVoice = useAzure ? azureCohostVoice() : config.cohostVoice;
+  const synth = (chunk: string, voice: string): Promise<Buffer> =>
+    useAzure ? azureSynthesizeChunk(chunk, voice) : synthesizeChunk(chunk, voice);
 
   const buffers: Buffer[] = [];
 
@@ -661,19 +683,19 @@ export async function synthesizeSpeech(
         "Dialogue script parsing produced no turns — falling back to single narrator",
       );
       for (const chunk of chunkScript(trimmed)) {
-        buffers.push(await synthesizeChunk(chunk, config.hostVoice));
+        buffers.push(await synth(chunk, hostVoice));
       }
     } else {
       for (const turn of turns) {
-        const voice = turn.speaker === "HOST" ? config.hostVoice : config.cohostVoice;
+        const voice = turn.speaker === "HOST" ? hostVoice : cohostVoice;
         for (const chunk of chunkScript(turn.text)) {
-          buffers.push(await synthesizeChunk(chunk, voice));
+          buffers.push(await synth(chunk, voice));
         }
       }
     }
   } else {
     for (const chunk of chunkScript(trimmed)) {
-      buffers.push(await synthesizeChunk(chunk, config.voice));
+      buffers.push(await synth(chunk, singleVoice));
     }
   }
 
