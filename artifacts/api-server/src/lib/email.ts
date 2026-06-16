@@ -23,6 +23,15 @@ const FORMS_NOTIFY_EMAIL = process.env["FORMS_NOTIFY_EMAIL"] ?? "";
 const SITE_URL = process.env["SITE_URL"] ?? "https://synozur.com";
 const FROM_NAME = "The Synozur Alliance";
 
+// For email image assets (e.g. the header banner) we need a publicly reachable
+// origin. On a Replit deployment REPLIT_DOMAINS gives us the real hostname;
+// otherwise fall back to SITE_URL so production (www.synozur.com) still works.
+const _replitDomain = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+const EMAIL_ORIGIN = (_replitDomain
+  ? `https://${_replitDomain}`
+  : SITE_URL
+).replace(/\/$/, "");
+
 export interface SendEmailArgs {
   to: string;
   subject: string;
@@ -914,18 +923,56 @@ export async function sendBriefingPodcastEmail(args: {
     purgeText = `\nDone listening? Purge this recording from our server: ${args.purgeUrl}`;
   }
 
-  const html = brandedShell({
-    preheader: `The audio version of your briefing is ready.`,
-    heading: "Your briefing podcast is ready",
-    bodyHtml: `
-      <p style="margin:0 0 16px;">${greeting}</p>
-      <p style="margin:0 0 16px;">Here's the audio version of <strong>${escapeHtml(args.briefingSubject)}</strong>. Press play below, or download it to listen on the go.</p>
-      ${playerHtml}
-      ${durationLine}
-      ${purgeHtml}
-      <p style="margin:24px 0 0;">— The Synozur Alliance</p>
-    `,
-  });
+  const preheader = `The audio version of your briefing is ready.`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Your briefing podcast is ready</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f4f6;font-family:'Avenir Next LT Pro','Avenir Next','Avenir',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(preheader)}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f6;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.10);">
+
+            <!-- Header image -->
+            <tr>
+              <td style="padding:0;line-height:0;">
+                <img src="${EMAIL_ORIGIN}/email-header.jpg" alt="The Synozur Alliance" width="600" style="width:100%;max-width:600px;height:auto;display:block;border:0;" />
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td style="padding:36px 40px 28px;color:#1a1a2e;font-size:15px;line-height:1.65;">
+                <p style="margin:0 0 16px;">${greeting}</p>
+                <p style="margin:0 0 20px;">Here&rsquo;s the audio version of <strong>${escapeHtml(args.briefingSubject)}</strong>. Press play below, or download it to listen on the go.</p>
+                ${playerHtml}
+                ${durationLine}
+                ${purgeHtml}
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding:20px 40px 28px;background:#f9f9fb;border-top:1px solid #eaeaf0;text-align:center;font-size:12px;color:#888899;">
+                <p style="margin:0 0 4px;">— The Synozur Alliance</p>
+                <p style="margin:0;">
+                  <a href="${escapeHtml(SITE_URL)}" style="color:${BRAND_PRIMARY};text-decoration:none;">${escapeHtml(SITE_URL.replace(/^https?:\/\//, ""))}</a>
+                  &nbsp;&middot;&nbsp;The Transformation Company
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
   const text = [
     greeting,
     "",
