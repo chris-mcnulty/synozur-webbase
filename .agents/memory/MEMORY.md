@@ -1,3 +1,4 @@
 - [Edit-wedge image snapshot fields](edit-wedge-image-snapshot.md) — public detail payloads carry image URLs but not image IDs; wedge display must key off URL, PATCH off ID.
 - [North Star Method phases](north-star-method-phases.md) — canonical phase names; live site + Galaxy are source of truth over the MPF proposal.
 - [OG image sizing](og-image-sizing.md) — og:image must be a resized same-origin JPEG (?w=1200&fmt=jpeg) via the storage route; WebP stays the in-page default; don't touch siteOrigin().
+- [SendGrid 401 billing](sendgrid-401-billing.md) — "not authorized to send mail" 401 = suspended account (billing), not a key scope issue; reconnect connector after billing fix.
