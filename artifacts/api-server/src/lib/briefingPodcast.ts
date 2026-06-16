@@ -43,6 +43,10 @@ function formatDuration(seconds: number): string {
 export async function processBriefing(
   args: ProcessBriefingArgs,
 ): Promise<string> {
+  logger.info(
+    { recipient: args.recipientEmail, subject: args.subject, htmlLength: (args.html ?? "").length },
+    "processBriefing: starting",
+  );
   const [row] = await db
     .insert(briefingPodcastsTable)
     .values({

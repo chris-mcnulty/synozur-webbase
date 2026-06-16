@@ -206,29 +206,39 @@ export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
 // OpenAI TTS synthesis
 // ---------------------------------------------------------------------------
 
+// 3-minute timeout per TTS chunk — prevents hung fetch() from blocking forever.
+const TTS_CHUNK_TIMEOUT_MS = 3 * 60 * 1000;
+
 async function synthesizeChunk(
   apiKey: string,
   input: string,
   voice: string,
 ): Promise<Buffer> {
-  const res = await fetch(OPENAI_TTS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: TTS_MODEL,
-      voice,
-      input,
-      response_format: "mp3",
-    }),
-  });
-  if (!res.ok) {
-    const excerpt = (await res.text().catch(() => "")).slice(0, 500);
-    throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TTS_CHUNK_TIMEOUT_MS);
+  try {
+    const res = await fetch(OPENAI_TTS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: TTS_MODEL,
+        voice,
+        input,
+        response_format: "mp3",
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const excerpt = (await res.text().catch(() => "")).slice(0, 500);
+      throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  } finally {
+    clearTimeout(timer);
   }
-  return Buffer.from(await res.arrayBuffer());
 }
 
 // Parse a dialogue script into ordered speaker turns.
