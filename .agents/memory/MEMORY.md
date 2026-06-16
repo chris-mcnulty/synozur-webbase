@@ -4,5 +4,6 @@
 - [SendGrid 401 billing](sendgrid-401-billing.md) — "not authorized to send mail" 401 = suspended account (billing), not a key scope issue; reconnect connector after billing fix.
 - [Email style standards](email-style-standards.md) — Avenir Next LT Pro font + SA_EmailHeader_short.jpg banner; apply to all transactional emails.
 - [Sister app repos](sister-app-repos.md) — Constellation=synozur-scdp, Orion=synozur-maturitymodeler; full read access for design/code reference.
+- [Briefing inbound acceptance](briefing-inbound-acceptance.md) — approved-sender = trust boundary; accept auto-generated/redirected briefings, block only OOF/system mail + our own delivery email (loop guard).
 - [gpt-audio TTS drift](gpt-audio-tts-drift.md) — gpt-audio chat-completions "responds" to scripts (Understood./paraphrase/offers help); fix = frame system msg as a pure TTS engine; /v1/audio/speech not proxied.
 - [Briefing podcast TTS engine](briefing-podcast-tts-engine.md) — Azure Neural TTS is primary (AZURE_SPEECH_*), gpt-audio is fallback; Azure/OpenAI voice names are NOT interchangeable; Synozur pronounced via SSML phoneme.

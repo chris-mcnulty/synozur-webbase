@@ -873,6 +873,12 @@ export async function sendEventReminderEmail(args: {
 // MP3 lives in SharePoint Embedded; `audioUrl` is a streaming proxy on our
 // API (not a raw SPE URL) so the player works without leaking credentials.
 // `purgeUrl` is a signed one-click link that deletes the MP3 from the server.
+// Subject prefix for the podcast-delivery email we send back to the recipient.
+// Exported so the inbound-mail guard can recognize (and reject) our own output
+// if a recipient's broad forwarding/redirect rule bounces it back into the
+// watched mailbox — preventing a feedback loop.
+export const BRIEFING_PODCAST_EMAIL_SUBJECT_PREFIX = "Your briefing podcast —";
+
 export async function sendBriefingPodcastEmail(args: {
   to: string;
   recipientName: string | null;
@@ -1009,7 +1015,7 @@ export async function sendBriefingPodcastEmail(args: {
       const sendResult = await handle.client.send({
         to: args.to,
         from,
-        subject: `Your briefing podcast — ${args.briefingSubject}`,
+        subject: `${BRIEFING_PODCAST_EMAIL_SUBJECT_PREFIX} ${args.briefingSubject}`,
         html,
         text,
         attachments: [
@@ -1036,7 +1042,7 @@ export async function sendBriefingPodcastEmail(args: {
 
   return sendEmail({
     to: args.to,
-    subject: `Your briefing podcast — ${args.briefingSubject}`,
+    subject: `${BRIEFING_PODCAST_EMAIL_SUBJECT_PREFIX} ${args.briefingSubject}`,
     html,
     text,
     template: "briefing-podcast",
