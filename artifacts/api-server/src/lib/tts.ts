@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import { logger } from "./logger";
 
 // Text-to-speech for the Briefing Podcast feature.
@@ -6,20 +7,22 @@ import { logger } from "./logger";
 //   1. `briefingHtmlToScript()` turns the briefing email's HTML body into a
 //      clean, spoken-word script using Claude. Format (single vs dialogue) and
 //      tone are driven by PodcastConfig.
-//   2. `synthesizeSpeech()` calls OpenAI's TTS endpoint and returns an MP3
-//      Buffer. For single-narrator format a single voice is used throughout.
+//   2. `synthesizeSpeech()` calls the gpt-audio model via the Replit AI
+//      Integration proxy (chat completions) and returns an MP3 Buffer.
+//      For single-narrator format a single voice is used throughout.
 //      For dialogue format the script is parsed into HOST / CO-HOST turns and
-//      each turn is synthesised with the matching voice, then concatenated in
-//      order. MP3 frames are independently decodable so naive concatenation
-//      plays back correctly.
+//      each turn is synthesised with the matching voice, then concatenated.
+//      MP3 frames are independently decodable so naive concatenation plays back
+//      correctly.
+//
+// Why gpt-audio via chat completions and not /v1/audio/speech directly?
+// The dedicated TTS REST endpoint is not proxied by the Replit AI Integration;
+// gpt-audio via chat completions IS proxied and produces equivalent quality
+// for spoken briefing content.
 
-const OPENAI_TTS_URL = "https://api.openai.com/v1/audio/speech";
-// tts-1 is faster and has better availability than tts-1-hd; quality is
-// sufficient for a spoken briefing. Override with OPENAI_TTS_MODEL if needed.
-const TTS_MODEL = process.env["OPENAI_TTS_MODEL"] ?? "tts-1";
 // Legacy env-var override still honoured as the default single voice.
 const DEFAULT_VOICE = process.env["OPENAI_TTS_VOICE"] ?? "onyx";
-// Leave headroom under the 4096-char hard cap.
+// Leave headroom under the model's practical input limit.
 const TTS_CHUNK_LIMIT = 3500;
 // ~150 spoken words/min ≈ ~900 chars/min → rough duration estimate.
 const CHARS_PER_SECOND = 15;
@@ -62,7 +65,10 @@ export const DEFAULT_PODCAST_CONFIG: PodcastConfig = {
 
 export class TtsNotConfiguredError extends Error {
   constructor() {
-    super("OpenAI TTS not configured — set OPENAI_API_KEY.");
+    super(
+      "OpenAI TTS not configured — AI_INTEGRATIONS_OPENAI_BASE_URL and " +
+      "AI_INTEGRATIONS_OPENAI_API_KEY must be set (provision the OpenAI AI Integration).",
+    );
     this.name = "TtsNotConfiguredError";
     Object.setPrototypeOf(this, TtsNotConfiguredError.prototype);
   }
@@ -208,43 +214,55 @@ export function chunkScript(script: string, limit = TTS_CHUNK_LIMIT): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// OpenAI TTS synthesis
+// gpt-audio TTS synthesis (via Replit AI Integration proxy)
 // ---------------------------------------------------------------------------
 
-// 90-second timeout per TTS chunk attempt.
-const TTS_CHUNK_TIMEOUT_MS = 90 * 1000;
-// Retry up to 3 times with exponential backoff before giving up.
+// Retry up to 3 times with backoff before giving up.
 const TTS_MAX_RETRIES = 3;
 
+// Lazy singleton — created once, reused across chunks in a single pipeline run.
+let _openaiClient: OpenAI | null = null;
+
+async function getTtsClient(): Promise<OpenAI> {
+  if (_openaiClient) return _openaiClient;
+  const baseURL = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
+  const apiKey  = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
+  if (!baseURL || !apiKey) throw new TtsNotConfiguredError();
+  _openaiClient = new OpenAI({ apiKey, baseURL });
+  return _openaiClient;
+}
+
 async function synthesizeChunk(
-  apiKey: string,
   input: string,
   voice: string,
 ): Promise<Buffer> {
+  const client = await getTtsClient();
   let lastErr: unknown;
+
   for (let attempt = 1; attempt <= TTS_MAX_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TTS_CHUNK_TIMEOUT_MS);
     try {
-      const res = await fetch(OPENAI_TTS_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: TTS_MODEL,
-          voice,
-          input,
-          response_format: "mp3",
-        }),
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        const excerpt = (await res.text().catch(() => "")).slice(0, 500);
-        throw new Error(`OpenAI TTS ${res.status}: ${excerpt}`);
-      }
-      return Buffer.from(await res.arrayBuffer());
+      const response = await client.chat.completions.create({
+        model: "gpt-audio",
+        // @ts-expect-error — modalities is not in older SDK typedefs but is accepted at runtime
+        modalities: ["text", "audio"],
+        audio: { voice, format: "mp3" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a text-to-speech narrator. " +
+              "Read the provided text aloud clearly and naturally, word for word. " +
+              "Do not add, omit, or paraphrase any content.",
+          },
+          { role: "user", content: input },
+        ],
+      } as Parameters<typeof client.chat.completions.create>[0]);
+
+      const audioData =
+        (response.choices[0]?.message as Record<string, unknown> & { audio?: { data?: string } })
+          ?.audio?.data ?? "";
+      if (!audioData) throw new Error("gpt-audio returned no audio data");
+      return Buffer.from(audioData, "base64");
     } catch (err) {
       lastErr = err;
       if (attempt < TTS_MAX_RETRIES) {
@@ -255,8 +273,6 @@ async function synthesizeChunk(
         );
         await new Promise((r) => setTimeout(r, backoffMs));
       }
-    } finally {
-      clearTimeout(timer);
     }
   }
   throw lastErr;
@@ -284,8 +300,9 @@ export async function synthesizeSpeech(
   script: string,
   config: PodcastConfig = DEFAULT_PODCAST_CONFIG,
 ): Promise<SynthesisResult> {
-  const apiKey = process.env["OPENAI_API_KEY"];
-  if (!apiKey) throw new TtsNotConfiguredError();
+  // Eagerly validate config before doing any async work.
+  await getTtsClient();
+
   const trimmed = script.trim();
   if (!trimmed) throw new Error("synthesizeSpeech called with empty script");
 
@@ -299,19 +316,19 @@ export async function synthesizeSpeech(
         "Dialogue script parsing produced no turns — falling back to single narrator",
       );
       for (const chunk of chunkScript(trimmed)) {
-        buffers.push(await synthesizeChunk(apiKey, chunk, config.hostVoice));
+        buffers.push(await synthesizeChunk(chunk, config.hostVoice));
       }
     } else {
       for (const turn of turns) {
         const voice = turn.speaker === "HOST" ? config.hostVoice : config.cohostVoice;
         for (const chunk of chunkScript(turn.text)) {
-          buffers.push(await synthesizeChunk(apiKey, chunk, voice));
+          buffers.push(await synthesizeChunk(chunk, voice));
         }
       }
     }
   } else {
     for (const chunk of chunkScript(trimmed)) {
-      buffers.push(await synthesizeChunk(apiKey, chunk, config.voice));
+      buffers.push(await synthesizeChunk(chunk, config.voice));
     }
   }
 
