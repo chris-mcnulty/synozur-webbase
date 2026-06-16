@@ -111,15 +111,30 @@ export interface GraphSubscription {
   notificationUrl: string;
 }
 
-// Build the Graph subscription config for a given watched mailbox. The
-// webhook URL is derived from SITE_URL (already required by the app); the
+// Build the Graph subscription config for a given watched mailbox.
+//
+// Webhook URL resolution order (most-specific wins):
+//   1. BRIEFING_WEBHOOK_BASE_URL  — explicit override (e.g. a tunnel or alias)
+//   2. First entry in REPLIT_DOMAINS — Replit automatically sets this to the
+//      deployment's public domain in production, so the webhook always points
+//      at the live server even when SITE_URL still points at Wix / an old host.
+//   3. SITE_URL — legacy fallback for non-Replit deploys.
+//   4. https://synozur.com — hard-coded last resort.
+//
 // clientState is an HMAC of a fixed label so it never leaks as a separate
 // secret — changing SESSION_SECRET automatically rotates it.
 export function buildGraphMailConfig(mailbox: string): GraphMailConfig {
-  const siteUrl = (process.env["SITE_URL"] ?? "https://synozur.com").replace(
-    /\/$/,
-    "",
-  );
+  const explicitBase = process.env["BRIEFING_WEBHOOK_BASE_URL"];
+  const replitDomain = (process.env["REPLIT_DOMAINS"] ?? "")
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean)[0];
+  const siteUrl = (
+    explicitBase ??
+    (replitDomain ? `https://${replitDomain}` : null) ??
+    process.env["SITE_URL"] ??
+    "https://synozur.com"
+  ).replace(/\/$/, "");
   const secret = process.env["SESSION_SECRET"] ?? "dev-secret";
   const clientState = createHmac("sha256", secret)
     .update("briefing-subscription-v1")

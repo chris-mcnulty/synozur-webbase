@@ -45,6 +45,10 @@ async function ensureSubscription(log: Logger): Promise<void> {
   }
 
   const cfg = buildGraphMailConfig(mailbox);
+  log.info(
+    { notificationUrl: cfg.notificationUrl },
+    "Briefing subscription worker — ensuring subscription",
+  );
   const client = new GraphMailClient();
   let existing: GraphSubscription | undefined;
   try {
