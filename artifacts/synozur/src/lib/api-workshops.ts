@@ -48,6 +48,7 @@ export interface WorkshopDto {
   slug: string;
   title: string;
   category: string;
+  featured: boolean;
   shortDescription: string;
   heroHeadline: string;
   heroSubhead: string;
@@ -172,5 +173,6 @@ export function emptyWorkshopInput(): WorkshopInput {
     solutionId: null,
     bookingId: null,
     active: true,
+    featured: false,
   };
 }

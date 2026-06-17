@@ -194,6 +194,7 @@ export default function WorkshopEdit({ id }: Props) {
       solutionId: w.solutionId ?? null,
       bookingId: w.bookingId ?? null,
       active: w.active,
+      featured: w.featured,
     });
   }, [existingQ.data]);
 
