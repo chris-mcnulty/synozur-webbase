@@ -506,12 +506,15 @@ export default function AdminBriefingPodcast() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium">Voice (optional)</span>
-              <Select value={addVoiceOverride} onValueChange={setAddVoiceOverride}>
+              <Select
+                value={addVoiceOverride || "__default__"}
+                onValueChange={(v) => setAddVoiceOverride(v === "__default__" ? "" : v)}
+              >
                 <SelectTrigger className="w-52">
                   <SelectValue placeholder="Global default" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Global default</SelectItem>
+                  <SelectItem value="__default__">Global default</SelectItem>
                   {voiceOptions.map((v) => (
                     <SelectItem key={v.value} value={v.value}>
                       {v.label}
@@ -577,9 +580,9 @@ export default function AdminBriefingPodcast() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={c.voiceOverride ?? ""}
+                        value={c.voiceOverride ?? "__default__"}
                         onValueChange={(v) =>
-                          patchClient.mutate({ id: c.id, patch: { voiceOverride: v || null } })
+                          patchClient.mutate({ id: c.id, patch: { voiceOverride: v === "__default__" ? null : v } })
                         }
                         disabled={patchClient.isPending}
                       >
@@ -587,7 +590,7 @@ export default function AdminBriefingPodcast() {
                           <SelectValue placeholder="Default" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Default</SelectItem>
+                          <SelectItem value="__default__">Default</SelectItem>
                           {voiceOptions.map((v) => (
                             <SelectItem key={v.value} value={v.value}>
                               {v.label}
