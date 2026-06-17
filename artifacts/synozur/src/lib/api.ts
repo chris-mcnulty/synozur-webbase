@@ -1737,6 +1737,7 @@ export const api = {
     organizationLabel?: string | null;
     status?: "approved" | "revoked";
     retainRecording?: boolean;
+    voiceOverride?: string | null;
   }) =>
     jsonFetch<{ client: BriefingPodcastClientDto }>(
       url("/admin/briefing-podcast/clients"),
@@ -1749,6 +1750,7 @@ export const api = {
       organizationLabel?: string | null;
       status?: "approved" | "revoked";
       retainRecording?: boolean;
+      voiceOverride?: string | null;
     },
   ) =>
     jsonFetch<{ client: BriefingPodcastClientDto }>(
@@ -1778,6 +1780,7 @@ export interface BriefingPodcastClientDto {
   organizationLabel: string | null;
   status: string;
   retainRecording: boolean;
+  voiceOverride: string | null;
   approvedByUserId: string | null;
   approvedAt: string;
   createdAt: string;

@@ -40,6 +40,10 @@ export const briefingPodcastClientsTable = pgTable(
     // When false the MP3 is attached directly to the delivery email then
     // deleted from SPE — no streaming URL or purge link is included.
     retainRecording: boolean("retain_recording").notNull().default(true),
+    // Optional per-client voice override. When set, this voice is used instead
+    // of the global site_settings voice for this client's briefings. Applies to
+    // whichever TTS engine is active (Azure or OpenAI). Null = use global default.
+    voiceOverride: text("voice_override"),
     // Admin user id (users.id) who approved/last-updated this entry.
     approvedByUserId: uuid("approved_by_user_id"),
     approvedAt: timestamp("approved_at", { withTimezone: true })

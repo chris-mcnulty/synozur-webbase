@@ -28,6 +28,9 @@ export interface ProcessBriefingArgs {
   // When true: store MP3 in SPE, deliver streaming URL + purge link in email.
   // When false: attach MP3 directly to email then delete from SPE immediately.
   retainRecording: boolean;
+  // Optional per-client voice override. When set, replaces the global narrator
+  // voice (single format) or host voice (dialogue format) for this briefing only.
+  voiceOverride?: string | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -85,6 +88,16 @@ export async function processBriefing(
       azureHostVoice:   settingsRow?.briefingPodcastAzureHostVoice   ?? undefined,
       azureCohostVoice: settingsRow?.briefingPodcastAzureCohostVoice ?? undefined,
     };
+
+    // Per-client voice override — takes precedence over the global setting.
+    // Applied to the single-narrator voice (single format) and the host voice
+    // (dialogue format). Co-host voice is always the global setting.
+    if (args.voiceOverride) {
+      podcastConfig.voice = args.voiceOverride;
+      podcastConfig.hostVoice = args.voiceOverride;
+      podcastConfig.azureVoice = args.voiceOverride;
+      podcastConfig.azureHostVoice = args.voiceOverride;
+    }
 
     const script = await briefingHtmlToScript(args.html, podcastConfig);
     if (!script.trim()) {

@@ -190,6 +190,7 @@ async function handleInboundMessage(
     recipientName: client.displayName ?? message.fromName,
     source: "client",
     retainRecording: client.retainRecording,
+    voiceOverride: client.voiceOverride ?? null,
   });
 }
 
@@ -351,6 +352,9 @@ const UpsertClientBody = z.object({
   organizationLabel: z.string().max(255).nullish(),
   status: z.enum(["approved", "revoked"]).optional(),
   retainRecording: z.boolean().optional(),
+  // Null / omitted = use global site_settings voice. Any valid voice string
+  // from VALID_AZURE_VOICES or OPENAI_TTS_VOICES overrides for this client.
+  voiceOverride: z.string().max(150).nullish(),
 });
 
 router.post(
@@ -366,6 +370,7 @@ router.post(
     const email = normalizeEmail(parsed.data.email);
     const approvedByUserId = req.authedUser?.id ?? null;
     const retainRecording = parsed.data.retainRecording ?? true;
+    const voiceOverride = parsed.data.voiceOverride ?? null;
     const [row] = await db
       .insert(briefingPodcastClientsTable)
       .values({
@@ -374,6 +379,7 @@ router.post(
         organizationLabel: parsed.data.organizationLabel ?? null,
         status: parsed.data.status ?? "approved",
         retainRecording,
+        voiceOverride,
         approvedByUserId,
       })
       .onConflictDoUpdate({
@@ -383,6 +389,7 @@ router.post(
           organizationLabel: parsed.data.organizationLabel ?? null,
           status: parsed.data.status ?? "approved",
           retainRecording,
+          voiceOverride,
           approvedByUserId,
           updatedAt: new Date(),
         },
@@ -400,6 +407,7 @@ const PatchClientBody = z.object({
   organizationLabel: z.string().max(255).nullish(),
   status: z.enum(["approved", "revoked"]).optional(),
   retainRecording: z.boolean().optional(),
+  voiceOverride: z.string().max(150).nullish(),
 });
 
 router.patch(
@@ -425,6 +433,8 @@ router.patch(
     if (parsed.data.status !== undefined) updates["status"] = parsed.data.status;
     if (parsed.data.retainRecording !== undefined)
       updates["retainRecording"] = parsed.data.retainRecording;
+    if (parsed.data.voiceOverride !== undefined)
+      updates["voiceOverride"] = parsed.data.voiceOverride ?? null;
     const [row] = await db
       .update(briefingPodcastClientsTable)
       .set(updates)

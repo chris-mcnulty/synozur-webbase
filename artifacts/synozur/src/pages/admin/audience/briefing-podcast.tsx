@@ -171,6 +171,7 @@ export default function AdminBriefingPodcast() {
   const [displayName, setDisplayName] = useState("");
   const [orgLabel, setOrgLabel] = useState("");
   const [retainRecording, setRetainRecording] = useState(true);
+  const [addVoiceOverride, setAddVoiceOverride] = useState("");
 
   const clientsQuery = useQuery({
     queryKey: ["briefing-podcast-clients"],
@@ -190,6 +191,7 @@ export default function AdminBriefingPodcast() {
         organizationLabel: orgLabel.trim() || null,
         status: "approved",
         retainRecording,
+        voiceOverride: addVoiceOverride || null,
       }),
     onSuccess: () => {
       toast({ title: "Sender approved" });
@@ -197,6 +199,7 @@ export default function AdminBriefingPodcast() {
       setDisplayName("");
       setOrgLabel("");
       setRetainRecording(true);
+      setAddVoiceOverride("");
       void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
     },
     onError: (err: unknown) =>
@@ -208,7 +211,7 @@ export default function AdminBriefingPodcast() {
   });
 
   const patchClient = useMutation({
-    mutationFn: (args: { id: string; patch: { status?: "approved" | "revoked"; retainRecording?: boolean } }) =>
+    mutationFn: (args: { id: string; patch: { status?: "approved" | "revoked"; retainRecording?: boolean; voiceOverride?: string | null } }) =>
       api.patchBriefingPodcastClient(args.id, args.patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["briefing-podcast-clients"] });
@@ -501,6 +504,22 @@ export default function AdminBriefingPodcast() {
                 />
               </div>
             </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium">Voice (optional)</span>
+              <Select value={addVoiceOverride} onValueChange={setAddVoiceOverride}>
+                <SelectTrigger className="w-52">
+                  <SelectValue placeholder="Global default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Global default</SelectItem>
+                  {voiceOptions.map((v) => (
+                    <SelectItem key={v.value} value={v.value}>
+                      {v.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               onClick={() => addClient.mutate()}
               disabled={!email.trim() || addClient.isPending}
@@ -522,6 +541,7 @@ export default function AdminBriefingPodcast() {
                 <TableHead>Org / note</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Retain</TableHead>
+                <TableHead>Voice</TableHead>
                 <TableHead>Approved</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
@@ -529,7 +549,7 @@ export default function AdminBriefingPodcast() {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     No approved senders yet.
                   </TableCell>
                 </TableRow>
@@ -554,6 +574,27 @@ export default function AdminBriefingPodcast() {
                         }
                         disabled={patchClient.isPending}
                       />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={c.voiceOverride ?? ""}
+                        onValueChange={(v) =>
+                          patchClient.mutate({ id: c.id, patch: { voiceOverride: v || null } })
+                        }
+                        disabled={patchClient.isPending}
+                      >
+                        <SelectTrigger className="h-8 w-40 text-xs">
+                          <SelectValue placeholder="Default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Default</SelectItem>
+                          {voiceOptions.map((v) => (
+                            <SelectItem key={v.value} value={v.value}>
+                              {v.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(c.approvedAt)}

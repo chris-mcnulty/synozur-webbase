@@ -3522,6 +3522,13 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS briefing_podcast_azure_cohost_voice text NOT NULL DEFAULT 'en-US-AvaMultilingualNeural';
     `);
 
+    // Briefing Podcast — phase 6: per-client voice override.
+    // Null = use global site_settings voice; any valid voice string overrides it.
+    await db.execute(sql`
+      ALTER TABLE briefing_podcast_clients
+        ADD COLUMN IF NOT EXISTS voice_override text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
