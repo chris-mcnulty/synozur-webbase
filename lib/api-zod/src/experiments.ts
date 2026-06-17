@@ -53,6 +53,7 @@ export const OverrideMap = z
 
     // Hero — tagline / narrative
     "home.hero.tagline.text": z.string().max(1000).optional(),
+    "home.hero.tagline.accentWord": z.string().max(80).optional(),
     "home.hero.narrative.text": z.string().max(4000).optional(),
 
     // Hero — Get Started CTA

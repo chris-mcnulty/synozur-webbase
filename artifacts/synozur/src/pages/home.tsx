@@ -270,6 +270,14 @@ export default function Home() {
     "home.hero.tagline.text",
     "From AI potential to AI power.",
   );
+  const taglineAccentWord = useOverride<string>(
+    "home.hero.tagline.accentWord",
+    "AI power",
+  );
+  const heroNarrativeText = useOverride<string>(
+    "home.hero.narrative.text",
+    "Synozur is the AI-native advisory firm that turns transformation ambition into measurable business outcomes for mid-market and PE-backed organizations — helping leaders move from AI-ready to AI-first, faster than they could get there alone.",
+  );
   const heroLadderVisible = useOverride<boolean>(
     "home.hero.ladder.visible",
     true,
@@ -448,9 +456,18 @@ export default function Home() {
                   <HeroHeadline text={positioningText} accentWord={positioningAccent} />
                 </h1>
               ) : null}
-              <p className="text-xl md:text-2xl text-zinc-300 mb-8 max-w-2xl leading-relaxed">
-                {taglineText}
+              <p className="text-xl md:text-2xl text-zinc-300 mb-6 max-w-2xl leading-relaxed">
+                <HeroHeadline text={taglineText} accentWord={taglineAccentWord} />
               </p>
+              {heroNarrativeText ? (
+                <div className="mb-8 max-w-2xl space-y-4">
+                  {heroNarrativeText.split("\n\n").map((para, i) => (
+                    <p key={i} className="text-base md:text-lg text-zinc-400 leading-relaxed">
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               {heroLadderVisible && heroLadderText ? (
                 <p className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-zinc-400 mb-10">
                   {heroLadderText.split("→").map((part, i, arr) => (
