@@ -317,3 +317,9 @@ id = "WlLpzftX5PCsZh34yvqEk"
 uri = "file://synozur-content-audit.txt"
 type = "text"
 title = "Synozur Site Content Audit — 2026-06-17"
+
+[[outputs]]
+id = "CZBSbFXdm0rc7igDPKMIe"
+uri = "file://synozur-content-audit.md"
+type = "text"
+title = "Synozur Site Content Audit — 2026-06-17"
