@@ -176,7 +176,7 @@ export function Footer() {
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Find Your North Star</h2>
           <p className="text-muted-foreground text-lg">
-            Let us guide your organization's transformation journey. Rooted in people, powered by technology, and driven by purpose.
+            Ready to move from AI-ready to AI-first? Synozur guides leaders through every phase of transformation — strategy that sticks, AI that delivers, and progress you can measure.
           </p>
         </div>
 

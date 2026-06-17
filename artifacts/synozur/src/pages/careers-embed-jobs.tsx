@@ -90,7 +90,7 @@ export default function CareersEmbedJobs() {
           rel="noopener noreferrer"
           className="hover:text-[#8b8ba8] transition-colors"
         >
-          Powered by The Synozur Alliance
+          Powered by Synozur
         </a>
       </div>
     </div>

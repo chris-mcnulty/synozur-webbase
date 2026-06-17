@@ -336,7 +336,7 @@ export default function CareersApplyPage({ general = false }: Props) {
             data-testid="input-consent"
           />
           <span>
-            I consent to The Synozur Alliance processing the information I've
+            I consent to Synozur processing the information I've
             provided for the purpose of evaluating this application.
           </span>
         </label>

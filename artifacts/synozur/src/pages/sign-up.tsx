@@ -162,7 +162,7 @@ export default function SignUpPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Create an account</h1>
           <p className="text-muted-foreground text-sm">
-            Join The Synozur Alliance portal.
+            Join the Synozur portal.
           </p>
         </div>
 

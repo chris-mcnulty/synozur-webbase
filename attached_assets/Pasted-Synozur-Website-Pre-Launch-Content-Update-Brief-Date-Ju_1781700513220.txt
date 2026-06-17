@@ -1,0 +1,153 @@
+Synozur Website — Pre-Launch Content Update Brief
+Date: June 17, 2026 For: Website Coding Agent Prepared by: Chris McNulty, CTO — Synozur Site target: synozur-baseline.replit.app → synozur.com
+
+Summary of Changes
+Six content changes required before launch. All are copy/label updates — no structural or layout changes in this sprint.
+
+#	Change	Page(s)	Type
+1	Brand name standardization (body copy and nav only)	All pages	Find/replace — visible content only
+2	Hero tagline — "From AI potential to AI power."	Homepage	Copy insert
+3	Audience-first vertical labels	Homepage	Content replacement
+4	AI-native section with positioning statement	/about	New section insert
+5	North Star Method™ phase alignment	/about	Label rename (4 items)
+6	Footer CTA copy	All pages	Copy replacement
+7	Replace unverified communication stat	/solutions/communication-strategies	Stat replacement
+CHANGE 1 — Brand Name Standardization (All Pages)
+Type: Find and replace — visible on-page content only
+
+Scope: Headings, navigation elements, and body copy. Do NOT change <title> tags, <meta> tags, Open Graph tags (og:title, og:site_name), schema markup, or any other metadata. Page titles and OG data stay exactly as currently authored.
+
+Find	Replace	Applies to
+"The Synozur Alliance"	"Synozur"	Visible headings, nav labels, body copy
+"The Synozur Alliance, LLC"	Leave unchanged	Footer copyright line
+"Synozur and The Synozur Alliance are trademarks..."	Leave unchanged	Footer trademark declaration
+<title> tags, og:title, og:site_name, meta descriptions	Leave unchanged	All metadata — do not touch
+Pages with visible body copy to update: Site header/logo text if text-based, the About page H1 ("The Synozur Alliance"), all team bio page H1s, FAQ answer body copy where the full legal name appears.
+
+CHANGE 2 — Homepage: Audience-First Vertical Labels
+Page: / Section: North Star Method™ → subsection currently titled "Where it lands first" Type: Content replacement (4 items)
+
+Current content
+Insurance
+AI underwriting copilots that protect loss ratios without scaring the regulator.
+
+Tech & Software
+GTM repositioning when the old category story stops closing deals.
+
+Energy
+Operating-model redesign for a workforce that's half on the truck, half on the laptop.
+
+Life Sciences
+Commercial readiness and field-team enablement that survives the launch window.
+New content
+Mid-Market CEOs
+Scaling companies that need strategic clarity, AI adoption, and an operating
+system to execute — not more consultants delivering decks.
+
+PE Sponsors & Portfolio Operators
+AI readiness assessments, operating model redesign, and measurable EBITDA
+impact across portfolio companies.
+
+Microsoft Partners
+ISVs and systems integrators navigating GTM strategy, co-sell alignment,
+and Microsoft ecosystem positioning.
+
+Enterprise Leaders
+Large organizations driving workforce AI adoption, Copilot readiness,
+and transformation at scale.
+Subsection heading: Change "Where it lands first" to "Who we work with" or leave as-is — agent's discretion based on what reads better in context.
+
+CHANGE 3 — About Page: New AI-Native Section
+Page: /about Location: Insert AFTER the "OUR APPROACH" section (after the four key-element items), BEFORE the "OUR VALUES" section Type: New section insert
+
+Section heading
+Use the same heading style/formatting as the other section headings on the page (e.g., OUR MISSION, WHAT WE DO, OUR APPROACH):
+
+THE AI ERA
+Section body copy
+The landscape Synozur navigates has fundamentally shifted. AI is no longer
+an experiment — it is reshaping every operating model, every leadership
+rhythm, and every market position.
+
+Synozur operates as an AI-native advisory firm. We use AI in our own daily
+practice — from strategy development to client delivery — and we bring that
+same rigor to helping organizations move from AI-ready to AI-enabled to
+AI-first.
+
+Our approach is strategy-led, not tool-led. We combine advanced AI
+capabilities with human-centered judgment to help leaders move faster,
+operate smarter, and unlock outcomes that are measurable, not theoretical.
+Deep Microsoft 365, Azure, and Copilot fluency underpins every engagement —
+giving clients a practical, defensible path to AI adoption without new risk.
+Design note: No special callout box or CTA required. Plain body text matching the existing section style.
+
+CHANGE 4 — About Page: North Star Method™ Phase Alignment
+Page: /about Section: "OUR APPROACH" → "Key elements of our engagement" (the four-item list) Type: Label and descriptor rename
+
+The home page features the North Star Method™ with four named phases: Assess · Define · Deliver · Outcomes. The About page uses different names for the same concept. Rename to align exactly.
+
+Current → New mapping
+Current Label	New Label	New Descriptor
+Targeted Evaluations	Assess	We surface the gaps, risks, and market signals that make the case — before any strategy is set.
+Collective Thinking	Define	We align leaders, teams, and AI on one plan — clear ownership, clear guardrails, no hidden agendas.
+Strategy & Execution	Deliver	We build the GTM motions, pilots, and operating changes that prove the case with revenue, not slideware.
+Continuous Support	Outcomes	We embed the habits, measurement, and operating rhythm so progress compounds across the organization.
+Important: The phase names Assess / Define / Deliver / Outcomes must match the home page exactly — these appear under the North Star Method™ trademark. Do not paraphrase or reorder.
+
+The section intro ("Key elements of our engagement:") can be updated to read:
+
+The North Star Method™ — our four-phase engagement framework:
+CHANGE 5 — Footer CTA: New-Era Language (All Pages)
+Location: All pages — the footer CTA block that appears above the email subscription form Type: Copy replacement
+
+Current copy
+Find Your North Star
+
+Let us guide your organization's transformation journey. Rooted in people,
+powered by technology, and driven by purpose.
+New copy
+Find Your North Star
+
+Ready to move from AI-ready to AI-first? Synozur guides leaders through every
+phase of transformation — strategy that sticks, AI that delivers, and progress
+you can measure.
+Note: The heading "Find Your North Star" is preserved. Only the sub-copy changes. The Subscribe form and button beneath this block remain unchanged.
+
+CHANGE 6 — Communication Strategies Page: Replace Unverified Statistic
+Page: /solutions/communication-strategies Location: First body paragraph, approximately third sentence Type: Single sentence replacement
+
+Current sentence (remove entirely)
+According to Synozur's data, organizations with a well-defined communication
+strategy experience a 25% increase in employee productivity and engagement.
+Replacement sentence
+McKinsey research finds that organizations with highly effective communications
+are 3.5 times more likely to outperform their peers — and Gallup's workplace
+studies consistently link high employee engagement to productivity gains of
+14–18% over disengaged counterparts.
+Source attribution: If the CMS supports footnotes or tooltips, attribute as:
+
+McKinsey Organizational Health Index
+Gallup State of the Global Workplace (most recent edition)
+If no footnote support, the inline attribution ("McKinsey research finds..." / "Gallup's workplace studies...") serves as sufficient attribution.
+
+OUT OF SCOPE — Deferred to Post-Launch
+The following items were reviewed and intentionally deferred:
+
+Item	Reason
+Homepage content feed / rotator carousel reorder	Deferred — post-launch
+Individual event sub-page content population	Post-launch
+Meta description optimization across all pages	Post-launch SEO sprint
+Logo wall changes	All 21 logos confirmed as verified Synozur client engagements — no change required
+Financial outcome ranges in proof testimonials	Internally documented — no change required
+North Star Method™ trademark filing status	Legal/operational — not a site-copy task
+Acceptance Criteria
+Before marking this sprint complete, verify each item:
+
+ No instance of "The Synozur Alliance" appears in any visible heading, nav element, or body copy block (exceptions: footer copyright line and trademark declaration only)
+ Page <title>, og:title, og:site_name, and all other metadata tags are unchanged from their current authored values
+ Homepage "Where it lands first" / "Who we work with" section shows four audience-first buyer labels (Mid-Market CEOs, PE Sponsors & Portfolio Operators, Microsoft Partners, Enterprise Leaders)
+ About page contains a new "THE AI ERA" section between OUR APPROACH and OUR VALUES
+ About page "Key elements" section uses the exact labels: Assess / Define / Deliver / Outcomes with updated descriptors
+ About page approach intro references "The North Star Method™"
+ Footer CTA sub-copy updated on all pages (heading "Find Your North Star" preserved)
+ Communication Strategies page "Synozur's data" sentence replaced with McKinsey/Gallup sourced version

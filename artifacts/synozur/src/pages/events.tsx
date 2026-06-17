@@ -142,7 +142,7 @@ export default function EventsPage() {
             Events
           </h1>
           <p className="text-xl md:text-2xl text-zinc-300 leading-relaxed max-w-3xl">
-            Join The Synozur Alliance at upcoming conferences, webinars, and
+            Join Synozur at upcoming conferences, webinars, and
             community gatherings — or browse highlights from our past events.
           </p>
         </div>

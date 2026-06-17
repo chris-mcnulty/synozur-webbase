@@ -14,7 +14,7 @@ export default function Privacy() {
             Privacy Statement
           </h1>
           <p className="text-zinc-300 text-lg">
-            The Synozur Alliance &middot; Effective Date: May 25, 2026 &middot; Last Modified: May 25, 2026
+            Synozur &middot; Effective Date: May 25, 2026 &middot; Last Modified: May 25, 2026
           </p>
         </div>
       </section>
@@ -22,7 +22,7 @@ export default function Privacy() {
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4 max-w-3xl prose prose-neutral dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:leading-relaxed prose-li:leading-relaxed prose-a:text-primary">
           <p>
-            At The Synozur Alliance, we are committed to protecting the privacy and security of our
+            At Synozur, we are committed to protecting the privacy and security of our
             customers and partners. This privacy statement outlines our practices regarding the
             collection, use, and sharing of personal information.
           </p>
@@ -449,7 +449,7 @@ export default function Privacy() {
           </p>
 
           <p>
-            By providing your personal information to The Synozur Alliance, you consent to the
+            By providing your personal information to Synozur, you consent to the
             collection, use, and sharing of your information as described in this privacy statement.
           </p>
         </div>

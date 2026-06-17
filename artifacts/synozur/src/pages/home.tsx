@@ -268,7 +268,7 @@ export default function Home() {
   );
   const taglineText = useOverride<string>(
     "home.hero.tagline.text",
-    "Transformation with momentum — AI‑native, human‑centered. We guide leaders through the North Star Method™ (Assess · Define · Deliver · Outcomes) so strategy lands as measurable progress, not slideware.",
+    "From AI potential to AI power.",
   );
   const heroLadderVisible = useOverride<boolean>(
     "home.hero.ladder.visible",
@@ -583,7 +583,7 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h3 className="text-2xl md:text-3xl font-bold mb-4">
-                {methodAsideHeadline || "Where it lands first"}
+                {methodAsideHeadline || "Who we work with"}
               </h3>
               {methodAsideBody ? (
                 <div className="space-y-4 text-base text-muted-foreground">
@@ -593,10 +593,10 @@ export default function Home() {
                 </div>
               ) : (
                 <ul className="space-y-3 text-base text-muted-foreground">
-                  <li><span className="font-semibold text-foreground">Insurance:</span> AI underwriting copilots that protect loss ratios without scaring the regulator.</li>
-                  <li><span className="font-semibold text-foreground">Tech &amp; Software:</span> GTM repositioning when the old category story stops closing deals.</li>
-                  <li><span className="font-semibold text-foreground">Energy:</span> Operating-model redesign for a workforce that's half on the truck, half on the laptop.</li>
-                  <li><span className="font-semibold text-foreground">Life Sciences:</span> Commercial readiness and field-team enablement that survives the launch window.</li>
+                  <li><span className="font-semibold text-foreground">Mid-Market CEOs:</span> Scaling companies that need strategic clarity, AI adoption, and an operating system to execute — not more consultants delivering decks.</li>
+                  <li><span className="font-semibold text-foreground">PE Sponsors &amp; Portfolio Operators:</span> AI readiness assessments, operating model redesign, and measurable EBITDA impact across portfolio companies.</li>
+                  <li><span className="font-semibold text-foreground">Microsoft Partners:</span> ISVs and systems integrators navigating GTM strategy, co-sell alignment, and Microsoft ecosystem positioning.</li>
+                  <li><span className="font-semibold text-foreground">Enterprise Leaders:</span> Large organizations driving workforce AI adoption, Copilot readiness, and transformation at scale.</li>
                 </ul>
               )}
               <div className="mt-6">

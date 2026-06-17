@@ -35,7 +35,7 @@ export default function PendingApprovalPage() {
         )}
 
         <p className="text-muted-foreground text-sm mb-4">
-          Your organization has been registered with The Synozur Alliance and is awaiting
+          Your organization has been registered with Synozur and is awaiting
           review by our team. This typically takes one business day.
         </p>
 

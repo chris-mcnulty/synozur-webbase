@@ -45,23 +45,23 @@ const VALUE_ICONS: Record<string, LucideIcon> = {
 const approach = [
   {
     icon: Eye,
-    title: "Targeted Evaluations",
-    body: "We blend qualitative interviews with data analysis to develop a holistic view of your business.",
+    title: "Assess",
+    body: "We surface the gaps, risks, and market signals that make the case — before any strategy is set.",
   },
   {
     icon: LayoutGrid,
-    title: "Collective Thinking",
-    body: "Workshops, planning, and design-led thinking to form new strategies for your organization.",
+    title: "Define",
+    body: "We align leaders, teams, and AI on one plan — clear ownership, clear guardrails, no hidden agendas.",
   },
   {
     icon: TrendingUp,
-    title: "Strategy & Execution",
-    body: "Our proprietary management frameworks for distributing and developing strategic outcomes help you achieve elevated success.",
+    title: "Deliver",
+    body: "We build the GTM motions, pilots, and operating changes that prove the case with revenue, not slideware.",
   },
   {
     icon: RefreshCw,
-    title: "Continuous Support",
-    body: "We provide ongoing engagement throughout your journey to ensure excellence.",
+    title: "Outcomes",
+    body: "We embed the habits, measurement, and operating rhythm so progress compounds across the organization.",
   },
 ];
 
@@ -243,7 +243,7 @@ export default function About() {
               understand, and tailor our strategies to your specific needs.
             </p>
             <p className="text-base font-semibold text-foreground mb-4">
-              Key elements of our engagement:
+              The North Star Method™ — our four-phase engagement framework:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {approach.map((item, i) => (
@@ -266,6 +266,40 @@ export default function About() {
               ))}
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* The AI Era */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl">
+            <p className="text-sm uppercase tracking-widest text-primary mb-3">
+              The AI Era
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-8">
+              Navigating the era where AI reshapes everything
+            </h2>
+            <div className="space-y-5 text-lg text-muted-foreground leading-relaxed">
+              <p>
+                The landscape Synozur navigates has fundamentally shifted. AI is no longer
+                an experiment — it is reshaping every operating model, every leadership
+                rhythm, and every market position.
+              </p>
+              <p>
+                Synozur operates as an AI-native advisory firm. We use AI in our own daily
+                practice — from strategy development to client delivery — and we bring that
+                same rigor to helping organizations move from AI-ready to AI-enabled to
+                AI-first.
+              </p>
+              <p>
+                Our approach is strategy-led, not tool-led. We combine advanced AI
+                capabilities with human-centered judgment to help leaders move faster,
+                operate smarter, and unlock outcomes that are measurable, not theoretical.
+                Deep Microsoft 365, Azure, and Copilot fluency underpins every engagement —
+                giving clients a practical, defensible path to AI adoption without new risk.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
