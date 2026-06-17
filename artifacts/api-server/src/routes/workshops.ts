@@ -136,6 +136,7 @@ const WorkshopBody = z.object({
   seo: SeoSchema.default({ title: "", description: "" }),
   displayOrder: z.number().int().nullish(),
   active: z.boolean().optional(),
+  featured: z.boolean().optional(),
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
   bookingId: z.string().uuid().nullish(),
@@ -198,6 +199,7 @@ function shape(w: Workshop, booking: LinkedBookingDto | null = null) {
     bookingId: w.bookingId ?? null,
     booking,
     active: w.active,
+    featured: w.featured,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
   };

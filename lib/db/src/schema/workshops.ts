@@ -128,6 +128,7 @@ export const workshopsTable = pgTable(
       onDelete: "set null",
     }),
     active: boolean("active").notNull().default(true),
+    featured: boolean("featured").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

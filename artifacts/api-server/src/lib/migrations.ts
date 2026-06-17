@@ -3529,6 +3529,13 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS voice_override text;
     `);
 
+    // Workshops — featured flag. Controls which workshops appear in the
+    // home-page teaser section. False by default; admins toggle per workshop.
+    await db.execute(sql`
+      ALTER TABLE workshops
+        ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
