@@ -311,3 +311,9 @@ id = "x0lB-beSUAzMIDQsJzSDO"
 uri = "file://attached_assets/wix_traffic_preprocessed.csv"
 type = "table"
 title = "wix_traffic_preprocessed.csv — ready to import"
+
+[[outputs]]
+id = "WlLpzftX5PCsZh34yvqEk"
+uri = "file://synozur-content-audit.txt"
+type = "text"
+title = "Synozur Site Content Audit — 2026-06-17"
