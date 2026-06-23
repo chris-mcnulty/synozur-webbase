@@ -496,7 +496,7 @@ export default function EventForm({ id }: Props) {
         <div className="space-y-2">
           <Label>Event Status</Label>
           <Select
-            value={form.status ?? "UPCOMING"}
+            value={form.status || "UPCOMING"}
             onValueChange={(v) => setForm({ ...form, status: v })}
           >
             <SelectTrigger data-testid="select-status">
@@ -538,7 +538,7 @@ export default function EventForm({ id }: Props) {
             <div className="space-y-2">
               <Label>Registration status</Label>
               <Select
-                value={form.registrationStatus ?? "UNKNOWN_REGISTRATION_STATUS"}
+                value={form.registrationStatus || "UNKNOWN_REGISTRATION_STATUS"}
                 onValueChange={(v) => setForm({ ...form, registrationStatus: v })}
               >
                 <SelectTrigger data-testid="select-registrationStatus">
