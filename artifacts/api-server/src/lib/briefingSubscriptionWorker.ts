@@ -8,6 +8,7 @@ import {
   type GraphSubscription,
 } from "./storage/spe/graphMail";
 import { readSpeGraphConfigFromEnv } from "./storage/spe/graphClient";
+import { logger as log } from "./logger";
 
 // Keeps the Graph mail subscription for the briefing mailbox alive.
 //
@@ -17,14 +18,19 @@ import { readSpeGraphConfigFromEnv } from "./storage/spe/graphClient";
 //
 // No-ops gracefully when Graph credentials are absent or no mailbox is
 // configured, so local dev and unprovisioned environments don't error.
+//
+// Also exported as refreshBriefingSubscription() so route handlers can trigger
+// an immediate re-check (e.g. after the mailbox setting changes) without
+// waiting for the next hourly tick.
 
-const RENEW_INTERVAL_MS = 12 * 60 * 60 * 1000; // every 12h
+const RENEW_INTERVAL_MS = 60 * 60 * 1000; // every 1h — was 12h; shorter = faster self-healing
 
 export interface BriefingSubscriptionWorker {
   stop: () => void;
+  refresh: () => Promise<void>;
 }
 
-async function ensureSubscription(log: Logger): Promise<void> {
+async function ensureSubscription(): Promise<void> {
   if (!readSpeGraphConfigFromEnv()) {
     log.warn("Briefing subscription worker idle — Graph credentials not set");
     return;
@@ -72,21 +78,28 @@ async function ensureSubscription(log: Logger): Promise<void> {
   }
 }
 
+// Exported so route handlers (e.g. the settings PATCH and the manual-refresh
+// admin endpoint) can trigger an immediate subscription check without waiting
+// for the next hourly tick.
+export async function refreshBriefingSubscription(): Promise<void> {
+  return ensureSubscription();
+}
+
+// _logger param kept for backward-compat with index.ts callers; the function
+// now uses the module-level logger so the param is not used internally.
 export function startBriefingSubscriptionWorker(
-  logger: Logger,
+  _logger?: Logger,
 ): BriefingSubscriptionWorker {
   // Kick off shortly after boot so the listen() call isn't blocked.
-  const initial = setTimeout(() => void ensureSubscription(logger), 5_000);
+  const initial = setTimeout(() => void ensureSubscription(), 5_000);
   initial.unref();
-  const interval = setInterval(
-    () => void ensureSubscription(logger),
-    RENEW_INTERVAL_MS,
-  );
+  const interval = setInterval(() => void ensureSubscription(), RENEW_INTERVAL_MS);
   interval.unref();
   return {
     stop: () => {
       clearTimeout(initial);
       clearInterval(interval);
     },
+    refresh: ensureSubscription,
   };
 }

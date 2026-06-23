@@ -19,6 +19,8 @@ import {
   buildGraphMailConfig,
   isAutoReplyOrSystemMessage,
 } from "../lib/storage/spe/graphMail";
+import { readSpeGraphConfigFromEnv } from "../lib/storage/spe/graphClient";
+import { refreshBriefingSubscription } from "../lib/briefingSubscriptionWorker";
 
 // Briefing Podcast routes.
 //
@@ -634,6 +636,74 @@ router.patch(
       .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
       .limit(1);
     res.json(settingsResponse(row));
+    // If the watched mailbox changed, immediately re-check the Graph subscription
+    // so the new address starts receiving notifications without waiting for the
+    // next hourly tick.
+    if (d.briefingMailbox !== undefined) {
+      void refreshBriefingSubscription().catch((err) =>
+        logger.error({ err }, "Background subscription refresh after mailbox change failed"),
+      );
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Admin subscription status + manual refresh
+// ---------------------------------------------------------------------------
+
+router.get(
+  "/admin/briefing-podcast/subscription/status",
+  requireAuth,
+  requireManage,
+  async (_req: Request, res: Response) => {
+    if (!readSpeGraphConfigFromEnv()) {
+      res.json({ configured: false, reason: "Graph credentials not set" });
+      return;
+    }
+    const [settings] = await db
+      .select({ briefingMailbox: siteSettingsTable.briefingMailbox })
+      .from(siteSettingsTable)
+      .where(eq(siteSettingsTable.id, SETTINGS_ROW_ID))
+      .limit(1);
+    const mailbox = settings?.briefingMailbox;
+    if (!mailbox) {
+      res.json({ configured: false, reason: "No mailbox configured" });
+      return;
+    }
+    try {
+      const cfg = buildGraphMailConfig(mailbox);
+      const client = new GraphMailClient();
+      const subs = await client.listSubscriptions();
+      const active = subs.find((s) => s.notificationUrl === cfg.notificationUrl);
+      res.json({
+        configured: true,
+        mailbox,
+        active: !!active,
+        subscriptionId: active?.id ?? null,
+        expiresAt: active?.expirationDateTime ?? null,
+      });
+    } catch (err) {
+      logger.error({ err }, "Failed to query Graph subscription status");
+      res.status(500).json({ error: "Failed to query Graph subscriptions" });
+    }
+  },
+);
+
+// Force an immediate subscription check — useful after approving a new mailbox,
+// recovering from a lapsed subscription, or any time the admin suspects the
+// listener has stopped working.
+router.post(
+  "/admin/briefing-podcast/subscription/refresh",
+  requireAuth,
+  requireManage,
+  async (_req: Request, res: Response) => {
+    try {
+      await refreshBriefingSubscription();
+      res.json({ ok: true });
+    } catch (err) {
+      logger.error({ err }, "Manual subscription refresh failed");
+      res.status(500).json({ error: "Refresh failed" });
+    }
   },
 );
 
