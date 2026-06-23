@@ -298,7 +298,10 @@ export default function EventDetail() {
 
   const eventDateLabel = formatDate(event.startDate);
 
-  const mapSrc = event.location
+  // Don't embed a map for virtual/online events — they produce a useless
+  // world-view render in Google Maps.
+  const VIRTUAL_RE = /\b(online|virtual|remote|webinar|zoom|teams|meet|skype|webex|gotomeeting|goto\s?meeting|whereby|livestream|live\s?stream)\b/i;
+  const mapSrc = event.location && !VIRTUAL_RE.test(event.location)
     ? `https://www.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`
     : null;
 
