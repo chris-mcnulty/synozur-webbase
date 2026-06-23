@@ -3536,6 +3536,13 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false;
     `);
 
+    // Events — end date/time. Optional; when set drives the ICS DTEND and the
+    // auto-expire scheduler (instead of falling back to startDate + 24 h).
+    await db.execute(sql`
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS end_date timestamptz;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

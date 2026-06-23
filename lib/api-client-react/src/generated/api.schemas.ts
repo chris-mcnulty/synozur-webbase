@@ -1478,6 +1478,11 @@ export interface PublicEvent {
   title: string;
   slug: string;
   startDate: string;
+  /**
+   * Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
+   * @nullable
+   */
+  endDate?: string | null;
   /** @nullable */
   location?: string | null;
   /** @nullable */
@@ -1515,6 +1520,11 @@ export interface AdminEvent {
   title: string;
   slug: string;
   startDate: string;
+  /**
+   * Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
+   * @nullable
+   */
+  endDate?: string | null;
   /** @nullable */
   location?: string | null;
   /** @nullable */
@@ -1772,6 +1782,11 @@ export interface EventInput {
   /** @nullable */
   slug?: string | null;
   startDate: string;
+  /**
+   * Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
+   * @nullable
+   */
+  endDate?: string | null;
   /** @nullable */
   location?: string | null;
   /** @nullable */

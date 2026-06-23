@@ -7004,6 +7004,12 @@ components:
         startDate:
           type: string
           format: date-time
+        endDate:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
         location:
           type:
             - string
@@ -7079,6 +7085,12 @@ components:
         startDate:
           type: string
           format: date-time
+        endDate:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
         location:
           type:
             - string
@@ -7441,6 +7453,12 @@ components:
         startDate:
           type: string
           format: date-time
+        endDate:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
         location:
           type:
             - string

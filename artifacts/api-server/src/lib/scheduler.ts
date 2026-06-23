@@ -1,5 +1,5 @@
 import { and, eq, lte, isNull, lt, not, or, like, sql } from "drizzle-orm";
-import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable, pendingEmailRemindersTable } from "@workspace/db";
+import { db, postsTable, subscribersTable, auditLogTable, siteSettingsTable, pendingEmailRemindersTable, eventsTable } from "@workspace/db";
 import { audit } from "./audit";
 import { sendEventReminderEmail } from "./email";
 import { reconcileAllEngagementDocuments } from "./portalDocumentIndexer";
@@ -36,6 +36,11 @@ const SEO_COVERAGE_INITIAL_DELAY_MS = 20 * 60 * 1000;
 // Auth/oauth/session events are kept for 5 years regardless of the admin's
 // retention setting — these are the rows compliance teams actually need.
 const AUTH_RETENTION_DAYS = 365 * 5;
+// Event auto-expire: flip UPCOMING → ENDED once the event has passed.
+// Uses COALESCE(end_date, start_date + 1 day) so events without an explicit
+// end date expire the calendar day after they start.
+const EVENT_AUTOEXPIRE_INTERVAL_MS = 60 * 60 * 1000;  // hourly
+const EVENT_AUTOEXPIRE_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 min after boot
 
 export function startScheduledPublishWorker(logger: Logger): { stop: () => void } {
   let stopping = false;
@@ -359,6 +364,37 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
     REMINDER_DRAIN_INTERVAL_MS,
   );
 
+  // ── Event auto-expire ──────────────────────────────────────────────────────
+  // Flip UPCOMING → ENDED for any event whose COALESCE(end_date,
+  // start_date + interval '1 day') has passed. Runs hourly; only touches
+  // UPCOMING rows so CANCELLED/ARCHIVED events are never affected.
+  let autoExpireRunning = false;
+  async function autoExpireTick() {
+    if (stopping || autoExpireRunning) return;
+    autoExpireRunning = true;
+    try {
+      const expired = await db
+        .update(eventsTable)
+        .set({ status: "ENDED" })
+        .where(
+          and(
+            eq(eventsTable.status, "UPCOMING"),
+            sql`COALESCE(${eventsTable.endDate}, ${eventsTable.startDate} + INTERVAL '1 day') < NOW()`,
+          ),
+        )
+        .returning({ id: eventsTable.id, title: eventsTable.title });
+      if (expired.length > 0) {
+        logger.info({ count: expired.length, ids: expired.map((e) => e.id) }, "Auto-expired UPCOMING events to ENDED");
+      }
+    } catch (err) {
+      logger.error({ err }, "Event auto-expire tick failed");
+    } finally {
+      autoExpireRunning = false;
+    }
+  }
+  const autoExpireInitial = setTimeout(autoExpireTick, EVENT_AUTOEXPIRE_INITIAL_DELAY_MS);
+  const autoExpireInterval = setInterval(autoExpireTick, EVENT_AUTOEXPIRE_INTERVAL_MS);
+
   return {
     stop() {
       stopping = true;
@@ -378,6 +414,8 @@ export function startScheduledPublishWorker(logger: Logger): { stop: () => void 
       clearInterval(autoStopInterval);
       clearTimeout(reminderDrainInitial);
       clearInterval(reminderDrainInterval);
+      clearTimeout(autoExpireInitial);
+      clearInterval(autoExpireInterval);
     },
   };
 }

@@ -427,6 +427,7 @@ function publicShape(enriched: EnrichedEvent) {
     title: event.title,
     slug: event.slug,
     startDate: event.startDate,
+    endDate: event.endDate ?? null,
     location: event.location,
     teaser: event.teaser,
     description: event.description,
@@ -452,6 +453,7 @@ function adminShape(enriched: EnrichedEvent) {
     title: event.title,
     slug: event.slug,
     startDate: event.startDate,
+    endDate: event.endDate ?? null,
     location: event.location,
     teaser: event.teaser,
     description: event.description,
@@ -549,6 +551,7 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       title: parsed.data.title,
       slug,
       startDate: parsed.data.startDate,
+      endDate: parsed.data.endDate ?? null,
       location: parsed.data.location ?? null,
       teaser: parsed.data.teaser ?? null,
       description: parsed.data.description ?? null,
@@ -619,6 +622,7 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       title: parsed.data.title,
       slug,
       startDate: parsed.data.startDate,
+      endDate: parsed.data.endDate ?? null,
       location: parsed.data.location ?? null,
       teaser: parsed.data.teaser ?? null,
       description: parsed.data.description ?? null,
@@ -769,9 +773,11 @@ router.get("/events/:slug/calendar.ics", async (req, res): Promise<void> => {
   if (tz) add(`X-WR-TIMEZONE:${tz}`);
   add(`X-WR-CALNAME:${escapeIcs(event.title)}`);
 
-  // Main event VEVENT (start + 1 day as end when no explicit end time)
+  // Main event VEVENT — use endDate when set, fall back to startDate + 24 h
   const startDate = new Date(event.startDate);
-  const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+  const endDate = event.endDate
+    ? new Date(event.endDate)
+    : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
   lines.push("BEGIN:VEVENT");
   add(`UID:${event.slug}@synozur.com`);
   if (tz) {

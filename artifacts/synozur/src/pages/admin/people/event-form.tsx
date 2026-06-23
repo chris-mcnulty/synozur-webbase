@@ -118,6 +118,7 @@ export default function EventForm({ id }: Props) {
     title: "",
     slug: "",
     startDate: new Date(),
+    endDate: null,
     location: null,
     teaser: null,
     description: null,
@@ -156,6 +157,7 @@ export default function EventForm({ id }: Props) {
         title: existing.title,
         slug: existing.slug,
         startDate: existing.startDate,
+        endDate: existing.endDate ?? null,
         location: existing.location,
         teaser: existing.teaser,
         description: existing.description,
@@ -409,6 +411,26 @@ export default function EventForm({ id }: Props) {
             }
             data-testid="input-startDate"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="endDate">End Date & Time</Label>
+          <Input
+            id="endDate"
+            type="datetime-local"
+            value={form.endDate ? toLocalInput(form.endDate) : ""}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                endDate: e.target.value ? new Date(e.target.value) : null,
+              })
+            }
+            data-testid="input-endDate"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional. Used for ICS calendar files and auto-expiry. Defaults to
+            start date + 24 h for ICS when left blank.
+          </p>
         </div>
 
         <div className="space-y-2">

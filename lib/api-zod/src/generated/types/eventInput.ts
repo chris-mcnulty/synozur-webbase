@@ -12,6 +12,11 @@ export interface EventInput {
   /** @nullable */
   slug?: string | null;
   startDate: Date;
+  /**
+   * Optional end date/time. Used for ICS DTEND; falls back to startDate + 24 h when null.
+   * @nullable
+   */
+  endDate?: Date | null;
   /** @nullable */
   location?: string | null;
   /** @nullable */

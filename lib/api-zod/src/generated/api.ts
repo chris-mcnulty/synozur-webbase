@@ -3768,6 +3768,12 @@ export const ListPublicEventsResponseItem = zod.object({
   title: zod.string(),
   slug: zod.string(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),
@@ -3814,6 +3820,12 @@ export const ListAdminEventsResponseItem = zod.object({
   title: zod.string(),
   slug: zod.string(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),
@@ -3862,6 +3874,12 @@ export const CreateEventBody = zod.object({
   title: zod.string().min(1),
   slug: zod.string().nullish(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),
@@ -3897,6 +3915,12 @@ export const GetAdminEventResponse = zod.object({
   title: zod.string(),
   slug: zod.string(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),
@@ -3944,6 +3968,12 @@ export const UpdateEventBody = zod.object({
   title: zod.string().min(1),
   slug: zod.string().nullish(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),
@@ -3975,6 +4005,12 @@ export const UpdateEventResponse = zod.object({
   title: zod.string(),
   slug: zod.string(),
   startDate: zod.coerce.date(),
+  endDate: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "Optional end date\/time. Used for ICS DTEND; falls back to startDate + 24 h when null.",
+    ),
   location: zod.string().nullish(),
   teaser: zod.string().nullish(),
   description: zod.string().nullish(),

@@ -44,6 +44,7 @@ export const eventsTable = pgTable("events", {
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+  endDate: timestamp("end_date", { withTimezone: true }),
   location: text("location"),
   teaser: text("teaser"),
   description: text("description"),
