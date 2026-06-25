@@ -1,13 +1,17 @@
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
   Clock,
   Compass,
   Layers,
+  Loader2,
   MessageSquare,
   Sparkles,
 } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { api } from "@/lib/api";
+import StartDetailNative from "@/pages/start-detail-native";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -45,7 +49,23 @@ const SHARE_AHEAD = [
   "Whether AI or operating model changes are part of the discussion.",
 ];
 
+const BOOKING_SLUG = "ai-strategy-and-design";
+
 export default function Booking() {
+  const { data: booking, isLoading: bookingLoading } = useQuery({
+    queryKey: ["public-booking", BOOKING_SLUG],
+    queryFn: () => api.getBooking(BOOKING_SLUG),
+    retry: false,
+  });
+
+  const { data: siteSettings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+  });
+
+  const useNative =
+    siteSettings?.bookingsRenderMode === "native" && Boolean(booking?.msBusinessId);
+
   return (
     <div className="w-full overflow-x-hidden selection:bg-primary/30">
       <Meta
@@ -126,24 +146,47 @@ export default function Booking() {
               transition={{ ...fadeUp.transition, delay: 0.05 }}
               className="scroll-mt-28"
             >
-              <div
-                className="relative overflow-hidden rounded-2xl border border-border bg-card"
-                data-testid="booking-embed"
-              >
-                <div className="absolute inset-0 z-0">
-                  <img src={SKY.galaxy} alt="" className="w-full h-full object-cover opacity-10" />
+              {bookingLoading ? (
+                <div className="flex min-h-[460px] items-center justify-center rounded-2xl border border-border bg-card">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary/60" />
                 </div>
-                <div className="relative z-10 flex min-h-[460px] flex-col items-center justify-center px-6 py-16 text-center">
-                  <div className="h-14 w-14 mb-5 rounded-2xl border border-primary/30 bg-primary/10 flex items-center justify-center">
-                    <CalendarDays className="h-7 w-7 text-primary" />
+              ) : useNative ? (
+                <StartDetailNative slug={BOOKING_SLUG} bookingTitle={booking!.title} />
+              ) : booking?.embedUrl ? (
+                <div
+                  className="rounded-2xl border border-border bg-card overflow-hidden"
+                  data-testid="booking-embed"
+                >
+                  <iframe
+                    src={booking.embedUrl}
+                    title={booking.title}
+                    width="100%"
+                    height="1100"
+                    scrolling="yes"
+                    style={{ border: 0, display: "block" }}
+                    allow="clipboard-write"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-border bg-card"
+                  data-testid="booking-embed"
+                >
+                  <div className="absolute inset-0 z-0">
+                    <img src={SKY.galaxy} alt="" className="w-full h-full object-cover opacity-10" />
                   </div>
-                  <p className="text-lg font-semibold text-white mb-1">Embed your scheduler here</p>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    The Microsoft Bookings calendar slots into this panel — pick a time that fits
-                    your leadership context.
-                  </p>
+                  <div className="relative z-10 flex min-h-[460px] flex-col items-center justify-center px-6 py-16 text-center">
+                    <div className="h-14 w-14 mb-5 rounded-2xl border border-primary/30 bg-primary/10 flex items-center justify-center">
+                      <CalendarDays className="h-7 w-7 text-primary" />
+                    </div>
+                    <p className="text-lg font-semibold text-white mb-1">Booking unavailable</p>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      The scheduler could not be loaded. Please try again or{" "}
+                      <a href="/contact" className="underline hover:text-foreground">contact us</a>.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Microcopy under calendar */}
               <div className="mt-7 rounded-2xl border border-border/60 bg-card/60 p-6 md:p-7">

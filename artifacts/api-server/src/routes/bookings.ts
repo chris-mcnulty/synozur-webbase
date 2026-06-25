@@ -366,13 +366,10 @@ router.delete("/admin/bookings/graph-token", requireAdmin, async (req, res): Pro
 });
 
 // ---------------------------------------------------------------------------
-// Admin — Graph diagnostic: list all Bookings businesses visible to the app.
-// Useful for verifying that the correct msBusinessId values are stored.
-router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Promise<void> => {
-  if (!isGraphBookingsConfigured()) {
-    res.status(503).json({ error: "Graph credentials not configured (ENTRA_* env vars missing)." });
-    return;
-  }
+// Admin — create a new booking.
+// ---------------------------------------------------------------------------
+
+router.post("/admin/bookings", requireAdmin, async (req, res): Promise<void> => {
   const parsed = Body.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -400,7 +397,49 @@ router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Pr
       msTimezone: parsed.data.msTimezone ?? null,
     })
     .returning();
-  res.status(201).json(serialize(row));
+  res.status(201).json(serialize(row!));
+});
+
+// ---------------------------------------------------------------------------
+// Admin — Graph diagnostic: list all Bookings businesses visible to the app.
+// Useful for verifying that the correct msBusinessId values are stored.
+// IMPORTANT: must be registered before /admin/bookings/:id so Express does
+// not treat "graph-diagnose" as an id param.
+// ---------------------------------------------------------------------------
+
+router.get("/admin/bookings/graph-diagnose", requireAdmin, async (_req, res): Promise<void> => {
+  if (!isGraphBookingsConfigured()) {
+    res.status(503).json({ error: "Graph credentials not configured (ENTRA_* env vars missing)." });
+    return;
+  }
+  const result = await listBusinesses();
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.message });
+    return;
+  }
+  res.json({
+    businesses: result.businesses.map((b) => ({
+      id: b.id,
+      displayName: b.displayName,
+    })),
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Admin — fetch a single booking by id.
+// ---------------------------------------------------------------------------
+
+router.get("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  const [row] = await db
+    .select()
+    .from(bookingsTable)
+    .where(eq(bookingsTable.id, id));
+  if (!row) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  res.json(serialize(row));
 });
 
 router.patch("/admin/bookings/:id", requireAdmin, async (req, res): Promise<void> => {
