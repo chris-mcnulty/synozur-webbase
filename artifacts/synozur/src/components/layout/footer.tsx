@@ -25,7 +25,7 @@ import {
   type NavSolutionGroup,
 } from "@workspace/synozur-nav";
 
-function FooterSubscribeForm() {
+export function FooterSubscribeForm() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);

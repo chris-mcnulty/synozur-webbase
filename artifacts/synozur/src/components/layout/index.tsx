@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "./header";
 import { Footer } from "./footer";
+import { SiteHeaderB } from "./site-header-b";
+import { SiteFooterB } from "./site-footer-b";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { Analytics } from "@/components/analytics";
 import { OrganizationJsonLd } from "@/components/organization-jsonld";
@@ -27,9 +29,17 @@ function removeMeta(name: string) {
   if (el) el.remove();
 }
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({
+  children,
+  chrome = "default",
+}: {
+  children: ReactNode;
+  /** "default" = mainline header/footer. "b" = the decision-path B experience. */
+  chrome?: "default" | "b";
+}) {
   const { theme } = useTheme();
   const [location] = useLocation();
+  const isB = chrome === "b";
 
   const { data: settings } = useQuery({
     queryKey: ["public-site-settings"],
@@ -71,22 +81,31 @@ export function Layout({ children }: { children: ReactNode }) {
   const showAnnouncement =
     settings?.announcementEnabled === true && !!settings.announcementText;
 
+  // The B experience is authored exclusively for the cosmic dark palette
+  // (white display copy over dark hero/section backgrounds), matching the
+  // approved mockup. Force "dark" for B chrome so it never inverts to the
+  // light theme when a visitor's OS prefers light or they toggle the mainline.
   return (
-    <div className={cn("min-h-[100dvh] flex flex-col w-full bg-background text-foreground", theme)}>
+    <div
+      className={cn(
+        "min-h-[100dvh] flex flex-col w-full bg-background text-foreground",
+        isB ? "dark" : theme,
+      )}
+    >
       <OrganizationJsonLd />
       <BreadcrumbJsonLd />
-      {showAnnouncement && (
+      {showAnnouncement && !isB && (
         <AnnouncementBar
           text={settings.announcementText!}
           linkText={settings.announcementLinkText}
           linkUrl={settings.announcementLinkUrl}
         />
       )}
-      <Header />
+      {isB ? <SiteHeaderB /> : <Header />}
       <main className="flex-1 flex flex-col w-full">
         {children}
       </main>
-      <Footer />
+      {isB ? <SiteFooterB /> : <Footer />}
       <Analytics />
     </div>
   );

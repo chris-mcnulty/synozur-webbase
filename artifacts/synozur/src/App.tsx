@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ComponentType } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { MotionConfig } from "framer-motion";
@@ -18,6 +18,10 @@ import {
 
 import Home from "@/pages/home";
 import HomeB from "@/pages/home-b";
+import Sprint from "@/pages/sprint";
+import Proof from "@/pages/proof";
+import Fit from "@/pages/fit";
+import Booking from "@/pages/booking";
 import About from "@/pages/about";
 import LandingPageView from "@/pages/landing-page";
 import ServicesOverview from "@/pages/services-overview";
@@ -525,6 +529,21 @@ function RootHomeRoute() {
   return showB ? <HomeB /> : <Home />;
 }
 
+// "B experience" routes — Home B plus the decision-path pages (The Sprint,
+// Proof, Fit, Book) render inside the unified B chrome (fixed decision-path
+// header + B footer) via <Layout chrome="b">. Each gets its own error boundary
+// so a crash on one B page recovers on navigation, matching the mainline.
+function BRoute({ component: Component }: { component: ComponentType }) {
+  const [location] = useLocation();
+  return (
+    <Layout chrome="b">
+      <ErrorBoundary resetKey={location} fallback={(args) => <RouteErrorFallback {...args} />}>
+        <Component />
+      </ErrorBoundary>
+    </Layout>
+  );
+}
+
 function Router() {
   // Key the marketing-route error boundary on the current location so a single
   // crashed page recovers automatically when the visitor navigates away,
@@ -539,6 +558,23 @@ function Router() {
       {/* Embed pages — chromeless iframe-embeddable, no Layout wrapper. */}
       <Route path="/careers/embed/jobs" component={CareersEmbedJobs} />
       <Route path="/careers/embed/job/:slug" component={CareersEmbedJob} />
+      {/* B experience — unified decision-path chrome (must precede the
+          default-chrome catch-all below). */}
+      <Route path="/home-b">
+        <BRoute component={HomeB} />
+      </Route>
+      <Route path="/sprint">
+        <BRoute component={Sprint} />
+      </Route>
+      <Route path="/proof">
+        <BRoute component={Proof} />
+      </Route>
+      <Route path="/fit">
+        <BRoute component={Fit} />
+      </Route>
+      <Route path="/book">
+        <BRoute component={Booking} />
+      </Route>
       <Route>
         <Layout>
           <ErrorBoundary
@@ -548,7 +584,6 @@ function Router() {
           <Switch>
             <Route path="/" component={RootHomeRoute} />
             <Route path="/home-a" component={Home} />
-            <Route path="/home-b" component={HomeB} />
             <Route path="/about" component={About} />
             <Route path="/services-overview/default" component={ServicesOverview} />
             <Route path="/services-overview/:slug" component={ServicesOverview} />
