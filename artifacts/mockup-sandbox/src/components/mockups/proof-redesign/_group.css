@@ -1,0 +1,95 @@
+/* Synozur brand tokens for the Home (B) AI-first redesign mockup.
+   Ported from artifacts/synozur/src/index.css (Cosmic theme, dark default).
+   Each component in this group imports './_group.css' explicitly. */
+
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-Light.ttf') format('truetype');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-Italic.ttf') format('truetype');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-Demi.ttf') format('truetype');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Avenir Next LT Pro';
+  src: url('/__mockup/fonts/AvenirNextLTPro-BoldItalic.ttf') format('truetype');
+  font-weight: 700; font-style: italic; font-display: swap;
+}
+
+/* Dark-default semantic tokens (Cosmic theme, deep indigo night sky).
+   Overriding the raw HSL triplets cascades through the sandbox @theme so
+   bg-background / text-foreground / bg-primary / text-primary etc. all
+   resolve to the Synozur palette inside this preview. */
+:root {
+  /* Synozur brand primitives */
+  --synozur-violet: 269 97% 52%;
+  --synozur-purple: 269 53% 37%;
+  --synozur-magenta: 320 80% 50%;
+  --synozur-blue: 220 90% 55%;
+
+  --background: 240 41% 7%;
+  --foreground: 240 20% 98%;
+
+  --border: 240 30% 18%;
+  --input: 240 30% 18%;
+  --ring: var(--synozur-violet);
+
+  --card: 240 35% 10%;
+  --card-foreground: 240 20% 98%;
+  --card-border: 240 30% 18%;
+
+  --popover: 240 35% 10%;
+  --popover-foreground: 240 20% 98%;
+
+  --primary: var(--synozur-violet);
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: var(--synozur-purple);
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 240 30% 14%;
+  --muted-foreground: 240 20% 70%;
+
+  --accent: 240 30% 14%;
+  --accent-foreground: 240 20% 98%;
+
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 240 20% 98%;
+
+  --radius: 0.5rem;
+}
+
+/* Apply the brand font to the mockup wrapper. */
+.synozur-root {
+  font-family: 'Avenir Next LT Pro', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Nebula gradient utilities (verbatim from the live site). */
+.nebula-gradient {
+  background: linear-gradient(135deg, hsl(var(--synozur-purple)), hsl(var(--synozur-violet)), hsl(var(--synozur-magenta)), hsl(var(--synozur-blue)));
+}
+.nebula-text {
+  background: linear-gradient(135deg, hsl(var(--synozur-purple)), hsl(var(--synozur-violet)), hsl(var(--synozur-magenta)), hsl(var(--synozur-blue)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

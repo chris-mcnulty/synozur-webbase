@@ -1,0 +1,119 @@
+SPRINT PAGE OPENING (READY TO USE)
+🔷 HEADLINE (Reframe)
+The problem isn’t how fast you’re moving.
+It’s that your leadership team isn’t aligned on what matters most.
+________________________________________
+🔷 SUBHEAD (Analytical, structured)
+As organizations scale, complexity increases faster than clarity.
+Decisions fragment, priorities compete, and execution slows—not because teams lack capability, but because alignment has eroded.
+What looks like an execution problem is almost always a clarity problem.
+________________________________________
+🔷 DIAGNOSTIC TENSION (Precision, not narrative)
+You are likely seeing some of this already:
+•	Leadership discussions that don’t resolve into clear decisions
+•	Strategic priorities that shift faster than teams can execute
+•	AI initiatives that exist—but don’t meaningfully change outcomes
+•	Strong teams working hard, but not in the same direction
+•	Growth introducing friction instead of momentum
+These are not isolated issues.
+They are signals of a missing or misaligned North Star.
+________________________________________
+🔷 REFRAME LOCK-IN (This is the “advisor moment”)
+Without a clearly defined and consistently applied North Star:
+•	Execution becomes reactive
+•	AI amplifies noise instead of clarity
+•	Leadership alignment degrades under scale
+The issue isn’t effort.
+It’s that the system guiding that effort isn’t explicit enough to scale.
+________________________________________
+🔷 TRANSITION TO THE SPRINT
+This is where the Sprint begins.
+Sprint Definition Section
+<section id="sprint-definition" class="section section-sprint-definition">
+  <div class="container">
+    <div class="section-header">
+      <p class="eyebrow">The Sprint</p>
+      <h2>A structured intervention for leaders who need clarity before they need cleanup.</h2>
+      <p class="section-intro">
+        The AI & North Star Sprint is a focused executive engagement for leadership teams that need to
+        align on what matters, define an AI-first direction, and leave with a clear path forward.
+        It is not a strategy deck. It is not generic AI training. It is a working intervention built
+        to turn ambiguity into aligned decisions, a practical roadmap, and measurable next steps.
+      </p>
+    </div>
+
+    <div class="sprint-highlight">
+      <p>
+        <strong>4–6 weeks. CEO + Board. Working prototype. AI-first roadmap.</strong>
+      </p>
+    </div>
+
+    <div class="sprint-grid">
+      <div class="sprint-card">
+        <p class="phase-label">Phase 1</p>
+        <h3>Assess</h3>
+        <p>
+          Surface what is actually happening inside the business: where alignment is weak,
+          where priorities conflict, where AI is adding noise instead of leverage, and where
+          leadership is operating without a shared point of view.
+        </p>
+      </div>
+
+      <div class="sprint-card">
+        <p class="phase-label">Phase 2</p>
+        <h3>Define</h3>
+        <p>
+          Establish the North Star. Clarify the decisions that matter most, define the AI-first
+          operating model the business actually needs, and align leadership on what the company
+          is aiming at now—not just what it says it values.
+        </p>
+      </div>
+
+      <div class="sprint-card">
+        <p class="phase-label">Phase 3</p>
+        <h3>Deliver</h3>
+        <p>
+          Translate strategy into a working prototype, roadmap, and operating rhythm. This is where
+          direction becomes executable—through structured priorities, practical design, and a cadence
+          the organization can realistically sustain.
+        </p>
+      </div>
+
+      <div class="sprint-card">
+        <p class="phase-label">Phase 4</p>
+        <h3>Outcomes</h3>
+        <p>
+          Leave with more than alignment. The Sprint creates a measurable starting point, a defined
+          path forward, and a leadership team that can move with clarity instead of reacting under
+          pressure.
+        </p>
+      </div>
+    </div>
+
+    <div class="sprint-outcomes">
+      <h3>What you leave with</h3>
+      <ul>
+        <li>A clearly defined North Star for the business</li>
+        <li>An AI-first roadmap tied to business outcomes</li>
+        <li>A working prototype or executive-ready model of what changes next</li>
+        <li>A practical operating rhythm for leadership execution</li>
+        <li>A clearer baseline for measuring progress over time</li>
+      </ul>
+    </div>
+
+    <div class="sprint-positioning">
+      <h3>What this is not</h3>
+      <ul>
+        <li>Not generic AI training</li>
+        <li>Not implementation-heavy consulting</li>
+        <li>Not a templated offsite</li>
+        <li>Not a strategy document that sits untouched after delivery</li>
+      </ul>
+    </div>
+
+    <div class="cta-group">
+      <a href="/book-the-sprint" class="btn btn-primary">Book the Sprint</a>
+      <a href="/proof" class="btn btn-secondary">See the proof</a>
+    </div>
+  </div>
+</section>

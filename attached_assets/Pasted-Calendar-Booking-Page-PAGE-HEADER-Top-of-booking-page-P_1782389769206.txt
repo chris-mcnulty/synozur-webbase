@@ -1,0 +1,60 @@
+Calendar Booking Page
+🔷 PAGE HEADER (Top of booking page)
+Plain Text
+Schedule the conversation
+
+Show more lines
+________________________________________
+🔷 OPENING FRAME (Tone calibration)
+Plain Text
+This is a focused working conversation—designed to understand your current context,
+where alignment may be breaking down, and whether the Sprint is the right next step.
+🔷 EXPECTATION SETTING (critical for executives)
+Plain Text
+What to expect:
+
+- A 30–45 minute discussion grounded in your leadership context 
+- A clear perspective on where clarity or alignment may be limiting progress 
+- An initial view of how the Sprint would apply to your organization 
+``
+🔷 REFRAME THE INTERACTION (THIS PREVENTS “FREE CONSULT” PERCEPTION)
+Plain Text
+This is not a generic discovery call.
+
+It is a structured conversation to determine:
+whether this work is necessary,
+and what it would look like if it i
+🔷 HUMAN CONTEXT (THIS PRESERVES YOUR BRAND)
+Plain Text
+We understand that every organization is different.
+
+This conversation is tailored to your specific situation—
+not a predefined pitch or framework.
+``
+🔷 CALENDAR INSERT POINT
+Embed your scheduler here 
+________________________________________
+🔷 MICROCOPY (under calendar — VERY IMPORTANT)
+Plain Text
+You can share as much or as little context as you like ahead of time.
+
+If helpful, we recommend including:
+- Your role and leadership context 
+- The primary challenge you’re navigating 
+- Whether AI or operating model changes are part of the discussion 
+
+🔷 DECISION REINFORCEMENT (Option A energy, done correctly)
+Plain Text
+The goal is not to sell anything in this conversation.
+
+It is to determine whether aligning around clarity and direction
+would meaningfully change how your organization operates.
+``
+Show more lines
+________________________________________
+🔷 HUMAN CLOSE (THIS IS YOUR DIFFERENTIATOR)
+Plain Text
+If now isn’t the right time, that’s completely fine.
+
+But if you’re at a point where clarity matters more than activity,
+this is the right place to start.
