@@ -1,9 +1,8 @@
 import "./_group.css";
-import React, { useState, useEffect } from "react";
+import { Footer, Header } from "../_shared/SiteChrome";
+import React from "react";
 import { motion } from "framer-motion";
 import {
-  Menu,
-  X,
   CalendarDays,
   Clock,
   Compass,
@@ -48,100 +47,9 @@ const SHARE_AHEAD = [
 ];
 
 export function BookingRedesign() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const navLinks = [
-    { name: "Home", href: "#" },
-    { name: "Services", href: "#" },
-    { name: "Proof", href: "#" },
-    { name: "Method", href: "#" },
-    { name: "Insights", href: "#" },
-    { name: "About", href: "#" },
-  ];
-
   return (
     <div className="synozur-root min-h-screen w-full bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
-      {/* Header */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-          isScrolled
-            ? "bg-background/80 backdrop-blur-md border-border/50 py-3"
-            : "bg-transparent border-transparent py-5"
-        }`}
-      >
-        <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-          <a href="#" className="relative z-10 flex-shrink-0">
-            <img
-              src="/__mockup/images/sa-logo-horizontal-white.png"
-              alt="The Synozur Alliance"
-              className="h-7 md:h-9 w-auto"
-            />
-          </a>
-          <nav className="hidden lg:flex items-center gap-8">
-            <ul className="flex items-center gap-8 text-sm font-medium text-foreground/80">
-              {navLinks.map((link) => (
-                <li key={link.name}>
-                  <a href={link.href} className="hover:text-foreground transition-colors">
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <a
-              href="#calendar"
-              className="h-10 px-6 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-            >
-              Schedule the conversation
-            </a>
-          </nav>
-          <button
-            type="button"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-nav"
-            className="lg:hidden relative z-10 p-2 text-foreground/80 hover:text-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-        {mobileMenuOpen && (
-          <nav
-            id="mobile-nav"
-            className="lg:hidden border-t border-border/50 bg-background/95 backdrop-blur-md"
-          >
-            <ul className="container mx-auto px-4 md:px-6 py-4 flex flex-col gap-1 text-sm font-medium text-foreground/80">
-              {navLinks.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="block py-2 hover:text-foreground transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-              <li className="pt-2">
-                <a
-                  href="#calendar"
-                  className="h-10 px-6 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Schedule the conversation
-                </a>
-              </li>
-            </ul>
-          </nav>
-        )}
-      </header>
+      <Header bookHref="#calendar" active="Book" />
 
       <main>
         {/* Hero — page header + opening frame (booking page hero pattern) */}
@@ -346,19 +254,7 @@ export function BookingRedesign() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="bg-[#0B0B1A] border-t border-border py-12">
-          <div className="container mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-            <img
-              src="/__mockup/images/sa-logo-horizontal-white.png"
-              alt="The Synozur Alliance"
-              className="h-7 w-auto"
-            />
-            <p className="text-sm text-muted-foreground">
-              Transformation with momentum — AI-native, human-centered.
-            </p>
-          </div>
-        </footer>
+        <Footer />
       </main>
     </div>
   );

@@ -1,8 +1,9 @@
 import "./_group.css";
+import { Footer, Header } from "../_shared/SiteChrome";
 import React, { useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { 
-  Menu, X, ArrowRight, CheckCircle2, ChevronRight, 
+  ArrowRight, CheckCircle2, ChevronRight, 
   BarChart3, Settings2, ShieldAlert, Target, XCircle,
   Briefcase, Network, Lightbulb, Activity, ArrowUpRight
 } from "lucide-react";
@@ -116,102 +117,10 @@ function FeedCarousel() {
 }
 
 export function HomeBRedesign() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const navLinks = [
-    { name: "Home", href: "#" },
-    { name: "The Sprint", href: "#sprint" },
-    { name: "Proof", href: "#proof" },
-    { name: "Fit", href: "#fit" },
-    { name: "Method", href: "#method" },
-    { name: "Insights", href: "#insights" }
-  ];
-
   return (
     <div className="synozur-root min-h-screen w-full bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
       
-      {/* Header */}
-      <header 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-          isScrolled 
-            ? "bg-background/80 backdrop-blur-md border-border/50 py-3" 
-            : "bg-transparent border-transparent py-5"
-        }`}
-      >
-        <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-          <a href="/" className="relative z-10 flex-shrink-0">
-            <img 
-              src="/__mockup/images/sa-logo-horizontal-white.png" 
-              alt="The Synozur Alliance" 
-              className="h-7 md:h-9 w-auto"
-            />
-          </a>
-
-          {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-8">
-            <ul className="flex items-center gap-8 text-sm font-medium text-foreground/80">
-              {navLinks.map((link) => (
-                <li key={link.name}>
-                  <a href={link.href} className="hover:text-foreground transition-colors">
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <a 
-              href="#sprint" 
-              className="h-10 px-6 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-            >
-              Book the Sprint
-            </a>
-          </nav>
-
-          {/* Mobile Menu Toggle */}
-          <button 
-            className="lg:hidden relative z-10 p-2 text-foreground/80 hover:text-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl pt-24 px-6 lg:hidden flex flex-col">
-          <ul className="flex flex-col gap-6 text-xl font-medium">
-            {navLinks.map((link) => (
-              <li key={link.name}>
-                <a 
-                  href={link.href} 
-                  className="block w-full"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-8 pt-8 border-t border-border/50">
-            <a 
-              href="#sprint" 
-              className="h-12 w-full inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Book the Sprint
-            </a>
-          </div>
-        </div>
-      )}
+      <Header active="Home" />
 
       <main>
         {/* 1. Hero — two-column: copy left, From The Feed carousel right, over background video */}
@@ -733,25 +642,7 @@ export function HomeBRedesign() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-background border-t border-border py-12">
-        <div className="container mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <img 
-            src="/__mockup/images/sa-logo-horizontal-white.png" 
-            alt="The Synozur Alliance" 
-            className="h-6 w-auto opacity-70"
-          />
-          <ul className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-            {navLinks.map((link) => (
-              <li key={link.name}>
-                <a href={link.href} className="hover:text-foreground transition-colors">
-                  {link.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
