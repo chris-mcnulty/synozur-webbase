@@ -266,53 +266,88 @@ function purgePage(title: string, message: string): string {
 </div></body></html>`;
 }
 
+// Confirmation page shown by GET — safe for email scanner pre-fetches.
+function purgeConfirmPage(token: string): string {
+  const escaped = token.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Delete recording?</title></head>
+<body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#0b0b1a;color:#fff;">
+<div style="max-width:480px;margin:80px auto;padding:32px;background:#fff;color:#1a1a2e;border-radius:12px;">
+<h1 style="font-size:20px;color:#810FFB;">Delete this recording?</h1>
+<p style="font-size:15px;line-height:1.6;">
+  This will permanently remove the audio file from our server. You will no longer be able to listen to this briefing online.
+</p>
+<form method="POST" action="/api/briefing-podcast/purge">
+  <input type="hidden" name="token" value="${escaped}" />
+  <button type="submit" style="background:#810FFB;color:#fff;border:none;padding:12px 28px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;">
+    Yes, delete the recording
+  </button>
+</form>
+<p style="margin-top:16px;font-size:13px;color:#666;">Changed your mind? Just close this page — nothing will be deleted.</p>
+</div></body></html>`;
+}
+
+// GET — show confirmation page only. Safe for email security pre-fetchers that
+// follow every link in an email via GET; they will never submit a POST form.
 router.get(
   "/briefing-podcast/purge",
   async (req: Request, res: Response) => {
     const token = typeof req.query["token"] === "string" ? req.query["token"] : null;
     const payload = verifyBriefingPurgeToken(token);
     if (!payload) {
-      res
-        .status(400)
-        .send(purgePage("Invalid link", "This purge link is not valid."));
+      res.status(400).send(purgePage("Invalid link", "This purge link is not valid."));
       return;
     }
     const row = await db.query.briefingPodcastsTable.findFirst({
       where: eq(briefingPodcastsTable.id, payload.podcastId),
     });
     if (!row) {
-      res
-        .status(404)
-        .send(purgePage("Not found", "That recording no longer exists."));
+      res.status(404).send(purgePage("Not found", "That recording no longer exists."));
       return;
     }
     if (row.status === "purged") {
-      res
-        .status(200)
-        .send(
-          purgePage(
-            "Already removed",
-            "This recording has already been purged from our server.",
-          ),
-        );
+      res.status(200).send(
+        purgePage("Already removed", "This recording has already been purged from our server."),
+      );
+      return;
+    }
+    res.status(200).send(purgeConfirmPage(token!));
+  },
+);
+
+// POST — performs the actual purge. Only reached when the user explicitly
+// clicks "Yes, delete" on the confirmation page above.
+router.post(
+  "/briefing-podcast/purge",
+  async (req: Request, res: Response) => {
+    const token = typeof req.body?.token === "string" ? (req.body as { token: string }).token : null;
+    const payload = verifyBriefingPurgeToken(token);
+    if (!payload) {
+      res.status(400).send(purgePage("Invalid link", "This purge link is not valid."));
+      return;
+    }
+    const row = await db.query.briefingPodcastsTable.findFirst({
+      where: eq(briefingPodcastsTable.id, payload.podcastId),
+    });
+    if (!row) {
+      res.status(404).send(purgePage("Not found", "That recording no longer exists."));
+      return;
+    }
+    if (row.status === "purged") {
+      res.status(200).send(
+        purgePage("Already removed", "This recording has already been purged from our server."),
+      );
       return;
     }
     if (row.speItemId) {
       try {
-        await speFileStorage.deleteFile(
-          row.speItemId,
-          row.speContainerId ?? undefined,
-        );
+        await speFileStorage.deleteFile(row.speItemId, row.speContainerId ?? undefined);
       } catch (err) {
         logger.error({ err, id: row.id }, "Failed to delete SPE briefing MP3");
-        res
-          .status(500)
-          .send(
-            purgePage(
-              "Something went wrong",
-              "We couldn't remove the recording right now. Please try again later.",
-            ),
-          );
+        res.status(500).send(
+          purgePage("Something went wrong", "We couldn't remove the recording right now. Please try again later."),
+        );
         return;
       }
     }
@@ -320,14 +355,9 @@ router.get(
       .update(briefingPodcastsTable)
       .set({ status: "purged", purgedAt: new Date() })
       .where(eq(briefingPodcastsTable.id, row.id));
-    res
-      .status(200)
-      .send(
-        purgePage(
-          "Recording removed",
-          "The audio version of your briefing has been permanently deleted from our server.",
-        ),
-      );
+    res.status(200).send(
+      purgePage("Recording removed", "The audio version of your briefing has been permanently deleted from our server."),
+    );
   },
 );
 
