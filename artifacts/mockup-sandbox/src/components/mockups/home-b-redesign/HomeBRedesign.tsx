@@ -295,67 +295,56 @@ export function HomeBRedesign() {
           </div>
         </section>
 
-        {/* 2. Pain First (AI-RX) — text paired with the existing editorial image */}
+        {/* 2. Pain First (AI-RX) */}
         <section className="py-24 md:py-32 bg-background relative border-y border-border/40">
-          <div className="container mx-auto px-4 md:px-6 max-w-6xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16">
+          <div className="container mx-auto px-4 md:px-6 max-w-5xl">
+            <motion.div {...fadeUp} className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                The problem isn't AI. It's your operating model.
+              </h2>
+              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                Most firms deliver strategy. Few redesign how the business actually operates.
+              </p>
+            </motion.div>
 
-              {/* Left: editorial image */}
-              <motion.div
-                {...fadeUp}
-                className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
-              >
-                <img
-                  src="/__mockup/images/home-hero-editorial.png"
-                  alt="Leadership team in a modern conference room"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-30 mix-blend-overlay" />
-              </motion.div>
-
-              {/* Right: copy + pain list */}
-              <motion.div {...fadeUp}>
-                <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-                  The problem isn't AI. It's your operating model.
-                </h2>
-                <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed">
-                  Most firms deliver strategy. Few redesign how the business actually operates.
-                </p>
-                <div className="flex flex-col gap-4">
-                  {[
-                    {
-                      icon: <BarChart3 className="h-5 w-5 text-primary" />,
-                      text: "AI investment without measurable ROI"
-                    },
-                    {
-                      icon: <Network className="h-5 w-5 text-primary" />,
-                      text: "Scattered pilots with no path to scale"
-                    },
-                    {
-                      icon: <ShieldAlert className="h-5 w-5 text-primary" />,
-                      text: "No defensible AI governance or policy"
-                    },
-                    {
-                      icon: <Activity className="h-5 w-5 text-primary" />,
-                      text: "Leadership teams behind, overwhelmed, and reacting too late"
-                    }
-                  ].map((pain, i) => (
-                    <div
-                      key={i}
-                      className="bg-card/50 border border-border p-5 rounded-xl flex items-start gap-4 hover:border-primary/50 transition-colors"
-                    >
-                      <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
-                        {pain.icon}
-                      </div>
-                      <p className="text-base md:text-lg font-medium leading-snug pt-1">
-                        {pain.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
+            <motion.div 
+              variants={staggerContainer}
+              initial="initial"
+              whileInView="whileInView"
+              className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16"
+            >
+              {[
+                {
+                  icon: <BarChart3 className="h-6 w-6 text-primary" />,
+                  text: "AI investment without measurable ROI"
+                },
+                {
+                  icon: <Network className="h-6 w-6 text-primary" />,
+                  text: "Scattered pilots with no path to scale"
+                },
+                {
+                  icon: <ShieldAlert className="h-6 w-6 text-primary" />,
+                  text: "No defensible AI governance or policy"
+                },
+                {
+                  icon: <Activity className="h-6 w-6 text-primary" />,
+                  text: "Leadership teams behind, overwhelmed, and reacting too late"
+                }
+              ].map((pain, i) => (
+                <motion.div 
+                  key={i} 
+                  variants={fadeUp}
+                  className="bg-card/50 border border-border p-6 rounded-xl flex items-start gap-4 hover:border-primary/50 transition-colors"
+                >
+                  <div className="p-3 bg-primary/10 rounded-lg shrink-0">
+                    {pain.icon}
+                  </div>
+                  <p className="text-lg font-medium leading-tight pt-1">
+                    {pain.text}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
 
             <motion.div {...fadeUp}>
               <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-8 md:p-10 text-center shadow-[0_0_40px_rgba(129,15,251,0.1)]">
@@ -511,47 +500,84 @@ export function HomeBRedesign() {
           </div>
         </section>
 
-        {/* 5. Who this is for (ICP) */}
+        {/* 5. Who this is for (ICP) — paired with editorial image */}
         <section id="fit" className="py-24 md:py-32 bg-[hsl(240_35%_9%)] relative overflow-hidden">
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[30vw] h-[60vh] bg-secondary/10 rounded-full blur-[100px] pointer-events-none" />
-          
-          <div className="container mx-auto px-4 md:px-6 max-w-5xl relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-              <motion.div {...fadeUp} className="lg:col-span-5">
+
+          <div className="container mx-auto px-4 md:px-6 max-w-6xl relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+              {/* Left: heading + audience */}
+              <motion.div {...fadeUp}>
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-8">
                   Who this is for
                 </h2>
-                <div className="p-6 border-l-2 border-primary bg-primary/5 rounded-r-xl">
+                <div className="p-6 border-l-2 border-primary bg-primary/5 rounded-r-xl mb-8">
                   <p className="text-xl font-medium leading-relaxed">
                     <span className="text-foreground">Mid-market. Privately held.</span><br/>
                     <span className="text-muted-foreground">AI pressure is real — and time is limited.</span>
                   </p>
                 </div>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { icon: <Briefcase className="h-5 w-5" />, text: "Founder-led and PE-backed CEOs" },
+                    { icon: <Target className="h-5 w-5" />, text: "Boards and portfolio operators" },
+                    { icon: <Lightbulb className="h-5 w-5" />, text: "COOs, CTOs, and emerging Chief AI Officers" }
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-5 p-5 bg-card border border-border rounded-xl"
+                    >
+                      <div className="h-11 w-11 rounded-full bg-background border border-border flex items-center justify-center shrink-0 text-primary">
+                        {item.icon}
+                      </div>
+                      <span className="text-lg md:text-xl font-medium">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
 
-              <motion.div 
-                variants={staggerContainer}
-                initial="initial"
-                whileInView="whileInView"
-                className="lg:col-span-7 flex flex-col gap-4"
+              {/* Right: editorial image (moved down from the top of the page) */}
+              <motion.div
+                {...fadeUp}
+                className="relative aspect-[4/5] lg:aspect-square rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
               >
-                {[
-                  { icon: <Briefcase className="h-5 w-5" />, text: "Founder-led and PE-backed CEOs" },
-                  { icon: <Target className="h-5 w-5" />, text: "Boards and portfolio operators" },
-                  { icon: <Lightbulb className="h-5 w-5" />, text: "COOs, CTOs, and emerging Chief AI Officers" }
-                ].map((item, i) => (
-                  <motion.div 
-                    key={i}
-                    variants={fadeUp}
-                    className="flex items-center gap-5 p-6 bg-card border border-border rounded-xl"
-                  >
-                    <div className="h-12 w-12 rounded-full bg-background border border-border flex items-center justify-center shrink-0 text-primary">
-                      {item.icon}
-                    </div>
-                    <span className="text-xl font-medium">{item.text}</span>
-                  </motion.div>
-                ))}
+                <img
+                  src="/__mockup/images/who-we-work-with.png"
+                  alt="Reaching toward the North Star"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-30 mix-blend-overlay" />
               </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Trusted by — partner logo strip, directly below "Who this is for" */}
+        <section className="py-16 bg-background border-b border-border/40">
+          <div className="container mx-auto px-4 md:px-6">
+            <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
+              Trusted by
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
+              {[
+                { slug: "microsoft", name: "Microsoft" },
+                { slug: "nfl", name: "NFL" },
+                { slug: "oxy", name: "Oxy" },
+                { slug: "pfizer", name: "Pfizer" },
+                { slug: "quest", name: "Quest" },
+                { slug: "santander", name: "Santander" },
+                { slug: "dell-technologies", name: "Dell Technologies" },
+                { slug: "sony", name: "Sony" }
+              ].map((logo) => (
+                <img
+                  key={logo.slug}
+                  src={`/__mockup/images/logos/${logo.slug}.png`}
+                  alt={logo.name}
+                  className="h-7 md:h-9 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity"
+                />
+              ))}
             </div>
           </div>
         </section>
