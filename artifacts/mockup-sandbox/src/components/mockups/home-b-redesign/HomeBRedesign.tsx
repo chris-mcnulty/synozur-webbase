@@ -535,6 +535,14 @@ export function HomeBRedesign() {
                     </div>
                   ))}
                 </div>
+                <div className="mt-8">
+                  <a
+                    href="/about"
+                    className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors"
+                  >
+                    Why Synozur <ArrowRight className="ml-2 h-4 w-4" />
+                  </a>
+                </div>
               </motion.div>
 
               {/* Right: editorial image (moved down from the top of the page) */}
