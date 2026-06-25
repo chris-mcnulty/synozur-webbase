@@ -21,6 +21,100 @@ const staggerContainer = {
   transition: { staggerChildren: 0.1 }
 };
 
+// Static recreation of the live site's API-driven "From The Feed" carousel.
+const FEED_ITEMS = [
+  {
+    img: "/__mockup/images/insight-1.png",
+    category: "Insight",
+    title: "From AI-ready to AI-first: what actually changes in the operating model",
+  },
+  {
+    img: "/__mockup/images/insight-2.png",
+    category: "Model",
+    title: "The North Star Method™ — a repeatable system for AI-first transformation",
+  },
+  {
+    img: "/__mockup/images/insight-3.png",
+    category: "Case Study",
+    title: "$2M EBITDA impact from a Company OS redesign",
+  },
+];
+
+function FeedCarousel() {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setCurrent((c) => (c + 1) % FEED_ITEMS.length),
+      6000,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
+  const go = (dir: number) =>
+    setCurrent((c) => (c + dir + FEED_ITEMS.length) % FEED_ITEMS.length);
+
+  const item = FEED_ITEMS[current];
+
+  return (
+    <div>
+      <div className="flex items-end justify-between mb-6 gap-4">
+        <p className="text-sm uppercase tracking-[0.25em] text-primary">From The Feed</p>
+        <div className="hidden md:flex gap-2">
+          <button
+            type="button"
+            onClick={() => go(-1)}
+            aria-label="Previous slide"
+            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+          >
+            <ArrowRight className="h-4 w-4 rotate-180" />
+          </button>
+          <button
+            type="button"
+            onClick={() => go(1)}
+            aria-label="Next slide"
+            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <motion.div
+        key={current}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="group block overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl"
+      >
+        <div className="relative aspect-[16/10] overflow-hidden">
+          <img src={item.img} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+        </div>
+        <div className="p-6 md:p-7">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary mb-3">{item.category}</p>
+          <h3 className="text-xl font-bold leading-snug mb-4">{item.title}</h3>
+          <span className="inline-flex items-center gap-1.5 text-sm text-primary font-semibold">
+            Read more <ArrowRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+      </motion.div>
+      <div className="flex items-center justify-center gap-2 mt-6">
+        {FEED_ITEMS.map((it, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setCurrent(i)}
+            aria-label={`Show slide ${i + 1}`}
+            className={`h-1.5 rounded-full transition-all ${
+              current === i ? "w-8 bg-primary" : "w-3 bg-white/25 hover:bg-white/50"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function HomeBRedesign() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -120,106 +214,148 @@ export function HomeBRedesign() {
       )}
 
       <main>
-        {/* 1. Hero */}
-        <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 bg-[#0B0B1A] overflow-hidden">
-          {/* Decorative background elements */}
-          <div className="absolute top-1/4 left-1/4 w-[50vw] h-[50vh] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none" />
-          <div className="absolute top-1/2 right-1/4 w-[40vw] h-[40vh] bg-secondary/20 rounded-full blur-[100px] mix-blend-screen opacity-50 pointer-events-none" />
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
-          
-          <div className="container relative z-10 mx-auto px-4 md:px-6 max-w-5xl">
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="flex flex-col items-center text-center"
+        {/* 1. Hero — two-column: copy left, From The Feed carousel right, over background video */}
+        <section className="relative min-h-[92vh] flex items-center bg-[#0B0B1A] overflow-hidden">
+          {/* Background video */}
+          <div className="absolute inset-0 z-0 opacity-60">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster="/__mockup/images/hero-bg.png"
+              className="w-full h-full object-cover"
+              data-decorative="true"
             >
-              <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight leading-[1.05] mb-8 text-foreground">
-                Become <span className="nebula-text">AI-first</span> — before disruption decides for you.
-              </h1>
-              
-              <p className="text-xl md:text-2xl text-foreground/70 mb-12 max-w-3xl leading-relaxed">
-                Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center gap-4 mb-10 w-full sm:w-auto">
-                <a 
-                  href="#sprint"
-                  className="w-full sm:w-auto h-14 px-8 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-lg transition-all hover:bg-primary/90 hover:scale-[1.02] shadow-[0_0_20px_rgba(129,15,251,0.3)]"
-                >
-                  Book the AI & North Star Sprint
-                </a>
-                <a 
-                  href="#proof"
-                  className="w-full sm:w-auto h-14 px-8 inline-flex items-center justify-center rounded-md border border-white/20 bg-white/5 text-white backdrop-blur-sm font-medium text-lg transition-all hover:bg-white/10"
-                >
-                  See proof, not promises
-                </a>
-              </div>
-              
-              <div className="text-sm md:text-base text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
-                <span>AI-ready</span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-                <span>AI-enabled</span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-                <strong className="text-foreground font-semibold">AI-first</strong>
-                <span className="hidden sm:inline-block mx-2 opacity-50">—</span>
-                <span className="w-full sm:w-auto">we install the model and prove the differential.</span>
-              </div>
-            </motion.div>
+              <source src="/__mockup/videos/hero-bg.webm" type="video/webm" />
+              <source src="/__mockup/videos/hero-bg.mp4" type="video/mp4" />
+            </video>
+          </div>
+          {/* Subtle glow accent */}
+          <div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vh] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-40 pointer-events-none z-0" />
+
+          <div className="container relative z-10 mx-auto px-4 md:px-6 py-28 md:py-32">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+
+              {/* Left: prominent logo + copy */}
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="lg:col-span-6"
+              >
+                <img
+                  src="/__mockup/images/sa-logo-horizontal-white.png"
+                  alt="The Synozur Alliance"
+                  className="h-24 md:h-32 w-auto max-w-full mb-10"
+                  style={{ mixBlendMode: "screen" }}
+                />
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.06] mb-8 text-white">
+                  Become <span className="nebula-text">AI-first</span> — before disruption decides for you.
+                </h1>
+                <p className="text-lg md:text-xl text-zinc-300 mb-10 max-w-xl leading-relaxed">
+                  Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                  <a
+                    href="#sprint"
+                    className="h-14 px-8 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-lg transition-all hover:bg-primary/90 hover:scale-[1.02] shadow-[0_0_20px_rgba(129,15,251,0.3)]"
+                  >
+                    Book the AI &amp; North Star Sprint
+                  </a>
+                  <a
+                    href="#proof"
+                    className="h-14 px-8 inline-flex items-center justify-center rounded-md border border-white/20 bg-white/5 text-white backdrop-blur-sm font-medium text-lg transition-all hover:bg-white/10"
+                  >
+                    See proof, not promises
+                  </a>
+                </div>
+                <div className="text-sm md:text-base text-zinc-400 flex items-center gap-2 flex-wrap">
+                  <span>AI-ready</span>
+                  <ChevronRight className="h-4 w-4 opacity-50" />
+                  <span>AI-enabled</span>
+                  <ChevronRight className="h-4 w-4 opacity-50" />
+                  <strong className="text-white font-semibold">AI-first</strong>
+                  <span className="hidden sm:inline-block mx-1 opacity-50">—</span>
+                  <span>we install the model and prove the differential.</span>
+                </div>
+              </motion.div>
+
+              {/* Right: existing From The Feed carousel */}
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+                className="lg:col-span-6"
+              >
+                <FeedCarousel />
+              </motion.div>
+            </div>
           </div>
         </section>
 
-        {/* 2. Pain First (AI-RX) */}
+        {/* 2. Pain First (AI-RX) — text paired with the existing editorial image */}
         <section className="py-24 md:py-32 bg-background relative border-y border-border/40">
-          <div className="container mx-auto px-4 md:px-6 max-w-5xl">
-            <motion.div {...fadeUp} className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-                The problem isn't AI. It's your operating model.
-              </h2>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                Most firms deliver strategy. Few redesign how the business actually operates.
-              </p>
-            </motion.div>
+          <div className="container mx-auto px-4 md:px-6 max-w-6xl">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-16">
 
-            <motion.div 
-              variants={staggerContainer}
-              initial="initial"
-              whileInView="whileInView"
-              className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16"
-            >
-              {[
-                {
-                  icon: <BarChart3 className="h-6 w-6 text-primary" />,
-                  text: "AI investment without measurable ROI"
-                },
-                {
-                  icon: <Network className="h-6 w-6 text-primary" />,
-                  text: "Scattered pilots with no path to scale"
-                },
-                {
-                  icon: <ShieldAlert className="h-6 w-6 text-primary" />,
-                  text: "No defensible AI governance or policy"
-                },
-                {
-                  icon: <Activity className="h-6 w-6 text-primary" />,
-                  text: "Leadership teams behind, overwhelmed, and reacting too late"
-                }
-              ].map((pain, i) => (
-                <motion.div 
-                  key={i} 
-                  variants={fadeUp}
-                  className="bg-card/50 border border-border p-6 rounded-xl flex items-start gap-4 hover:border-primary/50 transition-colors"
-                >
-                  <div className="p-3 bg-primary/10 rounded-lg shrink-0">
-                    {pain.icon}
-                  </div>
-                  <p className="text-lg font-medium leading-tight pt-1">
-                    {pain.text}
-                  </p>
-                </motion.div>
-              ))}
-            </motion.div>
+              {/* Left: editorial image */}
+              <motion.div
+                {...fadeUp}
+                className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-card"
+              >
+                <img
+                  src="/__mockup/images/home-hero-editorial.png"
+                  alt="Leadership team in a modern conference room"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-30 mix-blend-overlay" />
+              </motion.div>
+
+              {/* Right: copy + pain list */}
+              <motion.div {...fadeUp}>
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                  The problem isn't AI. It's your operating model.
+                </h2>
+                <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed">
+                  Most firms deliver strategy. Few redesign how the business actually operates.
+                </p>
+                <div className="flex flex-col gap-4">
+                  {[
+                    {
+                      icon: <BarChart3 className="h-5 w-5 text-primary" />,
+                      text: "AI investment without measurable ROI"
+                    },
+                    {
+                      icon: <Network className="h-5 w-5 text-primary" />,
+                      text: "Scattered pilots with no path to scale"
+                    },
+                    {
+                      icon: <ShieldAlert className="h-5 w-5 text-primary" />,
+                      text: "No defensible AI governance or policy"
+                    },
+                    {
+                      icon: <Activity className="h-5 w-5 text-primary" />,
+                      text: "Leadership teams behind, overwhelmed, and reacting too late"
+                    }
+                  ].map((pain, i) => (
+                    <div
+                      key={i}
+                      className="bg-card/50 border border-border p-5 rounded-xl flex items-start gap-4 hover:border-primary/50 transition-colors"
+                    >
+                      <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
+                        {pain.icon}
+                      </div>
+                      <p className="text-base md:text-lg font-medium leading-snug pt-1">
+                        {pain.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
 
             <motion.div {...fadeUp}>
               <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-8 md:p-10 text-center shadow-[0_0_40px_rgba(129,15,251,0.1)]">
