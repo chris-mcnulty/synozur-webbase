@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -7,6 +6,9 @@ import {
   Briefcase, Network, Lightbulb, Activity, ArrowUpRight,
 } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { FromTheFeedCarousel } from "@/pages/home";
+import { LogoRotator } from "@/components/logo-rotator";
+import { clientLogos } from "@/data/logos";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -24,101 +26,6 @@ const staggerContainer = {
   transition: { staggerChildren: 0.1 },
 };
 
-const FEED_ITEMS = [
-  {
-    img: `${BASE_PATH}/images/insight-1.png`,
-    category: "Insight",
-    title: "From AI-ready to AI-first: what actually changes in the operating model",
-  },
-  {
-    img: `${BASE_PATH}/images/insight-2.png`,
-    category: "Model",
-    title: "The North Star Method™ — a repeatable system for AI-first transformation",
-  },
-  {
-    img: `${BASE_PATH}/images/insight-3.png`,
-    category: "Case Study",
-    title: "$2M EBITDA impact from a Company OS redesign",
-  },
-];
-
-function FeedCarousel() {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    const id = window.setInterval(
-      () => setCurrent((c) => (c + 1) % FEED_ITEMS.length),
-      6000,
-    );
-    return () => window.clearInterval(id);
-  }, []);
-
-  const go = (dir: number) =>
-    setCurrent((c) => (c + dir + FEED_ITEMS.length) % FEED_ITEMS.length);
-
-  const item = FEED_ITEMS[current];
-
-  return (
-    <div>
-      <div className="flex items-end justify-between mb-6 gap-4">
-        <p className="text-sm uppercase tracking-[0.25em] text-primary">From The Feed</p>
-        <div className="hidden md:flex gap-2">
-          <button
-            type="button"
-            onClick={() => go(-1)}
-            aria-label="Previous slide"
-            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-          >
-            <ArrowRight className="h-4 w-4 rotate-180" />
-          </button>
-          <button
-            type="button"
-            onClick={() => go(1)}
-            aria-label="Next slide"
-            className="h-9 w-9 rounded-full border border-border bg-card/60 backdrop-blur-md flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-          >
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <motion.div
-        key={current}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="group block overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl"
-      >
-        <div className="relative aspect-[16/10] overflow-hidden">
-          <img src={item.img} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
-        </div>
-        <div className="p-6 md:p-7">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary mb-3">{item.category}</p>
-          <h3 className="text-xl font-bold leading-snug mb-4">{item.title}</h3>
-          <Link
-            to="/insights"
-            className="inline-flex items-center gap-1.5 text-sm text-primary font-semibold"
-          >
-            Read more <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </motion.div>
-      <div className="flex items-center justify-center gap-2 mt-6">
-        {FEED_ITEMS.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setCurrent(i)}
-            aria-label={`Show slide ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${
-              current === i ? "w-8 bg-primary" : "w-3 bg-white/25 hover:bg-white/50"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function HomeB() {
   return (
@@ -201,7 +108,7 @@ export default function HomeB() {
               transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
               className="lg:col-span-6"
             >
-              <FeedCarousel />
+              <FromTheFeedCarousel />
             </motion.div>
           </div>
         </div>
@@ -438,31 +345,13 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* Trusted by */}
+      {/* Trusted by — live logo rotator matching the mainline home page */}
       <section className="py-16 bg-background border-b border-border/40">
         <div className="container mx-auto px-4 md:px-6">
           <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
             Trusted by
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
-            {[
-              { slug: "microsoft", name: "Microsoft" },
-              { slug: "nfl", name: "NFL" },
-              { slug: "oxy", name: "Oxy" },
-              { slug: "pfizer", name: "Pfizer" },
-              { slug: "quest", name: "Quest" },
-              { slug: "santander", name: "Santander" },
-              { slug: "dell-technologies", name: "Dell Technologies" },
-              { slug: "sony", name: "Sony" },
-            ].map((logo) => (
-              <img
-                key={logo.slug}
-                src={`${BASE_PATH}/images/logos/${logo.slug}.png`}
-                alt={logo.name}
-                className="h-7 md:h-9 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity"
-              />
-            ))}
-          </div>
+          <LogoRotator logos={clientLogos} />
         </div>
       </section>
 
