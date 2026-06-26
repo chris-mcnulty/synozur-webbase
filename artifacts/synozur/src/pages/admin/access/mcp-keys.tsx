@@ -98,8 +98,10 @@ function CopyButton({ value }: { value: string }) {
 function PlaintextDisplay({ secret }: { secret: string }) {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="flex items-center gap-2 mt-2 p-3 bg-muted rounded-md font-mono text-sm break-all">
-      <span className="flex-1">{visible ? secret : "•".repeat(Math.min(secret.length, 44))}</span>
+    <div className="flex items-center gap-2 mt-2 p-3 bg-muted rounded-md font-mono text-sm overflow-hidden">
+      <span className={`min-w-0 flex-1 ${visible ? "break-all" : "truncate"}`}>
+        {visible ? secret : "•".repeat(Math.min(secret.length, 44))}
+      </span>
       <button
         type="button"
         className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -262,8 +264,8 @@ export default function McpKeysPage() {
 
   return (
     <AdminLayout title="MCP Keys">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold">MCP Keys</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Issue keys to external AI applications that connect to the Synozur www MCP server at{" "}
@@ -271,7 +273,7 @@ export default function McpKeysPage() {
             Each application should have its own key so access can be revoked independently.
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
+        <Button className="self-start shrink-0" onClick={() => { resetForm(); setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           New Key
         </Button>
@@ -406,7 +408,7 @@ export default function McpKeysPage() {
                 <Label className="text-xs text-muted-foreground">API Key</Label>
                 <PlaintextDisplay secret={newKey.plaintext} />
               </div>
-              <div className="text-xs bg-muted/60 border rounded-md p-3 font-mono">
+              <div className="text-xs bg-muted/60 border rounded-md p-3 font-mono break-all overflow-hidden">
                 Authorization: Bearer {newKey.plaintext}
               </div>
               <p className="text-xs text-amber-600 dark:text-amber-400">
