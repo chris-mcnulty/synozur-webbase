@@ -57,13 +57,13 @@ export default function HomeB() {
         </div>
         <div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vh] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-40 pointer-events-none z-0" />
 
-        <div className="container relative z-10 mx-auto px-4 md:px-6 py-28 md:py-32">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="container relative z-10 mx-auto px-6 md:px-10 lg:px-16 py-28 md:py-32">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="lg:col-span-6"
+              className="lg:col-span-7"
             >
               <img
                 src={`${BASE_PATH}/images/sa-logo-horizontal-white.png`}
@@ -106,7 +106,7 @@ export default function HomeB() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
-              className="lg:col-span-6"
+              className="lg:col-span-5"
             >
               <FromTheFeedCarousel />
             </motion.div>
