@@ -201,6 +201,7 @@ const SECTIONS: NavSection[] = [
       { href: "/access/oauth-clients", label: "OAuth Clients", icon: AppWindow, capability: "oauth.manage", testId: "nav-admin-oauth-clients" },
       { href: "/access/api-keys", label: "API Keys", icon: KeyRound, capability: "api_keys.manage", testId: "nav-admin-api-keys" },
       { href: "/access/mcp-keys", label: "MCP Keys", icon: Plug, capability: "api_keys.manage", testId: "nav-admin-mcp-keys" },
+      { href: "/access/mcp-reference", label: "MCP Reference", icon: BookOpenIcon, capability: "api_keys.manage", testId: "nav-admin-mcp-reference" },
     ],
   },
   {

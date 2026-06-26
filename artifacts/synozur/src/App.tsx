@@ -79,6 +79,7 @@ import CapabilitiesPage from "@/pages/admin/access/capabilities";
 import OAuthClientsPage from "@/pages/admin/access/oauth-clients";
 import ApiKeysPage from "@/pages/admin/access/api-keys";
 import McpKeysPage from "@/pages/admin/access/mcp-keys";
+import McpReferencePage from "@/pages/admin/access/mcp-reference";
 import HubspotAdminPage from "@/pages/admin/marketing/hubspot";
 import SpeAdminPage from "@/pages/admin/site-config/spe";
 import AdminServicesList from "@/pages/admin/products/services-list";
@@ -488,6 +489,7 @@ function AdminRoutes() {
         <Route path="/access/oauth-clients" component={OAuthClientsPage} />
         <Route path="/access/api-keys" component={ApiKeysPage} />
         <Route path="/access/mcp-keys" component={McpKeysPage} />
+        <Route path="/access/mcp-reference" component={McpReferencePage} />
         <Route path="/users"><Redirect to="/access/users" /></Route>
 
         {/* Marketing integrations */}
