@@ -1,12 +1,7 @@
 import { z } from "zod";
 import { and, eq, isNull } from "drizzle-orm";
-import { db } from "../db.js";
+import { db, postsTable, postCategories, postTags } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  postsTable,
-  postCategories,
-  postTags,
-} from "@workspace/db";
 import { randomUUID } from "node:crypto";
 
 function toSlug(title: string): string {
@@ -130,7 +125,7 @@ export function registerPostWriteTools(server: McpServer) {
 
   server.tool(
     "schedule_post",
-    "Set a future publish date on a draft post. The post status becomes 'scheduled'. The api-server's publish worker will flip it to 'published' at the scheduled time.",
+    "Set a future publish date on a draft post. The post status becomes 'scheduled'. The publish worker will flip it to 'published' at the scheduled time.",
     {
       id: z.string().uuid().describe("Post UUID"),
       scheduledFor: z.string().describe("ISO 8601 datetime string for when the post should publish"),

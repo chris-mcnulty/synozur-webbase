@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -26,9 +26,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Check, Plus, ShieldOff, Eye, EyeOff, Key } from "lucide-react";
+import { Copy, Check, Plus, ShieldOff, Eye, EyeOff, Plug } from "lucide-react";
 
-// API Keys admin page — machine-to-machine access management.
+// MCP Keys admin page — API keys scoped to mcp.read or mcp.write for the
+// Synozur www MCP server. Each external application (e.g. Orbit production,
+// Orbit staging) should have its own key so access can be revoked independently.
 
 interface ApiKey {
   id: string;
@@ -50,20 +52,7 @@ interface CreateResponse extends ApiKey {
   plaintext: string;
 }
 
-const ALL_CAPABILITIES = [
-  "content.view",
-  "content.author",
-  "content.publish",
-  "content.moderate",
-  "users.manage",
-  "site.manage",
-  "oauth.manage",
-  "api_keys.manage",
-  "ai.grounding.manage",
-  "client_orgs.manage",
-  "mcp.read",
-  "mcp.write",
-] as const;
+type McpPermission = "mcp.read" | "mcp.write";
 
 function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -81,9 +70,7 @@ function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
       try {
         const j = (await r.json()) as { error?: string };
         if (j.error) detail = j.error;
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
       throw new Error(`${r.status} ${detail}`);
     }
     return (r.status === 204 ? undefined : await r.json()) as T;
@@ -125,93 +112,6 @@ function PlaintextDisplay({ secret }: { secret: string }) {
   );
 }
 
-interface CreateFormState {
-  name: string;
-  description: string;
-  grantedCapabilities: string[];
-  expiresAt: string;
-}
-
-function defaultCreateForm(): CreateFormState {
-  return {
-    name: "",
-    description: "",
-    grantedCapabilities: [],
-    expiresAt: "",
-  };
-}
-
-function CreateForm({
-  state,
-  onChange,
-}: {
-  state: CreateFormState;
-  onChange: (s: CreateFormState) => void;
-}) {
-  function toggleCap(cap: string) {
-    const arr = state.grantedCapabilities;
-    const next = arr.includes(cap) ? arr.filter((x) => x !== cap) : [...arr, cap];
-    onChange({ ...state, grantedCapabilities: next });
-  }
-
-  return (
-    <div className="flex flex-col gap-4 py-2">
-      <div>
-        <Label htmlFor="ak-name">Name *</Label>
-        <Input
-          id="ak-name"
-          value={state.name}
-          onChange={(e) => onChange({ ...state, name: e.target.value })}
-          placeholder="Orbit Sync"
-          className="mt-1"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="ak-desc">Description</Label>
-        <Textarea
-          id="ak-desc"
-          value={state.description}
-          onChange={(e) => onChange({ ...state, description: e.target.value })}
-          placeholder="What uses this key and why?"
-          rows={2}
-          className="mt-1 resize-none"
-        />
-      </div>
-
-      <div>
-        <Label>Granted Capabilities</Label>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-          The key can only use endpoints that require one of these capabilities.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {ALL_CAPABILITIES.map((cap) => (
-            <label key={cap} className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={state.grantedCapabilities.includes(cap)}
-                onCheckedChange={() => toggleCap(cap)}
-              />
-              <span className="text-xs font-mono">{cap}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="ak-expires">Expires At (optional)</Label>
-        <Input
-          id="ak-expires"
-          type="datetime-local"
-          value={state.expiresAt}
-          onChange={(e) => onChange({ ...state, expiresAt: e.target.value })}
-          className="mt-1"
-        />
-        <p className="text-xs text-muted-foreground mt-1">Leave blank for a non-expiring key.</p>
-      </div>
-    </div>
-  );
-}
-
 function fmt(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -223,13 +123,15 @@ function fmt(iso: string | null) {
   });
 }
 
-export default function ApiKeysPage() {
+export default function McpKeysPage() {
   const { toast } = useToast();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateFormState>(defaultCreateForm());
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [permission, setPermission] = useState<McpPermission>("mcp.read");
   const [creating, setCreating] = useState(false);
 
   const [newKey, setNewKey] = useState<{ name: string; plaintext: string } | null>(null);
@@ -238,10 +140,11 @@ export default function ApiKeysPage() {
 
   async function load() {
     try {
-      const data = await apiFetch<ApiKey[]>("/cms/api-keys");
-      setKeys(data);
+      const all = await apiFetch<ApiKey[]>("/cms/api-keys");
+      // Show only keys that have mcp.read or mcp.write capability.
+      setKeys(all.filter((k) => k.grantedCapabilities.some((c) => c === "mcp.read" || c === "mcp.write")));
     } catch (err) {
-      toast({ title: "Failed to load API keys", description: String(err), variant: "destructive" });
+      toast({ title: "Failed to load MCP keys", description: String(err), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -249,19 +152,24 @@ export default function ApiKeysPage() {
 
   useEffect(() => { void load(); }, []);
 
+  function resetForm() {
+    setName("");
+    setDescription("");
+    setPermission("mcp.read");
+  }
+
   async function handleCreate() {
-    if (!createForm.name.trim()) {
-      toast({ title: "Validation error", description: "Name is required.", variant: "destructive" });
+    if (!name.trim()) {
+      toast({ title: "Validation error", description: "Application name is required.", variant: "destructive" });
       return;
     }
     setCreating(true);
     try {
       const body: Record<string, unknown> = {
-        name: createForm.name.trim(),
-        grantedCapabilities: createForm.grantedCapabilities,
+        name: name.trim(),
+        grantedCapabilities: [permission],
       };
-      if (createForm.description.trim()) body.description = createForm.description.trim();
-      if (createForm.expiresAt) body.expiresAt = new Date(createForm.expiresAt).toISOString();
+      if (description.trim()) body.description = description.trim();
 
       const res = await apiFetch<CreateResponse>("/cms/api-keys", {
         method: "POST",
@@ -269,7 +177,7 @@ export default function ApiKeysPage() {
       });
       setKeys((prev) => [...prev, res].sort((a, b) => a.name.localeCompare(b.name)));
       setCreateOpen(false);
-      setCreateForm(defaultCreateForm());
+      resetForm();
       setNewKey({ name: res.name, plaintext: res.plaintext });
     } catch (err) {
       toast({ title: "Failed to create key", description: String(err), variant: "destructive" });
@@ -300,14 +208,21 @@ export default function ApiKeysPage() {
   const active = keys.filter((k) => !k.isRevoked && !k.isExpired);
   const inactive = keys.filter((k) => k.isRevoked || k.isExpired);
 
+  function permissionLabel(caps: string[]) {
+    if (caps.includes("mcp.write")) return { label: "Read + Write", variant: "default" as const };
+    return { label: "Read only", variant: "secondary" as const };
+  }
+
   function KeyCard({ k }: { k: ApiKey }) {
+    const perm = permissionLabel(k.grantedCapabilities);
     return (
-      <Card key={k.id} className={`p-5 ${k.isRevoked || k.isExpired ? "opacity-60" : ""}`}>
+      <Card className={`p-5 ${k.isRevoked || k.isExpired ? "opacity-60" : ""}`}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <Key className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Plug className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="font-semibold">{k.name}</span>
+              <Badge variant={perm.variant} className="text-xs">{perm.label}</Badge>
               {k.isRevoked && <Badge variant="destructive">Revoked</Badge>}
               {!k.isRevoked && k.isExpired && <Badge variant="outline">Expired</Badge>}
             </div>
@@ -319,22 +234,12 @@ export default function ApiKeysPage() {
                 syn_{k.prefix}…
               </code>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {k.grantedCapabilities.length === 0 ? (
-                <span className="text-xs text-muted-foreground italic">No capabilities granted</span>
-              ) : (
-                k.grantedCapabilities.map((cap) => (
-                  <Badge key={cap} variant="secondary" className="text-xs font-mono">{cap}</Badge>
-                ))
-              )}
-            </div>
             <p className="text-xs text-muted-foreground mt-2">
               Created {fmt(k.createdAt)}
               {" · "}
               Last used {fmt(k.lastUsedAt)}
               {" · "}
               {k.useCount.toLocaleString()} request{k.useCount !== 1 ? "s" : ""}
-              {k.expiresAt && ` · Expires ${fmt(k.expiresAt)}`}
             </p>
           </div>
 
@@ -355,19 +260,17 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <AdminLayout title="API Keys">
+    <AdminLayout title="MCP Keys">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">API Keys</h1>
+          <h1 className="text-2xl font-bold">MCP Keys</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Long-lived keys for machine-to-machine access. Use{" "}
-            <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-              Authorization: Bearer syn_…
-            </code>{" "}
-            in request headers.
+            Issue keys to external AI applications that connect to the Synozur www MCP server at{" "}
+            <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">POST /api/mcp</code>.
+            Each application should have its own key so access can be revoked independently.
           </p>
         </div>
-        <Button onClick={() => { setCreateForm(defaultCreateForm()); setCreateOpen(true); }}>
+        <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           New Key
         </Button>
@@ -377,10 +280,10 @@ export default function ApiKeysPage() {
         <div className="text-muted-foreground text-sm py-12 text-center">Loading…</div>
       ) : keys.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          <Key className="h-8 w-8 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No API keys yet.</p>
+          <Plug className="h-8 w-8 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No MCP keys yet.</p>
           <p className="text-sm mt-1">
-            Create a key to allow services like Orbit to call the CMS API without a browser session.
+            Create a key for each application that needs to call the Synozur www MCP server.
           </p>
         </Card>
       ) : (
@@ -409,16 +312,71 @@ export default function ApiKeysPage() {
       )}
 
       {/* ── Create dialog ── */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={createOpen} onOpenChange={(o) => { if (!o) resetForm(); setCreateOpen(o); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create API Key</DialogTitle>
+            <DialogTitle>New MCP Key</DialogTitle>
             <DialogDescription>
-              The key is shown exactly once after creation. Copy it to a safe location (e.g. an
-              environment variable).
+              The key is shown exactly once after creation. Copy it to a secure location before closing.
             </DialogDescription>
           </DialogHeader>
-          <CreateForm state={createForm} onChange={setCreateForm} />
+
+          <div className="flex flex-col gap-4 py-2">
+            <div>
+              <Label htmlFor="mcp-name">Application name *</Label>
+              <Input
+                id="mcp-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Orbit Production"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Use a name that identifies the specific deployment (e.g. "Orbit Staging", "Orbit Prod").
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="mcp-desc">Description</Label>
+              <Textarea
+                id="mcp-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What uses this key and why?"
+                rows={2}
+                className="mt-1 resize-none"
+              />
+            </div>
+
+            <div>
+              <Label>Access level</Label>
+              <RadioGroup
+                value={permission}
+                onValueChange={(v) => setPermission(v as McpPermission)}
+                className="mt-2 flex flex-col gap-2"
+              >
+                <label htmlFor="perm-read" className="flex items-start gap-3 cursor-pointer rounded-md border p-3 hover:bg-muted/50 transition-colors has-[[data-state=checked]]:border-primary">
+                  <RadioGroupItem value="mcp.read" id="perm-read" className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-medium">Read only</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Browse posts, events, episodes, media, and taxonomy. Cannot create content or upload images.
+                    </p>
+                  </div>
+                </label>
+                <label htmlFor="perm-write" className="flex items-start gap-3 cursor-pointer rounded-md border p-3 hover:bg-muted/50 transition-colors has-[[data-state=checked]]:border-primary">
+                  <RadioGroupItem value="mcp.write" id="perm-write" className="mt-0.5" />
+                  <div>
+                    <span className="text-sm font-medium">Read + Write</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      All read access plus: create draft posts, schedule posts, upload images.
+                    </p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button onClick={() => void handleCreate()} disabled={creating}>
@@ -428,11 +386,11 @@ export default function ApiKeysPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── One-time key reveal dialog ── */}
+      {/* ── One-time key reveal ── */}
       <Dialog open={!!newKey} onOpenChange={(o) => { if (!o) setNewKey(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>API Key Created</DialogTitle>
+            <DialogTitle>MCP Key Created</DialogTitle>
             <DialogDescription>
               This is the only time the key is shown. Copy it now — it cannot be retrieved again.
             </DialogDescription>
@@ -440,7 +398,7 @@ export default function ApiKeysPage() {
           {newKey && (
             <div className="flex flex-col gap-3 py-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Key Name</Label>
+                <Label className="text-xs text-muted-foreground">Application</Label>
                 <p className="text-sm font-medium mt-1">{newKey.name}</p>
               </div>
               <div>
@@ -467,8 +425,8 @@ export default function ApiKeysPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke this key?</AlertDialogTitle>
             <AlertDialogDescription>
-              Revoking <strong>{revokeTarget?.name}</strong> immediately rejects all requests using
-              it. This action cannot be undone — you will need to create a new key.
+              Revoking <strong>{revokeTarget?.name}</strong> immediately blocks all requests using it.
+              This cannot be undone — you will need to issue a new key to that application.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { db } from "../db.js";
+import { db, landingPagesTable } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { landingPagesTable } from "@workspace/db";
 
 export function registerLandingPageTools(server: McpServer) {
   server.tool(

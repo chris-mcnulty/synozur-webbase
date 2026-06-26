@@ -1,11 +1,7 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, lte } from "drizzle-orm";
-import { db } from "../db.js";
+import { and, desc, eq, isNull, lte } from "drizzle-orm";
+import { db, polarisEpisodesTable, postsTable } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  polarisEpisodesTable,
-  postsTable,
-} from "@workspace/db";
 
 export function registerEpisodeTools(server: McpServer) {
   server.tool(
@@ -45,11 +41,7 @@ export function registerEpisodeTools(server: McpServer) {
         .limit(pageSize)
         .offset(offset);
 
-      const items = episodes.map((e) => ({
-        ...e,
-        publishedAt: e.publishedAt?.toISOString() ?? null,
-      }));
-
+      const items = episodes.map((e) => ({ ...e, publishedAt: e.publishedAt?.toISOString() ?? null }));
       return { content: [{ type: "text" as const, text: JSON.stringify({ items, page, pageSize }) }] };
     },
   );

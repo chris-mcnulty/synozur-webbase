@@ -54,6 +54,7 @@ import {
   Mail,
   FlaskConical,
   LayoutTemplate,
+  Plug,
 } from "lucide-react";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { PreviewButton } from "@/components/admin/PreviewButton";
@@ -199,6 +200,7 @@ const SECTIONS: NavSection[] = [
       { href: "/access/audit-log", label: "Audit Log", icon: FileSearch, capability: "users.manage", testId: "nav-admin-audit-log" },
       { href: "/access/oauth-clients", label: "OAuth Clients", icon: AppWindow, capability: "oauth.manage", testId: "nav-admin-oauth-clients" },
       { href: "/access/api-keys", label: "API Keys", icon: KeyRound, capability: "api_keys.manage", testId: "nav-admin-api-keys" },
+      { href: "/access/mcp-keys", label: "MCP Keys", icon: Plug, capability: "api_keys.manage", testId: "nav-admin-mcp-keys" },
     ],
   },
   {

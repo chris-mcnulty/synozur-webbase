@@ -1,14 +1,6 @@
-import { z } from "zod";
-import { desc, isNull } from "drizzle-orm";
-import { db } from "../db.js";
+import { isNull, eq } from "drizzle-orm";
+import { db, categoriesTable, tagsTable, usersTable, postsTable } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  categoriesTable,
-  tagsTable,
-  usersTable,
-  postsTable,
-} from "@workspace/db";
-import { sql, eq } from "drizzle-orm";
 
 export function registerTaxonomyTools(server: McpServer) {
   server.tool(
@@ -42,7 +34,6 @@ export function registerTaxonomyTools(server: McpServer) {
     "List users who have authored at least one blog post. Use these IDs when calling create_draft_post.",
     {},
     async () => {
-      // Return users who have authored at least one non-deleted post.
       const authors = await db
         .selectDistinct({
           id: usersTable.id,

@@ -1,14 +1,7 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, lt, gte } from "drizzle-orm";
-import { db } from "../db.js";
+import { asc, desc, eq, inArray, lt, gte } from "drizzle-orm";
+import { db, eventsTable, eventSessionsTable, eventSpeakersTable, teamMembersTable, mediaTable } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  eventsTable,
-  eventSessionsTable,
-  eventSpeakersTable,
-  teamMembersTable,
-  mediaTable,
-} from "@workspace/db";
 
 function serializeEvent(event: typeof eventsTable.$inferSelect, imageUrl: string | null) {
   return {

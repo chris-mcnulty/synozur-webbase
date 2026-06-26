@@ -117,6 +117,9 @@ importers:
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.13.0
+        version: 1.29.0(zod@3.25.76)
       '@replit/connectors-sdk':
         specifier: ^0.4.0
         version: 0.4.0

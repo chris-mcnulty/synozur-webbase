@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { and, desc, eq, gte, isNull, lte, inArray, sql, count } from "drizzle-orm";
-import { db } from "../db.js";
+import { and, desc, eq, gte, isNull, lte, inArray, sql } from "drizzle-orm";
+import { db } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   postsTable,
@@ -121,9 +121,7 @@ export function registerPostReadTools(server: McpServer) {
       }
 
       if (query) {
-        filters.push(
-          sql`${postsTable.searchTsv} @@ plainto_tsquery('english', ${query})`,
-        );
+        filters.push(sql`${postsTable.searchTsv} @@ plainto_tsquery('english', ${query})`);
       }
 
       if (restrictIds !== null) {
