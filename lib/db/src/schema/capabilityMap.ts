@@ -36,6 +36,9 @@ export const CAPABILITY_NAMES = [
   "careers.eeo.read",
   "careers.content.manage",
   "careers.settings.manage",
+  // Synozur www MCP server — external application access.
+  "mcp.read",
+  "mcp.write",
 ] as const;
 
 export type CapabilityName = (typeof CAPABILITY_NAMES)[number];
@@ -66,6 +69,10 @@ export const CAPABILITY_DESCRIPTIONS: Record<CapabilityName, string> = {
     "Edit careers-scoped content (pages, FAQs, careers team bios).",
   "careers.settings.manage":
     "Toggle careers host vs. redirect mode and the external URL.",
+  "mcp.read":
+    "Read-only access to the Synozur www MCP server (posts, events, episodes, media, taxonomy).",
+  "mcp.write":
+    "Read + write access to the Synozur www MCP server (includes draft creation and image upload).",
 };
 
 // Default mapping per role. The legacy roles map to exactly what

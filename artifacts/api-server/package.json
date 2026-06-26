@@ -50,6 +50,7 @@
     "@replit/connectors-sdk": "^0.4.0",
     "@sendgrid/mail": "^8.1.6",
     "@workspace/api-zod": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.13.0",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-anthropic-ai": "workspace:*",
     "bcryptjs": "^3.0.3",
