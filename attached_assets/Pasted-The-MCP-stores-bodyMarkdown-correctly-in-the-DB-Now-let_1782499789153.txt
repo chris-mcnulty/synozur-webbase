@@ -1,0 +1,58 @@
+The MCP stores bodyMarkdown correctly in the DB. Now let me see the admin editor to understand why it shows blank:
+
+
+2 actions
+The file was truncated. Let me get the part of the editor that initializes the body content:
+
+
+3 actions
+Found it. The editor loads from bodyHtml (line 505), but create_draft_post only stores bodyMarkdown — bodyHtml is never populated by the MCP. Let me confirm by checking the DB schema and the RichTextEditor:
+
+
+3 actions
+Now I see the full picture. Let me confirm by checking the DB schema and available markdown libs in the website:
+
+
+4 actions
+Got it — now I know exactly what's wrong. The fix has to go in the Synozur-Baseline website. Let me check what markdown libraries are available there before recommending the exact change:
+
+
+3 actions
+Now I know exactly what's wrong. The fix needs to go in Synozur-Baseline, not in Orbit.
+
+The bug:
+
+The website's posts table has two separate columns — body_html and body_markdown. The admin editor (TipTap) initializes from body_html. But the MCP create_draft_post tool only writes body_markdown — body_html is never set. So when you open the post in the admin, TipTap finds an empty body_html column and shows a blank editor. The content IS in the database as markdown, just in the wrong column for the editor to read.
+
+The fix — in Synozur-Baseline artifacts/api-server/src/mcp/tools/post-write.ts:
+
+Add marked to the api-server dependencies, then convert the markdown to HTML before writing:
+
+Step 1 — add to artifacts/api-server/package.json dependencies:
+
+"marked": "^15"
+
+Step 2 — update post-write.ts:
+
+import { marked } from "marked";
+
+Then in both create_draft_post and update_draft_post, compute bodyHtml from the markdown before inserting/updating:
+
+// create_draft_post — inside the handler:
+const bodyHtml = bodyMarkdown ? String(await marked(bodyMarkdown)) : "";
+await db.insert(postsTable).values({
+  id,
+  slug,
+  title,
+  bodyMarkdown,
+  bodyHtml,   // ← add this
+  ...
+});
+
+// update_draft_post — inside the updates block:
+if (bodyMarkdown !== undefined) {
+  updates.bodyMarkdown = bodyMarkdown;
+  updates.bodyHtml = bodyMarkdown ? String(await marked(bodyMarkdown)) : "";  // ← add this
+}
+
+That's the only change needed. Once deployed, posts pushed from Orbit will open in the admin editor with their content visible and editable.

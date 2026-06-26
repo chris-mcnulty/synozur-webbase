@@ -4,6 +4,7 @@ import { db, postsTable, postCategories, postTags } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { randomUUID } from "node:crypto";
 import { toSlug } from "../../lib/slug.js";
+import { marked } from "marked";
 
 async function uniqueSlug(title: string): Promise<string> {
   const base = toSlug(title);
@@ -35,12 +36,14 @@ export function registerPostWriteTools(server: McpServer) {
     async ({ title, bodyMarkdown, authorId, categoryIds, tagIds, excerpt, heroImageId, seoTitle, seoDescription }) => {
       const slug = await uniqueSlug(title);
       const id = randomUUID();
+      const bodyHtml = bodyMarkdown ? String(await marked(bodyMarkdown)) : "";
 
       await db.insert(postsTable).values({
         id,
         slug,
         title,
         bodyMarkdown,
+        bodyHtml,
         authorId,
         excerpt: excerpt ?? null,
         heroImageId: heroImageId ?? null,
@@ -90,7 +93,10 @@ export function registerPostWriteTools(server: McpServer) {
 
       const updates: Partial<typeof postsTable.$inferInsert> = { updatedAt: new Date() };
       if (title !== undefined) updates.title = title;
-      if (bodyMarkdown !== undefined) updates.bodyMarkdown = bodyMarkdown;
+      if (bodyMarkdown !== undefined) {
+        updates.bodyMarkdown = bodyMarkdown;
+        updates.bodyHtml = bodyMarkdown ? String(await marked(bodyMarkdown)) : "";
+      }
       if (excerpt !== undefined) updates.excerpt = excerpt;
       if (heroImageId !== undefined) updates.heroImageId = heroImageId;
       if (seoTitle !== undefined) updates.seoTitle = seoTitle;
