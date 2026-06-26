@@ -210,7 +210,6 @@ export default function InsightDetail() {
         path={`${BASE_PATH}/insights/${post.slug}`}
         image={ogImage}
         type="article"
-        rawTitle={Boolean(post.seoTitle)}
         feedHref={`${BASE_PATH}/api/insights/rss.xml`}
       />
 
