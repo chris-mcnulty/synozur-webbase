@@ -3543,6 +3543,17 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS end_date timestamptz;
     `);
 
+    // 61. Synozur www MCP server capabilities. Seeded here so new deployments
+    //     that skip `pnpm db:seed` still get the rows. No default role grants —
+    //     MCP access must be explicitly granted via Admin → Access → Capabilities.
+    await db.execute(sql`
+      INSERT INTO capabilities (name, description)
+      VALUES
+        ('mcp.read',  'Read-only access to the Synozur www MCP server (posts, events, episodes, media, taxonomy).'),
+        ('mcp.write', 'Read + write access to the Synozur www MCP server (includes draft creation and image upload).')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
