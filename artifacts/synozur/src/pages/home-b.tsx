@@ -472,27 +472,6 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* 9. Final CTA */}
-      <section className="py-24 md:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 nebula-gradient opacity-90" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
-        <div className="container mx-auto px-4 md:px-6 relative z-10 max-w-4xl text-center">
-          <motion.div {...fadeUp}>
-            <h2 className="text-4xl md:text-6xl font-bold text-white mb-8 tracking-tight">
-              Find your North Star
-            </h2>
-            <p className="text-xl md:text-2xl text-white/90 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-              If you're moving from AI-ready to AI-first, we guide the entire journey — with clarity, momentum, and proof.
-            </p>
-            <Link
-              to="/book"
-              className="h-16 px-10 inline-flex items-center justify-center rounded-md bg-white text-primary font-bold text-xl transition-transform hover:scale-105 shadow-xl"
-            >
-              Book the Sprint
-            </Link>
-          </motion.div>
-        </div>
-      </section>
     </div>
   );
 }
