@@ -15,7 +15,7 @@ export function createMcpServer(writes: boolean): McpServer {
 
   registerPostReadTools(server);
   registerTaxonomyTools(server);
-  registerMediaTools(server);
+  registerMediaTools(server, writes);
   registerEventTools(server);
   registerEpisodeTools(server);
   registerLandingPageTools(server);

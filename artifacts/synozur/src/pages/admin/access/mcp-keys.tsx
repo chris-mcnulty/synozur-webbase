@@ -175,10 +175,11 @@ export default function McpKeysPage() {
         method: "POST",
         body: JSON.stringify(body),
       });
-      setKeys((prev) => [...prev, res].sort((a, b) => a.name.localeCompare(b.name)));
+      const { plaintext, ...keyRecord } = res;
+      setKeys((prev) => [...prev, keyRecord].sort((a, b) => a.name.localeCompare(b.name)));
       setCreateOpen(false);
       resetForm();
-      setNewKey({ name: res.name, plaintext: res.plaintext });
+      setNewKey({ name: res.name, plaintext });
     } catch (err) {
       toast({ title: "Failed to create key", description: String(err), variant: "destructive" });
     } finally {

@@ -7,7 +7,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const objectStorageService = new ObjectStorageService();
 
-export function registerMediaTools(server: McpServer) {
+export function registerMediaTools(server: McpServer, writes: boolean) {
   server.tool(
     "list_media",
     "Search the media library. Returns image and document records with their public URLs.",
@@ -55,6 +55,8 @@ export function registerMediaTools(server: McpServer) {
       };
     },
   );
+
+  if (!writes) return;
 
   server.tool(
     "upload_image",

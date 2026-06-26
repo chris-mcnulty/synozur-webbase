@@ -3,15 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, postsTable, postCategories, postTags } from "@workspace/db";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { randomUUID } from "node:crypto";
-
-function toSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
+import { toSlug } from "../../lib/slug.js";
 
 async function uniqueSlug(title: string): Promise<string> {
   const base = toSlug(title);

@@ -38,7 +38,6 @@ export function registerTaxonomyTools(server: McpServer) {
         .selectDistinct({
           id: usersTable.id,
           displayName: usersTable.displayName,
-          email: usersTable.email,
           avatarUrl: usersTable.avatarUrl,
           bio: usersTable.bio,
         })
