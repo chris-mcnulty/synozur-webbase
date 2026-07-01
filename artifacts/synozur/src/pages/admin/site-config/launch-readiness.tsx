@@ -97,17 +97,17 @@ export default function LaunchReadinessPage() {
       }
     >
       <div className="space-y-4">
-        <Card className="p-4 bg-zinc-500/5 border-zinc-500/20">
+        <Card className="p-4 bg-muted/40">
           <div className="flex gap-3">
-            <Info className="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
-            <div className="text-sm text-zinc-300 space-y-1">
+            <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="text-sm text-foreground space-y-1">
               <div>
                 Live status of every Tier 1 configuration knob (per{" "}
-                <code className="text-xs bg-zinc-800 px-1 py-0.5 rounded">backlog.md</code>{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">backlog.md</code>{" "}
                 Launch Readiness section). Mirrors the startup logs so you don't have
                 to grep after a deploy.
               </div>
-              <div className="text-zinc-500 text-xs">
+              <div className="text-muted-foreground text-xs">
                 Refreshes automatically every 60 seconds.
                 {data && (
                   <> Last refreshed {new Date(data.generatedAt).toLocaleTimeString()}.</>
@@ -120,17 +120,17 @@ export default function LaunchReadinessPage() {
         {totals && (
           <Card className="p-4 flex items-center gap-6 flex-wrap" data-testid="launch-readiness-summary">
             <div>
-              <div className="text-2xl font-semibold tabular-nums text-zinc-100">
-                {totals.configured} <span className="text-zinc-500 text-base">/ {totals.total}</span>
+              <div className="text-2xl font-semibold tabular-nums text-foreground">
+                {totals.configured} <span className="text-muted-foreground text-base">/ {totals.total}</span>
               </div>
-              <div className="text-xs text-zinc-500 uppercase tracking-wide">Channels configured</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Channels configured</div>
             </div>
             {totals.notConfigured > 0 ? (
-              <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/20">
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
                 {totals.notConfigured} not yet set
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-green-500/10 text-green-300 border-green-500/20">
+              <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30">
                 All channels configured
               </Badge>
             )}
@@ -138,7 +138,7 @@ export default function LaunchReadinessPage() {
         )}
 
         {isLoading && (
-          <Card className="p-12 text-center text-zinc-500">Loading launch-readiness report…</Card>
+          <Card className="p-12 text-center text-muted-foreground">Loading launch-readiness report…</Card>
         )}
 
         {data?.groups.map((group) => (
@@ -174,19 +174,19 @@ function GroupCard({ group }: { group: LaunchReadinessGroup }) {
       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
+            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
               {group.tier}
             </span>
-            <h2 className="text-sm font-medium text-zinc-200">{group.label}</h2>
+            <h2 className="text-sm font-medium text-foreground">{group.label}</h2>
           </div>
         </div>
         {allConfigured ? (
-          <Badge variant="outline" className="bg-green-500/10 text-green-300 border-green-500/20">
+          <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             Ready
           </Badge>
         ) : (
-          <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/20">
+          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
             <AlertCircle className="w-3 h-3 mr-1" />
             Action needed
           </Badge>
@@ -197,36 +197,36 @@ function GroupCard({ group }: { group: LaunchReadinessGroup }) {
         {group.channels.map((channel) => (
           <div
             key={channel.name}
-            className="flex items-start gap-3 p-3 rounded-md bg-zinc-900/50 border border-zinc-800"
+            className="flex items-start gap-3 p-3 rounded-md bg-muted/50 border border-border"
             data-testid={`launch-readiness-channel-${channel.name}`}
           >
             {channel.configured ? (
-              <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
             )}
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-zinc-100">{channel.name}</div>
-              <div className="text-xs text-zinc-500">
+              <div className="text-sm font-medium text-foreground">{channel.name}</div>
+              <div className="text-xs text-muted-foreground">
                 {channel.configured ? "Configured" : "Not configured"}
                 {channel.source && (
                   <>
                     {" · "}
-                    <code className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-400">
+                    <code className="bg-muted px-1 py-0.5 rounded text-muted-foreground">
                       {channel.source}
                     </code>
                   </>
                 )}
               </div>
               {channel.detail && (
-                <div className="text-xs text-amber-400 mt-1">{channel.detail}</div>
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">{channel.detail}</div>
               )}
               {channel.lastUnpublishSubmission ? (
                 <div
                   className={`text-xs mt-1 ${
                     channel.lastUnpublishSubmission.ok
-                      ? "text-zinc-400"
-                      : "text-amber-400"
+                      ? "text-muted-foreground"
+                      : "text-amber-600 dark:text-amber-400"
                   }`}
                   data-testid={`launch-readiness-channel-${channel.name}-last-unpublish`}
                 >
@@ -238,17 +238,17 @@ function GroupCard({ group }: { group: LaunchReadinessGroup }) {
                   {" · "}
                   {formatRelative(channel.lastUnpublishSubmission.submittedAt)}
                   {" · "}
-                  <span className="text-zinc-500 break-all">
+                  <span className="text-muted-foreground break-all">
                     {channel.lastUnpublishSubmission.url}
                   </span>
                   {channel.lastUnpublishSubmission.error && (
-                    <div className="text-amber-400/80 mt-0.5">
+                    <div className="text-amber-600/90 dark:text-amber-400/80 mt-0.5">
                       {channel.lastUnpublishSubmission.error}
                     </div>
                   )}
                 </div>
               ) : channel.lastUnpublishSubmission === null && channel.configured ? (
-                <div className="text-xs text-zinc-500 mt-1">
+                <div className="text-xs text-muted-foreground mt-1">
                   No unpublish pings recorded yet.
                 </div>
               ) : null}

@@ -59,6 +59,7 @@ import {
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { PreviewButton } from "@/components/admin/PreviewButton";
 import { SynozurAppSwitcher } from "@/components/synozur-app-switcher";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { Capability } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
 import {
@@ -439,8 +440,9 @@ export function AdminLayout({
             <span>View site</span>
           </a>
         </div>
-        {/* Right: app switcher + user avatar dropdown */}
+        {/* Right: theme toggle + app switcher + user avatar dropdown */}
         <div className="flex items-center gap-1 shrink-0">
+          <ThemeToggle />
           <SynozurAppSwitcher currentApp="synozur" />
           <div className="relative" ref={userMenuRef}>
             <button
