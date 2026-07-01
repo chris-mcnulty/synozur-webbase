@@ -56,7 +56,7 @@ interface StaticPageOg {
   image: string;
 }
 
-const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
+export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
   "/sprint": {
     title: "The AI & North Star Sprint — The Synozur Alliance",
     description:
