@@ -36,6 +36,53 @@ export const DEFAULT_DESCRIPTION =
   "Strategy, AI, and Microsoft 365 advisory from The Synozur Alliance — practical guidance for leaders shaping the modern workplace.";
 const DEFAULT_IMAGE_PATH = "/opengraph.jpg";
 
+// ─── Static page OG registry ───────────────────────────────────────────────────
+
+/**
+ * Hardcoded SPA routes that are NOT DB-driven landing pages. Social crawlers
+ * and search engines don't run JS, so they never see the per-page `<Meta>`
+ * these pages render client-side. Mirror that copy here so the server-side OG
+ * resolver returns page-specific title/description/image for crawlers.
+ *
+ * Keep each entry in sync with the corresponding page's `<Meta>` in
+ * `artifacts/synozur/src/pages/*` (the source of truth). Titles use the exact
+ * `rawTitle` string those pages declare (site name already included), so no
+ * site-name suffix is appended here.
+ */
+interface StaticPageOg {
+  title: string;
+  description: string;
+  /** Root-relative or absolute image path, matching the page's `<Meta image>`. */
+  image: string;
+}
+
+const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
+  "/sprint": {
+    title: "The AI & North Star Sprint — The Synozur Alliance",
+    description:
+      "A structured executive engagement that turns ambiguity into aligned decisions, a practical AI-first roadmap, and measurable next steps — in 4 to 6 weeks.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/proof": {
+    title: "Proof — Outcomes We Can Prove — The Synozur Alliance",
+    description:
+      "Anchor cases in Before / After / Impact form — from a Microsoft engagement to AI transformation in private equity. Measurable outcomes, not promises.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/fit": {
+    title: "Is the Sprint Right for You? — The Synozur Alliance",
+    description:
+      "The AI & North Star Sprint is most effective when leadership teams are ready to align on what matters. See where it creates the most value — and where it may not fit.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/book": {
+    title: "Book the Conversation — The Synozur Alliance",
+    description:
+      "Schedule a focused working conversation to understand your current context, where alignment may be breaking down, and whether the AI & North Star Sprint is the right next step.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OgData {
@@ -247,6 +294,22 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
   // so if slug is empty but section is non-empty we try the landing pages
   // table before falling back to site defaults.
   if (!slug) {
+    // Hardcoded SPA routes (not DB landing pages) — return their known
+    // per-page OG data so crawlers see real title/description/image instead
+    // of the generic site default. All other single-segment paths fall
+    // through to the landing-pages lookup and site defaults unchanged.
+    const staticOg = STATIC_PAGE_OG[clean];
+    if (staticOg) {
+      return {
+        ...fallback,
+        title: staticOg.title,
+        description: staticOg.description,
+        image:
+          ogImageVariant(absUrl(staticOg.image, origin), origin) ??
+          fallback.image,
+        ogType: "website",
+      };
+    }
     if (section) {
       try {
         const [row] = await db
