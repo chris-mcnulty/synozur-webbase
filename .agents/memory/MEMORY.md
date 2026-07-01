@@ -11,3 +11,4 @@
 - [mockup-sandbox typecheck](mockup-sandbox-typecheck.md) — its typecheck fails on pre-existing framer-motion `ease:string` TS2322; filter `rg -v TS2322` for your own errors, don't fix in unrelated tasks.
 - [Mockup sandbox has no router](mockup-sandbox-no-router.md) — mockup-sandbox lacks wouter/react-router; subagents auto-import `Link from "wouter"` → blank iframe; use plain `<a>`.
 - [Purge link GET safety](purge-link-get-safety.md) — email security scanners pre-fetch every link via GET; destructive actions in emails must use GET=confirm + POST=execute.
+- [Home B is primary](home-b-primary.md) — Home B is the permanent `/` homepage (hardwired, B chrome); old Home A parked at /home-a; no A/B root toggle, canonical is `/`.

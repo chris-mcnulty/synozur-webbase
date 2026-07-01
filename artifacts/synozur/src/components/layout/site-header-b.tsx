@@ -27,7 +27,7 @@ import {
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 const PRIMARY_NAV = [
-  { name: "Home",       href: "/home-b" },
+  { name: "Home",       href: "/" },
   { name: "The Sprint", href: "/sprint" },
   { name: "Proof",      href: "/proof"  },
   { name: "Fit",        href: "/fit"    },
@@ -255,7 +255,7 @@ export function SiteHeaderB() {
           {/* ── Left: App Switcher + Color Logo ─────────────────────────── */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <SynozurAppSwitcher currentApp="synozur" forceDark />
-            <Link href="/home-b" className="flex items-center transition-opacity hover:opacity-80">
+            <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
               <img
                 src={LOGO_COLOR_URL}
                 alt="The Synozur Alliance"

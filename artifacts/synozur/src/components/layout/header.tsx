@@ -347,16 +347,6 @@ export function Header() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Used to label the "Home" nav group accurately. Whichever variant the
-  // admin promoted to / is shown as "Home"; the non-active one is shown as
-  // "Alt Home" pointing at its alternate path.
-  const settingsQuery = useQuery({
-    queryKey: ["public-site-settings"],
-    queryFn: () => api.getPublicSiteSettings(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const activeHomeVariant: "a" | "b" =
-    settingsQuery.data?.homeRootVariant === "b" ? "b" : "a";
   const navApplications = (() => {
     const apiItems = applicationsQuery.data?.items ?? [];
     return apiItems.length > 0
@@ -375,16 +365,6 @@ export function Header() {
     }));
 
   const navGroups: NavGroup[] = [
-    {
-      title: "Home",
-      links: [
-        { label: "Home", href: "/" },
-        {
-          label: activeHomeVariant === "b" ? "Alt Home (A)" : "Alt Home (B)",
-          href: activeHomeVariant === "b" ? "/home-a" : "/home-b",
-        },
-      ],
-    },
     STATIC_NAV_GROUPS_BASE.ourStory,
     buildSolutionsMenuGroup(solutionItems),
     STATIC_NAV_GROUPS_BASE.theFeed,

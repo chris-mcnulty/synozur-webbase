@@ -156,8 +156,8 @@ export default function AdminAltHome() {
         <Link href="/home-b" className="underline">
           /home-b
         </Link>
-        ): which variant serves the root URL, hero media overrides, and editable copy.
-        The original home page media is configured in{" "}
+        ), which is now the primary home served at <code>/</code> — hero media
+        overrides and editable copy. The original home page media is configured in{" "}
         <Link href="/site-config/site-settings" className="underline">
           Site Settings
         </Link>
@@ -169,55 +169,16 @@ export default function AdminAltHome() {
       ) : (
         <div className="space-y-6 max-w-3xl">
 
-          {/* 1 ── Root variant selector */}
-          <div className="rounded-md border border-border p-6 space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Homepage variant at /</h2>
-              <p className="text-sm text-muted-foreground max-w-xl">
-                Choose which homepage design is served at the root URL. The non-active
-                variant remains accessible at its alternate path (<code>/home-a</code> or{" "}
-                <code>/home-b</code>) for comparison without a code change.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              {(["a", "b"] as const).map((variant) => {
-                const active = currentHomeRootVariant === variant;
-                const label = variant === "a" ? "Original Home (A)" : "Alt Home (B)";
-                const description =
-                  variant === "a"
-                    ? "The original home page design. Lives at /home-a as well."
-                    : "The Alt Home design. Lives at /home-b as well.";
-                return (
-                  <button
-                    key={variant}
-                    type="button"
-                    disabled={updateMutation.isPending}
-                    data-testid={`home-root-variant-${variant}`}
-                    onClick={() =>
-                      updateMutation.mutate(buildPayload({ homeRootVariant: variant }))
-                    }
-                    className={`flex-1 text-left rounded-lg border-2 p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
-                      active
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/40"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">{label}</span>
-                      {active && (
-                        <span
-                          data-testid={`home-root-variant-${variant}-active`}
-                          className="text-xs font-medium text-primary px-2 py-0.5 rounded-full bg-primary/10"
-                        >
-                          Active at /
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  </button>
-                );
-              })}
-            </div>
+          {/* 1 ── Root variant status (fixed in code) */}
+          <div className="rounded-md border border-border p-6 space-y-2">
+            <h2 className="text-lg font-semibold mb-1">Homepage variant at /</h2>
+            <p className="text-sm text-muted-foreground max-w-xl">
+              The primary home experience (<strong>Alt Home / B</strong>) is now served
+              at the root URL (<code>/</code>) and is fixed in code. The original home
+              page is parked at <code>/home-a</code> for reference and is no longer linked
+              from the site navigation. The copy and hero media below still apply to the
+              live home page.
+            </p>
           </div>
 
           {/* 2 ── Hero media overrides */}

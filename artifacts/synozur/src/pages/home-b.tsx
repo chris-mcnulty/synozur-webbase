@@ -34,7 +34,7 @@ export default function HomeB() {
         title="AI-First Operating Model for CEOs & Boards | Synozur Alliance"
         rawTitle
         description="Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes."
-        path="/home-b"
+        path="/"
         image="/opengraph.jpg"
       />
 

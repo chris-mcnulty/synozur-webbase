@@ -8,11 +8,8 @@ import { Layout } from "@/components/layout";
 import { ThemeProvider } from "@/context/theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { captureAttributionOnLoad } from "@/lib/attribution";
-import { api } from "@/lib/api";
 import {
   ExperimentsProvider,
-  useExperimentsContext,
-  useOverride,
   useRouteConversionTracker,
 } from "@/lib/experiments";
 
@@ -508,31 +505,6 @@ function AdminRoutes() {
   );
 }
 
-// Root URL "/" serves whichever homepage variant the admin selected in
-// Site Settings. Both variants stay reachable at /home-a and /home-b for
-// side-by-side comparison regardless of which is currently promoted.
-//
-// Anti-flicker: gate on both site settings AND the experiments runtime.
-// If we render Home before experiments resolve, an in-test visitor would
-// see default copy briefly, then it would swap to the variant text on
-// the next render.
-//
-// Priority: home.layout experiment override > site-settings homeRootVariant.
-function RootHomeRoute() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["public-site-settings"],
-    queryFn: () => api.getPublicSiteSettings(),
-  });
-  const { isReady: experimentsReady } = useExperimentsContext();
-  // "home.layout" override from a running experiment (true = Home B, undefined = follow site settings).
-  const layoutOverride = useOverride<boolean | undefined>("home.layout", undefined);
-  if ((isLoading && !data) || !experimentsReady) return null;
-  const showB =
-    layoutOverride === true ||
-    (layoutOverride === undefined && data?.homeRootVariant === "b");
-  return showB ? <HomeB /> : <Home />;
-}
-
 // "B experience" routes — Home B plus the decision-path pages (The Sprint,
 // Proof, Fit, Book) render inside the unified B chrome (fixed decision-path
 // header + B footer) via <Layout chrome="b">. Each gets its own error boundary
@@ -563,7 +535,11 @@ function Router() {
       <Route path="/careers/embed/jobs" component={CareersEmbedJobs} />
       <Route path="/careers/embed/job/:slug" component={CareersEmbedJob} />
       {/* B experience — unified decision-path chrome (must precede the
-          default-chrome catch-all below). */}
+          default-chrome catch-all below). Home B is now the primary site
+          root (/); /home-b is kept as an alias for existing links. */}
+      <Route path="/">
+        <BRoute component={HomeB} />
+      </Route>
       <Route path="/home-b">
         <BRoute component={HomeB} />
       </Route>
@@ -586,7 +562,8 @@ function Router() {
             fallback={(args) => <RouteErrorFallback {...args} />}
           >
           <Switch>
-            <Route path="/" component={RootHomeRoute} />
+            {/* Old home (variant A) — parked/inactive, reachable directly
+                but no longer served at / and unlinked from nav. */}
             <Route path="/home-a" component={Home} />
             <Route path="/about" component={About} />
             <Route path="/services-overview/default" component={ServicesOverview} />
