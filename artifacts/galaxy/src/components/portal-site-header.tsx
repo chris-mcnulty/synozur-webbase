@@ -51,13 +51,6 @@ const PRIMARY_NAV = [
   { name: "Fit", href: "/fit" },
 ];
 
-const SECONDARY_NAV = [
-  { name: "About", href: "/about" },
-  { name: "Method", href: "/services-overview/default" },
-  { name: "Insights", href: "/insights" },
-  { name: "Events", href: "/events" },
-];
-
 const BOOK_HREF = "/book";
 
 // Top-level portal navigation. The middle four entries are the lifecycle
@@ -341,21 +334,6 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
           </div>
         </div>
 
-        {/* Secondary nav sub-bar (desktop) */}
-        <div className="hidden lg:block border-t border-border">
-          <div className="container mx-auto px-4 md:px-6 h-9 flex items-center justify-center gap-8">
-            {SECONDARY_NAV.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-xs font-medium tracking-wide transition-colors text-foreground/50 hover:text-foreground/80"
-              >
-                {link.name}
-              </a>
-            ))}
-          </div>
-        </div>
-
         {/* Mobile nav drawer */}
         {mobileMenuOpen && (
           <div className="lg:hidden absolute top-full left-0 w-full h-[calc(100vh-4rem)] bg-background border-t border-border overflow-y-auto z-40">
@@ -392,22 +370,6 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
                 >
                   Book the Sprint
                 </a>
-              </div>
-
-              {/* Secondary (main site) */}
-              <div className="flex flex-col gap-1 pt-3 border-t border-border/50">
-                <p className="px-3 pb-1 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-                  More
-                </p>
-                {SECONDARY_NAV.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="block px-3 py-2 rounded-md text-sm text-foreground/55 hover:text-foreground/90 hover:bg-muted transition-colors"
-                  >
-                    {link.name}
-                  </a>
-                ))}
               </div>
 
               {/* Galaxy Portal section */}

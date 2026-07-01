@@ -288,13 +288,23 @@ export function SiteHeaderB() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <SynozurAppSwitcher currentApp="synozur" forceDark />
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
-              <img
-                src={LOGO_COLOR_URL}
-                alt="The Synozur Alliance"
-                width={154}
-                height={42}
-                className="h-8 w-auto max-w-full"
-              />
+              {location === "/" ? (
+                <img
+                  src="/icon-192.png"
+                  alt="The Synozur Alliance"
+                  width={42}
+                  height={42}
+                  className="h-8 w-8"
+                />
+              ) : (
+                <img
+                  src={LOGO_COLOR_URL}
+                  alt="The Synozur Alliance"
+                  width={154}
+                  height={42}
+                  className="h-8 w-auto max-w-full"
+                />
+              )}
             </Link>
           </div>
 
