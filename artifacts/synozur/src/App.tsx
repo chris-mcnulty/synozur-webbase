@@ -512,7 +512,7 @@ function AdminRoutes() {
 function BRoute({ component: Component }: { component: ComponentType }) {
   const [location] = useLocation();
   return (
-    <Layout chrome="b">
+    <Layout chrome="b" forceDark>
       <ErrorBoundary resetKey={location} fallback={(args) => <RouteErrorFallback {...args} />}>
         <Component />
       </ErrorBoundary>
@@ -556,7 +556,7 @@ function Router() {
         <BRoute component={Booking} />
       </Route>
       <Route>
-        <Layout>
+        <Layout chrome="b">
           <ErrorBoundary
             resetKey={location}
             fallback={(args) => <RouteErrorFallback {...args} />}

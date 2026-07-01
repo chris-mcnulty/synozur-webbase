@@ -43,9 +43,26 @@ const SECONDARY_NAV = [
 const BOOK_HREF = "/book";
 const DIALOG_RESULT_LIMIT = 15;
 
+// Most pages render a dark PageHero (bg-[#0B0B1A]) at the very top regardless of
+// theme, so the transparent header uses WHITE text there and the hero supplies
+// its own top padding to clear the fixed header. A handful of utility pages
+// (auth, search, item/careers detail) instead start with a light bg-background
+// surface and no hero padding — over those, the unscrolled header must use
+// theme-foreground text (legible in light mode) and the Layout must reserve top
+// space so the fixed header doesn't overlap their content.
+export const LIGHT_TOP_PREFIXES = [
+  "/sign-in", "/sign-up", "/verify-email", "/pending-approval",
+  "/forgot-password", "/reset-password", "/search",
+  "/items/", "/careers/applied", "/careers/general-application", "/careers/jobs",
+];
+
+export function isLightTopRoute(pathname: string): boolean {
+  return LIGHT_TOP_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
+}
+
 // ── UserButton ────────────────────────────────────────────────────────────────
 
-function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promise<void> }) {
+function UserButton({ user, signOut, onDark }: { user: AuthedUser; signOut: () => Promise<void>; onDark: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -78,7 +95,7 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
         aria-haspopup="true"
         aria-label="Account menu"
         data-testid="button-user-menu"
-        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors text-sm"
+        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors text-sm ${onDark ? "hover:bg-white/10" : "hover:bg-foreground/10"}`}
       >
         {user.avatarUrl ? (
           <img src={user.avatarUrl} alt={shortName} className="h-7 w-7 rounded-full object-cover flex-shrink-0" />
@@ -87,7 +104,7 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
             {initial}
           </span>
         )}
-        <span className="hidden sm:block font-medium truncate max-w-[100px] text-white/80">{shortName}</span>
+        <span className={`hidden sm:block font-medium truncate max-w-[100px] ${onDark ? "text-white/80" : "text-foreground/80"}`}>{shortName}</span>
       </button>
 
       {open && (
@@ -240,6 +257,21 @@ export function SiteHeaderB() {
   const shortcutMod = isMacPlatform ? "⌘" : "Ctrl";
   const shortcutAria = isMacPlatform ? "Command+K" : "Control+K";
 
+  // Utility pages (see LIGHT_TOP_PREFIXES) start on a light bg-background
+  // surface, so even the unscrolled header must use theme-foreground text to
+  // stay legible in light mode. Once scrolled, the header is a solid
+  // bg-background and always uses foreground tokens.
+  const topOnDark = !isLightTopRoute(location);
+  // White (over-dark) treatment applies only at the top of a dark-hero page.
+  const overDark = topOnDark && !isScrolled;
+
+  const navIdle = "text-white/75 hover:text-white hover:bg-white/10";
+  const navScrolled = "text-foreground/75 hover:text-foreground hover:bg-foreground/10";
+  const controlIdle =
+    "border-white/20 bg-white/5 text-white/80 hover:text-white hover:bg-white/10";
+  const controlScrolled =
+    "border-border bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-foreground/10";
+
   return (
     <>
       {/* ── Main bar ───────────────────────────────────────────────────────── */}
@@ -275,7 +307,7 @@ export function SiteHeaderB() {
                 className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
                   isActive(link.href)
                     ? "text-primary bg-primary/10"
-                    : "text-foreground/75 hover:text-foreground hover:bg-white/8"
+                    : overDark ? navIdle : navScrolled
                 }`}
               >
                 {link.name}
@@ -300,11 +332,11 @@ export function SiteHeaderB() {
               aria-label={`Open search (${shortcutAria})`}
               onClick={() => setSearchOpen(true)}
               data-testid="header-search-button"
-              className="hidden lg:inline-flex h-9 items-center gap-2 rounded-md border border-white/20 bg-white/5 px-3 text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              className={`hidden lg:inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm transition-colors ${overDark ? controlIdle : controlScrolled}`}
             >
               <Search className="h-4 w-4" />
               <span className="hidden xl:inline">Search…</span>
-              <kbd className="hidden xl:inline-flex h-5 select-none items-center gap-0.5 rounded border border-white/15 bg-white/5 px-1.5 font-mono text-[10px] text-white/40">
+              <kbd className={`hidden xl:inline-flex h-5 select-none items-center gap-0.5 rounded border px-1.5 font-mono text-[10px] ${overDark ? "border-white/15 bg-white/5 text-white/50" : "border-border bg-foreground/5 text-muted-foreground"}`}>
                 {shortcutMod}K
               </kbd>
             </button>
@@ -325,11 +357,11 @@ export function SiteHeaderB() {
 
             {/* User / Sign in */}
             {isSignedIn && user ? (
-              <UserButton user={user} signOut={signOut} />
+              <UserButton user={user} signOut={signOut} onDark={overDark} />
             ) : (
               <Link
                 href="/sign-in"
-                className="hidden lg:inline-flex h-9 items-center justify-center rounded-md border border-white/20 bg-white/5 px-4 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                className={`hidden lg:inline-flex h-9 items-center justify-center rounded-md border px-4 text-sm font-medium transition-colors ${overDark ? controlIdle : controlScrolled}`}
               >
                 Sign in
               </Link>
@@ -341,7 +373,7 @@ export function SiteHeaderB() {
               aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen(v => !v)}
-              className="lg:hidden p-2 text-white/70 hover:text-white transition-colors"
+              className={`lg:hidden p-2 transition-colors ${overDark ? "text-white/70 hover:text-white" : "text-foreground/70 hover:text-foreground"}`}
             >
               {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -353,7 +385,7 @@ export function SiteHeaderB() {
           className={`hidden lg:block border-t transition-all duration-300 ${
             isScrolled
               ? "border-transparent opacity-0 pointer-events-none h-0 overflow-hidden"
-              : "border-white/8 opacity-100"
+              : `${topOnDark ? "border-white/10" : "border-border"} opacity-100`
           }`}
         >
           <div className="container mx-auto px-4 md:px-6 h-9 flex items-center justify-center gap-8">
@@ -363,8 +395,8 @@ export function SiteHeaderB() {
                 href={link.href}
                 className={`text-xs font-medium tracking-wide transition-colors ${
                   isActive(link.href)
-                    ? "text-white/90"
-                    : "text-white/40 hover:text-white/70"
+                    ? (topOnDark ? "text-white/90" : "text-foreground/90")
+                    : (topOnDark ? "text-white/50 hover:text-white/80" : "text-foreground/50 hover:text-foreground/80")
                 }`}
               >
                 {link.name}

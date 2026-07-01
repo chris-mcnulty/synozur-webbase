@@ -12,3 +12,5 @@
 - [Mockup sandbox has no router](mockup-sandbox-no-router.md) — mockup-sandbox lacks wouter/react-router; subagents auto-import `Link from "wouter"` → blank iframe; use plain `<a>`.
 - [Purge link GET safety](purge-link-get-safety.md) — email security scanners pre-fetch every link via GET; destructive actions in emails must use GET=confirm + POST=execute.
 - [Home B is primary](home-b-primary.md) — Home B is the permanent `/` homepage (hardwired, B chrome); old Home A parked at /home-a; no A/B root toggle, canonical is `/`.
+- [B chrome header contrast & offset](b-chrome-header-contrast.md) — B header top color + Layout top-offset are route-based via LIGHT_TOP_PREFIXES; add new non-hero routes there or you get white-on-light text + overlap.
+- [Prod baseline URL](prod-baseline-url.md) — pre-launch prod is synozur-baseline.replit.app; www/synozur.com is still old Wix, don't cut over until told.

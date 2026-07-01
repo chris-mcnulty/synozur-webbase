@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "./header";
 import { Footer } from "./footer";
-import { SiteHeaderB } from "./site-header-b";
+import { SiteHeaderB, isLightTopRoute } from "./site-header-b";
 import { SiteFooterB } from "./site-footer-b";
 import { AnnouncementBar } from "./AnnouncementBar";
 import { Analytics } from "@/components/analytics";
@@ -32,10 +32,16 @@ function removeMeta(name: string) {
 export function Layout({
   children,
   chrome = "default",
+  forceDark = false,
 }: {
   children: ReactNode;
   /** "default" = mainline header/footer. "b" = the decision-path B experience. */
   chrome?: "default" | "b";
+  /** When true, always render dark regardless of the theme toggle — for the
+   *  cinematic flagship pages (home + Sprint/Proof/Fit/Book) that are built on
+   *  dark video/photography art. Content pages leave this false so the
+   *  light/dark toggle keeps working. */
+  forceDark?: boolean;
 }) {
   const { theme } = useTheme();
   const [location] = useLocation();
@@ -89,12 +95,12 @@ export function Layout({
     <div
       className={cn(
         "min-h-[100dvh] flex flex-col w-full bg-background text-foreground",
-        isB ? "dark" : theme,
+        forceDark ? "dark" : theme,
       )}
     >
       <OrganizationJsonLd />
       <BreadcrumbJsonLd />
-      {showAnnouncement && !isB && (
+      {showAnnouncement && !forceDark && (
         <AnnouncementBar
           text={settings.announcementText!}
           linkText={settings.announcementLinkText}
@@ -102,7 +108,15 @@ export function Layout({
         />
       )}
       {isB ? <SiteHeaderB /> : <Header />}
-      <main className="flex-1 flex flex-col w-full">
+      <main
+        className={cn(
+          "flex-1 flex flex-col w-full",
+          // Hero pages supply their own top padding; utility pages under the
+          // fixed B header do not, so reserve space (64px mobile single-row,
+          // 100px desktop two-row) to avoid the header overlapping content.
+          isB && isLightTopRoute(location) && "pt-16 lg:pt-[100px]",
+        )}
+      >
         {children}
       </main>
       {isB ? <SiteFooterB /> : <Footer />}
