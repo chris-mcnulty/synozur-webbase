@@ -780,25 +780,91 @@ const OVERRIDE_GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
     ],
   },
   {
-    title: "Hero — Get Started CTA",
+    title: "Hero — Headline (Home B)",
+    fields: [
+      {
+        kind: "text",
+        key: "home.hero.headline.text",
+        label: "Headline text",
+        help: "The full Home B hero headline. Word matching `accentWord` will be styled with the nebula accent.",
+        siteDefault: "Become AI-first — before disruption decides for you.",
+      },
+      {
+        kind: "text",
+        key: "home.hero.headline.accentWord",
+        label: "Accent word",
+        siteDefault: "AI-first",
+      },
+      {
+        kind: "longtext",
+        key: "home.hero.subheadline.text",
+        label: "Sub-headline",
+        siteDefault:
+          "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.",
+      },
+    ],
+  },
+  {
+    title: "Hero — Primary CTA",
     fields: [
       {
         kind: "boolean",
         key: "home.hero.cta.visible",
-        label: "Show hero CTA",
+        label: "Show primary CTA",
         siteDefault: true,
       },
       {
         kind: "text",
         key: "home.hero.cta.label",
         label: "Button label",
-        siteDefault: "Get Started",
+        siteDefault: "Book the AI & North Star Sprint",
       },
       {
         kind: "url",
         key: "home.hero.cta.href",
         label: "Button href",
-        siteDefault: "/start",
+        siteDefault: "/book",
+      },
+    ],
+  },
+  {
+    title: "Hero — Secondary CTA (Home B)",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.hero.cta2.visible",
+        label: "Show secondary CTA",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "home.hero.cta2.label",
+        label: "Button label",
+        siteDefault: "See proof, not promises",
+      },
+      {
+        kind: "url",
+        key: "home.hero.cta2.href",
+        label: "Button href",
+        siteDefault: "/proof",
+      },
+    ],
+  },
+  {
+    title: "Hero — Ladder (Home B)",
+    fields: [
+      {
+        kind: "boolean",
+        key: "home.hero.ladder.visible",
+        label: "Show AI-ready → AI-enabled → AI-first ladder",
+        siteDefault: true,
+      },
+      {
+        kind: "text",
+        key: "home.hero.ladder.caption",
+        label: "Trailing caption",
+        help: "The clause shown after the three rungs. Leave blank to show just the ladder.",
+        siteDefault: "we install the model and prove the differential.",
       },
     ],
   },

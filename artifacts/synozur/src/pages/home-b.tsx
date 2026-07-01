@@ -9,6 +9,7 @@ import { Meta } from "@/lib/meta";
 import { FromTheFeedCarousel } from "@/pages/home";
 import { LogoRotator } from "@/components/logo-rotator";
 import { clientLogos } from "@/data/logos";
+import { useOverride, useTrackConversion } from "@/lib/experiments";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -26,8 +27,77 @@ const staggerContainer = {
   transition: { staggerChildren: 0.1 },
 };
 
+// Highlights `accentWord` within `text` using the cosmic nebula gradient,
+// matching the accent treatment on the legacy home hero.
+function HeroHeadlineB({ text, accentWord }: { text: string; accentWord: string }) {
+  if (!accentWord || !text.includes(accentWord)) {
+    return <>{text}</>;
+  }
+  const idx = text.indexOf(accentWord);
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="nebula-text">{accentWord}</span>
+      {text.slice(idx + accentWord.length)}
+    </>
+  );
+}
 
 export default function HomeB() {
+  const trackConversion = useTrackConversion();
+
+  // ----- Experiment overrides -------------------------------------------
+  // Mirrors the instrumentation on the legacy home (variant A): each call
+  // falls back to B's built-in copy when no running experiment touches the
+  // key, so B renders identically until an experiment overrides a key.
+  // Keys are scoped to pageKey "home" (PAGE_KEY_PATHS.home = ["/"]).
+  const heroHeadlineText = useOverride<string>(
+    "home.hero.headline.text",
+    "Become AI-first — before disruption decides for you.",
+  );
+  const heroHeadlineAccent = useOverride<string>(
+    "home.hero.headline.accentWord",
+    "AI-first",
+  );
+  const heroSubheadline = useOverride<string>(
+    "home.hero.subheadline.text",
+    "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.",
+  );
+  const heroPrimaryCtaVisible = useOverride<boolean>(
+    "home.hero.cta.visible",
+    true,
+  );
+  const heroPrimaryCtaLabel = useOverride<string>(
+    "home.hero.cta.label",
+    "Book the AI & North Star Sprint",
+  );
+  const heroPrimaryCtaHref = useOverride<string>("home.hero.cta.href", "/book");
+  const heroSecondaryCtaVisible = useOverride<boolean>(
+    "home.hero.cta2.visible",
+    true,
+  );
+  const heroSecondaryCtaLabel = useOverride<string>(
+    "home.hero.cta2.label",
+    "See proof, not promises",
+  );
+  const heroSecondaryCtaHref = useOverride<string>(
+    "home.hero.cta2.href",
+    "/proof",
+  );
+  const heroLadderVisible = useOverride<boolean>(
+    "home.hero.ladder.visible",
+    true,
+  );
+  const heroLadderCaption = useOverride<string>(
+    "home.hero.ladder.caption",
+    "we install the model and prove the differential.",
+  );
+  const partnersVisible = useOverride<boolean>("home.partners.visible", true);
+  const partnersHeading = useOverride<string>(
+    "home.partners.heading",
+    "Trusted by",
+  );
+
   return (
     <div className="w-full overflow-x-hidden selection:bg-primary/30">
       <Meta
@@ -72,34 +142,58 @@ export default function HomeB() {
                 style={{ mixBlendMode: "screen" }}
               />
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.06] mb-8 text-white">
-                Become <span className="nebula-text">AI-first</span> — before disruption decides for you.
+                <HeroHeadlineB text={heroHeadlineText} accentWord={heroHeadlineAccent} />
               </h1>
               <p className="text-lg md:text-xl text-zinc-300 mb-10 max-w-xl leading-relaxed">
-                Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.
+                {heroSubheadline}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link
-                  to="/book"
-                  className="h-14 px-8 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-lg transition-all hover:bg-primary/90 hover:scale-[1.02] shadow-[0_0_20px_rgba(129,15,251,0.3)]"
-                >
-                  Book the AI &amp; North Star Sprint
-                </Link>
-                <Link
-                  to="/proof"
-                  className="h-14 px-8 inline-flex items-center justify-center rounded-md border border-white/20 bg-white/5 text-white backdrop-blur-sm font-medium text-lg transition-all hover:bg-white/10"
-                >
-                  See proof, not promises
-                </Link>
+                {heroPrimaryCtaVisible ? (
+                  <Link
+                    to={heroPrimaryCtaHref}
+                    className="h-14 px-8 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-lg transition-all hover:bg-primary/90 hover:scale-[1.02] shadow-[0_0_20px_rgba(129,15,251,0.3)]"
+                    onClick={() =>
+                      trackConversion("conversion.booking.click", {
+                        location: "hero",
+                        href: heroPrimaryCtaHref,
+                        label: heroPrimaryCtaLabel,
+                      })
+                    }
+                  >
+                    {heroPrimaryCtaLabel}
+                  </Link>
+                ) : null}
+                {heroSecondaryCtaVisible ? (
+                  <Link
+                    to={heroSecondaryCtaHref}
+                    className="h-14 px-8 inline-flex items-center justify-center rounded-md border border-white/20 bg-white/5 text-white backdrop-blur-sm font-medium text-lg transition-all hover:bg-white/10"
+                    onClick={() =>
+                      trackConversion("conversion.cta.get_started", {
+                        location: "hero_secondary",
+                        href: heroSecondaryCtaHref,
+                        label: heroSecondaryCtaLabel,
+                      })
+                    }
+                  >
+                    {heroSecondaryCtaLabel}
+                  </Link>
+                ) : null}
               </div>
-              <div className="text-sm md:text-base text-zinc-400 flex items-center gap-2 flex-wrap">
-                <span>AI-ready</span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-                <span>AI-enabled</span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-                <strong className="text-white font-semibold">AI-first</strong>
-                <span className="hidden sm:inline-block mx-1 opacity-50">—</span>
-                <span>we install the model and prove the differential.</span>
-              </div>
+              {heroLadderVisible ? (
+                <div className="text-sm md:text-base text-zinc-400 flex items-center gap-2 flex-wrap">
+                  <span>AI-ready</span>
+                  <ChevronRight className="h-4 w-4 opacity-50" />
+                  <span>AI-enabled</span>
+                  <ChevronRight className="h-4 w-4 opacity-50" />
+                  <strong className="text-white font-semibold">AI-first</strong>
+                  {heroLadderCaption ? (
+                    <>
+                      <span className="hidden sm:inline-block mx-1 opacity-50">—</span>
+                      <span>{heroLadderCaption}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </motion.div>
 
             <motion.div
@@ -346,14 +440,16 @@ export default function HomeB() {
       </section>
 
       {/* Trusted by — live logo rotator matching the mainline home page */}
-      <section className="py-16 bg-background border-b border-border/40">
-        <div className="container mx-auto px-4 md:px-6">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
-            Trusted by
-          </p>
-          <LogoRotator logos={clientLogos} />
-        </div>
-      </section>
+      {partnersVisible ? (
+        <section className="py-16 bg-background border-b border-border/40">
+          <div className="container mx-auto px-4 md:px-6">
+            <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
+              {partnersHeading}
+            </p>
+            <LogoRotator logos={clientLogos} />
+          </div>
+        </section>
+      ) : null}
 
       {/* 6. What we are not */}
       <section className="py-24 md:py-32 bg-background border-y border-border/40">

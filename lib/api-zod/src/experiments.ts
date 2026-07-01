@@ -56,10 +56,25 @@ export const OverrideMap = z
     "home.hero.tagline.accentWord": z.string().max(80).optional(),
     "home.hero.narrative.text": z.string().max(4000).optional(),
 
-    // Hero — Get Started CTA
+    // Hero — headline (Home B primary hero: single headline + accent word)
+    "home.hero.headline.text": z.string().max(500).optional(),
+    "home.hero.headline.accentWord": z.string().max(80).optional(),
+    "home.hero.subheadline.text": z.string().max(1000).optional(),
+
+    // Hero — Get Started CTA (Home B: primary "Book the Sprint" CTA)
     "home.hero.cta.visible": z.boolean().optional(),
     "home.hero.cta.label": z.string().max(80).optional(),
     "home.hero.cta.href": z.string().max(2048).optional(),
+
+    // Hero — secondary CTA (Home B: "See proof, not promises")
+    "home.hero.cta2.visible": z.boolean().optional(),
+    "home.hero.cta2.label": z.string().max(80).optional(),
+    "home.hero.cta2.href": z.string().max(2048).optional(),
+
+    // Hero — AI-ready → AI-enabled → AI-first ladder (Home B). `caption` is
+    // the trailing clause only; the three rungs themselves are fixed copy.
+    "home.hero.ladder.visible": z.boolean().optional(),
+    "home.hero.ladder.caption": z.string().max(500).optional(),
 
     // Partners / "Trusted by"
     "home.partners.visible": z.boolean().optional(),
