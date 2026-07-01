@@ -114,13 +114,13 @@ async function checkVerificationMetaTags(): Promise<ChannelStatus[]> {
     {
       name: "Google Search Console",
       configured: detect("google-site-verification"),
-      source: `GOOGLE_SITE_VERIFICATION (rendered into ${origin})`,
+      source: `Admin → Marketing → SEO (Google verification) · rendered into ${origin} · GOOGLE_SITE_VERIFICATION env is the fallback`,
       detail: probeError ?? undefined,
     },
     {
       name: "Bing Webmaster verification",
       configured: detect("msvalidate.01"),
-      source: `BING_SITE_VERIFICATION (rendered into ${origin})`,
+      source: `Admin → Marketing → SEO (Bing verification) · rendered into ${origin} · BING_SITE_VERIFICATION env is the fallback`,
       detail: probeError ?? undefined,
     },
   ];
@@ -167,17 +167,17 @@ function checkSubmissionChannels(): ChannelStatus[] {
     {
       name: "IndexNow (Bing/Yandex/Seznam/Naver/Yep)",
       configured: indexNow.length > 0,
-      source: "INDEXNOW_KEY",
+      source: "INDEXNOW_KEY · Replit Secret, one-time setup by an operator with secrets access",
     },
     {
       name: "Google Indexing API",
       configured: googleSa.length > 0,
-      source: "GOOGLE_INDEXING_SA_JSON",
+      source: "GOOGLE_INDEXING_SA_JSON · Replit Secret, one-time setup by an operator with secrets access",
     },
     {
       name: "Bing Webmaster Tools",
       configured: bingKey.length > 0 && bingSite.length > 0,
-      source: "BING_API_KEY + BING_SITE_URL",
+      source: "BING_API_KEY + BING_SITE_URL · Replit Secrets, one-time setup by an operator with secrets access",
       detail:
         bingKey.length > 0 && bingSite.length === 0
           ? "BING_API_KEY set but BING_SITE_URL missing"

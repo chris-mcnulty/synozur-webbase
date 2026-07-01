@@ -15,8 +15,12 @@
  *
  * Every HTML response also carries:
  *  - `<meta name="google-site-verification">` and `<meta name="msvalidate.01">`
- *    spliced in from env vars so search-console verification crawlers (which
- *    don't run JS) can confirm ownership (#160 / launch readiness L2).
+ *    spliced into the bare HTML so search-console verification crawlers (which
+ *    don't run JS) can confirm ownership (#160 / launch readiness L2). The
+ *    tokens are sourced from the DB (Admin -> Marketing -> SEO fields, via the
+ *    API server's public site-settings endpoint) so an admin can verify
+ *    ownership without a redeploy; the GOOGLE_SITE_VERIFICATION /
+ *    BING_SITE_VERIFICATION env vars remain as a boot-time fallback.
  *  - The same security header set helmet applies to the API server in
  *    artifacts/api-server/src/lib/securityHeaders.ts (CSP report-only by
  *    default, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy)
@@ -44,11 +48,19 @@ const DIST_DIR = path.join(__dirname, "dist", "public");
 // Search Console and Bing Webmaster verifiers do not execute JavaScript, so
 // the meta tags must appear in the bare HTML response — the React-side
 // fallback in components/layout/index.tsx is not enough for first-time
-// verification. Tokens are read from env at boot and spliced into index.html
-// once; rotation requires a redeploy, which matches Search Console's "verify
-// once" lifecycle.
-const GOOGLE_SITE_VERIFICATION = (process.env.GOOGLE_SITE_VERIFICATION ?? "").trim();
-const BING_SITE_VERIFICATION = (process.env.BING_SITE_VERIFICATION ?? "").trim();
+// verification.
+//
+// Tokens are sourced from the DB (Admin -> Marketing -> SEO) via the API
+// server's public /api/site-settings endpoint, refreshed periodically
+// (see refreshVerificationTokens) so an admin can verify ownership without a
+// redeploy. The env vars below are the boot-time fallback used until the first
+// DB refresh lands and whenever the DB value is blank.
+const ENV_GOOGLE_SITE_VERIFICATION = (process.env.GOOGLE_SITE_VERIFICATION ?? "").trim();
+const ENV_BING_SITE_VERIFICATION = (process.env.BING_SITE_VERIFICATION ?? "").trim();
+let GOOGLE_SITE_VERIFICATION = ENV_GOOGLE_SITE_VERIFICATION;
+let BING_SITE_VERIFICATION = ENV_BING_SITE_VERIFICATION;
+// How often to re-pull the DB verification tokens.
+const VERIFICATION_REFRESH_MS = 5 * 60 * 1000;
 
 // Security headers (#155 / launch readiness L4). Mirrors the helmet defaults
 // applied to the API server in app.ts so the public HTML responses also carry
@@ -294,6 +306,71 @@ function fetchRouteStatus(pathname) {
     });
     req.end();
   });
+}
+
+// Pull the verification tokens from the API server's public site-settings
+// endpoint. Resolves to null on any failure so the caller keeps the current
+// (env-fallback) values rather than blanking the tags.
+function fetchVerificationTokens() {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: "127.0.0.1",
+      port: API_PORT,
+      path: "/api/site-settings",
+      method: "GET",
+      headers: { Accept: "application/json" },
+    };
+    const req = http.request(options, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => { body += chunk; });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          const google =
+            typeof parsed?.seoGoogleSiteVerification === "string"
+              ? parsed.seoGoogleSiteVerification.trim()
+              : "";
+          const bing =
+            typeof parsed?.seoBingSiteVerification === "string"
+              ? parsed.seoBingSiteVerification.trim()
+              : "";
+          resolve({ google, bing });
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on("error", () => resolve(null));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
+// Refresh the live verification tokens from the DB, preferring the admin-set
+// DB value and falling back to the boot-time env value when the DB field is
+// blank. On any change, drop the cached index.html so the next request
+// re-splices the updated <meta> tags.
+async function refreshVerificationTokens() {
+  const tokens = await fetchVerificationTokens();
+  if (!tokens) return;
+  const nextGoogle = tokens.google || ENV_GOOGLE_SITE_VERIFICATION;
+  const nextBing = tokens.bing || ENV_BING_SITE_VERIFICATION;
+  if (
+    nextGoogle !== GOOGLE_SITE_VERIFICATION ||
+    nextBing !== BING_SITE_VERIFICATION
+  ) {
+    GOOGLE_SITE_VERIFICATION = nextGoogle;
+    BING_SITE_VERIFICATION = nextBing;
+    cachedIndexHtml = null;
+    cachedIndexLength = null;
+    console.log(
+      `SPA: refreshed site verification tokens — google-site-verification=${GOOGLE_SITE_VERIFICATION ? "set" : "empty"}, msvalidate.01=${BING_SITE_VERIFICATION ? "set" : "empty"} (DB value preferred, env is the fallback)`,
+    );
+  }
 }
 
 // ─── API proxy for SEO surfaces ───────────────────────────────────────────────
@@ -635,17 +712,25 @@ function handler(req, res) {
 const server = http.createServer(handler);
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`SPA server listening on port ${PORT}`);
+  // At boot only the env fallback is known; the DB values (Admin -> Marketing
+  // -> SEO) are pulled in by refreshVerificationTokens() immediately below and
+  // then every VERIFICATION_REFRESH_MS.
   if (GOOGLE_SITE_VERIFICATION) {
-    console.log("SPA: google-site-verification meta tag injected from GOOGLE_SITE_VERIFICATION");
+    console.log("SPA: google-site-verification meta tag active from GOOGLE_SITE_VERIFICATION env (boot fallback; DB SEO setting takes over on refresh)");
   } else {
-    console.warn("SPA: GOOGLE_SITE_VERIFICATION not set — Search Console verification meta tag missing from HTML");
+    console.warn("SPA: no google-site-verification env fallback — will use the DB SEO setting once refreshed; set it in Admin -> Marketing -> SEO or GOOGLE_SITE_VERIFICATION");
   }
   if (BING_SITE_VERIFICATION) {
-    console.log("SPA: msvalidate.01 meta tag injected from BING_SITE_VERIFICATION");
+    console.log("SPA: msvalidate.01 meta tag active from BING_SITE_VERIFICATION env (boot fallback; DB SEO setting takes over on refresh)");
   } else {
-    console.warn("SPA: BING_SITE_VERIFICATION not set — Bing Webmaster verification meta tag missing from HTML");
+    console.warn("SPA: no msvalidate.01 env fallback — will use the DB SEO setting once refreshed; set it in Admin -> Marketing -> SEO or BING_SITE_VERIFICATION");
   }
   console.log(
     `SPA: CSP header mode = ${CSP_ENFORCE ? "enforcing (Content-Security-Policy)" : "report-only (Content-Security-Policy-Report-Only)"} — reports to ${CSP_REPORT_URI}`,
   );
+  // Pull the DB-backed verification tokens now and on a recurring interval so
+  // admin edits in the SEO page propagate without a redeploy. unref() so the
+  // timer never keeps the process alive on its own.
+  refreshVerificationTokens();
+  setInterval(refreshVerificationTokens, VERIFICATION_REFRESH_MS).unref();
 });
