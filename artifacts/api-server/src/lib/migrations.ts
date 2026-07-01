@@ -3554,6 +3554,70 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (name) DO NOTHING;
     `);
 
+    // 62. Home page core copy (`home_content` JSON blob) — powers the
+    //     admin-editable copy + hero background on the live home page (`/`).
+    //     Added + seeded here so new deployments (e.g. production) that skip
+    //     `pnpm db:seed` still render the intended defaults without copying the
+    //     dev database. Only seeded when NULL, so admin edits are never
+    //     overwritten on restart.
+    await db.execute(sql`
+      ALTER TABLE site_settings
+        ADD COLUMN IF NOT EXISTS home_content jsonb;
+    `);
+    // Guarantee the singleton site_settings row (id=1) exists before seeding,
+    // so a truly fresh production database is seeded on first deploy even
+    // before any admin has visited the settings pages. Mirrors
+    // loadOrCreateSettings() in routes/siteSettings.ts.
+    await db.execute(sql`
+      INSERT INTO site_settings (id, require_cookie_consent)
+      VALUES (1, false)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+    const homeContentDefaults = JSON.stringify({
+      heroHeadline: "Become AI-first — before disruption decides for you.",
+      heroHeadlineAccent: "AI-first",
+      heroSubheadline:
+        "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.",
+      heroPrimaryCtaLabel: "Book the AI & North Star Sprint",
+      heroPrimaryCtaHref: "/book",
+      heroSecondaryCtaLabel: "See proof, not promises",
+      heroSecondaryCtaHref: "/proof",
+      heroLadderCaption: "we install the model and prove the differential.",
+      painHeadline: "The problem isn't AI. It's your operating model.",
+      painSubheadline:
+        "Most firms deliver strategy. Few redesign how the business actually operates.",
+      painCallout:
+        "If your operating model doesn't adapt, AI will reshape your company without you.",
+      sprintEyebrow: "The Front Door",
+      sprintHeadline: "The AI & North Star Sprint",
+      sprintBody:
+        "A 4–6 week executive engagement for CEOs and Boards to define, design, and prove an AI-first operating model.",
+      sprintCtaLabel: "Start the Sprint",
+      sprintCtaHref: "/book",
+      proofHeadline: "Proof, not promises",
+      proofLinkLabel: "View detailed case studies",
+      proofLinkHref: "/case-studies",
+      icpHeadline: "Who this is for",
+      icpHighlightLine1: "Mid-market. Privately held.",
+      icpHighlightLine2: "AI pressure is real — and time is limited.",
+      icpLinkLabel: "Why Synozur",
+      icpLinkHref: "/about",
+      notHeadline: "What we are not",
+      notSubheadline:
+        "We operate at the CEO and Board level — where strategy, operating model, and outcomes align.",
+      judgmentHeadline: "AI, with judgment",
+      judgmentBody: "AI accelerates our work. It does not replace our judgment.",
+      judgmentBadge: "No AI slop. Ever.",
+      methodHeadline: "The North Star Method™",
+      methodSubheadline:
+        "Not theory. A repeatable system tied to measurable outcomes.",
+    });
+    await db.execute(sql`
+      UPDATE site_settings
+      SET home_content = ${homeContentDefaults}::jsonb
+      WHERE home_content IS NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

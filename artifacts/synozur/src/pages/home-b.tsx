@@ -1,17 +1,31 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight, CheckCircle2, ChevronRight,
   BarChart3, ShieldAlert, Target, XCircle,
   Briefcase, Network, Lightbulb, Activity, ArrowUpRight,
 } from "lucide-react";
 import { Meta } from "@/lib/meta";
+import { api } from "@/lib/api";
 import { FromTheFeedCarousel } from "@/pages/home";
 import { LogoRotator } from "@/components/logo-rotator";
 import { clientLogos } from "@/data/logos";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+const BUNDLED_HERO_VIDEO_WEBM = `${BASE_PATH}/videos/hero-bg.webm`;
+const BUNDLED_HERO_VIDEO_MP4 = `${BASE_PATH}/videos/hero-bg.mp4`;
+const BUNDLED_HERO_POSTER = `${BASE_PATH}/images/hero-bg.png`;
+
+// Backend returns storage paths like "/api/storage/objects/..."; those need
+// the artifact base path prepended. Bundled/relative assets pass through.
+function resolveMediaUrl(url: string | null | undefined, fallback: string): string {
+  if (!url) return fallback;
+  if (url.startsWith("/api/")) return `${BASE_PATH}${url}`;
+  return url;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -46,22 +60,52 @@ function HeroHeadlineB({ text, accentWord }: { text: string; accentWord: string 
 export default function HomeB() {
   const trackConversion = useTrackConversion();
 
+  // ----- Editable copy + hero media (admin defaults) --------------------
+  // Site settings supply the DEFAULT layer for this page: admins edit copy
+  // in Alt Home settings, and each field falls back to the built-in default
+  // below when unset. For the hero keys, this settings value is in turn the
+  // fallback that experiment `useOverride` reads from — so the precedence is
+  // experiment override > admin setting > hard-coded default.
+  const { data: settings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+  });
+  const hc = settings?.homeContent ?? null;
+
+  // ----- Hero background -------------------------------------------------
+  // Honors the admin-configured hero background type. When the type is unset
+  // (null / "inherit"), the page preserves its original look: the bundled
+  // cosmic background video. `prefers-reduced-motion` swaps the video for a
+  // static image regardless.
+  const reducedMotion = useReducedMotion();
+  const heroImageSrc = resolveMediaUrl(
+    settings?.homeBHeroImageUrl,
+    BUNDLED_HERO_POSTER,
+  );
+  const customVideoSrc = settings?.homeBHeroVideoUrl
+    ? resolveMediaUrl(settings.homeBHeroVideoUrl, BUNDLED_HERO_VIDEO_MP4)
+    : null;
+  const showImageHero =
+    settings?.homeBHeroBackgroundType === "image" || reducedMotion;
+
   // ----- Experiment overrides -------------------------------------------
   // Mirrors the instrumentation on the legacy home (variant A): each call
-  // falls back to B's built-in copy when no running experiment touches the
-  // key, so B renders identically until an experiment overrides a key.
-  // Keys are scoped to pageKey "home" (PAGE_KEY_PATHS.home = ["/"]).
+  // falls back to the admin setting (then B's built-in copy) when no running
+  // experiment touches the key, so B renders identically until an experiment
+  // overrides a key. Keys are scoped to pageKey "home" (PAGE_KEY_PATHS.home
+  // = ["/"]).
   const heroHeadlineText = useOverride<string>(
     "home.hero.headline.text",
-    "Become AI-first — before disruption decides for you.",
+    hc?.heroHeadline ?? "Become AI-first — before disruption decides for you.",
   );
   const heroHeadlineAccent = useOverride<string>(
     "home.hero.headline.accentWord",
-    "AI-first",
+    hc?.heroHeadlineAccent ?? "AI-first",
   );
   const heroSubheadline = useOverride<string>(
     "home.hero.subheadline.text",
-    "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.",
+    hc?.heroSubheadline ??
+      "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs and Boards. We redesign your operating model for an AI-first world — then prove the business impact with measurable outcomes, not promises.",
   );
   const heroPrimaryCtaVisible = useOverride<boolean>(
     "home.hero.cta.visible",
@@ -69,20 +113,23 @@ export default function HomeB() {
   );
   const heroPrimaryCtaLabel = useOverride<string>(
     "home.hero.cta.label",
-    "Book the AI & North Star Sprint",
+    hc?.heroPrimaryCtaLabel ?? "Book the AI & North Star Sprint",
   );
-  const heroPrimaryCtaHref = useOverride<string>("home.hero.cta.href", "/book");
+  const heroPrimaryCtaHref = useOverride<string>(
+    "home.hero.cta.href",
+    hc?.heroPrimaryCtaHref ?? "/book",
+  );
   const heroSecondaryCtaVisible = useOverride<boolean>(
     "home.hero.cta2.visible",
     true,
   );
   const heroSecondaryCtaLabel = useOverride<string>(
     "home.hero.cta2.label",
-    "See proof, not promises",
+    hc?.heroSecondaryCtaLabel ?? "See proof, not promises",
   );
   const heroSecondaryCtaHref = useOverride<string>(
     "home.hero.cta2.href",
-    "/proof",
+    hc?.heroSecondaryCtaHref ?? "/proof",
   );
   const heroLadderVisible = useOverride<boolean>(
     "home.hero.ladder.visible",
@@ -90,7 +137,7 @@ export default function HomeB() {
   );
   const heroLadderCaption = useOverride<string>(
     "home.hero.ladder.caption",
-    "we install the model and prove the differential.",
+    hc?.heroLadderCaption ?? "we install the model and prove the differential.",
   );
   const partnersVisible = useOverride<boolean>("home.partners.visible", true);
   const partnersHeading = useOverride<string>(
@@ -112,18 +159,34 @@ export default function HomeB() {
       <section className="relative min-h-[92vh] flex items-center bg-[#0B0B1A] overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-60">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0B1A] z-10" />
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster={`${BASE_PATH}/images/hero-bg.png`}
-            className="w-full h-full object-cover"
-            data-decorative="true"
-          >
-            <source src={`${BASE_PATH}/videos/hero-bg.webm`} type="video/webm" />
-            <source src={`${BASE_PATH}/videos/hero-bg.mp4`} type="video/mp4" />
-          </video>
+          {showImageHero ? (
+            <img
+              src={heroImageSrc}
+              alt=""
+              className="w-full h-full object-cover"
+              data-decorative="true"
+            />
+          ) : (
+            <video
+              key={customVideoSrc ?? "bundled-hero-video"}
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={heroImageSrc}
+              className="w-full h-full object-cover"
+              data-decorative="true"
+            >
+              {customVideoSrc ? (
+                <source src={customVideoSrc} />
+              ) : (
+                <>
+                  <source src={BUNDLED_HERO_VIDEO_WEBM} type="video/webm" />
+                  <source src={BUNDLED_HERO_VIDEO_MP4} type="video/mp4" />
+                </>
+              )}
+            </video>
+          )}
         </div>
         <div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vh] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-40 pointer-events-none z-0" />
 
@@ -213,10 +276,11 @@ export default function HomeB() {
         <div className="container mx-auto px-4 md:px-6 max-w-5xl">
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              The problem isn't AI. It's your operating model.
+              {hc?.painHeadline ?? "The problem isn't AI. It's your operating model."}
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Most firms deliver strategy. Few redesign how the business actually operates.
+              {hc?.painSubheadline ??
+                "Most firms deliver strategy. Few redesign how the business actually operates."}
             </p>
           </motion.div>
 
@@ -249,7 +313,8 @@ export default function HomeB() {
             <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-8 md:p-10 text-center shadow-[0_0_40px_rgba(129,15,251,0.1)]">
               <div className="absolute top-0 left-0 w-full h-1 nebula-gradient" />
               <h3 className="text-xl md:text-2xl font-semibold leading-relaxed">
-                If your operating model doesn't adapt, AI will reshape your company without you.
+                {hc?.painCallout ??
+                  "If your operating model doesn't adapt, AI will reshape your company without you."}
               </h3>
             </div>
           </motion.div>
@@ -261,13 +326,14 @@ export default function HomeB() {
         <div className="container mx-auto px-4 md:px-6 max-w-5xl">
           <motion.div {...fadeUp} className="mb-12">
             <p className="text-sm uppercase tracking-[0.25em] text-primary font-bold mb-4">
-              The Front Door
+              {hc?.sprintEyebrow ?? "The Front Door"}
             </p>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              The AI &amp; North Star Sprint
+              {hc?.sprintHeadline ?? "The AI & North Star Sprint"}
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl leading-relaxed">
-              A 4–6 week executive engagement for CEOs and Boards to define, design, and prove an AI-first operating model.
+              {hc?.sprintBody ??
+                "A 4–6 week executive engagement for CEOs and Boards to define, design, and prove an AI-first operating model."}
             </p>
           </motion.div>
 
@@ -318,10 +384,10 @@ export default function HomeB() {
             </div>
             <div className="p-8 md:p-12 bg-card border-t border-border flex justify-center">
               <Link
-                to="/book"
+                to={hc?.sprintCtaHref ?? "/book"}
                 className="h-14 px-10 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground font-medium text-lg transition-all hover:bg-primary/90 shadow-[0_0_20px_rgba(129,15,251,0.2)]"
               >
-                Start the Sprint
+                {hc?.sprintCtaLabel ?? "Start the Sprint"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </div>
@@ -334,7 +400,7 @@ export default function HomeB() {
         <div className="container mx-auto px-4 md:px-6 max-w-6xl">
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Proof, not promises
+              {hc?.proofHeadline ?? "Proof, not promises"}
             </h2>
           </motion.div>
 
@@ -371,10 +437,10 @@ export default function HomeB() {
 
           <motion.div {...fadeUp} className="text-center">
             <Link
-              to="/case-studies"
+              to={hc?.proofLinkHref ?? "/case-studies"}
               className="inline-flex items-center justify-center text-primary font-medium hover:text-primary/80 transition-colors"
             >
-              View detailed case studies
+              {hc?.proofLinkLabel ?? "View detailed case studies"}
               <ArrowUpRight className="ml-2 h-4 w-4" />
             </Link>
           </motion.div>
@@ -388,12 +454,18 @@ export default function HomeB() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div {...fadeUp}>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-8">
-                Who this is for
+                {hc?.icpHeadline ?? "Who this is for"}
               </h2>
               <div className="p-6 border-l-2 border-primary bg-primary/5 rounded-r-xl mb-8">
                 <p className="text-xl font-medium leading-relaxed">
-                  <span className="text-foreground">Mid-market. Privately held.</span><br />
-                  <span className="text-muted-foreground">AI pressure is real — and time is limited.</span>
+                  <span className="text-foreground">
+                    {hc?.icpHighlightLine1 ?? "Mid-market. Privately held."}
+                  </span>
+                  <br />
+                  <span className="text-muted-foreground">
+                    {hc?.icpHighlightLine2 ??
+                      "AI pressure is real — and time is limited."}
+                  </span>
                 </p>
               </div>
               <div className="flex flex-col gap-4">
@@ -415,10 +487,11 @@ export default function HomeB() {
               </div>
               <div className="mt-8">
                 <Link
-                  to="/about"
+                  to={hc?.icpLinkHref ?? "/about"}
                   className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors"
                 >
-                  Why Synozur <ArrowRight className="ml-2 h-4 w-4" />
+                  {hc?.icpLinkLabel ?? "Why Synozur"}{" "}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </motion.div>
@@ -456,10 +529,11 @@ export default function HomeB() {
         <div className="container mx-auto px-4 md:px-6 max-w-4xl text-center">
           <motion.div {...fadeUp} className="mb-16">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              What we are not
+              {hc?.notHeadline ?? "What we are not"}
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              We operate at the CEO and Board level — where strategy, operating model, and outcomes align.
+              {hc?.notSubheadline ??
+                "We operate at the CEO and Board level — where strategy, operating model, and outcomes align."}
             </p>
           </motion.div>
 
@@ -494,14 +568,15 @@ export default function HomeB() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <motion.div {...fadeUp}>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-                AI, with judgment
+                {hc?.judgmentHeadline ?? "AI, with judgment"}
               </h2>
               <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-                AI accelerates our work. It does not replace our judgment.
+                {hc?.judgmentBody ??
+                  "AI accelerates our work. It does not replace our judgment."}
               </p>
               <div className="inline-block px-6 py-4 rounded-lg border border-primary/20 bg-primary/10">
                 <p className="text-xl md:text-2xl font-bold nebula-text">
-                  No AI slop. Ever.
+                  {hc?.judgmentBadge ?? "No AI slop. Ever."}
                 </p>
               </div>
             </motion.div>
@@ -532,10 +607,11 @@ export default function HomeB() {
         <div className="container mx-auto px-4 md:px-6 max-w-6xl">
           <motion.div {...fadeUp} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              The North Star Method™
+              {hc?.methodHeadline ?? "The North Star Method™"}
             </h2>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Not theory. A repeatable system tied to measurable outcomes.
+              {hc?.methodSubheadline ??
+                "Not theory. A repeatable system tied to measurable outcomes."}
             </p>
           </motion.div>
 

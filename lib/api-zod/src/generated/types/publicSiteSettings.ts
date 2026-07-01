@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HomeContent } from "./homeContent";
 import type { OpeningHoursSpec } from "./openingHoursSpec";
 import type { PublicSiteSettingsBookingsRenderMode } from "./publicSiteSettingsBookingsRenderMode";
 import type { PublicSiteSettingsHomeBHeroBackgroundType } from "./publicSiteSettingsHomeBHeroBackgroundType";
@@ -129,6 +130,7 @@ export interface PublicSiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   /** When true, the dismissable announcement bar is shown at the top of every public page.
    */
   announcementEnabled?: boolean;

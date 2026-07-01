@@ -89,6 +89,7 @@ export * from "./getCmsPostAnalyticsParams";
 export * from "./getEventSchedule200";
 export * from "./getExperimentResultsResponse";
 export * from "./healthStatus";
+export * from "./homeContent";
 export * from "./ingestEventRow";
 export * from "./ingestEventRowProperties";
 export * from "./ingestPageviewRow";

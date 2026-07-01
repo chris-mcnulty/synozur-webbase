@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HomeContent } from "./homeContent";
 import type { OpeningHoursSpec } from "./openingHoursSpec";
 import type { SiteSettingsBookingsRenderMode } from "./siteSettingsBookingsRenderMode";
 import type { SiteSettingsHomeBHeroBackgroundType } from "./siteSettingsHomeBHeroBackgroundType";
@@ -199,6 +200,7 @@ export interface SiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   announcementEnabled?: boolean;
   /** @nullable */
   announcementText?: string | null;

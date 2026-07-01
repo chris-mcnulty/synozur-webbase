@@ -1408,6 +1408,48 @@ export const GetPublicSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  homeContent: zod
+    .union([
+      zod
+        .object({
+          heroHeadline: zod.string().nullish(),
+          heroHeadlineAccent: zod.string().nullish(),
+          heroSubheadline: zod.string().nullish(),
+          heroPrimaryCtaLabel: zod.string().nullish(),
+          heroPrimaryCtaHref: zod.string().nullish(),
+          heroSecondaryCtaLabel: zod.string().nullish(),
+          heroSecondaryCtaHref: zod.string().nullish(),
+          heroLadderCaption: zod.string().nullish(),
+          painHeadline: zod.string().nullish(),
+          painSubheadline: zod.string().nullish(),
+          painCallout: zod.string().nullish(),
+          sprintEyebrow: zod.string().nullish(),
+          sprintHeadline: zod.string().nullish(),
+          sprintBody: zod.string().nullish(),
+          sprintCtaLabel: zod.string().nullish(),
+          sprintCtaHref: zod.string().nullish(),
+          proofHeadline: zod.string().nullish(),
+          proofLinkLabel: zod.string().nullish(),
+          proofLinkHref: zod.string().nullish(),
+          icpHeadline: zod.string().nullish(),
+          icpHighlightLine1: zod.string().nullish(),
+          icpHighlightLine2: zod.string().nullish(),
+          icpLinkLabel: zod.string().nullish(),
+          icpLinkHref: zod.string().nullish(),
+          notHeadline: zod.string().nullish(),
+          notSubheadline: zod.string().nullish(),
+          judgmentHeadline: zod.string().nullish(),
+          judgmentBody: zod.string().nullish(),
+          judgmentBadge: zod.string().nullish(),
+          methodHeadline: zod.string().nullish(),
+          methodSubheadline: zod.string().nullish(),
+        })
+        .describe(
+          "Editable core copy for the live home page (served at \/). Every field is optional; the page falls back to its built-in default when a field is absent or empty. Acts as the default layer that experiment overrides (home.hero.\*) read from.\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   announcementEnabled: zod
     .boolean()
     .default(getPublicSiteSettingsResponseAnnouncementEnabledDefault)
@@ -1631,6 +1673,48 @@ export const GetAdminSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  homeContent: zod
+    .union([
+      zod
+        .object({
+          heroHeadline: zod.string().nullish(),
+          heroHeadlineAccent: zod.string().nullish(),
+          heroSubheadline: zod.string().nullish(),
+          heroPrimaryCtaLabel: zod.string().nullish(),
+          heroPrimaryCtaHref: zod.string().nullish(),
+          heroSecondaryCtaLabel: zod.string().nullish(),
+          heroSecondaryCtaHref: zod.string().nullish(),
+          heroLadderCaption: zod.string().nullish(),
+          painHeadline: zod.string().nullish(),
+          painSubheadline: zod.string().nullish(),
+          painCallout: zod.string().nullish(),
+          sprintEyebrow: zod.string().nullish(),
+          sprintHeadline: zod.string().nullish(),
+          sprintBody: zod.string().nullish(),
+          sprintCtaLabel: zod.string().nullish(),
+          sprintCtaHref: zod.string().nullish(),
+          proofHeadline: zod.string().nullish(),
+          proofLinkLabel: zod.string().nullish(),
+          proofLinkHref: zod.string().nullish(),
+          icpHeadline: zod.string().nullish(),
+          icpHighlightLine1: zod.string().nullish(),
+          icpHighlightLine2: zod.string().nullish(),
+          icpLinkLabel: zod.string().nullish(),
+          icpLinkHref: zod.string().nullish(),
+          notHeadline: zod.string().nullish(),
+          notSubheadline: zod.string().nullish(),
+          judgmentHeadline: zod.string().nullish(),
+          judgmentBody: zod.string().nullish(),
+          judgmentBadge: zod.string().nullish(),
+          methodHeadline: zod.string().nullish(),
+          methodSubheadline: zod.string().nullish(),
+        })
+        .describe(
+          "Editable core copy for the live home page (served at \/). Every field is optional; the page falls back to its built-in default when a field is absent or empty. Acts as the default layer that experiment overrides (home.hero.\*) read from.\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   announcementEnabled: zod
     .boolean()
     .default(getAdminSiteSettingsResponseAnnouncementEnabledDefault),
@@ -1808,6 +1892,48 @@ export const UpdateAdminSiteSettingsBody = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  homeContent: zod
+    .union([
+      zod
+        .object({
+          heroHeadline: zod.string().nullish(),
+          heroHeadlineAccent: zod.string().nullish(),
+          heroSubheadline: zod.string().nullish(),
+          heroPrimaryCtaLabel: zod.string().nullish(),
+          heroPrimaryCtaHref: zod.string().nullish(),
+          heroSecondaryCtaLabel: zod.string().nullish(),
+          heroSecondaryCtaHref: zod.string().nullish(),
+          heroLadderCaption: zod.string().nullish(),
+          painHeadline: zod.string().nullish(),
+          painSubheadline: zod.string().nullish(),
+          painCallout: zod.string().nullish(),
+          sprintEyebrow: zod.string().nullish(),
+          sprintHeadline: zod.string().nullish(),
+          sprintBody: zod.string().nullish(),
+          sprintCtaLabel: zod.string().nullish(),
+          sprintCtaHref: zod.string().nullish(),
+          proofHeadline: zod.string().nullish(),
+          proofLinkLabel: zod.string().nullish(),
+          proofLinkHref: zod.string().nullish(),
+          icpHeadline: zod.string().nullish(),
+          icpHighlightLine1: zod.string().nullish(),
+          icpHighlightLine2: zod.string().nullish(),
+          icpLinkLabel: zod.string().nullish(),
+          icpLinkHref: zod.string().nullish(),
+          notHeadline: zod.string().nullish(),
+          notSubheadline: zod.string().nullish(),
+          judgmentHeadline: zod.string().nullish(),
+          judgmentBody: zod.string().nullish(),
+          judgmentBadge: zod.string().nullish(),
+          methodHeadline: zod.string().nullish(),
+          methodSubheadline: zod.string().nullish(),
+        })
+        .describe(
+          "Editable core copy for the live home page (served at \/). Every field is optional; the page falls back to its built-in default when a field is absent or empty. Acts as the default layer that experiment overrides (home.hero.\*) read from.\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   announcementEnabled: zod.boolean().optional(),
   announcementText: zod.string().nullish(),
   announcementLinkText: zod.string().nullish(),
@@ -2014,6 +2140,48 @@ export const UpdateAdminSiteSettingsResponse = zod.object({
   homeBClosingEyebrow: zod.string().nullish(),
   homeBClosingHeadline: zod.string().nullish(),
   homeBClosingBody: zod.string().nullish(),
+  homeContent: zod
+    .union([
+      zod
+        .object({
+          heroHeadline: zod.string().nullish(),
+          heroHeadlineAccent: zod.string().nullish(),
+          heroSubheadline: zod.string().nullish(),
+          heroPrimaryCtaLabel: zod.string().nullish(),
+          heroPrimaryCtaHref: zod.string().nullish(),
+          heroSecondaryCtaLabel: zod.string().nullish(),
+          heroSecondaryCtaHref: zod.string().nullish(),
+          heroLadderCaption: zod.string().nullish(),
+          painHeadline: zod.string().nullish(),
+          painSubheadline: zod.string().nullish(),
+          painCallout: zod.string().nullish(),
+          sprintEyebrow: zod.string().nullish(),
+          sprintHeadline: zod.string().nullish(),
+          sprintBody: zod.string().nullish(),
+          sprintCtaLabel: zod.string().nullish(),
+          sprintCtaHref: zod.string().nullish(),
+          proofHeadline: zod.string().nullish(),
+          proofLinkLabel: zod.string().nullish(),
+          proofLinkHref: zod.string().nullish(),
+          icpHeadline: zod.string().nullish(),
+          icpHighlightLine1: zod.string().nullish(),
+          icpHighlightLine2: zod.string().nullish(),
+          icpLinkLabel: zod.string().nullish(),
+          icpLinkHref: zod.string().nullish(),
+          notHeadline: zod.string().nullish(),
+          notSubheadline: zod.string().nullish(),
+          judgmentHeadline: zod.string().nullish(),
+          judgmentBody: zod.string().nullish(),
+          judgmentBadge: zod.string().nullish(),
+          methodHeadline: zod.string().nullish(),
+          methodSubheadline: zod.string().nullish(),
+        })
+        .describe(
+          "Editable core copy for the live home page (served at \/). Every field is optional; the page falls back to its built-in default when a field is absent or empty. Acts as the default layer that experiment overrides (home.hero.\*) read from.\n",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   announcementEnabled: zod
     .boolean()
     .default(updateAdminSiteSettingsResponseAnnouncementEnabledDefault),

@@ -154,6 +154,40 @@ export type BookingsRenderMode = "iframe" | "native";
 
 export type HomeRootVariant = "a" | "b";
 
+export interface HomeContent {
+  heroHeadline?: string | null;
+  heroHeadlineAccent?: string | null;
+  heroSubheadline?: string | null;
+  heroPrimaryCtaLabel?: string | null;
+  heroPrimaryCtaHref?: string | null;
+  heroSecondaryCtaLabel?: string | null;
+  heroSecondaryCtaHref?: string | null;
+  heroLadderCaption?: string | null;
+  painHeadline?: string | null;
+  painSubheadline?: string | null;
+  painCallout?: string | null;
+  sprintEyebrow?: string | null;
+  sprintHeadline?: string | null;
+  sprintBody?: string | null;
+  sprintCtaLabel?: string | null;
+  sprintCtaHref?: string | null;
+  proofHeadline?: string | null;
+  proofLinkLabel?: string | null;
+  proofLinkHref?: string | null;
+  icpHeadline?: string | null;
+  icpHighlightLine1?: string | null;
+  icpHighlightLine2?: string | null;
+  icpLinkLabel?: string | null;
+  icpLinkHref?: string | null;
+  notHeadline?: string | null;
+  notSubheadline?: string | null;
+  judgmentHeadline?: string | null;
+  judgmentBody?: string | null;
+  judgmentBadge?: string | null;
+  methodHeadline?: string | null;
+  methodSubheadline?: string | null;
+}
+
 export interface PublicSiteSettings {
   requireCookieConsent: boolean;
   homeHeroBackgroundType?: "image" | "video";
@@ -213,6 +247,7 @@ export interface PublicSiteSettings {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   announcementEnabled?: boolean;
   announcementText?: string | null;
   announcementLinkText?: string | null;
@@ -298,6 +333,7 @@ export interface AdminSiteSettings {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   announcementEnabled?: boolean;
   announcementText?: string | null;
   announcementLinkText?: string | null;
@@ -738,6 +774,7 @@ export interface UpdateSiteSettingsBody {
   homeBClosingEyebrow?: string | null;
   homeBClosingHeadline?: string | null;
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   constellationDemoEnabled?: boolean;
   trustComplianceReviewed?: boolean;
   trustSecurityMailboxReady?: boolean;

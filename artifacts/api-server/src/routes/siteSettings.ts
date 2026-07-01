@@ -203,6 +203,7 @@ function buildAdminResponse(settings: SiteSettings, urls: ResolvedImageUrls) {
     homeBClosingEyebrow: settings.homeBClosingEyebrow,
     homeBClosingHeadline: settings.homeBClosingHeadline,
     homeBClosingBody: settings.homeBClosingBody,
+    homeContent: settings.homeContent ?? null,
     announcementEnabled: settings.announcementEnabled,
     announcementText: settings.announcementText,
     announcementLinkText: settings.announcementLinkText,
@@ -291,6 +292,7 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       homeBClosingEyebrow: settings.homeBClosingEyebrow,
       homeBClosingHeadline: settings.homeBClosingHeadline,
       homeBClosingBody: settings.homeBClosingBody,
+      homeContent: settings.homeContent ?? null,
       announcementEnabled: settings.announcementEnabled,
       announcementText: settings.announcementText,
       announcementLinkText: settings.announcementLinkText,
@@ -551,6 +553,23 @@ router.patch("/admin/site-settings", requireAdmin, async (req, res): Promise<voi
   for (const field of homeBTextFields) {
     if (field in input) {
       updates[field] = trimOrNull(input[field]);
+    }
+  }
+
+  // home-b core copy. The client sends the full homeContent object; we
+  // normalize every string field with trimOrNull so cleared fields fall back
+  // to the page's built-in default, and persist the whole object (or null to
+  // clear it entirely).
+  if ("homeContent" in input) {
+    const raw = input.homeContent;
+    if (raw == null) {
+      updates.homeContent = null;
+    } else {
+      const normalized: Record<string, string | null> = {};
+      for (const [key, value] of Object.entries(raw)) {
+        normalized[key] = trimOrNull(value as string | null | undefined);
+      }
+      updates.homeContent = normalized;
     }
   }
 

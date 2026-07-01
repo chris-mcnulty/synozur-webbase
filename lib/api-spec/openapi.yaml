@@ -5897,6 +5897,76 @@ components:
         closes:
           type: string
           pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    HomeContent:
+      type: object
+      description: >
+        Editable core copy for the live home page (served at /). Every field
+        is optional; the page falls back to its built-in default when a field
+        is absent or empty. Acts as the default layer that experiment
+        overrides (home.hero.*) read from.
+      properties:
+        heroHeadline:
+          type: [string, 'null']
+        heroHeadlineAccent:
+          type: [string, 'null']
+        heroSubheadline:
+          type: [string, 'null']
+        heroPrimaryCtaLabel:
+          type: [string, 'null']
+        heroPrimaryCtaHref:
+          type: [string, 'null']
+        heroSecondaryCtaLabel:
+          type: [string, 'null']
+        heroSecondaryCtaHref:
+          type: [string, 'null']
+        heroLadderCaption:
+          type: [string, 'null']
+        painHeadline:
+          type: [string, 'null']
+        painSubheadline:
+          type: [string, 'null']
+        painCallout:
+          type: [string, 'null']
+        sprintEyebrow:
+          type: [string, 'null']
+        sprintHeadline:
+          type: [string, 'null']
+        sprintBody:
+          type: [string, 'null']
+        sprintCtaLabel:
+          type: [string, 'null']
+        sprintCtaHref:
+          type: [string, 'null']
+        proofHeadline:
+          type: [string, 'null']
+        proofLinkLabel:
+          type: [string, 'null']
+        proofLinkHref:
+          type: [string, 'null']
+        icpHeadline:
+          type: [string, 'null']
+        icpHighlightLine1:
+          type: [string, 'null']
+        icpHighlightLine2:
+          type: [string, 'null']
+        icpLinkLabel:
+          type: [string, 'null']
+        icpLinkHref:
+          type: [string, 'null']
+        notHeadline:
+          type: [string, 'null']
+        notSubheadline:
+          type: [string, 'null']
+        judgmentHeadline:
+          type: [string, 'null']
+        judgmentBody:
+          type: [string, 'null']
+        judgmentBadge:
+          type: [string, 'null']
+        methodHeadline:
+          type: [string, 'null']
+        methodSubheadline:
+          type: [string, 'null']
     PublicSiteSettings:
       type: object
       required: [requireCookieConsent]
@@ -6136,6 +6206,10 @@ components:
           type:
             - string
             - 'null'
+        homeContent:
+          anyOf:
+            - $ref: '#/components/schemas/HomeContent'
+            - type: 'null'
         announcementEnabled:
           description: >
             When true, the dismissable announcement bar is shown at the top of
@@ -6520,6 +6594,10 @@ components:
           type:
             - string
             - 'null'
+        homeContent:
+          anyOf:
+            - $ref: '#/components/schemas/HomeContent'
+            - type: 'null'
         announcementEnabled:
           type: boolean
           default: false
@@ -6850,6 +6928,10 @@ components:
           type:
             - string
             - 'null'
+        homeContent:
+          anyOf:
+            - $ref: '#/components/schemas/HomeContent'
+            - type: 'null'
         announcementEnabled:
           type: boolean
         announcementText:

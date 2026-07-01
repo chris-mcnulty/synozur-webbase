@@ -738,6 +738,75 @@ export interface OpeningHoursSpec {
   closes: string;
 }
 
+/**
+ * Editable core copy for the live home page (served at /). Every field is optional; the page falls back to its built-in default when a field is absent or empty. Acts as the default layer that experiment overrides (home.hero.*) read from.
+
+ */
+export interface HomeContent {
+  /** @nullable */
+  heroHeadline?: string | null;
+  /** @nullable */
+  heroHeadlineAccent?: string | null;
+  /** @nullable */
+  heroSubheadline?: string | null;
+  /** @nullable */
+  heroPrimaryCtaLabel?: string | null;
+  /** @nullable */
+  heroPrimaryCtaHref?: string | null;
+  /** @nullable */
+  heroSecondaryCtaLabel?: string | null;
+  /** @nullable */
+  heroSecondaryCtaHref?: string | null;
+  /** @nullable */
+  heroLadderCaption?: string | null;
+  /** @nullable */
+  painHeadline?: string | null;
+  /** @nullable */
+  painSubheadline?: string | null;
+  /** @nullable */
+  painCallout?: string | null;
+  /** @nullable */
+  sprintEyebrow?: string | null;
+  /** @nullable */
+  sprintHeadline?: string | null;
+  /** @nullable */
+  sprintBody?: string | null;
+  /** @nullable */
+  sprintCtaLabel?: string | null;
+  /** @nullable */
+  sprintCtaHref?: string | null;
+  /** @nullable */
+  proofHeadline?: string | null;
+  /** @nullable */
+  proofLinkLabel?: string | null;
+  /** @nullable */
+  proofLinkHref?: string | null;
+  /** @nullable */
+  icpHeadline?: string | null;
+  /** @nullable */
+  icpHighlightLine1?: string | null;
+  /** @nullable */
+  icpHighlightLine2?: string | null;
+  /** @nullable */
+  icpLinkLabel?: string | null;
+  /** @nullable */
+  icpLinkHref?: string | null;
+  /** @nullable */
+  notHeadline?: string | null;
+  /** @nullable */
+  notSubheadline?: string | null;
+  /** @nullable */
+  judgmentHeadline?: string | null;
+  /** @nullable */
+  judgmentBody?: string | null;
+  /** @nullable */
+  judgmentBadge?: string | null;
+  /** @nullable */
+  methodHeadline?: string | null;
+  /** @nullable */
+  methodSubheadline?: string | null;
+}
+
 export type PublicSiteSettingsHomeHeroBackgroundType =
   (typeof PublicSiteSettingsHomeHeroBackgroundType)[keyof typeof PublicSiteSettingsHomeHeroBackgroundType];
 
@@ -909,6 +978,7 @@ export interface PublicSiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   /** When true, the dismissable announcement bar is shown at the top of every public page.
    */
   announcementEnabled?: boolean;
@@ -1176,6 +1246,7 @@ export interface SiteSettings {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   announcementEnabled?: boolean;
   /** @nullable */
   announcementText?: string | null;
@@ -1409,6 +1480,7 @@ export interface SiteSettingsInput {
   homeBClosingHeadline?: string | null;
   /** @nullable */
   homeBClosingBody?: string | null;
+  homeContent?: HomeContent | null;
   announcementEnabled?: boolean;
   /** @nullable */
   announcementText?: string | null;

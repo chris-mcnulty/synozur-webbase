@@ -15,3 +15,4 @@
 - [B chrome header contrast & offset](b-chrome-header-contrast.md) — B header top color + Layout top-offset are route-based via LIGHT_TOP_PREFIXES; add new non-hero routes there or you get white-on-light text + overlap.
 - [Galaxy chrome replication](galaxy-chrome-replication.md) — Galaxy header duplicates synozur B chrome (no cross-artifact import); update both; cross-app links use plain `<a>` to escape /galaxy wouter base; portal renders solid (no dark hero).
 - [Prod baseline URL](prod-baseline-url.md) — pre-launch prod is synozur-baseline.replit.app; www/synozur.com is still old Wix, don't cut over until told.
+- [Synozur type layer](synozur-type-layer.md) — synozur/src/lib/api.ts hand-writes its own site-settings types; OpenAPI codegen alone won't fix its typecheck.

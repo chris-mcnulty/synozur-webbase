@@ -10,6 +10,54 @@ import {
 } from "drizzle-orm/pg-core";
 import { mediaTable } from "./media";
 
+// Editable core copy for the live home page (home-b.tsx, served at `/`).
+// Stored as a single jsonb blob rather than ~30 flat columns so the page's
+// structure can evolve without a schema migration per field. Every field is
+// optional; the page renders its built-in default whenever a field is
+// absent or empty. This object is the DEFAULT layer that experiment
+// `useOverride` calls read from for the hero keys (home.hero.*).
+export interface HomeContent {
+  // Hero
+  heroHeadline?: string | null;
+  heroHeadlineAccent?: string | null;
+  heroSubheadline?: string | null;
+  heroPrimaryCtaLabel?: string | null;
+  heroPrimaryCtaHref?: string | null;
+  heroSecondaryCtaLabel?: string | null;
+  heroSecondaryCtaHref?: string | null;
+  heroLadderCaption?: string | null;
+  // Pain section ("The problem isn't AI…")
+  painHeadline?: string | null;
+  painSubheadline?: string | null;
+  painCallout?: string | null;
+  // Sprint section
+  sprintEyebrow?: string | null;
+  sprintHeadline?: string | null;
+  sprintBody?: string | null;
+  sprintCtaLabel?: string | null;
+  sprintCtaHref?: string | null;
+  // Proof section
+  proofHeadline?: string | null;
+  proofLinkLabel?: string | null;
+  proofLinkHref?: string | null;
+  // Who this is for (ICP)
+  icpHeadline?: string | null;
+  icpHighlightLine1?: string | null;
+  icpHighlightLine2?: string | null;
+  icpLinkLabel?: string | null;
+  icpLinkHref?: string | null;
+  // What we are not
+  notHeadline?: string | null;
+  notSubheadline?: string | null;
+  // AI, with judgment
+  judgmentHeadline?: string | null;
+  judgmentBody?: string | null;
+  judgmentBadge?: string | null;
+  // North Star Method
+  methodHeadline?: string | null;
+  methodSubheadline?: string | null;
+}
+
 // Parallel `*MediaId` UUID columns sit alongside the legacy `*AssetId`
 // integer FKs. The asset-library migration (BACKLOG.md §1) populates the new
 // columns from the editor while leaving the integer ones in place; route
@@ -201,6 +249,12 @@ export const siteSettingsTable = pgTable("site_settings", {
   homeBClosingEyebrow: text("home_b_closing_eyebrow"),
   homeBClosingHeadline: text("home_b_closing_headline"),
   homeBClosingBody: text("home_b_closing_body"),
+
+  // Live home page (home-b.tsx at `/`) editable core copy. See HomeContent
+  // above. Null on a fresh row; the seeding migration populates it with the
+  // current default copy so production launches correct without a dev→prod
+  // DB copy.
+  homeContent: jsonb("home_content").$type<HomeContent>(),
 
   // Bookings rendering mode. "iframe" (default) renders Microsoft's hosted
   // Bookings page in an iframe — zero-config but cross-origin so the inner
