@@ -12,7 +12,7 @@ const fadeUp = {
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }
+  transition: { duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] as [number, number, number, number] }
 };
 
 const staggerContainer = {
@@ -151,7 +151,7 @@ export function HomeBRedesign() {
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                transition={{ duration: 0.8, ease: "easeOut" as const }}
                 className="lg:col-span-6"
               >
                 <img
@@ -195,7 +195,7 @@ export function HomeBRedesign() {
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+                transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" as const }}
                 className="lg:col-span-6"
               >
                 <FeedCarousel />
