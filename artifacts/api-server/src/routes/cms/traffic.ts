@@ -267,13 +267,9 @@ router.get("/cms/traffic/pages", ...adminOnly, async (req, res) => {
   const window = resolveWindow(f);
   const pvWhere = pageviewFilters(f, window);
 
-  // Normalize absolute-URL paths (Wix imports) to canonical relative paths
-  // so that "https://synozur.com/post/foo" and "/post/foo" collapse into one row.
-  const canonicalPath = sql<string>`CASE WHEN ${trafficPageviewsTable.path} LIKE 'http%' THEN regexp_replace(${trafficPageviewsTable.path}, '^https?://[^/]+', '') ELSE ${trafficPageviewsTable.path} END`;
-
   const rows = await db
     .select({
-      path: canonicalPath,
+      path: trafficPageviewsTable.path,
       pageType: trafficPageviewsTable.pageType,
       title: sql<string | null>`max(${trafficPageviewsTable.title})`,
       pageviews: sql<number>`coalesce(sum(${trafficPageviewsTable.pageviewCount}), 0)::int`,
@@ -286,7 +282,7 @@ router.get("/cms/traffic/pages", ...adminOnly, async (req, res) => {
       eq(trafficPageviewsTable.sessionId, trafficSessionsTable.id),
     )
     .where(and(...pvWhere))
-    .groupBy(canonicalPath, trafficPageviewsTable.pageType)
+    .groupBy(trafficPageviewsTable.path, trafficPageviewsTable.pageType)
     .orderBy(desc(sql`sum(${trafficPageviewsTable.pageviewCount})`))
     .limit(50);
 
