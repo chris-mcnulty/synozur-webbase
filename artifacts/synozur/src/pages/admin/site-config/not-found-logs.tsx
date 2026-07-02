@@ -1,6 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, RefreshCcw, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  RefreshCcw,
+  Trash2,
+  Search,
+  SortAsc,
+  Clock,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,10 +70,25 @@ interface ListResponse {
   items: NotFoundLog[];
 }
 
-type Filter = "false" | "true" | "all";
+interface SearchResult {
+  kind: string;
+  title: string;
+  slug: string;
+  url: string;
+  excerpt: string | null;
+}
 
-async function listLogs(filter: Filter): Promise<ListResponse> {
-  return apiFetch<ListResponse>(`/api/cms/not-found-logs?resolved=${filter}`);
+interface SearchResponse {
+  results: SearchResult[];
+}
+
+type Filter = "false" | "true" | "all";
+type Sort = "hits" | "recent";
+
+async function listLogs(filter: Filter, sort: Sort): Promise<ListResponse> {
+  return apiFetch<ListResponse>(
+    `/api/cms/not-found-logs?resolved=${filter}&sort=${sort}`,
+  );
 }
 
 async function patchLog(
@@ -96,12 +121,154 @@ async function createRedirectFromLog(
   });
 }
 
+async function searchContent(q: string): Promise<SearchResponse> {
+  return apiFetch<SearchResponse>(
+    `/api/search?q=${encodeURIComponent(q)}&limit=8`,
+  );
+}
+
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
+}
+
+function formatDateShort(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+const KIND_LABEL: Record<string, string> = {
+  post: "Post",
+  case_study: "Case study",
+  white_paper: "White paper",
+  service: "Service",
+  solution: "Solution",
+  faq: "FAQ",
+  polaris_episode: "Polaris",
+  application: "App",
+  model: "Model",
+};
+
+function ContentSearchPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (path: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQ(query), 280);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  const searchQ = useQuery({
+    queryKey: ["content-search", debouncedQ],
+    queryFn: () => searchContent(debouncedQ),
+    enabled: debouncedQ.trim().length >= 2,
+    staleTime: 30_000,
+  });
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const results = searchQ.data?.results ?? [];
+
+  return (
+    <div className="space-y-2">
+      <Label>New target path</Label>
+      <Input
+        placeholder="/insights/my-post-slug"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="font-mono text-xs"
+      />
+      <div className="text-xs text-muted-foreground">
+        Or search site content to find the right destination:
+      </div>
+      <div ref={containerRef} className="relative">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search posts, services, solutions…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            className="pl-8 text-xs"
+          />
+          {query && (
+            <button
+              type="button"
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              onClick={() => { setQuery(""); setOpen(false); }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {open && debouncedQ.trim().length >= 2 && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-56 overflow-y-auto">
+            {searchQ.isLoading && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+            )}
+            {!searchQ.isLoading && results.length === 0 && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">No results</div>
+            )}
+            {results.map((r) => (
+              <button
+                key={r.url}
+                type="button"
+                className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-accent text-xs"
+                onClick={() => {
+                  onChange(r.url);
+                  setQuery(r.title);
+                  setOpen(false);
+                }}
+              >
+                <span className="shrink-0 mt-0.5 rounded px-1 py-0.5 bg-muted text-muted-foreground text-[10px] font-medium leading-none">
+                  {KIND_LABEL[r.kind] ?? r.kind}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="font-medium truncate block">{r.title}</span>
+                  <span className="text-muted-foreground font-mono truncate block">{r.url}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminNotFoundLogs() {
@@ -111,14 +278,17 @@ export default function AdminNotFoundLogs() {
   const canWrite = !!access?.isEditorOrAbove;
 
   const [filter, setFilter] = useState<Filter>("false");
+  const [sort, setSort] = useState<Sort>("recent");
+  const [pathFilter, setPathFilter] = useState("");
+
   const queryKey = useMemo(
-    () => ["/api/cms/not-found-logs", filter] as const,
-    [filter],
+    () => ["/api/cms/not-found-logs", filter, sort] as const,
+    [filter, sort],
   );
 
   const listQ = useQuery<ListResponse, Error>({
     queryKey,
-    queryFn: () => listLogs(filter),
+    queryFn: () => listLogs(filter, sort),
   });
 
   const invalidate = () =>
@@ -193,37 +363,92 @@ export default function AdminNotFoundLogs() {
     });
   };
 
-  const items = listQ.data?.items ?? [];
+  const allItems = listQ.data?.items ?? [];
+
+  const items = useMemo(() => {
+    const q = pathFilter.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter((r) => r.path.toLowerCase().includes(q));
+  }, [allItems, pathFilter]);
 
   return (
     <AdminLayout
       title="404 log"
       crumbs={[{ label: "Admin", href: "/" }, { label: "404 log" }]}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">
-            Every distinct path that hit the 404 page is logged here. Sorted by
-            hit count so you can see which broken URLs to prioritize for a
-            redirect. Creating a redirect from a row marks it resolved
-            automatically.
+            Every distinct path that hit the 404 page is logged here. Create a
+            redirect from any row to fix the broken URL and mark it resolved in
+            one step.
           </p>
         </Card>
 
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm">Show</Label>
-            <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as Filter)}
-              data-testid="filter-not-found-status"
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Resolved filter */}
+          <select
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as Filter)}
+            data-testid="filter-not-found-status"
+          >
+            <option value="false">Unresolved</option>
+            <option value="true">Resolved</option>
+            <option value="all">All</option>
+          </select>
+
+          {/* Sort toggle */}
+          <div className="flex rounded-md border border-input overflow-hidden text-sm h-9">
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 px-3 h-full transition-colors ${
+                sort === "recent"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent"
+              }`}
+              onClick={() => setSort("recent")}
+              title="Sort by most recently seen"
             >
-              <option value="false">Unresolved</option>
-              <option value="true">Resolved</option>
-              <option value="all">All</option>
-            </select>
+              <Clock className="h-3.5 w-3.5" />
+              Recent
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 px-3 h-full border-l border-input transition-colors ${
+                sort === "hits"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent"
+              }`}
+              onClick={() => setSort("hits")}
+              title="Sort by most hits"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Most hits
+            </button>
           </div>
+
+          {/* Path search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Filter by path…"
+              value={pathFilter}
+              onChange={(e) => setPathFilter(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+            {pathFilter && (
+              <button
+                type="button"
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setPathFilter("")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -233,18 +458,44 @@ export default function AdminNotFoundLogs() {
             <RefreshCcw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
+
+          {/* Row count */}
+          {!listQ.isLoading && (
+            <span className="text-xs text-muted-foreground ml-auto">
+              {items.length}{allItems.length !== items.length ? ` of ${allItems.length}` : ""} rows
+            </span>
+          )}
         </div>
 
+        {/* Table */}
         <Card className="p-0 overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Path</TableHead>
-                <TableHead className="w-[80px]">Hits</TableHead>
-                <TableHead className="w-[180px]">Last seen</TableHead>
-                <TableHead>Last referrer</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[180px] text-right">Actions</TableHead>
+                <TableHead className="w-[70px]">
+                  <button
+                    type="button"
+                    className="flex items-center gap-0.5 hover:text-foreground"
+                    onClick={() => setSort(sort === "hits" ? "recent" : "hits")}
+                    title="Toggle sort"
+                  >
+                    Hits <SortAsc className="h-3 w-3" />
+                  </button>
+                </TableHead>
+                <TableHead className="w-[160px]">
+                  <button
+                    type="button"
+                    className="flex items-center gap-0.5 hover:text-foreground"
+                    onClick={() => setSort(sort === "recent" ? "hits" : "recent")}
+                    title="Toggle sort"
+                  >
+                    Last seen <SortAsc className="h-3 w-3" />
+                  </button>
+                </TableHead>
+                <TableHead>Referrer</TableHead>
+                <TableHead className="w-[100px]">Status</TableHead>
+                <TableHead className="w-[170px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -263,20 +514,25 @@ export default function AdminNotFoundLogs() {
               ) : items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-muted-foreground">
-                    No 404s logged for the selected filter.
+                    {pathFilter
+                      ? `No 404s matching "${pathFilter}".`
+                      : "No 404s logged for the selected filter."}
                   </TableCell>
                 </TableRow>
               ) : (
                 items.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-mono text-xs break-all">
+                    <TableCell className="font-mono text-xs break-all max-w-[280px]">
                       {r.path}
                     </TableCell>
-                    <TableCell>{r.hitCount}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDate(r.lastSeenAt)}
+                    <TableCell className="text-sm tabular-nums">{r.hitCount}</TableCell>
+                    <TableCell
+                      className="text-xs text-muted-foreground"
+                      title={formatDate(r.lastSeenAt)}
+                    >
+                      {formatDateShort(r.lastSeenAt)}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground break-all">
+                    <TableCell className="text-xs text-muted-foreground break-all max-w-[200px] truncate">
                       {r.lastReferrer ?? "—"}
                     </TableCell>
                     <TableCell>
@@ -344,13 +600,14 @@ export default function AdminNotFoundLogs() {
         </Card>
       </div>
 
+      {/* Redirect dialog */}
       <Dialog
         open={!!redirectTarget}
         onOpenChange={(open) => {
           if (!open) setRedirectTarget(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Create redirect from 404</DialogTitle>
           </DialogHeader>
@@ -363,17 +620,12 @@ export default function AdminNotFoundLogs() {
                 className="font-mono text-xs"
               />
             </div>
-            <div>
-              <Label htmlFor="nf-target">New target path</Label>
-              <Input
-                id="nf-target"
-                placeholder="/insights"
-                value={redirectDraft.targetPath}
-                onChange={(e) =>
-                  setRedirectDraft((d) => ({ ...d, targetPath: e.target.value }))
-                }
-              />
-            </div>
+
+            <ContentSearchPicker
+              value={redirectDraft.targetPath}
+              onChange={(path) => setRedirectDraft((d) => ({ ...d, targetPath: path }))}
+            />
+
             <div>
               <Label htmlFor="nf-status">Status</Label>
               <select
@@ -409,7 +661,7 @@ export default function AdminNotFoundLogs() {
             </Button>
             <Button
               onClick={onSubmitRedirect}
-              disabled={createRedirectMut.isPending}
+              disabled={createRedirectMut.isPending || !redirectDraft.targetPath.trim()}
             >
               {createRedirectMut.isPending ? "Creating…" : "Create redirect"}
             </Button>

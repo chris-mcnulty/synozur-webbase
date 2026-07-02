@@ -37,6 +37,7 @@ function serialize(row: NotFoundLog) {
 
 const ListQuery = z.object({
   resolved: z.enum(["true", "false", "all"]).optional(),
+  sort: z.enum(["hits", "recent"]).optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
@@ -46,19 +47,25 @@ router.get("/cms/not-found-logs", ...adminGuard, async (req, res) => {
     res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
     return;
   }
-  const limit = parsed.data.limit ?? 200;
+  const limit = parsed.data.limit ?? 500;
   const filter = parsed.data.resolved ?? "false";
+  const sort = parsed.data.sort ?? "hits";
 
   const where =
     filter === "all"
       ? undefined
       : eq(notFoundLogsTable.resolved, filter === "true");
 
+  const orderBy =
+    sort === "recent"
+      ? [desc(notFoundLogsTable.lastSeenAt), desc(notFoundLogsTable.hitCount)]
+      : [desc(notFoundLogsTable.hitCount), desc(notFoundLogsTable.lastSeenAt)];
+
   const rows = await db
     .select()
     .from(notFoundLogsTable)
     .where(where ?? sql`true`)
-    .orderBy(desc(notFoundLogsTable.hitCount), desc(notFoundLogsTable.lastSeenAt))
+    .orderBy(...orderBy)
     .limit(limit);
 
   res.json({ items: rows.map(serialize) });
