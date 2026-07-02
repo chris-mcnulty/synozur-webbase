@@ -201,6 +201,48 @@ export class GcsAssetStorageBackend implements AssetStorageBackend {
     await file.delete({ ignoreNotFound: true });
   }
 
+  // --- Content-type repair helpers (used by the one-time image
+  // content-type backfill script) -------------------------------------
+  //
+  // The served content-type comes from the GCS object's own metadata
+  // (see `downloadObject` above), NOT from `media.mime`. Historical
+  // uploads that landed with a generic `application/octet-stream` header
+  // therefore serve broken downloads/previews even when the DB row's
+  // mime is correct. These three helpers let the backfill script read the
+  // stored content-type, peek the leading bytes to sniff the real format,
+  // and rewrite the object's content-type in place. None of them touch
+  // the bytes themselves — `setObjectContentType` only patches the
+  // object's metadata resource.
+
+  /** Read the object's currently-stored content-type metadata. */
+  async getObjectContentType(ref: AssetObjectRef): Promise<string | undefined> {
+    const { file } = asGcsRef(ref);
+    const [metadata] = await file.getMetadata();
+    return (metadata.contentType as string | undefined) ?? undefined;
+  }
+
+  /** Read the first `n` bytes of the object without downloading the rest. */
+  async peekObjectHeader(ref: AssetObjectRef, n: number): Promise<Buffer> {
+    const { file } = asGcsRef(ref);
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      const stream = file.createReadStream({ start: 0, end: n - 1 });
+      stream.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      stream.on("end", () => resolve());
+      stream.on("error", reject);
+    });
+    return Buffer.concat(chunks);
+  }
+
+  /** Rewrite the object's stored content-type metadata (bytes untouched). */
+  async setObjectContentType(
+    ref: AssetObjectRef,
+    contentType: string,
+  ): Promise<void> {
+    const { file } = asGcsRef(ref);
+    await file.setMetadata({ contentType });
+  }
+
   async uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
     // Build the same `/objects/<uuid>` storageKey shape that the
     // presigned-URL upload path produces, so downstream serializers

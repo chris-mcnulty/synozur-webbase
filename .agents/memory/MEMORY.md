@@ -2,6 +2,7 @@
 - [North Star Method phases](north-star-method-phases.md) — canonical phase names; live site + Galaxy are source of truth over the MPF proposal.
 - [OG image sizing](og-image-sizing.md) — og:image must be a resized same-origin JPEG (?w=1200&fmt=jpeg) via the storage route; WebP stays the in-page default; don't touch siteOrigin().
 - [OG dynamic-image test](og-dynamic-image-test.md) — posts/events OG health test fetches the LOCAL build (not prod); prod serves octet-stream for some uploads → don't "fix" storage.ts; invariant is width===1200.
+- [Stored content-type is served content-type](stored-content-type-source.md) — GCS object metadata (not media.mime) drives downloads/previews; repair via setObjectContentType + backfill:image-content-types.
 - [SendGrid 401 billing](sendgrid-401-billing.md) — "not authorized to send mail" 401 = suspended account (billing), not a key scope issue; reconnect connector after billing fix.
 - [Email style standards](email-style-standards.md) — Avenir Next LT Pro font + SA_EmailHeader_short.jpg banner; apply to all transactional emails.
 - [Sister app repos](sister-app-repos.md) — Constellation=synozur-scdp, Orion=synozur-maturitymodeler; full read access for design/code reference.

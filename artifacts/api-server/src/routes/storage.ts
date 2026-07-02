@@ -130,14 +130,16 @@ export function isAmbiguousContentType(contentType: string): boolean {
 const IMAGE_SNIFF_BYTES = 16;
 
 /**
- * Magic-byte sniff for the raster image formats sharp can resize. Used only
- * for objects whose stored content-type is ambiguous (octet-stream / empty);
- * trusted `image/*` objects skip this entirely.
+ * Magic-byte sniff for the raster image formats sharp can resize. Returns the
+ * canonical `image/*` MIME type when the buffer's leading bytes match a known
+ * signature, or null otherwise. Used both for the ambiguous-content-type
+ * resize path and for the one-time content-type backfill script that repairs
+ * mislabeled stored objects.
  */
-export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
+export function sniffRasterImageMime(buf: Buffer): string | null {
   // JPEG: FF D8 FF
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
-    return true;
+    return "image/jpeg";
   }
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   if (
@@ -151,7 +153,7 @@ export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
     buf[6] === 0x1a &&
     buf[7] === 0x0a
   ) {
-    return true;
+    return "image/png";
   }
   // GIF: "GIF87a" / "GIF89a" → starts with "GIF8"
   if (
@@ -161,7 +163,7 @@ export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
     buf[2] === 0x46 &&
     buf[3] === 0x38
   ) {
-    return true;
+    return "image/gif";
   }
   // WebP: "RIFF" .... "WEBP"
   if (
@@ -169,11 +171,11 @@ export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
     buf.slice(0, 4).toString("ascii") === "RIFF" &&
     buf.slice(8, 12).toString("ascii") === "WEBP"
   ) {
-    return true;
+    return "image/webp";
   }
   // BMP: "BM"
   if (buf.length >= 2 && buf[0] === 0x42 && buf[1] === 0x4d) {
-    return true;
+    return "image/bmp";
   }
   // TIFF: little-endian "II*\0" (49 49 2A 00) or big-endian "MM\0*" (4D 4D 00 2A)
   if (
@@ -181,9 +183,18 @@ export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
     ((buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2a && buf[3] === 0x00) ||
       (buf[0] === 0x4d && buf[1] === 0x4d && buf[2] === 0x00 && buf[3] === 0x2a))
   ) {
-    return true;
+    return "image/tiff";
   }
-  return false;
+  return null;
+}
+
+/**
+ * Magic-byte sniff for the raster image formats sharp can resize. Used only
+ * for objects whose stored content-type is ambiguous (octet-stream / empty);
+ * trusted `image/*` objects skip this entirely.
+ */
+export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
+  return sniffRasterImageMime(buf) !== null;
 }
 
 /**

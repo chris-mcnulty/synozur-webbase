@@ -22,6 +22,7 @@
     "fix:polaris-collateral": "tsx src/scripts/fixPolarisCollateral.ts",
     "backfill:media-categories": "tsx src/scripts/backfillMediaCategories.ts",
     "backfill:post-body-html": "tsx src/scripts/backfillPostBodyHtml.ts",
+    "backfill:image-content-types": "tsx src/scripts/backfillImageContentTypes.ts",
     "migrate:gcs-to-spe": "tsx src/scripts/migrateGcsToSpe.ts",
     "provision:spe-columns": "tsx src/scripts/provisionColumnsAll.ts",
     "test:services": "node --import tsx --test src/scripts/testServices.ts",
