@@ -8,6 +8,7 @@ import {
   caseStudiesTable,
   modelsTable,
   workshopsTable,
+  polarisEpisodesTable,
   mediaTable,
 } from "@workspace/db";
 
@@ -22,7 +23,8 @@ export type ArtifactKind =
   | "application"
   | "case-study"
   | "model"
-  | "workshop";
+  | "workshop"
+  | "polaris";
 
 export interface AuditFinding {
   kind: ArtifactKind;
@@ -114,6 +116,14 @@ function buildFinding(args: {
   seoDescription: string | null;
   ogImage: string | null;
   fallbackImage: string | null;
+  /**
+   * #357 — explicit "the editor set a share image" signal for tables whose
+   * image lives behind an id (e.g. posts' ogImageId/heroImageId) rather than a
+   * URL column. When true, suppresses the `og_image_missing` warning even if
+   * `ogImage`/`fallbackImage` are both blank. When omitted, presence is derived
+   * from `ogImage`/`fallbackImage`.
+   */
+  hasEditorImage?: boolean;
   descriptionSources: Array<string | null | undefined>;
 }): AuditFinding | null {
   const missing: string[] = [];
@@ -144,11 +154,25 @@ function buildFinding(args: {
     suggested.seoDescription = clampDescription(description);
   }
 
+  // #357 — Two distinct OG-image signals:
+  //   * "ogImage" — the dedicated og_image column is blank but a hero/artwork
+  //     image exists that we can promote into it (autofillable). Only pushed
+  //     for tables that actually have an og_image column; callers for tables
+  //     without one strip it (see the `startsWith("ogImage")` filters).
+  //   * "og_image_missing" — the page has NO editor-set share image at all, so
+  //     social unfurls fall back to the dynamic /api/og/image card. That card
+  //     is valid + branded but typically gets less engagement than a real
+  //     photo, so marketing wants a heads-up. Pure warning; not autofillable.
   const image = (args.ogImage ?? "").trim();
-  if (!image) {
+  const fallback = (args.fallbackImage ?? "").trim();
+  const hasEditorImage =
+    image !== "" || fallback !== "" || args.hasEditorImage === true;
+  if (!image && fallback) {
     missing.push("ogImage");
-    const fallback = (args.fallbackImage ?? "").trim();
-    if (fallback) suggested.ogImage = fallback;
+    suggested.ogImage = fallback;
+  }
+  if (!hasEditorImage) {
+    missing.push("og_image_missing");
   }
 
   if (missing.length === 0) return null;
@@ -179,6 +203,8 @@ async function auditPosts(): Promise<{
       bodyHtml: postsTable.bodyHtml,
       seoTitle: postsTable.seoTitle,
       seoDescription: postsTable.seoDescription,
+      ogImageId: postsTable.ogImageId,
+      heroImageId: postsTable.heroImageId,
       heroImageUrl: mediaTable.publicUrl,
     })
     .from(postsTable)
@@ -201,13 +227,18 @@ async function auditPosts(): Promise<{
       path: `/insights/${r.slug}`,
       seoTitle: null, // posts: seoTitle not required — buildTitle handles it
       seoDescription: r.seoDescription,
-      ogImage: null, // posts use heroImage via ogImageId path; treat as implicit ok
-      fallbackImage: r.heroImageUrl ?? null,
+      ogImage: null, // posts have no og_image URL column — image lives behind ids
+      fallbackImage: null,
+      // #357 — a post has a real share image when either the dedicated OG image
+      // or the hero image id is set (mirrors ogResolver's `ogImageId ?? heroImageId`).
+      // When neither is set, social unfurls fall back to the dynamic OG card.
+      hasEditorImage: Boolean(r.ogImageId || r.heroImageId),
       descriptionSources: [r.excerpt, r.subtitle, r.bodyMarkdown, r.bodyHtml],
     });
     if (f) {
-      // Drop seoTitle check — Meta component fills it from `title`.
-      // Drop ogImage check — heroImage serves as the implicit OG image for posts.
+      // Drop seoTitle check — Meta component fills it from `title`. Keep the
+      // og_image_missing warning (blog posts are frequently created and
+      // regularly shared, so a missing custom share image matters most here).
       f.missing = f.missing.filter(
         (m) => !m.startsWith("seoTitle") && !m.startsWith("ogImage"),
       );
@@ -258,8 +289,14 @@ async function auditServices(): Promise<{
       descriptionSources: [r.blurbHtml, r.heroTextHtml, r.secondaryTextHtml],
     });
     if (f) {
-      // Services don't have an ogImage column; drop that check.
-      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      // Services have no image column of any kind (no og_image, no hero), so
+      // they ALWAYS render the dynamic OG card. Drop both the autofill "ogImage"
+      // check and the "og_image_missing" warning — there's no field to fix, so
+      // surfacing an unresolvable finding would just be permanent noise
+      // (mirrors the workshop ogImage-drop precedent).
+      f.missing = f.missing.filter(
+        (m) => !m.startsWith("ogImage") && m !== "og_image_missing",
+      );
       if (f.missing.length) findings.push(f);
     }
   }
@@ -306,8 +343,12 @@ async function auditSolutions(): Promise<{
       descriptionSources: [r.blurbHtml, r.heroTextHtml],
     });
     if (f) {
-      // Solutions don't have an ogImage column; drop that check.
-      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      // Solutions have no image column of any kind (see auditServices note):
+      // drop the autofill "ogImage" check and the "og_image_missing" warning —
+      // nothing to fix, so it would only be permanent noise.
+      f.missing = f.missing.filter(
+        (m) => !m.startsWith("ogImage") && m !== "og_image_missing",
+      );
       if (f.missing.length) findings.push(f);
     }
   }
@@ -489,13 +530,17 @@ async function auditWorkshops(): Promise<{
       seoTitle: r.seo?.title ?? null,
       seoDescription: r.seo?.description ?? null,
       ogImage: null,
-      fallbackImage: null,
+      // Workshops have no og_image column, but heroImage IS an editor-settable
+      // share image. Pass it as the fallback so the og_image_missing warning
+      // only fires when the hero is also blank (an actionable finding).
+      fallbackImage: r.heroImage,
       descriptionSources: [r.shortDescription, r.heroSubhead],
     });
     if (f) {
       // Workshops have no ogImage column; heroImage serves as the implicit OG
-      // image (same as posts). Drop the ogImage check to avoid unresolvable
-      // findings that applyAutofill can't persist.
+      // image (same as posts). Drop the autofill "ogImage" check to avoid
+      // unresolvable findings that applyAutofill can't persist — but keep the
+      // og_image_missing warning (it points at the fixable hero image field).
       f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
       if (f.missing.length) findings.push(f);
     }
@@ -503,8 +548,59 @@ async function auditWorkshops(): Promise<{
   return { total: rows.length, findings };
 }
 
+async function auditPolaris(): Promise<{
+  total: number;
+  findings: AuditFinding[];
+}> {
+  // Polaris podcast episodes (#101). Built on the shared artifact pattern —
+  // flat seoTitle/seoDescription/ogImage columns (artifactSeo) plus an
+  // episode-specific `artworkUrl` that doubles as the share image. When both
+  // ogImage and artworkUrl are blank the /polaris/:slug page falls back to the
+  // dynamic OG card, which is what og_image_missing flags. Podcast episodes are
+  // published frequently and heavily shared, so this warning matters here.
+  const rows = await db
+    .select({
+      id: polarisEpisodesTable.id,
+      slug: polarisEpisodesTable.slug,
+      title: polarisEpisodesTable.title,
+      summary: polarisEpisodesTable.summary,
+      seoTitle: polarisEpisodesTable.seoTitle,
+      seoDescription: polarisEpisodesTable.seoDescription,
+      ogImage: polarisEpisodesTable.ogImage,
+      artworkUrl: polarisEpisodesTable.artworkUrl,
+    })
+    .from(polarisEpisodesTable)
+    .where(
+      and(
+        isNull(polarisEpisodesTable.deletedAt),
+        eq(polarisEpisodesTable.active, true),
+        eq(polarisEpisodesTable.status, "published"),
+        sql`(${polarisEpisodesTable.publishedAt} is null or ${polarisEpisodesTable.publishedAt} <= now())`,
+        sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > now())`,
+      ),
+    );
+
+  const findings: AuditFinding[] = [];
+  for (const r of rows) {
+    const f = buildFinding({
+      kind: "polaris",
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      path: `/polaris/${r.slug}`,
+      seoTitle: r.seoTitle,
+      seoDescription: r.seoDescription,
+      ogImage: r.ogImage,
+      fallbackImage: r.artworkUrl,
+      descriptionSources: [r.summary],
+    });
+    if (f) findings.push(f);
+  }
+  return { total: rows.length, findings };
+}
+
 export async function runAudit(): Promise<AuditReport> {
-  const [posts, services, solutions, applications, caseStudies, models, workshops] =
+  const [posts, services, solutions, applications, caseStudies, models, workshops, polaris] =
     await Promise.all([
       auditPosts(),
       auditServices(),
@@ -513,6 +609,7 @@ export async function runAudit(): Promise<AuditReport> {
       auditCaseStudies(),
       auditModels(),
       auditWorkshops(),
+      auditPolaris(),
     ]);
 
   const findings = [
@@ -523,6 +620,7 @@ export async function runAudit(): Promise<AuditReport> {
     ...caseStudies.findings,
     ...models.findings,
     ...workshops.findings,
+    ...polaris.findings,
   ];
 
   return {
@@ -535,6 +633,7 @@ export async function runAudit(): Promise<AuditReport> {
       "case-study": { total: caseStudies.total, missing: caseStudies.findings.length },
       model: { total: models.total, missing: models.findings.length },
       workshop: { total: workshops.total, missing: workshops.findings.length },
+      polaris: { total: polaris.total, missing: polaris.findings.length },
     },
     findings,
   };
@@ -556,6 +655,7 @@ export async function applyAutofill(
     "case-study": 0,
     model: 0,
     workshop: 0,
+    polaris: 0,
   };
 
   for (const f of findings) {
@@ -731,6 +831,45 @@ export async function applyAutofill(
             .where(and(...guards))
             .returning({ id: caseStudiesTable.id });
           if (rows.length > 0) touched["case-study"] += 1;
+        }
+        break;
+      }
+      case "polaris": {
+        // Flat seoTitle/seoDescription/ogImage columns (same shape as models).
+        // og_image_missing is never a patch key (not in `suggested`), so this
+        // only ever fills seoTitle/seoDescription/ogImage when a fallback exists.
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
+        const set: Record<string, unknown> = { updatedAt: new Date() };
+        const guards = [eq(polarisEpisodesTable.id, f.id)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${polarisEpisodesTable.seoTitle} is null or trim(${polarisEpisodesTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${polarisEpisodesTable.seoDescription} is null or trim(${polarisEpisodesTable.seoDescription}) = '')`,
+            );
+          }
+        }
+        if (patch.ogImage) {
+          set.ogImage = patch.ogImage;
+          guards.push(
+            sql`(${polarisEpisodesTable.ogImage} is null or trim(${polarisEpisodesTable.ogImage}) = '')`,
+          );
+        }
+        if (Object.keys(set).length > 1) {
+          const rows = await db
+            .update(polarisEpisodesTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: polarisEpisodesTable.id });
+          if (rows.length > 0) touched.polaris += 1;
         }
         break;
       }

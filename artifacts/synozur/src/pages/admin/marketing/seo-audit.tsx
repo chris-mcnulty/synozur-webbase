@@ -35,6 +35,7 @@ const KIND_LABEL: Record<SeoArtifactKind, string> = {
   "case-study": "Case studies",
   model: "Models",
   workshop: "Workshops",
+  polaris: "Polaris",
 };
 
 // Applications and case studies don't have dedicated /:id/edit routes today,
@@ -56,6 +57,8 @@ function editorHref(kind: SeoArtifactKind, id: string): string {
       return `/products/case-studies`;
     case "workshop":
       return `/library/workshops/${id}/edit`;
+    case "polaris":
+      return `/library/polaris-episodes/${id}/edit`;
   }
 }
 
@@ -92,6 +95,7 @@ function groupFindings(findings: SeoAuditFinding[]): Record<SeoArtifactKind, Seo
     "case-study": [],
     model: [],
     workshop: [],
+    polaris: [],
   };
   for (const f of findings) empty[f.kind].push(f);
   return empty;
@@ -105,6 +109,7 @@ function formatMissingLabel(field: string): string {
     seoDescriptionShort: "Desc too short",
     seoDescriptionLong: "Desc too long",
     seoTitleLong: "Title too long",
+    og_image_missing: "No share image",
   };
   return map[field] ?? field;
 }

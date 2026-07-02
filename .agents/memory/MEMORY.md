@@ -16,3 +16,4 @@
 - [Galaxy chrome replication](galaxy-chrome-replication.md) — Galaxy header duplicates synozur B chrome (no cross-artifact import); update both; cross-app links use plain `<a>` to escape /galaxy wouter base; portal renders solid (no dark hero).
 - [Prod baseline URL](prod-baseline-url.md) — pre-launch prod is synozur-baseline.replit.app; www/synozur.com is still old Wix, don't cut over until told.
 - [Synozur type layer](synozur-type-layer.md) — synozur/src/lib/api.ts hand-writes its own site-settings types; OpenAPI codegen alone won't fix its typecheck.
+- [SEO audit OG-image findings](seo-audit-og-findings.md) — ogImage=autofillable promote; og_image_missing=pure warning; kinds with no image field must strip both to avoid permanent noise.

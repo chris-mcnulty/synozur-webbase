@@ -585,6 +585,7 @@ const AutofillBodySchema = z.object({
           "application",
           "case-study",
           "model",
+          "polaris",
         ]),
         id: z.string().uuid(),
       }),
