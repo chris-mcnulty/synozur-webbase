@@ -3658,6 +3658,25 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (slug) DO NOTHING;
     `);
 
+    // #346 — Normalize Wix-imported absolute-URL paths to relative paths.
+    // -----------------------------------------------------------------
+    // The one-time Wix CSV import stored full absolute URLs
+    // (e.g. "https://synozur.com/post/foo") in traffic_pageviews.path and
+    // traffic_sessions.landing_path. The live beacon always stores relative
+    // paths ("/post/foo"). This UPDATE collapses them onto the same canonical
+    // form. Idempotent: the WHERE clause only touches rows that still have an
+    // absolute URL prefix, so re-running is safe.
+    await db.execute(sql`
+      UPDATE traffic_pageviews
+      SET path = regexp_replace(path, '^https?://[^/]+', '')
+      WHERE path LIKE 'http%';
+    `);
+    await db.execute(sql`
+      UPDATE traffic_sessions
+      SET landing_path = regexp_replace(landing_path, '^https?://[^/]+', '')
+      WHERE landing_path LIKE 'http%';
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
