@@ -106,9 +106,29 @@ function formatMs(ms: number | null): string {
   return `${m}m ${rs}s`;
 }
 
+type RangePreset = "7" | "30" | "90" | "183" | "ytd" | "365";
+
+function presetToRangeFilter(preset: RangePreset): Pick<TrafficFilters, "days" | "from" | "to"> {
+  if (preset === "ytd") {
+    const now = new Date();
+    const jan1 = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    return { from: jan1.toISOString(), to: now.toISOString() };
+  }
+  return { days: Number(preset) };
+}
+
+const PRESET_LABELS: Record<RangePreset, string> = {
+  "7": "Last 7 days",
+  "30": "Last 30 days",
+  "90": "Last 90 days",
+  "183": "Last 6 months",
+  "ytd": "Year to date",
+  "365": "Last 12 months",
+};
+
 export default function AdminTraffic() {
   const { access } = useAdminAccess();
-  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [rangePreset, setRangePreset] = useState<RangePreset>("30");
   const [includeBots, setIncludeBots] = useState<"false" | "true" | "only">("false");
   const [pageType, setPageType] = useState<string>("");
   const [device, setDevice] = useState<string>("");
@@ -150,13 +170,13 @@ export default function AdminTraffic() {
 
   const filters = useMemo<TrafficFilters>(
     () => ({
-      days,
+      ...presetToRangeFilter(rangePreset),
       includeBots,
       pageType: pageType || undefined,
       device: (device as TrafficFilters["device"]) || undefined,
       propertySlugs: propertySlugs.length === 0 ? ["synozur"] : propertySlugs,
     }),
-    [days, includeBots, pageType, device, propertySlugs],
+    [rangePreset, includeBots, pageType, device, propertySlugs],
   );
 
   function togglePropertySlug(slug: string) {
@@ -329,14 +349,17 @@ export default function AdminTraffic() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Range</div>
-                <Select value={String(days)} onValueChange={(v) => setDays(Number(v) as 7 | 30 | 90)}>
-                  <SelectTrigger className="w-[160px] h-8 text-xs">
+                <Select value={rangePreset} onValueChange={(v) => setRangePreset(v as RangePreset)}>
+                  <SelectTrigger className="w-[170px] h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="7">Last 7 days</SelectItem>
                     <SelectItem value="30">Last 30 days</SelectItem>
                     <SelectItem value="90">Last 90 days</SelectItem>
+                    <SelectItem value="183">Last 6 months</SelectItem>
+                    <SelectItem value="ytd">Year to date</SelectItem>
+                    <SelectItem value="365">Last 12 months</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

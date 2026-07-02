@@ -26,6 +26,24 @@
 
 import { sql, eq, and } from "drizzle-orm";
 import { parseUa } from "./traffic";
+
+/**
+ * Strip any domain prefix from a raw path value so that full absolute URLs
+ * imported from Wix (e.g. "https://synozur.com/post/foo") and native relative
+ * paths ("/post/foo") both land on the same canonical row.
+ * Safe to call on anything — non-URL values pass through unchanged.
+ */
+export function normalizeSitePath(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return trimmed;
+  try {
+    const u = new URL(trimmed);
+    const p = u.pathname + (u.search && u.search !== "?" ? u.search : "");
+    return p || "/";
+  } catch {
+    return trimmed;
+  }
+}
 import {
   db,
   trafficSessionsTable,
@@ -128,7 +146,7 @@ export function normalizeIngestRow(
   raw: Record<string, unknown>,
   defaults?: { defaultSessionKey?: string },
 ): { row: IngestPageviewRow } | { error: string } {
-  const path = String(raw["path"] ?? "").trim();
+  const path = normalizeSitePath(String(raw["path"] ?? ""));
   if (!path) return { error: "missing path" };
   const viewedAtRaw = String(raw["viewedAt"] ?? raw["timestamp"] ?? raw["date"] ?? "").trim();
   if (!viewedAtRaw) return { error: "missing viewedAt" };
@@ -503,7 +521,7 @@ export function normalizeIngestSessionRow(
       country: str("country")?.toUpperCase().slice(0, 2) ?? null,
       region: str("region"),
       city: str("city"),
-      landingPath: str("landingPath"),
+      landingPath: str("landingPath") !== null ? normalizeSitePath(str("landingPath")!) : null,
       referrerUrl: str("referrerUrl"),
       referrerHost: str("referrerHost"),
       trafficSource: trafficSource as IngestPageviewRow["trafficSource"],

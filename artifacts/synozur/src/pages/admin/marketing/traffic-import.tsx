@@ -288,6 +288,8 @@ export default function TrafficImportPage() {
     const trafficSrcOutputIdx = cols.findIndex((c) => c.target === "trafficSource");
     // Find index of deviceType output column (for lowercase normalization).
     const deviceTypeOutputIdx = cols.findIndex((c) => c.target === "deviceType");
+    // Find index of path column (for stripping absolute URL prefixes from Wix exports).
+    const pathOutputIdx = cols.findIndex((c) => c.target === "path");
 
     const header = [
       ...cols.map((c) => c.target),
@@ -322,6 +324,14 @@ export default function TrafficImportPage() {
       const parts = splitFn(line);
       const cells = cols.map((c, outIdx) => {
         let val = (parts[c.idx] ?? "").trim();
+        // Strip absolute-URL prefix from path (Wix exports full URLs like https://synozur.com/post/foo).
+        if (outIdx === pathOutputIdx && (val.startsWith("http://") || val.startsWith("https://"))) {
+          try {
+            const u = new URL(val);
+            val = u.pathname + (u.search && u.search !== "?" ? u.search : "");
+            if (!val) val = "/";
+          } catch { /* leave as-is */ }
+        }
         // Normalize Wix "Traffic category" values to canonical trafficSource.
         if (outIdx === trafficSrcOutputIdx) {
           val = WIX_SOURCE_MAP[val.toLowerCase()] ?? val.toLowerCase();
