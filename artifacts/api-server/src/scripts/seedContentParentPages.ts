@@ -30,6 +30,14 @@ const SLUGS = [
   "items",
   "webinars",
   "start",
+  // #345 — Sprint funnel pages. These are hand-coded static routes (not
+  // list pages); their rows exist so admins can override the social share
+  // image / SEO copy that `ogResolver.ts` serves to crawlers, without a
+  // code change. Empty fields fall back to STATIC_PAGE_OG defaults.
+  "sprint",
+  "proof",
+  "fit",
+  "book",
 ];
 
 async function main() {

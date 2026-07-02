@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Save } from "lucide-react";
+import { Image as ImageIcon, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,11 @@ import {
 } from "@/components/ui/table";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
+import {
+  MediaPickerModal,
+  mediaUrl,
+} from "@/components/admin/MediaPickerModal";
+import type { MediaItem } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { api, type ContentParentPageDto } from "@/lib/api";
 
@@ -75,9 +80,11 @@ export default function AdminListPageCopy() {
       crumbs={[{ label: "Admin", href: "/" }, { label: "List page copy" }]}
     >
       <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
-        Hero headline, intro copy, and SEO tags for each resource list page.
-        Empty fields fall back to the hardcoded defaults in the page
-        component, so you can safely clear a field to revert.
+        Hero headline, intro copy, and SEO tags for each resource list page —
+        plus the Sprint funnel pages (/sprint, /proof, /fit, /book), where the
+        SEO title, description, and social share image override what social
+        crawlers see. Empty fields fall back to the hardcoded defaults in the
+        page component, so you can safely clear a field to revert.
       </p>
 
       {listQ.isLoading ? (
@@ -165,6 +172,7 @@ function EditDialog({
   onSaved: () => void;
 }) {
   const [local, setLocal] = useState<Draft | null>(draft);
+  const [ogPickerOpen, setOgPickerOpen] = useState(false);
 
   useEffect(() => {
     setLocal(draft);
@@ -241,12 +249,34 @@ function EditDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pp-og">OG image URL</Label>
-              <Input
-                id="pp-og"
-                value={local.ogImage}
-                onChange={(e) => setLocal({ ...local, ogImage: e.target.value })}
-              />
+              <Label htmlFor="pp-og">Social share image</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="pp-og"
+                  value={local.ogImage}
+                  onChange={(e) => setLocal({ ...local, ogImage: e.target.value })}
+                  placeholder="https://…"
+                  className="flex-1"
+                  data-testid="parent-page-og-image"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setOgPickerOpen(true)}
+                  title="Pick from media library"
+                  data-testid="parent-page-og-image-pick"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </div>
+              {local.ogImage && (
+                <img
+                  src={mediaUrl(local.ogImage)}
+                  alt=""
+                  className="mt-2 h-20 w-full object-cover rounded border border-border"
+                />
+              )}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -280,6 +310,16 @@ function EditDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <MediaPickerModal
+        open={ogPickerOpen}
+        onClose={() => setOgPickerOpen(false)}
+        onSelect={(item: MediaItem) => {
+          setLocal((d) => (d ? { ...d, ogImage: mediaUrl(item) } : d));
+          setOgPickerOpen(false);
+        }}
+        title="Pick social share image"
+        kind="image"
+      />
     </Dialog>
   );
 }

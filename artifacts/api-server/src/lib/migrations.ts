@@ -3618,6 +3618,46 @@ export async function runMigrations(): Promise<void> {
       WHERE home_content IS NULL;
     `);
 
+    // #345 — Admin-controlled share images for the Sprint funnel pages.
+    // -----------------------------------------------------------------
+    // The `content_parent_pages` table (#97) was historically created only
+    // by drizzle-kit push in dev; guard its DDL here so a fresh production
+    // database gets it on deploy. Then seed rows for the four hand-coded
+    // Sprint funnel routes (/sprint, /proof, /fit, /book) so their OG
+    // image / SEO copy can be overridden from the admin "List page copy"
+    // screen (consumed by `ogResolver.ts`). The existing list-page slugs
+    // are included too so a fresh environment matches
+    // `scripts/seedContentParentPages.ts` without a manual seed run.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS content_parent_pages (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug text NOT NULL,
+        hero_eyebrow text,
+        hero_headline text,
+        hero_subhead text,
+        intro_html text,
+        seo_title text,
+        seo_description text,
+        og_image text,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS content_parent_pages_slug_key
+        ON content_parent_pages (slug);
+    `);
+    await db.execute(sql`
+      INSERT INTO content_parent_pages (slug)
+      VALUES
+        ('videos'), ('white-papers'), ('workshops'), ('applications'),
+        ('models'), ('insights'), ('case-studies'), ('library'),
+        ('items'), ('webinars'), ('start'),
+        ('sprint'), ('proof'), ('fit'), ('book')
+      ON CONFLICT (slug) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

@@ -26,6 +26,7 @@ import {
   polarisEpisodesTable,
   landingPagesTable,
   assetsTable,
+  contentParentPagesTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
 
@@ -398,12 +399,45 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
     // through to the landing-pages lookup and site defaults unchanged.
     const staticOg = STATIC_PAGE_OG[clean];
     if (staticOg) {
+      // #345 — Admin override for hand-coded static pages. A
+      // `content_parent_pages` row whose slug matches the path segment
+      // (e.g. "sprint" for /sprint) lets marketing swap the share image /
+      // SEO copy from the admin "List page copy" screen without a deploy.
+      // Empty/null fields (and inactive or missing rows) fall back to the
+      // hardcoded STATIC_PAGE_OG defaults, so this is purely additive.
+      let override: {
+        seoTitle: string | null;
+        seoDescription: string | null;
+        ogImage: string | null;
+      } | undefined;
+      if (section) {
+        try {
+          const [row] = await db
+            .select({
+              seoTitle: contentParentPagesTable.seoTitle,
+              seoDescription: contentParentPagesTable.seoDescription,
+              ogImage: contentParentPagesTable.ogImage,
+            })
+            .from(contentParentPagesTable)
+            .where(
+              and(
+                eq(contentParentPagesTable.slug, section),
+                eq(contentParentPagesTable.active, true),
+              ),
+            )
+            .limit(1);
+          override = row;
+        } catch {
+          // DB error — serve the static defaults.
+        }
+      }
+      const overrideImage = override?.ogImage?.trim() || null;
       return {
         ...fallback,
-        title: staticOg.title,
-        description: staticOg.description,
+        title: override?.seoTitle?.trim() || staticOg.title,
+        description: override?.seoDescription?.trim() || staticOg.description,
         image:
-          ogImageVariant(absUrl(staticOg.image, origin), origin) ??
+          ogImageVariant(absUrl(overrideImage ?? staticOg.image, origin), origin) ??
           fallback.image,
         ogType: "website",
       };
