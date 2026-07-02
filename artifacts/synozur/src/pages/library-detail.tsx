@@ -172,8 +172,8 @@ export default function LibraryDetail() {
   return (
     <div className="w-full">
       <Meta
-        title={item.title}
-        description={item.description}
+        title={item.seoTitle || item.title}
+        description={item.seoDescription || item.description}
         image={item.heroImage}
         path={`/library/${item.slug}`}
         type="article"

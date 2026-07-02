@@ -69,6 +69,9 @@ export interface Collateral {
   featured: boolean;
   featuredRank?: number;
   videoUrl?: string;
+  /** SEO overrides — set by editors in the admin. When present, override the default title/description in <meta> and OG tags. */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   /**
    * Mirror of the first `resources` row, kept for back-compat with carousel
    * cards that need a single primary CTA without loading the full resources

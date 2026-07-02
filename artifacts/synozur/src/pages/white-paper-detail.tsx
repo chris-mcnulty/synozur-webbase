@@ -257,8 +257,8 @@ export default function WhitePaperDetail() {
   return (
     <div className="w-full">
       <Meta
-        title={col.title}
-        description={col.description}
+        title={col.seoTitle || col.title}
+        description={col.seoDescription || col.description}
         image={col.heroImage}
         path={`/white-papers/${col.slug}`}
         type="article"

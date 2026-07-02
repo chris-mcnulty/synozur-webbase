@@ -49,8 +49,8 @@ export default function WebinarDetail() {
   return (
     <div className="w-full">
       <Meta
-        title={item.title}
-        description={item.description}
+        title={item.seoTitle || item.title}
+        description={item.seoDescription || item.description}
         image={item.heroImage}
         path={`/webinars/${item.slug}`}
         type="article"
