@@ -33,3 +33,14 @@ by fetching the path with a bot UA, but check synozur-owned paths via
 `/api/seo/page?path=...`. `server.mjs` `fetchAgentHtml`/`fetchOgHtml` reject on
 non-2xx or non-`text/html` upstream responses so a JSON error falls back to the
 static shell rather than being served as HTML.
+
+**July 2026 correction:** until the www-cutover republish, `server.mjs` had
+NEVER run in production — the synozur artifact.toml still said
+`serve = "static"` (restored April 2026 to fix an old deploy error, before
+server.mjs was written in June). Prod therefore served the raw SPA shell to
+every bot on synozur-owned paths. Fixed by switching the artifact's production
+config to `node artifacts/synozur/server.mjs` (PORT=20131, API_PORT=8080,
+health check on `/`). **Coupling:** `API_PORT` must track the api-server's
+prod port in lockstep — a mismatch fails silently (bots just get the generic
+static-shell fallback, no error). After any republish, smoke-test with a bot
+UA against `/sprint` on the live domain, not just `/api/og`.
