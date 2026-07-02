@@ -25,6 +25,10 @@ type Mode = "json" | "csv";
 // Canonical fields the server's normalizer recognizes. Anything else is
 // dropped during transformation. Required fields are marked so the UI can
 // show a warning when they're not mapped.
+//
+// Special key "_ip": not sent to the server directly. When sessionKey is
+// not mapped but _ip + viewedAt are, the client synthesizes a sessionKey
+// from "ip|date" per row (handles Wix exports, which have no session ID).
 const CANONICAL_FIELDS: Array<{ key: string; required?: boolean; aliases: string[] }> = [
   {
     key: "path",
@@ -34,7 +38,10 @@ const CANONICAL_FIELDS: Array<{ key: string; required?: boolean; aliases: string
   {
     key: "viewedAt",
     required: true,
-    aliases: ["viewedat", "viewed_at", "timestamp", "date", "datetime", "time", "visit date", "visit_date"],
+    aliases: [
+      "viewedat", "viewed_at", "timestamp", "date", "datetime", "time",
+      "visit date", "visit_date",
+    ],
   },
   {
     key: "sessionKey",
@@ -47,16 +54,54 @@ const CANONICAL_FIELDS: Array<{ key: string; required?: boolean; aliases: string
       "unique id", "unique_id",
     ],
   },
+  // _ip is a synthetic helper — auto-detected from "IP address" columns.
+  // When sessionKey is absent, it's combined with viewedAt to build one.
+  {
+    key: "_ip",
+    aliases: ["ip address", "ip_address", "ip addr", "ip", "ipaddress"],
+  },
   { key: "title", aliases: ["title", "page title", "page_title"] },
-  { key: "pageviewCount", aliases: ["pageviewcount", "pageviews", "views"] },
-  { key: "timeOnPageMs", aliases: ["timeonpagems", "time_on_page", "duration_ms"] },
+  {
+    key: "pageviewCount",
+    aliases: ["pageviewcount", "pageviews", "views", "page views", "page_views"],
+  },
+  {
+    key: "timeOnPageMs",
+    aliases: ["timeonpagems", "time_on_page", "duration_ms", "avg. time on page", "time on page"],
+  },
   { key: "pageType", aliases: ["pagetype", "page_type", "type"] },
-  { key: "referrerUrl", aliases: ["referrerurl", "referrer", "referer"] },
+  {
+    key: "referrerUrl",
+    aliases: ["referrerurl", "referrer", "referer", "traffic source url", "traffic_source_url"],
+  },
   { key: "referrerHost", aliases: ["referrerhost", "referrer_host"] },
-  { key: "trafficSource", aliases: ["trafficsource", "source", "channel"] },
-  { key: "utmSource", aliases: ["utmsource", "utm_source"] },
-  { key: "utmMedium", aliases: ["utmmedium", "utm_medium"] },
-  { key: "utmCampaign", aliases: ["utmcampaign", "utm_campaign"] },
+  {
+    key: "trafficSource",
+    aliases: [
+      "trafficsource", "source", "channel",
+      "traffic category", "traffic_category",
+    ],
+  },
+  {
+    key: "utmSource",
+    aliases: ["utmsource", "utm_source", "utm campaign source", "utm_campaign_source"],
+  },
+  {
+    key: "utmMedium",
+    aliases: ["utmmedium", "utm_medium", "utm campaign medium", "utm_campaign_medium"],
+  },
+  {
+    key: "utmCampaign",
+    aliases: ["utmcampaign", "utm_campaign", "utm campaign name", "utm_campaign_name"],
+  },
+  {
+    key: "utmTerm",
+    aliases: ["utmterm", "utm_term", "utm campaign keywords", "utm_campaign_keywords"],
+  },
+  {
+    key: "utmContent",
+    aliases: ["utmcontent", "utm_content", "utm campaign content", "utm_campaign_content"],
+  },
   { key: "country", aliases: ["country", "country_code"] },
   { key: "deviceType", aliases: ["devicetype", "device_type", "device"] },
   { key: "browserName", aliases: ["browsername", "browser"] },
