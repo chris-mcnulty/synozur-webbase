@@ -680,6 +680,269 @@ function renderWebinarsList(origin: string): Promise<string> {
   });
 }
 
+// ─── Detail renderers ─────────────────────────────────────────────────────────
+
+// Render one narrative section ({heading, body[], bullets?}) shared by the
+// case-study challenge / approach / outcome blocks. Body entries are plain
+// text paragraphs (escaped), not HTML.
+function renderNarrativeSection(
+  sec:
+    | { heading?: string | null; body?: string[] | null; bullets?: string[] | null }
+    | null
+    | undefined,
+): string {
+  if (!sec) return "";
+  const heading = sec.heading ? `<h2>${htmlEscape(sec.heading)}</h2>` : "";
+  const paras = (sec.body ?? [])
+    .filter(Boolean)
+    .map((p) => `<p>${htmlEscape(p)}</p>`)
+    .join("");
+  const bulletItems = (sec.bullets ?? []).filter(Boolean);
+  const bullets = bulletItems.length
+    ? `<ul>${bulletItems.map((b) => `<li>${htmlEscape(b)}</li>`).join("")}</ul>`
+    : "";
+  if (!heading && !paras && !bullets) return "";
+  return `${heading}${paras}${bullets}`;
+}
+
+function bulletSection(
+  header: string | null | undefined,
+  items: (string | null | undefined)[] | null | undefined,
+): string {
+  const list = (items ?? []).filter((i): i is string => Boolean(i));
+  if (!list.length) return "";
+  const h = header ? `<h2>${htmlEscape(header)}</h2>` : "";
+  return `${h}<ul>${list.map((i) => `<li>${htmlEscape(i)}</li>`).join("")}</ul>`;
+}
+
+async function renderCaseStudyDetail(slug: string, og: OgData): Promise<string> {
+  const [row] = await db
+    .select({
+      client: caseStudiesTable.client,
+      industry: caseStudiesTable.industry,
+      headline: caseStudiesTable.headline,
+      summary: caseStudiesTable.summary,
+      challenge: caseStudiesTable.challenge,
+      approach: caseStudiesTable.approach,
+      outcome: caseStudiesTable.outcome,
+      metrics: caseStudiesTable.metrics,
+      quoteText: caseStudiesTable.quoteText,
+      quoteAttribution: caseStudiesTable.quoteAttribution,
+    })
+    .from(caseStudiesTable)
+    .where(
+      and(
+        eq(caseStudiesTable.slug, slug),
+        isNull(caseStudiesTable.deletedAt),
+        eq(caseStudiesTable.active, true),
+        eq(caseStudiesTable.status, "published"),
+        withinPublishWindow(
+          caseStudiesTable.publishedAt,
+          caseStudiesTable.unpublishedAt,
+        ),
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const meta = [row.client, row.industry]
+    .filter(Boolean)
+    .map(htmlEscape)
+    .join(" · ");
+  const intro =
+    (row.headline ? `<p>${htmlEscape(row.headline)}</p>` : "") +
+    (row.summary ? `<p>${htmlEscape(row.summary)}</p>` : "");
+  const challenge = renderNarrativeSection(row.challenge);
+  const approach = (row.approach ?? [])
+    .map(renderNarrativeSection)
+    .filter(Boolean)
+    .join("\n");
+  const outcome = renderNarrativeSection(row.outcome);
+  const metricItems = (row.metrics ?? []).filter((m) => m && (m.label || m.value));
+  const metrics = metricItems.length
+    ? `<ul>${metricItems
+        .map(
+          (m) =>
+            `<li>${htmlEscape([m.value, m.label].filter(Boolean).join(" — "))}</li>`,
+        )
+        .join("")}</ul>`
+    : "";
+  const quote = row.quoteText
+    ? `<blockquote><p>${htmlEscape(row.quoteText)}</p>${row.quoteAttribution ? `<cite>${htmlEscape(row.quoteAttribution)}</cite>` : ""}</blockquote>`
+    : "";
+  const body = [intro, challenge, approach, outcome, metrics, quote]
+    .filter(Boolean)
+    .join("\n");
+  if (!body) return "";
+  return `<h1>${htmlEscape(og.title)}</h1>${meta ? `<p>${meta}</p>` : ""}<article>${body}</article>`;
+}
+
+async function renderWorkshopDetail(slug: string, og: OgData): Promise<string> {
+  const [row] = await db
+    .select({
+      shortDescription: workshopsTable.shortDescription,
+      heroSubhead: workshopsTable.heroSubhead,
+      pain: workshopsTable.pain,
+      scope: workshopsTable.scope,
+      process: workshopsTable.process,
+      deliverables: workshopsTable.deliverables,
+      outcomes: workshopsTable.outcomes,
+      faq: workshopsTable.faq,
+    })
+    .from(workshopsTable)
+    .where(
+      and(
+        eq(workshopsTable.slug, slug),
+        isNull(workshopsTable.deletedAt),
+        eq(workshopsTable.active, true),
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const intro = [row.heroSubhead, row.shortDescription]
+    .filter(Boolean)
+    .map((p) => `<p>${htmlEscape(p)}</p>`)
+    .join("");
+  const pain = row.pain
+    ? `${row.pain.header ? `<h2>${htmlEscape(row.pain.header)}</h2>` : ""}${row.pain.lead ? `<p>${htmlEscape(row.pain.lead)}</p>` : ""}${bulletSection(null, row.pain.tiles)}`
+    : "";
+  const scope = row.scope
+    ? `${row.scope.header ? `<h2>${htmlEscape(row.scope.header)}</h2>` : ""}${row.scope.summary ? `<p>${htmlEscape(row.scope.summary)}</p>` : ""}${bulletSection(null, row.scope.bullets)}`
+    : "";
+  const process = bulletSection(row.process?.header, row.process?.steps);
+  const deliverables = row.deliverables
+    ? bulletSection(row.deliverables.header, [
+        ...(row.deliverables.core ?? []),
+        ...(row.deliverables.executive ?? []),
+        ...(row.deliverables.enablement ?? []),
+        ...(row.deliverables.addOns ?? []),
+      ])
+    : "";
+  const outcomes = bulletSection(row.outcomes?.header, row.outcomes?.bullets);
+  const faqItems = row.faq?.items ?? [];
+  const faq = faqItems.length
+    ? `${row.faq?.header ? `<h2>${htmlEscape(row.faq.header)}</h2>` : ""}${faqItems.map((it) => `<h3>${htmlEscape(it.q)}</h3><p>${htmlEscape(it.a)}</p>`).join("")}`
+    : "";
+  const body = [intro, pain, scope, process, deliverables, outcomes, faq]
+    .filter(Boolean)
+    .join("\n");
+  if (!body) return "";
+  return `<h1>${htmlEscape(og.title)}</h1><article>${body}</article>`;
+}
+
+async function renderModelDetail(slug: string, og: OgData): Promise<string> {
+  const [row] = await db
+    .select({
+      shortDescription: modelsTable.shortDescription,
+      longDescriptionHtml: modelsTable.longDescriptionHtml,
+      dimensionsHtml: modelsTable.dimensionsHtml,
+    })
+    .from(modelsTable)
+    .where(
+      and(
+        eq(modelsTable.slug, slug),
+        isNull(modelsTable.deletedAt),
+        eq(modelsTable.active, true),
+        eq(modelsTable.status, "published"),
+        withinPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const intro = row.shortDescription
+    ? `<p>${htmlEscape(row.shortDescription)}</p>`
+    : "";
+  const body = [
+    intro,
+    sanitizeCmsHtml(row.longDescriptionHtml),
+    sanitizeCmsHtml(row.dimensionsHtml),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  if (!body) return "";
+  return `<h1>${htmlEscape(og.title)}</h1><article>${body}</article>`;
+}
+
+async function renderApplicationDetail(
+  slug: string,
+  og: OgData,
+): Promise<string> {
+  const [row] = await db
+    .select({
+      tagline: applicationsTable.tagline,
+      shortSummary: applicationsTable.shortSummary,
+      descriptionParagraphs: applicationsTable.descriptionParagraphs,
+    })
+    .from(applicationsTable)
+    .where(
+      and(
+        eq(applicationsTable.slug, slug),
+        isNull(applicationsTable.deletedAt),
+        eq(applicationsTable.active, true),
+        eq(applicationsTable.status, "published"),
+        withinPublishWindow(
+          applicationsTable.publishedAt,
+          applicationsTable.unpublishedAt,
+        ),
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const intro = [row.tagline, row.shortSummary]
+    .filter(Boolean)
+    .map((p) => `<p>${htmlEscape(p)}</p>`)
+    .join("");
+  const paras = (row.descriptionParagraphs ?? [])
+    .filter(Boolean)
+    .map((p) => `<p>${htmlEscape(p)}</p>`)
+    .join("");
+  const body = [intro, paras].filter(Boolean).join("\n");
+  if (!body) return "";
+  return `<h1>${htmlEscape(og.title)}</h1><article>${body}</article>`;
+}
+
+// Backs both /library/:slug and /webinars/:slug — a single collateral row keyed
+// by slug. Visibility mirrors the collateral list renderers AND the sitemap: a
+// webinar route requires type='webinar'; a library route excludes the same
+// LIBRARY_EXCLUDED_TYPES the list/sitemap skip. Without the per-route type
+// guard, bots could get a full body on a route the hub/sitemap intentionally
+// omits.
+async function renderCollateralDetail(
+  slug: string,
+  og: OgData,
+  section: "library" | "webinars",
+): Promise<string> {
+  const typeFilter =
+    section === "webinars"
+      ? eq(collateralTable.type, "webinar")
+      : notInArray(collateralTable.type, [...LIBRARY_EXCLUDED_TYPES]);
+  const [row] = await db
+    .select({
+      subtitle: collateralTable.subtitle,
+      description: collateralTable.description,
+    })
+    .from(collateralTable)
+    .where(
+      and(
+        eq(collateralTable.slug, slug),
+        isNull(collateralTable.deletedAt),
+        eq(collateralTable.active, true),
+        typeFilter,
+      ),
+    )
+    .limit(1);
+  if (!row) return "";
+  const body =
+    [
+      row.subtitle ? `<p>${htmlEscape(row.subtitle)}</p>` : "",
+      row.description ? `<p>${htmlEscape(row.description)}</p>` : "",
+    ]
+      .filter(Boolean)
+      .join("\n") ||
+    (og.description ? `<p>${htmlEscape(og.description)}</p>` : "");
+  if (!body) return "";
+  return `<h1>${htmlEscape(og.title)}</h1><article>${body}</article>`;
+}
+
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 async function renderMainContent(
@@ -737,6 +1000,18 @@ async function renderMainContent(
       return renderEventDetail(slug, og);
     case "white-papers":
       return renderWhitePaperDetail(slug, og);
+    case "case-studies":
+      return renderCaseStudyDetail(slug, og);
+    case "workshops":
+      return renderWorkshopDetail(slug, og);
+    case "models":
+      return renderModelDetail(slug, og);
+    case "applications":
+      return renderApplicationDetail(slug, og);
+    case "library":
+      return renderCollateralDetail(slug, og, "library");
+    case "webinars":
+      return renderCollateralDetail(slug, og, "webinars");
     default:
       return "";
   }

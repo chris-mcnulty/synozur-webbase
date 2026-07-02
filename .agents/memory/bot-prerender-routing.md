@@ -52,6 +52,20 @@ builder AND keep its visibility filters identical to `routes/seo.ts`
 others 100) — a bounded bot payload is accepted and not required to match the
 uncapped sitemap exactly.
 
+**Detail-route parity (durable rule):** the slug-ful detail `switch` has the same
+obligation as the hub switch — every DB-backed detail route needs a `case`, and
+its visibility filters must match `routes/seo.ts` **including type
+discriminators**, not just `active`/`deletedAt`/publish-window. Collateral is the
+trap: `/library/:slug` and `/webinars/:slug` are the *same* table keyed by slug,
+so the detail renderer must re-apply the per-route type filter (webinars →
+`type='webinar'`; library → exclude `LIBRARY_EXCLUDED_TYPES`). Filtering by slug
+alone lets a bot fetch a full body on a route the hub/sitemap intentionally omit.
+
+**`/events` is api-server-owned now:** `/events` was added to the api-server
+`artifact.toml` paths (was previously synozur-owned → bots got the SPA homepage
+shell on `/events/:slug`). Event-detail URLs are also emitted in the sitemap now
+(all events are public — no `active`/`deletedAt`, `status` defaults `UPCOMING`).
+
 **July 2026 correction:** `server.mjs` never ran in production — the `react-vite`
 integratedSkill on the synozur artifact forces static serving and the platform
 API blocks removing it. The fix for the Sprint funnel paths was different:

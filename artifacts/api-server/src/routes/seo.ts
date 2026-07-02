@@ -309,8 +309,8 @@ export async function collectEntries(): Promise<Entry[]> {
   for (const m of team) {
     entries.push(toEntry(`/team/${encodeURIComponent(m.slug)}`, m.updatedAt));
   }
-  for (const _e of events) {
-    // Events are listed on /events; no detail route is published yet.
+  for (const e of events) {
+    entries.push(toEntry(`/events/${encodeURIComponent(e.slug)}`, e.updatedAt));
   }
   for (const a of applications)
     entries.push(toEntry(`/applications/${a.slug}`, a.updatedAt));
