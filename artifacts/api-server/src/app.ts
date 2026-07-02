@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { wixRedirectMiddleware } from "./lib/wixRedirects";
+import { wixRedirectMiddleware, lookupRedirect, recordHit } from "./lib/wixRedirects";
 import { careersRedirectMiddleware } from "./lib/careersRedirect";
 import { shortLinkRedirectMiddleware } from "./middlewares/shortLinkRedirect";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
@@ -82,6 +82,26 @@ app.use(shortLinkRedirectMiddleware());
 // Wix URL redirects — runs before all routing so bookmarked /post/* etc. paths
 // 301 to their new home without ever reaching the SPA shell. Skips /api/*.
 app.use(wixRedirectMiddleware());
+
+// Public redirect-lookup endpoint used by the synozur server.mjs SPA server.
+// The reverse-proxy routes the catch-all "/" to server.mjs, so the middleware
+// above never fires for paths like /post/* that aren't in the api-server path
+// list. server.mjs calls this endpoint before serving the SPA shell so those
+// paths also get properly redirected.
+app.get("/api/redirect-lookup", async (req, res) => {
+  const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
+  try {
+    const hit = await lookupRedirect(rawPath);
+    if (!hit) {
+      res.json({ redirect: null });
+      return;
+    }
+    void recordHit(hit.id);
+    res.json({ redirect: { target: hit.targetPath, statusCode: hit.statusCode } });
+  } catch {
+    res.json({ redirect: null });
+  }
+});
 // #223 — Careers host-vs-redirect toggle. Mounted after the wix legacy
 // redirector so its 301s win when a /careers tail also has a wix mapping,
 // but before the SPA shell so the user never lands on the in-app careers

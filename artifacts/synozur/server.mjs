@@ -503,6 +503,49 @@ function fetchAgentHtml(pathname) {
   });
 }
 
+// ─── Wix redirect lookup ──────────────────────────────────────────────────────
+
+// Calls the api-server's /api/redirect-lookup endpoint to check whether a
+// pathname should be redirected before the SPA shell is served.  This is
+// necessary because the reverse proxy routes paths not in the api-server's
+// explicit `paths` list (e.g. /post/*, /blog, /about-4) directly to this
+// server, bypassing the api-server's wixRedirectMiddleware entirely.
+//
+// Returns { target: string, statusCode: number } on a match, or null.
+// Never throws — any network / parse error resolves to null so the SPA shell
+// is served as a safe fallback.
+function fetchRedirectForPath(pathname) {
+  return new Promise((resolve) => {
+    const encoded = encodeURIComponent(pathname);
+    const options = {
+      hostname: "127.0.0.1",
+      port: API_PORT,
+      path: `/api/redirect-lookup?path=${encoded}`,
+      method: "GET",
+      headers: { Accept: "application/json" },
+    };
+    const req = http.request(options, (apiRes) => {
+      let body = "";
+      apiRes.setEncoding("utf8");
+      apiRes.on("data", (chunk) => { body += chunk; });
+      apiRes.on("end", () => {
+        try {
+          const data = JSON.parse(body);
+          resolve(data.redirect ?? null);
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on("error", () => resolve(null));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
 // ─── Static file helper ───────────────────────────────────────────────────────
 
 // Files that must always be re-validated by the browser even though they
@@ -563,25 +606,9 @@ function serveIndexHtml(res, statusCode = 200) {
 
 // ─── Request handler ──────────────────────────────────────────────────────────
 
-function handler(req, res) {
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    res.writeHead(405, { Allow: "GET, HEAD" });
-    res.end();
-    return;
-  }
-
-  const rawUrl = req.url ?? "/";
-  const pathname = rawUrl.split("?")[0].split("#")[0] || "/";
-
-  // 1. SEO surfaces (sitemap.xml / robots.txt / llms.txt) live on the
-  //    api-server but the shared reverse proxy gives this artifact's
-  //    `paths = ["/"]` catch-all priority over the api-server, so we
-  //    forward those three paths internally.
-  if (SEO_PROXY_PATHS.has(pathname)) {
-    proxySeoPath(req, res, pathname);
-    return;
-  }
-
+// Steps 2-4 of the handler, extracted so the async redirect check in step 1b
+// can call this after confirming no redirect applies.
+function continueHandler(req, res, pathname, rawUrl) {
   // 2. Intercept social bots — proxy to the API server's /api/og endpoint.
   //    Bots also see the publish-status verdict so unfurls of an archived
   //    URL don't show a stale preview.
@@ -705,6 +732,49 @@ function handler(req, res) {
 
   res.writeHead(404);
   res.end("Not found");
+}
+
+function handler(req, res) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.writeHead(405, { Allow: "GET, HEAD" });
+    res.end();
+    return;
+  }
+
+  const rawUrl = req.url ?? "/";
+  const pathname = rawUrl.split("?")[0].split("#")[0] || "/";
+
+  // 1. SEO surfaces (sitemap.xml / robots.txt / llms.txt) live on the
+  //    api-server but the shared reverse proxy gives this artifact's
+  //    `paths = ["/"]` catch-all priority over the api-server, so we
+  //    forward those three paths internally.
+  if (SEO_PROXY_PATHS.has(pathname)) {
+    proxySeoPath(req, res, pathname);
+    return;
+  }
+
+  // 1b. Wix redirect check — the synozur catch-all "/" owns paths the
+  //     api-server's wixRedirectMiddleware never sees (e.g. /post/*, /blog,
+  //     /about-4). We ask the api-server before serving the SPA shell.
+  //     Skip paths with a static asset extension to avoid an extra network
+  //     hop on every image/JS/CSS request.
+  const hasStaticExt = /\.(js|mjs|css|png|jpg|jpeg|gif|webp|avif|svg|ico|woff|woff2|ttf|eot|json|webmanifest|map|pdf|zip|txt|xml)$/i.test(pathname);
+  if (!hasStaticExt) {
+    fetchRedirectForPath(pathname)
+      .then((redir) => {
+        if (redir) {
+          const qs = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
+          res.writeHead(redir.statusCode, { Location: redir.target + qs });
+          res.end();
+          return;
+        }
+        continueHandler(req, res, pathname, rawUrl);
+      })
+      .catch(() => continueHandler(req, res, pathname, rawUrl));
+    return;
+  }
+
+  continueHandler(req, res, pathname, rawUrl);
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────────
