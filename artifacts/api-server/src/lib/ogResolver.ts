@@ -34,7 +34,7 @@ import { siteOrigin } from "./siteOrigin";
 export const SITE_NAME = "The Synozur Alliance";
 export const DEFAULT_DESCRIPTION =
   "Strategy, AI, and Microsoft 365 advisory from The Synozur Alliance — practical guidance for leaders shaping the modern workplace.";
-const DEFAULT_IMAGE_PATH = "/opengraph.jpg";
+export const DEFAULT_IMAGE_PATH = "/opengraph.jpg";
 
 // ─── Static page OG registry ───────────────────────────────────────────────────
 
@@ -45,9 +45,20 @@ const DEFAULT_IMAGE_PATH = "/opengraph.jpg";
  * resolver returns page-specific title/description/image for crawlers.
  *
  * Keep each entry in sync with the corresponding page's `<Meta>` in
- * `artifacts/synozur/src/pages/*` (the source of truth). Titles use the exact
- * `rawTitle` string those pages declare (site name already included), so no
- * site-name suffix is appended here.
+ * `artifacts/synozur/src/pages/*` (the source of truth). Titles here are the
+ * FULL document title a crawler should see:
+ *   - Pages that render `<Meta rawTitle ...>` already bake the site name into
+ *     their title, so it's copied verbatim (e.g. /sprint, /proof, /, /home-b).
+ *   - Pages that omit `rawTitle` let the client append " | The Synozur
+ *     Alliance" at runtime; since crawlers never run that JS, the suffix is
+ *     baked in here (e.g. "Our Story | The Synozur Alliance").
+ *
+ * The drift guard in `ogResolver.staticPages.test.ts` parses each page's
+ * `<Meta>` and recomputes the expected title/description/image, so any change
+ * on either side fails the build. That test also enforces that every
+ * hand-coded page rendering `<Meta>` is either registered here or explicitly
+ * excluded with a reason — so a newly added static page can't silently ship
+ * generic previews.
  */
 interface StaticPageOg {
   title: string;
@@ -57,6 +68,19 @@ interface StaticPageOg {
 }
 
 export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
+  // Homepage (Home B is the permanent `/` homepage; /home-b is its alias).
+  "/": {
+    title: "AI-First Operating Model for CEOs & Boards | Synozur Alliance",
+    description:
+      "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/home-b": {
+    title: "AI-First Operating Model for CEOs & Boards | Synozur Alliance",
+    description:
+      "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes.",
+    image: DEFAULT_IMAGE_PATH,
+  },
   "/sprint": {
     title: "The AI & North Star Sprint — The Synozur Alliance",
     description:
@@ -79,6 +103,80 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
     title: "Book the Conversation — The Synozur Alliance",
     description:
       "Schedule a focused working conversation to understand your current context, where alignment may be breaking down, and whether the AI & North Star Sprint is the right next step.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  // Company / legal / utility pages — single-segment, hand-coded <Meta> with
+  // no rawTitle, so the " | The Synozur Alliance" suffix is baked in here.
+  "/about": {
+    title: "Our Story | The Synozur Alliance",
+    description:
+      "Synozur, named for the North Star, guides organizations through the complexities of strategic transformation with decades of global advisory experience.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/clients": {
+    title: "Our Clients | The Synozur Alliance",
+    description:
+      "Synozur partners with global enterprises and breakout growth companies. With years of experience working with global customers across various industries, we have the insights to tackle complex challenges and drive meaningful change.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/partners": {
+    title: "Partners | The Synozur Alliance",
+    description:
+      "Synozur adopts a strategic and transparent approach to partnerships by maintaining regular communication and leveraging continuous improvement practices.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/contact": {
+    title: "Contact | The Synozur Alliance",
+    description:
+      "Tell us where you are headed. We will tell you where Synozur can help.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/team": {
+    title: "Team | The Synozur Alliance",
+    description:
+      "The leaders behind The Synozur Alliance — partners drawn from across the Fortune 500.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/privacy": {
+    title: "Privacy Policy | The Synozur Alliance",
+    description:
+      "How The Synozur Alliance collects, uses, and protects personal information, including cookies and analytics used on synozur.com.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/terms": {
+    title: "Terms of Service | The Synozur Alliance",
+    description:
+      "Terms of Service for The Synozur Alliance LLC, governing access to synozur.com, free public tools, and commercial software subscriptions.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/trust": {
+    title: "Trust & Security | The Synozur Alliance",
+    description:
+      "How The Synozur Alliance protects your data: identity and access, encryption, tenant isolation, responsible AI, and our approach to privacy and compliance.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/join": {
+    title: "Join The Feed | The Synozur Alliance",
+    description:
+      "Subscribe to The Feed — Synozur's newsletter on strategy, technology transformation, and the ideas shaping modern enterprise.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/careers": {
+    title: "Careers at Synozur | The Synozur Alliance",
+    description:
+      "Join the transformation team. We guide organizations through change rooted in people, powered by technology, and driven by purpose.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/polaris": {
+    title: "Polaris Podcast | The Synozur Alliance",
+    description:
+      "Polaris Pathways, our podcast, charts the course for business, leadership and technology transformation. You can also find us on Apple, Spotify, Amazon, or wherever you get your favorite podcasts.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/events": {
+    title: "Events | The Synozur Alliance",
+    description:
+      "Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events.",
     image: DEFAULT_IMAGE_PATH,
   },
 };
