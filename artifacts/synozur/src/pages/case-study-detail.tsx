@@ -77,9 +77,9 @@ export default function CaseStudyDetail() {
   const staticFallback = slug ? getStaticCaseStudyBySlug(slug) : undefined;
   const study: CaseStudyDto | undefined = useMemo(() => {
     if (detailQ.data) return detailQ.data;
-    if (detailQ.isError && staticFallback) return staticAsDto(staticFallback);
+    if (staticFallback && (detailQ.isLoading || detailQ.isError)) return staticAsDto(staticFallback);
     return undefined;
-  }, [detailQ.data, detailQ.isError, staticFallback]);
+  }, [detailQ.data, detailQ.isLoading, detailQ.isError, staticFallback]);
 
   if (detailQ.isLoading && !staticFallback) {
     return (

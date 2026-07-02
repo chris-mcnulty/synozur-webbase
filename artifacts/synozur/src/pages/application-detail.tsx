@@ -120,9 +120,12 @@ export default function ApplicationDetail() {
   const staticFallback = slug ? getStaticApplicationBySlug(slug) : undefined;
   const app: ApplicationDto | undefined = useMemo(() => {
     if (detailQ.data) return detailQ.data;
-    if (detailQ.isError && staticFallback) return staticAsDto(staticFallback);
+    // Use the static fallback both while loading (instant render, no flash)
+    // and on error (graceful degradation). The memo re-runs when data arrives
+    // so the API version replaces the static copy transparently.
+    if (staticFallback && (detailQ.isLoading || detailQ.isError)) return staticAsDto(staticFallback);
     return undefined;
-  }, [detailQ.data, detailQ.isError, staticFallback]);
+  }, [detailQ.data, detailQ.isLoading, detailQ.isError, staticFallback]);
 
   if (detailQ.isLoading && !staticFallback) {
     return (
