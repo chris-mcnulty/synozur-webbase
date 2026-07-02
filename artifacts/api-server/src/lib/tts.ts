@@ -619,12 +619,14 @@ async function synthesizeChunk(
         ],
       } as Parameters<typeof client.chat.completions.create>[0]);
 
-      const completion = response as {
-        choices?: Array<{
-          message?: Record<string, unknown> & { audio?: { data?: string } };
-        }>;
-      };
-      const audioData = completion.choices?.[0]?.message?.audio?.data ?? "";
+      const choices = (
+        response as {
+          choices?: Array<{
+            message?: Record<string, unknown> & { audio?: { data?: string } };
+          }>;
+        }
+      ).choices;
+      const audioData = choices?.[0]?.message?.audio?.data ?? "";
       if (!audioData) throw new Error("gpt-audio returned no audio data");
       return Buffer.from(audioData, "base64");
     } catch (err) {

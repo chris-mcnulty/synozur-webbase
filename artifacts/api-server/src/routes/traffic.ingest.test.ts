@@ -78,7 +78,7 @@ test.after(async () => {
   await pool.end();
 });
 
-type IngestResponse = {
+type IngestResponseJson = {
   propertySlug: string;
   accepted: number;
   errors: number;
@@ -89,7 +89,7 @@ type IngestResponse = {
 async function postIngest(
   authHeader: string | null,
   body: unknown,
-): Promise<{ status: number; json: IngestResponse }> {
+): Promise<{ status: number; json: IngestResponseJson }> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (authHeader) headers["Authorization"] = authHeader;
   const res = await fetch(`${baseUrl}/api/traffic/ingest`, {
@@ -97,11 +97,11 @@ async function postIngest(
     headers,
     body: JSON.stringify(body),
   });
-  let json = {} as IngestResponse;
+  let json: IngestResponseJson = {} as IngestResponseJson;
   try {
-    json = (await res.json()) as IngestResponse;
+    json = (await res.json()) as IngestResponseJson;
   } catch {
-    json = {} as IngestResponse;
+    json = {} as IngestResponseJson;
   }
   return { status: res.status, json };
 }

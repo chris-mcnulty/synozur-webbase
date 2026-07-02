@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { bufferLooksLikeRasterImage, isAmbiguousContentType } from "./storage.ts";
+import { bufferLooksLikeRasterImage, isAmbiguousContentType } from "./storage.js";
 
 // Magic-byte prefixes for the raster formats the resize path supports.
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);

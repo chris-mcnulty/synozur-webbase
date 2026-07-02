@@ -56,10 +56,8 @@ MailService.prototype.send = async function patchedSend(
   msg: unknown,
 ): Promise<Awaited<ReturnType<typeof originalSend>>> {
   captured = msg as CapturedMessage;
-  return sendImpl(msg as CapturedMessage) as unknown as Awaited<
-    ReturnType<typeof originalSend>
-  >;
-} as typeof originalSend;
+  return sendImpl(msg as CapturedMessage) as ReturnType<typeof originalSend>;
+} as unknown as typeof originalSend;
 
 const originalFetch = globalThis.fetch;
 
