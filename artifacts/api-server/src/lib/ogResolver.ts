@@ -12,6 +12,7 @@ import { OG_TEMPLATE_VERSION } from "./ogImageRenderer";
 import {
   db,
   postsTable,
+  eventsTable,
   servicesTable,
   solutionsTable,
   caseStudiesTable,
@@ -761,6 +762,42 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           image:
             ogImageVariant(absUrl(editorImage, origin), origin) ??
             dynamicOgImageUrl("polaris", row.id, row.updatedAt, origin),
+          ogType: "article",
+        };
+      }
+
+      case "events": {
+        // Event detail pages live at /events/:slug. The share image is the
+        // event's uploaded photo — new writes populate `imageMediaId`
+        // (UUID → media), legacy rows still carry only the integer
+        // `imageAssetId` (→ assets). Mirror the "prefer media, fall back to
+        // asset" precedence in routes/events.ts:resolveEventImageUrl(). No
+        // `deletedAt` on events; an archived event 410s at the API but its
+        // OG data is harmless to resolve here. Falls back to the site
+        // default OG image when no photo is attached.
+        const [row] = await db
+          .select({
+            title: eventsTable.title,
+            teaser: eventsTable.teaser,
+            description: eventsTable.description,
+            imageMediaId: eventsTable.imageMediaId,
+            imageAssetId: eventsTable.imageAssetId,
+          })
+          .from(eventsTable)
+          .where(eq(eventsTable.slug, slug))
+          .limit(1);
+        if (!row) break;
+        const img =
+          (await resolveMediaUrl(row.imageMediaId, origin)) ??
+          (await resolveAssetUrl(row.imageAssetId, origin));
+        return {
+          ...fallback,
+          title: `${row.title} | The Synozur Alliance`,
+          description:
+            (row.teaser && row.teaser.trim()) ||
+            (row.description && row.description.trim()) ||
+            defaults.description,
+          image: img ?? defaults.image,
           ogType: "article",
         };
       }
