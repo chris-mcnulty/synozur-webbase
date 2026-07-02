@@ -85,25 +85,25 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
     title: "The AI & North Star Sprint — The Synozur Alliance",
     description:
       "A structured executive engagement that turns ambiguity into aligned decisions, a practical AI-first roadmap, and measurable next steps — in 4 to 6 weeks.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-sprint.jpg",
   },
   "/proof": {
     title: "Proof — Outcomes We Can Prove — The Synozur Alliance",
     description:
       "Anchor cases in Before / After / Impact form — from a Microsoft engagement to AI transformation in private equity. Measurable outcomes, not promises.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-proof.jpg",
   },
   "/fit": {
     title: "Is the Sprint Right for You? — The Synozur Alliance",
     description:
       "The AI & North Star Sprint is most effective when leadership teams are ready to align on what matters. See where it creates the most value — and where it may not fit.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-fit.jpg",
   },
   "/book": {
     title: "Book the Conversation — The Synozur Alliance",
     description:
       "Schedule a focused working conversation to understand your current context, where alignment may be breaking down, and whether the AI & North Star Sprint is the right next step.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-book.jpg",
   },
   // Company / legal / utility pages — single-segment, hand-coded <Meta> with
   // no rawTitle, so the " | The Synozur Alliance" suffix is baked in here.

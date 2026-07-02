@@ -110,7 +110,7 @@ export default function Sprint() {
         rawTitle
         description="A structured executive engagement that turns ambiguity into aligned decisions, a practical AI-first roadmap, and measurable next steps — in 4 to 6 weeks."
         path="/sprint"
-        image="/opengraph.jpg"
+        image="/og/og-sprint.jpg"
       />
 
       {/* 1. Hero — the reframe */}

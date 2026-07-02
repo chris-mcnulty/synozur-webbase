@@ -73,7 +73,7 @@ export default function Booking() {
         rawTitle
         description="Schedule a focused working conversation to understand your current context, where alignment may be breaking down, and whether the AI & North Star Sprint is the right next step."
         path="/book"
-        image="/opengraph.jpg"
+        image="/og/og-book.jpg"
       />
 
       {/* Hero — page header + opening frame (booking page hero pattern) */}

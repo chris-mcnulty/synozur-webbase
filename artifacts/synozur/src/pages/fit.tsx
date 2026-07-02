@@ -80,7 +80,7 @@ export default function Fit() {
         rawTitle
         description="The AI & North Star Sprint is most effective when leadership teams are ready to align on what matters. See where it creates the most value — and where it may not fit."
         path="/fit"
-        image="/opengraph.jpg"
+        image="/og/og-fit.jpg"
       />
 
       {/* 1. Hero over a North Star sky */}

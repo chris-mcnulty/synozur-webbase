@@ -374,7 +374,7 @@ export default function Proof() {
         rawTitle
         description="Anchor cases in Before / After / Impact form — from a Microsoft engagement to AI transformation in private equity. Measurable outcomes, not promises."
         path="/proof"
-        image="/opengraph.jpg"
+        image="/og/og-proof.jpg"
       />
 
       {/* 1. Hero over a North Star sky */}
