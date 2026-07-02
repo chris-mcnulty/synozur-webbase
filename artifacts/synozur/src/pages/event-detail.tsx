@@ -311,8 +311,9 @@ export default function EventDetail() {
   return (
     <div className="w-full">
       <Meta
-        title={event.title}
+        title={event.seoTitle ?? event.title}
         description={
+          event.seoDescription ??
           event.teaser ??
           event.description ??
           `${event.title} — Synozur Alliance event.`

@@ -78,6 +78,8 @@ export const collateralTable = pgTable(
     }),
     active: boolean("active").notNull().default(true),
     sourceId: text("source_id"),
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
     // Link back to the Polaris episode that was synced into this collateral
     // entry. Nullable — only set for podcast entries created via the episode
     // editor's "Add to Library" / "Sync" action. Cascades to null on episode

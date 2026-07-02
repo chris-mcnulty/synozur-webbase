@@ -7147,6 +7147,16 @@ components:
             - string
             - 'null'
           description: IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+        seoTitle:
+          type:
+            - string
+            - 'null'
+          description: Override page title used in <title> and og:title. Defaults to the event title.
+        seoDescription:
+          type:
+            - string
+            - 'null'
+          description: Override meta description. Defaults to teaser or description excerpt.
     AdminEvent:
       type: object
       required:
@@ -7246,6 +7256,16 @@ components:
             - string
             - 'null'
           description: IANA timezone identifier (e.g. America/Chicago). Null means interpret times as UTC.
+        seoTitle:
+          type:
+            - string
+            - 'null'
+          description: Override page title used in <title> and og:title.
+        seoDescription:
+          type:
+            - string
+            - 'null'
+          description: Override meta description.
     AdminFormSubmission:
       type: object
       required: [id, formType, payload, createdAt]
@@ -7592,6 +7612,16 @@ components:
             - string
             - 'null'
           description: IANA timezone identifier (e.g. America/Chicago). Null means UTC.
+        seoTitle:
+          type:
+            - string
+            - 'null'
+          description: Override page title used in <title> and og:title.
+        seoDescription:
+          type:
+            - string
+            - 'null'
+          description: Override meta description.
 
     Service:
       type: object

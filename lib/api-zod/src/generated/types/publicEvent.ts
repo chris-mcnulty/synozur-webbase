@@ -47,4 +47,14 @@ export interface PublicEvent {
    * @nullable
    */
   timezone?: string | null;
+  /**
+   * Override page title used in <title> and og:title. Defaults to the event title.
+   * @nullable
+   */
+  seoTitle?: string | null;
+  /**
+   * Override meta description. Defaults to teaser or description excerpt.
+   * @nullable
+   */
+  seoDescription?: string | null;
 }

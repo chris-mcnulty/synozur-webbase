@@ -3977,6 +3977,18 @@ export const ListPublicEventsResponseItem = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override page title used in <title> and og:title. Defaults to the event title.",
+    ),
+  seoDescription: zod
+    .string()
+    .nullish()
+    .describe(
+      "Override meta description. Defaults to teaser or description excerpt.",
+    ),
 });
 export const ListPublicEventsResponse = zod.array(ListPublicEventsResponseItem);
 
@@ -4031,6 +4043,11 @@ export const ListAdminEventsResponseItem = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe("Override page title used in <title> and og:title."),
+  seoDescription: zod.string().nullish().describe("Override meta description."),
 });
 export const ListAdminEventsResponse = zod.array(ListAdminEventsResponseItem);
 
@@ -4072,6 +4089,11 @@ export const CreateEventBody = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe("Override page title used in <title> and og:title."),
+  seoDescription: zod.string().nullish().describe("Override meta description."),
 });
 
 export const GetAdminEventParams = zod.object({
@@ -4126,6 +4148,11 @@ export const GetAdminEventResponse = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe("Override page title used in <title> and og:title."),
+  seoDescription: zod.string().nullish().describe("Override meta description."),
 });
 
 export const UpdateEventParams = zod.object({
@@ -4166,6 +4193,11 @@ export const UpdateEventBody = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe("Override page title used in <title> and og:title."),
+  seoDescription: zod.string().nullish().describe("Override meta description."),
 });
 
 export const UpdateEventResponse = zod.object({
@@ -4216,6 +4248,11 @@ export const UpdateEventResponse = zod.object({
     .describe(
       "IANA timezone identifier (e.g. America\/Chicago). Null means interpret times as UTC.",
     ),
+  seoTitle: zod
+    .string()
+    .nullish()
+    .describe("Override page title used in <title> and og:title."),
+  seoDescription: zod.string().nullish().describe("Override meta description."),
 });
 
 export const DeleteEventParams = zod.object({

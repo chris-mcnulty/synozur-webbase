@@ -54,4 +54,14 @@ export interface AdminEvent {
    * @nullable
    */
   timezone?: string | null;
+  /**
+   * Override page title used in <title> and og:title.
+   * @nullable
+   */
+  seoTitle?: string | null;
+  /**
+   * Override meta description.
+   * @nullable
+   */
+  seoDescription?: string | null;
 }

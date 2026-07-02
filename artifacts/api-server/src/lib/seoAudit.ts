@@ -10,6 +10,8 @@ import {
   workshopsTable,
   polarisEpisodesTable,
   mediaTable,
+  eventsTable,
+  collateralTable,
 } from "@workspace/db";
 
 // #SEO: audit + autofill across every public artifact table. Reads the same
@@ -24,7 +26,9 @@ export type ArtifactKind =
   | "case-study"
   | "model"
   | "workshop"
-  | "polaris";
+  | "polaris"
+  | "event"
+  | "collateral";
 
 export interface AuditFinding {
   kind: ArtifactKind;
@@ -216,6 +220,12 @@ export const OG_FINDING_POLICY: Record<
   model: { suppressOgImageAutofill: false, suppressOgImageMissing: false },
   workshop: { suppressOgImageAutofill: true, suppressOgImageMissing: false },
   polaris: { suppressOgImageAutofill: false, suppressOgImageMissing: false },
+  // Events have hero images (imageAssetId / imageMediaId) but no og_image URL
+  // column, so autofill can't persist a URL. Keep og_image_missing so editors
+  // know an image would improve unfurls.
+  event: { suppressOgImageAutofill: true, suppressOgImageMissing: false },
+  // Collateral has a heroImage text field but no og_image column. Same logic.
+  collateral: { suppressOgImageAutofill: true, suppressOgImageMissing: false },
 };
 
 /**
@@ -263,13 +273,16 @@ async function auditPosts(): Promise<{
 
   const findings: AuditFinding[] = [];
   for (const r of rows) {
+    // Pass seoTitle ?? title so that seoTitleLong fires when either the explicit
+    // SEO title or the post title itself is too long. We still suppress the
+    // "seoTitle missing" finding (posts don't require it — Meta falls back to title).
     const f = buildFinding({
       kind: "insight",
       id: r.id,
       slug: r.slug,
       title: r.title,
       path: `/insights/${r.slug}`,
-      seoTitle: null, // posts: seoTitle not required — buildTitle handles it
+      seoTitle: r.seoTitle ?? r.title,
       seoDescription: r.seoDescription,
       ogImage: null, // posts have no og_image URL column — image lives behind ids
       fallbackImage: null,
@@ -280,12 +293,13 @@ async function auditPosts(): Promise<{
       descriptionSources: [r.excerpt, r.subtitle, r.bodyMarkdown, r.bodyHtml],
     });
     if (f) {
-      // Drop seoTitle check — Meta component fills it from `title`. OG handling
-      // (drop autofill "ogImage", keep the actionable og_image_missing warning)
-      // is centralized in OG_FINDING_POLICY.
+      // Drop only the "seoTitle missing" check — Meta component fills it from
+      // `title`. Keep "seoTitleLong" so posts with overlong titles are flagged.
+      // OG handling (drop autofill "ogImage", keep og_image_missing) is
+      // centralized in OG_FINDING_POLICY.
       f.missing = filterOgFindings(
         "insight",
-        f.missing.filter((m) => !m.startsWith("seoTitle")),
+        f.missing.filter((m) => m !== "seoTitle"),
       );
       if (f.missing.length) findings.push(f);
     }
@@ -651,8 +665,98 @@ async function auditPolaris(): Promise<{
   return { total: rows.length, findings };
 }
 
+async function auditEvents(): Promise<{
+  total: number;
+  findings: AuditFinding[];
+}> {
+  // Events use a free-form text `status` field. We audit all non-archived
+  // events since even UPCOMING events get indexed before they go live.
+  const rows = await db
+    .select({
+      id: eventsTable.id,
+      slug: eventsTable.slug,
+      title: eventsTable.title,
+      teaser: eventsTable.teaser,
+      description: eventsTable.description,
+      imageAssetId: eventsTable.imageAssetId,
+      imageMediaId: eventsTable.imageMediaId,
+      seoTitle: eventsTable.seoTitle,
+      seoDescription: eventsTable.seoDescription,
+    })
+    .from(eventsTable)
+    .where(sql`lower(${eventsTable.status}) != 'archived'`);
+
+  const findings: AuditFinding[] = [];
+  for (const r of rows) {
+    const f = buildFinding({
+      kind: "event",
+      id: String(r.id),
+      slug: r.slug,
+      title: r.title,
+      path: `/events/${r.slug}`,
+      seoTitle: r.seoTitle ?? null,
+      seoDescription: r.seoDescription ?? null,
+      ogImage: null,
+      fallbackImage: null,
+      // Events show a hero image when either imageAssetId or imageMediaId is
+      // set — use those as the "has editor image" signal (mirrors resolveEventImageUrl).
+      hasEditorImage: Boolean(r.imageAssetId || r.imageMediaId),
+      descriptionSources: [r.teaser, r.description],
+    });
+    if (f) {
+      f.missing = filterOgFindings("event", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
+  }
+  return { total: rows.length, findings };
+}
+
+async function auditCollateral(): Promise<{
+  total: number;
+  findings: AuditFinding[];
+}> {
+  // Audit active, non-deleted collateral. Webinars live at /webinars/:slug;
+  // everything else (guides, toolkits, reports, …) lives at /library/:slug.
+  const rows = await db
+    .select({
+      id: collateralTable.id,
+      slug: collateralTable.slug,
+      type: collateralTable.type,
+      title: collateralTable.title,
+      subtitle: collateralTable.subtitle,
+      description: collateralTable.description,
+      heroImage: collateralTable.heroImage,
+      seoTitle: collateralTable.seoTitle,
+      seoDescription: collateralTable.seoDescription,
+    })
+    .from(collateralTable)
+    .where(and(isNull(collateralTable.deletedAt), eq(collateralTable.active, true)));
+
+  const findings: AuditFinding[] = [];
+  for (const r of rows) {
+    const path = r.type === "webinar" ? `/webinars/${r.slug}` : `/library/${r.slug}`;
+    const f = buildFinding({
+      kind: "collateral",
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      path,
+      seoTitle: r.seoTitle ?? null,
+      seoDescription: r.seoDescription ?? null,
+      ogImage: null,
+      fallbackImage: r.heroImage || null,
+      descriptionSources: [r.subtitle, r.description],
+    });
+    if (f) {
+      f.missing = filterOgFindings("collateral", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
+  }
+  return { total: rows.length, findings };
+}
+
 export async function runAudit(): Promise<AuditReport> {
-  const [posts, services, solutions, applications, caseStudies, models, workshops, polaris] =
+  const [posts, services, solutions, applications, caseStudies, models, workshops, polaris, events, collateral] =
     await Promise.all([
       auditPosts(),
       auditServices(),
@@ -662,6 +766,8 @@ export async function runAudit(): Promise<AuditReport> {
       auditModels(),
       auditWorkshops(),
       auditPolaris(),
+      auditEvents(),
+      auditCollateral(),
     ]);
 
   const findings = [
@@ -673,6 +779,8 @@ export async function runAudit(): Promise<AuditReport> {
     ...models.findings,
     ...workshops.findings,
     ...polaris.findings,
+    ...events.findings,
+    ...collateral.findings,
   ];
 
   return {
@@ -686,6 +794,8 @@ export async function runAudit(): Promise<AuditReport> {
       model: { total: models.total, missing: models.findings.length },
       workshop: { total: workshops.total, missing: workshops.findings.length },
       polaris: { total: polaris.total, missing: polaris.findings.length },
+      event: { total: events.total, missing: events.findings.length },
+      collateral: { total: collateral.total, missing: collateral.findings.length },
     },
     findings,
   };
@@ -708,6 +818,8 @@ export async function applyAutofill(
     model: 0,
     workshop: 0,
     polaris: 0,
+    event: 0,
+    collateral: 0,
   };
 
   for (const f of findings) {
@@ -1003,6 +1115,69 @@ export async function applyAutofill(
             .where(and(...guards))
             .returning({ id: workshopsTable.id });
           if (rows.length > 0) touched.workshop += 1;
+        }
+        break;
+      }
+      case "event": {
+        // Events use integer PKs — convert f.id back to a number.
+        const eventId = Number.parseInt(f.id, 10);
+        if (!Number.isFinite(eventId)) break;
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
+        const set: Record<string, unknown> = { updatedAt: new Date() };
+        const guards = [eq(eventsTable.id, eventId)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${eventsTable.seoTitle} is null or trim(${eventsTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${eventsTable.seoDescription} is null or trim(${eventsTable.seoDescription}) = '')`,
+            );
+          }
+        }
+        if (Object.keys(set).length > 1) {
+          const rows = await db
+            .update(eventsTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: eventsTable.id });
+          if (rows.length > 0) touched.event += 1;
+        }
+        break;
+      }
+      case "collateral": {
+        const isLengthIssue = f.missing.some((m) =>
+          ["seoDescriptionShort", "seoDescriptionLong"].includes(m),
+        );
+        const set: Record<string, unknown> = { updatedAt: new Date() };
+        const guards = [eq(collateralTable.id, f.id), isNull(collateralTable.deletedAt)];
+        if (patch.seoTitle) {
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${collateralTable.seoTitle} is null or trim(${collateralTable.seoTitle}) = '')`,
+          );
+        }
+        if (patch.seoDescription) {
+          set.seoDescription = patch.seoDescription;
+          if (!isLengthIssue) {
+            guards.push(
+              sql`(${collateralTable.seoDescription} is null or trim(${collateralTable.seoDescription}) = '')`,
+            );
+          }
+        }
+        if (Object.keys(set).length > 1) {
+          const rows = await db
+            .update(collateralTable)
+            .set(set)
+            .where(and(...guards))
+            .returning({ id: collateralTable.id });
+          if (rows.length > 0) touched.collateral += 1;
         }
         break;
       }

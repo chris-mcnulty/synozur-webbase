@@ -3696,6 +3696,22 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (source_path) DO NOTHING;
     `);
 
+    // #370 — Add seo_title / seo_description to events
+    // -----------------------------------------------------------------
+    await db.execute(sql`
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS seo_title text,
+        ADD COLUMN IF NOT EXISTS seo_description text;
+    `);
+
+    // #370 — Add seo_title / seo_description to collateral
+    // -----------------------------------------------------------------
+    await db.execute(sql`
+      ALTER TABLE collateral
+        ADD COLUMN IF NOT EXISTS seo_title text,
+        ADD COLUMN IF NOT EXISTS seo_description text;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

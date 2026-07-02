@@ -17,6 +17,7 @@ import {
   Trash2,
   Upload,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
@@ -33,6 +34,11 @@ import {
 } from "@/components/ui/select";
 import { api, type EventSessionInput } from "@/lib/api";
 import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { MediaItem } from "@workspace/api-client-react";
 import type { EventInput } from "@workspace/api-zod/types";
 
@@ -133,6 +139,8 @@ export default function EventForm({ id }: Props) {
     recordingVideoId: null,
     speakerIds: [],
     timezone: null,
+    seoTitle: null,
+    seoDescription: null,
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [libraryMode, setLibraryMode] = useState<"any" | "location" | null>(null);
@@ -176,6 +184,8 @@ export default function EventForm({ id }: Props) {
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((s) => s.teamMemberId) ?? [],
         timezone: existing.timezone ?? null,
+        seoTitle: existing.seoTitle ?? null,
+        seoDescription: existing.seoDescription ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
     }
@@ -998,6 +1008,58 @@ export default function EventForm({ id }: Props) {
               )}
             </div>
           </div>
+        </div>
+
+        {/* SEO panel */}
+        <div className="rounded-md border border-border p-4">
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                data-testid="seo-toggle"
+              >
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">SEO</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Click to expand</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="seoTitle">SEO Title</Label>
+                <Input
+                  id="seoTitle"
+                  placeholder={form.title || "Override page title for search engines"}
+                  value={form.seoTitle ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, seoTitle: e.target.value || null })
+                  }
+                  data-testid="input-seo-title"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Defaults to the event title. Keep under 65 characters for best results.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="seoDescription">SEO Description</Label>
+                <Textarea
+                  id="seoDescription"
+                  rows={2}
+                  placeholder="Override meta description shown in search results"
+                  value={form.seoDescription ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, seoDescription: e.target.value || null })
+                  }
+                  data-testid="input-seo-description"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Defaults to teaser or description. Aim for 70–160 characters.
+                </p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {error && (

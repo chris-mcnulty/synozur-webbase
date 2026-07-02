@@ -64,6 +64,8 @@ export const eventsTable = pgTable("events", {
   }),
   recordingVideoId: uuid("recording_video_id"),
   timezone: text("timezone"),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

@@ -1585,6 +1585,16 @@ export interface PublicEvent {
    * @nullable
    */
   timezone?: string | null;
+  /**
+   * Override page title used in <title> and og:title. Defaults to the event title.
+   * @nullable
+   */
+  seoTitle?: string | null;
+  /**
+   * Override meta description. Defaults to teaser or description excerpt.
+   * @nullable
+   */
+  seoDescription?: string | null;
 }
 
 export interface AdminEvent {
@@ -1634,6 +1644,16 @@ export interface AdminEvent {
    * @nullable
    */
   timezone?: string | null;
+  /**
+   * Override page title used in <title> and og:title.
+   * @nullable
+   */
+  seoTitle?: string | null;
+  /**
+   * Override meta description.
+   * @nullable
+   */
+  seoDescription?: string | null;
 }
 
 export type AdminFormSubmissionPayload = { [key: string]: unknown };
@@ -1886,6 +1906,16 @@ export interface EventInput {
    * @nullable
    */
   timezone?: string | null;
+  /**
+   * Override page title used in <title> and og:title.
+   * @nullable
+   */
+  seoTitle?: string | null;
+  /**
+   * Override meta description.
+   * @nullable
+   */
+  seoDescription?: string | null;
 }
 
 export type ServiceStatus = (typeof ServiceStatus)[keyof typeof ServiceStatus];

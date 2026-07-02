@@ -443,6 +443,8 @@ function publicShape(enriched: EnrichedEvent) {
     speakers,
     hasSessions,
     timezone: event.timezone ?? null,
+    seoTitle: event.seoTitle ?? null,
+    seoDescription: event.seoDescription ?? null,
   };
 }
 
@@ -474,6 +476,8 @@ function adminShape(enriched: EnrichedEvent) {
     updatedAt: event.updatedAt,
     speakers,
     timezone: event.timezone ?? null,
+    seoTitle: event.seoTitle ?? null,
+    seoDescription: event.seoDescription ?? null,
   };
 }
 
@@ -565,6 +569,8 @@ router.post("/admin/events", requireAdmin, async (req, res): Promise<void> => {
       imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
       timezone: parsed.data.timezone ?? null,
+      seoTitle: parsed.data.seoTitle ?? null,
+      seoDescription: parsed.data.seoDescription ?? null,
     })
     .returning();
   if (parsed.data.speakerIds !== undefined) {
@@ -636,6 +642,8 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       imageMediaId: parsed.data.imageMediaId ?? null,
       recordingVideoId,
       timezone: parsed.data.timezone ?? null,
+      seoTitle: parsed.data.seoTitle ?? null,
+      seoDescription: parsed.data.seoDescription ?? null,
     })
     .where(eq(eventsTable.id, params.data.id))
     .returning();
