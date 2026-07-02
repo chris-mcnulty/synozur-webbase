@@ -152,7 +152,7 @@ export default function HomeB() {
         rawTitle
         description="Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes."
         path="/"
-        image="/opengraph.jpg"
+        image="/og/og-home.jpg"
       />
 
       {/* 1. Hero — two-column: copy + video left, Feed carousel right */}

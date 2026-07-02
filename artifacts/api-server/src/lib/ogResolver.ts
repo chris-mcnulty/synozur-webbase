@@ -74,13 +74,13 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
     title: "AI-First Operating Model for CEOs & Boards | Synozur Alliance",
     description:
       "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-home.jpg",
   },
   "/home-b": {
     title: "AI-First Operating Model for CEOs & Boards | Synozur Alliance",
     description:
       "Synozur is the AI-native advisory firm for founder-led and PE-backed CEOs. We redesign your operating model for an AI-first world — with measurable outcomes.",
-    image: DEFAULT_IMAGE_PATH,
+    image: "/og/og-home.jpg",
   },
   "/sprint": {
     title: "The AI & North Star Sprint — The Synozur Alliance",
