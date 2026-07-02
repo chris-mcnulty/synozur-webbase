@@ -820,7 +820,9 @@ export type SeoArtifactKind =
   | "case-study"
   | "model"
   | "workshop"
-  | "polaris";
+  | "polaris"
+  | "event"
+  | "collateral";
 
 export interface SeoAuditFinding {
   kind: SeoArtifactKind;

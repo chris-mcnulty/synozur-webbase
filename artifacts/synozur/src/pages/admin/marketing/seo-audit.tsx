@@ -36,6 +36,8 @@ const KIND_LABEL: Record<SeoArtifactKind, string> = {
   model: "Models",
   workshop: "Workshops",
   polaris: "Polaris",
+  event: "Events",
+  collateral: "Collateral",
 };
 
 // Applications and case studies don't have dedicated /:id/edit routes today,
@@ -59,6 +61,10 @@ function editorHref(kind: SeoArtifactKind, id: string): string {
       return `/library/workshops/${id}/edit`;
     case "polaris":
       return `/library/polaris-episodes/${id}/edit`;
+    case "event":
+      return `/people/events/${id}`;
+    case "collateral":
+      return `/library/collateral/${id}/edit`;
   }
 }
 
@@ -96,6 +102,8 @@ function groupFindings(findings: SeoAuditFinding[]): Record<SeoArtifactKind, Seo
     model: [],
     workshop: [],
     polaris: [],
+    event: [],
+    collateral: [],
   };
   for (const f of findings) empty[f.kind].push(f);
   return empty;
