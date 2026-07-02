@@ -32,3 +32,11 @@ from `siteOrigin()` (`SITE_URL` env, else www.synozur.com). On dev the image
 exists; on prod the post/image can 404 until the prod DB is synced. Owner chose
 to publish live first rather than fix the dev-vs-prod origin — do not change
 `siteOrigin()` without asking.
+
+**Re-confirmed July 2026:** offered to point share links at the baseline domain
+for the pre-launch phase; owner explicitly chose to leave siteOrigin at
+www.synozur.com. Consequence: all og:image URLs 404 on the old Wix site, so
+real LinkedIn/Slack/Teams/X unfurls show NO bespoke image for any page
+(including the Sprint cards /sprint /proof /fit /book) until the www cutover.
+Do not re-raise; re-validate unfurls (and flush platform caches via LinkedIn
+Post Inspector) after cutover + republish.
