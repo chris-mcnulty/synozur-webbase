@@ -79,7 +79,7 @@ interface SearchResult {
 }
 
 interface SearchResponse {
-  results: SearchResult[];
+  items: SearchResult[];
 }
 
 type Filter = "false" | "true" | "all";
@@ -199,7 +199,7 @@ function ContentSearchPicker({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  const results = searchQ.data?.results ?? [];
+  const results = searchQ.data?.items ?? [];
 
   return (
     <div className="space-y-2">
