@@ -44,7 +44,8 @@
     "test:seo-coverage": "node --import tsx --test src/lib/seoCoverage.test.ts",
     "test:traffic-bot": "node --import tsx --test src/lib/traffic.test.ts",
     "test:social-bot-renderer": "node --import tsx --test src/middlewares/socialBotRenderer.test.ts",
-    "test:og-static-pages": "node --import tsx --test src/lib/ogResolver.staticPages.test.ts"
+    "test:og-static-pages": "node --import tsx --test src/lib/ogResolver.staticPages.test.ts",
+    "test:og-images": "node --import tsx --test src/lib/ogImages.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",
