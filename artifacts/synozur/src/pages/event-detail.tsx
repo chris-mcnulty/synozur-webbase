@@ -323,7 +323,7 @@ export default function EventDetail() {
       <EventJsonLd
         slug={slug!}
         name={event.title}
-        description={event.teaser ?? event.description ?? null}
+        description={event.seoDescription ?? event.teaser ?? event.description ?? null}
         image={event.imageUrl ?? null}
         startDate={event.startDate}
         location={event.location ?? null}
