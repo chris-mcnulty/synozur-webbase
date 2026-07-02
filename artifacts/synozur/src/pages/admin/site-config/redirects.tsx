@@ -227,21 +227,30 @@ export default function AdminWixRedirects() {
 
         {canWrite && (
           <Card className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Exact paths or wildcard prefixes. Use <code className="bg-muted px-1 rounded">/*</code> at
+              the end of the source to capture a slug — e.g.{" "}
+              <code className="bg-muted px-1 rounded">/post/*</code> →{" "}
+              <code className="bg-muted px-1 rounded">/insights/*</code> rewrites{" "}
+              <code className="bg-muted px-1 rounded">/post/my-slug</code> to{" "}
+              <code className="bg-muted px-1 rounded">/insights/my-slug</code>.
+              Exact matches always take priority over wildcards.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_120px_auto] gap-3 items-end">
               <div>
-                <Label htmlFor="sourcePath">Old Wix path</Label>
+                <Label htmlFor="sourcePath">Source path</Label>
                 <Input
                   id="sourcePath"
-                  placeholder="/post"
+                  placeholder="/post/*"
                   value={draft.sourcePath}
                   onChange={(e) => setDraft((d) => ({ ...d, sourcePath: e.target.value }))}
                 />
               </div>
               <div>
-                <Label htmlFor="targetPath">New path</Label>
+                <Label htmlFor="targetPath">Target path</Label>
                 <Input
                   id="targetPath"
-                  placeholder="/insights"
+                  placeholder="/insights/*"
                   value={draft.targetPath}
                   onChange={(e) => setDraft((d) => ({ ...d, targetPath: e.target.value }))}
                 />

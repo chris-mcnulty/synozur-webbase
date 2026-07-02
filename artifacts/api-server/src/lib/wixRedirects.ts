@@ -3,8 +3,16 @@ import { db, wixRedirectsTable, type WixRedirect } from "@workspace/db";
 import { logger } from "./logger";
 
 /**
- * In-memory cache of active Wix redirects keyed by normalized source path.
- * Re-hydrated on a TTL and invalidated whenever admin CRUD mutates the table.
+ * In-memory cache of active Wix redirects.
+ *
+ * Two structures are maintained:
+ *   exact    — keyed by normalized source path for O(1) lookups.
+ *   prefixes — ordered list of wildcard prefix rules (source ends with "/*").
+ *              Checked only when the exact map produces no match. The first
+ *              matching prefix wins (DB insertion order, then alphabetical).
+ *
+ * Cache is re-hydrated on a 60-second TTL and invalidated whenever admin
+ * CRUD mutates the table.
  */
 const CACHE_TTL_MS = 60 * 1000;
 
@@ -14,9 +22,23 @@ interface CacheEntry {
   id: string;
 }
 
-let cache: Map<string, CacheEntry> | null = null;
+interface PrefixPattern {
+  /** Normalized path prefix, e.g. "/post/" */
+  prefix: string;
+  /** Target template, may contain "*" which is replaced with the captured suffix. */
+  targetTemplate: string;
+  statusCode: number;
+  id: string;
+}
+
+interface RedirectCache {
+  exact: Map<string, CacheEntry>;
+  prefixes: PrefixPattern[];
+}
+
+let cache: RedirectCache | null = null;
 let cacheLoadedAt = 0;
-let inflight: Promise<Map<string, CacheEntry>> | null = null;
+let inflight: Promise<RedirectCache> | null = null;
 
 export function normalizePath(raw: string): string {
   if (!raw) return "/";
@@ -25,36 +47,50 @@ export function normalizePath(raw: string): string {
   return stripped.toLowerCase();
 }
 
-async function loadRedirects(): Promise<Map<string, CacheEntry>> {
+async function loadRedirects(): Promise<RedirectCache> {
   const rows = await db
     .select()
     .from(wixRedirectsTable)
     .where(eq(wixRedirectsTable.active, true));
-  const map = new Map<string, CacheEntry>();
+
+  const exact = new Map<string, CacheEntry>();
+  const prefixes: PrefixPattern[] = [];
+
   for (const r of rows) {
-    map.set(normalizePath(r.sourcePath), {
-      targetPath: r.targetPath,
-      statusCode: r.statusCode,
-      id: r.id,
-    });
+    const normalized = normalizePath(r.sourcePath);
+    if (normalized.endsWith("/*")) {
+      // Wildcard prefix rule: "/post/*" → prefix="/post/"
+      prefixes.push({
+        prefix: normalized.slice(0, -1), // strip the trailing "*", keep "/"
+        targetTemplate: r.targetPath,
+        statusCode: r.statusCode,
+        id: r.id,
+      });
+    } else {
+      exact.set(normalized, {
+        targetPath: r.targetPath,
+        statusCode: r.statusCode,
+        id: r.id,
+      });
+    }
   }
-  return map;
+
+  return { exact, prefixes };
 }
 
-async function getCache(): Promise<Map<string, CacheEntry>> {
+async function getCache(): Promise<RedirectCache> {
   const now = Date.now();
   if (cache && now - cacheLoadedAt < CACHE_TTL_MS) return cache;
   if (inflight) return inflight;
   inflight = loadRedirects()
-    .then((map) => {
-      cache = map;
+    .then((result) => {
+      cache = result;
       cacheLoadedAt = Date.now();
-      return map;
+      return result;
     })
     .catch((err) => {
       logger.error({ err }, "wix-redirects: failed to load");
-      // Fall back to last-known cache, or an empty map.
-      return cache ?? new Map();
+      return cache ?? { exact: new Map(), prefixes: [] };
     })
     .finally(() => {
       inflight = null;
@@ -68,8 +104,27 @@ export function invalidateRedirectCache(): void {
 }
 
 export async function lookupRedirect(path: string): Promise<CacheEntry | null> {
-  const map = await getCache();
-  return map.get(normalizePath(path)) ?? null;
+  const { exact, prefixes } = await getCache();
+  const normalized = normalizePath(path);
+
+  // Exact match has priority over wildcards.
+  const hit = exact.get(normalized);
+  if (hit) return hit;
+
+  // Prefix-wildcard match: first matching rule wins.
+  // Source "/post/*" matches any path starting with "/post/".
+  // The captured suffix replaces "*" in the target template.
+  for (const p of prefixes) {
+    if (normalized.startsWith(p.prefix)) {
+      const suffix = normalized.slice(p.prefix.length);
+      const targetPath = p.targetTemplate.includes("*")
+        ? p.targetTemplate.replace("*", suffix)
+        : p.targetTemplate;
+      return { targetPath, statusCode: p.statusCode, id: p.id };
+    }
+  }
+
+  return null;
 }
 
 export async function recordHit(id: string): Promise<void> {
@@ -87,6 +142,9 @@ export async function recordHit(id: string): Promise<void> {
  * Express middleware that checks the incoming request path against the Wix
  * redirect table and 301s (or 302, per row) when a match is found. Query
  * string is preserved.
+ *
+ * Wildcard prefix rules (source path ending in "/*") are supported:
+ *   /post/*  →  /insights/*   captures and rewrites the slug.
  */
 export function wixRedirectMiddleware() {
   return async function (

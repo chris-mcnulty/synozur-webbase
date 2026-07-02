@@ -3677,6 +3677,25 @@ export async function runMigrations(): Promise<void> {
       WHERE landing_path LIKE 'http%';
     `);
 
+    // #347 — Seed wildcard redirect: /post/* → /insights/*
+    // -----------------------------------------------------------------
+    // Legacy Wix blog posts lived at /post/[slug]; the new site serves them
+    // at /insights/[slug]. A wildcard prefix rule in wix_redirects handles
+    // the rewrite. The middleware now understands "/*" suffix as a prefix
+    // pattern and substitutes the captured slug into the target template.
+    // ON CONFLICT DO NOTHING makes this idempotent.
+    await db.execute(sql`
+      INSERT INTO wix_redirects (source_path, target_path, status_code, active, notes)
+      VALUES (
+        '/post/*',
+        '/insights/*',
+        301,
+        true,
+        'Wildcard: legacy Wix blog /post/[slug] → /insights/[slug]'
+      )
+      ON CONFLICT (source_path) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
