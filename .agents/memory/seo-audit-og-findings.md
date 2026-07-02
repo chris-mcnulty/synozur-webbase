@@ -20,9 +20,18 @@ explicit `hasEditorImage` arg for tables whose image lives behind an id (posts:
 `ogImageId ?? heroImageId`) rather than a URL column.
 
 **Convention — suppress unactionable findings:** a kind with NO image field of any
-kind (services, solutions) must strip BOTH `ogImage*` and `og_image_missing` in its
-per-kind filter (`m.startsWith("ogImage") && m !== "og_image_missing"`). Otherwise
-every such page shows a permanent, unfixable finding = pure noise.
+kind (services, solutions) must strip BOTH `ogImage*` and `og_image_missing`.
+Otherwise every such page shows a permanent, unfixable finding = pure noise.
+
+**Centralized policy (#360):** per-kind OG suppression is no longer inline in each
+audit function — it lives in the exported `OG_FINDING_POLICY` (a total
+`Record<ArtifactKind, {suppressOgImageAutofill, suppressOgImageMissing}>`) applied via
+`filterOgFindings(kind, missing)`. Because the Record is total, adding a new
+`ArtifactKind` without a policy entry is a compile error. Note the autofill key is
+camelCase `ogImage` and the warning is snake_case `og_image_missing`, so
+`startsWith("ogImage")` matches ONLY the autofill key. Regression-tested in
+`seoAudit.ogFindings.test.ts` (`pnpm --filter @workspace/api-server run test:seo-og-findings`).
+Posts still separately drop `seoTitle*` inline (not OG-related).
 
 **Why:** marketing wants a heads-up only where they can act. The dynamic OG card is
 valid+branded, so "missing" is advisory, not an error; surfacing it where there's

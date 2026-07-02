@@ -106,7 +106,7 @@ function suggestDescription(sources: Array<string | null | undefined>): string {
  * AND for which we have a non-empty suggestion; rows with nothing missing
  * are filtered out by the caller.
  */
-function buildFinding(args: {
+export function buildFinding(args: {
   kind: ArtifactKind;
   id: string;
   slug: string;
@@ -188,6 +188,50 @@ function buildFinding(args: {
   };
 }
 
+/**
+ * #360 — Centralized, per-kind suppression of OG-image findings so the branching
+ * can't silently regress as new audited kinds are added. Two independent switches:
+ *
+ *  - `suppressOgImageAutofill` — drop the autofillable "ogImage" promote finding.
+ *    Set for kinds with NO writable `og_image` URL column (posts, services,
+ *    solutions, workshops): there's nowhere for `applyAutofill` to persist it.
+ *  - `suppressOgImageMissing` — drop the "og_image_missing" warning. Set for kinds
+ *    with NO editor share-image field of ANY kind (services, solutions): the
+ *    warning would be permanent + unfixable = pure noise. Kinds that DO have a
+ *    fixable share image (insights via hero/og ids, workshops via heroImage,
+ *    polaris via artwork/og) keep the warning so it stays actionable.
+ *
+ * Because this is a total `Record<ArtifactKind, …>`, adding a new `ArtifactKind`
+ * without a policy entry is a compile error — the whole point of the task.
+ */
+export const OG_FINDING_POLICY: Record<
+  ArtifactKind,
+  { suppressOgImageAutofill: boolean; suppressOgImageMissing: boolean }
+> = {
+  insight: { suppressOgImageAutofill: true, suppressOgImageMissing: false },
+  service: { suppressOgImageAutofill: true, suppressOgImageMissing: true },
+  solution: { suppressOgImageAutofill: true, suppressOgImageMissing: true },
+  application: { suppressOgImageAutofill: false, suppressOgImageMissing: false },
+  "case-study": { suppressOgImageAutofill: false, suppressOgImageMissing: false },
+  model: { suppressOgImageAutofill: false, suppressOgImageMissing: false },
+  workshop: { suppressOgImageAutofill: true, suppressOgImageMissing: false },
+  polaris: { suppressOgImageAutofill: false, suppressOgImageMissing: false },
+};
+
+/**
+ * Apply the OG-image suppression policy for a kind to a finding's `missing` list.
+ * Note: the autofill key is camelCase `ogImage` while the warning is snake_case
+ * `og_image_missing`, so `startsWith("ogImage")` matches only the autofill key.
+ */
+export function filterOgFindings(kind: ArtifactKind, missing: string[]): string[] {
+  const policy = OG_FINDING_POLICY[kind];
+  return missing.filter((m) => {
+    if (policy.suppressOgImageAutofill && m.startsWith("ogImage")) return false;
+    if (policy.suppressOgImageMissing && m === "og_image_missing") return false;
+    return true;
+  });
+}
+
 async function auditPosts(): Promise<{
   total: number;
   findings: AuditFinding[];
@@ -236,11 +280,12 @@ async function auditPosts(): Promise<{
       descriptionSources: [r.excerpt, r.subtitle, r.bodyMarkdown, r.bodyHtml],
     });
     if (f) {
-      // Drop seoTitle check — Meta component fills it from `title`. Keep the
-      // og_image_missing warning (blog posts are frequently created and
-      // regularly shared, so a missing custom share image matters most here).
-      f.missing = f.missing.filter(
-        (m) => !m.startsWith("seoTitle") && !m.startsWith("ogImage"),
+      // Drop seoTitle check — Meta component fills it from `title`. OG handling
+      // (drop autofill "ogImage", keep the actionable og_image_missing warning)
+      // is centralized in OG_FINDING_POLICY.
+      f.missing = filterOgFindings(
+        "insight",
+        f.missing.filter((m) => !m.startsWith("seoTitle")),
       );
       if (f.missing.length) findings.push(f);
     }
@@ -290,13 +335,10 @@ async function auditServices(): Promise<{
     });
     if (f) {
       // Services have no image column of any kind (no og_image, no hero), so
-      // they ALWAYS render the dynamic OG card. Drop both the autofill "ogImage"
-      // check and the "og_image_missing" warning — there's no field to fix, so
-      // surfacing an unresolvable finding would just be permanent noise
-      // (mirrors the workshop ogImage-drop precedent).
-      f.missing = f.missing.filter(
-        (m) => !m.startsWith("ogImage") && m !== "og_image_missing",
-      );
+      // they ALWAYS render the dynamic OG card. OG_FINDING_POLICY drops both the
+      // autofill "ogImage" check and the "og_image_missing" warning — there's no
+      // field to fix, so surfacing either would be permanent noise.
+      f.missing = filterOgFindings("service", f.missing);
       if (f.missing.length) findings.push(f);
     }
   }
@@ -344,11 +386,9 @@ async function auditSolutions(): Promise<{
     });
     if (f) {
       // Solutions have no image column of any kind (see auditServices note):
-      // drop the autofill "ogImage" check and the "og_image_missing" warning —
-      // nothing to fix, so it would only be permanent noise.
-      f.missing = f.missing.filter(
-        (m) => !m.startsWith("ogImage") && m !== "og_image_missing",
-      );
+      // OG_FINDING_POLICY drops both the autofill "ogImage" check and the
+      // "og_image_missing" warning — nothing to fix, so it would only be noise.
+      f.missing = filterOgFindings("solution", f.missing);
       if (f.missing.length) findings.push(f);
     }
   }
@@ -402,7 +442,10 @@ async function auditApplications(): Promise<{
       fallbackImage: firstNonEmpty(r.screenshot, r.logo),
       descriptionSources: [r.tagline, r.shortSummary, firstPara],
     });
-    if (f) findings.push(f);
+    if (f) {
+      f.missing = filterOgFindings("application", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -448,7 +491,10 @@ async function auditCaseStudies(): Promise<{
       fallbackImage: r.heroImage,
       descriptionSources: [r.headline, r.summary],
     });
-    if (f) findings.push(f);
+    if (f) {
+      f.missing = filterOgFindings("case-study", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -494,7 +540,10 @@ async function auditModels(): Promise<{
       fallbackImage: r.heroImage,
       descriptionSources: [r.shortDescription, r.longDescriptionHtml],
     });
-    if (f) findings.push(f);
+    if (f) {
+      f.missing = filterOgFindings("model", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
@@ -538,10 +587,10 @@ async function auditWorkshops(): Promise<{
     });
     if (f) {
       // Workshops have no ogImage column; heroImage serves as the implicit OG
-      // image (same as posts). Drop the autofill "ogImage" check to avoid
-      // unresolvable findings that applyAutofill can't persist — but keep the
-      // og_image_missing warning (it points at the fixable hero image field).
-      f.missing = f.missing.filter((m) => !m.startsWith("ogImage"));
+      // image (same as posts). OG_FINDING_POLICY drops the autofill "ogImage"
+      // check (applyAutofill can't persist it) but keeps the og_image_missing
+      // warning (it points at the fixable hero image field).
+      f.missing = filterOgFindings("workshop", f.missing);
       if (f.missing.length) findings.push(f);
     }
   }
@@ -594,7 +643,10 @@ async function auditPolaris(): Promise<{
       fallbackImage: r.artworkUrl,
       descriptionSources: [r.summary],
     });
-    if (f) findings.push(f);
+    if (f) {
+      f.missing = filterOgFindings("polaris", f.missing);
+      if (f.missing.length) findings.push(f);
+    }
   }
   return { total: rows.length, findings };
 }
