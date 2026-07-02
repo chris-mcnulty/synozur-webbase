@@ -172,12 +172,6 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
       "Join the transformation team. We guide organizations through change rooted in people, powered by technology, and driven by purpose.",
     image: DEFAULT_IMAGE_PATH,
   },
-  "/services-overview": {
-    title: "Services Overview | The Synozur Alliance",
-    description:
-      "The Synozur Alliance offers a comprehensive suite of transformation services — AI strategy, GTM transformation, organizational capability building, and consulting — designed to deliver measurable outcomes.",
-    image: DEFAULT_IMAGE_PATH,
-  },
   "/polaris": {
     title: "Polaris Podcast | The Synozur Alliance",
     description:
