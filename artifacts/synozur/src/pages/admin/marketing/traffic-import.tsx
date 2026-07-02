@@ -103,9 +103,24 @@ const CANONICAL_FIELDS: Array<{ key: string; required?: boolean; aliases: string
     aliases: ["utmcontent", "utm_content", "utm campaign content", "utm_campaign_content"],
   },
   { key: "country", aliases: ["country", "country_code"] },
-  { key: "deviceType", aliases: ["devicetype", "device_type", "device"] },
-  { key: "browserName", aliases: ["browsername", "browser"] },
-  { key: "osName", aliases: ["osname", "os", "operating_system"] },
+  { key: "region", aliases: ["region", "state", "province"] },
+  { key: "city", aliases: ["city"] },
+  {
+    key: "deviceType",
+    aliases: ["devicetype", "device_type", "device", "device type"],
+  },
+  {
+    key: "browserName",
+    aliases: ["browsername", "browser", "browser name"],
+  },
+  {
+    key: "browserVersion",
+    aliases: ["browserversion", "browser_version", "browser version"],
+  },
+  {
+    key: "osName",
+    aliases: ["osname", "os", "operating_system", "operating system"],
+  },
   { key: "userAgent", aliases: ["useragent", "user_agent", "ua"] },
 ];
 
@@ -227,20 +242,61 @@ export default function TrafficImportPage() {
     return null;
   }, [headersKey, mode, csvPreview.headers]);
 
-  const missingRequired = CANONICAL_FIELDS.filter((f) => f.required).filter(
-    (f) => !Object.values(columnMap).includes(f.key),
-  );
+  // Session synthesis: when no sessionKey column exists but _ip + viewedAt do,
+  // the client will emit sessionKey = "ip|date" for each row.
+  const mappedValues = Object.values(columnMap);
+  const hasSessionKey = mappedValues.includes("sessionKey");
+  const hasIpCol = mappedValues.includes("_ip");
+  const hasViewedAtCol = mappedValues.includes("viewedAt");
+  const willSynthesizeSession = !hasSessionKey && hasIpCol && hasViewedAtCol;
+
+  const missingRequired = CANONICAL_FIELDS.filter((f) => f.required).filter((f) => {
+    if (f.key === "sessionKey" && willSynthesizeSession) return false;
+    return !mappedValues.includes(f.key);
+  });
+
+  // Wix "Traffic category" values → our canonical trafficSource values.
+  const WIX_SOURCE_MAP: Record<string, string> = {
+    "organic social": "social",
+    "direct": "direct",
+    "referral": "referral",
+    "ai platforms": "ai",
+    "organic search": "organic",
+    "paid search": "paid",
+    "paid social": "paid",
+    "email": "referral",
+    "paid email": "paid",
+  };
 
   function buildRemappedCsv(): string {
     // Rewrite the CSV header row using the user's mapping, dropping
-    // un-mapped columns. The server's parseCsvAsObjects will then see
-    // canonical keys directly.
+    // un-mapped columns and the synthetic _ip helper.
+    // The server's parseCsvAsObjects will then see canonical keys directly.
     const cols = csvPreview.headers
-      .map((h, idx) => ({ idx, target: columnMap[h] ?? "" }))
-      .filter((c) => c.target);
-    const header = cols.map((c) => c.target).join(",");
+      .map((h, idx) => ({ h, idx, target: columnMap[h] ?? "" }))
+      .filter((c) => c.target && c.target !== "_ip");
+
+    // For session synthesis: find source column indices for ip and viewedAt.
+    const ipSrcIdx = willSynthesizeSession
+      ? csvPreview.headers.findIndex((h) => columnMap[h] === "_ip")
+      : -1;
+    const dateSrcIdx = willSynthesizeSession
+      ? csvPreview.headers.findIndex((h) => columnMap[h] === "viewedAt")
+      : -1;
+
+    // Find index of trafficSource output column (for value normalization).
+    const trafficSrcOutputIdx = cols.findIndex((c) => c.target === "trafficSource");
+    // Find index of deviceType output column (for lowercase normalization).
+    const deviceTypeOutputIdx = cols.findIndex((c) => c.target === "deviceType");
+
+    const header = [
+      ...cols.map((c) => c.target),
+      ...(willSynthesizeSession ? ["sessionKey"] : []),
+    ].join(",");
+
     const lines = content.split(/\r?\n/);
     const dataLines = lines.slice(1).filter((l) => l.length > 0);
+
     const splitFn = (line: string): string[] => {
       const out: string[] = [];
       let cur = "";
@@ -248,26 +304,43 @@ export default function TrafficImportPage() {
       for (let i = 0; i < line.length; i++) {
         const c = line[i];
         if (inQ) {
-          if (c === '"' && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else if (c === '"') inQ = false;
+          if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (c === '"') inQ = false;
           else cur += c;
         } else if (c === '"') inQ = true;
-        else if (c === ",") {
-          out.push(cur);
-          cur = "";
-        } else cur += c;
+        else if (c === ",") { out.push(cur); cur = ""; }
+        else cur += c;
       }
       out.push(cur);
       return out;
     };
+
     const escape = (s: string) =>
       /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+
     const remapped = dataLines.map((line) => {
       const parts = splitFn(line);
-      return cols.map((c) => escape(parts[c.idx] ?? "")).join(",");
+      const cells = cols.map((c, outIdx) => {
+        let val = (parts[c.idx] ?? "").trim();
+        // Normalize Wix "Traffic category" values to canonical trafficSource.
+        if (outIdx === trafficSrcOutputIdx) {
+          val = WIX_SOURCE_MAP[val.toLowerCase()] ?? val.toLowerCase();
+        }
+        // Normalize device type to lowercase (Wix exports "Desktop"/"Mobile"/"Tablet").
+        if (outIdx === deviceTypeOutputIdx) {
+          val = val.toLowerCase();
+        }
+        return escape(val);
+      });
+      // Synthesize sessionKey = "ip|date" when no native session column.
+      if (willSynthesizeSession) {
+        const ip = (parts[ipSrcIdx] ?? "").trim();
+        const date = (parts[dateSrcIdx] ?? "").trim();
+        cells.push(escape(`${ip}|${date}`));
+      }
+      return cells.join(",");
     });
+
     return [header, ...remapped].join("\n");
   }
 
@@ -458,15 +531,25 @@ export default function TrafficImportPage() {
                           data-testid={`map-${h}`}
                         >
                           <option value="">(skip)</option>
-                          {CANONICAL_KEYS.map((k) => (
-                            <option key={k} value={k}>
-                              {k}
+                          {CANONICAL_FIELDS.map((f) => (
+                            <option key={f.key} value={f.key}>
+                              {f.key === "_ip" ? "_ip (use to synthesize session key)" : f.key}
                             </option>
                           ))}
                         </select>
                       </div>
                     ))}
                   </div>
+                  {willSynthesizeSession && (
+                    <div className="mt-2 text-xs text-blue-600 flex items-start gap-1">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        No session ID column found — a <code>sessionKey</code> will be synthesized
+                        from <strong>IP address + Date</strong> per row. Same IP on the same day
+                        counts as one session. Re-importing the same file is idempotent.
+                      </span>
+                    </div>
+                  )}
                   {missingRequired.length > 0 && (
                     <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
                       <AlertCircle className="h-3.5 w-3.5" />
