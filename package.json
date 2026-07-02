@@ -8,6 +8,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck && pnpm run check:removed-identifiers",
+    "typecheck:ci": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"!@workspace/mockup-sandbox\" --filter \"./scripts\" --if-present run typecheck && pnpm run check:removed-identifiers",
     "check:removed-identifiers": "pnpm --filter @workspace/scripts run check:removed-identifiers",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
