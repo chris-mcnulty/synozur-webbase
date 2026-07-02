@@ -28,6 +28,14 @@ args = "test:og-static-pages"
 task = "workflow.run"
 args = "test:og-dynamic"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:api-server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:libs"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -57,6 +65,28 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/api-server run test:og-dynamic"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:api-server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:libs"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run typecheck:libs"
 
 [workflows.workflow.metadata]
 isValidation = true
