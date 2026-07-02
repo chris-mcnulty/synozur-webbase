@@ -108,14 +108,131 @@ function isThumbnailable(contentType: string): boolean {
   return true;
 }
 
-function streamObjectToResponse(
+// Some objects on production report a generic/missing content-type even
+// though the bytes are a perfectly good raster image (historical uploads
+// stored without a proper image/* metadata header). When a resize is
+// explicitly requested we can't trust `isThumbnailable` alone for these —
+// otherwise the `?w=1200&fmt=jpeg` OG variant silently ships the raw,
+// full-size original as the share card. Treat these as "unknown, sniff the
+// bytes" rather than "definitely not an image".
+export function isAmbiguousContentType(contentType: string): boolean {
+  const c = contentType.toLowerCase().split(";")[0].trim();
+  return (
+    c === "" ||
+    c === "application/octet-stream" ||
+    c === "binary/octet-stream" ||
+    c === "application/binary"
+  );
+}
+
+// Number of leading bytes we buffer to detect a raster image from its magic
+// number. 16 covers every signature we check below.
+const IMAGE_SNIFF_BYTES = 16;
+
+/**
+ * Magic-byte sniff for the raster image formats sharp can resize. Used only
+ * for objects whose stored content-type is ambiguous (octet-stream / empty);
+ * trusted `image/*` objects skip this entirely.
+ */
+export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
+  // JPEG: FF D8 FF
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return true;
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
+  ) {
+    return true;
+  }
+  // GIF: "GIF87a" / "GIF89a" → starts with "GIF8"
+  if (
+    buf.length >= 4 &&
+    buf[0] === 0x47 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x38
+  ) {
+    return true;
+  }
+  // WebP: "RIFF" .... "WEBP"
+  if (
+    buf.length >= 12 &&
+    buf.slice(0, 4).toString("ascii") === "RIFF" &&
+    buf.slice(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return true;
+  }
+  // BMP: "BM"
+  if (buf.length >= 2 && buf[0] === 0x42 && buf[1] === 0x4d) {
+    return true;
+  }
+  // TIFF: little-endian "II*\0" (49 49 2A 00) or big-endian "MM\0*" (4D 4D 00 2A)
+  if (
+    buf.length >= 4 &&
+    ((buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0x2a && buf[3] === 0x00) ||
+      (buf[0] === 0x4d && buf[1] === 0x4d && buf[2] === 0x00 && buf[3] === 0x2a))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Read up to `n` bytes from a web ReadableStream reader without discarding
+ * them. Returns the buffered header; the reader is left positioned after the
+ * consumed chunks so the remainder can be replayed via `readableFromReader`.
+ */
+async function peekBytes(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  n: number,
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  while (total < n) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const chunk = Buffer.from(value);
+    chunks.push(chunk);
+    total += chunk.length;
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Reconstruct a Node Readable from an already-buffered header plus the
+ * remaining, un-consumed bytes of a web stream reader.
+ */
+function readableFromReader(
+  header: Buffer,
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Readable {
+  async function* gen(): AsyncGenerator<Buffer> {
+    if (header.length > 0) yield header;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) return;
+      yield Buffer.from(value);
+    }
+  }
+  return Readable.from(gen());
+}
+
+async function streamObjectToResponse(
   source: globalThis.Response,
   res: Response,
   width: number | null,
   format: ThumbnailFormat = "webp",
-): void {
+): Promise<void> {
   const contentType = source.headers.get("content-type") ?? "application/octet-stream";
-  const canThumb = width != null && isThumbnailable(contentType);
 
   if (!source.body) {
     res.status(source.status);
@@ -124,7 +241,24 @@ function streamObjectToResponse(
     return;
   }
 
-  const nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
+  // Decide whether to resize and materialise the Node stream we'll pipe from.
+  // Trusted image/* objects stream directly. Ambiguous objects (octet-stream /
+  // empty content-type) are byte-sniffed so mislabeled raster images still get
+  // resized instead of shipping the full-size original as an OG share card.
+  let canThumb = false;
+  let nodeStream: Readable;
+  if (width != null && isThumbnailable(contentType)) {
+    canThumb = true;
+    nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
+  } else if (width != null && isAmbiguousContentType(contentType)) {
+    const reader = (source.body as ReadableStream<Uint8Array>).getReader();
+    const header = await peekBytes(reader, IMAGE_SNIFF_BYTES);
+    canThumb = bufferLooksLikeRasterImage(header);
+    nodeStream = readableFromReader(header, reader);
+  } else {
+    nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
+  }
+
   let transform: ReturnType<typeof sharp> | null = null;
   let finished = false;
 
@@ -365,7 +499,7 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
     }
 
     const response = await objectStorageService.downloadObject(file);
-    streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
+    await streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
   } catch (error) {
     req.log.error({ err: error }, "Error serving public object");
     res.status(500).json({ error: "Failed to serve public object" });
@@ -437,7 +571,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     //   return;
     // }
 
-    streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
+    await streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");

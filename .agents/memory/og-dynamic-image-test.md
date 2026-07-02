@@ -23,18 +23,23 @@ NOT served by the api-server — validate those on disk in
 flaky and, worse, currently RED for reasons unrelated to any given change — see
 below.
 
-## Prod serves octet-stream for some uploads; dev resizes correctly
-The storage resize path (`streamObjectToResponse` in `routes/storage.ts`) only
-resizes when the *source object's stored content-type* starts with `image/`
-(`isThumbnailable`). Some objects on production report
-`application/octet-stream`, so `?w=1200&fmt=jpeg` is silently ignored → the raw,
-full-size PNG (e.g. 1280×720, 3 MB, `application/octet-stream`) ships as the
-share card. The SAME objects fetched through the LOCAL dev server come back as
-proper `image/*` and DO resize to 1200-wide JPEG — so this is a
-production-storage-metadata problem, not a code bug in the resize path. Don't
-"fix" storage.ts to chase it; the dev→prod DB/asset re-sync is the intended
-remedy. If you ever point OG health checks at prod, expect these to fail until
-prod assets are re-synced.
+## Prod octet-stream uploads: now byte-sniffed in storage.ts (was a known gap)
+Some objects on production report `application/octet-stream` even though the
+bytes are a real raster image. Historically `streamObjectToResponse` only
+resized when the stored content-type started with `image/` (`isThumbnailable`),
+so `?w=1200&fmt=jpeg` was silently ignored and the raw full-size original
+shipped as the OG share card. The SAME objects came back `image/*` (and resized)
+through the LOCAL dev server, which is why the health test fetches local.
+
+**Fixed:** when a resize is requested and the content-type is *ambiguous*
+(`isAmbiguousContentType`: octet-stream / empty / binary), `streamObjectToResponse`
+now peeks the first 16 bytes and resizes iff `bufferLooksLikeRasterImage`
+(JPEG/PNG/GIF/WebP/BMP/TIFF magic). Trusted `image/*` still streams directly (no
+peek); videos/PDFs/unknown binaries pass through raw. So the resize path is
+robust to bad prod metadata now — dev→prod asset re-sync is no longer required
+just to fix share-image sizing. Unit-tested via `test:storage-sniff`.
+`streamObjectToResponse` is now `async` (peek awaits) — both storage route call
+sites `await` it.
 
 ## Size invariant
 Healthy dynamic images are always **1200px wide**; height varies because the
