@@ -129,6 +129,8 @@ function serializeItem(row: typeof collateralTable.$inferSelect) {
     serviceId: row.serviceId ?? undefined,
     solutionId: row.solutionId ?? undefined,
     polarisEpisodeId: row.polarisEpisodeId ?? undefined,
+    seoTitle: row.seoTitle ?? null,
+    seoDescription: row.seoDescription ?? null,
   };
 }
 
@@ -292,6 +294,8 @@ const CollateralBody = z.object({
   serviceId: z.string().uuid().nullish(),
   solutionId: z.string().uuid().nullish(),
   active: z.boolean().optional(),
+  seoTitle: z.string().nullish(),
+  seoDescription: z.string().nullish(),
 });
 
 const CollateralPatch = CollateralBody.partial();
@@ -873,6 +877,8 @@ router.post("/cms/collateral", ...adminGuard, async (req, res) => {
       serviceId: d.serviceId ?? null,
       solutionId: d.solutionId ?? null,
       active: d.active ?? true,
+      seoTitle: d.seoTitle ?? null,
+      seoDescription: d.seoDescription ?? null,
     })
     .returning();
   await audit({
@@ -946,6 +952,8 @@ router.patch("/cms/collateral/:id", ...adminGuard, async (req, res) => {
     if (d.serviceId !== undefined) updates.serviceId = d.serviceId;
     if (d.solutionId !== undefined) updates.solutionId = d.solutionId;
     if (d.active !== undefined) updates.active = d.active;
+    if (d.seoTitle !== undefined) updates.seoTitle = d.seoTitle;
+    if (d.seoDescription !== undefined) updates.seoDescription = d.seoDescription;
 
     // Re-derive url whenever slug or type changes. For external rows the
     // client url is preserved (those point at off-site resources). Client

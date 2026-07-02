@@ -8666,6 +8666,14 @@ components:
           type:
             - string
             - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
+          type:
+            - string
+            - 'null'
         active:
           type: boolean
         createdAt:
@@ -8865,6 +8873,14 @@ components:
             - string
             - 'null'
         downloadUrl:
+          type:
+            - string
+            - 'null'
+        seoTitle:
+          type:
+            - string
+            - 'null'
+        seoDescription:
           type:
             - string
             - 'null'

@@ -30,5 +30,9 @@ export interface UpsertCollateralBody {
   videoUrl?: string | null;
   /** @nullable */
   downloadUrl?: string | null;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
   active?: boolean;
 }

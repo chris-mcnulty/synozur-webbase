@@ -2718,6 +2718,8 @@ export const CmsListCollateralResponse = zod.object({
         .describe(
           'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
         ),
+      seoTitle: zod.string().nullish(),
+      seoDescription: zod.string().nullish(),
       active: zod.boolean(),
       createdAt: zod.string(),
       updatedAt: zod.string(),
@@ -2760,6 +2762,8 @@ export const CmsCreateCollateralBody = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -2859,6 +2863,8 @@ export const CmsGetCollateralResponse = zod.object({
     .describe(
       'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
     ),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
@@ -2903,6 +2909,8 @@ export const CmsUpdateCollateralBody = zod.object({
   featuredRank: zod.number().nullish(),
   videoUrl: zod.string().nullish(),
   downloadUrl: zod.string().nullish(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean().optional(),
 });
 
@@ -2973,6 +2981,8 @@ export const CmsUpdateCollateralResponse = zod.object({
     .describe(
       'Opaque reference to the source record that was synced into this collateral item (e.g. \"polaris_episode:<uuid>\", \"white_paper:<uuid>\"). Present on synced rows; null on manually created items.',
     ),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
   active: zod.boolean(),
   createdAt: zod.string(),
   updatedAt: zod.string(),

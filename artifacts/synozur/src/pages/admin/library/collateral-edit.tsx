@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, Lock } from "lucide-react";
+import { ArrowLeft, Save, X, Image as ImageIcon, Lock, Search } from "lucide-react";
 import { isSyncedCollateralType } from "@workspace/api-zod";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
@@ -95,6 +100,8 @@ interface FormState {
   // fragile `pillar` string heuristic for filtered rails. Empty string = unset.
   serviceId: string;
   solutionId: string;
+  seoTitle: string;
+  seoDescription: string;
 }
 
 // `downloadUrl` is intentionally not in this form. As of #122 it is a
@@ -122,6 +129,8 @@ const EMPTY: FormState = {
   active: true,
   serviceId: "",
   solutionId: "",
+  seoTitle: "",
+  seoDescription: "",
 };
 
 function fromItem(item: CollateralItem): FormState {
@@ -151,6 +160,8 @@ function fromItem(item: CollateralItem): FormState {
     active: item.active,
     serviceId: extra.serviceId ?? "",
     solutionId: extra.solutionId ?? "",
+    seoTitle: (item as unknown as { seoTitle?: string | null }).seoTitle ?? "",
+    seoDescription: (item as unknown as { seoDescription?: string | null }).seoDescription ?? "",
   };
 }
 
@@ -207,6 +218,8 @@ function toBody(f: FormState): UpsertCollateralBody {
     active: f.active,
     serviceId: f.serviceId || null,
     solutionId: f.solutionId || null,
+    seoTitle: f.seoTitle || null,
+    seoDescription: f.seoDescription || null,
   };
   return body;
 }
@@ -671,6 +684,56 @@ export default function CollateralEdit({ id }: Props) {
                 canWrite={canWrite && !contentReadOnly}
               />
             ) : null}
+          </Card>
+
+          {/* SEO panel */}
+          <Card className="p-4">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left"
+                  data-testid="seo-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">SEO</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Click to expand</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="seoTitle">SEO Title</Label>
+                  <Input
+                    id="seoTitle"
+                    placeholder={form.title || "Override page title for search engines"}
+                    value={form.seoTitle}
+                    onChange={(e) => update({ seoTitle: e.target.value })}
+                    disabled={contentDisabled}
+                    data-testid="input-seo-title"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Defaults to the item title. Keep under 65 characters for best results.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="seoDescription">SEO Description</Label>
+                  <Textarea
+                    id="seoDescription"
+                    rows={2}
+                    placeholder="Override meta description shown in search results"
+                    value={form.seoDescription}
+                    onChange={(e) => update({ seoDescription: e.target.value })}
+                    disabled={contentDisabled}
+                    data-testid="input-seo-description"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Defaults to the item description. Aim for 70–160 characters.
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
         </div>
 
