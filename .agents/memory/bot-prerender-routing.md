@@ -34,6 +34,24 @@ by fetching the path with a bot UA, but check synozur-owned paths via
 non-2xx or non-`text/html` upstream responses so a JSON error falls back to the
 static shell rather than being served as HTML.
 
+**Hub-listing gap (durable rule):** `agentRenderer`'s slug-less `switch` in
+`renderMainContent` must have a list builder for **every** DB-backed hub/listing
+route. Any hub missing a `case` falls through to the generic fallback body
+(`og.title` + `og.description` only), so bots see a near-empty page even though
+the individual detail pages render fine.
+**Why:** after the July 2026 Wix→new-site cutover, a competitor-intel diff crawler
+(Orbit) read the hollow `/case-studies` and `/solutions` hubs as "AI content /
+case studies / methodologies removed" and reported a strategic pivot. The content
+was never gone — only the hub prerenders were empty. (Two causes stacked: a
+domain migration makes diff crawlers report the wholesale URL/template change as a
+pivot regardless — that self-corrects on re-crawl — plus the real hollow-hub bug.)
+**How to apply:** when adding a new listing route, add both its slug-less hub
+builder AND keep its visibility filters identical to `routes/seo.ts`
+`collectEntries()` so hub content matches the sitemap. Verify in dev via
+`/api/seo/page?path=/<hub>`. List builders intentionally cap rows (insights 50,
+others 100) — a bounded bot payload is accepted and not required to match the
+uncapped sitemap exactly.
+
 **July 2026 correction:** `server.mjs` never ran in production — the `react-vite`
 integratedSkill on the synozur artifact forces static serving and the platform
 API blocks removing it. The fix for the Sprint funnel paths was different:

@@ -19,7 +19,9 @@
  *   - socialBotRenderer middleware (secondary net for direct api-server hits).
  */
 
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import {
   db,
   postsTable,
@@ -30,6 +32,11 @@ import {
   whitePapersTable,
   faqCategoriesTable,
   faqItemsTable,
+  caseStudiesTable,
+  workshopsTable,
+  collateralTable,
+  modelsTable,
+  applicationsTable,
 } from "@workspace/db";
 import { resolveOgData, htmlEscape, SITE_NAME, type OgData } from "./ogResolver";
 import { siteOrigin } from "./siteOrigin";
@@ -71,6 +78,21 @@ function fmtDate(d: Date | string | null | undefined): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * SQL fragment matching an artifact's publish window (publishedAt in the past or
+ * null, unpublishedAt in the future or null). Mirrors the visibility filters in
+ * routes/seo.ts so hub prerenders list exactly what the sitemap lists.
+ */
+function withinPublishWindow(
+  publishedAt: PgColumn,
+  unpublishedAt: PgColumn,
+): SQL {
+  return and(
+    sql`(${publishedAt} is null or ${publishedAt} <= now())`,
+    sql`(${unpublishedAt} is null or ${unpublishedAt} > now())`,
+  ) as SQL;
 }
 
 function navHtml(origin: string): string {
@@ -439,6 +461,225 @@ async function renderFaqList(): Promise<string> {
   return `<h1>Frequently Asked Questions</h1>\n${sections}`;
 }
 
+async function renderSolutionsList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: solutionsTable.title,
+      slug: solutionsTable.slug,
+      blurbCopy: solutionsTable.blurbCopy,
+      blurbHtml: solutionsTable.blurbHtml,
+    })
+    .from(solutionsTable)
+    .where(
+      and(
+        isNull(solutionsTable.deletedAt),
+        eq(solutionsTable.active, true),
+        eq(solutionsTable.status, "published"),
+        withinPublishWindow(
+          solutionsTable.publishedAt,
+          solutionsTable.unpublishedAt,
+        ),
+      ),
+    )
+    .orderBy(asc(solutionsTable.displayOrder))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const blurb =
+        (r.blurbCopy ? `<p>${htmlEscape(r.blurbCopy)}</p>` : "") ||
+        (r.blurbHtml ? `<div>${sanitizeCmsHtml(r.blurbHtml)}</div>` : "");
+      return `<li><h2><a href="${origin}/solutions/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${blurb}</li>`;
+    })
+    .join("\n");
+  return `<h1>Solutions</h1>\n<ul>${items}</ul>`;
+}
+
+async function renderCaseStudiesList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: caseStudiesTable.title,
+      slug: caseStudiesTable.slug,
+      headline: caseStudiesTable.headline,
+      summary: caseStudiesTable.summary,
+      industry: caseStudiesTable.industry,
+      client: caseStudiesTable.client,
+      publishedAt: caseStudiesTable.publishedAt,
+    })
+    .from(caseStudiesTable)
+    .where(
+      and(
+        isNull(caseStudiesTable.deletedAt),
+        eq(caseStudiesTable.active, true),
+        eq(caseStudiesTable.status, "published"),
+        withinPublishWindow(
+          caseStudiesTable.publishedAt,
+          caseStudiesTable.unpublishedAt,
+        ),
+      ),
+    )
+    .orderBy(desc(caseStudiesTable.publishedAt))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const meta = [r.client, r.industry].filter(Boolean).map(htmlEscape).join(" · ");
+      const blurb = r.headline || r.summary;
+      const body = blurb ? `<p>${htmlEscape(blurb)}</p>` : "";
+      return `<li><h2><a href="${origin}/case-studies/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${meta ? `<p>${meta}</p>` : ""}${body}</li>`;
+    })
+    .join("\n");
+  return `<h1>Case Studies</h1>\n<ul>${items}</ul>`;
+}
+
+async function renderWorkshopsList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: workshopsTable.title,
+      slug: workshopsTable.slug,
+      category: workshopsTable.category,
+      shortDescription: workshopsTable.shortDescription,
+    })
+    .from(workshopsTable)
+    .where(and(isNull(workshopsTable.deletedAt), eq(workshopsTable.active, true)))
+    .orderBy(asc(workshopsTable.title))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const cat = r.category ? `<p>${htmlEscape(r.category)}</p>` : "";
+      const desc = r.shortDescription
+        ? `<p>${htmlEscape(r.shortDescription)}</p>`
+        : "";
+      return `<li><h2><a href="${origin}/workshops/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${cat}${desc}</li>`;
+    })
+    .join("\n");
+  return `<h1>Workshops</h1>\n<ul>${items}</ul>`;
+}
+
+async function renderModelsList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: modelsTable.title,
+      slug: modelsTable.slug,
+      shortDescription: modelsTable.shortDescription,
+    })
+    .from(modelsTable)
+    .where(
+      and(
+        isNull(modelsTable.deletedAt),
+        eq(modelsTable.active, true),
+        eq(modelsTable.status, "published"),
+        withinPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
+      ),
+    )
+    .orderBy(asc(modelsTable.title))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const desc = r.shortDescription
+        ? `<p>${htmlEscape(r.shortDescription)}</p>`
+        : "";
+      return `<li><h2><a href="${origin}/models/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${desc}</li>`;
+    })
+    .join("\n");
+  return `<h1>Models</h1>\n<ul>${items}</ul>`;
+}
+
+async function renderApplicationsList(origin: string): Promise<string> {
+  const rows = await db
+    .select({
+      title: applicationsTable.title,
+      name: applicationsTable.name,
+      slug: applicationsTable.slug,
+      tagline: applicationsTable.tagline,
+      shortSummary: applicationsTable.shortSummary,
+    })
+    .from(applicationsTable)
+    .where(
+      and(
+        isNull(applicationsTable.deletedAt),
+        eq(applicationsTable.active, true),
+        eq(applicationsTable.status, "published"),
+        withinPublishWindow(
+          applicationsTable.publishedAt,
+          applicationsTable.unpublishedAt,
+        ),
+      ),
+    )
+    .orderBy(asc(applicationsTable.title))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const label = r.name || r.title;
+      const desc =
+        (r.tagline ? `<p>${htmlEscape(r.tagline)}</p>` : "") ||
+        (r.shortSummary ? `<p>${htmlEscape(r.shortSummary)}</p>` : "");
+      return `<li><h2><a href="${origin}/applications/${encodeURIComponent(r.slug)}">${htmlEscape(label)}</a></h2>${desc}</li>`;
+    })
+    .join("\n");
+  return `<h1>Applications</h1>\n<ul>${items}</ul>`;
+}
+
+// Collateral rows that don't have their own public landing routes under
+// /library (mirrors routes/seo.ts sitemap logic).
+const LIBRARY_EXCLUDED_TYPES = ["case_study", "event", "insight"] as const;
+
+async function renderCollateralList(
+  origin: string,
+  opts: { heading: string; routeBase: string; where: SQL },
+): Promise<string> {
+  const rows = await db
+    .select({
+      title: collateralTable.title,
+      slug: collateralTable.slug,
+      subtitle: collateralTable.subtitle,
+      description: collateralTable.description,
+      type: collateralTable.type,
+      publishedAt: collateralTable.publishedAt,
+    })
+    .from(collateralTable)
+    .where(opts.where)
+    .orderBy(desc(collateralTable.publishedAt))
+    .limit(100);
+  if (!rows.length) return "";
+  const items = rows
+    .map((r) => {
+      const desc =
+        (r.subtitle ? `<p>${htmlEscape(r.subtitle)}</p>` : "") ||
+        (r.description ? `<p>${htmlEscape(r.description)}</p>` : "");
+      return `<li><h2><a href="${origin}${opts.routeBase}/${encodeURIComponent(r.slug)}">${htmlEscape(r.title)}</a></h2>${desc}</li>`;
+    })
+    .join("\n");
+  return `<h1>${htmlEscape(opts.heading)}</h1>\n<ul>${items}</ul>`;
+}
+
+function renderLibraryList(origin: string): Promise<string> {
+  return renderCollateralList(origin, {
+    heading: "Library",
+    routeBase: "/library",
+    where: and(
+      isNull(collateralTable.deletedAt),
+      eq(collateralTable.active, true),
+      notInArray(collateralTable.type, [...LIBRARY_EXCLUDED_TYPES]),
+    ) as SQL,
+  });
+}
+
+function renderWebinarsList(origin: string): Promise<string> {
+  return renderCollateralList(origin, {
+    heading: "Webinars",
+    routeBase: "/webinars",
+    where: and(
+      isNull(collateralTable.deletedAt),
+      eq(collateralTable.active, true),
+      eq(collateralTable.type, "webinar"),
+    ) as SQL,
+  });
+}
+
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 async function renderMainContent(
@@ -463,6 +704,20 @@ async function renderMainContent(
         return renderEventsList(origin);
       case "faq":
         return renderFaqList();
+      case "solutions":
+        return renderSolutionsList(origin);
+      case "case-studies":
+        return renderCaseStudiesList(origin);
+      case "workshops":
+        return renderWorkshopsList(origin);
+      case "models":
+        return renderModelsList(origin);
+      case "applications":
+        return renderApplicationsList(origin);
+      case "library":
+        return renderLibraryList(origin);
+      case "webinars":
+        return renderWebinarsList(origin);
       default:
         return "";
     }
