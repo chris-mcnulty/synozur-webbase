@@ -28,6 +28,9 @@ import {
   landingPagesTable,
   assetsTable,
   contentParentPagesTable,
+  faqCategoriesTable,
+  faqItemsTable,
+  jobPostingsTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
 
@@ -167,6 +170,12 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
     title: "Careers at Synozur | The Synozur Alliance",
     description:
       "Join the transformation team. We guide organizations through change rooted in people, powered by technology, and driven by purpose.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/services-overview": {
+    title: "Services Overview | The Synozur Alliance",
+    description:
+      "The Synozur Alliance offers a comprehensive suite of transformation services — AI strategy, GTM transformation, organizational capability building, and consulting — designed to deliver measurable outcomes.",
     image: DEFAULT_IMAGE_PATH,
   },
   "/polaris": {
@@ -482,6 +491,74 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       } catch {
         // DB error — fall through to site defaults.
       }
+    }
+    return fallback;
+  }
+
+  // Three-segment paths: /faq/:category/:item and /careers/jobs/:slug.
+  const leaf = parts[2] ?? "";
+  if (leaf) {
+    try {
+      if (section === "faq") {
+        const [cat] = await db
+          .select({ id: faqCategoriesTable.id, name: faqCategoriesTable.name })
+          .from(faqCategoriesTable)
+          .where(
+            and(eq(faqCategoriesTable.slug, slug), isNull(faqCategoriesTable.deletedAt)),
+          )
+          .limit(1);
+        if (cat) {
+          const [item] = await db
+            .select({
+              question: faqItemsTable.question,
+              seoTitle: faqItemsTable.seoTitle,
+              seoDescription: faqItemsTable.seoDescription,
+            })
+            .from(faqItemsTable)
+            .where(
+              and(
+                eq(faqItemsTable.categoryId, cat.id),
+                eq(faqItemsTable.slug, leaf),
+                isNull(faqItemsTable.deletedAt),
+              ),
+            )
+            .limit(1);
+          if (item) {
+            return {
+              ...fallback,
+              title:
+                item.seoTitle ||
+                `${item.question} | ${cat.name} | The Synozur Alliance`,
+              description: item.seoDescription || defaults.description,
+            };
+          }
+        }
+      }
+      if (section === "careers" && slug === "jobs") {
+        const [job] = await db
+          .select({
+            title: jobPostingsTable.title,
+            description: jobPostingsTable.description,
+          })
+          .from(jobPostingsTable)
+          .where(
+            and(
+              eq(jobPostingsTable.slug, leaf),
+              eq(jobPostingsTable.status, "published"),
+            ),
+          )
+          .limit(1);
+        if (job) {
+          return {
+            ...fallback,
+            title: `${job.title} | Careers at Synozur`,
+            description:
+              (job.description ?? "").slice(0, 200).trim() || defaults.description,
+          };
+        }
+      }
+    } catch {
+      // DB error — fall through to site defaults.
     }
     return fallback;
   }
@@ -825,6 +902,26 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description,
           image: ogImageVariant(absUrl(row.imageUrl, origin), origin) ?? defaults.image,
           ogType: "article",
+        };
+      }
+
+      case "faq": {
+        // /faq/:categorySlug — look up category for page-specific title/description.
+        const [cat] = await db
+          .select({
+            name: faqCategoriesTable.name,
+            description: faqCategoriesTable.description,
+          })
+          .from(faqCategoriesTable)
+          .where(
+            and(eq(faqCategoriesTable.slug, slug), isNull(faqCategoriesTable.deletedAt)),
+          )
+          .limit(1);
+        if (!cat) break;
+        return {
+          ...fallback,
+          title: `${cat.name} | FAQ | The Synozur Alliance`,
+          description: cat.description || defaults.description,
         };
       }
 

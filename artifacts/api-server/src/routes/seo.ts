@@ -16,6 +16,7 @@ import {
   siteSettingsTable,
   faqCategoriesTable,
   faqItemsTable,
+  jobPostingsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
@@ -72,6 +73,7 @@ const STATIC_ROUTES: Entry[] = [
   { loc: "/fit", changefreq: "monthly", priority: 0.6 },
   { loc: "/book", changefreq: "monthly", priority: 0.6 },
   { loc: "/faq", changefreq: "weekly", priority: 0.7 },
+  { loc: "/careers", changefreq: "weekly", priority: 0.6 },
   { loc: "/privacy", changefreq: "yearly", priority: 0.3 },
   { loc: "/terms", changefreq: "yearly", priority: 0.3 },
 ];
@@ -318,6 +320,16 @@ export async function collectEntries(): Promise<Entry[]> {
     entries.push(toEntry(`/case-studies/${c.slug}`, c.updatedAt));
   for (const m of models) entries.push(toEntry(`/models/${m.slug}`, m.updatedAt));
   for (const w of workshops) entries.push(toEntry(`/workshops/${w.slug}`, w.updatedAt));
+
+  // Careers — published job postings at /careers/jobs/:slug.
+  const jobPostings = await db
+    .select({ slug: jobPostingsTable.slug, publishedAt: jobPostingsTable.publishedAt })
+    .from(jobPostingsTable)
+    .where(eq(jobPostingsTable.status, "published"))
+    .orderBy(desc(jobPostingsTable.publishedAt));
+  for (const j of jobPostings) {
+    entries.push(toEntry(`/careers/jobs/${j.slug}`, j.publishedAt));
+  }
 
   // FAQ category landing pages and per-item deep links. Items only emit when
   // their parent category is also published — otherwise the page would 404.

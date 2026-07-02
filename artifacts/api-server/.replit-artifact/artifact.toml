@@ -16,6 +16,8 @@ paths = [
   "/white-papers", "/polaris", "/team",
   "/events",
   "/sprint", "/proof", "/fit", "/book",
+  "/faq", "/about", "/careers", "/services-overview",
+  "/privacy", "/terms",
 ]
 
 [services.development]
