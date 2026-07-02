@@ -34,13 +34,13 @@ by fetching the path with a bot UA, but check synozur-owned paths via
 non-2xx or non-`text/html` upstream responses so a JSON error falls back to the
 static shell rather than being served as HTML.
 
-**July 2026 correction:** until the www-cutover republish, `server.mjs` had
-NEVER run in production — the synozur artifact.toml still said
-`serve = "static"` (restored April 2026 to fix an old deploy error, before
-server.mjs was written in June). Prod therefore served the raw SPA shell to
-every bot on synozur-owned paths. Fixed by switching the artifact's production
-config to `node artifacts/synozur/server.mjs` (PORT=20131, API_PORT=8080,
-health check on `/`). **Coupling:** `API_PORT` must track the api-server's
-prod port in lockstep — a mismatch fails silently (bots just get the generic
-static-shell fallback, no error). After any republish, smoke-test with a bot
-UA against `/sprint` on the live domain, not just `/api/og`.
+**July 2026 correction:** `server.mjs` never ran in production — the `react-vite`
+integratedSkill on the synozur artifact forces static serving and the platform
+API blocks removing it. The fix for the Sprint funnel paths was different:
+add `/sprint`, `/proof`, `/fit`, `/book` to the **api-server's** `artifact.toml`
+paths list. The existing `socialBotRendererMiddleware` + `spaFallbackMiddleware`
+stack already handles them correctly with zero new route code — social bots get
+bespoke OG HTML, AI agents get `buildAgentPageHtml`, normal users get SPA
+`index.html`. **Pattern for future synozur-owned paths that need bot prerender:**
+add the path to api-server `artifact.toml` paths; the middleware chain does the
+rest as long as `ogResolver.ts` has a `STATIC_PAGE_OG` entry for that path.

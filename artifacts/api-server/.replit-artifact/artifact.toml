@@ -14,6 +14,7 @@ paths = [
   "/case-studies", "/applications", "/models",
   "/workshops", "/library", "/webinars",
   "/white-papers", "/polaris", "/team",
+  "/sprint", "/proof", "/fit", "/book",
 ]
 
 [services.development]
