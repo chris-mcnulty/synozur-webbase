@@ -189,7 +189,9 @@ async function submitGoogleIndexing(
       client = await googleClientFactory(sa);
     } else {
       const auth = new GoogleAuth({
-        credentials: credentials as ConstructorParameters<typeof GoogleAuth>[0]["credentials"],
+        credentials: credentials as NonNullable<
+          ConstructorParameters<typeof GoogleAuth>[0]
+        >["credentials"],
         scopes: ["https://www.googleapis.com/auth/indexing"],
       });
       client = await auth.getClient();

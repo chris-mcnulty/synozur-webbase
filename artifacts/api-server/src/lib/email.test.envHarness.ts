@@ -24,15 +24,15 @@ interface CapturedMessage {
   replyTo?: unknown;
 }
 
-let captured: CapturedMessage | null = null;
+const state: { captured: CapturedMessage | null } = { captured: null };
 MailService.prototype.send = (async function patchedSend(
   msg: unknown,
 ): Promise<unknown> {
-  captured = msg as CapturedMessage;
+  state.captured = msg as CapturedMessage;
   return [{ statusCode: 202 }, {}];
 }) as typeof MailService.prototype.send;
 
-globalThis.fetch = (async (input: RequestInfo | URL) => {
+globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
   const url =
     typeof input === "string"
       ? input
@@ -71,9 +71,12 @@ if (kind === "sendEmail") {
     subject: "harness",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   process.stdout.write(
-    SENTINEL + JSON.stringify({ result, from: captured?.from ?? null }) + "\n",
+    SENTINEL +
+      JSON.stringify({ result, from: state.captured?.from ?? null }) +
+      "\n",
   );
 } else if (kind === "sendInternal") {
   const result = await email.sendInternalNotification({
@@ -87,10 +90,10 @@ if (kind === "sendEmail") {
     SENTINEL +
       JSON.stringify({
         result,
-        to: captured?.to ?? null,
-        subject: captured?.subject ?? null,
-        html: captured?.html ?? null,
-        replyTo: captured?.replyTo ?? null,
+        to: state.captured?.to ?? null,
+        subject: state.captured?.subject ?? null,
+        html: state.captured?.html ?? null,
+        replyTo: state.captured?.replyTo ?? null,
       }) +
       "\n",
   );

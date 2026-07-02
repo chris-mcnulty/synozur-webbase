@@ -603,7 +603,7 @@ const SubmitBodySchema = z.object({
  * Scans every published artifact for missing / out-of-bounds SEO metadata and
  * returns a structured report with per-type totals and individual findings.
  */
-router.get("/seo/audit", adminGuard, async (_req, res): Promise<void> => {
+router.get("/seo/audit", adminGuard, async (_req: import("express").Request, res: import("express").Response): Promise<void> => {
   try {
     const report = await runAudit();
     res.json(report);
@@ -620,7 +620,7 @@ router.get("/seo/audit", adminGuard, async (_req, res): Promise<void> => {
  * fields. Pass `ids` to restrict the operation to specific artifacts. Never
  * overwrites editor values.  Returns the number of rows touched per kind.
  */
-router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> => {
+router.post("/seo/audit/autofill", adminGuard, async (req: import("express").Request, res: import("express").Response): Promise<void> => {
   const parsed = AutofillBodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
@@ -649,7 +649,7 @@ router.post("/seo/audit/autofill", adminGuard, async (req, res): Promise<void> =
  * channel (IndexNow, Google Indexing API, Bing Webmaster Tools).
  * Channels without credentials report ok:false but never throw.
  */
-router.post("/seo/submit", adminGuard, async (req, res): Promise<void> => {
+router.post("/seo/submit", adminGuard, async (req: import("express").Request, res: import("express").Response): Promise<void> => {
   const parsed = SubmitBodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });

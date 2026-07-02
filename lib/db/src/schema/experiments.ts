@@ -53,12 +53,12 @@ export const experimentsTable = pgTable(
     // baseline against the treated arms over time. 0 = no holdback.
     holdbackPercentage: integer("holdback_percentage").notNull().default(0),
     // Configured conversion targets — array of
-    //   { kind: "cta" | "booking" | "path", value: string, label: string }.
+    //   { kind: "cta" | "booking" | "path" | "carousel", value, label }.
     // `value` is an event id for cta/booking, a route prefix for path.
     conversionPaths: jsonb("conversion_paths")
       .$type<
         Array<{
-          kind: "cta" | "booking" | "path";
+          kind: "cta" | "booking" | "path" | "carousel";
           value: string;
           label: string;
         }>

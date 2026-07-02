@@ -223,6 +223,7 @@ async function ingestSolutions(
     const values = {
       slug,
       title,
+      solutionGroup: "consulting_services" as const,
       displayOrder: num(r["Display Order"]),
       parentServiceId,
       iconId,

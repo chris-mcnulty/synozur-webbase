@@ -248,6 +248,7 @@ async function main() {
     .values({
       slug: SLUG,
       title: "Microsoft 365 Adoption, Strategy & Optimization",
+      solutionGroup: "company_os" as const,
       parentServiceId: parent.id,
       routePath: "/solutions/microsoft-365-optimization",
       status: "published",

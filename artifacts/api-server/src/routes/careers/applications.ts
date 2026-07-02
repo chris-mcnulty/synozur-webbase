@@ -129,7 +129,7 @@ router.post("/careers/resume-parse", requireAuth, async (req, res) => {
     const dlRes = await objectStorage.downloadObject(ref);
     const arrayBuf = await dlRes.arrayBuffer();
     const buf = Buffer.from(arrayBuf);
-    const text = await extractTextFromBuffer(buf, media.mime, media.originalName);
+    const text = await extractTextFromBuffer(buf, media.mime ?? "", media.originalName);
     const result = await parseResumeText(text);
     res.json(result);
   } catch (err) {

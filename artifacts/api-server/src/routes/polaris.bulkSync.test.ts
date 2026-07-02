@@ -100,6 +100,7 @@ async function seedFixtureTaxonomy(tag: string): Promise<{
     .values({
       slug: `bulk-sync-test-sol-${tag}`,
       title: `Bulk Sync Test Solution ${tag}`,
+      solutionGroup: "consulting_services" as const,
       sourceId: `bulk-sync-test-sol:${tag}`,
       parentServiceId: svc.id,
       status: "draft",

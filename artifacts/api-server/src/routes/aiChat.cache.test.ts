@@ -123,7 +123,7 @@ function restoreStub() {
   (anthropic.messages as unknown as Record<string, unknown>).stream = realStream;
 }
 
-let convId: number | null = null;
+let convId: string | null = null;
 
 test.before(async () => {
   await new Promise<void>((resolve) => {
@@ -170,7 +170,7 @@ test.after(async () => {
 // "did the request complete and what did the route observe".
 async function postChat(
   body: Record<string, unknown>,
-): Promise<{ conversationId: number; text: string }> {
+): Promise<{ conversationId: string; text: string }> {
   const res = await fetch(`${baseUrl}/api/ai/chat`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -180,7 +180,7 @@ async function postChat(
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let conversationId = -1;
+  let conversationId = "";
   let text = "";
   while (true) {
     const chunk = await reader.read();
@@ -191,7 +191,7 @@ async function postChat(
     for (const e of events) {
       if (!e.startsWith("data: ")) continue;
       const payload = JSON.parse(e.slice(6));
-      if (typeof payload.conversationId === "number")
+      if (typeof payload.conversationId === "string")
         conversationId = payload.conversationId;
       if (typeof payload.content === "string") text += payload.content;
     }

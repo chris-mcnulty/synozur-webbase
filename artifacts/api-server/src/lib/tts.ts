@@ -590,7 +590,6 @@ async function synthesizeChunk(
     try {
       const response = await client.chat.completions.create({
         model: "gpt-audio",
-        // @ts-expect-error — modalities is not in older SDK typedefs but is accepted at runtime
         modalities: ["text", "audio"],
         audio: { voice, format: "mp3" },
         messages: [
@@ -620,9 +619,12 @@ async function synthesizeChunk(
         ],
       } as Parameters<typeof client.chat.completions.create>[0]);
 
-      const audioData =
-        (response.choices[0]?.message as Record<string, unknown> & { audio?: { data?: string } })
-          ?.audio?.data ?? "";
+      const completion = response as {
+        choices?: Array<{
+          message?: Record<string, unknown> & { audio?: { data?: string } };
+        }>;
+      };
+      const audioData = completion.choices?.[0]?.message?.audio?.data ?? "";
       if (!audioData) throw new Error("gpt-audio returned no audio data");
       return Buffer.from(audioData, "base64");
     } catch (err) {

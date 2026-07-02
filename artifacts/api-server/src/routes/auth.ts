@@ -956,7 +956,7 @@ router.get("/auth/sessions", requireAuth, async (req, res): Promise<void> => {
 // DELETE /api/auth/sessions/:id — revoke a specific session (not the current one)
 // ---------------------------------------------------------------------------
 router.delete("/auth/sessions/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   const user = req.authedUser!;
   const currentSessionId = req.session?.id ?? null;
 

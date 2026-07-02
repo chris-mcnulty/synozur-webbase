@@ -54,9 +54,11 @@ const originalSend = MailService.prototype.send;
 MailService.prototype.send = async function patchedSend(
   this: MailService,
   msg: unknown,
-): Promise<ReturnType<typeof originalSend>> {
+): Promise<Awaited<ReturnType<typeof originalSend>>> {
   captured = msg as CapturedMessage;
-  return sendImpl(msg as CapturedMessage) as ReturnType<typeof originalSend>;
+  return sendImpl(msg as CapturedMessage) as unknown as Awaited<
+    ReturnType<typeof originalSend>
+  >;
 } as typeof originalSend;
 
 const originalFetch = globalThis.fetch;
@@ -67,7 +69,7 @@ function installConnectorFetch(opts: {
 } = {}): void {
   const fromEmail = opts.fromEmail ?? "alliance@synozur.com";
   const apiKey = opts.apiKey ?? "SG.test-key";
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
+  globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
     const url =
       typeof input === "string"
         ? input
@@ -148,6 +150,7 @@ test("sendEmail: SendGridNotConfiguredError -> { status: 'skipped' }", async () 
     subject: "s",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   assert.deepEqual(r, { status: "skipped", error: null });
   assert.equal(captured, null, "send() should not be called when skipped");
@@ -162,6 +165,7 @@ test("sendEmail: SendGrid 4xx is surfaced as { status: 'error' } with http code"
     subject: "s",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   assert.equal(r.status, "error");
   assert.match(r.error ?? "", /http_400/);
@@ -177,6 +181,7 @@ test("sendEmail: SendGrid 5xx is surfaced as { status: 'error' } with http code"
     subject: "s",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   assert.equal(r.status, "error");
   assert.match(r.error ?? "", /http_500/);
@@ -192,6 +197,7 @@ test("sendEmail: error without http code falls back to bare message", async () =
     subject: "s",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   assert.equal(r.status, "error");
   assert.equal(r.error, "connection reset");
@@ -204,6 +210,7 @@ test("sendEmail: with no EMAIL_FROM override, the connector from_email is used w
     subject: "Hello",
     html: "<p>h</p>",
     text: "t",
+    template: "test",
   });
   assert.equal(r.status, "ok");
   assert.deepEqual(captured?.from, {
@@ -219,11 +226,18 @@ test("sendEmail: replyTo is forwarded when provided, omitted otherwise", async (
     html: "h",
     text: "t",
     replyTo: "r@x.com",
+    template: "test",
   });
   assert.equal(captured?.replyTo, "r@x.com");
 
   captured = null;
-  await email.sendEmail({ to: "u@x.com", subject: "s", html: "h", text: "t" });
+  await email.sendEmail({
+    to: "u@x.com",
+    subject: "s",
+    html: "h",
+    text: "t",
+    template: "test",
+  });
   assert.equal(
     Object.prototype.hasOwnProperty.call(captured, "replyTo"),
     false,
@@ -238,6 +252,7 @@ test("sendEmail: EMAIL_DISABLED=1 short-circuits to skipped without contacting S
     subject: "s",
     html: "h",
     text: "t",
+    template: "test",
   });
   assert.deepEqual(r, { status: "skipped", error: null });
   assert.equal(captured, null);
