@@ -1,0 +1,34 @@
+kind = "web"
+previewPath = "/"
+title = "The Synozur Alliance"
+version = "1.0.0"
+id = "artifacts/synozur"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20131
+
+[services.development]
+run = "pnpm --filter @workspace/synozur run dev"
+
+[services.production]
+
+[services.production.build]
+args = [ "pnpm", "--filter", "@workspace/synozur", "run", "build" ]
+
+[services.production.run]
+args = [ "node", "artifacts/synozur/server.mjs" ]
+
+[services.production.run.env]
+PORT = "20131"
+API_PORT = "8080"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/"
+
+[services.env]
+PORT = "20131"
+BASE_PATH = "/"
