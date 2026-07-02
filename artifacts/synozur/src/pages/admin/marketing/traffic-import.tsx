@@ -26,16 +26,26 @@ type Mode = "json" | "csv";
 // dropped during transformation. Required fields are marked so the UI can
 // show a warning when they're not mapped.
 const CANONICAL_FIELDS: Array<{ key: string; required?: boolean; aliases: string[] }> = [
-  { key: "path", required: true, aliases: ["path", "page", "url", "page path", "page_path"] },
+  {
+    key: "path",
+    required: true,
+    aliases: ["path", "page", "url", "page path", "page_path", "page url", "page address"],
+  },
   {
     key: "viewedAt",
     required: true,
-    aliases: ["viewedat", "viewed_at", "timestamp", "date", "datetime", "time"],
+    aliases: ["viewedat", "viewed_at", "timestamp", "date", "datetime", "time", "visit date", "visit_date"],
   },
   {
     key: "sessionKey",
     required: true,
-    aliases: ["sessionkey", "session_key", "session_id", "sessionid", "visitor_id", "visitor"],
+    aliases: [
+      "sessionkey", "session_key", "session_id", "sessionid",
+      "visitor_id", "visitor", "visitor id",
+      "contact_id", "contact id", "contactid",
+      "user_id", "user id", "userid",
+      "unique id", "unique_id",
+    ],
   },
   { key: "title", aliases: ["title", "page title", "page_title"] },
   { key: "pageviewCount", aliases: ["pageviewcount", "pageviews", "views"] },
