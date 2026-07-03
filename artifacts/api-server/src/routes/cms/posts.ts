@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike, or, sql, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import {
   db,
   postsTable,
@@ -33,6 +33,8 @@ const ListQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   sortBy: z.enum(["title", "author", "publishedAt", "updatedAt"]).default("publishedAt"),
   sortDir: z.enum(["asc", "desc"]).default("desc"),
+  publishedAfter: z.string().optional(),
+  publishedBefore: z.string().optional(),
 });
 
 const CreateBody = z.object({
@@ -141,13 +143,21 @@ router.get("/cms/posts", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
     return;
   }
-  const { status, authorId, search, page, pageSize, sortBy, sortDir } = parsed.data;
+  const { status, authorId, search, page, pageSize, sortBy, sortDir, publishedAfter, publishedBefore } = parsed.data;
   const filters = [isNull(postsTable.deletedAt)];
   if (status) filters.push(eq(postsTable.status, status));
   if (authorId) filters.push(eq(postsTable.authorId, authorId));
   if (search) {
     const like = `%${search}%`;
     filters.push(or(ilike(postsTable.title, like), ilike(postsTable.slug, like))!);
+  }
+  if (publishedAfter) {
+    const afterDate = new Date(publishedAfter);
+    if (!isNaN(afterDate.getTime())) filters.push(gte(postsTable.publishedAt, afterDate));
+  }
+  if (publishedBefore) {
+    const beforeDate = new Date(publishedBefore);
+    if (!isNaN(beforeDate.getTime())) filters.push(lte(postsTable.publishedAt, beforeDate));
   }
 
   // Authors/contributors can only see their own posts.

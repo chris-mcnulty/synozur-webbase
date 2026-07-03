@@ -53,6 +53,18 @@ export const ListCmsPostsQueryParams = zod.object({
     .enum(["title", "author", "publishedAt", "updatedAt"])
     .default(listCmsPostsQuerySortByDefault),
   sortDir: zod.enum(["asc", "desc"]).default(listCmsPostsQuerySortDirDefault),
+  publishedAfter: zod
+    .date()
+    .optional()
+    .describe(
+      "Include only posts whose publishedAt is on or after this date (ISO date, e.g. 2025-01-01)",
+    ),
+  publishedBefore: zod
+    .date()
+    .optional()
+    .describe(
+      "Include only posts whose publishedAt is on or before this date (ISO date, e.g. 2025-03-31)",
+    ),
 });
 
 export const ListCmsPostsResponse = zod.object({

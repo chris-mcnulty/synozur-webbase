@@ -141,6 +141,18 @@ paths:
             type: string
             enum: [asc, desc]
             default: desc
+        - in: query
+          name: publishedAfter
+          schema:
+            type: string
+            format: date
+          description: Include only posts whose publishedAt is on or after this date (ISO date, e.g. 2025-01-01)
+        - in: query
+          name: publishedBefore
+          schema:
+            type: string
+            format: date
+          description: Include only posts whose publishedAt is on or before this date (ISO date, e.g. 2025-03-31)
       responses:
         '200':
           description: Page of posts

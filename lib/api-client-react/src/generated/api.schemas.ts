@@ -3885,6 +3885,14 @@ export type ListCmsPostsParams = {
   pageSize?: number;
   sortBy?: ListCmsPostsSortBy;
   sortDir?: ListCmsPostsSortDir;
+  /**
+   * Include only posts whose publishedAt is on or after this date (ISO date, e.g. 2025-01-01)
+   */
+  publishedAfter?: string;
+  /**
+   * Include only posts whose publishedAt is on or before this date (ISO date, e.g. 2025-03-31)
+   */
+  publishedBefore?: string;
 };
 
 export type ListCmsPostsSortBy =

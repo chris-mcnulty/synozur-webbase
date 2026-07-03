@@ -61,6 +61,8 @@ export default function AdminPostsList() {
   const [sortBy, setSortBy] = useState<ApiSortBy>("publishedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewsSort, setViewsSort] = useState<SortDir | null>(null);
+  const [publishedAfter, setPublishedAfter] = useState("");
+  const [publishedBefore, setPublishedBefore] = useState("");
 
   const { data: postsData, isLoading, refetch } = useListCmsPosts(
     {
@@ -70,6 +72,8 @@ export default function AdminPostsList() {
       pageSize: 20,
       sortBy: sortBy as typeof ListCmsPostsSortBy[keyof typeof ListCmsPostsSortBy],
       sortDir: sortDir as typeof ListCmsPostsSortDir[keyof typeof ListCmsPostsSortDir],
+      ...(publishedAfter ? { publishedAfter: `${publishedAfter}T00:00:00.000Z` } : {}),
+      ...(publishedBefore ? { publishedBefore: `${publishedBefore}T23:59:59.999Z` } : {}),
     },
     { query: { enabled: !!access?.hasCmsRole } as never },
   );
@@ -214,6 +218,31 @@ export default function AdminPostsList() {
               }}
               className="pl-9"
               data-testid="input-post-search"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+            <Input
+              type="date"
+              value={publishedAfter}
+              onChange={(e) => {
+                setPublishedAfter(e.target.value);
+                setPage(1);
+              }}
+              className="w-36 text-sm"
+              data-testid="input-published-after"
+            />
+            <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+            <Input
+              type="date"
+              value={publishedBefore}
+              onChange={(e) => {
+                setPublishedBefore(e.target.value);
+                setPage(1);
+              }}
+              className="w-36 text-sm"
+              data-testid="input-published-before"
             />
           </div>
 
