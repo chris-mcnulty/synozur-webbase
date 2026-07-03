@@ -49,7 +49,8 @@
     "test:og-images": "node --import tsx --test src/lib/ogImages.test.ts",
     "test:og-dynamic": "node --import tsx --test src/lib/ogDynamicImages.test.ts",
     "test:seo-og-findings": "node --import tsx --test src/lib/seoAudit.ogFindings.test.ts",
-    "test:storage-sniff": "node --import tsx --test src/routes/storage.sniff.test.ts"
+    "test:storage-sniff": "node --import tsx --test src/routes/storage.sniff.test.ts",
+    "test:og-white-paper-seo-title": "node --import tsx --test src/routes/og.whitePaper.seoTitle.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

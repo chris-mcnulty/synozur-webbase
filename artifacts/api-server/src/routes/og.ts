@@ -75,7 +75,7 @@ interface ResolvedArtifact {
   lastModifiedMs: number;
 }
 
-async function resolveArtifact(
+export async function resolveArtifact(
   kind: OgImageKind,
   id: string,
 ): Promise<ResolvedArtifact | null> {
