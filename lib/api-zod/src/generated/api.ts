@@ -733,6 +733,10 @@ export const ListCmsMediaQueryParams = zod.object({
     .default(listCmsMediaQueryPageSizeDefault),
   search: zod.coerce.string().optional(),
   categoryId: zod.coerce.string().uuid().optional(),
+  uncategorized: zod.coerce
+    .boolean()
+    .optional()
+    .describe("When true, return only items with no category assigned."),
 });
 
 export const ListCmsMediaResponse = zod.object({
@@ -781,6 +785,23 @@ export const RegisterCmsMediaBody = zod.object({
     ),
   originalName: zod.string().nullish(),
   categoryId: zod.string().uuid().nullish(),
+});
+
+/**
+ * @summary Assign (or clear) a category on multiple media items at once
+ */
+
+export const BulkSetMediaCategoryBody = zod.object({
+  ids: zod.array(zod.string().uuid()).min(1),
+  categoryId: zod
+    .string()
+    .uuid()
+    .nullish()
+    .describe("UUID to assign, or null\/omit to clear the category."),
+});
+
+export const BulkSetMediaCategoryResponse = zod.object({
+  updated: zod.number(),
 });
 
 /**

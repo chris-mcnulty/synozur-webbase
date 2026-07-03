@@ -406,6 +406,17 @@ export interface UpdateMediaBody {
   categoryId?: string | null;
 }
 
+export interface BulkSetMediaCategoryBody {
+  /** @minItems 1 */
+  ids: string[];
+  /** UUID to assign, or null/omit to clear the category. */
+  categoryId?: string | null;
+}
+
+export interface BulkSetMediaCategoryResponse {
+  updated: number;
+}
+
 export interface AssetCategory {
   id: string;
   slug: string;
@@ -3929,6 +3940,10 @@ export type ListCmsMediaParams = {
   pageSize?: number;
   search?: string;
   categoryId?: string;
+  /**
+   * When true, return only items with no category assigned.
+   */
+  uncategorized?: boolean;
 };
 
 export type ListCmsCommentsParams = {

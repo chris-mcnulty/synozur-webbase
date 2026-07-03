@@ -18,4 +18,8 @@ export type ListCmsMediaParams = {
   pageSize?: number;
   search?: string;
   categoryId?: string;
+  /**
+   * When true, return only items with no category assigned.
+   */
+  uncategorized?: boolean;
 };

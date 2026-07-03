@@ -33,6 +33,8 @@ import type {
   AssetInput,
   BadRequestResponse,
   BatchViewsResult,
+  BulkSetMediaCategoryBody,
+  BulkSetMediaCategoryResponse,
   Capability,
   CapabilityItemsResponse,
   Category,
@@ -2132,6 +2134,102 @@ export const useRegisterCmsMedia = <
   TContext
 > => {
   return useMutation(getRegisterCmsMediaMutationOptions(options));
+};
+
+/**
+ * @summary Assign (or clear) a category on multiple media items at once
+ */
+export const getBulkSetMediaCategoryUrl = () => {
+  return `/api/cms/media/bulk-category`;
+};
+
+export const bulkSetMediaCategory = async (
+  bulkSetMediaCategoryBody: BulkSetMediaCategoryBody,
+  options?: RequestInit,
+): Promise<BulkSetMediaCategoryResponse> => {
+  return customFetch<BulkSetMediaCategoryResponse>(
+    getBulkSetMediaCategoryUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(bulkSetMediaCategoryBody),
+    },
+  );
+};
+
+export const getBulkSetMediaCategoryMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkSetMediaCategory>>,
+    TError,
+    { data: BodyType<BulkSetMediaCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkSetMediaCategory>>,
+  TError,
+  { data: BodyType<BulkSetMediaCategoryBody> },
+  TContext
+> => {
+  const mutationKey = ["bulkSetMediaCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkSetMediaCategory>>,
+    { data: BodyType<BulkSetMediaCategoryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return bulkSetMediaCategory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BulkSetMediaCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkSetMediaCategory>>
+>;
+export type BulkSetMediaCategoryMutationBody =
+  BodyType<BulkSetMediaCategoryBody>;
+export type BulkSetMediaCategoryMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Assign (or clear) a category on multiple media items at once
+ */
+export const useBulkSetMediaCategory = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkSetMediaCategory>>,
+    TError,
+    { data: BodyType<BulkSetMediaCategoryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof bulkSetMediaCategory>>,
+  TError,
+  { data: BodyType<BulkSetMediaCategoryBody> },
+  TContext
+> => {
+  return useMutation(getBulkSetMediaCategoryMutationOptions(options));
 };
 
 /**

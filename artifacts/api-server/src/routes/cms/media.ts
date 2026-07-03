@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db, mediaTable, assetCategoriesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { ObjectStorageService } from "../../lib/objectStorage";
@@ -15,6 +15,10 @@ const ListQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(500).default(50),
   search: z.string().trim().min(1).optional(),
   categoryId: z.string().uuid().optional(),
+  uncategorized: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 });
 
 router.get("/cms/media", requireAuth, async (req, res) => {
@@ -23,7 +27,7 @@ router.get("/cms/media", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { page, pageSize, search, categoryId } = parsed.data;
+  const { page, pageSize, search, categoryId, uncategorized } = parsed.data;
   const offset = (page - 1) * pageSize;
 
   const conditions: SQL[] = [];
@@ -36,7 +40,11 @@ router.get("/cms/media", requireAuth, async (req, res) => {
     );
     if (searchExpr) conditions.push(searchExpr);
   }
-  if (categoryId) conditions.push(eq(mediaTable.categoryId, categoryId));
+  if (uncategorized) {
+    conditions.push(isNull(mediaTable.categoryId));
+  } else if (categoryId) {
+    conditions.push(eq(mediaTable.categoryId, categoryId));
+  }
   const where =
     conditions.length === 0
       ? undefined
@@ -93,13 +101,6 @@ router.post(
         return;
       }
     }
-    // #127 Phase 3-C — pick up the SPE direct-upload bookkeeping if this
-    // row was uploaded via the spe-direct route. The token is the trailing
-    // path segment of `storageKey` (e.g. `/objects/uploads/<token>`); the
-    // upload cache stores the speFileId/speContainerId Microsoft assigned.
-    // Falls through cleanly when the row was uploaded via the GCS path —
-    // `consumeSpeUpload` returns null, columns stay NULL, the read path
-    // resolves to GCS via storage_key.
     const lastSegment =
       parsed.data.storageKey.split("/").filter(Boolean).pop() ?? "";
     const speEntry = lastSegment ? consumeSpeUpload(lastSegment) : null;
@@ -126,8 +127,6 @@ router.post(
 );
 
 const UpdateBody = z.object({
-  // When supplied, `altText` must be a non-empty string. Omit to leave the
-  // existing value unchanged; null is rejected (alt text is NOT NULL).
   altText: z.string().trim().min(1).optional(),
   mime: z.string().nullish(),
   width: z.number().int().nullish(),
@@ -194,6 +193,51 @@ router.patch(
   },
 );
 
+const BulkSetCategoryBody = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+  categoryId: z.string().uuid().nullish(),
+});
+
+router.post(
+  "/cms/media/bulk-category",
+  requireAuth,
+  requireRole("admin", "editor", "author", "contributor"),
+  async (req, res) => {
+    const parsed = BulkSetCategoryBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+      return;
+    }
+    const { ids, categoryId } = parsed.data;
+
+    if (categoryId) {
+      const cat = await db.query.assetCategoriesTable.findFirst({
+        where: eq(assetCategoriesTable.id, categoryId),
+      });
+      if (!cat) {
+        res.status(400).json({ error: "Unknown categoryId" });
+        return;
+      }
+    }
+
+    const rows = await db
+      .update(mediaTable)
+      .set({ categoryId: categoryId ?? null })
+      .where(inArray(mediaTable.id, ids))
+      .returning({ id: mediaTable.id });
+
+    await audit({
+      actorId: req.authedUser!.id,
+      action: "media.bulk_category",
+      entity: "media",
+      entityId: ids[0] ?? "",
+      diff: { ids, categoryId: categoryId ?? null, updated: rows.length },
+    });
+
+    res.json({ updated: rows.length });
+  },
+);
+
 router.delete(
   "/cms/media/:id",
   requireAuth,
@@ -206,18 +250,11 @@ router.delete(
       res.status(404).json({ error: "Not found" });
       return;
     }
-    // Hard delete from storage too (best effort). Distinct from the
-    // GCS→SPE migration: this is an admin-initiated row delete, the
-    // user explicitly wants the bytes gone. We delete from whichever
-    // side(s) the row lives on. The migration script itself is strictly
-    // additive and never touches GCS.
     if (row.speFileId) {
       try {
         await objectStorageService.deleteObject({
           storageKey: row.storageKey,
           speFileId: row.speFileId,
-          // Target the container that originally stored the item;
-          // protects against active-container rotation in site_settings.
           speContainerId: row.speContainerId ?? undefined,
         });
       } catch (err) {

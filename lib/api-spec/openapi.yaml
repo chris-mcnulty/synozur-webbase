@@ -618,6 +618,11 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: uncategorized
+          description: When true, return only items with no category assigned.
+          schema:
+            type: boolean
       responses:
         '200':
           description: Media list
@@ -645,6 +650,31 @@ paths:
                 $ref: '#/components/schemas/MediaItem'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /cms/media/bulk-category:
+    post:
+      operationId: bulkSetMediaCategory
+      tags:
+        - CMS Media
+      summary: Assign (or clear) a category on multiple media items at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkSetMediaCategoryBody'
+      responses:
+        '200':
+          description: Number of rows updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkSetMediaCategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /cms/media/{id}:
     patch:
       operationId: updateCmsMedia
@@ -5152,6 +5182,29 @@ components:
           type: string
           format: uuid
           nullable: true
+    BulkSetMediaCategoryBody:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        categoryId:
+          description: UUID to assign, or null/omit to clear the category.
+          type: string
+          format: uuid
+          nullable: true
+    BulkSetMediaCategoryResponse:
+      type: object
+      required:
+        - updated
+      properties:
+        updated:
+          type: integer
     AssetCategory:
       type: object
       required:

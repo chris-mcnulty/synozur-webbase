@@ -32,6 +32,8 @@ export * from "./badRequestResponse";
 export * from "./batchViewsResult";
 export * from "./batchViewsResultViews";
 export * from "./bookingLink";
+export * from "./bulkSetMediaCategoryBody";
+export * from "./bulkSetMediaCategoryResponse";
 export * from "./capability";
 export * from "./capabilityItemsResponse";
 export * from "./category";
