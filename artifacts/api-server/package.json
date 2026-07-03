@@ -52,7 +52,8 @@
     "test:seo-autofill": "node --import tsx --test src/lib/seoAudit.test.ts",
     "test:seo-autofill-apply": "node --import tsx --test src/lib/seoAudit.applyAutofill.test.ts",
     "test:storage-sniff": "node --import tsx --test src/routes/storage.sniff.test.ts",
-    "test:og-white-paper-seo-title": "node --import tsx --test src/routes/og.whitePaper.seoTitle.test.ts"
+    "test:og-white-paper-seo-title": "node --import tsx --test src/routes/og.whitePaper.seoTitle.test.ts",
+    "test:og-content-types-seo-title": "node --import tsx --test src/routes/og.contentTypes.seoTitle.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",
