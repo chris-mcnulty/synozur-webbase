@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Save,
   X,
@@ -248,10 +249,20 @@ export default function ModelEdit({ id }: Props) {
       toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
+  const noMetaDesc =
+    !form.shortDescription.trim() && !form.seoDescription.trim();
+
   const onSave = () => {
     if (!form.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
+    }
+    if (form.active && noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This model is active but has no description or SEO description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
     }
     const body = toBody(form);
     if (isNew) {
@@ -341,6 +352,20 @@ export default function ModelEdit({ id }: Props) {
       {!canWrite && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
           You have read-only access. Only editors and admins can change models.
+        </div>
+      )}
+      {form.active && noMetaDesc && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          data-testid="banner-no-meta-desc"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">No meta description.</span>{" "}
+            This model is active but neither a short description nor an SEO
+            description is set. Search engines will auto-generate a snippet.{" "}
+            Fill in at least one for best results.
+          </div>
         </div>
       )}
 

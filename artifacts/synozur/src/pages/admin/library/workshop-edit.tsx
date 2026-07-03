@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, RefreshCw, Save, Trash2, Image as ImageIcon, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Plus, RefreshCw, Save, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -242,6 +242,9 @@ export default function WorkshopEdit({ id }: Props) {
     onError: (e: Error) => setError(e.message),
   });
 
+  const noMetaDesc =
+    !form.shortDescription.trim() && !form.seo.description.trim();
+
   const update = <K extends keyof WorkshopInput>(key: K, value: WorkshopInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
@@ -282,9 +285,30 @@ export default function WorkshopEdit({ id }: Props) {
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
+          if (form.active && noMetaDesc) {
+            toast({
+              title: "Missing meta description",
+              description:
+                "This workshop is active but has no description or SEO meta description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+            });
+          }
           saveMut.mutate();
         }}
       >
+        {form.active && noMetaDesc && (
+          <div
+            className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+            data-testid="banner-no-meta-desc"
+          >
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="font-medium">No meta description.</span>{" "}
+              This workshop is active but neither a short description nor an SEO
+              meta description is set. Search engines will auto-generate a snippet.{" "}
+              Fill in at least one for best results.
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6 min-w-0">
         <Section title="Basics">

@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Save,
   Plus,
@@ -268,6 +269,9 @@ export default function CaseStudyEdit({ id }: Props) {
     }
   }, [caseStudyQ.data]);
 
+  const noMetaDesc =
+    !form.summary.trim() && !form.seoDescription.trim();
+
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) => {
     setForm((f) => {
       const next = { ...f, [key]: val };
@@ -306,6 +310,13 @@ export default function CaseStudyEdit({ id }: Props) {
 
   const onSave = () => {
     if (!canWrite) return;
+    if (form.active && noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This case study is active but has no summary or SEO description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
+    }
     const body = toBody(form);
     if (isNew) createMut.mutate(body);
     else updateMut.mutate(body);
@@ -395,6 +406,21 @@ export default function CaseStudyEdit({ id }: Props) {
           </Button>
         </div>
       </div>
+
+      {form.active && noMetaDesc && (
+        <div
+          className="mb-6 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          data-testid="banner-no-meta-desc"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">No meta description.</span>{" "}
+            This case study is active but neither a summary nor an SEO
+            description is set. Search engines will auto-generate a snippet.{" "}
+            Fill in at least one for best results.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
