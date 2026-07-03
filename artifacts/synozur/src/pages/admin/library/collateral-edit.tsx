@@ -30,6 +30,7 @@ import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { CollateralResourcesEditor } from "@/components/admin/CollateralResourcesEditor";
 import { PublishBlocksBanner } from "@/components/admin/PublishBlocksBanner";
 import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
+import { OgImagePreview } from "@/components/admin/OgImagePreview";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralCard } from "@/components/collateral-card";
 import type { Collateral } from "@/data/collateral";
@@ -732,6 +733,20 @@ export default function CollateralEdit({ id }: Props) {
                     Defaults to the item description. Aim for 70–160 characters.
                   </p>
                 </div>
+                {!form.heroImage && (
+                  <div className="space-y-2">
+                    <Label>Auto-generated social card</Label>
+                    <OgImagePreview
+                      kind="collateral"
+                      id={isNew ? null : (existing?.id ?? null)}
+                      updatedAt={existing?.updatedAt}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Shown on social shares when no hero image is set. Upload a
+                      hero image above to use it as the card instead.
+                    </p>
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           </Card>
