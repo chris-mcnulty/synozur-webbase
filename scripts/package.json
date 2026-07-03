@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "pretypecheck": "pnpm -w run typecheck:libs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:removed-identifiers": "tsx ./src/check-removed-identifiers.ts",
     "lighthouse:pr-summary": "tsx ./src/lighthouse-pr-summary.ts",
