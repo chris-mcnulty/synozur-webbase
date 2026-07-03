@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import { Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
@@ -28,6 +29,9 @@ import {
   Redo,
   Braces,
   AlertTriangle,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -84,6 +88,32 @@ const IframeExtension = Node.create({
       wrapper.appendChild(label);
       wrapper.appendChild(iframe);
       return { dom: wrapper };
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Custom Image extension with size + alignment attributes
+// ---------------------------------------------------------------------------
+
+const CustomImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      "data-size": {
+        default: "full",
+        parseHTML: (element) => element.getAttribute("data-size") ?? "full",
+        renderHTML: (attributes) => ({
+          "data-size": (attributes["data-size"] as string | undefined) ?? "full",
+        }),
+      },
+      "data-align": {
+        default: "center",
+        parseHTML: (element) => element.getAttribute("data-align") ?? "center",
+        renderHTML: (attributes) => ({
+          "data-align": (attributes["data-align"] as string | undefined) ?? "center",
+        }),
+      },
     };
   },
 });
@@ -218,7 +248,7 @@ export function RichTextEditor({ value, onChange, placeholder: _placeholder }: P
       StarterKit.configure({
         codeBlock: { HTMLAttributes: { class: "bg-muted p-3 rounded text-sm" } },
       }),
-      Image.configure({ inline: false, HTMLAttributes: { class: "rounded-md max-w-full" } }),
+      CustomImage.configure({ inline: false, HTMLAttributes: { class: "rounded-md max-w-full" } }),
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { class: "underline text-primary" } }),
       Table.configure({ resizable: false, HTMLAttributes: { class: "border-collapse w-full" } }),
       TableRow,
@@ -291,6 +321,7 @@ export function RichTextEditor({ value, onChange, placeholder: _placeholder }: P
 
   return (
     <div className="border border-border rounded-md bg-card">
+      <ImageFloatingToolbar editor={editor} />
       <Toolbar editor={editor} onOpenImagePicker={openImagePicker} />
       {headingIssues.length > 0 && (
         <HeadingOrderWarnings issues={headingIssues} />
@@ -306,6 +337,82 @@ export function RichTextEditor({ value, onChange, placeholder: _placeholder }: P
         kind="image"
       />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Floating image toolbar (appears when an image node is selected)
+// ---------------------------------------------------------------------------
+
+const IMAGE_SIZES = [
+  { value: "small",  label: "S",    title: "Small (33%)" },
+  { value: "medium", label: "M",    title: "Medium (50%)" },
+  { value: "full",   label: "Full", title: "Full width" },
+] as const;
+
+const IMAGE_ALIGNS = [
+  { value: "left",   Icon: AlignLeft,   title: "Float left" },
+  { value: "center", Icon: AlignCenter, title: "Center" },
+  { value: "right",  Icon: AlignRight,  title: "Float right" },
+] as const;
+
+function ImageFloatingToolbar({ editor }: { editor: Editor }) {
+  const activeSize  = (editor.getAttributes("image")["data-size"]  as string | undefined) ?? "full";
+  const activeAlign = (editor.getAttributes("image")["data-align"] as string | undefined) ?? "center";
+
+  return (
+    <BubbleMenu
+      editor={editor}
+      shouldShow={({ editor: e }: { editor: Editor; element: HTMLElement; view: unknown; state: unknown; oldState?: unknown; from: number; to: number }) => e.isActive("image")}
+    >
+      <div className="flex items-center gap-0.5 rounded-md border border-border bg-card shadow-md px-1 py-1">
+        {/* Size group */}
+        <span className="text-[10px] text-muted-foreground px-1 select-none">Size</span>
+        {IMAGE_SIZES.map(({ value, label, title }) => (
+          <button
+            key={value}
+            type="button"
+            title={title}
+            aria-label={title}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              editor.chain().focus().updateAttributes("image", { "data-size": value }).run();
+            }}
+            className={cn(
+              "h-7 min-w-[2rem] px-1.5 inline-flex items-center justify-center rounded text-xs font-medium",
+              activeSize === value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        <div className="w-px h-5 bg-border mx-1" />
+        {/* Alignment group */}
+        <span className="text-[10px] text-muted-foreground px-1 select-none">Align</span>
+        {IMAGE_ALIGNS.map(({ value, Icon, title }) => (
+          <button
+            key={value}
+            type="button"
+            title={title}
+            aria-label={title}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              editor.chain().focus().updateAttributes("image", { "data-align": value }).run();
+            }}
+            className={cn(
+              "h-7 w-7 inline-flex items-center justify-center rounded",
+              activeAlign === value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        ))}
+      </div>
+    </BubbleMenu>
   );
 }
 

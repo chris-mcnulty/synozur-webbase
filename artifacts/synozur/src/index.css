@@ -573,6 +573,40 @@ html.theme-aurora.dark .nebula-shimmer {
 }
 
 
+/* ── Image size + alignment controls ──────────────────────────────────────
+   Applied in both the admin editor (.ProseMirror) and the public prose      */
+
+img[data-size="small"]  { width: 33% !important; max-width: 100%; }
+img[data-size="medium"] { width: 50% !important; max-width: 100%; }
+img[data-size="full"]   { width: 100% !important; max-width: 100%; }
+
+img[data-align="left"] {
+  float: left !important;
+  margin-right: 1.5rem;
+  margin-bottom: 0.5rem;
+  margin-left: 0;
+}
+img[data-align="right"] {
+  float: right !important;
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+  margin-right: 0;
+}
+img[data-align="center"] {
+  float: none !important;
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Clearfix so floated images don't escape their prose/editor container */
+.prose::after,
+.ProseMirror::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
 /* Embed wrapper — podcast players, video embeds inserted via the rich text editor */
 .embed-wrapper {
   position: relative;

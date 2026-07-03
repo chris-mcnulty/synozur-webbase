@@ -50,7 +50,7 @@ function isTrustedIframeSrc(src: string): boolean {
 
 const ALLOWED_ATTRS_BY_TAG: Record<string, Set<string>> = {
   A: new Set(["href", "title", "rel", "target"]),
-  IMG: new Set(["src", "alt", "width", "height", "title"]),
+  IMG: new Set(["src", "alt", "width", "height", "title", "data-size", "data-align"]),
   IFRAME: new Set([
     "src", "width", "height", "frameborder", "allow",
     "allowfullscreen", "scrolling", "title", "loading", "style",
