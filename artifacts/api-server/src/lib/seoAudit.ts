@@ -818,12 +818,55 @@ export async function runAudit(): Promise<AuditReport> {
 }
 
 /**
+ * Build the autofill patch object for a single finding.
+ *
+ * Pure function — no DB access. Only includes a field in the returned patch
+ * when the finding's `missing` list explicitly signals that field needs
+ * attention AND a non-empty suggestion exists for it.
+ *
+ * The "never overwrite a non-empty field" invariant operates at two layers:
+ *  1. This function — seoDescription is only patched when one of the
+ *     description missing codes (`seoDescription`, `seoDescriptionShort`,
+ *     `seoDescriptionLong`) is present in `f.missing`. If the field is
+ *     non-empty and passes all quality checks, none of those codes appear.
+ *  2. SQL WHERE guards in `applyAutofill` — every UPDATE uses
+ *     `(column IS NULL OR TRIM(column) = '')` so that even if a stale
+ *     finding reaches the DB, a concurrently-written value is never clobbered.
+ */
+export function buildAutofillPatch(f: AuditFinding): {
+  seoTitle?: string;
+  seoDescription?: string;
+  ogImage?: string;
+} {
+  const patch: {
+    seoTitle?: string;
+    seoDescription?: string;
+    ogImage?: string;
+  } = {};
+  if (f.suggested.seoTitle && f.missing.includes("seoTitle")) {
+    patch.seoTitle = f.suggested.seoTitle;
+  }
+  const descIssue = f.missing.some((m) =>
+    ["seoDescription", "seoDescriptionShort", "seoDescriptionLong"].includes(m),
+  );
+  if (f.suggested.seoDescription && descIssue) {
+    patch.seoDescription = f.suggested.seoDescription;
+  }
+  if (f.suggested.ogImage && f.missing.includes("ogImage")) {
+    patch.ogImage = f.suggested.ogImage;
+  }
+  return patch;
+}
+
+/**
  * Apply the suggested descriptions and OG images from an audit report.
  * Only fills columns that are currently empty — never overwrites editor
  * values. Returns the number of rows touched per artifact kind.
  */
 export async function applyAutofill(
   findings: AuditFinding[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dbInstance: any = db,
 ): Promise<Record<ArtifactKind, number>> {
   const touched: Record<ArtifactKind, number> = {
     insight: 0,
@@ -839,23 +882,7 @@ export async function applyAutofill(
   };
 
   for (const f of findings) {
-    const patch: {
-      seoTitle?: string;
-      seoDescription?: string;
-      ogImage?: string;
-    } = {};
-    if (f.suggested.seoTitle && f.missing.includes("seoTitle")) {
-      patch.seoTitle = f.suggested.seoTitle;
-    }
-    const descIssue = f.missing.some((m) =>
-      ["seoDescription", "seoDescriptionShort", "seoDescriptionLong"].includes(m),
-    );
-    if (f.suggested.seoDescription && descIssue) {
-      patch.seoDescription = f.suggested.seoDescription;
-    }
-    if (f.suggested.ogImage && f.missing.includes("ogImage")) {
-      patch.ogImage = f.suggested.ogImage;
-    }
+    const patch = buildAutofillPatch(f);
     if (Object.keys(patch).length === 0) continue;
 
     switch (f.kind) {
@@ -863,7 +890,7 @@ export async function applyAutofill(
         if (patch.seoDescription) {
           // Always guard with the SQL empty check — never overwrite a
           // manually-set seoDescription regardless of its length.
-          const updatedInsights = await db
+          const updatedInsights = await dbInstance
             .update(postsTable)
             .set({ seoDescription: patch.seoDescription, updatedAt: new Date() })
             .where(
@@ -893,7 +920,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(servicesTable)
             .set(set)
             .where(and(...guards))
@@ -918,7 +945,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(solutionsTable)
             .set(set)
             .where(and(...guards))
@@ -949,7 +976,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(applicationsTable)
             .set(set)
             .where(and(...guards))
@@ -980,7 +1007,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(caseStudiesTable)
             .set(set)
             .where(and(...guards))
@@ -1014,7 +1041,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(polarisEpisodesTable)
             .set(set)
             .where(and(...guards))
@@ -1045,7 +1072,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(modelsTable)
             .set(set)
             .where(and(...guards))
@@ -1058,7 +1085,7 @@ export async function applyAutofill(
         // Workshops keep SEO copy in a JSONB column, so we read-modify-write
         // the `seo` object instead of patching flat columns.
         if (!patch.seoTitle && !patch.seoDescription) break;
-        const existing = await db.query.workshopsTable.findFirst({
+        const existing = await dbInstance.query.workshopsTable.findFirst({
           where: and(eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)),
           columns: { seo: true },
         });
@@ -1082,7 +1109,7 @@ export async function applyAutofill(
           changed = true;
         }
         if (changed) {
-          const rows = await db
+          const rows = await dbInstance
             .update(workshopsTable)
             .set({ seo: next, updatedAt: new Date() })
             .where(and(...guards))
@@ -1110,7 +1137,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(eventsTable)
             .set(set)
             .where(and(...guards))
@@ -1135,7 +1162,7 @@ export async function applyAutofill(
           );
         }
         if (Object.keys(set).length > 1) {
-          const rows = await db
+          const rows = await dbInstance
             .update(collateralTable)
             .set(set)
             .where(and(...guards))

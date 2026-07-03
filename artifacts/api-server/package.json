@@ -49,6 +49,8 @@
     "test:og-images": "node --import tsx --test src/lib/ogImages.test.ts",
     "test:og-dynamic": "node --import tsx --test src/lib/ogDynamicImages.test.ts",
     "test:seo-og-findings": "node --import tsx --test src/lib/seoAudit.ogFindings.test.ts",
+    "test:seo-autofill": "node --import tsx --test src/lib/seoAudit.test.ts",
+    "test:seo-autofill-apply": "node --import tsx --test src/lib/seoAudit.applyAutofill.test.ts",
     "test:storage-sniff": "node --import tsx --test src/routes/storage.sniff.test.ts",
     "test:og-white-paper-seo-title": "node --import tsx --test src/routes/og.whitePaper.seoTitle.test.ts"
   },
