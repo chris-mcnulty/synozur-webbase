@@ -45,7 +45,9 @@ const SKIP_EXACT = new Set(["/polaris/rss.xml"]);
 const ASSET_EXT_RE =
   /\.(?:js|mjs|ts|css|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|mp4|webm|pdf|xml|txt|json)(?:\?|$)/i;
 
-export function agentBotRendererMiddleware(): RequestHandler {
+export function agentBotRendererMiddleware(
+  htmlBuilder: (pathname: string) => Promise<string> = buildAgentPageHtml,
+): RequestHandler {
   return (req, res, next) => {
     if (req.method !== "GET") return next();
 
@@ -76,7 +78,7 @@ export function agentBotRendererMiddleware(): RequestHandler {
 
     if (!isAgentCategory && !isGenericFetcher) return next();
 
-    buildAgentPageHtml(pathname)
+    htmlBuilder(pathname)
       .then((html) => {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
