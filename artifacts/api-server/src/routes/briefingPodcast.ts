@@ -678,6 +678,69 @@ router.patch(
 );
 
 // ---------------------------------------------------------------------------
+// Voice preview — synthesise a short sample clip for a given voice
+// ---------------------------------------------------------------------------
+
+const PREVIEW_SAMPLE = "Good morning. Here is today's executive briefing.";
+
+const PreviewVoiceBody = z.object({
+  voice: z.string().min(1).max(150),
+});
+
+router.post(
+  "/admin/briefing-podcast/preview-voice",
+  requireAuth,
+  requireManage,
+  async (req: Request, res: Response) => {
+    const parsed = PreviewVoiceBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    const { voice } = parsed.data;
+
+    // Validate the voice belongs to whichever engine is active.
+    const useAzure = isAzureTtsConfigured();
+    if (useAzure) {
+      if (!(VALID_AZURE_VOICES as readonly string[]).includes(voice)) {
+        res.status(400).json({ error: "invalid_azure_voice" });
+        return;
+      }
+    } else {
+      if (!(VALID_TTS_VOICES as readonly string[]).includes(voice)) {
+        res.status(400).json({ error: "invalid_openai_voice" });
+        return;
+      }
+    }
+
+    try {
+      let audioBuffer: Buffer;
+      if (useAzure) {
+        const { azureSynthesizeChunk } = await import("../lib/azureTts");
+        audioBuffer = await azureSynthesizeChunk(PREVIEW_SAMPLE, voice);
+      } else {
+        const { synthesizeSpeech } = await import("../lib/tts");
+        const result = await synthesizeSpeech(PREVIEW_SAMPLE, {
+          format: "single",
+          tone: "conversational",
+          voice,
+          hostVoice: voice,
+          cohostVoice: voice,
+        });
+        audioBuffer = result.audio;
+      }
+      res.set("Content-Type", "audio/mpeg");
+      res.set("Content-Length", String(audioBuffer.length));
+      res.set("Cache-Control", "no-store");
+      res.status(200).send(audioBuffer);
+    } catch (err) {
+      logger.error({ err, voice }, "Voice preview synthesis failed");
+      res.status(500).json({ error: "synthesis_failed" });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Admin subscription status + manual refresh
 // ---------------------------------------------------------------------------
 

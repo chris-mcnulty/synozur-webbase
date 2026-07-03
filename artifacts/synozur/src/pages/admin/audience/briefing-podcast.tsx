@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
@@ -10,6 +10,8 @@ import {
   Save,
   Ban,
   CheckCircle2,
+  Play,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,9 +110,96 @@ type Settings = {
   ttsEngine: "azure" | "openai";
 };
 
+// ---------------------------------------------------------------------------
+// Voice preview helpers
+// ---------------------------------------------------------------------------
+
+type PreviewSlot = "single" | "host" | "cohost";
+
+async function fetchVoicePreview(voice: string): Promise<ArrayBuffer> {
+  const res = await fetch("/api/admin/briefing-podcast/preview-voice", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ voice }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Preview failed (${res.status}): ${text.slice(0, 120)}`);
+  }
+  return res.arrayBuffer();
+}
+
+// ---------------------------------------------------------------------------
+
 export default function AdminBriefingPodcast() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── Voice preview state ───────────────────────────────────────────────────
+  const [previewLoading, setPreviewLoading] = useState<PreviewSlot | null>(null);
+  const [playingSlot, setPlayingSlot] = useState<PreviewSlot | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  function stopPreview() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    setPlayingSlot(null);
+  }
+
+  // Clean up audio on unmount so navigation can't leave audio playing.
+  useEffect(() => {
+    return () => { stopPreview(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function playPreview(slot: PreviewSlot, voice: string) {
+    const wasPlaying = playingSlot === slot;
+    stopPreview();
+    if (wasPlaying) return;
+
+    setPreviewLoading(slot);
+    try {
+      const buf = await fetchVoicePreview(voice);
+      const blob = new Blob([buf], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      setPlayingSlot(slot);
+      const cleanup = () => {
+        setPlayingSlot(null);
+        URL.revokeObjectURL(url);
+        if (blobUrlRef.current === url) blobUrlRef.current = null;
+        if (audioRef.current === audio) audioRef.current = null;
+      };
+      audio.addEventListener("ended", cleanup);
+      audio.addEventListener("error", cleanup);
+      void audio.play().catch((err: unknown) => {
+        cleanup();
+        toast({
+          title: "Could not play preview",
+          description: err instanceof Error ? err.message : String(err),
+          variant: "destructive",
+        });
+      });
+    } catch (err) {
+      toast({
+        title: "Preview failed",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewLoading(null);
+    }
+  }
 
   // ── Settings ──────────────────────────────────────────────────────────────
   const [mailboxInput, setMailboxInput] = useState("");
@@ -388,24 +477,41 @@ export default function AdminBriefingPodcast() {
           {podcastFormat === "single" && (
             <div className="space-y-2">
               <p className="text-sm font-medium">Voice</p>
-              <Select
-                value={activeVoice}
-                onValueChange={(v) =>
-                  updateSettings.mutate({ [voiceField]: v })
-                }
-                disabled={settingsQuery.isLoading || updateSettings.isPending}
-              >
-                <SelectTrigger className="w-72">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {voiceOptions.map((v) => (
-                    <SelectItem key={v.value} value={v.value}>
-                      {v.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={activeVoice}
+                  onValueChange={(v) =>
+                    updateSettings.mutate({ [voiceField]: v })
+                  }
+                  disabled={settingsQuery.isLoading || updateSettings.isPending}
+                >
+                  <SelectTrigger className="w-72">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voiceOptions.map((v) => (
+                      <SelectItem key={v.value} value={v.value}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  title="Preview this voice"
+                  disabled={previewLoading !== null}
+                  onClick={() => void playPreview("single", activeVoice)}
+                >
+                  {previewLoading === "single" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : playingSlot === "single" ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -414,45 +520,79 @@ export default function AdminBriefingPodcast() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <p className="text-sm font-medium">Host voice</p>
-                <Select
-                  value={activeHostVoice}
-                  onValueChange={(v) =>
-                    updateSettings.mutate({ [hostVoiceField]: v })
-                  }
-                  disabled={settingsQuery.isLoading || updateSettings.isPending}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voiceOptions.map((v) => (
-                      <SelectItem key={v.value} value={v.value}>
-                        {v.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={activeHostVoice}
+                    onValueChange={(v) =>
+                      updateSettings.mutate({ [hostVoiceField]: v })
+                    }
+                    disabled={settingsQuery.isLoading || updateSettings.isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voiceOptions.map((v) => (
+                        <SelectItem key={v.value} value={v.value}>
+                          {v.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Preview host voice"
+                    disabled={previewLoading !== null}
+                    onClick={() => void playPreview("host", activeHostVoice)}
+                  >
+                    {previewLoading === "host" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : playingSlot === "host" ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Co-host voice</p>
-                <Select
-                  value={activeCohostVoice}
-                  onValueChange={(v) =>
-                    updateSettings.mutate({ [cohostVoiceField]: v })
-                  }
-                  disabled={settingsQuery.isLoading || updateSettings.isPending}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voiceOptions.map((v) => (
-                      <SelectItem key={v.value} value={v.value}>
-                        {v.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={activeCohostVoice}
+                    onValueChange={(v) =>
+                      updateSettings.mutate({ [cohostVoiceField]: v })
+                    }
+                    disabled={settingsQuery.isLoading || updateSettings.isPending}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voiceOptions.map((v) => (
+                        <SelectItem key={v.value} value={v.value}>
+                          {v.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Preview co-host voice"
+                    disabled={previewLoading !== null}
+                    onClick={() => void playPreview("cohost", activeCohostVoice)}
+                  >
+                    {previewLoading === "cohost" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : playingSlot === "cohost" ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
