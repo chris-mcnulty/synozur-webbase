@@ -3869,6 +3869,10 @@ export const ListLibraryAssetsQueryParams = zod.object({
   source: zod
     .enum(["asset", "media", "all"])
     .default(listLibraryAssetsQuerySourceDefault),
+  uncategorized: zod.coerce
+    .boolean()
+    .optional()
+    .describe("When true, return only items with no category assigned."),
 });
 
 export const ListLibraryAssetsResponse = zod.object({

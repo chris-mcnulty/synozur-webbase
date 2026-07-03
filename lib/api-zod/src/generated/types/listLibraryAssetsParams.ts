@@ -11,4 +11,8 @@ export type ListLibraryAssetsParams = {
   search?: string;
   categoryId?: string;
   source?: ListLibraryAssetsSource;
+  /**
+   * When true, return only items with no category assigned.
+   */
+  uncategorized?: boolean;
 };

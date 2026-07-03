@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import {
   db,
   assetsTable,
@@ -17,6 +17,7 @@ const ListQuery = z.object({
   search: z.string().trim().min(1).optional(),
   categoryId: z.string().uuid().optional(),
   source: z.enum(["asset", "media", "all"]).default("all"),
+  uncategorized: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(PAGE_SIZE_MAX).default(48),
 });
@@ -34,7 +35,7 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { search, categoryId, source, page, pageSize } = parsed.data;
+  const { search, categoryId, source, uncategorized, page, pageSize } = parsed.data;
   const offset = (page - 1) * pageSize;
 
   const assetConditions: SQL[] = [];
@@ -47,7 +48,11 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
     );
     if (assetSearch) assetConditions.push(assetSearch);
   }
-  if (categoryId) assetConditions.push(eq(assetsTable.categoryId, categoryId));
+  if (uncategorized) {
+    assetConditions.push(isNull(assetsTable.categoryId));
+  } else if (categoryId) {
+    assetConditions.push(eq(assetsTable.categoryId, categoryId));
+  }
 
   const mediaConditions: SQL[] = [];
   if (search) {
@@ -59,7 +64,11 @@ router.get("/cms/library/assets", requireAuth, async (req, res) => {
     );
     if (mediaSearch) mediaConditions.push(mediaSearch);
   }
-  if (categoryId) mediaConditions.push(eq(mediaTable.categoryId, categoryId));
+  if (uncategorized) {
+    mediaConditions.push(isNull(mediaTable.categoryId));
+  } else if (categoryId) {
+    mediaConditions.push(eq(mediaTable.categoryId, categoryId));
+  }
 
   const assetWhere =
     assetConditions.length === 0

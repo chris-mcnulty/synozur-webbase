@@ -2210,6 +2210,11 @@ paths:
               - media
               - all
             default: all
+        - in: query
+          name: uncategorized
+          description: When true, return only items with no category assigned.
+          schema:
+            type: boolean
       responses:
         '200':
           description: Library asset list

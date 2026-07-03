@@ -11,6 +11,8 @@ import {
   Tags,
   FileText,
   AlertTriangle,
+  ZoomIn,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { AssetCategoriesModal } from "@/components/admin/AssetCategoriesModal";
@@ -45,13 +51,12 @@ import {
 
 const ANY_CATEGORY = "__any__";
 const NONE_CATEGORY = "__none__";
+const UNCATEGORIZED = "__uncategorized__";
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
 function itemUrl(item: LibraryAssetItem, options?: { width?: number }): string {
   let resolved = "";
   if (item.publicUrl) {
-    // Normalize legacy `/objects/...` publicUrl values so `?w=` resizing
-    // applies (and the URL actually resolves).
     resolved = resolveStoragePath(item.publicUrl);
   } else if (item.storageKey.startsWith("http")) {
     resolved = item.storageKey;
@@ -59,6 +64,13 @@ function itemUrl(item: LibraryAssetItem, options?: { width?: number }): string {
     resolved = `${BASE_PATH}/api/storage${item.storageKey}`;
   }
   return withWidth(resolved, options?.width);
+}
+
+function absoluteItemUrl(item: LibraryAssetItem): string {
+  const path = itemUrl(item);
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${window.location.origin}${path}`;
 }
 
 function displayName(item: LibraryAssetItem): string {
@@ -70,9 +82,6 @@ function displayName(item: LibraryAssetItem): string {
   );
 }
 
-// #142 Phase A — Detect placeholder alt text that came from the upload
-// fallback or the backfill script. Editors should rewrite these into real
-// descriptive copy before a published image relies on them for a11y.
 function isPlaceholderAlt(altText: string | null | undefined): boolean {
   if (!altText) return true;
   return /^Image:\s/.test(altText.trim());
@@ -84,10 +93,12 @@ export default function AssetsLibrary() {
   const qc = useQueryClient();
 
   const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<string | "__any__">(ANY_CATEGORY);
+  const [categoryId, setCategoryId] = useState<string>(ANY_CATEGORY);
   const [source, setSource] = useState<"all" | "asset" | "media">("all");
   const [catsModalOpen, setCatsModalOpen] = useState(false);
   const [uploadCategoryId, setUploadCategoryId] = useState<string | null>(null);
+  const [lightboxItem, setLightboxItem] = useState<LibraryAssetItem | null>(null);
+  const [copiedLightbox, setCopiedLightbox] = useState(false);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListLibraryAssetsQueryKey() });
@@ -97,9 +108,15 @@ export default function AssetsLibrary() {
     (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
   );
 
+  const isUncategorized = categoryId === UNCATEGORIZED;
+
   const { data, isLoading } = useListLibraryAssets({
     ...(search.trim() ? { search: search.trim() } : {}),
-    ...(categoryId !== ANY_CATEGORY ? { categoryId } : {}),
+    ...(isUncategorized
+      ? { uncategorized: true }
+      : categoryId !== ANY_CATEGORY
+        ? { categoryId }
+        : {}),
     source,
   });
 
@@ -193,6 +210,15 @@ export default function AssetsLibrary() {
     }
   };
 
+  const handleCopyLightboxUrl = () => {
+    if (!lightboxItem) return;
+    const url = absoluteItemUrl(lightboxItem);
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLightbox(true);
+      setTimeout(() => setCopiedLightbox(false), 1500);
+    });
+  };
+
   return (
     <AdminLayout
       title="Asset Library"
@@ -242,9 +268,6 @@ export default function AssetsLibrary() {
                 const storageKey = `/objects/uploads/${id}`;
                 const publicUrl = `/api/storage${storageKey}`;
                 const originalName = String(f.name ?? "file");
-                // #142 Phase A — altText is required and non-empty. Use a
-                // deterministic placeholder shape so the asset library can
-                // flag rows that still need editorial review.
                 const altBase = originalName.replace(/\.[^./\\]+$/, "").trim();
                 const altText = altBase
                   ? `Image: ${altBase}`
@@ -289,6 +312,7 @@ export default function AssetsLibrary() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
+            <SelectItem value={UNCATEGORIZED}>Uncategorized</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.label}
@@ -341,7 +365,7 @@ export default function AssetsLibrary() {
           No assets match the current filters.
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {items.map((item) => (
             <AssetCard
               key={`${item.source}:${item.id}`}
@@ -358,19 +382,102 @@ export default function AssetsLibrary() {
                   ? !!access?.isAllowListed
                   : !!access?.isEditorOrAbove
               }
-              onCopy={(url) => {
+              onCopy={() => {
+                const url = absoluteItemUrl(item);
                 navigator.clipboard.writeText(url);
                 toast({ title: "URL copied" });
               }}
               onDelete={() => handleDelete(item)}
               onSaveAlt={(alt) => handleSaveAlt(item, alt)}
               onChangeCategory={(id) => handleChangeCategory(item, id)}
+              onPreview={() => setLightboxItem(item)}
             />
           ))}
         </div>
       )}
 
       <AssetCategoriesModal open={catsModalOpen} onClose={() => setCatsModalOpen(false)} />
+
+      {/* Lightbox */}
+      <Dialog open={!!lightboxItem} onOpenChange={(o) => !o && setLightboxItem(null)}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          {lightboxItem && (() => {
+            const isImage = (lightboxItem.mime ?? "").startsWith("image/");
+            const fullUrl = itemUrl(lightboxItem);
+            const absUrl = absoluteItemUrl(lightboxItem);
+            const name = displayName(lightboxItem);
+            const cat = lightboxItem.categoryId
+              ? categories.find((c) => c.id === lightboxItem.categoryId)
+              : lightboxItem.categorySlug
+                ? categories.find((c) => c.slug === lightboxItem.categorySlug)
+                : null;
+            return (
+              <>
+                {isImage ? (
+                  <div className="bg-muted flex items-center justify-center max-h-[60vh] overflow-hidden">
+                    <img
+                      src={fullUrl}
+                      alt={lightboxItem.altText ?? ""}
+                      className="max-h-[60vh] max-w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-muted flex flex-col items-center justify-center gap-3 py-16">
+                    <FileText className="h-16 w-16 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground">{name}</div>
+                  </div>
+                )}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate" title={name}>{name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 space-x-2">
+                        {lightboxItem.mime && <span>{lightboxItem.mime}</span>}
+                        {lightboxItem.byteSize != null && (
+                          <span>{formatBytes(lightboxItem.byteSize)}</span>
+                        )}
+                        {lightboxItem.width && lightboxItem.height && (
+                          <span>{lightboxItem.width} × {lightboxItem.height}px</span>
+                        )}
+                        {cat && <span>· {cat.label}</span>}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => setLightboxItem(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={absUrl}
+                      className="h-8 text-xs font-mono"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={handleCopyLightboxUrl}
+                    >
+                      {copiedLightbox ? (
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                      <span className="ml-1.5">{copiedLightbox ? "Copied" : "Copy URL"}</span>
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
@@ -387,21 +494,20 @@ function AssetCard({
   onDelete,
   onSaveAlt,
   onChangeCategory,
+  onPreview,
 }: {
   item: LibraryAssetItem;
   categories: AssetCategory[];
   categoriesById: Map<string, AssetCategory>;
   canEdit: boolean;
   canDelete: boolean;
-  onCopy: (url: string) => void;
+  onCopy: () => void;
   onDelete: () => void;
   onSaveAlt: (altText: string) => Promise<void>;
   onChangeCategory: (categoryId: string | null) => Promise<void>;
+  onPreview: () => void;
 }) {
-  const url = itemUrl(item);
-  // Library tiles render at ~250–360px CSS width depending on viewport.
-  // 600px covers a 2x DPR screen without round-tripping the original.
-  const thumbUrl = itemUrl(item, { width: 600 });
+  const thumbUrl = itemUrl(item, { width: 400 });
   const isImage = (item.mime ?? "").startsWith("image/");
   const [alt, setAlt] = useState(item.altText ?? "");
   const [state, setState] = useState<SaveState>("idle");
@@ -412,8 +518,6 @@ function AssetCard({
 
   const handleBlur = async () => {
     if (alt === (item.altText ?? "")) return;
-    // #142 Phase A — alt text is required and non-empty. Revert to the
-    // existing value rather than firing a request the server will reject.
     if (!alt.trim()) {
       setAlt(item.altText ?? "");
       return;
@@ -430,7 +534,10 @@ function AssetCard({
 
   return (
     <Card className="overflow-hidden" data-testid={`asset-card-${item.source}-${item.id}`}>
-      <div className="aspect-square bg-muted overflow-hidden flex items-center justify-center relative">
+      <div
+        className="aspect-square bg-muted overflow-hidden flex items-center justify-center relative group cursor-pointer"
+        onClick={onPreview}
+      >
         {isImage ? (
           <img
             src={thumbUrl}
@@ -440,34 +547,36 @@ function AssetCard({
             decoding="async"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-            <FileText className="h-10 w-10" />
-            <div className="text-xs break-all">
+          <div className="flex flex-col items-center justify-center gap-1.5 p-2 text-center text-muted-foreground">
+            <FileText className="h-8 w-8" />
+            <div className="text-[10px] break-all leading-tight">
               {item.originalName ?? item.storageKey.split("/").pop()}
             </div>
             {item.byteSize != null && (
-              <div className="text-[11px]">{formatBytes(item.byteSize)}</div>
+              <div className="text-[10px]">{formatBytes(item.byteSize)}</div>
             )}
           </div>
         )}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <ZoomIn className="h-6 w-6 text-white drop-shadow" />
+        </div>
         <Badge
           variant="outline"
-          className="absolute top-2 left-2 bg-background/90 backdrop-blur text-[10px]"
+          className="absolute top-1.5 left-1.5 bg-background/90 backdrop-blur text-[9px] px-1 py-0"
         >
           {item.source === "asset" ? "legacy" : "media"}
         </Badge>
         {altNeedsReview && (
           <Badge
             variant="outline"
-            className="absolute top-2 right-2 bg-amber-500/15 border-amber-500/40 text-amber-300 backdrop-blur text-[10px] gap-1"
+            className="absolute top-1.5 right-1.5 bg-amber-500/15 border-amber-500/40 text-amber-300 backdrop-blur text-[9px] px-1 py-0"
             title="Alt text is a placeholder. Rewrite it as a meaningful description for screen readers."
           >
-            <AlertTriangle className="h-3 w-3" />
-            Needs alt text
+            <AlertTriangle className="h-2.5 w-2.5" />
           </Badge>
         )}
       </div>
-      <div className="p-2 space-y-1.5">
+      <div className="p-1.5 space-y-1">
         <div className="relative">
           <Input
             value={alt}
@@ -477,18 +586,18 @@ function AssetCard({
             }}
             onBlur={handleBlur}
             placeholder="Alt text"
-            className="h-8 text-xs pr-7"
+            className="h-7 text-[11px] pr-6"
             disabled={!canEdit}
             data-testid={`asset-alt-${item.source}-${item.id}`}
           />
           <div
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center"
             data-state={state}
           >
             {state === "saving" && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
             )}
-            {state === "saved" && <Check className="h-3.5 w-3.5 text-green-600" />}
+            {state === "saved" && <Check className="h-3 w-3 text-green-600" />}
           </div>
         </div>
         <Select
@@ -499,7 +608,7 @@ function AssetCard({
           disabled={!canEdit}
         >
           <SelectTrigger
-            className="h-8 text-xs"
+            className="h-7 text-[11px]"
             data-testid={`asset-category-${item.source}-${item.id}`}
           >
             <SelectValue placeholder="Uncategorized" />
@@ -513,29 +622,31 @@ function AssetCard({
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center justify-between gap-0.5">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onCopy(url)}
+            className="h-6 px-1.5"
+            onClick={onCopy}
             data-testid={`asset-copy-${item.source}-${item.id}`}
+            title="Copy absolute URL"
           >
-            <Copy className="h-3.5 w-3.5" />
+            <Copy className="h-3 w-3" />
           </Button>
           {canDelete && (
             <Button
               variant="ghost"
               size="sm"
+              className="h-6 px-1.5"
               onClick={onDelete}
               data-testid={`asset-delete-${item.source}-${item.id}`}
             >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           )}
         </div>
-        {/* Preserve category label hint for a11y */}
         {item.categoryLabel && !categoriesById.has(item.categoryId ?? "") && (
-          <div className="text-[10px] text-muted-foreground truncate">
+          <div className="text-[9px] text-muted-foreground truncate">
             Tag: {item.categoryLabel}
           </div>
         )}
