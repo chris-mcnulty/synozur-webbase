@@ -360,6 +360,57 @@ function ImageFloatingToolbar({ editor }: { editor: Editor }) {
   const activeSize  = (editor.getAttributes("image")["data-size"]  as string | undefined) ?? "full";
   const activeAlign = (editor.getAttributes("image")["data-align"] as string | undefined) ?? "center";
 
+  // Merge rapid consecutive attribute clicks into a single undo step.
+  //
+  // Strategy: the FIRST click for a given (attribute key, image position) pair
+  // is applied normally and creates one history entry. Every subsequent click
+  // within a 600 ms window applies the change with `addToHistory: false`,
+  // keeping the visual state current without stacking extra undo entries.
+  //
+  // Keying on image position means switching to a different image always
+  // starts a fresh window, so cross-image cross-contamination is impossible.
+  //
+  // Size and alignment are tracked separately (different keys) so a size click
+  // then an align click each get their own undo step — only rapid clicks of
+  // the *same* attribute on the *same* image are merged.
+  const debounceTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const windowStartRef = useRef<Record<string, number>>({});
+
+  // Clear any pending debounce timers when the toolbar unmounts so we don't
+  // leave stray callbacks that could fire against an already-destroyed editor.
+  useEffect(() => {
+    const timers = debounceTimersRef.current;
+    return () => { Object.values(timers).forEach(clearTimeout); };
+  }, []);
+
+  const applyImageAttr = (key: string, value: string) => {
+    const { from } = editor.state.selection;
+    const windowKey = `${key}:${from}`;
+    const isFirstInWindow = !(windowKey in windowStartRef.current);
+
+    if (isFirstInWindow) {
+      editor.chain().focus().updateAttributes("image", { [key]: value }).run();
+      windowStartRef.current[windowKey] = from;
+    } else {
+      // Apply visually without recording a new history entry so that a single
+      // Ctrl+Z undoes the entire burst back to the state before the first click.
+      editor
+        .chain()
+        .focus()
+        .setMeta("addToHistory", false)
+        .updateAttributes("image", { [key]: value })
+        .run();
+    }
+
+    if (debounceTimersRef.current[windowKey]) {
+      clearTimeout(debounceTimersRef.current[windowKey]);
+    }
+    debounceTimersRef.current[windowKey] = setTimeout(() => {
+      delete windowStartRef.current[windowKey];
+      delete debounceTimersRef.current[windowKey];
+    }, 600);
+  };
+
   return (
     <BubbleMenu
       editor={editor}
@@ -376,7 +427,7 @@ function ImageFloatingToolbar({ editor }: { editor: Editor }) {
             aria-label={title}
             onMouseDown={(e) => {
               e.preventDefault();
-              editor.chain().focus().updateAttributes("image", { "data-size": value }).run();
+              applyImageAttr("data-size", value);
             }}
             className={cn(
               "h-7 min-w-[2rem] px-1.5 inline-flex items-center justify-center rounded text-xs font-medium",
@@ -399,7 +450,7 @@ function ImageFloatingToolbar({ editor }: { editor: Editor }) {
             aria-label={title}
             onMouseDown={(e) => {
               e.preventDefault();
-              editor.chain().focus().updateAttributes("image", { "data-align": value }).run();
+              applyImageAttr("data-align", value);
             }}
             className={cn(
               "h-7 w-7 inline-flex items-center justify-center rounded",
