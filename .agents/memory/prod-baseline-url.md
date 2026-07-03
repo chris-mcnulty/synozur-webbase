@@ -1,11 +1,16 @@
 ---
-name: Production baseline URL (pre-launch)
-description: Where the Replit-built Synozur app is currently deployed while www is still the old site.
+name: Production URL and database
+description: Where the Replit-built Synozur app is deployed and how the production DB is managed.
 ---
-While the rebuild is in progress, production for the Replit app is **https://synozur-baseline.replit.app** (autoscale deploy).
 
-- `www.synozur.com` / `synozur.com` is STILL the OLD Wix site — do NOT treat it as this app's prod, and do NOT switch/replace www until the user explicitly says so.
-- When the user says "prod" / "the published site" during this phase, they mean synozur-baseline.replit.app.
+**www.synozur.com is now live on the Replit app** — the old Wix site has been cut over.
 
-**Why:** user is running the new app on a baseline domain and cutting over to www only after the rebuild is finished.
-**How to apply:** debug/verify production against the baseline URL; never point DNS/www changes at the new app unprompted.
+- `www.synozur.com` / `synozur.com` = this app's production environment.
+- "prod" / "the published site" = synozur-baseline.replit.app (Replit deploy domain), which is what www.synozur.com points at.
+- Production has its **own separate read-write PostgreSQL database** — it is NOT a periodic copy of development. Dev and prod DBs are independent; changes in dev do not flow to prod automatically.
+
+**Why:** The user confirmed the DNS cutover is complete and that prod now operates its own live database with real data.
+**How to apply:**
+- When debugging prod data issues, query the production DB directly (use the `database` skill with `environment: "production"`).
+- Never assume prod data matches dev. Schema migrations must be applied to prod separately.
+- Do not suggest "re-syncing from dev" — prod DB is now the source of truth for production data.

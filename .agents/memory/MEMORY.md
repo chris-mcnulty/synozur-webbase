@@ -16,6 +16,6 @@
 - [Home B is primary](home-b-primary.md) — Home B is the permanent `/` homepage (hardwired, B chrome); old Home A parked at /home-a; no A/B root toggle, canonical is `/`.
 - [B chrome header contrast & offset](b-chrome-header-contrast.md) — B header top color + Layout top-offset are route-based via LIGHT_TOP_PREFIXES; add new non-hero routes there or you get white-on-light text + overlap.
 - [Galaxy chrome replication](galaxy-chrome-replication.md) — Galaxy header duplicates synozur B chrome (no cross-artifact import); update both; cross-app links use plain `<a>` to escape /galaxy wouter base; portal renders solid (no dark hero).
-- [Prod baseline URL](prod-baseline-url.md) — pre-launch prod is synozur-baseline.replit.app; www/synozur.com is still old Wix, don't cut over until told.
+- [Prod URL and database](prod-baseline-url.md) — www.synozur.com is LIVE on the Replit app; prod has its own separate read-write DB (not a dev copy).
 - [Synozur type layer](synozur-type-layer.md) — synozur/src/lib/api.ts hand-writes its own site-settings types; OpenAPI codegen alone won't fix its typecheck.
 - [SEO audit OG-image findings](seo-audit-og-findings.md) — ogImage=autofillable promote; og_image_missing=pure warning; kinds with no image field must strip both to avoid permanent noise.
