@@ -36,6 +36,14 @@ args = "typecheck"
 task = "workflow.run"
 args = "mockup-sandbox-typecheck"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:synozur"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck:galaxy"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -87,6 +95,28 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/mockup-sandbox run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:synozur"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/synozur run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "typecheck:galaxy"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/galaxy run typecheck"
 
 [workflows.workflow.metadata]
 isValidation = true
