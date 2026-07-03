@@ -367,7 +367,11 @@ export async function renderOgImagePng(input: OgImageInput): Promise<Buffer> {
     Promise.resolve(getLogoDataUri()),
   ]);
   const svg = buildSvg(input, avatarDataUri, logoDataUri);
-  return await sharp(Buffer.from(svg, "utf-8"), { density: 96 })
+  // density: 72 makes sharp treat SVG CSS pixels 1:1 as raster pixels.
+  // The SVG canvas is 1200×630 px, so the output PNG is exactly 1200×630.
+  // At density: 96 libvips would interpret the CSS units as points and
+  // rasterise at 1600×840 (1200 × 96/72), which is wrong.
+  return await sharp(Buffer.from(svg, "utf-8"), { density: 72 })
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
