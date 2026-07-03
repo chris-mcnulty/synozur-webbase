@@ -154,6 +154,7 @@ async function resolveArtifact(
         .select({
           id: whitePapersTable.id,
           title: whitePapersTable.title,
+          seoTitle: whitePapersTable.seoTitle,
           subtitle: whitePapersTable.subtitle,
           docType: whitePapersTable.docType,
           updatedAt: whitePapersTable.updatedAt,
@@ -170,7 +171,7 @@ async function resolveArtifact(
       return {
         input: {
           kind,
-          title: row.title,
+          title: row.seoTitle || row.title,
           byline: null,
           context: row.subtitle || docLabel,
         },

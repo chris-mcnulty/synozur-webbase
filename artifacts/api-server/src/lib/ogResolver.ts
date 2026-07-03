@@ -753,6 +753,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
         const [row] = await db
           .select({
             title: collateralTable.title,
+            seoTitle: collateralTable.seoTitle,
             subtitle: collateralTable.subtitle,
             description: collateralTable.description,
             heroImage: collateralTable.heroImage,
@@ -767,7 +768,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           defaults.description;
         return {
           ...fallback,
-          title: row.title || SITE_NAME,
+          title: row.seoTitle || row.title || SITE_NAME,
           description,
           image: ogImageVariant(absUrl(row.heroImage, origin), origin) ?? defaults.image,
           ogType: "article",
@@ -779,6 +780,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           .select({
             id: whitePapersTable.id,
             title: whitePapersTable.title,
+            seoTitle: whitePapersTable.seoTitle,
             shortDescription: whitePapersTable.shortDescription,
             heroImage: whitePapersTable.heroImage,
             ogImage: whitePapersTable.ogImage,
@@ -792,7 +794,7 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           (row.ogImage && row.ogImage.trim()) || (row.heroImage && row.heroImage.trim()) || null;
         return {
           ...fallback,
-          title: row.title || SITE_NAME,
+          title: row.seoTitle || row.title || SITE_NAME,
           description: row.shortDescription || defaults.description,
           image:
             ogImageVariant(absUrl(editorImage, origin), origin) ??
