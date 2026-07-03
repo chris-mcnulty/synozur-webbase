@@ -32,6 +32,10 @@ args = "test:og-dynamic"
 task = "workflow.run"
 args = "typecheck"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "mockup-sandbox-typecheck"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -75,6 +79,17 @@ isValidation = true
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run typecheck:ci"
+
+[[workflows.workflow]]
+name = "mockup-sandbox-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mockup-sandbox run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"
