@@ -170,13 +170,20 @@ export function registerMediaTools(server: McpServer, writes: boolean) {
           ownerId: "mcp",
         });
 
-        // Normalize storageKey to /objects/uploads/<id> for SPE rows so the
-        // /api/storage/public-objects/* route can look it up by storageKey.
+        // Normalize storageKey to /objects/uploads/<id> shape.
         // SPE dispatch still works because speFileId is set on the row.
         const storageKey = ref.speFileId
           ? `/objects/uploads/${ref.speFileId}`
           : ref.storageKey;
-        const publicUrl = `${siteOrigin()}/api/storage/public-objects/${storageKey.replace(/^\/objects\//, "")}`;
+
+        // /api/storage/objects/* is the correct public read route (no auth
+        // required). /api/storage/public-objects/* calls searchPublicObject
+        // which only searches configured public-directory paths and 404s for
+        // objects in the uploads/ prefix — do NOT use that route here.
+        const relativePath = storageKey.replace(/^\/objects\//, "");
+        const publicUrl = `/api/storage/objects/${relativePath}`;
+        const origin = siteOrigin();
+        const optimizedUrl = `${origin}/api/storage/objects/${relativePath}?w=1200&fmt=webp`;
 
         const [media] = await db
           .insert(mediaTable)
@@ -196,7 +203,13 @@ export function registerMediaTools(server: McpServer, writes: boolean) {
         return {
           content: [{
             type: "text" as const,
-            text: JSON.stringify({ id: media!.id, publicUrl: media!.publicUrl, altText, mime: mimeType }),
+            text: JSON.stringify({
+              id: media!.id,
+              publicUrl: `${origin}${media!.publicUrl}`,
+              optimizedUrl,
+              altText,
+              mime: mimeType,
+            }),
           }],
         };
       } catch (err) {

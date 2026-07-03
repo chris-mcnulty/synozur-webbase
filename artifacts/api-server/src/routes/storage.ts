@@ -256,15 +256,22 @@ async function streamObjectToResponse(
   // Trusted image/* objects stream directly. Ambiguous objects (octet-stream /
   // empty content-type) are byte-sniffed so mislabeled raster images still get
   // resized instead of shipping the full-size original as an OG share card.
+  // Even without ?w= we sniff and override the Content-Type so browsers inline
+  // images rather than downloading them as unnamed binary blobs.
   let canThumb = false;
+  let sniffedContentType: string | null = null;
   let nodeStream: Readable;
   if (width != null && isThumbnailable(contentType)) {
     canThumb = true;
     nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
-  } else if (width != null && isAmbiguousContentType(contentType)) {
+  } else if (isAmbiguousContentType(contentType)) {
     const reader = (source.body as ReadableStream<Uint8Array>).getReader();
     const header = await peekBytes(reader, IMAGE_SNIFF_BYTES);
-    canThumb = bufferLooksLikeRasterImage(header);
+    const sniffed = sniffRasterImageMime(header);
+    if (sniffed) {
+      sniffedContentType = sniffed;
+      if (width != null) canThumb = true;
+    }
     nodeStream = readableFromReader(header, reader);
   } else {
     nodeStream = Readable.fromWeb(source.body as ReadableStream<Uint8Array>);
@@ -327,6 +334,9 @@ async function streamObjectToResponse(
 
   res.status(source.status);
   source.headers.forEach((value, key) => res.setHeader(key, value));
+  // Override the stored content-type with the sniffed one so browsers
+  // display images inline instead of downloading them as binary blobs.
+  if (sniffedContentType) res.setHeader("Content-Type", sniffedContentType);
   nodeStream.pipe(res);
 }
 
