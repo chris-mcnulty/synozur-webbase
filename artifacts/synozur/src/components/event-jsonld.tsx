@@ -36,67 +36,70 @@ export interface EventJsonLdProps {
   organizerUrl?: string | null;
 }
 
-export function EventJsonLd({
-  slug,
-  name,
-  description,
-  image,
-  startDate,
-  endDate,
-  location,
-  registrationUrl,
-  organizerName,
-  organizerUrl,
-}: EventJsonLdProps) {
+/**
+ * Build the raw JSON-LD data object for an Event.
+ * Exported as a pure function so it can be unit-tested without a DOM.
+ */
+export function buildEventJsonLdData(
+  props: EventJsonLdProps,
+): Record<string, unknown> {
+  const canonical = `${SITE_ORIGIN}/events/${props.slug}`;
+  const start = toIso(props.startDate);
+  const end = toIso(props.endDate);
+  const img = absolutize(props.image ?? null);
+
+  const hasPhysical =
+    !!props.location && props.location.trim().length > 0;
+
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: props.name,
+    url: canonical,
+    eventAttendanceMode: hasPhysical
+      ? "https://schema.org/OfflineEventAttendanceMode"
+      : "https://schema.org/OnlineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+  };
+
+  if (props.description) data.description = props.description;
+  if (start) data.startDate = start;
+  if (end) data.endDate = end;
+  if (img) data.image = img;
+
+  if (hasPhysical) {
+    data.location = {
+      "@type": "Place",
+      name: props.location,
+      address: props.location,
+    };
+  } else {
+    data.location = {
+      "@type": "VirtualLocation",
+      url: props.registrationUrl ?? canonical,
+    };
+  }
+
+  data.organizer = {
+    "@type": "Organization",
+    name: props.organizerName ?? SITE_NAME,
+    url: props.organizerUrl ?? SITE_ORIGIN,
+  };
+
+  if (props.registrationUrl) {
+    data.offers = {
+      "@type": "Offers",
+      url: props.registrationUrl,
+      availability: "https://schema.org/InStock",
+    };
+  }
+
+  return data;
+}
+
+export function EventJsonLd(props: EventJsonLdProps) {
   useEffect(() => {
-    const canonical = `${SITE_ORIGIN}/events/${slug}`;
-    const start = toIso(startDate);
-    const end = toIso(endDate);
-    const img = absolutize(image ?? null);
-
-    const hasPhysical = !!location && location.trim().length > 0;
-
-    const data: Record<string, unknown> = {
-      "@context": "https://schema.org",
-      "@type": "Event",
-      name,
-      url: canonical,
-      eventAttendanceMode: hasPhysical
-        ? "https://schema.org/OfflineEventAttendanceMode"
-        : "https://schema.org/OnlineEventAttendanceMode",
-      eventStatus: "https://schema.org/EventScheduled",
-    };
-    if (description) data.description = description;
-    if (start) data.startDate = start;
-    if (end) data.endDate = end;
-    if (img) data.image = img;
-
-    if (hasPhysical) {
-      data.location = {
-        "@type": "Place",
-        name: location,
-        address: location,
-      };
-    } else {
-      data.location = {
-        "@type": "VirtualLocation",
-        url: registrationUrl ?? canonical,
-      };
-    }
-
-    data.organizer = {
-      "@type": "Organization",
-      name: organizerName ?? SITE_NAME,
-      url: organizerUrl ?? SITE_ORIGIN,
-    };
-
-    if (registrationUrl) {
-      data.offers = {
-        "@type": "Offers",
-        url: registrationUrl,
-        availability: "https://schema.org/InStock",
-      };
-    }
+    const data = buildEventJsonLdData(props);
 
     const existing = document.getElementById(ID);
     if (existing) existing.remove();
@@ -111,16 +114,16 @@ export function EventJsonLd({
       if (el) el.remove();
     };
   }, [
-    slug,
-    name,
-    description,
-    image,
-    startDate,
-    endDate,
-    location,
-    registrationUrl,
-    organizerName,
-    organizerUrl,
+    props.slug,
+    props.name,
+    props.description,
+    props.image,
+    props.startDate,
+    props.endDate,
+    props.location,
+    props.registrationUrl,
+    props.organizerName,
+    props.organizerUrl,
   ]);
 
   return null;
