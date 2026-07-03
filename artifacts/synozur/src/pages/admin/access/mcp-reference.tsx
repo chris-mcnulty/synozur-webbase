@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { BookOpen, Lock, Pencil } from "lucide-react";
+import { BookOpen, Image, Lock, Pencil } from "lucide-react";
 
 const ENDPOINT = "https://synozur-baseline.replit.app/api/mcp";
 
@@ -137,16 +137,32 @@ const GROUPS: Group[] = [
     label: "Media",
     tools: [
       {
+        name: "list_media_categories",
+        access: "read",
+        description: "List all asset categories in the media library. Returns each category's ID, name, and slug. Pass a returned id as categoryId in list_media to filter assets by category.",
+        params: [],
+        returns: "{ categories: { id, name, slug, createdAt }[] } — sorted alphabetically by name",
+      },
+      {
         name: "list_media",
         access: "read",
-        description: "Search the media library. Returns image and document records with public URLs, dimensions, and metadata.",
+        description: "Search the media library. Returns image and document records with public URLs, dimensions, and metadata. Use list_media_categories first to obtain valid categoryId values.",
         params: [
           { name: "query", type: "string", required: false, description: "Search by alt text or filename" },
-          { name: "categoryId", type: "uuid", required: false, description: "Filter by asset category UUID" },
+          { name: "categoryId", type: "uuid", required: false, description: "Filter by asset category UUID (from list_media_categories)" },
           { name: "page", type: "number", required: false, description: "Page number (default 1)" },
           { name: "pageSize", type: "number", required: false, description: "Results per page, max 100 (default 20)" },
         ],
-        returns: "{ items: Media[], page, pageSize } — each item includes id, publicUrl, altText, mime, width, height",
+        returns: "{ items: Media[], page, pageSize, total } — each item includes id, publicUrl, storageKey, altText, mime, width, height",
+      },
+      {
+        name: "get_media",
+        access: "read",
+        description: "Fetch a single media asset by its UUID. Returns the full record including storageKey and a pre-built optimizedUrl (1200 px wide WebP) suitable for embedding in documents or pages.",
+        params: [
+          { name: "id", type: "uuid", required: true, description: "Media asset UUID" },
+        ],
+        returns: "{ id, publicUrl, storageKey, altText, mime, width, height, byteSize, originalName, categoryId, createdAt, optimizedUrl } — optimizedUrl is null for non-image assets",
       },
       {
         name: "upload_image",
@@ -339,6 +355,80 @@ export default function McpReferencePage() {
             <code className="font-mono">create_draft_post</code>, <code className="font-mono">update_draft_post</code>,{" "}
             <code className="font-mono">schedule_post</code>, and <code className="font-mono">upload_image</code>.
           </span>
+        </div>
+      </Card>
+
+      {/* Image browse guide */}
+      <Card className="p-5 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Image className="h-4 w-4 text-primary/70 shrink-0" />
+          <h2 className="text-sm font-semibold">Browsing and embedding images</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Three tools work together to give a client the full browse-and-retrieve workflow for media assets.
+          Follow the steps below in order — each tool feeds the next.
+        </p>
+
+        <ol className="flex flex-col gap-4">
+          <li className="flex gap-3">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary mt-0.5">1</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Discover categories with <code className="font-mono text-xs bg-muted px-1 rounded">list_media_categories</code></p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Call this first to get a menu of named categories and their UUIDs. No parameters required.
+                The response is <code className="font-mono text-xs bg-muted px-1 rounded">{"{ categories: [{ id, name, slug, createdAt }] }"}</code>, sorted alphabetically.
+              </p>
+            </div>
+          </li>
+
+          <li className="flex gap-3">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary mt-0.5">2</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Filter and paginate with <code className="font-mono text-xs bg-muted px-1 rounded">list_media</code></p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Pass the <code className="font-mono text-xs bg-muted px-1 rounded">id</code> from step 1 as <code className="font-mono text-xs bg-muted px-1 rounded">categoryId</code>, and optionally a
+                text <code className="font-mono text-xs bg-muted px-1 rounded">query</code> to narrow by alt text or filename.
+                The response now includes <code className="font-mono text-xs bg-muted px-1 rounded">total</code> (total matching records) so you can calculate page count
+                and paginate with <code className="font-mono text-xs bg-muted px-1 rounded">page</code> / <code className="font-mono text-xs bg-muted px-1 rounded">pageSize</code>.
+                Each item carries its <code className="font-mono text-xs bg-muted px-1 rounded">storageKey</code> alongside <code className="font-mono text-xs bg-muted px-1 rounded">publicUrl</code>.
+              </p>
+            </div>
+          </li>
+
+          <li className="flex gap-3">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary mt-0.5">3</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Resolve a single asset with <code className="font-mono text-xs bg-muted px-1 rounded">get_media</code></p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Pass any <code className="font-mono text-xs bg-muted px-1 rounded">id</code> (from step 2 or from any other tool that returns a media UUID, such as{" "}
+                <code className="font-mono text-xs bg-muted px-1 rounded">get_post</code>'s <code className="font-mono text-xs bg-muted px-1 rounded">heroImageId</code>).
+                The response includes every field on the row plus <strong>optimizedUrl</strong> — a ready-to-use URL that serves the image resized to
+                1200 px wide in WebP format. Use <code className="font-mono text-xs bg-muted px-1 rounded">optimizedUrl</code> whenever embedding an image in a
+                document, draft post hero, or rich-text content.
+                For non-image assets (PDFs, etc.) <code className="font-mono text-xs bg-muted px-1 rounded">optimizedUrl</code> is <code className="font-mono text-xs bg-muted px-1 rounded">null</code> — use{" "}
+                <code className="font-mono text-xs bg-muted px-1 rounded">publicUrl</code> instead.
+              </p>
+            </div>
+          </li>
+        </ol>
+
+        <div className="mt-5 rounded-md bg-muted/60 border px-3 py-2.5 text-xs text-muted-foreground">
+          <p className="font-semibold text-foreground mb-1">Image URL quick reference</p>
+          <div className="flex flex-col gap-1.5 font-mono">
+            <div>
+              <span className="text-muted-foreground">Original (any format, any size): </span>
+              <code>publicUrl</code>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Optimized for embedding (1200 px, WebP): </span>
+              <code>optimizedUrl</code>
+              <span className="text-muted-foreground font-sans ml-1">— images only</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Custom size (e.g. 800 px, JPEG): </span>
+              <code>/api/storage/objects/{"<storageKey-without-/objects/>"}?w=800&fmt=jpeg</code>
+            </div>
+          </div>
         </div>
       </Card>
 
