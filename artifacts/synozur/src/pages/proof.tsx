@@ -280,13 +280,12 @@ function FilterRow({ label, options, active }: { label: string; options: string[
 }
 
 function ProofPanel({ c, index }: { c: ProofCase; index: number }) {
-  const reversed = index % 2 === 1;
   return (
     <motion.article
       {...fadeUp}
       className="rounded-3xl border border-border/60 bg-card overflow-hidden nebula-card"
     >
-      <div className={`grid lg:grid-cols-[1.05fr_0.95fr] ${reversed ? "lg:[direction:rtl]" : ""}`}>
+      <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
         {/* Narrative column */}
         <div className="p-8 md:p-12 lg:[direction:ltr]">
           <div className="flex flex-wrap items-center gap-3 mb-5">
