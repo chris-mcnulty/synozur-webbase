@@ -1,0 +1,12 @@
+{
+  "name": "@workspace/bot-signatures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "types": "./index.d.ts"
+    }
+  }
+}

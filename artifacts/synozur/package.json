@@ -71,6 +71,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
     "@workspace/api-zod": "workspace:*",
+    "@workspace/bot-signatures": "workspace:*",
     "@workspace/synozur-nav": "workspace:*",
     "@workspace/db": "workspace:*",
     "class-variance-authority": "catalog:",

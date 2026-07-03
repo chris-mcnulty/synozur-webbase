@@ -26,13 +26,15 @@
  *    default, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy)
  *    so the public HTML is covered too (#155 / launch readiness L4).
  *
- * Uses only Node.js built-in modules — no extra dependencies.
+ * Uses Node.js built-in modules plus @workspace/bot-signatures (local monorepo
+ * package) for the canonical agent-bot UA list. No npm registry dependencies.
  */
 
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AGENT_BOT_SIGNATURES } from "@workspace/bot-signatures";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -209,58 +211,10 @@ function isSocialBot(ua) {
 // `/api/seo/page` instead. Checked AFTER isSocialBot so link-unfurl crawlers
 // keep their dedicated OG path. Real browsers never match (their UAs contain
 // Mozilla/Chrome/Safari, none of these tokens).
-const AGENT_BOT_PATTERNS = [
-  // First-party crawlers — Orbit rotates real browser UAs; the Orbit/1.0
-  // suffix token is the only reliable identifier (enable in Orbit settings).
-  /Orbit\//i,
-  // AI assistants & crawlers
-  /GPTBot/i,
-  /ChatGPT-User/i,
-  /OAI-SearchBot/i,
-  /ClaudeBot/i,
-  /Claude-Web/i,
-  /anthropic-ai/i,
-  /PerplexityBot/i,
-  /Perplexity-User/i,
-  /Google-Extended/i,
-  /GoogleOther/i,
-  /CCBot/i,
-  /Bytespider/i,
-  /Amazonbot/i,
-  /Meta-ExternalAgent/i,
-  /Meta-ExternalFetcher/i,
-  /cohere-ai/i,
-  /YouBot/i,
-  /DuckAssistBot/i,
-  /Diffbot/i,
-  /Applebot-Extended/i,
-  // Search engines
-  /Googlebot/i,
-  /bingbot/i,
-  /YandexBot/i,
-  /Baiduspider/i,
-  /DuckDuckBot/i,
-  /Sogou/i,
-  /AhrefsBot/i,
-  /SemrushBot/i,
-  /MJ12bot/i,
-  /DotBot/i,
-  // Generic non-JS fetchers (covers AI agents built on HTTP libraries)
-  /\bbot\b/i,
-  /crawler/i,
-  /spider/i,
-  /slurp/i,
-  /curl\//i,
-  /wget\//i,
-  /python-requests/i,
-  /python-httpx/i,
-  /aiohttp/i,
-  /node-fetch/i,
-  /\bgo-http-client\b/i,
-  /\bokhttp\b/i,
-  /\baxios\b/i,
-  /HeadlessChrome/i,
-];
+//
+// The canonical list lives in lib/bot-signatures/index.mjs — edit there to
+// add/remove UA patterns; this file and traffic.ts both update automatically.
+const AGENT_BOT_PATTERNS = AGENT_BOT_SIGNATURES.map((sig) => sig.match);
 
 function isAgentBot(ua) {
   if (!ua) return false;

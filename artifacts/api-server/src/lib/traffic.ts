@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
 import type { Request } from "express";
+import {
+  SPECIFIC_AGENT_BOT_SIGNATURES,
+  GENERIC_FETCHER_SIGNATURES,
+} from "@workspace/bot-signatures";
 
 export type DeviceType = "desktop" | "mobile" | "tablet" | "bot";
 export type BotCategory = "ai" | "search" | "social" | "other";
@@ -22,52 +26,21 @@ export interface UaFacts {
   botName: string | null;
 }
 
-// Ordered most-specific → least-specific. Each entry is a case-insensitive
-// substring match against the UA string. We intentionally keep this list
-// small and well-documented rather than pulling in a database.
-const BOT_SIGNATURES: Array<{
-  match: RegExp;
-  name: string;
-  category: BotCategory;
-}> = [
-  // AI crawlers / user agents
-  { match: /GPTBot/i, name: "GPTBot", category: "ai" },
-  { match: /ChatGPT-User/i, name: "ChatGPT-User", category: "ai" },
-  { match: /OAI-SearchBot/i, name: "OAI-SearchBot", category: "ai" },
-  { match: /ClaudeBot/i, name: "ClaudeBot", category: "ai" },
-  { match: /Claude-Web/i, name: "Claude-Web", category: "ai" },
-  { match: /anthropic-ai/i, name: "anthropic-ai", category: "ai" },
-  { match: /PerplexityBot/i, name: "PerplexityBot", category: "ai" },
-  { match: /Perplexity-User/i, name: "Perplexity-User", category: "ai" },
-  { match: /Google-Extended/i, name: "Google-Extended", category: "ai" },
-  { match: /Googlebot-News/i, name: "Googlebot-News", category: "search" },
-  { match: /GoogleOther/i, name: "GoogleOther", category: "ai" },
-  { match: /CCBot/i, name: "CCBot (CommonCrawl)", category: "ai" },
-  { match: /Applebot-Extended/i, name: "Applebot-Extended", category: "ai" },
-  { match: /Bytespider/i, name: "Bytespider", category: "ai" },
-  { match: /Amazonbot/i, name: "Amazonbot", category: "ai" },
-  { match: /Meta-ExternalAgent/i, name: "Meta-ExternalAgent", category: "ai" },
-  { match: /Meta-ExternalFetcher/i, name: "Meta-ExternalFetcher", category: "ai" },
-  { match: /Cohere-ai/i, name: "Cohere-ai", category: "ai" },
-  { match: /YouBot/i, name: "YouBot", category: "ai" },
-  { match: /DuckAssistBot/i, name: "DuckAssistBot", category: "ai" },
-  { match: /Diffbot/i, name: "Diffbot", category: "ai" },
+// Named agent-bot and generic-fetcher patterns are sourced from the shared
+// @workspace/bot-signatures package (lib/bot-signatures/index.mjs) — that is
+// the single source of truth for the monorepo. Social / link-preview bots are
+// intentionally kept inline here because server.mjs routes them to the OG-tag
+// path rather than prerendering, so they must not appear in the shared list.
+//
+// Ordering: named AI/search (from shared) → social (inline) → generic catch-alls (from shared).
+// Social bots must come before the generic catch-alls because several social
+// UA strings contain "bot" (e.g. Slackbot) and would be mis-classified if the
+// catch-all ran first.
 
-  // Search crawlers
-  { match: /Googlebot/i, name: "Googlebot", category: "search" },
-  { match: /bingbot/i, name: "Bingbot", category: "search" },
-  { match: /Applebot/i, name: "Applebot", category: "search" },
-  { match: /DuckDuckBot/i, name: "DuckDuckBot", category: "search" },
-  { match: /YandexBot/i, name: "YandexBot", category: "search" },
-  { match: /Baiduspider/i, name: "Baiduspider", category: "search" },
-  { match: /Sogou/i, name: "Sogou", category: "search" },
-  { match: /MJ12bot/i, name: "MJ12bot", category: "search" },
-  { match: /AhrefsBot/i, name: "AhrefsBot", category: "search" },
-  { match: /SemrushBot/i, name: "SemrushBot", category: "search" },
-  { match: /DotBot/i, name: "DotBot", category: "search" },
-
-  // Social / link previewers
+// Social / link previewers — traffic.ts only, not shared with server.mjs.
+const SOCIAL_BOT_SIGNATURES: Array<{ match: RegExp; name: string; category: "social" }> = [
   { match: /facebookexternalhit/i, name: "facebookexternalhit", category: "social" },
+  { match: /facebookcatalog/i, name: "facebookcatalog", category: "social" },
   { match: /Twitterbot/i, name: "Twitterbot", category: "social" },
   { match: /LinkedInBot/i, name: "LinkedInBot", category: "social" },
   { match: /Slackbot/i, name: "Slackbot", category: "social" },
@@ -75,13 +48,18 @@ const BOT_SIGNATURES: Array<{
   { match: /TelegramBot/i, name: "TelegramBot", category: "social" },
   { match: /WhatsApp/i, name: "WhatsApp", category: "social" },
   { match: /SkypeUriPreview/i, name: "SkypeUriPreview", category: "social" },
+  { match: /Pinterest/i, name: "Pinterest", category: "social" },
+  { match: /redditbot/i, name: "redditbot", category: "social" },
+];
 
-  // First-party crawlers — Orbit rotates real browser UAs; the Orbit/1.0
-  // suffix token is the only reliable identifier (enable in Orbit settings).
-  { match: /Orbit\//i, name: "Orbit", category: "other" },
-
-  // Generic catch-alls (MUST be last)
-  { match: /bot\b|crawler|spider|slurp|curl\/|wget\/|python-requests|HeadlessChrome/i, name: "generic-bot", category: "other" },
+const BOT_SIGNATURES: Array<{
+  match: RegExp;
+  name: string;
+  category: BotCategory;
+}> = [
+  ...SPECIFIC_AGENT_BOT_SIGNATURES,
+  ...SOCIAL_BOT_SIGNATURES,
+  ...GENERIC_FETCHER_SIGNATURES,
 ];
 
 export function detectBot(ua: string | null | undefined): {

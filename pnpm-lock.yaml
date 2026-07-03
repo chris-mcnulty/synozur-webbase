@@ -129,6 +129,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/bot-signatures':
+        specifier: workspace:*
+        version: link:../../lib/bot-signatures
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
@@ -794,6 +797,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/bot-signatures':
+        specifier: workspace:*
+        version: link:../../lib/bot-signatures
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
@@ -908,6 +914,8 @@ importers:
       jose:
         specifier: ^6.2.2
         version: 6.2.2
+
+  lib/bot-signatures: {}
 
   lib/db:
     dependencies:
