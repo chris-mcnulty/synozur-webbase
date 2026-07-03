@@ -29,6 +29,7 @@ import {
   modelsTable,
   workshopsTable,
   teamMembersTable,
+  collateralTable,
 } from "@workspace/db";
 import {
   renderOgImagePng,
@@ -56,6 +57,7 @@ const KINDS: readonly OgImageKind[] = [
   "model",
   "workshop",
   "team-member",
+  "collateral",
 ];
 
 const UUID_RE =
@@ -375,6 +377,48 @@ export async function resolveArtifact(
       };
     }
 
+    case "collateral": {
+      const [row] = await db
+        .select({
+          id: collateralTable.id,
+          title: collateralTable.title,
+          seoTitle: collateralTable.seoTitle,
+          subtitle: collateralTable.subtitle,
+          type: collateralTable.type,
+          updatedAt: collateralTable.updatedAt,
+        })
+        .from(collateralTable)
+        .where(and(eq(collateralTable.id, id), isNull(collateralTable.deletedAt)))
+        .limit(1);
+      if (!row) return null;
+      // Map the collateral type to a human-readable context label.
+      const typeLabels: Record<string, string> = {
+        webinar: "Webinar",
+        white_paper: "White Paper",
+        case_study: "Case Study",
+        podcast: "Podcast",
+        model: "Model",
+        training: "Workshop",
+        event: "Event",
+        insight: "Insight",
+        video: "Video",
+        ebook: "eBook",
+        application: "Application",
+        workshop: "Workshop",
+        landing_page: "Resource",
+      };
+      const context = (row.subtitle && row.subtitle.trim()) || typeLabels[row.type] || "Resource";
+      return {
+        input: {
+          kind,
+          title: row.seoTitle || row.title,
+          byline: null,
+          context,
+        },
+        lastModifiedMs: row.updatedAt.getTime(),
+      };
+    }
+
     default:
       return null;
   }
@@ -465,6 +509,7 @@ const RegenerateBodySchema = z
       "model",
       "workshop",
       "team-member",
+      "collateral",
     ]),
     id: z.string(),
     prerender: z.boolean().optional().default(false),

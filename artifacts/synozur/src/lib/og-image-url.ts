@@ -28,7 +28,8 @@ export type DynamicOgKind =
   | "application"
   | "model"
   | "workshop"
-  | "team-member";
+  | "team-member"
+  | "collateral";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 

@@ -6,6 +6,7 @@ import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
 import { EditWedge } from "@/components/edit-wedge";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 
 function isEmbeddable(url: string) {
   return /youtube\.com\/embed|player\.vimeo\.com|wistia\.net\/embed/.test(url);
@@ -51,7 +52,7 @@ export default function WebinarDetail() {
       <Meta
         title={item.seoTitle || item.title}
         description={item.seoDescription || item.description}
-        image={item.heroImage}
+        image={item.heroImage || dynamicOgImageUrl("collateral", item.id, item.publishedAt) || undefined}
         path={`/webinars/${item.slug}`}
         type="article"
       />

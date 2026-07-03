@@ -11,6 +11,7 @@ import {
 import { trackEvent } from "@/lib/traffic-tracker";
 import NotFound from "@/pages/not-found";
 import { EditWedge } from "@/components/edit-wedge";
+import { dynamicOgImageUrl } from "@/lib/og-image-url";
 
 /**
  * Returns true if the collateral item's `url` already maps to a richer local
@@ -174,7 +175,7 @@ export default function LibraryDetail() {
       <Meta
         title={item.seoTitle || item.title}
         description={item.seoDescription || item.description}
-        image={item.heroImage}
+        image={item.heroImage || dynamicOgImageUrl("collateral", item.id, item.publishedAt) || undefined}
         path={`/library/${item.slug}`}
         type="article"
       />

@@ -29,7 +29,8 @@ export type OgImageKind =
   | "application"
   | "model"
   | "workshop"
-  | "team-member";
+  | "team-member"
+  | "collateral";
 
 /**
  * Renderer template version. Embedded in the cache key alongside the
@@ -81,6 +82,7 @@ const KIND_LABELS: Record<OgImageKind, string> = {
   model: "Model",
   workshop: "Workshop",
   "team-member": "Team",
+  collateral: "Resource",
 };
 
 // Brand palette mirrors `--synozur-*` HSL values from

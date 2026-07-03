@@ -273,7 +273,8 @@ export function dynamicOgImageUrl(
     | "solution"
     | "application"
     | "model"
-    | "workshop",
+    | "workshop"
+    | "collateral",
   id: string,
   lastModified: Date | null | undefined,
   origin: string,
@@ -752,11 +753,13 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       case "webinars": {
         const [row] = await db
           .select({
+            id: collateralTable.id,
             title: collateralTable.title,
             seoTitle: collateralTable.seoTitle,
             subtitle: collateralTable.subtitle,
             description: collateralTable.description,
             heroImage: collateralTable.heroImage,
+            updatedAt: collateralTable.updatedAt,
           })
           .from(collateralTable)
           .where(and(eq(collateralTable.slug, slug), isNull(collateralTable.deletedAt)))
@@ -770,7 +773,9 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           ...fallback,
           title: row.seoTitle || row.title || SITE_NAME,
           description,
-          image: ogImageVariant(absUrl(row.heroImage, origin), origin) ?? defaults.image,
+          image:
+            ogImageVariant(absUrl(row.heroImage, origin), origin) ??
+            dynamicOgImageUrl("collateral", row.id, row.updatedAt, origin),
           ogType: "article",
         };
       }
