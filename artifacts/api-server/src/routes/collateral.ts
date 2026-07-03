@@ -366,6 +366,109 @@ function parseCmsCollateralSort(sort: string | undefined) {
   return clauses.length > 0 ? clauses : defaultOrder;
 }
 
+// ----- Library Health ---------------------------------------------------
+//
+// GET /cms/collateral/library-health
+//
+// Returns active collateral items where BOTH description and seoDescription
+// are empty/null. This surfaces the "no-description-at-all" backlog that
+// the per-item warning in collateral-edit.tsx catches one at a time.
+//
+// Query params:
+//   type   — comma-separated collateral type filter
+//   sort   — "field:dir" (field: type|title|publishedAt|createdAt; dir: asc|desc)
+//            defaults to publishedAt:desc
+
+const LibraryHealthQuery = z.object({
+  type: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+router.get("/cms/collateral/library-health", ...readGuard, async (req, res) => {
+  const parsed = LibraryHealthQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query", details: parsed.error.flatten() });
+    return;
+  }
+  const { type, sort } = parsed.data;
+
+  const typeFilter = type
+    ? (type
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => (COLLATERAL_TYPES as readonly string[]).includes(t)) as (typeof COLLATERAL_TYPES)[number][])
+    : [];
+
+  const filters = [
+    isNull(collateralTable.deletedAt),
+    eq(collateralTable.active, true),
+    // Both description and seoDescription are absent/blank
+    sql`(${collateralTable.description} is null or trim(${collateralTable.description}) = '')`,
+    sql`(${collateralTable.seoDescription} is null or trim(${collateralTable.seoDescription}) = '')`,
+  ];
+  if (typeFilter.length) {
+    filters.push(inArray(collateralTable.type, typeFilter));
+  }
+
+  // Sort parsing — restricted to columns relevant for this diagnostic view.
+  const LibraryHealthSortableColumns = {
+    type: collateralTable.type,
+    title: collateralTable.title,
+    publishedAt: collateralTable.publishedAt,
+    createdAt: collateralTable.createdAt,
+  } as const;
+  type LibraryHealthSortCol = keyof typeof LibraryHealthSortableColumns;
+
+  const orderByClauses = [];
+  if (sort) {
+    for (const part of sort.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const [rawCol, rawDir] = part.split(":").map((s) => s.trim());
+      const col = LibraryHealthSortableColumns[rawCol as LibraryHealthSortCol];
+      if (!col) continue;
+      const dir = rawDir?.toLowerCase() === "asc" ? "asc" : "desc";
+      // publishedAt may be null for draft/unscheduled items — send to end
+      if (rawCol === "publishedAt") {
+        orderByClauses.push(dir === "asc" ? sql`${col} asc nulls last` : sql`${col} desc nulls last`);
+      } else {
+        orderByClauses.push(dir === "asc" ? asc(col) : desc(col));
+      }
+    }
+  }
+  if (orderByClauses.length === 0) {
+    orderByClauses.push(
+      sql`${collateralTable.publishedAt} desc nulls last`,
+      asc(collateralTable.title),
+    );
+  }
+
+  const rows = await db
+    .select({
+      id: collateralTable.id,
+      slug: collateralTable.slug,
+      type: collateralTable.type,
+      title: collateralTable.title,
+      publishedAt: collateralTable.publishedAt,
+      createdAt: collateralTable.createdAt,
+      updatedAt: collateralTable.updatedAt,
+    })
+    .from(collateralTable)
+    .where(and(...filters))
+    .orderBy(...(orderByClauses as [ReturnType<typeof asc>, ...ReturnType<typeof asc>[]]));
+
+  res.json({
+    items: rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      type: r.type,
+      title: r.title,
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    })),
+    total: rows.length,
+  });
+});
+
 // ----- Audit ------------------------------------------------------------
 //
 // Admin-only diagnostic that scans the collateral table and source-of-truth

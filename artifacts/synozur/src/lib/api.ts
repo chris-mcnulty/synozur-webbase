@@ -862,6 +862,23 @@ export interface SeoSubmitBundle {
   results: SeoSubmitResult[];
 }
 
+// Library Health — active collateral items with no description whatsoever
+// (both `description` and `seoDescription` are blank).
+export interface LibraryHealthItem {
+  id: string;
+  slug: string;
+  type: string;
+  title: string;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryHealthReport {
+  items: LibraryHealthItem[];
+  total: number;
+}
+
 // #160 — Search Console / Bing index-coverage dashboard.
 export interface SeoCoverageKindBuckets {
   kind: string;
@@ -1278,6 +1295,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ urls }),
     }),
+  libraryHealth: (params?: { type?: string; sort?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.type) q.set("type", params.type);
+    if (params?.sort) q.set("sort", params.sort);
+    const qs = q.toString();
+    return jsonFetch<LibraryHealthReport>(
+      url(`/cms/collateral/library-health${qs ? `?${qs}` : ""}`),
+    );
+  },
   seoCoverage: () =>
     jsonFetch<SeoCoverageOverview>(url("/cms/seo-coverage")),
   seoCoverageUrls: (params: { kind?: string; bucket?: string; limit?: number }) => {

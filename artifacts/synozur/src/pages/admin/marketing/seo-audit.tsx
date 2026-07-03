@@ -3,9 +3,14 @@ import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  ArrowUpDown,
+  BookOpen,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   FileText,
+  Filter,
   Loader2,
   RefreshCw,
   Search,
@@ -18,7 +23,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   api,
+  type LibraryHealthItem,
+  type LibraryHealthReport,
   type SeoArtifactKind,
   type SeoAuditFinding,
   type SeoAuditReport,
@@ -266,6 +280,9 @@ export default function MarketingSeoAudit() {
         )}
       </Card>
 
+      {/* Library Health card */}
+      <LibraryHealthCard canModerate={canModerate} />
+
       {/* Submission card */}
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-3">
@@ -380,6 +397,211 @@ function FindingRow({
           <Wand2 className="h-3.5 w-3.5" />
         )}
       </Button>
+    </li>
+  );
+}
+
+// ─── Library Health card ──────────────────────────────────────────────────────
+
+// Must stay in sync with COLLATERAL_TYPES in lib/db/src/schema/collateral.ts
+// Note: value "all" is the sentinel for "no filter"; Radix Select requires non-empty strings.
+const COLLATERAL_TYPE_OPTIONS = [
+  { value: "all", label: "All types" },
+  { value: "white_paper", label: "White Paper" },
+  { value: "ebook", label: "eBook" },
+  { value: "webinar", label: "Webinar" },
+  { value: "case_study", label: "Case Study" },
+  { value: "podcast", label: "Podcast" },
+  { value: "model", label: "Model" },
+  { value: "training", label: "Training" },
+  { value: "workshop", label: "Workshop" },
+  { value: "event", label: "Event" },
+  { value: "insight", label: "Insight" },
+  { value: "video", label: "Video" },
+  { value: "application", label: "Application" },
+  { value: "landing_page", label: "Landing Page" },
+];
+
+const SORT_OPTIONS = [
+  { value: "publishedAt:desc", label: "Newest first" },
+  { value: "publishedAt:asc", label: "Oldest first" },
+  { value: "createdAt:desc", label: "Recently created" },
+  { value: "type:asc", label: "Type (A–Z)" },
+  { value: "title:asc", label: "Title (A–Z)" },
+];
+
+function LibraryHealthCard({ canModerate }: { canModerate: boolean }) {
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sort, setSort] = useState("publishedAt:desc");
+  const [expanded, setExpanded] = useState(true);
+
+  const health = useQuery<LibraryHealthReport>({
+    queryKey: ["library-health", typeFilter, sort],
+    queryFn: () =>
+      api.libraryHealth({
+        type: typeFilter === "all" ? undefined : typeFilter,
+        sort,
+      }),
+    enabled: canModerate,
+  });
+
+  const items = health.data?.items ?? [];
+
+  return (
+    <Card className="p-5 mb-4" data-testid="library-health-card">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-sm">Library health</h2>
+          {health.data && (
+            <span
+              className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                health.data.total === 0
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+              }`}
+              data-testid="library-health-badge"
+            >
+              {health.data.total === 0 ? "All clear" : `${health.data.total} missing`}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label={expanded ? "Collapse library health" : "Expand library health"}
+          data-testid="library-health-toggle"
+        >
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Active collateral items where both the editorial description and SEO description are blank.
+      </p>
+
+      {expanded && (
+        <>
+          {/* Filter + sort bar */}
+          <div className="flex flex-wrap gap-2 mb-3" data-testid="library-health-filters">
+            <div className="flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="h-7 text-xs w-36" data-testid="library-health-type-filter">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLLATERAL_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger className="h-7 text-xs w-40" data-testid="library-health-sort">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => health.refetch()}
+              disabled={health.isFetching}
+              data-testid="library-health-refresh"
+            >
+              {health.isFetching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </div>
+
+          {/* Results */}
+          {health.isLoading && !health.data ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              Loading…
+            </div>
+          ) : health.isError ? (
+            <div className="text-sm text-destructive py-6 text-center">
+              Failed to load: {health.error instanceof Error ? health.error.message : String(health.error)}
+            </div>
+          ) : !health.data ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              Data will load automatically.
+            </div>
+          ) : items.length === 0 ? (
+            <div
+              className="flex items-center justify-center gap-2 text-sm text-green-700 dark:text-green-400 py-6"
+              data-testid="library-health-all-clear"
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              All active collateral items have at least one description.
+            </div>
+          ) : (
+            <ul
+              className="divide-y divide-border border border-border rounded-md"
+              data-testid="library-health-list"
+            >
+              {items.map((item) => (
+                <LibraryHealthRow key={item.id} item={item} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function LibraryHealthRow({ item }: { item: LibraryHealthItem }) {
+  const typeLabel =
+    COLLATERAL_TYPE_OPTIONS.find((o) => o.value === item.type)?.label ?? item.type;
+  const date = item.publishedAt ?? item.createdAt;
+  const dateLabel = date
+    ? new Date(date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : null;
+
+  return (
+    <li
+      className="py-2.5 px-3 flex items-center gap-3"
+      data-testid={`library-health-row-${item.id}`}
+    >
+      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium truncate">{item.title || item.slug}</div>
+        <div className="text-xs text-muted-foreground">
+          {typeLabel}
+          {dateLabel && (
+            <>
+              {" · "}
+              {item.publishedAt ? `Published ${dateLabel}` : `Created ${dateLabel}`}
+            </>
+          )}
+        </div>
+      </div>
+      <Link
+        href={`/library/collateral/${item.id}/edit`}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
+        data-testid={`library-health-edit-${item.id}`}
+        title="Open in collateral editor"
+      >
+        Edit <ExternalLink className="h-3 w-3" />
+      </Link>
     </li>
   );
 }
