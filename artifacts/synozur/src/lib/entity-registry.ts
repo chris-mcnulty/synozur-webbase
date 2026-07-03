@@ -265,7 +265,9 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: null,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
-    // collateral has no flat seo columns
+    // collateral now has flat seo_title / seo_description columns (migration #370);
+    // seoPatch remains false because the inline wedge PATCH goes to the collateral
+    // API which validates a partial body — editors set these via the full edit page.
     seoPatch: false,
   },
   {
@@ -280,6 +282,8 @@ const REG: readonly EntityRegistration[] = [
     statusEnum: null,
     subtitleKey: "subtitle",
     subtitleLabel: "Subtitle",
+    // collateral now has flat seo_title / seo_description columns (migration #370);
+    // seoPatch remains false for the same reason as "webinar" above.
     seoPatch: false,
   },
   {

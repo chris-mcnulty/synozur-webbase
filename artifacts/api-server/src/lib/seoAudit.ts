@@ -749,6 +749,22 @@ async function auditCollateral(): Promise<{
     });
     if (f) {
       f.missing = filterOgFindings("collateral", f.missing);
+
+      // #377 — For collateral, any non-empty seoTitle / seoDescription (whether
+      // autofilled or manually set by an editor) satisfies the check. Suppress
+      // length-quality variants so that an intentionally short or long
+      // editor-entered value doesn't keep the item in the findings list.
+      // The empty-field findings ("seoTitle" / "seoDescription") still fire
+      // normally for blank values; only the length variants are suppressed here.
+      if ((r.seoTitle ?? "").trim()) {
+        f.missing = f.missing.filter((m) => m !== "seoTitleLong");
+      }
+      if ((r.seoDescription ?? "").trim()) {
+        f.missing = f.missing.filter(
+          (m) => m !== "seoDescriptionShort" && m !== "seoDescriptionLong",
+        );
+      }
+
       if (f.missing.length) findings.push(f);
     }
   }
