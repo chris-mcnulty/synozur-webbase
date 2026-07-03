@@ -77,10 +77,14 @@ const REGISTERED: ReadonlyArray<{ path: string; file: string }> = [
  * `<Meta>` — so adding a new page forces a decision here.
  *
  * Categories:
- *   - db-list     — single-segment list page whose copy comes from the
- *                   `list-page-copy` table (`copy.seoTitle`); it is NOT
- *                   hard-coded. Server-side OG for list-page-copy is a separate
- *                   concern from this hard-coded registry.
+ *   - db-list     — single-segment list page whose seoTitle/seoDescription/
+ *                   ogImage come from the `content_parent_pages` table (the
+ *                   "List page copy" admin screen).  `resolveOgData` reads
+ *                   the row in its `!slug` path (after the landing-pages check)
+ *                   so social crawlers see the admin-configured copy rather than
+ *                   the generic site default.  These pages are NOT registered in
+ *                   STATIC_PAGE_OG because their OG copy is DB-driven, not
+ *                   hard-coded.
  *   - db-detail   — two-segment DB detail page already covered by the
  *                   `resolveOgData` switch (insights/services/solutions/…).
  *   - db-landing  — DB-driven landing page covered by the landing-pages path.
@@ -93,17 +97,18 @@ const REGISTERED: ReadonlyArray<{ path: string; file: string }> = [
  *   - parked      — inactive variant that canonicalizes elsewhere.
  */
 const EXCLUDED: Readonly<Record<string, string>> = {
-  // db-list (list-page-copy `copy.seoTitle`)
-  "applications.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "case-studies.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "insights.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "items.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "library.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "models.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "videos.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "webinars.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "white-papers.tsx": "db-list: copy from list-page-copy, not hard-coded",
-  "workshops.tsx": "db-list: copy from list-page-copy, not hard-coded",
+  // db-list (content_parent_pages / "List page copy" — resolved server-side
+  // by resolveOgData's !slug → content_parent_pages branch, not STATIC_PAGE_OG)
+  "applications.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=applications), resolved by resolveOgData",
+  "case-studies.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=case-studies), resolved by resolveOgData",
+  "insights.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=insights), resolved by resolveOgData",
+  "items.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=items), resolved by resolveOgData",
+  "library.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=library), resolved by resolveOgData",
+  "models.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=models), resolved by resolveOgData",
+  "videos.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=videos), resolved by resolveOgData",
+  "webinars.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=webinars), resolved by resolveOgData",
+  "white-papers.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=white-papers), resolved by resolveOgData",
+  "workshops.tsx": "db-list: seoTitle/seoDescription/ogImage from content_parent_pages row (slug=workshops), resolved by resolveOgData",
 
   // db-detail (two-segment, resolveOgData switch covers it)
   "application-detail.tsx": "db-detail: /applications/:slug via resolver switch",

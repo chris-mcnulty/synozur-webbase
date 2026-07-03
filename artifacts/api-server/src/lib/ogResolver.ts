@@ -504,6 +504,44 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           };
         }
       } catch {
+        // DB error — fall through to list-page-copy check.
+      }
+
+      // DB-driven list pages (/case-studies, /applications, /models, etc.)
+      // store their seoTitle/seoDescription/ogImage in content_parent_pages
+      // (the "List page copy" admin screen).  Social crawlers never run JS,
+      // so if this table has a row for the section slug we return it; otherwise
+      // we fall back to site defaults.  This is a primary resolution for these
+      // pages — not an override — so it runs after the landing-pages check
+      // (landing pages take precedence when slugs collide, which shouldn't
+      // happen in practice).
+      try {
+        const [listRow] = await db
+          .select({
+            seoTitle: contentParentPagesTable.seoTitle,
+            seoDescription: contentParentPagesTable.seoDescription,
+            ogImage: contentParentPagesTable.ogImage,
+          })
+          .from(contentParentPagesTable)
+          .where(
+            and(
+              eq(contentParentPagesTable.slug, section),
+              eq(contentParentPagesTable.active, true),
+            ),
+          )
+          .limit(1);
+        if (listRow && (listRow.seoTitle || listRow.seoDescription || listRow.ogImage)) {
+          const ogImageResolved = listRow.ogImage?.trim() || null;
+          return {
+            ...fallback,
+            title: listRow.seoTitle?.trim() || fallback.title,
+            description: listRow.seoDescription?.trim() || fallback.description,
+            image:
+              ogImageVariant(absUrl(ogImageResolved, origin), origin) ?? fallback.image,
+            ogType: "website",
+          };
+        }
+      } catch {
         // DB error — fall through to site defaults.
       }
     }
