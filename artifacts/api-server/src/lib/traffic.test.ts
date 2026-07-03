@@ -105,6 +105,21 @@ test("detectBot: DuckAssistBot → ai", () =>
 test("detectBot: Diffbot → ai", () =>
   isBot("Diffbot/0.1 (+https://www.diffbot.com)", "Diffbot", "ai"));
 
+test("detectBot: Ai2Bot-Dolma → ai (before plain Ai2Bot)", () =>
+  isBot("Mozilla/5.0 (compatible; Ai2Bot-Dolma/1.0; +https://allenai.org/crawls)", "Ai2Bot-Dolma", "ai"));
+
+test("detectBot: Ai2Bot → ai", () =>
+  isBot("Mozilla/5.0 (compatible; Ai2Bot/1.0; +https://allenai.org/crawls)", "Ai2Bot", "ai"));
+
+test("detectBot: iaskspider → ai", () =>
+  isBot("iaskspider/1.0 (+https://iask.ai/)", "iaskspider", "ai"));
+
+test("detectBot: MistralAI-User → ai", () =>
+  isBot("MistralAI-User/1.0", "MistralAI-User", "ai"));
+
+test("detectBot: Grok → ai", () =>
+  isBot("Grok/1.0 (+https://x.ai/grok)", "Grok", "ai"));
+
 // ─── Search crawlers ──────────────────────────────────────────────────────────
 
 test("detectBot: Googlebot → search", () =>
@@ -166,6 +181,15 @@ test("detectBot: WhatsApp → social", () =>
 test("detectBot: SkypeUriPreview → social (MS Teams link previewer)", () =>
   isBot("Mozilla/5.0 (Windows NT 6.1; WOW64) SkypeUriPreview Preview/0.5", "SkypeUriPreview", "social"));
 
+test("detectBot: facebookcatalog → social", () =>
+  isBot("facebookcatalog/1.0", "facebookcatalog", "social"));
+
+test("detectBot: redditbot → social", () =>
+  isBot("redditbot/1.0 (+https://www.redditinc.com/policies/privacy-policy)", "redditbot", "social"));
+
+test("detectBot: Pinterest → social", () =>
+  isBot("Pinterest/0.2 (+https://www.pinterest.com/bot.html)", "Pinterest", "social"));
+
 // ─── Generic catch-all ────────────────────────────────────────────────────────
 
 test("detectBot: bare 'bot' word → other", () =>
@@ -192,6 +216,24 @@ test("detectBot: python-requests → other", () =>
 test("detectBot: HeadlessChrome → other", () =>
   isBot("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/114.0.5735.133 Safari/537.36", "generic-bot", "other"));
 
+test("detectBot: python-httpx → other", () =>
+  isBot("python-httpx/0.27.0", "generic-bot", "other"));
+
+test("detectBot: aiohttp → other", () =>
+  isBot("Python/3.11 aiohttp/3.9.1", "generic-bot", "other"));
+
+test("detectBot: node-fetch → other", () =>
+  isBot("node-fetch/1.0 (+https://github.com/node-fetch/node-fetch)", "generic-bot", "other"));
+
+test("detectBot: go-http-client → other", () =>
+  isBot("Go-http-client/2.0", "generic-bot", "other"));
+
+test("detectBot: okhttp → other", () =>
+  isBot("okhttp/4.12.0", "generic-bot", "other"));
+
+test("detectBot: axios → other", () =>
+  isBot("axios/1.6.0", "generic-bot", "other"));
+
 // ─── Ordering: more-specific signatures win ───────────────────────────────────
 
 test("detectBot: Googlebot-News beats generic Googlebot entry", () => {
@@ -209,6 +251,12 @@ test("detectBot: Applebot-Extended beats generic Applebot entry", () => {
 test("detectBot: Meta-ExternalFetcher beats generic Meta-ExternalAgent entry", () => {
   const r = detectBot("Meta-ExternalFetcher/1.0");
   assert.equal(r.botName, "Meta-ExternalFetcher");
+});
+
+test("detectBot: Ai2Bot-Dolma beats plain Ai2Bot entry", () => {
+  const r = detectBot("Ai2Bot-Dolma/1.0");
+  assert.equal(r.botName, "Ai2Bot-Dolma");
+  assert.equal(r.botCategory, "ai");
 });
 
 // ─── Case-insensitivity ───────────────────────────────────────────────────────
