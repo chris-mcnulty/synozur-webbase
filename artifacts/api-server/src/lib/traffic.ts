@@ -76,6 +76,10 @@ const BOT_SIGNATURES: Array<{
   { match: /WhatsApp/i, name: "WhatsApp", category: "social" },
   { match: /SkypeUriPreview/i, name: "SkypeUriPreview", category: "social" },
 
+  // First-party crawlers — Orbit rotates real browser UAs; the Orbit/1.0
+  // suffix token is the only reliable identifier (enable in Orbit settings).
+  { match: /Orbit\//i, name: "Orbit", category: "other" },
+
   // Generic catch-alls (MUST be last)
   { match: /bot\b|crawler|spider|slurp|curl\/|wget\/|python-requests|HeadlessChrome/i, name: "generic-bot", category: "other" },
 ];

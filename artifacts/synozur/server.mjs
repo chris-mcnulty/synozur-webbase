@@ -210,6 +210,9 @@ function isSocialBot(ua) {
 // keep their dedicated OG path. Real browsers never match (their UAs contain
 // Mozilla/Chrome/Safari, none of these tokens).
 const AGENT_BOT_PATTERNS = [
+  // First-party crawlers — Orbit rotates real browser UAs; the Orbit/1.0
+  // suffix token is the only reliable identifier (enable in Orbit settings).
+  /Orbit\//i,
   // AI assistants & crawlers
   /GPTBot/i,
   /ChatGPT-User/i,
