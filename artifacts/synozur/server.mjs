@@ -691,6 +691,45 @@ function continueHandler(req, res, pathname, rawUrl) {
     return;
   }
 
+  // 2c. Browser-UA but no Sec-Fetch-Mode header — catches content-extraction
+  //     crawlers and HTTP scrapers that spoof a real browser UA. Every modern
+  //     browser (Chrome 76+, Firefox 90+, Edge 79+, Safari 16.4+) sends
+  //     Sec-Fetch-Mode on every top-level navigation; raw HTTP clients don't.
+  //     Scoped to DB-backed artifact paths only so static pages, assets, and
+  //     API routes are unaffected. Falls back to the SPA shell if prerender
+  //     is unavailable so real users on old/unusual browsers are never broken.
+  if (isArtifactPath(pathname) && !req.headers["sec-fetch-mode"]) {
+    const statusProbe = fetchRouteStatus(pathname);
+    Promise.all([statusProbe, fetchAgentHtml(pathname).catch(() => null)])
+      .then(([routeStatus, html]) => {
+        applySecurityHeaders(res);
+        const httpStatus =
+          routeStatus === "gone" ? 410 : routeStatus === "not_found" ? 404 : 200;
+        if (!html) {
+          // Prerender unavailable — degrade gracefully to the SPA shell.
+          const cached = getIndexHtml();
+          if (!cached) {
+            res.writeHead(503);
+            res.end("Service unavailable");
+            return;
+          }
+          res.writeHead(httpStatus, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Content-Length": cached.length,
+          });
+          res.end(cached.html);
+          return;
+        }
+        res.writeHead(httpStatus, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300, s-maxage=300",
+        });
+        res.end(html);
+      });
+    return;
+  }
+
   // 3. Exact static file match.
   const cleaned = pathname.replace(/^\/+/, "");
   const filePath = path.join(DIST_DIR, cleaned);

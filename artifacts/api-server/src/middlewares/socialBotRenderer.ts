@@ -63,7 +63,15 @@ export function socialBotRendererMiddleware(
 
     const ua = (req.headers["user-agent"] as string | undefined) ?? "";
     const bot = detectBot(ua);
-    if (!bot.isBot) return next();
+
+    // Real browser navigations always carry Sec-Fetch-Mode; raw HTTP clients
+    // (even ones spoofing a browser UA) almost never do. If detectBot says
+    // this isn't a known bot BUT the header is present, it's a real browser —
+    // let the SPA handle it. If the header is absent, fall through to the
+    // prerender path so content-extraction crawlers see real page content
+    // instead of the generic index.html shell.
+    const secFetchMode = req.headers["sec-fetch-mode"] as string | undefined;
+    if (!bot.isBot && secFetchMode) return next();
 
     const pathname = url.split("?")[0] || "/";
 
