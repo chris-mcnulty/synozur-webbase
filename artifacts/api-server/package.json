@@ -55,7 +55,9 @@
     "test:og-white-paper-seo-title": "node --import tsx --test src/routes/og.whitePaper.seoTitle.test.ts",
     "test:og-content-types-seo-title": "node --import tsx --test src/routes/og.contentTypes.seoTitle.test.ts",
     "test:og-collateral": "node --import tsx --test src/routes/og.collateral.test.ts",
-    "test:og-resolver-collateral": "node --import tsx --test src/lib/ogResolver.collateral.test.ts"
+    "test:og-resolver-collateral": "node --import tsx --test src/lib/ogResolver.collateral.test.ts",
+    "test:hubspot-sync": "node --import tsx --test src/lib/hubspotSync.test.ts",
+    "test:hubspot-webhooks": "node --import tsx --test src/routes/hubspotWebhooks.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

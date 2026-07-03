@@ -598,7 +598,7 @@ export async function drainHubspotQueue(limit = 25): Promise<{ processed: number
       attempts: Number(r["attempts"] ?? 0),
       lastError: null,
       hubspotResourceId: null,
-      nextAttemptAt: r["next_attempt_at"] as Date,
+      nextAttemptAt: new Date(r["next_attempt_at"] as string),
       createdAt: new Date(),
       succeededAt: null,
     } as unknown as typeof hubspotSyncEventsTable.$inferSelect;
