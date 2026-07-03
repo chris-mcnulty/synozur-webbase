@@ -12,6 +12,7 @@
     "test:artifact-path": "node --test lib/artifactPath.test.mjs",
     "test:experiments-bucket": "tsx --test src/lib/experiments-bucket.test.ts",
     "test:event-jsonld": "tsx --test src/components/event-jsonld.test.ts",
+    "test:seo-audit-config": "tsx --test src/pages/admin/marketing/seo-audit.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },

@@ -24,49 +24,14 @@ import {
   type SeoAuditReport,
   type SeoSubmitBundle,
 } from "@/lib/api";
-
-// ─── Kind labels + CMS editor deep-links ──────────────────────────────────────
-
-const KIND_LABEL: Record<SeoArtifactKind, string> = {
-  insight: "Insights",
-  service: "Services",
-  solution: "Solutions",
-  application: "Applications",
-  "case-study": "Case studies",
-  model: "Models",
-  workshop: "Workshops",
-  polaris: "Polaris",
-  event: "Events",
-  collateral: "Collateral",
-};
-
-// Applications and case studies don't have dedicated /:id/edit routes today,
-// so we link those to their list views. Workshops do have a dedicated edit
-// route and should deep-link to it.
-function editorHref(kind: SeoArtifactKind, id: string): string {
-  switch (kind) {
-    case "insight":
-      return `/insights/posts/${id}/edit`;
-    case "service":
-      return `/products/services/${id}/edit`;
-    case "solution":
-      return `/products/solutions/${id}/edit`;
-    case "model":
-      return `/products/models/${id}/edit`;
-    case "application":
-      return `/products/applications`;
-    case "case-study":
-      return `/products/case-studies`;
-    case "workshop":
-      return `/library/workshops/${id}/edit`;
-    case "polaris":
-      return `/library/polaris-episodes/${id}/edit`;
-    case "event":
-      return `/people/events/${id}`;
-    case "collateral":
-      return `/library/collateral/${id}/edit`;
-  }
-}
+import {
+  SEO_ARTIFACT_KINDS,
+  KIND_LABEL,
+  FILLABLE_KEYS,
+  editorHref,
+  formatMissingLabel,
+  groupFindings,
+} from "./seo-audit-config";
 
 // ─── Sitemap prefill: last 7 days ─────────────────────────────────────────────
 
@@ -89,49 +54,6 @@ async function fetchRecentSitemapUrls(): Promise<string[]> {
   });
   return out;
 }
-
-// ─── Findings grouping ────────────────────────────────────────────────────────
-
-function groupFindings(findings: SeoAuditFinding[]): Record<SeoArtifactKind, SeoAuditFinding[]> {
-  const empty: Record<SeoArtifactKind, SeoAuditFinding[]> = {
-    insight: [],
-    service: [],
-    solution: [],
-    application: [],
-    "case-study": [],
-    model: [],
-    workshop: [],
-    polaris: [],
-    event: [],
-    collateral: [],
-  };
-  for (const f of findings) empty[f.kind].push(f);
-  return empty;
-}
-
-function formatMissingLabel(field: string): string {
-  const map: Record<string, string> = {
-    seoTitle: "SEO title",
-    seoDescription: "SEO description",
-    ogImage: "OG image",
-    seoDescriptionShort: "Desc too short",
-    seoDescriptionLong: "Desc too long",
-    seoTitleLong: "Title too long",
-    og_image_missing: "No share image",
-  };
-  return map[field] ?? field;
-}
-
-// Keys the backend autofill endpoint will actually patch.
-// Includes length-violation variants so the wand button is enabled for posts
-// with descriptions that are too short or too long.
-const FILLABLE_KEYS = new Set([
-  "seoTitle",
-  "seoDescription",
-  "seoDescriptionShort",
-  "seoDescriptionLong",
-  "ogImage",
-]);
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -235,7 +157,7 @@ export default function MarketingSeoAudit() {
       {/* Totals row */}
       {audit.data && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-          {(Object.keys(KIND_LABEL) as SeoArtifactKind[]).map((k) => {
+          {SEO_ARTIFACT_KINDS.map((k) => {
             const t = audit.data!.totals[k];
             return (
               <Card key={k} className="p-4" data-testid={`stat-seo-audit-${k}`}>
@@ -311,7 +233,7 @@ export default function MarketingSeoAudit() {
           </div>
         ) : (
           <div className="space-y-5">
-            {(Object.keys(KIND_LABEL) as SeoArtifactKind[]).map((kind) => {
+            {SEO_ARTIFACT_KINDS.map((kind) => {
               const items = groups?.[kind] ?? [];
               if (items.length === 0) return null;
               return (
