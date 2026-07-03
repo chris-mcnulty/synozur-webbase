@@ -63,6 +63,11 @@ const REGISTERED: ReadonlyArray<{ path: string; file: string }> = [
   { path: "/careers", file: "careers.tsx" },
   { path: "/polaris", file: "polaris.tsx" },
   { path: "/events", file: "events.tsx" },
+  // Multi-segment hand-coded routes now covered by STATIC_PAGE_OG.
+  // The drift check reads the FIRST <Meta> in each file, which is the
+  // hard-coded DefaultOverview / form meta (not the DB-driven branches).
+  { path: "/services-overview/default", file: "services-overview.tsx" },
+  { path: "/start/brief", file: "start-brief.tsx" },
 ];
 
 /**
@@ -128,8 +133,8 @@ const EXCLUDED: Readonly<Record<string, string>> = {
   "event-schedule.tsx": "dynamic: /events/:slug/schedule (multi-segment, DB)",
 
   // multiseg (hard-coded but not addressable by single-segment registry)
-  "services-overview.tsx": "multiseg: /services-overview/:slug hub",
-  "start-brief.tsx": "multiseg: /start/brief form",
+  // services-overview.tsx — now REGISTERED at /services-overview/default
+  // start-brief.tsx — now REGISTERED at /start/brief
   "careers-detail.tsx": "multiseg: /careers/:slug (DB job data)",
   "careers-apply.tsx": "multiseg: /careers/:slug/apply form",
   "careers-applied.tsx": "multiseg: careers application confirmation",

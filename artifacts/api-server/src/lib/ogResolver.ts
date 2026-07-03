@@ -184,6 +184,22 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
       "Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events.",
     image: DEFAULT_IMAGE_PATH,
   },
+  // Multi-segment hand-coded routes that the single-segment key would miss.
+  // These are not DB-driven — the copy is baked into the page component and
+  // must stay in sync with the corresponding <Meta> in the page source (the
+  // drift guard in ogResolver.staticPages.test.ts enforces this).
+  "/services-overview/default": {
+    title: "Solutions Overview | The Synozur Alliance",
+    description:
+      "Three flagship solutions — AI Strategy & Design, GTM Strategy & Execution, and Company OS — plus a consulting bench that composes around your situation.",
+    image: "/opengraph.jpg",
+  },
+  "/start/brief": {
+    title: "Send a brief | The Synozur Alliance",
+    description:
+      "Tell us where you are headed. A partner will read your intake personally and respond within two business days.",
+    image: DEFAULT_IMAGE_PATH,
+  },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -393,60 +409,64 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
   const section = parts[0] ?? "";
   const slug = parts[1] ?? "";
 
+  // Hardcoded SPA routes (not DB landing pages) — return their known
+  // per-page OG data so crawlers see real title/description/image instead
+  // of the generic site default. The registry now covers both single-segment
+  // paths (e.g. "/about") and multi-segment paths (e.g. "/services-overview/default",
+  // "/start/brief") that the earlier `!slug` guard would have missed.
+  const staticOg = STATIC_PAGE_OG[clean];
+  if (staticOg) {
+    // #345 — Admin override for single-segment hand-coded pages only. A
+    // `content_parent_pages` row whose slug matches the path segment
+    // (e.g. "sprint" for /sprint) lets marketing swap the share image /
+    // SEO copy from the admin "List page copy" screen without a deploy.
+    // Multi-segment static paths (no corresponding list-page-copy row) skip
+    // this lookup entirely. Empty/null fields (and inactive or missing rows)
+    // fall back to the hardcoded STATIC_PAGE_OG defaults, so this is purely
+    // additive.
+    let override: {
+      seoTitle: string | null;
+      seoDescription: string | null;
+      ogImage: string | null;
+    } | undefined;
+    if (section && !slug) {
+      try {
+        const [row] = await db
+          .select({
+            seoTitle: contentParentPagesTable.seoTitle,
+            seoDescription: contentParentPagesTable.seoDescription,
+            ogImage: contentParentPagesTable.ogImage,
+          })
+          .from(contentParentPagesTable)
+          .where(
+            and(
+              eq(contentParentPagesTable.slug, section),
+              eq(contentParentPagesTable.active, true),
+            ),
+          )
+          .limit(1);
+        override = row;
+      } catch {
+        // DB error — serve the static defaults.
+      }
+    }
+    const overrideImage = override?.ogImage?.trim() || null;
+    return {
+      ...fallback,
+      title: override?.seoTitle?.trim() || staticOg.title,
+      description: override?.seoDescription?.trim() || staticOg.description,
+      image:
+        ogImageVariant(absUrl(overrideImage ?? staticOg.image, origin), origin) ??
+        fallback.image,
+      ogType: "website",
+    };
+  }
+
   // Single-segment path (no sub-slug) — landing pages live at /:slug.
   // All other registered routes have two segments (e.g. /insights/:slug),
   // so if slug is empty but section is non-empty we try the landing pages
   // table before falling back to site defaults.
   if (!slug) {
-    // Hardcoded SPA routes (not DB landing pages) — return their known
-    // per-page OG data so crawlers see real title/description/image instead
-    // of the generic site default. All other single-segment paths fall
-    // through to the landing-pages lookup and site defaults unchanged.
-    const staticOg = STATIC_PAGE_OG[clean];
-    if (staticOg) {
-      // #345 — Admin override for hand-coded static pages. A
-      // `content_parent_pages` row whose slug matches the path segment
-      // (e.g. "sprint" for /sprint) lets marketing swap the share image /
-      // SEO copy from the admin "List page copy" screen without a deploy.
-      // Empty/null fields (and inactive or missing rows) fall back to the
-      // hardcoded STATIC_PAGE_OG defaults, so this is purely additive.
-      let override: {
-        seoTitle: string | null;
-        seoDescription: string | null;
-        ogImage: string | null;
-      } | undefined;
-      if (section) {
-        try {
-          const [row] = await db
-            .select({
-              seoTitle: contentParentPagesTable.seoTitle,
-              seoDescription: contentParentPagesTable.seoDescription,
-              ogImage: contentParentPagesTable.ogImage,
-            })
-            .from(contentParentPagesTable)
-            .where(
-              and(
-                eq(contentParentPagesTable.slug, section),
-                eq(contentParentPagesTable.active, true),
-              ),
-            )
-            .limit(1);
-          override = row;
-        } catch {
-          // DB error — serve the static defaults.
-        }
-      }
-      const overrideImage = override?.ogImage?.trim() || null;
-      return {
-        ...fallback,
-        title: override?.seoTitle?.trim() || staticOg.title,
-        description: override?.seoDescription?.trim() || staticOg.description,
-        image:
-          ogImageVariant(absUrl(overrideImage ?? staticOg.image, origin), origin) ??
-          fallback.image,
-        ogType: "website",
-      };
-    }
     if (section) {
       try {
         const [row] = await db
@@ -590,6 +610,31 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
       }
 
       case "services": {
+        const [row] = await db
+          .select({
+            id: servicesTable.id,
+            title: servicesTable.title,
+            seoTitle: servicesTable.seoTitle,
+            seoDescription: servicesTable.seoDescription,
+            updatedAt: servicesTable.updatedAt,
+          })
+          .from(servicesTable)
+          .where(and(eq(servicesTable.slug, slug), isNull(servicesTable.deletedAt)))
+          .limit(1);
+        if (!row) break;
+        return {
+          ...fallback,
+          title: row.seoTitle || row.title,
+          description: row.seoDescription || defaults.description,
+          image: dynamicOgImageUrl("service", row.id, row.updatedAt, origin),
+        };
+      }
+
+      // /services-overview/:slug renders the same service data as /services/:slug
+      // (PillarOverview component), so we resolve by looking up the service row
+      // just like the "services" case. /services-overview/default is covered by
+      // the STATIC_PAGE_OG registry above and never reaches this branch.
+      case "services-overview": {
         const [row] = await db
           .select({
             id: servicesTable.id,
