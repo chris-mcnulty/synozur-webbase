@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, Lock, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Save, X, Image as ImageIcon, Lock, Search } from "lucide-react";
 import { isSyncedCollateralType } from "@workspace/api-zod";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -302,6 +302,9 @@ export default function CollateralEdit({ id }: Props) {
 
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
+  const noMetaDesc =
+    !form.description.trim() && !form.seoDescription.trim();
+
   const invalidatePublic = () => {
     qc.invalidateQueries({ queryKey: ["/api/cms/collateral"] });
     qc.invalidateQueries({ queryKey: ["collateral"] });
@@ -334,6 +337,13 @@ export default function CollateralEdit({ id }: Props) {
     if (!isSynced && !form.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
+    }
+    if (form.active && noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This item is active but has no description or SEO description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
     }
     if (id) {
       // Synced rows only allow curation fields (featured, featuredRank, active,
@@ -688,6 +698,22 @@ export default function CollateralEdit({ id }: Props) {
           </Card>
 
           {/* SEO panel */}
+          {form.active && noMetaDesc && (
+            <div
+              className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+              data-testid="banner-no-meta-desc"
+            >
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-medium">No meta description.</span>{" "}
+                This item is active but neither a description nor an SEO
+                description is set. Search engines will auto-generate a snippet.{" "}
+                {isSynced
+                  ? "Edit the description at the source editor to fix this."
+                  : "Expand the SEO panel below and fill in at least one for best results."}
+              </div>
+            </div>
+          )}
           <Card className="p-4">
             <Collapsible>
               <CollapsibleTrigger asChild>
