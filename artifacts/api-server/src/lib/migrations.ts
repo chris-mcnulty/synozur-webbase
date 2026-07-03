@@ -3730,6 +3730,43 @@ export async function runMigrations(): Promise<void> {
       ON CONFLICT (slug) DO NOTHING;
     `);
 
+    // #419 — Backfill seo_title + seo_description for the 10 resource list-page
+    // slugs. The #345 seed only created bare rows (slug only); without these
+    // values the OG resolver silently falls through to the site default title,
+    // making every list page unfurl identically.
+    // Per-column COALESCE guards: each field is only written when it is NULL,
+    // so a partially-filled row (e.g. admin set seo_title but not seo_description)
+    // gets the missing column filled without overwriting the existing one.
+    await db.execute(sql`
+      UPDATE content_parent_pages AS t
+      SET
+        seo_title       = COALESCE(t.seo_title,       v.seo_title),
+        seo_description = COALESCE(t.seo_description, v.seo_description)
+      FROM (VALUES
+        ('case-studies',  'Case Studies — The Synozur Alliance',
+          'Selected stories of transformation. The strategies, the work, and the outcomes.'),
+        ('applications',  'Applications — The Synozur Alliance',
+          'Synozur''s portfolio of AI-powered applications — Vega, Nebula, Constellation, Orion, Orbit, Zenith, and more.'),
+        ('models',        'Maturity Models — The Synozur Alliance',
+          'AI, KMMM, GTM, Content Management, and Company OS maturity models from The Synozur Alliance.'),
+        ('workshops',     'Workshops — The Synozur Alliance',
+          'Structured facilitated sessions that accelerate strategy, alignment, and transformation with your leadership team.'),
+        ('library',       'Library — The Synozur Alliance',
+          'Browse the full Synozur collateral library — white papers, webinars, case studies, podcasts, models, workshops, and more.'),
+        ('webinars',      'Webinars — The Synozur Alliance',
+          'Watch and revisit Synozur webinars on transformation, AI, the digital workplace, and more.'),
+        ('videos',        'Videos — The Synozur Alliance',
+          'Watch interviews, webinars, and conversations from Synozur leaders and partners.'),
+        ('white-papers',  'White Papers & eBooks — The Synozur Alliance',
+          'In-depth white papers, reports, and eBooks from the Synozur team on transformation, AI, and the digital workplace.'),
+        ('items',         'White Papers — The Synozur Alliance',
+          'Read Synozur white papers on transformation strategy, technology, AI, experiences, and go-to-market.'),
+        ('insights',      'Insights — The Synozur Alliance',
+          'The Feed. Original writing on transformation, technology, leadership, and the operating disciplines that let strategy actually ship.')
+      ) AS v(slug, seo_title, seo_description)
+      WHERE t.slug = v.slug;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
