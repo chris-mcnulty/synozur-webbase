@@ -60,6 +60,10 @@ args = "test-social-bot-renderer"
 task = "workflow.run"
 args = "test-bots"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test:image-attrs"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -180,6 +184,17 @@ args = "pnpm --filter @workspace/api-server run test:bots"
 
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow]]
+name = "test:image-attrs"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:image-attrs"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
