@@ -3712,6 +3712,24 @@ export async function runMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS seo_description text;
     `);
 
+    // #351 — Admin-controlled share images for remaining static pages.
+    // -----------------------------------------------------------------
+    // Extends the #345 seed with rows for every other single-segment
+    // hand-coded SPA route so admins can override og_image / seo_title /
+    // seo_description from the "List page copy" admin screen without a
+    // deploy. ON CONFLICT DO NOTHING is idempotent.
+    // "/" is excluded: its `section` is "" so the override guard in
+    // ogResolver.ts would never fire — "/" remains controlled by Site
+    // Settings' default OG image. "/home-b" is an alias and also omitted.
+    await db.execute(sql`
+      INSERT INTO content_parent_pages (slug)
+      VALUES
+        ('about'), ('clients'), ('partners'), ('contact'), ('team'),
+        ('privacy'), ('terms'), ('trust'), ('join'), ('careers'),
+        ('polaris'), ('events')
+      ON CONFLICT (slug) DO NOTHING;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

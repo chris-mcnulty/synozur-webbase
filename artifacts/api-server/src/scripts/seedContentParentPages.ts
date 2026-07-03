@@ -1,11 +1,24 @@
 /**
- * Seed the nine `content_parent_pages` rows used by #97.
+ * Seed `content_parent_pages` rows for all admin-editable pages.
  *
- * The row set is fixed (one per resource list page) and the admin UI
- * has no create flow, so this script bootstraps the table with
- * `active=true` rows whose override fields are all null. Each list page
- * continues to render its hardcoded defaults until an editor fills in a
- * hero headline or intro.
+ * Covers two categories:
+ *   1. Resource list pages (originally seeded by #97) — one row per
+ *      collateral/content list route (insights, case-studies, etc.).
+ *   2. Hand-coded static SPA routes (#345, #351) — one row per single-
+ *      segment route (/sprint, /about, /events, etc.) so admins can
+ *      override the OG share image and SEO copy from the "List page
+ *      copy" admin screen without a deploy. Override fields are null
+ *      until an editor fills them in; empty fields fall back to the
+ *      page's hardcoded STATIC_PAGE_OG defaults in ogResolver.ts.
+ *
+ * "/" and "/home-b" are intentionally excluded: ogResolver.ts uses the
+ * first path segment as the DB lookup key, and "/" has no segment, so a
+ * row for it would never be consulted. Use Site Settings' default OG
+ * image to control the homepage share card.
+ *
+ * The admin UI has no create flow, so this script is the sole bootstrap
+ * mechanism. It is idempotent — existing rows are left untouched unless
+ * --force is passed.
  *
  * Usage:
  *   # idempotent upsert (default):
@@ -38,6 +51,21 @@ const SLUGS = [
   "proof",
   "fit",
   "book",
+  // #351 — Remaining single-segment static routes. Same pattern as the
+  // Sprint funnel rows above; gives admins control over share images and
+  // SEO copy for every hand-coded page without a deploy.
+  "about",
+  "clients",
+  "partners",
+  "contact",
+  "team",
+  "privacy",
+  "terms",
+  "trust",
+  "join",
+  "careers",
+  "polaris",
+  "events",
 ];
 
 async function main() {
