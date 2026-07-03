@@ -48,6 +48,18 @@ args = "typecheck:galaxy"
 task = "workflow.run"
 args = "typecheck-api-server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test-traffic-bot"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test-social-bot-renderer"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test-bots"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -132,6 +144,39 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/api-server run typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test-traffic-bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:traffic-bot"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test-social-bot-renderer"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:social-bot-renderer"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "test-bots"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:bots"
 
 [workflows.workflow.metadata]
 isValidation = true
