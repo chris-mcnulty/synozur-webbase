@@ -9,6 +9,7 @@ import { careersRedirectMiddleware } from "./lib/careersRedirect";
 import { shortLinkRedirectMiddleware } from "./middlewares/shortLinkRedirect";
 import { trafficCrawlerMiddleware } from "./middlewares/trafficCrawler";
 import { socialBotRendererMiddleware } from "./middlewares/socialBotRenderer";
+import { agentBotRendererMiddleware } from "./middlewares/agentBotRenderer";
 import { attachUserIfPresent } from "./middlewares/auth";
 import { handleLlmsTxt, handleRobots, handleSitemap } from "./routes/seo";
 import { handlePolarisRss } from "./routes/polaris";
@@ -113,6 +114,15 @@ app.use(careersRedirectMiddleware());
 // page-specific OG + Twitter Card tags looked up from the DB. Real browsers and
 // search crawlers pass straight through unchanged.
 app.use(socialBotRendererMiddleware());
+
+// Agent / search-bot prerenderer — secondary net for dev and any direct
+// api-server hits that bypass the synozur edge (server.mjs).  In production
+// server.mjs intercepts Googlebot/GPTBot/Bingbot/etc. before they reach here;
+// in development they arrive directly and would otherwise get the bare SPA
+// shell.  This middleware detects "ai" and "search" bot categories (and generic
+// non-JS HTTP fetchers on DB-backed artifact paths) and serves the
+// content-rich document produced by buildAgentPageHtml instead.
+app.use(agentBotRendererMiddleware());
 
 // Traffic crawler logging — records pageviews for identified bot UAs hitting
 // HTML routes (humans are tracked separately via the client beacon). Runs
