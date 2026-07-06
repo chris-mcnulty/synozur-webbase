@@ -912,6 +912,8 @@ export interface SeoCoverageOverview {
   // True when Google is configured but returned 0 successful checks on the
   // last run — signals a scope / property-access misconfiguration.
   googleAuthWarning: boolean;
+  // Raw error message from the last failed Google probe, if available.
+  googleLastError?: string | null;
 }
 
 export interface SeoCoverageUrlRow {

@@ -431,6 +431,9 @@ export interface CoverageOverview {
   // True when Google is configured but returned 0 successful checks on the
   // last run — signals a scope / property-access misconfiguration.
   googleAuthWarning: boolean;
+  // The raw error message from the last failed Google probe, if available.
+  // Only set when googleAuthWarning is true.
+  googleLastError: string | null;
 }
 
 const VALID_COVERAGE_BUCKETS = new Set([
@@ -520,6 +523,21 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
     lastRun.googleChecked === 0 &&
     lastRun.urlCount > 0;
 
+  // Surface the actual API error message so the UI can show an actionable hint
+  // rather than generic scope-check advice.
+  let googleLastError: string | null = null;
+  if (googleAuthWarning) {
+    const [errRow] = await db
+      .select({ googleRaw: seoCoverageStatusTable.googleRaw })
+      .from(seoCoverageStatusTable)
+      .where(eq(seoCoverageStatusTable.googleBucket, "error"))
+      .limit(1);
+    if (errRow?.googleRaw) {
+      const raw = errRow.googleRaw as { error?: string };
+      googleLastError = raw.error ?? null;
+    }
+  }
+
   return {
     lastRun: lastRun ?? null,
     googleConfigured: googleConfigured(),
@@ -529,6 +547,7 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
     ),
     scanRunning,
     googleAuthWarning,
+    googleLastError,
   };
 }
 

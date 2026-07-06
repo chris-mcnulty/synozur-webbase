@@ -233,14 +233,37 @@ export default function MarketingSeoCoverage() {
             <Card className="p-5 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
               <div className="flex items-start gap-3 text-sm text-amber-800 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
-                <span>
-                  <strong>Google Search Console:</strong> 0 URLs were
-                  successfully checked in the last scan despite being
-                  configured. Confirm the service account has the{" "}
-                  <code className="font-mono text-xs">webmasters.readonly</code>{" "}
-                  scope and has been added as a user on the Search Console
-                  property.
-                </span>
+                <div className="space-y-2">
+                  <p>
+                    <strong>Google Search Console:</strong> 0 URLs were
+                    successfully checked in the last scan despite being
+                    configured.
+                  </p>
+                  {data.googleLastError ? (
+                    <p className="font-mono text-xs bg-amber-100 dark:bg-amber-900/40 rounded p-2 break-all">
+                      {data.googleLastError}
+                    </p>
+                  ) : null}
+                  <p>
+                    Common fixes:{" "}
+                    <strong>(1)</strong> Enable the{" "}
+                    <a
+                      href="https://console.developers.google.com/apis/api/searchconsole.googleapis.com/overview"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-2"
+                    >
+                      Google Search Console API
+                    </a>{" "}
+                    in your GCP project.{" "}
+                    <strong>(2)</strong> Add the service account email as a user
+                    on the Search Console property.{" "}
+                    <strong>(3)</strong> Confirm the service account has the{" "}
+                    <code className="font-mono text-xs">webmasters.readonly</code>{" "}
+                    scope. After fixing, click{" "}
+                    <strong>Rescan now</strong>.
+                  </p>
+                </div>
               </div>
             </Card>
           ) : null}
