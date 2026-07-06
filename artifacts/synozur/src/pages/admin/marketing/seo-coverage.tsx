@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -82,10 +82,24 @@ export default function MarketingSeoCoverage() {
     null,
   );
 
+  // Track when polling started so we can enforce a 10-minute hard cap.
+  const pollStartRef = useRef<number | null>(null);
+
   const overview = useQuery<SeoCoverageOverview>({
     queryKey: ["seo-coverage"],
     queryFn: () => api.seoCoverage(),
     enabled: canModerate,
+    // Poll every 5 s while a scan is running. Stop when the scan finishes
+    // or after 10 minutes (whichever comes first).
+    refetchInterval: (query) => {
+      if (!query.state.data?.scanRunning) {
+        pollStartRef.current = null;
+        return false;
+      }
+      if (pollStartRef.current === null) pollStartRef.current = Date.now();
+      if (Date.now() - pollStartRef.current > 10 * 60 * 1000) return false;
+      return 5000;
+    },
   });
 
   const urls = useQuery<{ rows: SeoCoverageUrlRow[] }>({
@@ -102,12 +116,9 @@ export default function MarketingSeoCoverage() {
   const scan = useMutation({
     mutationFn: () => api.seoCoverageScan(),
     onSuccess: () => {
-      // The scan runs out-of-band; refetch after a short delay so the
-      // last-run banner reflects progress.
-      setTimeout(
-        () => qc.invalidateQueries({ queryKey: ["seo-coverage"] }),
-        4000,
-      );
+      // Immediately invalidate so the overview re-fetches and picks up
+      // scanRunning=true, which activates the 5-second polling interval.
+      void qc.invalidateQueries({ queryKey: ["seo-coverage"] });
     },
   });
 
@@ -217,12 +228,40 @@ export default function MarketingSeoCoverage() {
             </div>
           </Card>
 
+          {/* Google auth warning */}
+          {data.googleAuthWarning ? (
+            <Card className="p-5 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+              <div className="flex items-start gap-3 text-sm text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                <span>
+                  <strong>Google Search Console:</strong> 0 URLs were
+                  successfully checked in the last scan despite being
+                  configured. Confirm the service account has the{" "}
+                  <code className="font-mono text-xs">webmasters.readonly</code>{" "}
+                  scope and has been added as a user on the Search Console
+                  property.
+                </span>
+              </div>
+            </Card>
+          ) : null}
+
           {/* Per-artifact-type buckets */}
           {data.byKind.length === 0 ? (
             <Card className="p-6">
               <p className="text-sm text-muted-foreground">
-                No coverage data yet. Run a scan once Search Console / Bing
-                credentials are configured in production.
+                {!data.lastRun
+                  ? "No scan has run yet. Click 'Rescan now' to start."
+                  : "Last scan returned no indexable coverage data. Check provider configuration above."}
+                {(!data.googleConfigured || !data.bingConfigured) &&
+                data.lastRun ? (
+                  <span>
+                    {" "}
+                    ({!data.googleConfigured ? "Google Search Console" : ""}
+                    {!data.googleConfigured && !data.bingConfigured ? " and " : ""}
+                    {!data.bingConfigured ? "Bing Webmaster" : ""} not
+                    configured.)
+                  </span>
+                ) : null}
               </p>
             </Card>
           ) : (

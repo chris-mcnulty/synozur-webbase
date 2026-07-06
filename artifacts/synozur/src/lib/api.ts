@@ -909,6 +909,9 @@ export interface SeoCoverageOverview {
   bingConfigured: boolean;
   byKind: SeoCoverageKindBuckets[];
   scanRunning: boolean;
+  // True when Google is configured but returned 0 successful checks on the
+  // last run — signals a scope / property-access misconfiguration.
+  googleAuthWarning: boolean;
 }
 
 export interface SeoCoverageUrlRow {

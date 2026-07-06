@@ -428,25 +428,70 @@ export interface CoverageOverview {
   bingConfigured: boolean;
   byKind: KindBuckets[];
   scanRunning: boolean;
+  // True when Google is configured but returned 0 successful checks on the
+  // last run — signals a scope / property-access misconfiguration.
+  googleAuthWarning: boolean;
+}
+
+const VALID_COVERAGE_BUCKETS = new Set([
+  "indexed",
+  "discovered-not-indexed",
+  "crawl-error",
+  "soft-404",
+  "unknown",
+]);
+
+function applyBucket(k: KindBuckets, bucket: string, count: number): void {
+  k.total += count;
+  switch (bucket) {
+    case "indexed":
+      k.indexed += count;
+      break;
+    case "discovered-not-indexed":
+      k.discoveredNotIndexed += count;
+      break;
+    case "crawl-error":
+      k.crawlError += count;
+      break;
+    case "soft-404":
+      k.soft404 += count;
+      break;
+    default:
+      k.unknown += count;
+      break;
+  }
 }
 
 export async function getCoverageOverview(): Promise<CoverageOverview> {
+  // Fetch both Google and Bing buckets in one query so we can fall back to
+  // Bing data for rows where Google returned an error or was not configured.
   const rows = await db
     .select({
       kind: seoCoverageStatusTable.artifactKind,
-      bucket: seoCoverageStatusTable.googleBucket,
+      googleBucket: seoCoverageStatusTable.googleBucket,
+      bingBucket: seoCoverageStatusTable.bingBucket,
       count: sql<number>`count(*)::int`,
     })
     .from(seoCoverageStatusTable)
-    .groupBy(seoCoverageStatusTable.artifactKind, seoCoverageStatusTable.googleBucket);
+    .groupBy(
+      seoCoverageStatusTable.artifactKind,
+      seoCoverageStatusTable.googleBucket,
+      seoCoverageStatusTable.bingBucket,
+    );
 
   const byKind = new Map<string, KindBuckets>();
   for (const r of rows) {
-    // "not-configured" / "error" are provider/transport states, not
-    // coverage verdicts. Excluding them keeps the table empty when Google
-    // isn't configured (matching the dashboard banner + docs) and keeps
-    // "Unknown" meaning a genuine unknown coverage state.
-    if (r.bucket === "not-configured" || r.bucket === "error") continue;
+    // Choose the best available coverage verdict for this group:
+    // prefer Google if it returned a real coverage bucket; otherwise fall
+    // back to Bing. Skip the row entirely if neither provider has a verdict.
+    const effectiveBucket = VALID_COVERAGE_BUCKETS.has(r.googleBucket ?? "")
+      ? r.googleBucket!
+      : VALID_COVERAGE_BUCKETS.has(r.bingBucket ?? "")
+        ? r.bingBucket!
+        : null;
+
+    if (effectiveBucket === null) continue;
+
     const k = byKind.get(r.kind) ?? {
       kind: r.kind,
       total: 0,
@@ -456,24 +501,7 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
       soft404: 0,
       unknown: 0,
     };
-    k.total += r.count;
-    switch (r.bucket) {
-      case "indexed":
-        k.indexed += r.count;
-        break;
-      case "discovered-not-indexed":
-        k.discoveredNotIndexed += r.count;
-        break;
-      case "crawl-error":
-        k.crawlError += r.count;
-        break;
-      case "soft-404":
-        k.soft404 += r.count;
-        break;
-      default:
-        k.unknown += r.count;
-        break;
-    }
+    applyBucket(k, effectiveBucket, r.count);
     byKind.set(r.kind, k);
   }
 
@@ -483,6 +511,15 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
     .orderBy(desc(seoCoverageRunsTable.startedAt))
     .limit(1);
 
+  // Warn when Google is configured but none of its probes succeeded — this
+  // typically means the service account is missing the webmasters.readonly
+  // scope or has not been granted Search Console property access.
+  const googleAuthWarning =
+    !!lastRun &&
+    lastRun.googleConfigured &&
+    lastRun.googleChecked === 0 &&
+    lastRun.urlCount > 0;
+
   return {
     lastRun: lastRun ?? null,
     googleConfigured: googleConfigured(),
@@ -491,6 +528,7 @@ export async function getCoverageOverview(): Promise<CoverageOverview> {
       a.kind.localeCompare(b.kind),
     ),
     scanRunning,
+    googleAuthWarning,
   };
 }
 
