@@ -16,7 +16,7 @@
 // bucket "not-configured", never throws) exactly like seoSubmit.ts.
 
 import { GoogleAuth } from "google-auth-library";
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import {
   db,
   seoCoverageStatusTable,
@@ -550,8 +550,27 @@ export async function listCoverageUrls(opts: {
 }): Promise<CoverageUrlRow[]> {
   const conds = [];
   if (opts.kind) conds.push(eq(seoCoverageStatusTable.artifactKind, opts.kind));
-  if (opts.bucket)
-    conds.push(eq(seoCoverageStatusTable.googleBucket, opts.bucket));
+  if (opts.bucket) {
+    const VALID_BUCKETS = [
+      "indexed",
+      "discovered-not-indexed",
+      "crawl-error",
+      "soft-404",
+      "unknown",
+    ] as const;
+    conds.push(
+      or(
+        eq(seoCoverageStatusTable.googleBucket, opts.bucket),
+        and(
+          or(
+            isNull(seoCoverageStatusTable.googleBucket),
+            notInArray(seoCoverageStatusTable.googleBucket, [...VALID_BUCKETS]),
+          ),
+          eq(seoCoverageStatusTable.bingBucket, opts.bucket),
+        ),
+      )!,
+    );
+  }
   const rows = await db
     .select({
       url: seoCoverageStatusTable.url,

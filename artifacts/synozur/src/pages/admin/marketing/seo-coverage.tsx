@@ -355,8 +355,18 @@ export default function MarketingSeoCoverage() {
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                       <span className="shrink-0 text-muted-foreground">
-                        {r.googleCoverageState ?? r.googleBucket ?? "—"}
-                        {r.bingBucket && r.bingBucket !== "not-configured"
+                        {!r.googleBucket ||
+                        r.googleBucket === "error" ||
+                        r.googleBucket === "not-configured"
+                          ? r.bingBucket && r.bingBucket !== "not-configured"
+                            ? `Bing: ${r.bingBucket}`
+                            : "—"
+                          : r.googleCoverageState ?? r.googleBucket ?? "—"}
+                        {r.googleBucket &&
+                        r.googleBucket !== "error" &&
+                        r.googleBucket !== "not-configured" &&
+                        r.bingBucket &&
+                        r.bingBucket !== "not-configured"
                           ? ` · Bing: ${r.bingBucket}`
                           : ""}
                       </span>
