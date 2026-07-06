@@ -226,13 +226,15 @@ function resolveImageUrl(url: string | null | undefined): string | undefined {
   return url;
 }
 
-function formatDate(iso: string | Date): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+function formatDate(iso: string | Date, timezone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  });
+  };
+  if (timezone) opts.timeZone = timezone;
+  return new Date(iso).toLocaleDateString("en-US", opts);
 }
 
 function formatTime(iso: string | Date, timezone?: string | null): string {
@@ -296,7 +298,7 @@ export default function EventDetail() {
   const showReminderOption =
     new Date(event.startDate).getTime() - Date.now() > TWENTY_FOUR_HOURS_MS;
 
-  const eventDateLabel = formatDate(event.startDate);
+  const eventDateLabel = formatDate(event.startDate, event.timezone);
 
   // Don't embed a map for virtual/online events — they produce a useless
   // world-view render in Google Maps.
@@ -505,10 +507,10 @@ export default function EventDetail() {
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium">{formatDate(event.startDate)}</p>
+                  <p className="text-sm font-medium">{formatDate(event.startDate, event.timezone)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {formatTime(event.startDate, (event as { timezone?: string | null }).timezone)}
+                    {formatTime(event.startDate, event.timezone)}
                   </p>
                 </div>
               </div>

@@ -7,21 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Meta } from "@/lib/meta";
 import { startOfCurrentWeek } from "@/lib/eventTime";
 
-function formatDate(iso: string | Date): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
+function formatDate(iso: string | Date, timezone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
+  };
+  if (timezone) opts.timeZone = timezone;
+  return new Date(iso).toLocaleDateString("en-US", opts);
 }
 
-function formatTime(iso: string | Date): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+function formatTime(iso: string | Date, timezone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     hour: "numeric",
     minute: "2-digit",
-  });
+    timeZoneName: "short",
+  };
+  if (timezone) opts.timeZone = timezone;
+  return new Date(iso).toLocaleTimeString("en-US", opts);
 }
 
 interface EventLike {
@@ -29,6 +33,7 @@ interface EventLike {
   slug: string;
   title: string;
   startDate: string | Date;
+  timezone?: string | null;
   location?: string | null;
   imageUrl?: string | null;
   registrationStatus?: string;
@@ -76,7 +81,7 @@ function EventCard({ event, isPast }: { event: EventLike; isPast: boolean }) {
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 shrink-0" />
             <span>
-              {formatDate(event.startDate)} · {formatTime(event.startDate)}
+              {formatDate(event.startDate, event.timezone)} · {formatTime(event.startDate, event.timezone)}
             </span>
           </div>
           {event.location && (
