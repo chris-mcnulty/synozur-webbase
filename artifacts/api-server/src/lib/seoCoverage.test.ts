@@ -29,7 +29,7 @@ import {
   normalizeBingBucket,
   parseMicrosoftDate,
 } from "./seoCoverageBuckets";
-import { getCoverageOverview } from "./seoCoverage.js";
+import { getCoverageOverview, listCoverageUrls } from "./seoCoverage.js";
 
 // ─── Part 1: Pure bucket normalizers ─────────────────────────────────────────
 
@@ -369,6 +369,101 @@ test("getCoverageOverview: googleAuthWarning=false when googleConfigured=false",
     await db
       .delete(seoCoverageRunsTable)
       .where(inArray(seoCoverageRunsTable.id, [run.id]));
+  }
+});
+
+// ─── Part 3: listCoverageUrls drill-down filter ───────────────────────────────
+//
+// Verifies the OR condition that lets the Bing bucket act as a fallback when
+// the Google bucket is null or not a recognised valid value (e.g. "error").
+
+test("listCoverageUrls: Google-only row is returned when querying its Google bucket", async () => {
+  const tag = uniqueTag();
+  const kind = `${tag}-kind`;
+  const urls = [`https://${tag}.invalid/g-only`];
+
+  await db.insert(seoCoverageStatusTable).values([
+    {
+      url: urls[0],
+      path: "/g-only",
+      artifactKind: kind,
+      googleBucket: "indexed",
+      bingBucket: "discovered-not-indexed",
+      lastCheckedAt: new Date(),
+    },
+  ]);
+
+  try {
+    const rows = await listCoverageUrls({ kind, bucket: "indexed", limit: 100 });
+    const found = rows.find((r) => r.url === urls[0]);
+    assert.ok(found, "row with googleBucket=indexed must be returned when querying bucket=indexed");
+    assert.equal(found.googleBucket, "indexed");
+  } finally {
+    await db
+      .delete(seoCoverageStatusTable)
+      .where(inArray(seoCoverageStatusTable.url, urls));
+  }
+});
+
+test("listCoverageUrls: Bing-fallback row (googleBucket=error) is returned when querying its Bing bucket", async () => {
+  const tag = uniqueTag();
+  const kind = `${tag}-kind`;
+  const urls = [`https://${tag}.invalid/bing-fallback`];
+
+  await db.insert(seoCoverageStatusTable).values([
+    {
+      url: urls[0],
+      path: "/bing-fallback",
+      artifactKind: kind,
+      googleBucket: "error",
+      bingBucket: "indexed",
+      lastCheckedAt: new Date(),
+    },
+  ]);
+
+  try {
+    const rows = await listCoverageUrls({ kind, bucket: "indexed", limit: 100 });
+    const found = rows.find((r) => r.url === urls[0]);
+    assert.ok(
+      found,
+      "row with googleBucket=error and bingBucket=indexed must be returned when querying bucket=indexed (Bing fallback)",
+    );
+    assert.equal(found.googleBucket, "error");
+    assert.equal(found.bingBucket, "indexed");
+  } finally {
+    await db
+      .delete(seoCoverageStatusTable)
+      .where(inArray(seoCoverageStatusTable.url, urls));
+  }
+});
+
+test("listCoverageUrls: row with valid Google verdict is NOT returned when querying a Bing bucket it does not match", async () => {
+  const tag = uniqueTag();
+  const kind = `${tag}-kind`;
+  const urls = [`https://${tag}.invalid/google-wins`];
+
+  await db.insert(seoCoverageStatusTable).values([
+    {
+      url: urls[0],
+      path: "/google-wins",
+      artifactKind: kind,
+      googleBucket: "indexed",
+      bingBucket: "discovered-not-indexed",
+      lastCheckedAt: new Date(),
+    },
+  ]);
+
+  try {
+    const rows = await listCoverageUrls({ kind, bucket: "discovered-not-indexed", limit: 100 });
+    assert.equal(
+      rows.length,
+      0,
+      "row with valid googleBucket=indexed must NOT appear when querying bucket=discovered-not-indexed, even though its bingBucket matches",
+    );
+  } finally {
+    await db
+      .delete(seoCoverageStatusTable)
+      .where(inArray(seoCoverageStatusTable.url, urls));
   }
 });
 
