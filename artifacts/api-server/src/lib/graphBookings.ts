@@ -405,6 +405,13 @@ export interface CreateAppointmentArgs {
   };
   /** IANA timezone for the customer (used in the appointment record). */
   customerTimeZone: string;
+  /**
+   * Staff member(s) to assign. Without this, Graph creates the appointment
+   * UNASSIGNED — the customer gets a confirmation but no staff member is
+   * booked or invited (unlike the hosted Bookings page, which always
+   * assigns staff). Resolve this from the slot's free staff before creating.
+   */
+  staffMemberIds?: string[];
 }
 
 function isoToGraphDateTime(iso: string): { dateTime: string; timeZone: string } {
@@ -947,12 +954,14 @@ export async function createAppointment(
   businessId: string,
   args: CreateAppointmentArgs,
 ): Promise<{ ok: true; appointmentId: string } | { ok: false; status: number; message: string }> {
+  const staffIds = (args.staffMemberIds ?? []).filter(Boolean);
   const body = {
     "@odata.type": "#microsoft.graph.bookingAppointment",
     serviceId: args.serviceId,
     startDateTime: isoToGraphDateTime(args.startUtc),
     endDateTime: isoToGraphDateTime(args.endUtc),
     customerTimeZone: args.customerTimeZone,
+    ...(staffIds.length > 0 ? { staffMemberIds: staffIds } : {}),
     customers: [
       {
         "@odata.type": "#microsoft.graph.bookingCustomerInformation",

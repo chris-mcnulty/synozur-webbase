@@ -715,6 +715,44 @@ router.post(
       res.status(ctx.status).json({ error: ctx.message });
       return;
     }
+    // Resolve which staff member is free for this slot. Graph creates
+    // UNASSIGNED appointments when staffMemberIds is omitted — the customer
+    // gets a confirmation but no staff member is booked or invited. The
+    // hosted Bookings page always assigns staff; we must do it explicitly.
+    let staffMemberIds: string[] | undefined;
+    try {
+      const slotStartMs = Date.parse(parsed.data.startUtc);
+      const avail = await getStaffAvailability({
+        businessId: ctx.businessId,
+        serviceId: parsed.data.serviceId,
+        startUtc: new Date(slotStartMs - 24 * 3600_000).toISOString(),
+        endUtc: new Date(Date.parse(parsed.data.endUtc) + 24 * 3600_000).toISOString(),
+        fallbackTimezone: ctx.msTimezone,
+      });
+      if (avail.ok) {
+        const slotEndMs = Date.parse(parsed.data.endUtc);
+        const slot = avail.slots.find(
+          (s) => Date.parse(s.startUtc) === slotStartMs && Date.parse(s.endUtc) === slotEndMs,
+        );
+        const freeStaff = slot?.staffIds ?? [];
+        if (freeStaff.length > 0) {
+          // Pick one at random to distribute load across free staff.
+          staffMemberIds = [freeStaff[Math.floor(Math.random() * freeStaff.length)]];
+        } else {
+          req.log.warn(
+            { slug, startUtc: parsed.data.startUtc },
+            "Booking slot no longer has free staff; creating unassigned appointment",
+          );
+        }
+      } else {
+        req.log.warn(
+          { slug, status: avail.status, message: avail.message },
+          "Staff resolution failed at booking time; creating unassigned appointment",
+        );
+      }
+    } catch (err) {
+      req.log.warn({ err, slug }, "Staff resolution threw; creating unassigned appointment");
+    }
     const result = await createAppointment(ctx.businessId, {
       serviceId: parsed.data.serviceId,
       startUtc: parsed.data.startUtc,
@@ -726,6 +764,7 @@ router.post(
         notes: parsed.data.customer.notes ?? null,
       },
       customerTimeZone: parsed.data.customerTimeZone,
+      staffMemberIds,
     });
     if (!result.ok) {
       res.status(result.status).json({ error: result.message });

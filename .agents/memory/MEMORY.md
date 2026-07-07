@@ -19,3 +19,4 @@
 - [Prod URL and database](prod-baseline-url.md) — www.synozur.com is LIVE on the Replit app; prod has its own separate read-write DB (not a dev copy).
 - [Synozur type layer](synozur-type-layer.md) — synozur/src/lib/api.ts hand-writes its own site-settings types; OpenAPI codegen alone won't fix its typecheck.
 - [SEO audit OG-image findings](seo-audit-og-findings.md) — ogImage=autofillable promote; og_image_missing=pure warning; kinds with no image field must strip both to avoid permanent noise.
+- [Graph Bookings staff assignment](graph-bookings-staff-assignment.md) — Graph-created appointments are unassigned (no staff invite) unless staffMemberIds is sent; resolve free staff at booking time.
