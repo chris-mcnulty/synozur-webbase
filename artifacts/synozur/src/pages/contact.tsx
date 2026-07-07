@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/traffic-tracker";
 import {
@@ -20,10 +27,18 @@ import {
 } from "@/components/turnstile";
 import { BotCheckCallout } from "@/components/bot-check-callout";
 
+const INQUIRY_TYPES = [
+  { value: "general", label: "General inquiry" },
+  { value: "software-support", label: "Software support" },
+  { value: "consulting", label: "Consulting engagement" },
+  { value: "partnership", label: "Partnership" },
+] as const;
+
 const schema = z.object({
   name: z.string().min(2, "Please share your name"),
   company: z.string().min(2, "Please share your company"),
   email: z.string().email("Please share a valid email"),
+  inquiryType: z.string().min(1, "Please select an inquiry type"),
   message: z.string().min(10, "A few sentences helps us route this well"),
   website: z.string().optional(),
   marketingOptIn: z.boolean().optional(),
@@ -40,8 +55,12 @@ export default function Contact() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const inquiryType = watch("inquiryType");
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
@@ -50,13 +69,17 @@ export default function Contact() {
       setSubmitError("Please complete the bot check before sending.");
       return;
     }
+    const typeLabel =
+      INQUIRY_TYPES.find((t) => t.value === data.inquiryType)?.label ??
+      data.inquiryType;
+    const fullMessage = `[${typeLabel}]\n\n${data.message}`;
     try {
       await api.submitContact(
         {
           name: data.name,
           company: data.company,
           email: data.email,
-          message: data.message,
+          message: fullMessage,
           website: data.website ?? null,
           turnstileToken,
         },
@@ -65,6 +88,7 @@ export default function Contact() {
       setSubmitted(true);
       void trackEvent("contact-form-submit", {
         company: data.company.slice(0, 120) || null,
+        inquiryType: data.inquiryType,
       });
     } catch (err) {
       if (isBotCheckError(err)) {
@@ -76,7 +100,7 @@ export default function Contact() {
       setSubmitError(
         err instanceof Error
           ? err.message
-          : "Something went wrong. Please try again or email hello@synozur.com.",
+          : "Something went wrong. Please try again or email contactus@synozur.com.",
       );
     }
   };
@@ -116,20 +140,13 @@ export default function Contact() {
               <div className="space-y-4 text-muted-foreground">
                 <div className="flex gap-3">
                   <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <span>hello@synozur.com</span>
+                  <span>contactus@synozur.com</span>
                 </div>
                 <div className="flex gap-3">
                   <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <span>Operating across North America &amp; EMEA.</span>
                 </div>
               </div>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-card p-8">
-              <h3 className="font-bold mb-2">Looking to join?</h3>
-              <p className="text-sm text-muted-foreground">
-                We are quietly hiring senior practitioners. Tell us about your
-                background and what you would want to work on.
-              </p>
             </div>
           </div>
 
@@ -181,11 +198,40 @@ export default function Contact() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="message">What are you working on?</Label>
+                  <Label htmlFor="inquiryType">How can we help?</Label>
+                  <Select
+                    value={inquiryType ?? ""}
+                    onValueChange={(v) => setValue("inquiryType", v, { shouldValidate: true })}
+                  >
+                    <SelectTrigger id="inquiryType">
+                      <SelectValue placeholder="Select an inquiry type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INQUIRY_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.inquiryType && (
+                    <p className="text-sm text-destructive">{errors.inquiryType.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="message">
+                    {inquiryType === "software-support"
+                      ? "Describe the issue"
+                      : "What are you working on?"}
+                  </Label>
                   <Textarea
                     id="message"
                     rows={6}
-                    placeholder="A few sentences about the situation, the team, and where you would want help."
+                    placeholder={
+                      inquiryType === "software-support"
+                        ? "Describe the problem, any error messages, and the steps to reproduce it."
+                        : "A few sentences about the situation, the team, and where you would want help."
+                    }
                     {...register("message")}
                   />
                   {errors.message && (
