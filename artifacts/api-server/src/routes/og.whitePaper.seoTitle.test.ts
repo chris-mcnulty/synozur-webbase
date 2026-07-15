@@ -1,12 +1,15 @@
 /**
- * Tests: white-paper OG image uses seoTitle when set.
+ * Tests: white-paper OG image uses the display title, never seoTitle.
+ *
+ * Task #464: seoTitle is optimized for search snippets and is often too
+ * long for the 1200×630 canvas, truncating mid-sentence. The image render
+ * must use the plain display `title`; meta tags still use seoTitle.
  *
  * Two complementary layers of coverage:
  *
  * 1. Unit (resolveArtifact) — directly calls the exported resolver with real
- *    DB rows and asserts that `OgImageInput.title` is `seoTitle` when set,
- *    or plain `title` when `seoTitle` is absent. This is the precise check
- *    that pins the `row.seoTitle || row.title` expression.
+ *    DB rows and asserts that `OgImageInput.title` is the display `title`
+ *    even when `seoTitle` is set. This pins the `row.title` expression.
  *
  * 2. Route integration — starts a real Express server, calls
  *    GET /api/og/image?kind=white-paper&id=... and asserts that the route
@@ -100,20 +103,21 @@ test.after(async () => {
 // These tests call resolveArtifact directly to pin the exact OgImageInput.title
 // value produced for each DB row, independently of the renderer.
 
-test("resolveArtifact white-paper: uses seoTitle when set", async () => {
+test("resolveArtifact white-paper: uses display title even when seoTitle is set", async () => {
   const result = await resolveArtifact("white-paper", wpWithSeoId!);
 
   assert.ok(result !== null, "Expected a resolved artifact, got null");
   assert.equal(result.input.kind, "white-paper");
   assert.equal(
     result.input.title,
-    "SEO-Optimised Title for Social Cards",
-    `OgImageInput.title was "${result.input.title}" but expected the seoTitle. ` +
-      `The white-paper resolveArtifact branch must prefer row.seoTitle over row.title.`,
+    "Plain Document Title",
+    `OgImageInput.title was "${result.input.title}" but expected the display title. ` +
+      `The white-paper resolveArtifact branch must use row.title for the image render ` +
+      `(seoTitle is meta-tag-only — it is often too long for the 1200×630 canvas).`,
   );
 });
 
-test("resolveArtifact white-paper: falls back to title when seoTitle is absent", async () => {
+test("resolveArtifact white-paper: uses title when seoTitle is absent", async () => {
   const result = await resolveArtifact("white-paper", wpNoSeoId!);
 
   assert.ok(result !== null, "Expected a resolved artifact, got null");

@@ -156,6 +156,8 @@ router.get("/collateral/featured", async (_req, res) => {
         isNull(collateralTable.deletedAt),
         eq(collateralTable.active, true),
         eq(collateralTable.featured, true),
+        // Future-dated items are not yet live (null = no schedule, visible).
+        sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
       ),
     )
     .orderBy(
@@ -187,7 +189,12 @@ router.get("/collateral", async (req, res) => {
         .filter((p) => (COLLATERAL_PILLARS as readonly string[]).includes(p)) as (typeof COLLATERAL_PILLARS)[number][])
     : [];
 
-  const filters = [isNull(collateralTable.deletedAt), eq(collateralTable.active, true)];
+  const filters = [
+    isNull(collateralTable.deletedAt),
+    eq(collateralTable.active, true),
+    // Future-dated items are not yet live (null = no schedule, visible).
+    sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
+  ];
 
   if (types.length) filters.push(inArray(collateralTable.type, types));
   if (pillars.length) filters.push(inArray(collateralTable.pillar, pillars));
@@ -240,6 +247,10 @@ router.get("/collateral/:slug", async (req, res) => {
       sql`lower(${collateralTable.slug}) = ${slugLower}`,
       isNull(collateralTable.deletedAt),
       eq(collateralTable.active, true),
+      // Future-dated items are not yet live (null = no schedule, visible).
+      // Keeps the detail-page collateral fallback consistent with the
+      // editorial endpoints, which 404 until publishedAt passes.
+      sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
     ),
   });
   if (!row) {

@@ -48,8 +48,11 @@ export type OgImageKind =
  *       eyeballing a freshly-deployed environment.
  *   5 — Added team-member kind. The bio page surfaces this PNG when no
  *       headshot is set on the row.
+ *   6 — White-paper images now render the display title instead of the
+ *       (often overlong) seoTitle; bump regenerates previously cached
+ *       truncated titles (July 2026).
  */
-export const OG_TEMPLATE_VERSION = 5;
+export const OG_TEMPLATE_VERSION = 6;
 
 export interface OgImageInput {
   kind: OgImageKind;

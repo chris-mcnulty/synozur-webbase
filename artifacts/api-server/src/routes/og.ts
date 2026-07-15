@@ -173,7 +173,10 @@ export async function resolveArtifact(
       return {
         input: {
           kind,
-          title: row.seoTitle || row.title,
+          // Use the display title, not the SEO title: seoTitle is optimized
+          // for search snippets and is often too long for the 1200×630
+          // canvas, truncating mid-sentence. Meta tags still use seoTitle.
+          title: row.title,
           byline: null,
           context: row.subtitle || docLabel,
         },
