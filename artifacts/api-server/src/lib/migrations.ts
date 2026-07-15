@@ -3810,6 +3810,53 @@ export async function runMigrations(): Promise<void> {
         AND c.url IS DISTINCT FROM '/white-papers/' || wp.slug;
     `);
 
+    // #468 — Dedupe collateral rows sharing a source_id, then guard with a
+    // partial unique index so the sync's findFirst-by-source_id can never be
+    // ambiguous again.
+    // -----------------------------------------------------------------
+    // 1. For each source_id owned by more than one collateral row, keep the
+    //    best row and retire the rest. "Best" prefers, in order: a slug that
+    //    matches the source white paper's slug, a live (not soft-deleted)
+    //    row, then the oldest row. Losers are soft-deleted AND detached from
+    //    the source (source_id = NULL) rather than hard-deleted, because
+    //    collateral has FK dependents (collateral_services,
+    //    collateral_solutions, solution_highlights). Detaching is required:
+    //    a soft-deleted row still holding the source_id would block the
+    //    unique index below.
+    await db.execute(sql`
+      WITH ranked AS (
+        SELECT c.id,
+               row_number() OVER (
+                 PARTITION BY c.source_id
+                 ORDER BY (c.slug = wp.slug) DESC NULLS LAST,
+                          (c.deleted_at IS NULL) DESC,
+                          c.created_at ASC,
+                          c.id ASC
+               ) AS rn
+        FROM collateral c
+        LEFT JOIN white_papers wp ON c.source_id = 'white_paper:' || wp.id
+        WHERE c.source_id IN (
+          SELECT source_id FROM collateral
+          WHERE source_id IS NOT NULL
+          GROUP BY source_id
+          HAVING count(*) > 1
+        )
+      )
+      UPDATE collateral c
+      SET source_id = NULL,
+          active = false,
+          deleted_at = COALESCE(c.deleted_at, now()),
+          updated_at = now()
+      FROM ranked r
+      WHERE c.id = r.id AND r.rn > 1;
+    `);
+    // 2. Prevent recurrence. Safe to add only after the dedupe above.
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS collateral_source_id_unique_idx
+        ON collateral (source_id)
+        WHERE source_id IS NOT NULL;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
