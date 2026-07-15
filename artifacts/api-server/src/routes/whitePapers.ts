@@ -44,6 +44,15 @@ async function ensureUniqueWhitePaperSlug(base: string, excludeId?: string): Pro
   }
 }
 
+// #466: publish dates are date-only (stored midnight UTC). A paper is
+// publicly visible once its stored calendar date is reached, i.e. its
+// publishedAt is strictly before the start of the next UTC day.
+export function startOfNextUtcDay(now: Date): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+  );
+}
+
 function assetStorageUrl(asset: Asset): string {
   return `/api/storage${asset.storageKey}`;
 }
@@ -198,7 +207,11 @@ router.get("/white-papers", async (req, res) => {
     eq(whitePapersTable.active, true),
     eq(whitePapersTable.status, "published"),
     sql`${whitePapersTable.deletedAt} is null`,
-    sql`${whitePapersTable.publishedAt} <= now()`,
+    // #466: publish dates are date-only in the admin UI and stored as
+    // midnight UTC. Compare at date granularity so a paper dated "today"
+    // is visible immediately regardless of editor/server timezone, rather
+    // than hidden until midnight UTC.
+    sql`${whitePapersTable.publishedAt} < date_trunc('day', now() at time zone 'utc') + interval '1 day'`,
     sql`(${whitePapersTable.unpublishedAt} is null or ${whitePapersTable.unpublishedAt} > now())`,
   ];
   if (docType && (WHITE_PAPER_DOC_TYPES as readonly string[]).includes(docType)) {
@@ -274,7 +287,7 @@ router.get("/white-papers/:slug", async (req, res) => {
   if (
     !row.active ||
     row.status !== "published" ||
-    (row.publishedAt && row.publishedAt > now)
+    (row.publishedAt && row.publishedAt >= startOfNextUtcDay(now))
   ) {
     res.status(404).json({ error: "Not found" });
     return;

@@ -3767,6 +3767,49 @@ export async function runMigrations(): Promise<void> {
       WHERE t.slug = v.slug;
     `);
 
+    // #466 — Repair white-paper collateral rows.
+    // -----------------------------------------------------------------
+    // 1. Fix the misspelled collateral slug for "Say The Quiet Part Out
+    //    Loud" (prod has "say-the-quite-part-out-loud"). Guarded so it
+    //    only runs when no other row already owns the corrected slug.
+    await db.execute(sql`
+      UPDATE collateral
+      SET slug = 'say-the-quiet-part-out-loud',
+          updated_at = now()
+      WHERE slug = 'say-the-quite-part-out-loud'
+        AND type IN ('white_paper', 'ebook')
+        AND NOT EXISTS (
+          SELECT 1 FROM collateral c2
+          WHERE c2.slug = 'say-the-quiet-part-out-loud'
+        );
+    `);
+    // 2. Backfill missing download URLs for white papers whose document
+    //    was uploaded via the media picker (document_media_id). The old
+    //    sync only resolved legacy document_asset_id uploads, leaving
+    //    download_url NULL on the collateral row. Mirrors the API's
+    //    resolution: media public_url first, storage-key route fallback.
+    await db.execute(sql`
+      UPDATE collateral c
+      SET download_url = COALESCE(NULLIF(m.public_url, ''), '/api/storage' || m.storage_key),
+          updated_at = now()
+      FROM white_papers wp
+      JOIN media m ON m.id = wp.document_media_id
+      WHERE c.source_id = 'white_paper:' || wp.id
+        AND c.download_url IS NULL;
+    `);
+    // 3. Normalize the canonical url on white-paper collateral rows so it
+    //    matches the source white paper's current slug (the sync now keeps
+    //    these in step going forward; this heals existing drift).
+    await db.execute(sql`
+      UPDATE collateral c
+      SET url = '/white-papers/' || wp.slug,
+          updated_at = now()
+      FROM white_papers wp
+      WHERE c.source_id = 'white_paper:' || wp.id
+        AND c.type IN ('white_paper', 'ebook')
+        AND c.url IS DISTINCT FROM '/white-papers/' || wp.slug;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

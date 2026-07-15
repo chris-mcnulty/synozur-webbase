@@ -61,7 +61,8 @@
     "test:og-resolver-list-page-copy": "node --import tsx --test src/lib/ogResolver.listPageCopy.test.ts",
     "test:hubspot-sync": "node --import tsx --test src/lib/hubspotSync.test.ts",
     "test:hubspot-webhooks": "node --import tsx --test src/routes/hubspotWebhooks.test.ts",
-    "test:image-attrs": "node --import tsx --test src/lib/imageAttributeRoundtrip.test.ts"
+    "test:image-attrs": "node --import tsx --test src/lib/imageAttributeRoundtrip.test.ts",
+    "test:white-papers-publish": "node --import tsx --test src/routes/whitePapers.publish.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

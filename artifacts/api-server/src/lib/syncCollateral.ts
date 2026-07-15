@@ -6,6 +6,7 @@ import {
   servicesTable,
   solutionsTable,
   assetsTable,
+  mediaTable,
   postCategories,
   postTags,
   categoriesTable,
@@ -372,8 +373,20 @@ export async function upsertCollateralFromWhitePaper(
     whitePaper.status === "published" && whitePaper.active && !whitePaper.deletedAt;
   const now = new Date();
   const collateralType = whitePaper.docType === "ebook" ? "ebook" : "white_paper";
+  // #466: resolve the download URL in the same order the white papers API
+  // does — media-picker upload first, then legacy asset upload, then the
+  // manual URL fields.
   let uploadedDocumentUrl: string | null = null;
-  if (whitePaper.documentAssetId) {
+  if (whitePaper.documentMediaId) {
+    const [media] = await db
+      .select({ publicUrl: mediaTable.publicUrl, storageKey: mediaTable.storageKey })
+      .from(mediaTable)
+      .where(eq(mediaTable.id, whitePaper.documentMediaId));
+    if (media) {
+      uploadedDocumentUrl = media.publicUrl || `/api/storage${media.storageKey}`;
+    }
+  }
+  if (!uploadedDocumentUrl && whitePaper.documentAssetId) {
     const [asset] = await db
       .select({ storageKey: assetsTable.storageKey })
       .from(assetsTable)
@@ -405,10 +418,18 @@ export async function upsertCollateralFromWhitePaper(
   };
 
   if (existing) {
+    // #466: heal the collateral slug so it tracks the white paper's slug.
+    // A mistyped slug fixed on the white paper otherwise never propagates,
+    // breaking the detail-page collateral fallback.
+    const desiredSlug =
+      existing.slug === toSlug(whitePaper.slug)
+        ? existing.slug
+        : await ensureUniqueCollateralSlug(whitePaper.slug, existing.id);
     await db
       .update(collateralTable)
       .set({
         ...syncedFields,
+        slug: desiredSlug,
         deletedAt: isPublished ? null : existing.deletedAt,
       })
       .where(eq(collateralTable.id, existing.id));
