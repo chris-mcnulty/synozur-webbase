@@ -2,7 +2,7 @@ import express, { Router, type IRouter, type Request, type Response } from "expr
 import { Readable } from "stream";
 import sharp from "sharp";
 import { eq } from "drizzle-orm";
-import { db, mediaTable } from "@workspace/db";
+import { db, mediaTable, assetsTable } from "@workspace/db";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -197,6 +197,23 @@ export function bufferLooksLikeRasterImage(buf: Buffer): boolean {
   return sniffRasterImageMime(buf) !== null;
 }
 
+// PDF files start with "%PDF-". Used for objects stored with an ambiguous
+// content-type (octet-stream / empty) so downloads open as PDFs instead of
+// saving as extensionless binary blobs.
+export function bufferLooksLikePdf(buf: Buffer): boolean {
+  return buf.length >= 5 && buf.slice(0, 5).toString("ascii") === "%PDF-";
+}
+
+// RFC 6266 filename sanitizer — strip quotes/control chars and path bits.
+function safeDispositionFilename(name: string, fallback: string): string {
+  const cleaned = name
+    .split(/[/\\]/)
+    .pop()!
+    .replace(/["\r\n\t]/g, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : fallback;
+}
+
 /**
  * Read up to `n` bytes from a web ReadableStream reader without discarding
  * them. Returns the buffered header; the reader is left positioned after the
@@ -242,6 +259,8 @@ async function streamObjectToResponse(
   res: Response,
   width: number | null,
   format: ThumbnailFormat = "webp",
+  /** Original upload filename (from the media row), used for Content-Disposition on PDFs. */
+  originalName?: string | null,
 ): Promise<void> {
   const contentType = source.headers.get("content-type") ?? "application/octet-stream";
 
@@ -271,6 +290,8 @@ async function streamObjectToResponse(
     if (sniffed) {
       sniffedContentType = sniffed;
       if (width != null) canThumb = true;
+    } else if (bufferLooksLikePdf(header)) {
+      sniffedContentType = "application/pdf";
     }
     nodeStream = readableFromReader(header, reader);
   } else {
@@ -337,6 +358,14 @@ async function streamObjectToResponse(
   // Override the stored content-type with the sniffed one so browsers
   // display images inline instead of downloading them as binary blobs.
   if (sniffedContentType) res.setHeader("Content-Type", sniffedContentType);
+  // PDFs (stored or sniffed): give the browser a real .pdf filename so a
+  // save/download produces an openable file instead of an extensionless blob.
+  const effectiveType = (sniffedContentType ?? contentType).toLowerCase().split(";")[0].trim();
+  if (effectiveType === "application/pdf") {
+    let filename = safeDispositionFilename(originalName ?? "", "document.pdf");
+    if (!filename.toLowerCase().endsWith(".pdf")) filename += ".pdf";
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+  }
   nodeStream.pipe(res);
 }
 
@@ -552,8 +581,20 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     // buys us SPE/GCS dispatch and crash-safe rollback.
     const overlay = await db.query.mediaTable.findFirst({
       where: eq(mediaTable.storageKey, storageKey),
-      columns: { storageKey: true, speFileId: true, speContainerId: true },
+      columns: { storageKey: true, speFileId: true, speContainerId: true, originalName: true },
     });
+
+    // Legacy `assets` rows (e.g. white-paper PDFs uploaded pre-media-table)
+    // never get a media overlay but do carry the original upload filename —
+    // needed so PDF downloads save with a real name instead of a UUID blob.
+    let originalName: string | null = overlay?.originalName ?? null;
+    if (!overlay) {
+      const legacyAsset = await db.query.assetsTable.findFirst({
+        where: eq(assetsTable.storageKey, storageKey),
+        columns: { originalName: true },
+      });
+      originalName = legacyAsset?.originalName ?? null;
+    }
 
     let response: globalThis.Response;
     if (overlay?.speFileId) {
@@ -592,7 +633,13 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     //   return;
     // }
 
-    await streamObjectToResponse(response, res, parseWidth(req), parseFormat(req));
+    await streamObjectToResponse(
+      response,
+      res,
+      parseWidth(req),
+      parseFormat(req),
+      originalName,
+    );
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");

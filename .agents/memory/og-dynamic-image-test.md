@@ -35,7 +35,10 @@ through the LOCAL dev server, which is why the health test fetches local.
 (`isAmbiguousContentType`: octet-stream / empty / binary), `streamObjectToResponse`
 now peeks the first 16 bytes and resizes iff `bufferLooksLikeRasterImage`
 (JPEG/PNG/GIF/WebP/BMP/TIFF magic). Trusted `image/*` still streams directly (no
-peek); videos/PDFs/unknown binaries pass through raw. So the resize path is
+peek); ambiguous non-image bytes are also sniffed for `%PDF-` and served as
+`application/pdf` with an `inline; filename="….pdf"` Content-Disposition (name
+from `media.originalName`, falling back to legacy `assets.original_name`);
+videos/unknown binaries pass through raw. So the resize path is
 robust to bad prod metadata now — dev→prod asset re-sync is no longer required
 just to fix share-image sizing. Unit-tested via `test:storage-sniff`.
 `streamObjectToResponse` is now `async` (peek awaits) — both storage route call
