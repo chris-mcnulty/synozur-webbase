@@ -13,6 +13,7 @@ import { audit } from "../lib/audit";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import { toSlug } from "../lib/slug";
+import { publishedAtNullOrReachedSql } from "../lib/publishWindow";
 import {
   upsertCollateralFromModel,
   softDeleteCollateralForModel,
@@ -85,7 +86,7 @@ router.get("/models", async (req, res) => {
     eq(modelsTable.active, true),
     eq(modelsTable.status, "published"),
     sql`${modelsTable.deletedAt} is null`,
-    sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
+    publishedAtNullOrReachedSql(modelsTable.publishedAt),
     sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
   ];
   if (pillar && (COLLATERAL_PILLARS as readonly string[]).includes(pillar)) {

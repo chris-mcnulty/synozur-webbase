@@ -78,21 +78,21 @@ const KIND_SPECS: KindSpec[] = [
     kind: "post",
     table: "posts",
     titleExpr: "title",
-    visibility: "deleted_at IS NULL AND status = 'published' AND published_at <= now()",
+    visibility: "deleted_at IS NULL AND status = 'published' AND published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day'",
   },
   {
     kind: "case_study",
     table: "case_studies",
     titleExpr: "title",
     visibility:
-      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at <= now()) AND (unpublished_at IS NULL OR unpublished_at > now())",
+      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day') AND (unpublished_at IS NULL OR unpublished_at > now())",
   },
   {
     kind: "white_paper",
     table: "white_papers",
     titleExpr: "title",
     visibility:
-      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at <= now()) AND (unpublished_at IS NULL OR unpublished_at > now())",
+      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day') AND (unpublished_at IS NULL OR unpublished_at > now())",
   },
   {
     kind: "service",
@@ -120,21 +120,21 @@ const KIND_SPECS: KindSpec[] = [
     table: "polaris_episodes",
     titleExpr: "title",
     visibility:
-      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at <= now()) AND (unpublished_at IS NULL OR unpublished_at > now())",
+      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day') AND (unpublished_at IS NULL OR unpublished_at > now())",
   },
   {
     kind: "application",
     table: "applications",
     titleExpr: "COALESCE(NULLIF(name, ''), title)",
     visibility:
-      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at <= now()) AND (unpublished_at IS NULL OR unpublished_at > now())",
+      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day') AND (unpublished_at IS NULL OR unpublished_at > now())",
   },
   {
     kind: "model",
     table: "models",
     titleExpr: "title",
     visibility:
-      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at <= now()) AND (unpublished_at IS NULL OR unpublished_at > now())",
+      "active = true AND deleted_at IS NULL AND status = 'published' AND (published_at IS NULL OR published_at < date_trunc('day', now() at time zone 'utc') + interval '1 day') AND (unpublished_at IS NULL OR unpublished_at > now())",
   },
 ];
 

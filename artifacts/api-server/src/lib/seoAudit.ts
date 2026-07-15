@@ -1,4 +1,5 @@
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
+import { publishedAtNullOrReachedSql } from "./publishWindow";
 import {
   db,
   postsTable,
@@ -434,7 +435,7 @@ async function auditApplications(): Promise<{
         isNull(applicationsTable.deletedAt),
         eq(applicationsTable.active, true),
         eq(applicationsTable.status, "published"),
-        sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
+        publishedAtNullOrReachedSql(applicationsTable.publishedAt),
         sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
       ),
     );
@@ -486,7 +487,7 @@ async function auditCaseStudies(): Promise<{
         isNull(caseStudiesTable.deletedAt),
         eq(caseStudiesTable.active, true),
         eq(caseStudiesTable.status, "published"),
-        sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
+        publishedAtNullOrReachedSql(caseStudiesTable.publishedAt),
         sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
       ),
     );
@@ -535,7 +536,7 @@ async function auditModels(): Promise<{
         isNull(modelsTable.deletedAt),
         eq(modelsTable.active, true),
         eq(modelsTable.status, "published"),
-        sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
+        publishedAtNullOrReachedSql(modelsTable.publishedAt),
         sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
       ),
     );
@@ -638,7 +639,7 @@ async function auditPolaris(): Promise<{
         isNull(polarisEpisodesTable.deletedAt),
         eq(polarisEpisodesTable.active, true),
         eq(polarisEpisodesTable.status, "published"),
-        sql`(${polarisEpisodesTable.publishedAt} is null or ${polarisEpisodesTable.publishedAt} <= now())`,
+        publishedAtNullOrReachedSql(polarisEpisodesTable.publishedAt),
         sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > now())`,
       ),
     );

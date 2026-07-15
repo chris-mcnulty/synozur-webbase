@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit, buildAuditDiff } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { publishedAtNullOrReachedSql } from "../lib/publishWindow";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import {
@@ -95,7 +96,7 @@ router.get("/case-studies", async (req, res) => {
     eq(caseStudiesTable.active, true),
     eq(caseStudiesTable.status, "published"),
     sql`${caseStudiesTable.deletedAt} is null`,
-    sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
+    publishedAtNullOrReachedSql(caseStudiesTable.publishedAt),
     sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
   ];
   if (industry) whereClauses.push(eq(caseStudiesTable.industry, industry));

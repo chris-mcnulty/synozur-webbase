@@ -24,6 +24,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { publishedAtNullOrReachedSql, isPublishedAtVisible } from "../lib/publishWindow";
 import { loadSerializedResourcesForCollateral } from "./collateralResources";
 
 const router: IRouter = Router();
@@ -157,7 +158,7 @@ router.get("/collateral/featured", async (_req, res) => {
         eq(collateralTable.active, true),
         eq(collateralTable.featured, true),
         // Future-dated items are not yet live (null = no schedule, visible).
-        sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
+        publishedAtNullOrReachedSql(collateralTable.publishedAt),
       ),
     )
     .orderBy(
@@ -193,7 +194,7 @@ router.get("/collateral", async (req, res) => {
     isNull(collateralTable.deletedAt),
     eq(collateralTable.active, true),
     // Future-dated items are not yet live (null = no schedule, visible).
-    sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
+    publishedAtNullOrReachedSql(collateralTable.publishedAt),
   ];
 
   if (types.length) filters.push(inArray(collateralTable.type, types));
@@ -250,7 +251,7 @@ router.get("/collateral/:slug", async (req, res) => {
       // Future-dated items are not yet live (null = no schedule, visible).
       // Keeps the detail-page collateral fallback consistent with the
       // editorial endpoints, which 404 until publishedAt passes.
-      sql`(${collateralTable.publishedAt} is null or ${collateralTable.publishedAt} <= now())`,
+      publishedAtNullOrReachedSql(collateralTable.publishedAt),
     ),
   });
   if (!row) {
@@ -763,7 +764,7 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
     r.active === true &&
     r.status === "published" &&
     !r.deletedAt &&
-    (!r.publishedAt || r.publishedAt <= auditNow) &&
+    isPublishedAtVisible(r.publishedAt, auditNow) &&
     (!r.unpublishedAt || r.unpublishedAt > auditNow);
   addToIndex("landing_page", landingPageRows, landingPageEligible);
 

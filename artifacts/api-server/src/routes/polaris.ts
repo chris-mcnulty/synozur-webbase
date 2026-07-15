@@ -18,6 +18,7 @@ import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { publishedAtNullOrReachedSql, isPublishedAtVisible } from "../lib/publishWindow";
 import { previewFromFeed, importFromFeed } from "../lib/polarisLibsyn";
 import { siteOrigin } from "../lib/siteOrigin";
 import { isGone, sendGone } from "../lib/goneResponse";
@@ -138,7 +139,7 @@ async function loadLinkedPost(
   if (!r || r.deletedAt) return null;
   if (opts.publicOnly) {
     if (r.status !== "published") return null;
-    if (r.publishedAt && r.publishedAt > new Date()) return null;
+    if (!isPublishedAtVisible(r.publishedAt)) return null;
   }
   return {
     id: r.id,
@@ -162,7 +163,7 @@ function publicFilterSql() {
     eq(polarisEpisodesTable.active, true),
     eq(polarisEpisodesTable.status, "published"),
     sql`${polarisEpisodesTable.deletedAt} is null`,
-    sql`(${polarisEpisodesTable.publishedAt} is null or ${polarisEpisodesTable.publishedAt} <= ${now})`,
+    publishedAtNullOrReachedSql(polarisEpisodesTable.publishedAt),
     sql`(${polarisEpisodesTable.unpublishedAt} is null or ${polarisEpisodesTable.unpublishedAt} > ${now})`,
   ];
 }
@@ -216,7 +217,7 @@ router.get("/polaris/episodes/:slug", async (req, res) => {
   if (
     !row.active ||
     row.status !== "published" ||
-    (row.publishedAt && row.publishedAt > new Date())
+    !isPublishedAtVisible(row.publishedAt)
   ) {
     res.status(404).json({ error: "Not found" });
     return;

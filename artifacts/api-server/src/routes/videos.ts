@@ -11,6 +11,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { startOfNextUtcDay } from "../lib/publishWindow";
 import {
   upsertCollateralFromVideo,
   softDeleteCollateralForVideo,
@@ -85,7 +86,7 @@ router.get("/videos", async (req, res) => {
     eq(videosTable.active, true),
     eq(videosTable.status, "published"),
     sql`${videosTable.deletedAt} is null`,
-    sql`${videosTable.publishedAt} <= ${now}`,
+    sql`${videosTable.publishedAt} < ${startOfNextUtcDay(now)}`,
     sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
   ];
   if (category && (VIDEO_CATEGORIES as readonly string[]).includes(category)) {
@@ -138,7 +139,7 @@ router.get("/videos/:slug", async (req, res) => {
       eq(videosTable.active, true),
       eq(videosTable.status, "published"),
       sql`${videosTable.deletedAt} is null`,
-      sql`${videosTable.publishedAt} <= ${now}`,
+      sql`${videosTable.publishedAt} < ${startOfNextUtcDay(now)}`,
       sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
     ),
   });

@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../lib/audit";
 import { toSlug } from "../lib/slug";
+import { publishedAtNullOrReachedSql } from "../lib/publishWindow";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { submitIfTransitionedToGone } from "../lib/seoUnpublishSubmit";
 import {
@@ -91,7 +92,7 @@ router.get("/applications", async (req, res) => {
     eq(applicationsTable.active, true),
     eq(applicationsTable.status, "published"),
     sql`${applicationsTable.deletedAt} is null`,
-    sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
+    publishedAtNullOrReachedSql(applicationsTable.publishedAt),
     sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
   ];
   if (navOnly) {

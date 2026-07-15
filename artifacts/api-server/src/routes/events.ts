@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, inArray, and, sql } from "drizzle-orm";
 import { readFileSync } from "node:fs";
+import { startOfNextUtcDay } from "../lib/publishWindow";
 import { resolve } from "node:path";
 import {
   db,
@@ -263,7 +264,7 @@ async function loadEventEnriched(event: Event): Promise<EnrichedEvent> {
               eq(videosTable.active, true),
               eq(videosTable.status, "published"),
               sql`${videosTable.deletedAt} is null`,
-              sql`${videosTable.publishedAt} <= ${now}`,
+              sql`${videosTable.publishedAt} < ${startOfNextUtcDay(now)}`,
               sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
             ),
           )
@@ -323,7 +324,7 @@ async function loadEventsEnriched(events: Event[]): Promise<EnrichedEvent[]> {
               eq(videosTable.active, true),
               eq(videosTable.status, "published"),
               sql`${videosTable.deletedAt} is null`,
-              sql`${videosTable.publishedAt} <= ${now}`,
+              sql`${videosTable.publishedAt} < ${startOfNextUtcDay(now)}`,
               sql`(${videosTable.unpublishedAt} is null or ${videosTable.unpublishedAt} > ${now})`,
             ),
           )

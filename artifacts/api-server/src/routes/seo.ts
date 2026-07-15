@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { runAudit, applyAutofill } from "../lib/seoAudit";
+import { publishedAtNullOrReachedSql } from "../lib/publishWindow";
 import { submitUrls } from "../lib/seoSubmit";
 import { siteOrigin } from "../lib/siteOrigin";
 import { resolveOgData, renderOgHtml } from "../lib/ogResolver";
@@ -200,7 +201,7 @@ export async function collectEntries(): Promise<Entry[]> {
           isNull(applicationsTable.deletedAt),
           eq(applicationsTable.active, true),
           eq(applicationsTable.status, "published"),
-          sql`(${applicationsTable.publishedAt} is null or ${applicationsTable.publishedAt} <= now())`,
+          publishedAtNullOrReachedSql(applicationsTable.publishedAt),
           sql`(${applicationsTable.unpublishedAt} is null or ${applicationsTable.unpublishedAt} > now())`,
         ),
       ),
@@ -215,7 +216,7 @@ export async function collectEntries(): Promise<Entry[]> {
           isNull(caseStudiesTable.deletedAt),
           eq(caseStudiesTable.active, true),
           eq(caseStudiesTable.status, "published"),
-          sql`(${caseStudiesTable.publishedAt} is null or ${caseStudiesTable.publishedAt} <= now())`,
+          publishedAtNullOrReachedSql(caseStudiesTable.publishedAt),
           sql`(${caseStudiesTable.unpublishedAt} is null or ${caseStudiesTable.unpublishedAt} > now())`,
         ),
       ),
@@ -230,7 +231,7 @@ export async function collectEntries(): Promise<Entry[]> {
           isNull(modelsTable.deletedAt),
           eq(modelsTable.active, true),
           eq(modelsTable.status, "published"),
-          sql`(${modelsTable.publishedAt} is null or ${modelsTable.publishedAt} <= now())`,
+          publishedAtNullOrReachedSql(modelsTable.publishedAt),
           sql`(${modelsTable.unpublishedAt} is null or ${modelsTable.unpublishedAt} > now())`,
         ),
       ),

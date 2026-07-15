@@ -20,6 +20,7 @@
  */
 
 import { and, asc, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { publishedAtNullOrReachedSql } from "./publishWindow";
 import type { SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import {
@@ -93,6 +94,18 @@ function withinPublishWindow(
 ): SQL {
   return and(
     sql`(${publishedAt} is null or ${publishedAt} <= now())`,
+    sql`(${unpublishedAt} is null or ${unpublishedAt} > now())`,
+  ) as SQL;
+}
+
+// Variant for content types whose admin pickers are date-only (stored
+// midnight UTC): rows dated "today" are already live (see lib/publishWindow).
+function withinDateOnlyPublishWindow(
+  publishedAt: PgColumn,
+  unpublishedAt: PgColumn,
+): SQL {
+  return and(
+    publishedAtNullOrReachedSql(publishedAt),
     sql`(${unpublishedAt} is null or ${unpublishedAt} > now())`,
   ) as SQL;
 }
@@ -596,7 +609,7 @@ async function renderCaseStudiesList(origin: string): Promise<string> {
         isNull(caseStudiesTable.deletedAt),
         eq(caseStudiesTable.active, true),
         eq(caseStudiesTable.status, "published"),
-        withinPublishWindow(
+        withinDateOnlyPublishWindow(
           caseStudiesTable.publishedAt,
           caseStudiesTable.unpublishedAt,
         ),
@@ -654,7 +667,7 @@ async function renderModelsList(origin: string): Promise<string> {
         isNull(modelsTable.deletedAt),
         eq(modelsTable.active, true),
         eq(modelsTable.status, "published"),
-        withinPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
+        withinDateOnlyPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
       ),
     )
     .orderBy(asc(modelsTable.title))
@@ -686,7 +699,7 @@ async function renderApplicationsList(origin: string): Promise<string> {
         isNull(applicationsTable.deletedAt),
         eq(applicationsTable.active, true),
         eq(applicationsTable.status, "published"),
-        withinPublishWindow(
+        withinDateOnlyPublishWindow(
           applicationsTable.publishedAt,
           applicationsTable.unpublishedAt,
         ),
@@ -820,7 +833,7 @@ async function renderCaseStudyDetail(slug: string, og: OgData): Promise<string> 
         isNull(caseStudiesTable.deletedAt),
         eq(caseStudiesTable.active, true),
         eq(caseStudiesTable.status, "published"),
-        withinPublishWindow(
+        withinDateOnlyPublishWindow(
           caseStudiesTable.publishedAt,
           caseStudiesTable.unpublishedAt,
         ),
@@ -927,7 +940,7 @@ async function renderModelDetail(slug: string, og: OgData): Promise<string> {
         isNull(modelsTable.deletedAt),
         eq(modelsTable.active, true),
         eq(modelsTable.status, "published"),
-        withinPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
+        withinDateOnlyPublishWindow(modelsTable.publishedAt, modelsTable.unpublishedAt),
       ),
     )
     .limit(1);
@@ -963,7 +976,7 @@ async function renderApplicationDetail(
         isNull(applicationsTable.deletedAt),
         eq(applicationsTable.active, true),
         eq(applicationsTable.status, "published"),
-        withinPublishWindow(
+        withinDateOnlyPublishWindow(
           applicationsTable.publishedAt,
           applicationsTable.unpublishedAt,
         ),

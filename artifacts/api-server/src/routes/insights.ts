@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { and, desc, eq, lte, sql, isNull, inArray } from "drizzle-orm";
+import { and, desc, eq, lt, sql, isNull, inArray } from "drizzle-orm";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import {
   db,
@@ -19,6 +19,7 @@ import { verifyTurnstile } from "../lib/turnstile";
 import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
 import { scoreComment } from "../lib/spamScorer";
 import { isGone, sendGone } from "../lib/goneResponse";
+import { startOfNextUtcDay, isPublishedAtVisible } from "../lib/publishWindow";
 
 const router: IRouter = Router();
 
@@ -39,7 +40,7 @@ router.get("/insights", async (req, res) => {
   const filters = [
     isNull(postsTable.deletedAt),
     eq(postsTable.status, "published"),
-    lte(postsTable.publishedAt, new Date()),
+    lt(postsTable.publishedAt, startOfNextUtcDay(new Date())),
   ];
   let restrictPostIds: string[] | null = null;
   if (categorySlug) {
@@ -96,7 +97,7 @@ router.get("/insights/rss.xml", async (_req, res) => {
       and(
         isNull(postsTable.deletedAt),
         eq(postsTable.status, "published"),
-        lte(postsTable.publishedAt, new Date()),
+        lt(postsTable.publishedAt, startOfNextUtcDay(new Date())),
       ),
     )
     .orderBy(desc(postsTable.publishedAt))
@@ -174,7 +175,7 @@ router.get("/insights/:slug", async (req, res) => {
     sendGone(res, "post");
     return;
   }
-  if (post.status !== "published" || (post.publishedAt && post.publishedAt > new Date())) {
+  if (post.status !== "published" || !isPublishedAtVisible(post.publishedAt)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -470,7 +471,7 @@ router.post("/insights/:slug/view", viewLimiter, async (req, res) => {
       eq(postsTable.status, "published"),
     ),
   });
-  if (!post || (post.publishedAt && post.publishedAt > new Date())) {
+  if (!post || !isPublishedAtVisible(post.publishedAt)) {
     res.status(202).json({ ok: true });
     return;
   }

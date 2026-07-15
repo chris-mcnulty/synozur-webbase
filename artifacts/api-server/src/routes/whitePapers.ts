@@ -47,11 +47,10 @@ async function ensureUniqueWhitePaperSlug(base: string, excludeId?: string): Pro
 // #466: publish dates are date-only (stored midnight UTC). A paper is
 // publicly visible once its stored calendar date is reached, i.e. its
 // publishedAt is strictly before the start of the next UTC day.
-export function startOfNextUtcDay(now: Date): Date {
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
-  );
-}
+// The helper now lives in lib/publishWindow so all date-only content
+// types share it; re-exported here for existing importers.
+import { startOfNextUtcDay } from "../lib/publishWindow";
+export { startOfNextUtcDay };
 
 function assetStorageUrl(asset: Asset): string {
   return `/api/storage${asset.storageKey}`;

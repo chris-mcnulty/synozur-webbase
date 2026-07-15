@@ -24,6 +24,7 @@ import {
 } from "@workspace/db";
 import { canonicalUrlForCollateral } from "@workspace/api-zod";
 import { toSlug } from "./slug";
+import { isPublishedAtVisible } from "./publishWindow";
 
 // Cache pillar -> primary service id mapping. Services are stable
 // enough at runtime that a short in-memory cache avoids a query per
@@ -530,7 +531,7 @@ export async function upsertCollateralFromApplication(
 
   const now = new Date();
   const withinWindow =
-    (!application.publishedAt || application.publishedAt <= now) &&
+    isPublishedAtVisible(application.publishedAt, now) &&
     (!application.unpublishedAt || application.unpublishedAt > now);
   const isPublished =
     application.status === "published" &&
@@ -599,7 +600,7 @@ export async function upsertCollateralFromModel(model: Model): Promise<void> {
 
   const now = new Date();
   const withinWindow =
-    (!model.publishedAt || model.publishedAt <= now) &&
+    isPublishedAtVisible(model.publishedAt, now) &&
     (!model.unpublishedAt || model.unpublishedAt > now);
   const isPublished =
     model.status === "published" &&
