@@ -63,7 +63,8 @@
     "test:hubspot-webhooks": "node --import tsx --test src/routes/hubspotWebhooks.test.ts",
     "test:image-attrs": "node --import tsx --test src/lib/imageAttributeRoundtrip.test.ts",
     "test:white-papers-publish": "node --import tsx --test src/routes/whitePapers.publish.test.ts",
-    "test:publish-today": "node --import tsx --test src/routes/publishToday.test.ts"
+    "test:publish-today": "node --import tsx --test src/routes/publishToday.test.ts",
+    "test:proof-links": "node --import tsx --test src/lib/proofPageLinks.test.ts"
   },
   "dependencies": {
     "@azure/msal-node": "^5.1.4",

@@ -64,6 +64,10 @@ args = "test-bots"
 task = "workflow.run"
 args = "test:image-attrs"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "test-proof-links"
+
 [[workflows.workflow]]
 name = "test:og-images"
 author = "agent"
@@ -195,6 +199,17 @@ args = "pnpm --filter @workspace/api-server run test:image-attrs"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "test-proof-links"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:proof-links"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"
