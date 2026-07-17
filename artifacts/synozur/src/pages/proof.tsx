@@ -65,7 +65,7 @@ const PROOF_STACK: ProofCase[] = [
     image: SKY.people,
   },
   {
-    slug: "ai-governance-acceleration-private-equity",
+    slug: "ai-&-governance-acceleration-for-private-equity",
     archetype: "AI → Strategic clarity",
     client: "Private Equity Firm",
     metric: { value: "Speed + control", label: "Governed AI across the portfolio" },
@@ -86,7 +86,7 @@ const PROOF_STACK: ProofCase[] = [
     image: SKY.galaxy,
   },
   {
-    slug: "accelerating-gtm-leading-ai-isv",
+    slug: "accelerating-go-to-market-for-a-leading-ai-isv",
     archetype: "Growth → Execution",
     client: "AI Software Company (ISV)",
     metric: { value: "$3M–$12M", label: "Incremental revenue in 12–24 months" },
@@ -107,7 +107,7 @@ const PROOF_STACK: ProofCase[] = [
     image: SKY.coast,
   },
   {
-    slug: "executive-ai-readiness-education-technology",
+    slug: "executive-ai-readiness-at-a-leading-education-technology-company",
     archetype: "Alignment under complexity",
     client: "Education Technology Company",
     metric: { value: "Board-level clarity", label: "Shared AI baseline for leaders" },
@@ -128,7 +128,7 @@ const PROOF_STACK: ProofCase[] = [
     image: SKY.galaxy,
   },
   {
-    slug: "ai-knowledge-transformation-communications-firm",
+    slug: "ai-and-knowledge-transformation-at-a-strategic-communications-firm",
     archetype: "AI + Operations",
     client: "Strategic Communications Firm",
     metric: { value: "Less rework", label: "AI aligned to real knowledge work" },
@@ -163,7 +163,7 @@ const STUDIES = [
     headline: "$0.6M–$1.3M cost savings + revenue enablement",
   },
   {
-    slug: "energy-company-reinvents-employee-experience",
+    slug: "energy-company-reinvents-employee-expereince-and-effectiveness",
     client: "North American Energy Company",
     industry: "Energy",
     tag: "Employee Effectiveness",
@@ -173,7 +173,7 @@ const STUDIES = [
     headline: "$2.0M–$6.0M annual productivity gains",
   },
   {
-    slug: "ai-transformation-private-equity-portfolio-company",
+    slug: "ai-transformation-at-a-private-equity-portfolio-company",
     client: "Financial Services",
     industry: "Private Equity",
     tag: "Technology",
@@ -183,7 +183,7 @@ const STUDIES = [
     headline: "40% measured improvement",
   },
   {
-    slug: "story-cellars-craft-and-culture",
+    slug: "story-cellars",
     client: "Story Cellars",
     industry: "Consumer Products",
     tag: "Marketing",
@@ -193,7 +193,7 @@ const STUDIES = [
     headline: "New ways of building customer relationships",
   },
   {
-    slug: "gtm-transformation-microsoft-aligned-software",
+    slug: "go‑to‑market-transformation-for-a-microsoft‑aligned-software-company",
     client: "US Enterprise Software Company",
     industry: "Enterprise Software",
     tag: "Marketing",
@@ -212,7 +212,7 @@ const QUOTES = [
       { value: "$2.0M–$6.0M", label: "Annual productivity gains" },
       { value: "12,000+", label: "Employees reached" },
     ],
-    slug: "energy-company-reinvents-employee-experience",
+    slug: "energy-company-reinvents-employee-expereince-and-effectiveness",
   },
   {
     text: "The team finally had a shared way to plan, measure, and adjust together — instead of reinventing the playbook every quarter.",
@@ -230,7 +230,7 @@ const QUOTES = [
       { value: "40%", label: "Measured improvement" },
       { value: "Guardrails", label: "AI used with confidence" },
     ],
-    slug: "ai-transformation-private-equity-portfolio-company",
+    slug: "ai-transformation-at-a-private-equity-portfolio-company",
   },
 ];
 

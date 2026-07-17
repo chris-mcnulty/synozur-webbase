@@ -3851,17 +3851,14 @@ export async function runMigrations(): Promise<void> {
       WHERE c.id = r.id AND r.rn > 1;
     `);
     // 2. Prevent recurrence. Safe to add only after the dedupe above.
-    // TEMPORARILY DISABLED (July 2026): the publish-time schema diff copies
-    // this index from dev to prod BEFORE prod boots and runs the dedupe
-    // above, so publishes fail while prod still has a duplicate source_id.
-    // Keeping the index out of dev lets the publish go through; once prod
-    // has booted (dedupe applied), re-enable this block — the next publish
-    // will then create the index on prod against clean data.
-    // await db.execute(sql`
-    //   CREATE UNIQUE INDEX IF NOT EXISTS collateral_source_id_unique_idx
-    //     ON collateral (source_id)
-    //     WHERE source_id IS NOT NULL;
-    // `);
+    // (Was temporarily disabled July 2026 so the publish-time schema diff
+    // wouldn't copy the index to prod before prod's boot dedupe ran;
+    // prod is clean now, so this is safe everywhere again.)
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS collateral_source_id_unique_idx
+        ON collateral (source_id)
+        WHERE source_id IS NOT NULL;
+    `);
 
     logger.info("Startup migrations complete");
   } catch (err) {
