@@ -20,3 +20,4 @@
 - [Synozur type layer](synozur-type-layer.md) — synozur/src/lib/api.ts hand-writes its own site-settings types; OpenAPI codegen alone won't fix its typecheck.
 - [SEO audit OG-image findings](seo-audit-og-findings.md) — ogImage=autofillable promote; og_image_missing=pure warning; kinds with no image field must strip both to avoid permanent noise.
 - [Graph Bookings staff assignment](graph-bookings-staff-assignment.md) — Graph-created appointments are unassigned (no staff invite) unless staffMemberIds is sent; resolve free staff at booking time.
+- [Event PATCH full-body overwrite](event-patch-full-body-overwrite.md) — events PATCH wiped omitted registration fields; now preserves stored values, explicit UNKNOWN still clears.

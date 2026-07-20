@@ -633,8 +633,19 @@ router.patch("/admin/events/:id", requireAdmin, async (req, res): Promise<void> 
       location: parsed.data.location ?? null,
       teaser: parsed.data.teaser ?? null,
       description: parsed.data.description ?? null,
-      registrationUrl: parsed.data.registrationUrl ?? null,
-      registrationStatus: parsed.data.registrationStatus || "UNKNOWN_REGISTRATION_STATUS",
+      // Preserve stored registration fields when the request omits them —
+      // a PATCH without registrationStatus must not silently downgrade an
+      // OPEN/OPEN_EXTERNAL event to "Not set" (which hides the Register
+      // button on the public page). Clients that want to clear the status
+      // send the explicit "UNKNOWN_REGISTRATION_STATUS" value.
+      registrationUrl:
+        parsed.data.registrationUrl !== undefined
+          ? parsed.data.registrationUrl
+          : (before?.registrationUrl ?? null),
+      registrationStatus:
+        parsed.data.registrationStatus ||
+        before?.registrationStatus ||
+        "UNKNOWN_REGISTRATION_STATUS",
       eventType: parsed.data.eventType || "RSVP",
       status: parsed.data.status || "UPCOMING",
       featured: parsed.data.featured ?? false,
