@@ -3860,6 +3860,21 @@ export async function runMigrations(): Promise<void> {
         WHERE source_id IS NOT NULL;
     `);
 
+    // July 2026 — repair events whose registrationStatus was silently
+    // downgraded to UNKNOWN by the old full-body-overwrite PATCH handler.
+    // Only upcoming events that still carry a registration URL are touched:
+    // a URL with a "Not set" status is exactly the bug signature (the URL
+    // was preserved while the status was wiped), so restoring OPEN_EXTERNAL
+    // re-shows the public Register button. Idempotent by construction.
+    await db.execute(sql`
+      UPDATE events
+      SET registration_status = 'OPEN_EXTERNAL',
+          updated_at = now()
+      WHERE registration_status = 'UNKNOWN_REGISTRATION_STATUS'
+        AND registration_url IS NOT NULL
+        AND start_date > now();
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");
