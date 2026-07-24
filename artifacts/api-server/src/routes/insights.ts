@@ -116,13 +116,52 @@ router.get("/insights/rss.xml", async (_req, res) => {
       .replace(/'/g, "&apos;");
   const cdata = (s: string) => `<![CDATA[${s.replace(/\]\]>/g, "]]]]><![CDATA[>")}]]>`;
 
+  // Strip HTML tags and collapse whitespace to produce plain text.
+  const htmlToText = (html: string): string =>
+    html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/p>/gi, " ")
+      .replace(/<\/li>/gi, " ")
+      .replace(/<\/h[1-6]>/gi, " ")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  // Derive the best plain-text description for each post in priority order:
+  //   1. excerpt (author-written summary, best)
+  //   2. seoDescription (curated meta copy)
+  //   3. First ~600 chars of body plain text, trimmed at the last space so
+  //      the description never breaks mid-word (fallback for posts with neither)
+  // LinkedIn and HubSpot social auto-publishing use <description> for the
+  // post body text; an empty description produces a blank post.
+  const descriptionFor = (p: (typeof serialized)[number]): string => {
+    if (p.excerpt?.trim()) return p.excerpt.trim();
+    if (p.seoDescription?.trim()) return p.seoDescription.trim();
+    if (p.bodyHtml) {
+      const text = htmlToText(p.bodyHtml);
+      if (text.length <= 600) return text;
+      const cut = text.lastIndexOf(" ", 600);
+      return text.slice(0, cut > 0 ? cut : 600);
+    }
+    return "";
+  };
+
   const xmlItems = serialized
     .map((p) => {
       const link = `${siteUrl}/insights/${p.slug}`;
       const pub = p.publishedAt ? new Date(p.publishedAt).toUTCString() : new Date().toUTCString();
       const cats = (p.categories || []).map((c) => `<category>${escape(c.name)}</category>`).join("");
       const author = p.author?.displayName ? `<dc:creator>${escape(p.author.displayName)}</dc:creator>` : "";
-      const desc = p.excerpt ? `<description>${cdata(p.excerpt)}</description>` : "";
+      const descText = descriptionFor(p);
+      const desc = descText ? `<description>${cdata(descText)}</description>` : "";
       const content = p.bodyHtml
         ? `<content:encoded>${cdata(p.bodyHtml)}</content:encoded>`
         : "";
