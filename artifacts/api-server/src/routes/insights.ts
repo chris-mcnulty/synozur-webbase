@@ -136,21 +136,51 @@ router.get("/insights/rss.xml", async (_req, res) => {
       .trim();
 
   // Derive the best plain-text description for each post in priority order:
-  //   1. excerpt (author-written summary, best)
+  //   1. excerpt (author-written summary, best) — only if it looks complete
   //   2. seoDescription (curated meta copy)
-  //   3. First ~600 chars of body plain text, trimmed at the last space so
-  //      the description never breaks mid-word (fallback for posts with neither)
-  // LinkedIn and HubSpot social auto-publishing use <description> for the
-  // post body text; an empty description produces a blank post.
+  //   3. First paragraph(s) of body plain text (fallback)
+  //
+  // LinkedIn auto-publishes from <description> and shows roughly the first
+  // 200 chars of that field as the post body text, with no "See more" option
+  // to expand. A description that ends mid-sentence therefore ships a
+  // fragment to followers. To prevent this, we always trim to the last
+  // sentence boundary (. ! ?) before 300 chars so the visible copy is always
+  // a complete thought — short enough that LinkedIn shows it whole.
+  //
+  // Wix-imported excerpts are sometimes exactly 500 chars, ending mid-word.
+  // We detect those by checking that the text ends with sentence-ending
+  // punctuation (after optional closing quotes/parens), and fall through to
+  // the next source when it does not.
+  const looksComplete = (s: string): boolean =>
+    /[.!?]["')\u2019\u201d]?\s*$/.test(s);
+
+  const trimToSentence = (text: string, maxLen = 300): string => {
+    if (text.length <= maxLen) return text;
+    // Find the last sentence boundary before maxLen.
+    const window = text.slice(0, maxLen);
+    const lastDot = Math.max(
+      window.lastIndexOf(". "),
+      window.lastIndexOf("! "),
+      window.lastIndexOf("? "),
+    );
+    if (lastDot > 80) return text.slice(0, lastDot + 1).trim();
+    // No sentence boundary — fall back to last word boundary.
+    const lastSpace = window.lastIndexOf(" ");
+    return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim();
+  };
+
   const descriptionFor = (p: (typeof serialized)[number]): string => {
-    if (p.excerpt?.trim()) return p.excerpt.trim();
-    if (p.seoDescription?.trim()) return p.seoDescription.trim();
+    const exc = p.excerpt?.trim();
+    if (exc && looksComplete(exc)) return trimToSentence(exc);
+    const seo = p.seoDescription?.trim();
+    if (seo && looksComplete(seo)) return trimToSentence(seo);
     if (p.bodyHtml) {
       const text = htmlToText(p.bodyHtml);
-      if (text.length <= 600) return text;
-      const cut = text.lastIndexOf(" ", 600);
-      return text.slice(0, cut > 0 ? cut : 600);
+      return trimToSentence(text, 300);
     }
+    // Last resort: use the excerpt/seoDescription even if incomplete.
+    if (exc) return trimToSentence(exc);
+    if (seo) return trimToSentence(seo);
     return "";
   };
 
