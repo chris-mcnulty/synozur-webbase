@@ -56,6 +56,8 @@ router.put(
   },
 );
 
+const CONTENT_ROLES: RoleName[] = ["admin", "site_admin", "editor", "content_author", "author"];
+
 router.get(
   "/cms/users",
   requireAuth,
@@ -72,8 +74,12 @@ router.get(
       arr.push(r.name);
       rolesByUser.set(r.userId, arr);
     }
+    const contentUsers = users.filter((u) => {
+      const roles = rolesByUser.get(u.id) ?? [];
+      return roles.some((r) => CONTENT_ROLES.includes(r));
+    });
     res.json(
-      users.map((u) => ({
+      contentUsers.map((u) => ({
         id: u.id,
         externalSubject: u.externalSubject,
         authProvider: u.authProvider,
