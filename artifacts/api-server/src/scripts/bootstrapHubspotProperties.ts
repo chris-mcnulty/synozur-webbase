@@ -43,19 +43,25 @@ interface SimpleInit {
 }
 
 async function hubspotProxy(path: string, init: SimpleInit = {}): Promise<Response> {
+  const baseHeaders: Record<string, string> = {
+    ...(init.headers ?? {}),
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
+  };
   if (REPLIT_CONNECTORS_AVAILABLE) {
     const connectors = new ReplitConnectors();
     return connectors.proxy("hubspot", path, {
       method: init.method,
       body: init.body,
-      headers: init.headers ?? {},
+      headers: baseHeaders,
     }) as Promise<Response>;
   }
   const token = process.env["HUBSPOT_ACCESS_TOKEN"];
   if (!token) throw new Error("No HubSpot access token (set HUBSPOT_ACCESS_TOKEN or configure the Replit connector)");
-  const headers: Record<string, string> = { ...(init.headers ?? {}), Authorization: `Bearer ${token}` };
-  if (init.body) headers["Content-Type"] = "application/json";
-  return fetch(`${HUBSPOT_API}${path}`, { method: init.method, body: init.body, headers });
+  return fetch(`${HUBSPOT_API}${path}`, {
+    method: init.method,
+    body: init.body,
+    headers: { ...baseHeaders, Authorization: `Bearer ${token}` },
+  });
 }
 
 // ---------------------------------------------------------------------------
