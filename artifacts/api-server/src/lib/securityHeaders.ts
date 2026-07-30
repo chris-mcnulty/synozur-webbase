@@ -41,16 +41,37 @@ const CSP_DIRECTIVES: Record<string, string[]> = {
   imgSrc: ["'self'", "data:", "blob:", "https:"],
   mediaSrc: ["'self'", "data:", "blob:", "https:"],
   // Cloudflare Turnstile renders its challenge inside a Turnstile-hosted iframe.
-  // Libsyn player is embedded as an iframe on the Polaris page.
+  // Podcast, video, and other rich-media embeds inserted via the CMS editor.
   frameSrc: [
     "'self'",
+    // Video
     "https://www.youtube.com",
     "https://www.youtube-nocookie.com",
+    "https://player.vimeo.com",
+    "https://vimeo.com",
+    // Podcast players
+    "https://play.libsyn.com",
+    "https://html5-player.libsyn.com",
+    "https://www.buzzsprout.com",
+    "https://open.spotify.com",
+    "https://embed.podcasts.apple.com",
+    "https://anchor.fm",
+    "https://player.captivate.fm",
+    "https://www.podbean.com",
+    "https://share.transistor.fm",
+    "https://w.soundcloud.com",
+    "https://www.iheart.com",
+    "https://omny.fm",
+    "https://player.simplecast.com",
+    "https://embed.acast.com",
+    "https://listen.pocketcasts.com",
+    "https://www.podtrac.com",
+    // Scheduling / booking
     "https://outlook.office365.com",
     "https://*.bookings.microsoft.com",
+    // Other
     "https://www.google.com",
     "https://challenges.cloudflare.com",
-    "https://play.libsyn.com",
   ],
   // Cloudflare Turnstile makes validation XHR calls back to challenges.cloudflare.com.
   connectSrc: [

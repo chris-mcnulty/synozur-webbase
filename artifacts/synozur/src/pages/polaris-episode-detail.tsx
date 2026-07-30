@@ -186,7 +186,7 @@ function ShowNotesHtml({ html }: { html: string }) {
           Show Notes
         </p>
         <div
-          className="prose prose-invert prose-violet max-w-none
+          className="prose dark:prose-invert prose-violet max-w-none
             prose-headings:font-semibold prose-headings:tracking-tight
             prose-h2:text-xl prose-h3:text-lg
             prose-a:text-primary prose-a:no-underline hover:prose-a:underline

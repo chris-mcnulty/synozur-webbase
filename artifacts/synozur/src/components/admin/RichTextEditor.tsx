@@ -122,17 +122,66 @@ const CustomImage = Image.extend({
 // Embed code parser
 // ---------------------------------------------------------------------------
 
+/**
+ * Attempt to derive an iframe src from a script-based embed snippet.
+ *
+ * Many podcast/audio platforms now provide a `<script src="...">` + `<div>` embed
+ * instead of a plain `<iframe>`. Where we know the pattern, we convert it to a
+ * stable iframe URL. Returns null when no known pattern is recognised.
+ */
+function scriptEmbedToIframeSrc(doc: Document): string | null {
+  const script = doc.querySelector("script[src]");
+  if (!script) return null;
+  const src = script.getAttribute("src") ?? "";
+
+  // Buzzsprout:
+  //   <script src='https://www.buzzsprout.com/{showId}/episodes/{epId}-{slug}.js?...'>
+  //   → https://www.buzzsprout.com/{showId}/embed/{epId}
+  const buzzsprout = src.match(
+    /^https:\/\/www\.buzzsprout\.com\/(\d+)\/episodes\/(\d+)[^?]*/,
+  );
+  if (buzzsprout) {
+    return `https://www.buzzsprout.com/${buzzsprout[1]}/embed/${buzzsprout[2]}`;
+  }
+
+  // Libsyn (podbean-hosted player fallback):
+  //   <script src='https://www.podbean.com/player-v2/...'>
+  const podbean = src.match(/^https:\/\/(www\.podbean\.com)\//);
+  if (podbean) {
+    // Podbean scripts load their own iframe; return the script src so the
+    // caller can use it as-is after stripping the .js / query suffix.
+    return src;
+  }
+
+  return null;
+}
+
 function parseEmbedCode(raw: string): Record<string, string | null> | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   const doc = new DOMParser().parseFromString(trimmed, "text/html");
+
+  // --- Path 1: direct <iframe> embed (most platforms) ---
   const iframe = doc.querySelector("iframe");
-  if (!iframe) return null;
-  const attrs: Record<string, string | null> = {};
-  for (const attr of Array.from(iframe.attributes)) {
-    attrs[attr.name] = attr.value;
+  if (iframe) {
+    const attrs: Record<string, string | null> = {};
+    for (const attr of Array.from(iframe.attributes)) {
+      attrs[attr.name] = attr.value;
+    }
+    // Normalize protocol-relative src (//host/path → https://host/path).
+    if (attrs.src?.startsWith("//")) {
+      attrs.src = `https:${attrs.src}`;
+    }
+    return attrs.src ? attrs : null;
   }
-  return attrs;
+
+  // --- Path 2: script-based embed (Buzzsprout, etc.) ---
+  const iframeSrc = scriptEmbedToIframeSrc(doc);
+  if (iframeSrc) {
+    return { src: iframeSrc, width: "100%", height: "200", frameborder: "0" };
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -530,7 +579,9 @@ function Toolbar({
   const applyEmbed = () => {
     const attrs = parseEmbedCode(embedCode);
     if (!attrs || !attrs.src) {
-      setEmbedError("Paste a valid <iframe> embed snippet with a src attribute.");
+      setEmbedError(
+        "Couldn't find an embeddable player URL. Paste an <iframe> embed code, or for script-based players (Buzzsprout, etc.) use the platform's direct embed/share URL instead.",
+      );
       return;
     }
     editor.chain().focus().insertContent({ type: "iframe", attrs }).run();

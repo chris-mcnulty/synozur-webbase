@@ -40,7 +40,10 @@ const TRUSTED_IFRAME_HOSTS = new Set([
 function isTrustedIframeSrc(src: string): boolean {
   if (!src) return false;
   try {
-    const url = new URL(src);
+    // Normalize protocol-relative URLs (//host/path) to https:// so
+    // new URL() can parse them and the protocol check passes.
+    const normalized = src.startsWith("//") ? `https:${src}` : src;
+    const url = new URL(normalized);
     if (url.protocol !== "https:") return false;
     return TRUSTED_IFRAME_HOSTS.has(url.hostname);
   } catch {
