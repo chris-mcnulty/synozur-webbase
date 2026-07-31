@@ -1,0 +1,64 @@
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+<channel>
+<title>
+<![CDATA[ The Synozur Alliance ]]>
+</title>
+<description>
+<![CDATA[ Empowering your business trajectory with precision and empathy. ]]>
+</description>
+<link>https://www.synozur.com/insights</link>
+<generator>RSS for Node</generator>
+<lastBuildDate>Fri, 31 Jul 2026 21:25:23 GMT</lastBuildDate>
+<atom:link href="https://synozur.wixsite.com/synozur/blog-feed.xml" rel="self" type="application/rss+xml"/>
+<item>
+<title>
+...
+</title>
+<description>
+<![CDATA[ Welcome back to the Summer of Copilot and our take on news from Microsoft, SpaceX, Anthropic, and TechCon 365 Chicago. Plus, why you should kill 75% of your AI pilots. ]]>
+</description>
+<link>https://www.synozur.com/post/stop-buying-ai-start-building-value</link>
+<guid isPermaLink="false">6a3effdfad71d3b68768f6b1</guid>
+<pubDate>Fri, 26 Jun 2026 22:45:02 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_1ee96732e2b74f379608e7d3caec56fd~mv2.png/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ From the Closet to the C-Suite: The Case for Radical Honesty ]]>
+</title>
+<description>
+<![CDATA[ Mirror 360 founder Petar Kralev joins Polaris to explain why honest feedback is the most expensive thing companies fail to capture — and how a 20-second, anonymous weekly reflection finally surfaces the truth leaders need. ]]>
+</description>
+<link>https://www.synozur.com/post/from-the-closet-to-the-c-suite-the-case-for-radical-honesty</link>
+<guid isPermaLink="false">6a3978f85eed21a75aa48027</guid>
+<pubDate>Mon, 22 Jun 2026 18:09:22 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_90caeca188f44bbc81be4edfa7d85d90~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Everyone Has AI Access. Almost Nobody Can Prove It Works. ]]>
+</title>
+<description>
+<![CDATA[ At TechCon 365, 18 leaders self-scored their organizations on our 2026 AI Adoption and Governance model. The average landed at 257 of 500 (Managed), and nobody reached the next tier. Access to chat tools scored highest (367), yet autonomous agents (206), ROI tracking, and token-spend control lagged: a 161-point access-action gap. Governance leans on published policy, not people (13 of 18 rely on IT help desk). Access is solved; proving value isn't. ]]>
+</description>
+<link>https://www.synozur.com/post/everyone-has-ai-access-almost-nobody-can-prove-it-works</link>
+<guid isPermaLink="false">6a362d10bfacb36e3540f1cb</guid>
+<pubDate>Sat, 20 Jun 2026 06:15:34 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_21401388f82743c0bd6e34db43e86d6b~mv2.jpg/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Why 95% of AI pilots never scale ]]>
+</title>
+<description>
+<![CDATA[ MIT says 95% of AI pilots never make it past the demo, and the number hasn't moved in 2026. The failure is almost never the model. It's operating discipline. This piece breaks down what separates the 5% that reach the P&#38;L: a use-case backlog built from real work, governance set before scaling rather than after the audit, and a named human owner on every AI output. Plus why four-to-six-week sprints beat six-month decks, and the three questions to ask before anything ships. ]]>
+</description>
+<link>https://www.synozur.com/post/why-95-of-ai-pilots-never-scale</link>
+<guid isPermaLink="false">6a2c1735f7064a4e83d53ac2</guid>
+<pubDate>Fri, 12 Jun 2026 14:49:23 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_f6f3bfe920bb44c0bc37f02692279aff~mv2.png/v1/fit/w_1000,h_900,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
