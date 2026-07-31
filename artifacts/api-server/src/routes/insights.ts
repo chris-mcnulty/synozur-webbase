@@ -163,7 +163,7 @@ router.get("/insights/rss.xml", async (_req, res) => {
       window.lastIndexOf("! "),
       window.lastIndexOf("? "),
     );
-    if (lastDot > 80) return text.slice(0, lastDot + 1).trim();
+    if (lastDot >= 0) return text.slice(0, lastDot + 1).trim();
     // No sentence boundary — fall back to last word boundary.
     const lastSpace = window.lastIndexOf(" ");
     return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim();
@@ -171,9 +171,18 @@ router.get("/insights/rss.xml", async (_req, res) => {
 
   const descriptionFor = (p: (typeof serialized)[number]): string => {
     const exc = p.excerpt?.trim();
-    if (exc && looksComplete(exc)) return trimToSentence(exc);
+    if (exc && looksComplete(exc)) {
+      // If the excerpt is a single long sentence, trimToSentence may fall back to
+      // a word boundary (no ". " in the first 300 chars). In that case, use the
+      // whole excerpt since we already know it ends cleanly.
+      const trimmed = trimToSentence(exc);
+      return looksComplete(trimmed) ? trimmed : exc;
+    }
     const seo = p.seoDescription?.trim();
-    if (seo && looksComplete(seo)) return trimToSentence(seo);
+    if (seo && looksComplete(seo)) {
+      const trimmed = trimToSentence(seo);
+      return looksComplete(trimmed) ? trimmed : seo;
+    }
     if (p.bodyHtml) {
       const text = htmlToText(p.bodyHtml);
       return trimToSentence(text, 300);
@@ -182,6 +191,15 @@ router.get("/insights/rss.xml", async (_req, res) => {
     if (exc) return trimToSentence(exc);
     if (seo) return trimToSentence(seo);
     return "";
+  };
+
+  // Build an absolute, LinkedIn-ready image URL from a storage-relative path.
+  // Uses ?w=1200&fmt=jpeg so SocialPilot always passes a properly-sized JPEG
+  // to LinkedIn rather than whatever LinkedIn's OG scraper happens to find.
+  const imageEnclosureUrl = (relPath: string | null | undefined): string | null => {
+    if (!relPath) return null;
+    const abs = relPath.startsWith("http") ? relPath : `${siteUrl}${relPath}`;
+    return `${abs}?w=1200&fmt=jpeg`;
   };
 
   const xmlItems = serialized
@@ -195,6 +213,15 @@ router.get("/insights/rss.xml", async (_req, res) => {
       const content = p.bodyHtml
         ? `<content:encoded>${cdata(p.bodyHtml)}</content:encoded>`
         : "";
+      // Prefer the dedicated OG image; fall back to hero. Both are stored as
+      // relative /api/storage paths and need to be made absolute here.
+      const imgUrl = imageEnclosureUrl(p.ogImageUrl ?? p.heroImageUrl);
+      const enclosure = imgUrl
+        ? `<enclosure url="${escape(imgUrl)}" length="0" type="image/jpeg"/>`
+        : "";
+      const mediaContent = imgUrl
+        ? `<media:content url="${escape(imgUrl)}" medium="image" width="1200"/>`
+        : "";
       return [
         "<item>",
         `<title>${escape(p.title)}</title>`,
@@ -204,6 +231,8 @@ router.get("/insights/rss.xml", async (_req, res) => {
         cats,
         author,
         desc,
+        enclosure,
+        mediaContent,
         content,
         "</item>",
       ].join("");
@@ -211,7 +240,7 @@ router.get("/insights/rss.xml", async (_req, res) => {
     .join("");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
 <channel>
 <title>The Synozur Alliance — The Feed</title>
 <link>${escape(siteUrl)}/insights</link>
