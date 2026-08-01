@@ -154,9 +154,10 @@ router.get("/insights/rss.xml", async (_req, res) => {
   const looksComplete = (s: string): boolean =>
     /[.!?]["')\u2019\u201d]?\s*$/.test(s);
 
-  // SocialPilot hard-clips RSS descriptions at ~249 chars before sending to
-  // LinkedIn, leaving a raw mid-sentence comma cut.  Keep every description
-  // well under that limit so SocialPilot always passes our text through intact.
+  // LinkedIn's RSS-to-company-page publisher hard-clips descriptions at ~249
+  // chars, leaving a raw mid-sentence comma cut in the published post.  Keep
+  // every description safely under that limit so LinkedIn always uses our text
+  // as-is without truncating it.
   const SOCIAL_MAX = 220;
 
   const trimToSentence = (text: string, maxLen = SOCIAL_MAX): string => {
