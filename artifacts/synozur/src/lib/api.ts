@@ -512,6 +512,7 @@ export interface VideoDto {
   seoTitle: string | null;
   seoDescription: string | null;
   ogImage: string | null;
+  deckUrl: string | null;
   active: boolean;
   sourceId: string | null;
   createdAt: string;
@@ -540,6 +541,7 @@ export interface VideoInput {
   seoTitle?: string | null;
   seoDescription?: string | null;
   ogImage?: string | null;
+  deckUrl?: string | null;
   active?: boolean;
   sourceId?: string | null;
 }

@@ -3875,6 +3875,11 @@ export async function runMigrations(): Promise<void> {
         AND start_date > now();
     `);
 
+    // Aug 2026 — deck URL for videos (optional link to session slides PDF).
+    await db.execute(sql`
+      ALTER TABLE videos ADD COLUMN IF NOT EXISTS deck_url TEXT;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

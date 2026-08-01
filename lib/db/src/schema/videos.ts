@@ -53,6 +53,7 @@ export const videosTable = pgTable(
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     ogImage: text("og_image"),
+    deckUrl: text("deck_url"),
     active: boolean("active").notNull().default(true),
     sourceId: text("source_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -72,6 +72,7 @@ interface FormState {
   slug: string;
   category: VideoCategory;
   videoUrl: string;
+  deckUrl: string;
   thumbnailUrl: string;
   heroImage: string;
   heroImageAlt: string;
@@ -97,6 +98,7 @@ const EMPTY: FormState = {
   slug: "",
   category: "webinar",
   videoUrl: "",
+  deckUrl: "",
   thumbnailUrl: "",
   heroImage: "",
   heroImageAlt: "",
@@ -130,6 +132,7 @@ function fromItem(item: VideoDto): FormState {
     slug: item.slug,
     category: item.category,
     videoUrl: item.videoUrl ?? "",
+    deckUrl: item.deckUrl ?? "",
     thumbnailUrl: item.thumbnailUrl ?? "",
     heroImage: item.heroImage ?? "",
     heroImageAlt: item.heroImageAlt ?? "",
@@ -161,6 +164,7 @@ function toBody(f: FormState): VideoInput {
     slug: f.slug || null,
     category: f.category,
     videoUrl: f.videoUrl ?? "",
+    deckUrl: f.deckUrl || null,
     thumbnailUrl: f.thumbnailUrl || null,
     heroImage: f.heroImage ?? "",
     heroImageAlt: f.heroImageAlt || null,
@@ -199,6 +203,7 @@ export default function VideoEdit({ id }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [slugTouched, setSlugTouched] = useState(false);
   const [showHeroPicker, setShowHeroPicker] = useState(false);
+  const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
@@ -269,6 +274,11 @@ export default function VideoEdit({ id }: Props) {
   const handleHero = (m: MediaItem) => {
     update({ heroImage: mediaUrl(m) });
     setShowHeroPicker(false);
+  };
+
+  const handleDeck = (m: MediaItem) => {
+    update({ deckUrl: mediaUrl(m) });
+    setShowDeckPicker(false);
   };
 
   if (!isNew && itemQ.isLoading && !loaded) {
@@ -439,6 +449,44 @@ export default function VideoEdit({ id }: Props) {
                 placeholder="https://youtu.be/..."
                 data-testid="input-video-url"
               />
+            </div>
+            <div>
+              <Label htmlFor="deckUrl">Session deck (optional)</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  id="deckUrl"
+                  value={form.deckUrl}
+                  onChange={(e) => update({ deckUrl: e.target.value })}
+                  disabled={!canWrite}
+                  placeholder="Paste a URL or pick from assets →"
+                  data-testid="input-video-deck-url"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!canWrite}
+                  onClick={() => setShowDeckPicker(true)}
+                >
+                  Pick file
+                </Button>
+                {form.deckUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={!canWrite}
+                    onClick={() => update({ deckUrl: "" })}
+                    aria-label="Clear deck URL"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                A downloadable PDF of slides shown on the video page.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -697,6 +745,11 @@ export default function VideoEdit({ id }: Props) {
         onClose={() => setShowHeroPicker(false)}
         onSelect={handleHero}
         kind="image"
+      />
+      <MediaPickerModal
+        open={showDeckPicker}
+        onClose={() => setShowDeckPicker(false)}
+        onSelect={handleDeck}
       />
     </AdminLayout>
   );

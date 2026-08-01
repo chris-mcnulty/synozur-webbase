@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, PlayCircle } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { api, type VideoCategory, type VideoDto } from "@/lib/api";
 import { RichText } from "@/components/rich-text";
@@ -184,6 +184,24 @@ export default function VideoDetail() {
                 className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
               >
                 Watch the video <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            </div>
+          )}
+
+          {item.deckUrl && (
+            <div className="mt-12 border-t border-border pt-10">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+                Session materials
+              </h2>
+              <a
+                href={item.deckUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+                Download session deck
               </a>
             </div>
           )}

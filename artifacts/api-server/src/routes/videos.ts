@@ -62,6 +62,7 @@ function serialize(v: Video) {
     seoTitle: v.seoTitle,
     seoDescription: v.seoDescription,
     ogImage: v.ogImage,
+    deckUrl: v.deckUrl,
     active: v.active,
     sourceId: v.sourceId,
     createdAt: v.createdAt,
@@ -174,6 +175,7 @@ const VideoBody = z.object({
   seoTitle: z.string().nullish(),
   seoDescription: z.string().nullish(),
   ogImage: z.string().nullish(),
+  deckUrl: z.string().nullish(),
   active: z.boolean().optional(),
   sourceId: z.string().nullish(),
 });
@@ -236,6 +238,7 @@ router.post("/cms/videos", ...adminGuard, async (req, res) => {
       seoTitle: d.seoTitle ?? null,
       seoDescription: d.seoDescription ?? null,
       ogImage: d.ogImage ?? null,
+      deckUrl: d.deckUrl ?? null,
       active: d.active ?? true,
       sourceId: d.sourceId ?? null,
     })
@@ -289,6 +292,7 @@ router.patch("/cms/videos/:id", ...adminGuard, async (req, res) => {
     "seoTitle",
     "seoDescription",
     "ogImage",
+    "deckUrl",
     "active",
     "sourceId",
   ] as const) {
