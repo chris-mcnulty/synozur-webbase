@@ -154,7 +154,12 @@ router.get("/insights/rss.xml", async (_req, res) => {
   const looksComplete = (s: string): boolean =>
     /[.!?]["')\u2019\u201d]?\s*$/.test(s);
 
-  const trimToSentence = (text: string, maxLen = 300): string => {
+  // SocialPilot hard-clips RSS descriptions at ~249 chars before sending to
+  // LinkedIn, leaving a raw mid-sentence comma cut.  Keep every description
+  // well under that limit so SocialPilot always passes our text through intact.
+  const SOCIAL_MAX = 220;
+
+  const trimToSentence = (text: string, maxLen = SOCIAL_MAX): string => {
     if (text.length <= maxLen) return text;
     // Find the last sentence boundary before maxLen.
     const window = text.slice(0, maxLen);
@@ -164,28 +169,33 @@ router.get("/insights/rss.xml", async (_req, res) => {
       window.lastIndexOf("? "),
     );
     if (lastDot >= 0) return text.slice(0, lastDot + 1).trim();
-    // No sentence boundary — fall back to last word boundary.
+    // No sentence boundary — fall back to last word boundary + ellipsis so the
+    // cut looks intentional rather than broken.
     const lastSpace = window.lastIndexOf(" ");
-    return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim();
+    return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim() + "…";
   };
+
+  // A string is an acceptable description if it ends cleanly (sentence-final
+  // punctuation) OR ends with our intentional ellipsis.
+  const looksAcceptable = (s: string): boolean =>
+    looksComplete(s) || s.endsWith("…");
 
   const descriptionFor = (p: (typeof serialized)[number]): string => {
     const exc = p.excerpt?.trim();
     if (exc && looksComplete(exc)) {
-      // If the excerpt is a single long sentence, trimToSentence may fall back to
-      // a word boundary (no ". " in the first 300 chars). In that case, use the
-      // whole excerpt since we already know it ends cleanly.
       const trimmed = trimToSentence(exc);
-      return looksComplete(trimmed) ? trimmed : exc;
+      // Accept a clean sentence ending OR an intentional ellipsis cut.
+      // Never fall back to the full exc — it may exceed SocialPilot's cap.
+      return looksAcceptable(trimmed) ? trimmed : trimmed + "…";
     }
     const seo = p.seoDescription?.trim();
     if (seo && looksComplete(seo)) {
       const trimmed = trimToSentence(seo);
-      return looksComplete(trimmed) ? trimmed : seo;
+      return looksAcceptable(trimmed) ? trimmed : trimmed + "…";
     }
     if (p.bodyHtml) {
       const text = htmlToText(p.bodyHtml);
-      return trimToSentence(text, 300);
+      return trimToSentence(text);
     }
     // Last resort: use the excerpt/seoDescription even if incomplete.
     if (exc) return trimToSentence(exc);
