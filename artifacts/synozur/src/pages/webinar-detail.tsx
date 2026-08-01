@@ -1,15 +1,43 @@
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { Meta } from "@/lib/meta";
-import { ArrowLeft, ExternalLink, PlayCircle } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, PlayCircle } from "lucide-react";
 import { fetchCollateralBySlug, type Collateral } from "@/data/collateral";
 import NotFound from "@/pages/not-found";
 import { LeadCaptureForm } from "@/components/lead-capture-form";
 import { EditWedge } from "@/components/edit-wedge";
 import { dynamicOgImageUrl } from "@/lib/og-image-url";
 
-function isEmbeddable(url: string) {
-  return /youtube\.com\/embed|player\.vimeo\.com|wistia\.net\/embed/.test(url);
+/** Normalise any YouTube URL format to an embed URL; return null for non-YouTube. */
+function toYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    // youtu.be/<id>
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname === "www.youtube.com" || u.hostname === "youtube.com") {
+      // youtube.com/watch?v=<id>
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      // youtube.com/embed/<id>  (already embed)
+      if (u.pathname.startsWith("/embed/")) return url;
+      // youtube.com/shorts/<id>
+      const shortsMatch = u.pathname.match(/^\/shorts\/([^/?]+)/);
+      if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveEmbedUrl(url: string): string | null {
+  const yt = toYouTubeEmbedUrl(url);
+  if (yt) return yt;
+  if (/player\.vimeo\.com|wistia\.net\/embed/.test(url)) return url;
+  return null;
 }
 
 export default function WebinarDetail() {
@@ -45,7 +73,7 @@ export default function WebinarDetail() {
   }
   if (!item) return <NotFound />;
 
-  const embeddable = item.videoUrl ? isEmbeddable(item.videoUrl) : false;
+  const embedUrl = item.videoUrl ? resolveEmbedUrl(item.videoUrl) : null;
 
   return (
     <div className="w-full">
@@ -80,10 +108,10 @@ export default function WebinarDetail() {
 
       <section className="bg-background">
         <div className="container mx-auto px-4 max-w-4xl -mt-8 relative z-20">
-          {embeddable && item.videoUrl ? (
+          {embedUrl ? (
             <div className="rounded-2xl overflow-hidden border border-border shadow-2xl aspect-video bg-black">
               <iframe
-                src={item.videoUrl}
+                src={embedUrl}
                 title={item.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -129,7 +157,7 @@ export default function WebinarDetail() {
             </div>
           )}
 
-          {item.videoUrl && !embeddable && (
+          {item.videoUrl && !embedUrl && (
             <div className="mt-12">
               <a
                 href={item.videoUrl}
@@ -139,6 +167,33 @@ export default function WebinarDetail() {
               >
                 Watch the recording <ExternalLink className="ml-2 h-4 w-4" />
               </a>
+            </div>
+          )}
+
+          {item.resources && item.resources.length > 0 && (
+            <div className="mt-12 border-t border-border pt-10">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+                Session materials
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {item.resources.map((r) => (
+                  <a
+                    key={r.id}
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={!r.externalUrl}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    {r.externalUrl ? (
+                      <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    {r.label}
+                  </a>
+                ))}
+              </div>
             </div>
           )}
 
