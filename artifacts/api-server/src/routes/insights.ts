@@ -20,6 +20,7 @@ import { verifyUnsubscribeToken } from "../lib/unsubscribeToken";
 import { scoreComment } from "../lib/spamScorer";
 import { isGone, sendGone } from "../lib/goneResponse";
 import { startOfNextUtcDay, isPublishedAtVisible } from "../lib/publishWindow";
+import { htmlToText, looksComplete, trimToSentence, descriptionFor } from "../lib/rssDescriptions";
 
 const router: IRouter = Router();
 
@@ -115,88 +116,6 @@ router.get("/insights/rss.xml", async (_req, res) => {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&apos;");
   const cdata = (s: string) => `<![CDATA[${s.replace(/\]\]>/g, "]]]]><![CDATA[>")}]]>`;
-
-  // Strip HTML tags and collapse whitespace to produce plain text.
-  const htmlToText = (html: string): string =>
-    html
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<br\s*\/?>/gi, " ")
-      .replace(/<\/p>/gi, " ")
-      .replace(/<\/li>/gi, " ")
-      .replace(/<\/h[1-6]>/gi, " ")
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;|&apos;/g, "'")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  // Derive the best plain-text description for each post in priority order:
-  //   1. excerpt (author-written summary, best) — only if it looks complete
-  //   2. seoDescription (curated meta copy)
-  //   3. First paragraph(s) of body plain text (fallback)
-  //
-  // LinkedIn auto-publishes from <description> and shows roughly the first
-  // 200 chars of that field as the post body text, with no "See more" option
-  // to expand. A description that ends mid-sentence therefore ships a
-  // fragment to followers. To prevent this, we always trim to the last
-  // sentence boundary (. ! ?) before 300 chars so the visible copy is always
-  // a complete thought — short enough that LinkedIn shows it whole.
-  //
-  // Wix-imported excerpts are sometimes exactly 500 chars, ending mid-word.
-  // We detect those by checking that the text ends with sentence-ending
-  // punctuation (after optional closing quotes/parens), and fall through to
-  // the next source when it does not.
-  const looksComplete = (s: string): boolean =>
-    /[.!?]["')\u2019\u201d]?\s*$/.test(s);
-
-  // Match the Wix abstract behaviour: use up to ~480 chars (the Wix abstract
-  // field cap), trimming at the last sentence boundary within that window.
-  // Beyond 480 chars fall back to a word boundary and append "…" so the cut
-  // looks intentional.  This matches what the Wix RSS feed produced and what
-  // LinkedIn's RSS publisher has been handling without truncation.
-  const ABSTRACT_MAX = 480;
-
-  const trimToSentence = (text: string, maxLen = ABSTRACT_MAX): string => {
-    if (text.length <= maxLen) return text;
-    // Find the last sentence boundary before maxLen.
-    const window = text.slice(0, maxLen);
-    const lastDot = Math.max(
-      window.lastIndexOf(". "),
-      window.lastIndexOf("! "),
-      window.lastIndexOf("? "),
-    );
-    if (lastDot >= 0) return text.slice(0, lastDot + 1).trim();
-    // No sentence boundary — fall back to last word boundary + ellipsis.
-    const lastSpace = window.lastIndexOf(" ");
-    return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim() + "…";
-  };
-
-  const descriptionFor = (p: (typeof serialized)[number]): string => {
-    const exc = p.excerpt?.trim();
-    if (exc && looksComplete(exc)) {
-      // Excerpt is a clean, author-written abstract — use it as-is up to the
-      // abstract cap, the same way Wix sent its abstract field to the RSS feed.
-      return trimToSentence(exc);
-    }
-    const seo = p.seoDescription?.trim();
-    if (seo && looksComplete(seo)) {
-      const trimmed = trimToSentence(seo);
-      return looksComplete(trimmed) ? trimmed : seo;
-    }
-    if (p.bodyHtml) {
-      const text = htmlToText(p.bodyHtml);
-      return trimToSentence(text);
-    }
-    // Last resort: use the excerpt/seoDescription even if incomplete.
-    if (exc) return trimToSentence(exc);
-    if (seo) return trimToSentence(seo);
-    return "";
-  };
 
   // Build an absolute, LinkedIn-ready image URL from a storage-relative path.
   // Uses ?w=1200&fmt=jpeg so SocialPilot always passes a properly-sized JPEG
