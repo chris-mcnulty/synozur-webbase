@@ -1,0 +1,275 @@
+This XML file does not appear to have any style information associated with it. The document tree is shown below.
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+<channel>
+<title>
+<![CDATA[ The Synozur Alliance ]]>
+</title>
+<description>
+<![CDATA[ Empowering your business trajectory with precision and empathy. ]]>
+</description>
+<link>https://www.synozur.com/insights</link>
+<generator>RSS for Node</generator>
+<lastBuildDate>Sun, 02 Aug 2026 02:00:29 GMT</lastBuildDate>
+<atom:link href="https://synozur.wixsite.com/synozur/blog-feed.xml" rel="self" type="application/rss+xml"/>
+<item>
+<title>
+<![CDATA[ Stop Buying AI. Start Building Value. ]]>
+</title>
+<description>
+<![CDATA[ Welcome back to the Summer of Copilot and our take on news from Microsoft, SpaceX, Anthropic, and TechCon 365 Chicago. Plus, why you should kill 75% of your AI pilots. ]]>
+</description>
+<link>https://www.synozur.com/post/stop-buying-ai-start-building-value</link>
+<guid isPermaLink="false">6a3effdfad71d3b68768f6b1</guid>
+<pubDate>Fri, 26 Jun 2026 22:45:02 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_1ee96732e2b74f379608e7d3caec56fd~mv2.png/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ From the Closet to the C-Suite: The Case for Radical Honesty ]]>
+</title>
+<description>
+<![CDATA[ Mirror 360 founder Petar Kralev joins Polaris to explain why honest feedback is the most expensive thing companies fail to capture — and how a 20-second, anonymous weekly reflection finally surfaces the truth leaders need. ]]>
+</description>
+<link>https://www.synozur.com/post/from-the-closet-to-the-c-suite-the-case-for-radical-honesty</link>
+<guid isPermaLink="false">6a3978f85eed21a75aa48027</guid>
+<pubDate>Mon, 22 Jun 2026 18:09:22 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_90caeca188f44bbc81be4edfa7d85d90~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Everyone Has AI Access. Almost Nobody Can Prove It Works. ]]>
+</title>
+<description>
+<![CDATA[ At TechCon 365, 18 leaders self-scored their organizations on our 2026 AI Adoption and Governance model. The average landed at 257 of 500 (Managed), and nobody reached the next tier. Access to chat tools scored highest (367), yet autonomous agents (206), ROI tracking, and token-spend control lagged: a 161-point access-action gap. Governance leans on published policy, not people (13 of 18 rely on IT help desk). Access is solved; proving value isn't. ]]>
+</description>
+<link>https://www.synozur.com/post/everyone-has-ai-access-almost-nobody-can-prove-it-works</link>
+<guid isPermaLink="false">6a362d10bfacb36e3540f1cb</guid>
+<pubDate>Sat, 20 Jun 2026 06:15:34 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_21401388f82743c0bd6e34db43e86d6b~mv2.jpg/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Why 95% of AI pilots never scale ]]>
+</title>
+<description>
+<![CDATA[ MIT says 95% of AI pilots never make it past the demo, and the number hasn't moved in 2026. The failure is almost never the model. It's operating discipline. This piece breaks down what separates the 5% that reach the P&#38;L: a use-case backlog built from real work, governance set before scaling rather than after the audit, and a named human owner on every AI output. Plus why four-to-six-week sprints beat six-month decks, and the three questions to ask before anything ships. ]]>
+</description>
+<link>https://www.synozur.com/post/why-95-of-ai-pilots-never-scale</link>
+<guid isPermaLink="false">6a2c1735f7064a4e83d53ac2</guid>
+<pubDate>Fri, 12 Jun 2026 14:49:23 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_f6f3bfe920bb44c0bc37f02692279aff~mv2.png/v1/fit/w_1000,h_900,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Meet Synozur at TechCon 365 Chicago ]]>
+</title>
+<description>
+<![CDATA[ Synozur brings seven sessions to TechCon 365 Chicago, June 15–19 at McCormick Place South, spanning the full arc of AI-powered change. Michelle Caldwell and Jill Hannemann lead three workshops on sustainable Copilot adoption, communications, and change champions. Chris McNulty covers strategy and reliable AI operations. Shari Oswald and Christian Buckley tackle the new Planner and everyday productivity. Save $200 with code MSCMTY at techcon365.com/Chicago. ]]>
+</description>
+<link>https://www.synozur.com/post/meet-synozur-at-techcon-365-chicago</link>
+<guid isPermaLink="false">6a1f3edcae0d73d1087ee1c0</guid>
+<pubDate>Tue, 02 Jun 2026 20:48:23 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_dabcaf9b512e4234aca4d5e2fc9e269e~mv2.jpeg/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ The Silicon Seven ]]>
+</title>
+<description>
+<![CDATA[ The “Magnificent Seven” made sense for a 2023 market led by mobile, ads, and EVs. In 2026, AI has changed the map. This post argues that Apple and Tesla no longer belong in the top strategic tier, while OpenAI and Anthropic do. The new “Silicon Seven” are the companies that control foundation models, AI infrastructure, and enterprise distribution—the three power centers that will shape the next era of enterprise technology. ]]>
+</description>
+<link>https://www.synozur.com/post/the-silicon-seven</link>
+<guid isPermaLink="false">6a18ca86345540299750623e</guid>
+<pubDate>Thu, 28 May 2026 23:39:05 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_0ef0db9b53294487a3608534ef922bb2~mv2.png/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ ClawPilot: A New Way to Work with AI ]]>
+</title>
+<description>
+<![CDATA[ ClawPilot names the convergence of open-agent capability and enterprise copilot trust. As OpenClaw proves people want AI that acts, and Microsoft 365 Copilot Cowork adds secure orchestration, a new pattern is emerging: personal assistants that work across tools, run in the background, and pause for approval. For leaders, the question is no longer whether agentic AI is coming, but whether it arrives governed or as shadow IT. ]]>
+</description>
+<link>https://www.synozur.com/post/clawpilot-a-new-way-to-work-with-ai</link>
+<guid isPermaLink="false">6a132d5d996c7eef50783b9c</guid>
+<pubDate>Sun, 24 May 2026 17:00:00 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_44a3bb0c4e5a4bf5a17a0cc693aa253f~mv2.png/v1/fit/w_1000,h_768,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Hitting Your Targets but Missing the Mark: Diagnosing “False Positive” OKRs  ]]>
+</title>
+<description>
+<![CDATA[ This article explains why teams can hit every OKR and still miss the strategy. It defines “false positive” OKRs as goals that measure activity instead of business impact, outlines the warning signs of misalignment, and offers a practical test for leaders to diagnose weak objectives and key results. It also shows how embedding OKRs in a broader Company Operating System helps connect strategy, execution, and accountability so progress reflects real traction. ]]>
+</description>
+<link>https://www.synozur.com/post/hitting-your-targets-but-missing-the-mark-diagnosing-false-positive-okrs</link>
+<guid isPermaLink="false">6a0bc832e8a70f90633f9fc8</guid>
+<pubDate>Tue, 19 May 2026 02:45:31 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_ad15faec770f40eda6aaece0a7cbe9eb~mv2.jpeg/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Back in the (Intra) Zone – Mark Kashman and the M365 Community Conference ]]>
+</title>
+<description>
+<![CDATA[ Former Intrazone co-hosts Chris McNulty and Mark Kashman reunite on Polaris to unpack the biggest news from the Microsoft 365 Community Conference—AI skills, Copilot's evolution, SharePoint's 25th anniversary—and reflect on the enduring power of community in the modern workplace. ]]>
+</description>
+<link>https://www.synozur.com/post/back-in-the-intra-zone-mark-kashman-and-the-m365-community-conference</link>
+<guid isPermaLink="false">69fe4c125bf92805eb60b066</guid>
+<pubDate>Fri, 08 May 2026 20:54:09 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_e257bc2f0da346f1bfff4b384468ec0f~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Hiring a Fractional COO Online Made Simple: Fractional COO Hiring Tips ]]>
+</title>
+<description>
+<![CDATA[ In today’s fast-paced business environment, leaders face the challenge of scaling operations while maintaining clarity and alignment across teams. A Fractional Chief Operating Officer (COO) can be the strategic partner that bridges the gap between vision and execution. But how do you find the right fractional COO who fits your unique needs? Hiring a fractional COO online has become a practical and efficient solution, offering access to seasoned executives without the commitment of a full-time... ]]>
+</description>
+<link>https://www.synozur.com/post/hiring-a-fractional-coo-online-made-simple-fractional-coo-hiring-tips</link>
+<guid isPermaLink="false">69f0e1325008475f26ae7aca</guid>
+<pubDate>Mon, 04 May 2026 15:45:08 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_02d55119e399467397df5b8723ebe440~mv2.png/v1/fit/w_1000,h_576,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Steps to Developing Effective Go-To-Market Plan Strategies ]]>
+</title>
+<description>
+<![CDATA[ Launching a new product or service is an exciting milestone for any organization. However, without a clear and effective go-to-market (GTM) plan, even the most innovative offerings can struggle to gain traction. A well-crafted GTM plan aligns your team, clarifies your target audience, and sets the stage for measurable success. This article walks you through the essential steps to create a go-to-market plan that delivers meaningful business outcomes. Understanding Go-To-Market Plan Strategies... ]]>
+</description>
+<link>https://www.synozur.com/post/steps-to-developing-effective-go-to-market-plan-strategies</link>
+<guid isPermaLink="false">69e7ac11123d99511bfd764d</guid>
+<pubDate>Tue, 28 Apr 2026 18:05:54 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_9a2f8105da7e4bb4b09a7fbd9b9608ab~mv2.png/v1/fit/w_1000,h_768,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Andrew Connell - Good (AI Coding) Vibrations ]]>
+</title>
+<description>
+<![CDATA[ I recently sat down with Andrew Connell — a 22-year Microsoft MVP and founder of https://www.voitanos.io — for our 50th episode of Polaris . Our topic: vibe coding , the practice of telling an AI what you want and watching it write the software. What we found is that the conversation goes far beyond a buzzword. It touches strategy, talent, quality, and the very definition of what a developer does. Microsoft's AI Direction Andrew didn't hold back. "Microsoft is flailing a good bit," he told... ]]>
+</description>
+<link>https://www.synozur.com/post/andrew-connell-good-ai-coding-vibrations</link>
+<guid isPermaLink="false">69e6e8f38e63193b95d48e0b</guid>
+<pubDate>Tue, 21 Apr 2026 03:09:18 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_dbc24517572c413fbc0fd26ac7eea683~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ 25 Years of SharePoint—and a New Standard for Copilot Readiness ]]>
+</title>
+<description>
+<![CDATA[ For 25 years, SharePoint and Microsoft 365 have grown into the system of record for modern work. Now Copilot reads across it all—surfacing content based on permissions, not intent. Zenith is how Synozur helps organizations make that content AI‑ready: delivering full‑estate visibility, policy‑based readiness scoring, and ongoing Copilot governance before and after deployment. ]]>
+</description>
+<link>https://www.synozur.com/post/25-years-of-sharepoint-and-a-new-standard-for-copilot-readiness</link>
+<guid isPermaLink="false">69e6c6b3e30ec41b7d066f00</guid>
+<pubDate>Tue, 21 Apr 2026 00:51:44 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_1b1f4e9204374770bddf15efcb654a1f~mv2.png/v1/fit/w_1000,h_1000,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>The Synozur Alliance</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Exploring the Synozur Alliance Benefits ]]>
+</title>
+<description>
+<![CDATA[ In today’s fast-paced business environment, organizations face constant pressure to adapt, innovate, and grow. Leaders need more than just strategies; they require clear, actionable plans that align teams, technology, and culture. This is where the Synozur Alliance steps in, offering a unique partnership that goes beyond traditional consulting. By focusing on tailored solutions and genuine collaboration, the Synozur Alliance empowers businesses to transform with confidence and clarity.... ]]>
+</description>
+<link>https://www.synozur.com/post/exploring-the-synozur-alliance-benefits</link>
+<guid isPermaLink="false">69c2d6d036a1fdc193beed3e</guid>
+<pubDate>Mon, 30 Mar 2026 23:03:36 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_afc50e2204604a3eadc906cbf3fb52cc~mv2.png/v1/fit/w_1000,h_576,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Microsoft 365 E7, Or, 1+1+1+1=7 ]]>
+</title>
+<description>
+<![CDATA[ In this episode of Polaris, we explore Microsoft’s game-changing March 2026 announcements – including the Microsoft 365 E7 “Frontier Suite,” Agent 365 for AI governance, and the new Copilot Cowork capability – and unpack what these innovations mean for business and technology leaders navigating the AI-powered future. ]]>
+</description>
+<link>https://www.synozur.com/post/microsoft-365-e7-or-1-1-1-1-7</link>
+<guid isPermaLink="false">69c45c1e149f4fed5652e5ea</guid>
+<pubDate>Wed, 25 Mar 2026 22:05:24 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_e82afd632ee04620b2e7b6dfe5bd87c4~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Remote Go-To-Market Strategy Services Explained: Unlocking Remote GTM Solutions ]]>
+</title>
+<description>
+<![CDATA[ Launching a product or service successfully requires more than just a great idea. It demands a clear, actionable go-to-market (GTM) strategy that aligns with your business goals and customer needs. Today, many organizations are turning to remote GTM solutions to navigate this complex process with agility and precision. These services offer tailored, expert guidance without the constraints of location, enabling businesses to scale efficiently and confidently. In this post, we will explore... ]]>
+</description>
+<link>https://www.synozur.com/post/remote-go-to-market-strategy-services-explained-unlocking-remote-gtm-solutions</link>
+<guid isPermaLink="false">69b9910ee70c44b8bdd3619c</guid>
+<pubDate>Mon, 23 Mar 2026 17:05:11 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_c927dac5276049d0a491d3f73f48d5d1~mv2.png/v1/fit/w_1000,h_576,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ AI in 2026: A Trillion Dollars is Coming. Who Wins? ]]>
+</title>
+<description>
+<![CDATA[ The global AI market is on track to reach nearly a trillion dollars by 2030. And yet, most organizations sit at a score of 260 out of 500 on AI maturity — past the experiment phase, but nowhere near scaled. That's the core finding of the Synozur 2026 AI Report, and it's also the subject of the latest episode of Polaris Pulse. This episode covers three areas: the size and growth of the global AI market, where organizations actually stand on the maturity curve, and three predictions for the... ]]>
+</description>
+<link>https://www.synozur.com/post/ai-in-2026-a-trillion-dollars-is-coming-who-wins</link>
+<guid isPermaLink="false">69bf11636e2d8139248d551c</guid>
+<pubDate>Sat, 21 Mar 2026 21:49:12 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_3a72bdc0e29b475cbc506b23114640be~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Hiring a Fractional COO Online Made Easy: Your Guide to Seamless Online COO Hiring ]]>
+</title>
+<description>
+<![CDATA[ In today’s fast-paced business environment, leaders need agile, experienced operational support to scale effectively. A Fractional Chief Operating Officer (COO) can provide that expertise without the commitment of a full-time hire. But how do you find the right fractional COO online? This guide will walk you through the process of online COO hiring, helping you make a confident, informed decision that aligns with your unique business needs. Why Online COO Hiring is the Future of Executive... ]]>
+</description>
+<link>https://www.synozur.com/post/hiring-a-fractional-coo-online-made-easy-your-guide-to-seamless-online-coo-hiring</link>
+<guid isPermaLink="false">69b056148433d5064643f776</guid>
+<pubDate>Mon, 16 Mar 2026 16:35:08 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_6af47a01e7574513aff2f6ed1cbcb6d4~mv2.png/v1/fit/w_1000,h_576,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Understanding Fractional CIO Expenses: What You Need to Know ]]>
+</title>
+<description>
+<![CDATA[ In today’s fast-paced business environment, technology leadership is more critical than ever. Yet, not every organization can justify or afford a full-time Chief Information Officer (CIO). This is where a fractional CIO steps in—a seasoned technology executive who provides strategic guidance on a part-time or project basis. But what does it really cost to bring a fractional CIO on board? Understanding the nuances of fractional CIO expenses is essential for making informed decisions that align... ]]>
+</description>
+<link>https://www.synozur.com/post/understanding-fractional-cio-expenses-what-you-need-to-know</link>
+<guid isPermaLink="false">69a8e7e0a29c2f981476ec60</guid>
+<pubDate>Thu, 12 Mar 2026 15:15:16 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_19b91c76794f476899c0a8a057e2783d~mv2.png/v1/fit/w_1000,h_768,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+<item>
+<title>
+<![CDATA[ Never Sit in the Lobby: Glenn Poulos on Sales, Startups, and Survival ]]>
+</title>
+<description>
+<![CDATA[ Polaris is a production of Synozur – the transformation company. Glenn Poulos, co-founder of Gap Wireless and author of Never Sit in the Lobby, shares how he built and sold multiple businesses across three decades, reveals why face-to-face relationships still matter in the AI age, and explains how mid-market companies can leverage technology without losing their human touch. ]]>
+</description>
+<link>https://www.synozur.com/post/never-sit-in-the-lobby-glenn-poulos-on-sales-startups-and-survival</link>
+<guid isPermaLink="false">69b0c90200ff578fc8ea9df5</guid>
+<pubDate>Wed, 11 Mar 2026 01:48:24 GMT</pubDate>
+<enclosure url="https://static.wixstatic.com/media/b805ce_dbf35a9d2a224a94aeacf50a95ae2a7b~mv2.png/v1/fit/w_1000,h_720,al_c,q_80/file.png" length="0" type="image/png"/>
+<dc:creator>Chris McNulty</dc:creator>
+</item>
+</channel>
+</rss>

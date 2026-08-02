@@ -154,13 +154,14 @@ router.get("/insights/rss.xml", async (_req, res) => {
   const looksComplete = (s: string): boolean =>
     /[.!?]["')\u2019\u201d]?\s*$/.test(s);
 
-  // LinkedIn's RSS-to-company-page publisher hard-clips descriptions at ~249
-  // chars, leaving a raw mid-sentence comma cut in the published post.  Keep
-  // every description safely under that limit so LinkedIn always uses our text
-  // as-is without truncating it.
-  const SOCIAL_MAX = 220;
+  // Match the Wix abstract behaviour: use up to ~480 chars (the Wix abstract
+  // field cap), trimming at the last sentence boundary within that window.
+  // Beyond 480 chars fall back to a word boundary and append "…" so the cut
+  // looks intentional.  This matches what the Wix RSS feed produced and what
+  // LinkedIn's RSS publisher has been handling without truncation.
+  const ABSTRACT_MAX = 480;
 
-  const trimToSentence = (text: string, maxLen = SOCIAL_MAX): string => {
+  const trimToSentence = (text: string, maxLen = ABSTRACT_MAX): string => {
     if (text.length <= maxLen) return text;
     // Find the last sentence boundary before maxLen.
     const window = text.slice(0, maxLen);
@@ -170,29 +171,22 @@ router.get("/insights/rss.xml", async (_req, res) => {
       window.lastIndexOf("? "),
     );
     if (lastDot >= 0) return text.slice(0, lastDot + 1).trim();
-    // No sentence boundary — fall back to last word boundary + ellipsis so the
-    // cut looks intentional rather than broken.
+    // No sentence boundary — fall back to last word boundary + ellipsis.
     const lastSpace = window.lastIndexOf(" ");
     return text.slice(0, lastSpace > 0 ? lastSpace : maxLen).trim() + "…";
   };
 
-  // A string is an acceptable description if it ends cleanly (sentence-final
-  // punctuation) OR ends with our intentional ellipsis.
-  const looksAcceptable = (s: string): boolean =>
-    looksComplete(s) || s.endsWith("…");
-
   const descriptionFor = (p: (typeof serialized)[number]): string => {
     const exc = p.excerpt?.trim();
     if (exc && looksComplete(exc)) {
-      const trimmed = trimToSentence(exc);
-      // Accept a clean sentence ending OR an intentional ellipsis cut.
-      // Never fall back to the full exc — it may exceed SocialPilot's cap.
-      return looksAcceptable(trimmed) ? trimmed : trimmed + "…";
+      // Excerpt is a clean, author-written abstract — use it as-is up to the
+      // abstract cap, the same way Wix sent its abstract field to the RSS feed.
+      return trimToSentence(exc);
     }
     const seo = p.seoDescription?.trim();
     if (seo && looksComplete(seo)) {
       const trimmed = trimToSentence(seo);
-      return looksAcceptable(trimmed) ? trimmed : trimmed + "…";
+      return looksComplete(trimmed) ? trimmed : seo;
     }
     if (p.bodyHtml) {
       const text = htmlToText(p.bodyHtml);
