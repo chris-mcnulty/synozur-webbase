@@ -51,6 +51,7 @@ function staticAsDto(
     websiteUrl: s.websiteUrl,
     logo: s.logo,
     screenshot: s.screenshot,
+    audience: null,
     userGuideUrl: null,
     showInNav: true,
     status: "published",

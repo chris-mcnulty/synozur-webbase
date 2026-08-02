@@ -155,6 +155,9 @@ export function SynozurAppSwitcher({
   forceDark = false,
 }: SynozurAppSwitcherProps) {
   const [open, setOpen] = useState(false);
+  // "left" = panel's left edge aligns with button (opens rightward)
+  // "right" = panel's right edge aligns with button (opens leftward)
+  const [panelAlign, setPanelAlign] = useState<"left" | "right">("right");
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -164,6 +167,14 @@ export function SynozurAppSwitcher({
   };
 
   useEffect(() => {
+    if (!open) return;
+    // Pick the side that has more room so the panel stays on-screen.
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceRight = window.innerWidth - rect.left;
+      const spaceLeft = rect.right;
+      setPanelAlign(spaceRight >= spaceLeft ? "left" : "right");
+    }
     function handleClickOutside(e: MouseEvent) {
       if (
         panelRef.current && !panelRef.current.contains(e.target as Node) &&
@@ -175,10 +186,8 @@ export function SynozurAppSwitcher({
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") closeMenu();
     }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEscape);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
@@ -223,7 +232,7 @@ export function SynozurAppSwitcher({
           id="synozur-app-menu"
           role="menu"
           aria-label="Synozur Suite Applications"
-          className={`absolute top-full left-0 sm:left-auto sm:right-0 mt-2 w-[360px] max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl border z-[100] overflow-hidden ${
+          className={`absolute top-full mt-2 w-[360px] max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl border z-[100] overflow-hidden ${panelAlign === "left" ? "left-0" : "right-0"} ${
             fd
               ? "bg-gray-950 border-white/10"
               : "bg-white dark:bg-gray-950 border-gray-200 dark:border-white/10"
