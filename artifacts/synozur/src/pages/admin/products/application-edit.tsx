@@ -83,6 +83,7 @@ interface FormState {
   version: string;
   releaseDate: string;
   websiteUrl: string;
+  audience: string;
   userGuideUrl: string;
   logo: string | null;
   logoUrl: string | null;
@@ -113,6 +114,7 @@ const EMPTY: FormState = {
   version: "",
   releaseDate: "",
   websiteUrl: "",
+  audience: "",
   userGuideUrl: "",
   logo: null,
   logoUrl: null,
@@ -144,6 +146,7 @@ function fromDto(a: ApplicationDto): FormState {
     version: a.version ?? "",
     releaseDate: a.releaseDate ?? "",
     websiteUrl: a.websiteUrl,
+    audience: a.audience ?? "",
     userGuideUrl: a.userGuideUrl ?? "",
     logo: a.logo || null,
     logoUrl: a.logo || null,
@@ -258,6 +261,7 @@ export default function ApplicationEdit({ id }: Props) {
     websiteUrl: form.websiteUrl || undefined,
     logo: form.logo || undefined,
     screenshot: form.screenshot || undefined,
+    audience: form.audience || null,
     userGuideUrl: form.userGuideUrl || null,
     showInNav: form.showInNav,
     serviceId: form.serviceId || null,
@@ -501,6 +505,20 @@ export default function ApplicationEdit({ id }: Props) {
                 disabled={!canWrite}
                 placeholder="https://…"
               />
+            </div>
+            <div>
+              <Label htmlFor="audience">Audience — Who it's for</Label>
+              <Input
+                id="audience"
+                value={form.audience}
+                onChange={(e) => update({ audience: e.target.value })}
+                disabled={!canWrite}
+                placeholder="e.g. CEO/COO, IT leaders, anyone who wants a better intranet"
+                data-testid="input-app-audience"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Shown as "Who it's for:" on the app card and detail page.
+              </p>
             </div>
             <div>
               <Label htmlFor="userGuideUrl">User guide URL</Label>

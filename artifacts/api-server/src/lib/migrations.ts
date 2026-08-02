@@ -3880,6 +3880,11 @@ export async function runMigrations(): Promise<void> {
       ALTER TABLE videos ADD COLUMN IF NOT EXISTS deck_url TEXT;
     `);
 
+    // Aug 2026 — audience field for applications ("Who it's for").
+    await db.execute(sql`
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS audience TEXT;
+    `);
+
     logger.info("Startup migrations complete");
   } catch (err) {
     logger.error({ err }, "Startup migrations failed");

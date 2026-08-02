@@ -41,6 +41,7 @@ export const applicationsTable = pgTable(
     websiteUrl: text("website_url").notNull().default(""),
     logo: text("logo").notNull().default(""),
     screenshot: text("screenshot").notNull().default(""),
+    audience: text("audience"),
     userGuideUrl: text("user_guide_url"),
     // Controls whether the application shows up in the primary nav /
     // footer / sitemap rails. Not every published app needs to be in

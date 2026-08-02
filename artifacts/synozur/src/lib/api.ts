@@ -2130,6 +2130,7 @@ export interface ApplicationDto {
   websiteUrl: string;
   logo: string;
   screenshot: string;
+  audience: string | null;
   userGuideUrl: string | null;
   showInNav: boolean;
   serviceId: string | null;
@@ -2162,6 +2163,7 @@ export interface ApplicationInput {
   websiteUrl?: string;
   logo?: string;
   screenshot?: string;
+  audience?: string | null;
   userGuideUrl?: string | null;
   showInNav?: boolean;
   serviceId?: string | null;

@@ -182,6 +182,12 @@ export default function Applications() {
                         )}
                       </div>
                     </div>
+                    {app.audience && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        <span className="font-medium text-foreground">Who it's for:</span>{" "}
+                        {app.audience}
+                      </p>
+                    )}
                     <p className="text-sm font-medium text-primary mb-3">
                       {app.tagline}
                     </p>

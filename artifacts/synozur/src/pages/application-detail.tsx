@@ -234,6 +234,12 @@ export default function ApplicationDetail() {
 
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
+          {app.audience && (
+            <p className="text-sm text-muted-foreground mb-8">
+              <span className="font-semibold text-foreground">Who it's for:</span>{" "}
+              {app.audience}
+            </p>
+          )}
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
             About {app.name}
           </p>
