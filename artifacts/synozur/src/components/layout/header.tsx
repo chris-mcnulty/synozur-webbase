@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut, Loader2, Globe } from "lucide-react";
+import { Menu, X, ArrowRight, Search, LayoutDashboard, LogOut, Loader2, Globe, CalendarClock } from "lucide-react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -526,6 +526,37 @@ export function Header() {
             </a>
           )}
 
+          {/* Utility: Sign In (signed-out only) — lives beside search/theme */}
+          {!isSignedIn && (
+            <Link
+              href="/sign-in"
+              className="hidden lg:inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="header-sign-in"
+            >
+              Sign In
+            </Link>
+          )}
+
+          {/* Prominent Book action (signed-out) — the high-intent next step,
+              distinct from the admin-configurable Get Started CTA. */}
+          {!isSignedIn && (
+            <Link
+              href="/book"
+              className="hidden lg:inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-4 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+              data-testid="header-book"
+              onClick={() =>
+                trackConversion("conversion.booking.click", {
+                  location: "header",
+                  href: "/book",
+                  label: "Book",
+                })
+              }
+            >
+              <CalendarClock className="h-4 w-4" />
+              Book
+            </Link>
+          )}
+
           {/* User button (signed-in) or Get Started (signed-out) */}
           {isSignedIn && user ? (
             <UserButton user={user} signOut={signOut} />
@@ -629,14 +660,31 @@ export function Header() {
 
             <div className="pt-6 mt-6 border-t border-border flex flex-col gap-3">
               {!isSignedIn && (
-                <Link
-                  href="/start"
-                  className="flex w-full h-12 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                <>
+                  <Link
+                    href="/start"
+                    className="flex w-full h-12 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Get Started
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/book"
+                    className="flex w-full h-12 items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-6 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <CalendarClock className="h-4 w-4" />
+                    Book
+                  </Link>
+                  <Link
+                    href="/sign-in"
+                    className="flex w-full h-12 items-center justify-center rounded-md border border-border px-6 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                </>
               )}
               {isSignedIn && user && user.roles.length > 0 && (
                 <Link

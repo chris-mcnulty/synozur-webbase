@@ -149,9 +149,11 @@ export const STATIC_NAV_GROUPS_BASE = {
     ],
   },
   theFeed: {
-    title: "The Feed",
+    // Content hub. The "The Feed" brand is retired; the blog now reads "Blog"
+    // while keeping its /insights URL (stakeholder decision, Aug 2026).
+    title: "Insights",
     links: [
-      { label: "Insights Blog", href: "/insights" },
+      { label: "Blog", href: "/insights" },
       { label: "Polaris Podcast", href: "/polaris" },
       { label: "Events", href: "/events" },
     ],

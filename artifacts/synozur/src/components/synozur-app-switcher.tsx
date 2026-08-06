@@ -3,12 +3,16 @@
 //   client/src/components/synozur-app-switcher.tsx
 // Widened `currentApp` to include "synozur" and "galaxy" so both the main
 // Synozur web app and the Galaxy customer portal can mark themselves current.
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { getSuiteApplications } from "@/data/applications";
 
 const BRAND_PRIMARY = "#810FFB";
 const BRAND_SECONDARY = "#E60CB3";
 
-const SYNOZUR_APPS = [
+// Platform entries that are NOT products in the published catalog (the
+// marketing site itself and the Galaxy portal). These bookend the suite apps
+// in the switcher.
+const PLATFORM_APPS: SwitcherApp[] = [
   {
     id: "synozur",
     name: "Synozur",
@@ -36,106 +40,98 @@ const SYNOZUR_APPS = [
       </svg>
     ),
   },
-  {
-    id: "vega",
-    name: "Vega",
-    tagline: "Company Operating System",
-    description: "AI-augmented strategy, goals, execution, governance, and insight in one place.",
-    url: "https://vega.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <polygon points="12,2 15,9 22,9 16.5,14 18.5,21 12,17 5.5,21 7.5,14 2,9 9,9" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.15" />
-      </svg>
-    ),
-  },
-  {
-    id: "constellation",
-    name: "Constellation",
-    tagline: "Delivery & Financial Management",
-    description: "Time, cost, progress tracking with estimates, invoicing, and reporting.",
-    url: "https://constellation.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-        <circle cx="6" cy="10" r="1.5" fill="currentColor" />
-        <circle cx="18" cy="10" r="1.5" fill="currentColor" />
-        <circle cx="8" cy="17" r="1.5" fill="currentColor" />
-        <circle cx="16" cy="17" r="1.5" fill="currentColor" />
-        <line x1="12" y1="5" x2="6" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        <line x1="12" y1="5" x2="18" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        <line x1="6" y1="10" x2="8" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        <line x1="18" y1="10" x2="16" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        <line x1="6" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.3" />
-        <line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.3" />
-      </svg>
-    ),
-  },
-  {
-    id: "nebula",
-    name: "Nebula",
-    tagline: "Innovation & Envisioning",
-    description: "Co-design strategy, surface insights, and turn ideas into shared direction.",
-    url: "https://nebula.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1" opacity="0.2" />
-        <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1" opacity="0.4" />
-        <circle cx="12" cy="12" r="2.5" fill="currentColor" fillOpacity="0.6" />
-        <circle cx="9" cy="8" r="1" fill="currentColor" fillOpacity="0.3" />
-        <circle cx="16" cy="10" r="0.8" fill="currentColor" fillOpacity="0.3" />
-        <circle cx="14" cy="16" r="0.6" fill="currentColor" fillOpacity="0.3" />
-      </svg>
-    ),
-  },
-  {
-    id: "orion",
-    name: "Orion",
-    tagline: "Transformation & Maturity",
-    description: "AI-powered maturity assessments with actionable roadmaps for change.",
-    url: "https://orion.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <circle cx="8" cy="6" r="1.5" fill="currentColor" fillOpacity="0.8" />
-        <circle cx="11" cy="9" r="1.2" fill="currentColor" fillOpacity="0.8" />
-        <circle cx="14" cy="12" r="1.8" fill="currentColor" />
-        <circle cx="16" cy="16" r="1" fill="currentColor" fillOpacity="0.6" />
-        <line x1="8" y1="6" x2="11" y2="9" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
-        <line x1="11" y1="9" x2="14" y2="12" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
-        <line x1="14" y1="12" x2="16" y2="16" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
-      </svg>
-    ),
-  },
-  {
-    id: "zenith",
-    name: "Zenith",
-    tagline: "M365 AI Content Governance",
-    description: "AI-powered content governance, compliance, and lifecycle management for Microsoft 365.",
-    url: "https://zenith.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <path d="M12 2L4 8V16L12 22L20 16V8L12 2Z" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.1" />
-        <path d="M12 2V22" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
-        <path d="M4 8L20 16" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
-        <path d="M20 8L4 16" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
-        <circle cx="12" cy="12" r="2.5" fill="currentColor" fillOpacity="0.5" />
-      </svg>
-    ),
-  },
-  {
-    id: "orbit",
-    name: "Orbit",
-    tagline: "Go-to-Market Intelligence",
-    description: "Competitive and market insights for positioning, prioritization, and action.",
-    url: "https://orbit.synozur.com",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <circle cx="12" cy="12" r="3" fill="currentColor" fillOpacity="0.3" stroke="currentColor" strokeWidth="1" />
-        <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1" opacity="0.5" transform="rotate(-30 12 12)" />
-        <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1" opacity="0.5" transform="rotate(30 12 12)" />
-        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      </svg>
-    ),
-  },
+];
+
+// Icons are switcher-specific presentation, keyed by product slug. Names,
+// taglines, descriptions, URLs, and membership come from the canonical
+// applications catalog via getSuiteApplications() — so a "part" like Comet
+// (inSuite: false) can never appear here.
+const SUITE_ICONS: Record<string, ReactNode> = {
+  vega: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <polygon points="12,2 15,9 22,9 16.5,14 18.5,21 12,17 5.5,21 7.5,14 2,9 9,9" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.15" />
+    </svg>
+  ),
+  constellation: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+      <circle cx="18" cy="10" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="17" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="17" r="1.5" fill="currentColor" />
+      <line x1="12" y1="5" x2="6" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+      <line x1="12" y1="5" x2="18" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+      <line x1="6" y1="10" x2="8" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+      <line x1="18" y1="10" x2="16" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+      <line x1="6" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+    </svg>
+  ),
+  nebula: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1" opacity="0.2" />
+      <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" fillOpacity="0.6" />
+      <circle cx="9" cy="8" r="1" fill="currentColor" fillOpacity="0.3" />
+      <circle cx="16" cy="10" r="0.8" fill="currentColor" fillOpacity="0.3" />
+      <circle cx="14" cy="16" r="0.6" fill="currentColor" fillOpacity="0.3" />
+    </svg>
+  ),
+  orion: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" fillOpacity="0.8" />
+      <circle cx="11" cy="9" r="1.2" fill="currentColor" fillOpacity="0.8" />
+      <circle cx="14" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="16" cy="16" r="1" fill="currentColor" fillOpacity="0.6" />
+      <line x1="8" y1="6" x2="11" y2="9" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+      <line x1="11" y1="9" x2="14" y2="12" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+      <line x1="14" y1="12" x2="16" y2="16" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+    </svg>
+  ),
+  zenith: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <path d="M12 2L4 8V16L12 22L20 16V8L12 2Z" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.1" />
+      <path d="M12 2V22" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
+      <path d="M4 8L20 16" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
+      <path d="M20 8L4 16" stroke="currentColor" strokeWidth="0.8" opacity="0.3" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" fillOpacity="0.5" />
+    </svg>
+  ),
+  orbit: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+      <circle cx="12" cy="12" r="3" fill="currentColor" fillOpacity="0.3" stroke="currentColor" strokeWidth="1" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1" opacity="0.5" transform="rotate(-30 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" stroke="currentColor" strokeWidth="1" opacity="0.5" transform="rotate(30 12 12)" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    </svg>
+  ),
+};
+
+const FALLBACK_ICON: ReactNode = (
+  <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+    <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.4" fill="currentColor" fillOpacity="0.12" />
+  </svg>
+);
+
+interface SwitcherApp {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  url: string;
+  icon: ReactNode;
+}
+
+const SYNOZUR_APPS: SwitcherApp[] = [
+  ...PLATFORM_APPS,
+  ...getSuiteApplications().map((a) => ({
+    id: a.slug,
+    name: a.name,
+    tagline: a.positioning,
+    description: a.description,
+    url: a.url,
+    icon: SUITE_ICONS[a.slug] ?? FALLBACK_ICON,
+  })),
 ];
 
 export type SynozurAppId =

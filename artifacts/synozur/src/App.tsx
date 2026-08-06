@@ -41,7 +41,8 @@ import InsightDetail from "@/pages/insight-detail";
 import Polaris from "@/pages/polaris";
 import PolarisEpisodeDetail from "@/pages/polaris-episode-detail";
 import Contact from "@/pages/contact";
-import Join from "@/pages/join";
+import Subscribe from "@/pages/subscribe";
+import Method from "@/pages/method";
 import Start from "@/pages/start";
 import StartBrief from "@/pages/start-brief";
 import StartDetail from "@/pages/start-detail";
@@ -602,6 +603,7 @@ function Router() {
             <Route path="/polaris/:slug" component={PolarisEpisodeDetail} />
             <Route path="/polaris" component={Polaris} />
             <Route path="/contact" component={Contact} />
+            <Route path="/method" component={Method} />
             <Route path="/careers" component={CareersRouter} />
             <Route path="/careers/general-application">
               {() => <CareersApply general />}
@@ -611,7 +613,8 @@ function Router() {
               {() => <CareersApply />}
             </Route>
             <Route path="/careers/jobs/:slug" component={CareersDetail} />
-            <Route path="/join" component={Join} />
+            <Route path="/subscribe" component={Subscribe} />
+            <Route path="/join"><Redirect to="/subscribe" /></Route>
             <Route path="/start" component={Start} />
             <Route path="/start/brief" component={StartBrief} />
             <Route path="/start/:slug">

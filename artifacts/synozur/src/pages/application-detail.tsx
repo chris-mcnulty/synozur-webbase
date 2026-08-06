@@ -234,18 +234,43 @@ export default function ApplicationDetail() {
       </section>
 
       <section className="py-20 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl">
-          {app.audience && (
-            <p className="text-sm text-muted-foreground mb-8">
-              <span className="font-semibold text-foreground">Who it's for:</span>{" "}
-              {app.audience}
-            </p>
-          )}
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* At a glance — plain-language What / Who / Why, outcomes before
+              features. Built from existing catalog fields so it's consistent
+              across every product. */}
+          <div className="mb-14 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-6">
+              <p className="mb-2 text-xs uppercase tracking-widest text-primary">
+                What it does
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {app.shortSummary}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-6">
+              <p className="mb-2 text-xs uppercase tracking-widest text-primary">
+                Who it's for
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {app.audience ??
+                  "Leaders and teams putting AI to work across the business."}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-6">
+              <p className="mb-2 text-xs uppercase tracking-widest text-primary">
+                Why it matters
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {app.tagline}
+              </p>
+            </div>
+          </div>
+
           <p className="text-sm uppercase tracking-widest text-primary mb-3">
             About {app.name}
           </p>
           <h2 className="text-3xl md:text-4xl font-bold mb-8">
-            What it does
+            How it works
           </h2>
           <div className="space-y-5 text-lg text-muted-foreground leading-relaxed">
             {app.description.map((p, i) => (

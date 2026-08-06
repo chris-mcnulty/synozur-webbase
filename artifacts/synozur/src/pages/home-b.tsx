@@ -10,6 +10,7 @@ import { Meta } from "@/lib/meta";
 import { api } from "@/lib/api";
 import { FromTheFeedCarousel } from "@/pages/home";
 import { LogoRotator } from "@/components/logo-rotator";
+import { CtaBlock } from "@/components/cta/CtaBlock";
 import { clientLogos } from "@/data/logos";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useOverride, useTrackConversion } from "@/lib/experiments";
@@ -271,6 +272,18 @@ export default function HomeB() {
         </div>
       </section>
 
+      {/* Trusted by — client logos surfaced high for early credibility */}
+      {partnersVisible ? (
+        <section className="py-14 bg-background border-b border-border/40">
+          <div className="container mx-auto px-4 md:px-6">
+            <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
+              {partnersHeading}
+            </p>
+            <LogoRotator logos={clientLogos} />
+          </div>
+        </section>
+      ) : null}
+
       {/* 2. Pain First — AI-RX */}
       <section className="py-24 md:py-32 bg-background relative border-y border-border/40">
         <div className="container mx-auto px-4 md:px-6 max-w-5xl">
@@ -512,18 +525,6 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* Trusted by — live logo rotator matching the mainline home page */}
-      {partnersVisible ? (
-        <section className="py-16 bg-background border-b border-border/40">
-          <div className="container mx-auto px-4 md:px-6">
-            <p className="text-xs uppercase tracking-[0.25em] text-primary text-center mb-10">
-              {partnersHeading}
-            </p>
-            <LogoRotator logos={clientLogos} />
-          </div>
-        </section>
-      ) : null}
-
       {/* 6. What we are not */}
       <section className="py-24 md:py-32 bg-background border-y border-border/40">
         <div className="container mx-auto px-4 md:px-6 max-w-4xl text-center">
@@ -602,48 +603,42 @@ export default function HomeB() {
         </div>
       </section>
 
-      {/* 8. The North Star Method™ */}
+      {/* 8. The North Star Method™ — teaser only; full detail lives at /method */}
       <section id="method" className="py-24 md:py-32 bg-background border-y border-border/40">
-        <div className="container mx-auto px-4 md:px-6 max-w-6xl">
-          <motion.div {...fadeUp} className="text-center mb-16">
+        <div className="container mx-auto px-4 md:px-6 max-w-3xl text-center">
+          <motion.div {...fadeUp}>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
               {hc?.methodHeadline ?? "The North Star Method™"}
             </h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground mb-4">
               {hc?.methodSubheadline ??
                 "Not theory. A repeatable system tied to measurable outcomes."}
             </p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="whileInView"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative"
-          >
-            <div className="hidden lg:block absolute top-6 left-[12.5%] right-[12.5%] h-px bg-border" />
-            {[
-              { phase: "01", name: "Assess", desc: "Find the North Star" },
-              { phase: "02", name: "Define", desc: "Build the operating model" },
-              { phase: "03", name: "Deliver", desc: "Establish execution rhythm" },
-              { phase: "04", name: "Outcomes", desc: "Make change stick" },
-            ].map((step, i) => (
-              <motion.div key={i} variants={fadeUp} className="relative z-10">
-                <div className="bg-background flex flex-col p-6 rounded-2xl border border-border h-full relative group hover:border-primary/50 transition-colors">
-                  <div className="h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-xs font-bold text-muted-foreground mb-6 lg:mx-auto lg:-mt-10 group-hover:border-primary group-hover:text-primary transition-colors">
-                    {step.phase}
-                  </div>
-                  <div className="lg:text-center">
-                    <h3 className="text-xl font-bold mb-2">{step.name}</h3>
-                    <p className="text-sm text-muted-foreground">{step.desc}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            <p className="text-base text-muted-foreground mb-10">
+              Assess → Define → Deliver → Outcomes. Four phases that take you from
+              finding your North Star to making the change stick.
+            </p>
+            <Link
+              to="/method"
+              className="inline-flex items-center justify-center text-primary font-semibold hover:text-primary/80 transition-colors"
+            >
+              See how the method works
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </motion.div>
         </div>
       </section>
 
+      {/* 9. Where to learn more — closing lead-gen CTA */}
+      <CtaBlock
+        intent="book"
+        source="home-b"
+        eyebrow="Where to start"
+        heading="Ready to redesign your operating model?"
+        body="Book the AI & North Star Sprint, or tell us what you're working on and we'll point you to the right next step."
+        ctaLabel="Book the Sprint"
+        secondary={{ label: "Talk to us first", href: "/contact" }}
+      />
     </div>
   );
 }

@@ -570,6 +570,37 @@ Out of scope: typo tolerance (Postgres FTS has stemming but not fuzzy matching �
 
 ---
 
+## Homepage & Conversion Overhaul (Aug 2026 stakeholder feedback)
+
+> Source: a multi-stakeholder website feedback session (Aug 2026). Sixteen recommendations across four tiers. Core theme: **visitors cannot quickly tell what Synozur does, and every page should drive contact.** These use `F#` local refs (not project-task `#NNN` numbers) until they get task-system records. This is a **post-launch UX/conversion** initiative — it must not block or churn the open Launch-Readiness gate (auth cutover, redirect verification `#84`, Search Console, CSP enforce).
+
+**Locked decisions (from the requester):** content hub is labelled **"Blog"** but keeps the `/insights` URL (supersedes the raw "Feed → Insights" ask); edit the live `/home-b` in place (no new A/B variant — the variant engine `#216` and admin-editable home copy `#215` already shipped); **infrastructure-first** sequencing; **Comet (Holidays web part) and future installable "parts" are published *applications* but NOT *suite/app-bar* members** — the catalog is a superset of the switcher; keep the article comment system intact (possible future repurpose); the experimentation/analytics layer (`#140`) stays backlog-only for now — CTAs ship with a basic `source` tag only.
+
+### Sequencing (infrastructure-first)
+
+**Phase 0 — shared foundations (build once, reuse everywhere).** *In progress this pass.*
+- **F-CTA · Reusable CTA module.** New `src/components/cta/CtaBlock.tsx`, variant-driven (talk-to-us / book / subscribe), wrapping the existing booking flow (`/start`, `/book`, `BookingCard`) and threading a `source` tag. Replaces per-page hand-rolled closing CTAs. *(Feedback F2.)*
+- **F-SUB · Unified subscription component + `/subscribe` center.** One `SubscribeForm` (Turnstile + honeypot, content-type checkboxes: Blog, Podcast, White papers, Events, Newsletter) replacing the ~5 duplicate subscribe implementations; a dedicated `/subscribe` center folding in `/join`. Reuses the existing subscribe API + double opt-in (`#168`) + HubSpot mirroring (`#131`). *(Feedback F6.)*
+- **F-SSOT · Product single source of truth.** De-dup shared product fields (name, tagline, icon, URL) across `src/data/applications.ts`, `SYNOZUR_APPS` (`synozur-app-switcher.tsx`), and `APP_ICON_MAP` into one canonical catalog with an explicit `inSuite` flag. `/applications` renders the whole catalog (incl. Comet + parts); the switcher renders only `inSuite` members. Prereq for F4/F8/F10/F12. Builds toward `#129` (cross-app switcher).
+
+**Phase 1 — Tier 1 (highest priority).** *In progress this pass.*
+- **F1 · Clarify the homepage story** (`src/pages/home-b.tsx`, edited in place) — Who we are → What we do → Who we've helped → Where to learn more; explicit AI-led-transformation / private-equity positioning in the hero; proof + client logos moved higher; **move the North Star Method™ detail off home** into a dedicated page with a one-line teaser + link. Uses the admin-editable copy hooks from `#215`.
+- **F2 · Stronger lead generation site-wide** — `CtaBlock` at the end of articles/products/resources; on `insight-detail.tsx` a "Talk to us about this" CTA becomes the primary end-of-article action **above** the (retained) comment thread; fix the "Get on the list" → `/contact` link to use the real subscribe module. Measurement via `#140` is deferred; `source` tagging only.
+- **F3 · Reorganize navigation** (`header.tsx` + `lib/synozur-nav/src/index.ts`) — real utility row (Search + Sign In), prominent top-right **Book** button, fewer/clearer mega-menu hubs, rename the "The Feed" group + "Insights Blog" entry to **"Blog"** (URL stays `/insights`). Coordinate with redirect verification `#84`.
+- **F4 · Simplify product messaging** (`applications.tsx`, `application-detail.tsx`) — enforce **What it does / Who it's for / Why it matters** per product (drive "Who it's for" from the canonical `audience` field from F-SSOT), outcomes before features, plain language, integrations shown.
+
+**Phase 2 — Tier 2 (planned, not built this pass).**
+- **F5 · Unified content = "Blog" + Library** (leans on existing `Library` + `collateral.ts` taxonomy).
+- **F6 · Subscription-center rollout** (swap all remaining entry points to F-SUB; subscriptions as lead qualification into HubSpot `#131`).
+- **F7 · More visible proof** (logos into proof modules, promote case studies / `proof.tsx` / `social-proof.tsx` higher, surface outcomes + team experience earlier).
+- **F8 · Product discovery by audience/role** (structured audience taxonomy → filter UI on `applications.tsx`; promotes `audience` from free-text).
+
+**Phase 3 — Tier 3 (planned).** F9 product visuals · F10 standardize product/application/solution/service terminology (on F-SSOT) · F11 role-based discovery paths (evaluate vs. Strategic-Roadmap *maturity assessment* / *Astra concierge*) · F12 product brand architecture / constellation metaphor.
+
+**Phase 4 — Tier 4 (planned).** F13 review low-value pages (Partners → pairs with `#141`; FAQ placement; thin landings) · F14 promote Careers (utility nav + credibility signal) · F15 event promotion (reuse existing `AnnouncementBar.tsx`; note dedicated webinar rail `#85` was **dropped** for Teams, and gated white-paper CTA `#83` **dropped** for HubSpot) · F16 resource-hub structure cleanup.
+
+---
+
 ## Strategic Roadmap
 
 These entries describe future initiatives that do not yet have a project task system record. They are tracked here for planning purposes but are not counted in the active-task total above.
@@ -679,4 +710,8 @@ Synozur runs more delivery work through Constellation (`scdp.synozur.com`) than 
 | — | Interactive maturity assessment replacing the static service-pillar pages | Strategic Roadmap | #131 |
 | — | Astra AI concierge — site-wide chat assistant | Strategic Roadmap | #134 |
 | — | Programmatic case-study drafts from Constellation engagement outcomes | Strategic Roadmap | #128 |
+| F0 | Homepage & Conversion Overhaul — Phase 0 foundations (reusable CTA, unified subscribe center, product SSOT) — **in progress** | Homepage & Conversion Overhaul | #131, #168, #216 |
+| F1–F4 | Tier 1: homepage story, site-wide lead-gen CTAs, nav reorg, plain-language product messaging — **in progress** | Homepage & Conversion Overhaul | F0, #215, #84 |
+| F5–F8 | Tier 2: unified Blog+Library content, subscribe rollout, proof elevation, audience/role product discovery — **planned** | Homepage & Conversion Overhaul | F0, #131 |
+| F9–F16 | Tier 3–4: product visuals, terminology, role paths, brand architecture, low-value-page review, careers, event promotion, resource-hub cleanup — **planned** | Homepage & Conversion Overhaul | #85, #83, #141, #140 |
 | ~~—~~ | ~~Bot prerender for synozur-owned Sprint funnel paths (`/sprint`, `/proof`, `/fit`, `/book`) — added these four paths to the api-server's `artifact.toml` so the existing `socialBotRendererMiddleware` + `spaFallbackMiddleware` stack handles them: social bots get bespoke OG HTML (title + custom 1200×630 image per page from `ogResolver.ts`), AI agents get `buildAgentPageHtml`, normal users get the SPA `index.html`. No new route handlers needed.~~ **Shipped July 2026** | SEO & Web-Platform | — |

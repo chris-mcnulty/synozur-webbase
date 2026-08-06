@@ -263,13 +263,13 @@ export default function Insights() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const copy = useParentPage("insights", {
-    heroEyebrow: "The Feed",
-    heroHeadline: "Insights",
+    heroEyebrow: "Insights",
+    heroHeadline: "Blog",
     heroSubhead:
       "Original writing from our partners on transformation, technology, leadership, and the operating disciplines that let strategy ship.",
-    seoTitle: "Insights",
+    seoTitle: "Blog",
     seoDescription:
-      "The Feed. Original writing on transformation, technology, leadership, and the operating disciplines that let strategy actually ship.",
+      "The Synozur blog. Original writing on transformation, technology, leadership, and the operating disciplines that let strategy actually ship.",
   });
 
   return (
@@ -444,7 +444,7 @@ export default function Insights() {
 
       <section className="bg-card border-t border-border py-24">
         <div className="container mx-auto px-4 text-center max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Subscribe to The Feed</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Subscribe to the Blog</h2>
           <p className="text-lg text-muted-foreground mb-6">
             New essays, models, and Polaris episodes — delivered to your inbox.
           </p>

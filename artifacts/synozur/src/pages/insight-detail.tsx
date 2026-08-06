@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, ArrowRight, MessageSquare, Linkedin } from "lucide-react";
+import { ArrowLeft, MessageSquare, Linkedin } from "lucide-react";
 import { Meta } from "@/lib/meta";
 import { dynamicOgImageUrl } from "@/lib/og-image-url";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import {
 import NotFound from "./not-found";
 import Gone from "./gone";
 import { CommentThread } from "@/components/comments/comment-thread";
+import { CtaBlock } from "@/components/cta/CtaBlock";
+import { SubscribeForm } from "@/components/subscribe/SubscribeForm";
 import {
   useListInsightComments,
   getListInsightCommentsQueryKey,
@@ -369,21 +371,36 @@ export default function InsightDetail() {
         </div>
       </article>
 
+      {/* Primary end-of-article action: turn a reader into a conversation.
+          Sits above the (retained) discussion thread. */}
+      <CtaBlock
+        intent="talk"
+        source="insight-detail"
+        heading="Talk to us about this"
+        body="This is the kind of work we do with CEOs and Boards every day. Tell us what you're navigating and we'll point you to the right next step."
+        secondary={{ label: "Subscribe to the Blog", href: "/subscribe" }}
+      />
+
       <CommentThread slug={post.slug} />
 
       <RelatedRail post={post} />
 
       <section className="bg-background border-t border-border py-20">
-        <div className="container mx-auto px-4 text-center max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Subscribe to The Feed</h2>
-          <p className="text-lg text-muted-foreground mb-6">
-            New essays, models, and Polaris episodes — delivered to your inbox.
-          </p>
-          <Link href="/contact">
-            <Button size="lg" className="px-8">
-              Get on the list <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+        <div className="container mx-auto grid max-w-2xl gap-6 px-4">
+          <div className="text-center">
+            <h2 className="mb-3 text-3xl font-bold md:text-4xl">Subscribe to the Blog</h2>
+            <p className="text-lg text-muted-foreground">
+              New essays, models, and Polaris episodes — delivered to your inbox.
+            </p>
+          </div>
+          <SubscribeForm
+            source="insight-detail"
+            showTopics={false}
+            defaultTopics={["blog"]}
+            heading=""
+            subcopy=""
+            submitLabel="Subscribe"
+          />
         </div>
       </section>
 

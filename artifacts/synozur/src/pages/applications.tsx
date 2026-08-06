@@ -19,6 +19,7 @@ import {
 import { api, type ApplicationDto } from "@/lib/api";
 import { getActiveApplications } from "@/data/applications";
 import { useOverride } from "@/lib/experiments";
+import { CtaBlock } from "@/components/cta/CtaBlock";
 
 const APP_ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   vega: BarChart3,
@@ -183,14 +184,13 @@ export default function Applications() {
                         )}
                       </div>
                     </div>
-                    {app.audience && (
-                      <p className="text-xs text-muted-foreground mb-2">
-                        <span className="font-medium text-foreground">Who it's for:</span>{" "}
-                        {app.audience}
-                      </p>
-                    )}
-                    <p className="text-sm font-medium text-primary mb-3">
+                    <p className="text-sm font-medium text-primary mb-2">
                       {app.tagline}
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      <span className="font-medium text-foreground">Who it's for:</span>{" "}
+                      {app.audience ??
+                        "Leaders and teams putting AI to work across the business."}
                     </p>
                     <p className="text-muted-foreground mb-6 leading-relaxed text-sm flex-1">
                       {app.shortSummary}
@@ -240,25 +240,14 @@ export default function Applications() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-card border-t border-border py-24">
-        <div className="absolute inset-0 nebula-gradient opacity-10" />
-        <div className="container relative z-10 mx-auto px-4 text-center max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Want to see one in action?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Each Synozur application is built on the same frameworks our
-            advisors use with clients. Tell us what you're working on and we'll
-            point you to the right one.
-          </p>
-          <Link
-            href="/contact"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-8 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Talk to us <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
-      </section>
+      <CtaBlock
+        intent="talk"
+        source="applications"
+        heading="Want to see one in action?"
+        body="Each Synozur application is built on the same frameworks our advisors use with clients. Tell us what you're working on and we'll point you to the right one."
+        ctaLabel="Talk to us"
+        secondary={{ label: "Book a walkthrough", href: "/book" }}
+      />
     </div>
   );
 }
