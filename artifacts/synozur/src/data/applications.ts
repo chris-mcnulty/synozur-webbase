@@ -224,11 +224,14 @@ export function getActiveApplications(): Application[] {
 }
 
 /**
- * Canonical membership of the Synozur Suite app-switcher bar (the "suite"),
- * ordered. This is a strict subset of the published catalog — parts such as
- * Comet are excluded via `inSuite`. The app-switcher derives its product tiles
- * from this so catalog and bar can never drift apart on membership, names,
- * URLs, or positioning.
+ * The catalog products that also belong in the Synozur Suite app-switcher bar,
+ * ordered. Catalog and suite OVERLAP but neither contains the other:
+ *   - catalog-only: installable "parts" such as Comet (inSuite: false)
+ *   - suite-only:   platform entries — the Synozur website and the Galaxy
+ *                   portal — which aren't products, so they live in the
+ *                   app-switcher's own PLATFORM_APPS list, not here.
+ * The app-switcher composes its bar from PLATFORM_APPS + this list, so the six
+ * shared products can never drift apart on names, URLs, or positioning.
  */
 export type SuiteEntry = {
   slug: string;
