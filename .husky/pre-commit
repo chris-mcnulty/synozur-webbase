@@ -1,1 +1,2 @@
+node scripts/check-no-uploads.mjs
 pnpm exec lint-staged

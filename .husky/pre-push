@@ -1,0 +1,1 @@
+node scripts/check-no-uploads.mjs --push
