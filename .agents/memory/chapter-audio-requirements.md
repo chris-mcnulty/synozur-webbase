@@ -13,9 +13,9 @@ Use Microsoft Azure Dragon HD voices with a standard sample passage. Accept past
 
 **Why:** These were the user's selected first-release requirements.
 
-**How to apply:** Keep uploaded manuscripts and generated audio private and out of GitHub. Define the retention start point during design; it has not yet been agreed.
+**How to apply:** Keep uploaded manuscripts and generated audio private and out of GitHub. The approved design measures 30 days from initial submission, without extending expiry on retry.
 
-The first release is English-only, with additional languages possible later. The expected chapter size is approximately 5,000–10,000 words, not an entire book. A firm word limit remains unconfirmed.
+The first release is English-only, with additional languages possible later. The user expects chapters of approximately 5,000–10,000 words, not entire books; the approved implementation design caps spoken text at 10,000 words including appended notes.
 
 **Why:** The user described this intended scope and asked for advice about length and footnotes.
 
@@ -32,3 +32,9 @@ Plan for a later addition allowing generated audio to be saved permanently on th
 **Why:** The user explicitly requested this exception to automatic expiry, deferred implementation, and selected all authorized editors and administrators.
 
 **How to apply:** Apply automatic expiry to every first-release job. Preserve a future explicit promotion path without implementing permanent saving now or assuming permission to publish manuscripts or audio.
+
+Chapter narration must preserve reviewed wording and use the selected Azure Dragon HD voice without silent alternate-provider fallback.
+
+**Why:** The approved chapter design is faithful narration, not the separately established briefing-podcast adaptation workflow.
+
+**How to apply:** Do not reuse a podcast script-rewriting or fallback pipeline just because it already produces audio.

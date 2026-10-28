@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import chapterAudioRouter from "./chapterAudio";
 import healthRouter from "./health";
 import storageRouter from "./storage";
 import adminRouter from "./admin";
@@ -78,6 +79,7 @@ import mcpRouter from "./mcp";
 import engagementsAdminRouter from "./engagementsAdmin";
 
 const router: IRouter = Router();
+router.use(chapterAudioRouter);
 
 router.use(healthRouter);
 router.use(storageRouter);

@@ -5,6 +5,74 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ChapterAudioInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * @minLength 1
+   * @maxLength 200000
+   */
+  text: string;
+  /** @maxLength 100000 */
+  notes?: string;
+  appendNotes?: boolean;
+  voice: string;
+}
+
+export type ChapterAudioJobStatus =
+  (typeof ChapterAudioJobStatus)[keyof typeof ChapterAudioJobStatus];
+
+export const ChapterAudioJobStatus = {
+  queued: "queued",
+  processing: "processing",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  expired: "expired",
+  deleting: "deleting",
+} as const;
+
+export interface ChapterAudioJob {
+  id: string;
+  title: string;
+  voice: string;
+  status: ChapterAudioJobStatus;
+  wordCount: number;
+  totalChunks: number;
+  completedChunks: number;
+  createdAt: string;
+  expiresAt: string;
+  creatorName: string;
+  /** @nullable */
+  error?: string | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  /** @nullable */
+  audioBytes?: number | null;
+}
+
+export interface ChapterAudioHistory {
+  jobs: ChapterAudioJob[];
+  voices: string[];
+  configured: boolean;
+  maxWords: number;
+  retentionDays: number;
+}
+
+export interface ChapterAudioExtraction {
+  text: string;
+  notes: string;
+  warnings: string[];
+  wordCount: number;
+}
+
+export interface ChapterAudioActionResult {
+  ok: boolean;
+}
+
 export type BookingRecordFieldsScope =
   (typeof BookingRecordFieldsScope)[keyof typeof BookingRecordFieldsScope];
 
@@ -3942,6 +4010,14 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type ExtractChapterAudioParams = {
+  filename: string;
+};
+
+export type DownloadChapterAudioParams = {
+  download?: boolean;
+};
 
 export type ListPublicBookings200 = {
   items: BookingRecord[];

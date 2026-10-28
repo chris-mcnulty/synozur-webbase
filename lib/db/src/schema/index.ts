@@ -1,3 +1,4 @@
+export * from "./chapterAudio";
 export * from "./_artifactBase";
 export * from "./clientOrganizations";
 export * from "./clientOrganizationUsers";

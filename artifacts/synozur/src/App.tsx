@@ -152,6 +152,7 @@ import MarketingSeo from "@/pages/admin/marketing/seo";
 import MarketingSeoAudit from "@/pages/admin/marketing/seo-audit";
 import MarketingSeoCoverage from "@/pages/admin/marketing/seo-coverage";
 import MarketingSubscribers from "@/pages/admin/marketing/subscribers";
+import ChapterAudioPage from "@/pages/admin/chapter-audio";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import { ErrorBoundary, RouteErrorFallback } from "@/components/error-boundary";
@@ -495,6 +496,9 @@ function AdminRoutes() {
 
         {/* Storage / infra integrations */}
         <Route path="/integrations/spe" component={SpeAdminPage} />
+
+        {/* Chapter Audio (dev only for this release) */}
+        {import.meta.env.DEV && <Route path="/chapter-audio" component={ChapterAudioPage} />}
 
         {/* Account section */}
         <Route path="/account/profile" component={AdminProfile} />

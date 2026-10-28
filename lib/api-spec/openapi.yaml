@@ -68,6 +68,107 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /cms/chapter-audio:
+    get:
+      operationId: listChapterAudio
+      tags: [Chapter Audio]
+      responses:
+        "200":
+          description: Private shared narration history and available voices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioHistory"
+    post:
+      operationId: createChapterAudio
+      tags: [Chapter Audio]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterAudioInput"
+      responses:
+        "201":
+          description: Chapter queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioJob"
+  /cms/chapter-audio/extract:
+    post:
+      operationId: extractChapterAudio
+      tags: [Chapter Audio]
+      parameters:
+        - in: query
+          name: filename
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: Reviewable text; uploaded original is not retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioExtraction"
+  /cms/chapter-audio/sample/{voice}:
+    get:
+      operationId: sampleChapterAudio
+      tags: [Chapter Audio]
+      parameters:
+        - in: path
+          name: voice
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Standard voice demonstration
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+  /cms/chapter-audio/{id}/{action}:
+    post:
+      operationId: actionChapterAudio
+      tags: [Chapter Audio]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: action
+          required: true
+          schema: { type: string, enum: [cancel, retry, delete] }
+      responses:
+        "200":
+          description: Action accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioActionResult"
+  /cms/chapter-audio/{id}/audio:
+    get:
+      operationId: downloadChapterAudio
+      tags: [Chapter Audio]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: download
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Authorized chapter MP3
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
   /bookings:
     get:
       operationId: listPublicBookings
@@ -4627,6 +4728,60 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    ChapterAudioInput:
+      type: object
+      required: [title, text, voice]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        text: { type: string, minLength: 1, maxLength: 200000 }
+        notes: { type: string, maxLength: 100000 }
+        appendNotes: { type: boolean, default: false }
+        voice: { type: string }
+    ChapterAudioJob:
+      type: object
+      required: [id, title, voice, status, wordCount, totalChunks, completedChunks, createdAt, expiresAt, creatorName]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        voice: { type: string }
+        status: { type: string, enum: [queued, processing, completed, failed, cancelled, expired, deleting] }
+        wordCount: { type: integer }
+        totalChunks: { type: integer }
+        completedChunks: { type: integer }
+        createdAt: { type: string }
+        expiresAt: { type: string }
+        creatorName: { type: string }
+        error: { type: [string, "null"] }
+        durationSeconds: { type: [number, "null"] }
+        audioBytes: { type: [integer, "null"] }
+    ChapterAudioHistory:
+      type: object
+      required: [jobs, voices, configured, maxWords, retentionDays]
+      properties:
+        jobs:
+          type: array
+          items: { $ref: "#/components/schemas/ChapterAudioJob" }
+        voices:
+          type: array
+          items: { type: string }
+        configured: { type: boolean }
+        maxWords: { type: integer }
+        retentionDays: { type: integer }
+    ChapterAudioExtraction:
+      type: object
+      required: [text, notes, warnings, wordCount]
+      properties:
+        text: { type: string }
+        notes: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        wordCount: { type: integer }
+    ChapterAudioActionResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
     BookingRecordFields:
       type: object
       properties:

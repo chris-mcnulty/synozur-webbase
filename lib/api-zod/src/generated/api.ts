@@ -7,6 +7,86 @@
  */
 import * as zod from "zod";
 
+export const ListChapterAudioResponse = zod.object({
+  jobs: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      voice: zod.string(),
+      status: zod.enum([
+        "queued",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+        "expired",
+        "deleting",
+      ]),
+      wordCount: zod.number(),
+      totalChunks: zod.number(),
+      completedChunks: zod.number(),
+      createdAt: zod.string(),
+      expiresAt: zod.string(),
+      creatorName: zod.string(),
+      error: zod.string().nullish(),
+      durationSeconds: zod.number().nullish(),
+      audioBytes: zod.number().nullish(),
+    }),
+  ),
+  voices: zod.array(zod.string()),
+  configured: zod.boolean(),
+  maxWords: zod.number(),
+  retentionDays: zod.number(),
+});
+
+export const createChapterAudioBodyTitleMax = 200;
+
+export const createChapterAudioBodyTextMax = 200000;
+
+export const createChapterAudioBodyNotesMax = 100000;
+
+export const createChapterAudioBodyAppendNotesDefault = false;
+
+export const CreateChapterAudioBody = zod.object({
+  title: zod.string().min(1).max(createChapterAudioBodyTitleMax),
+  text: zod.string().min(1).max(createChapterAudioBodyTextMax),
+  notes: zod.string().max(createChapterAudioBodyNotesMax).optional(),
+  appendNotes: zod.boolean().default(createChapterAudioBodyAppendNotesDefault),
+  voice: zod.string(),
+});
+
+export const ExtractChapterAudioQueryParams = zod.object({
+  filename: zod.coerce.string(),
+});
+
+export const ExtractChapterAudioResponse = zod.object({
+  text: zod.string(),
+  notes: zod.string(),
+  warnings: zod.array(zod.string()),
+  wordCount: zod.number(),
+});
+
+export const SampleChapterAudioParams = zod.object({
+  voice: zod.coerce.string(),
+});
+
+export const ActionChapterAudioParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  action: zod.enum(["cancel", "retry", "delete"]),
+});
+
+export const ActionChapterAudioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const DownloadChapterAudioParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadChapterAudioQueryParams = zod.object({
+  download: zod.coerce.boolean().optional(),
+});
+
 /**
  * @summary List visible booking calendars
  */

@@ -41,6 +41,11 @@ import type {
   Capability,
   CapabilityItemsResponse,
   Category,
+  ChapterAudioActionResult,
+  ChapterAudioExtraction,
+  ChapterAudioHistory,
+  ChapterAudioInput,
+  ChapterAudioJob,
   CmsGetSiteHealthParams,
   CmsListCollateralParams,
   CmsListPublishBlocksParams,
@@ -64,6 +69,7 @@ import type {
   CreateVariantBody,
   CurrentUser,
   CwvSampleInput,
+  DownloadChapterAudioParams,
   DownloadPortalDocumentParams,
   DownloadPortalDocumentVersionParams,
   ErrorEnvelope,
@@ -72,6 +78,7 @@ import type {
   EventRegistrationResponse,
   ExportAdminFormSubmissionsParams,
   ExportAuditLogCsvParams,
+  ExtractChapterAudioParams,
   ForbiddenResponse,
   FormSubmissionAck,
   GetActiveExperimentsResponse,
@@ -201,6 +208,527 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio`;
+};
+
+export const listChapterAudio = async (
+  options?: RequestInit,
+): Promise<ChapterAudioHistory> => {
+  return customFetch<ChapterAudioHistory>(getListChapterAudioUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChapterAudioQueryKey = () => {
+  return [`/api/cms/chapter-audio`] as const;
+};
+
+export const getListChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChapterAudioQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listChapterAudio>>
+  > = ({ signal }) => listChapterAudio({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChapterAudio>>
+>;
+export type ListChapterAudioQueryError = ErrorType<unknown>;
+
+export function useListChapterAudio<
+  TData = Awaited<ReturnType<typeof listChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChapterAudio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChapterAudioQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio`;
+};
+
+export const createChapterAudio = async (
+  chapterAudioInput: ChapterAudioInput,
+  options?: RequestInit,
+): Promise<ChapterAudioJob> => {
+  return customFetch<ChapterAudioJob>(getCreateChapterAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioInput),
+  });
+};
+
+export const getCreateChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioInput> },
+  TContext
+> => {
+  const mutationKey = ["createChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    { data: BodyType<ChapterAudioInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChapterAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChapterAudio>>
+>;
+export type CreateChapterAudioMutationBody = BodyType<ChapterAudioInput>;
+export type CreateChapterAudioMutationError = ErrorType<unknown>;
+
+export const useCreateChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioInput> },
+  TContext
+> => {
+  return useMutation(getCreateChapterAudioMutationOptions(options));
+};
+
+export const getExtractChapterAudioUrl = (
+  params: ExtractChapterAudioParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/extract?${stringifiedParams}`
+    : `/api/cms/chapter-audio/extract`;
+};
+
+export const extractChapterAudio = async (
+  extractChapterAudioBody: Blob,
+  params: ExtractChapterAudioParams,
+  options?: RequestInit,
+): Promise<ChapterAudioExtraction> => {
+  return customFetch<ChapterAudioExtraction>(
+    getExtractChapterAudioUrl(params),
+    {
+      ...options,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        ...options?.headers,
+      },
+      body: JSON.stringify(extractChapterAudioBody),
+    },
+  );
+};
+
+export const getExtractChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    TError,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof extractChapterAudio>>,
+  TError,
+  { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+  TContext
+> => {
+  const mutationKey = ["extractChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams }
+  > = (props) => {
+    const { data, params } = props ?? {};
+
+    return extractChapterAudio(data, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExtractChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof extractChapterAudio>>
+>;
+export type ExtractChapterAudioMutationBody = BodyType<Blob>;
+export type ExtractChapterAudioMutationError = ErrorType<unknown>;
+
+export const useExtractChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractChapterAudio>>,
+    TError,
+    { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof extractChapterAudio>>,
+  TError,
+  { data: BodyType<Blob>; params: ExtractChapterAudioParams },
+  TContext
+> => {
+  return useMutation(getExtractChapterAudioMutationOptions(options));
+};
+
+export const getSampleChapterAudioUrl = (voice: string) => {
+  return `/api/cms/chapter-audio/sample/${voice}`;
+};
+
+export const sampleChapterAudio = async (
+  voice: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getSampleChapterAudioUrl(voice), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSampleChapterAudioQueryKey = (voice: string) => {
+  return [`/api/cms/chapter-audio/sample/${voice}`] as const;
+};
+
+export const getSampleChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof sampleChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  voice: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof sampleChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSampleChapterAudioQueryKey(voice);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof sampleChapterAudio>>
+  > = ({ signal }) => sampleChapterAudio(voice, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!voice,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof sampleChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SampleChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof sampleChapterAudio>>
+>;
+export type SampleChapterAudioQueryError = ErrorType<unknown>;
+
+export function useSampleChapterAudio<
+  TData = Awaited<ReturnType<typeof sampleChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  voice: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof sampleChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSampleChapterAudioQueryOptions(voice, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getActionChapterAudioUrl = (
+  id: string,
+  action: "cancel" | "retry" | "delete",
+) => {
+  return `/api/cms/chapter-audio/${id}/${action}`;
+};
+
+export const actionChapterAudio = async (
+  id: string,
+  action: "cancel" | "retry" | "delete",
+  options?: RequestInit,
+): Promise<ChapterAudioActionResult> => {
+  return customFetch<ChapterAudioActionResult>(
+    getActionChapterAudioUrl(id, action),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getActionChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    TError,
+    { id: string; action: "cancel" | "retry" | "delete" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof actionChapterAudio>>,
+  TError,
+  { id: string; action: "cancel" | "retry" | "delete" },
+  TContext
+> => {
+  const mutationKey = ["actionChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    { id: string; action: "cancel" | "retry" | "delete" }
+  > = (props) => {
+    const { id, action } = props ?? {};
+
+    return actionChapterAudio(id, action, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActionChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof actionChapterAudio>>
+>;
+
+export type ActionChapterAudioMutationError = ErrorType<unknown>;
+
+export const useActionChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof actionChapterAudio>>,
+    TError,
+    { id: string; action: "cancel" | "retry" | "delete" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof actionChapterAudio>>,
+  TError,
+  { id: string; action: "cancel" | "retry" | "delete" },
+  TContext
+> => {
+  return useMutation(getActionChapterAudioMutationOptions(options));
+};
+
+export const getDownloadChapterAudioUrl = (
+  id: string,
+  params?: DownloadChapterAudioParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/${id}/audio?${stringifiedParams}`
+    : `/api/cms/chapter-audio/${id}/audio`;
+};
+
+export const downloadChapterAudio = async (
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadChapterAudioUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadChapterAudioQueryKey = (
+  id: string,
+  params?: DownloadChapterAudioParams,
+) => {
+  return [
+    `/api/cms/chapter-audio/${id}/audio`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getDownloadChapterAudioQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadChapterAudioQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadChapterAudio>>
+  > = ({ signal }) =>
+    downloadChapterAudio(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadChapterAudio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadChapterAudioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadChapterAudio>>
+>;
+export type DownloadChapterAudioQueryError = ErrorType<unknown>;
+
+export function useDownloadChapterAudio<
+  TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  params?: DownloadChapterAudioParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterAudio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadChapterAudioQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List visible booking calendars
