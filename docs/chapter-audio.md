@@ -26,6 +26,12 @@ Azure Dragon HD English voices render bounded sentence/paragraph sections.
 MP3 is 24 kHz, mono, 96 kbit/s. Standard voice samples are generated on demand
 and cached separately; no manuscript samples are used.
 
+Chapter Audio offers 15 generally available English single-narrator Dragon HD
+voices, independently of the Briefing Podcast selection: Adam, Alloy, Andrew,
+Andrew 2 (Conversational), Aria, Ava, Brian, Davis, Emma, Emma 2 (Conversational),
+Jenny, Nova, Phoebe, Serena, and Steffan. Preview, multi-talker, and Dragon HD
+Omni models are excluded. Every option uses the same standard-sample control.
+
 Every job expires 30 days after submission, even after retries. All content
 access is refused at expiry. Cleanup retries deletion of the source narration,
 section MP3s, and final MP3. Expired rows retain minimal operational metadata;

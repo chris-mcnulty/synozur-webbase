@@ -76,3 +76,24 @@ legitimate private files for abandoned uploads and delete them.
 
 **How to apply:** Keep narration delivery behind editorial authorization and
 include durable private references whenever changing shared storage cleanup.
+
+Do not treat Azure's regional voice catalog as conclusive evidence that a
+documented Dragon HD voice is unavailable.
+
+**Why:** The configured region's catalog omitted the generally available
+Andrew 2 and Emma 2 voices even though both successfully synthesized audio.
+
+**How to apply:** Use Microsoft's current model documentation and a short,
+metered synthesis check before excluding a documented voice missing from the
+catalog. Keep preview and different-model voices outside the approved scope.
+
+Chapter Audio uploads are extraction only, not submissions; never tell a user
+their chapter is queued until the server has accepted a create request.
+
+**Why:** A production visitor thought a chapter had been submitted, but
+available production evidence showed extraction and an estimate, with no
+corresponding job-creation request. A fleeting toast and a job list below a
+long form were insufficient confirmation.
+
+**How to apply:** Keep the submission action explicit and show durable,
+server-backed queue/progress/error status near the top of the editorial page.

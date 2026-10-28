@@ -3,6 +3,17 @@ import assert from "node:assert/strict";
 import { zipSync, strToU8 } from "fflate";
 import { extractChapter, markdownNarration, splitNarration, wordCount, MAX_WORDS } from "./text";
 import { canUseChapterAudio } from "./access";
+import { CHAPTER_VOICES } from "./speech";
+
+test("chapter voices include all 15 GA English single-narrator Dragon HD options", () => {
+  assert.equal(CHAPTER_VOICES.length, 15);
+  assert.equal(new Set(CHAPTER_VOICES).size, 15);
+  for (const name of ["Andrew", "Ava", "Emma", "Steffan", "Aria", "Adam", "Alloy",
+    "Andrew2", "Brian", "Davis", "Emma2", "Jenny", "Nova", "Phoebe", "Serena"]) {
+    assert.ok((CHAPTER_VOICES as readonly string[]).includes(`en-US-${name}:DragonHDLatestNeural`));
+  }
+  assert.ok(CHAPTER_VOICES.every(voice => /^en-US-[A-Za-z0-9]+:DragonHDLatestNeural$/.test(voice)));
+});
 
 test("only approved human editorial roles can use chapter audio", () => {
   for (const role of ["admin", "site_admin", "editor", "content_author"]) {

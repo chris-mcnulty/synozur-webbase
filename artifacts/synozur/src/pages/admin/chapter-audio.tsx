@@ -52,6 +52,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CostAdminPanel, JobCostDetails, NarrationEstimate } from "@/components/admin/ChapterAudioCosts";
+import { chapterStatusText } from "@/lib/chapter-audio-status";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -92,8 +93,11 @@ function fmtDate(s: string): string {
 
 function voiceLabel(v: string): string {
   // e.g. en-US-Ava:DragonHDLatestNeural -> Ava (en-US)
-  const m = v.match(/^([a-z]{2}-[A-Z]{2})-([A-Za-z]+)/);
-  return m ? `${m[2]} (${m[1]})` : v;
+  const m = v.match(/^([a-z]{2}-[A-Z]{2})-([A-Za-z0-9]+):/);
+  if (!m) return v;
+  const name = m[2] === "Andrew2" ? "Andrew 2 — Conversational"
+    : m[2] === "Emma2" ? "Emma 2 — Conversational" : m[2];
+  return `${name} (${m[1]})`;
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -134,9 +138,52 @@ export default function ChapterAudioPage() {
 function ChapterAudioWorkspace() {
   const list = useListChapterAudio({ query: { queryKey: getListChapterAudioQueryKey(), refetchInterval: 4000 } });
   const data = list.data;
+  const qc = useQueryClient();
+  const statusRef = useRef<HTMLDivElement>(null);
+  const [lastSubmittedId, setLastSubmittedId] = useState<string | null>(() => {
+    try { return sessionStorage.getItem("chapterAudio:lastSubmittedId"); } catch { return null; }
+  });
+  const currentJob = lastSubmittedId
+    ? data?.jobs.find(job => job.id === lastSubmittedId)
+    : data?.jobs[0];
+  const onSubmitted = (job: ChapterAudioJob) => {
+    setLastSubmittedId(job.id);
+    try { sessionStorage.setItem("chapterAudio:lastSubmittedId", job.id); } catch { /* status still updates in this tab */ }
+    qc.setQueryData<typeof data>(getListChapterAudioQueryKey(), previous =>
+      previous ? { ...previous, jobs: [job, ...previous.jobs.filter(existing => existing.id !== job.id)].slice(0, 200) } : previous);
+    requestAnimationFrame(() => statusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div ref={statusRef} className="xl:col-span-2 rounded-xl border border-border bg-card p-5" data-testid="chapter-audio-status-panel" role="status" aria-live="polite">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Chapter status</p>
+        {list.isLoading ? (
+          <p className="text-sm text-muted-foreground mt-2">Checking chapter status…</p>
+        ) : list.isError ? (
+          <div className="mt-2"><p className="text-sm text-destructive">Could not check the queue. Your submission status is unknown.</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => void list.refetch()}>Check again</Button></div>
+        ) : currentJob ? (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground">{lastSubmittedId ? "Your last submission" : "Latest staff narration"}</p>
+              <p className="font-semibold">{currentJob.title}</p>
+              <p className="text-sm text-muted-foreground" data-testid="chapter-audio-current-status">{chapterStatusText(currentJob)}</p>
+              {currentJob.error && <p className="text-sm text-destructive mt-1">{currentJob.error}</p>}
+            </div>
+            <a href={`#chapter-job-${currentJob.id}`} className="text-sm text-primary underline underline-offset-2">
+              View narration and actions
+            </a>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-2">
+            {lastSubmittedId
+              ? "Your last submission is no longer in the recent narrations list. Check the list below."
+              : "No chapters are queued. Uploading a file only extracts its text; select Queue chapter for narration to submit it."}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-2">Status refreshes every 4 seconds while this page is open. You can leave and return to check later.</p>
+      </div>
       <section>
         <header className="mb-5">
           <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Private editorial workspace</p>
@@ -152,6 +199,7 @@ function ChapterAudioWorkspace() {
           <ErrorBox message={errMessage(list.error, "Could not load Chapter Audio.")} onRetry={() => void list.refetch()} />
         ) : (
           <NewNarrationForm
+            onSubmitted={onSubmitted}
             voices={data.voices}
             configured={data.configured}
             maxWords={data.maxWords}
@@ -184,7 +232,7 @@ function ChapterAudioWorkspace() {
               <p className="text-sm text-muted-foreground mt-1">Submitted chapters appear here for every permitted staff member.</p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-3" id="chapter-narrations">
               {data.jobs.map((j) => <JobRow key={j.id} job={j} />)}
             </ul>
           )
@@ -204,7 +252,7 @@ function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }
   );
 }
 
-function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricingRateId }: { voices: string[]; configured: boolean; maxWords: number; retentionDays: number; pricingRateId: string | null }) {
+function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricingRateId, onSubmitted }: { voices: string[]; configured: boolean; maxWords: number; retentionDays: number; pricingRateId: string | null; onSubmitted: (job: ChapterAudioJob) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
@@ -269,6 +317,7 @@ function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricing
       { data: { title: title.trim(), text, notes: notes || undefined, appendNotes, voice: effectiveVoice } },
       {
         onSuccess: (job) => {
+          onSubmitted(job);
           toast({ title: "Narration queued", description: job.title });
           void qc.invalidateQueries({ queryKey: getListChapterAudioQueryKey() });
           setTitle(""); setText(""); setNotes(""); setWarnings([]); setAppendNotes(false); setExtractError(null);
@@ -302,6 +351,7 @@ function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricing
         <Textarea id="ca-text" value={text} onChange={(e) => { setText(e.target.value); setExtractError(null); }} rows={14}
           className="font-serif text-[15px] leading-relaxed" placeholder="Paste the reviewed chapter here, or upload a file. Extracted text stays editable."
           data-testid="input-text" />
+        <p className="text-xs text-muted-foreground">Uploading fills this text box; it does not submit the chapter. Review the text, then select Queue chapter for narration below.</p>
         {extractError && <p className="text-sm text-destructive" data-testid="text-extract-error">{extractError}</p>}
         {warnings.length > 0 && (
           <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5" data-testid="list-warnings">
@@ -341,10 +391,11 @@ function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricing
           <span className="text-muted-foreground"> / {maxWords.toLocaleString()} words · {listening(words)} listening</span>
           {over && <p className="text-xs text-destructive">Over the limit{appendNotes ? " (including appended notes)" : ""}.</p>}
         </div>
-        <Button onClick={submit} disabled={disabled} data-testid="button-generate">
-          {create.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}Generate narration
+        <Button id="chapter-queue-submit" onClick={submit} disabled={disabled} data-testid="button-generate">
+          {create.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}{create.isPending ? "Submitting…" : "Queue chapter for narration"}
         </Button>
       </div>
+      {blank && <p className="text-xs text-muted-foreground">Add a chapter title and text to enable the queue button.</p>}
       {submitError && <p className="text-sm text-destructive" data-testid="text-submit-error">{submitError}</p>}
       <p className="text-xs text-muted-foreground">Audio is stored privately and expires {retentionDays} days after submission. It is not published or emailed.</p>
     </div>
@@ -398,7 +449,7 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
   const meta = useMemo(() => fmtDate(job.createdAt), [job.createdAt]);
 
   return (
-    <li className="rounded-lg border border-border bg-card p-4" data-testid={`row-job-${job.id}`}>
+    <li id={`chapter-job-${job.id}`} className="rounded-lg border border-border bg-card p-4" data-testid={`row-job-${job.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium truncate" data-testid={`text-job-title-${job.id}`}>{job.title}</p>

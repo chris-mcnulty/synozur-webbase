@@ -149,6 +149,9 @@ test("both editorial roles can read shared history with private response headers
     const data = ListChapterAudioResponse.parse(await response.json());
     assert.ok(data.jobs.some((job: { id: string; status: string }) => job.id === jobId && job.status === "expired"));
     assert.equal(data.maxWords, 10000);
+    assert.equal(data.voices.length, 15);
+    assert.ok(data.voices.includes("en-US-Phoebe:DragonHDLatestNeural"));
+    assert.ok(data.voices.includes("en-US-Andrew2:DragonHDLatestNeural"));
     assert.ok(!JSON.stringify(data).includes("source.txt"));
   }
 });

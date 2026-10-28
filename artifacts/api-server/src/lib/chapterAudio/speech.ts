@@ -1,10 +1,29 @@
 import { createHash } from "node:crypto";
-import { buildSsml, isAzureTtsConfigured, VALID_AZURE_VOICES } from "../azureTts";
+import { buildSsml, isAzureTtsConfigured } from "../azureTts";
 import { chapterFileExists, readChapterFile, saveChapterFile } from "./store";
 import { STANDARD_SAMPLE } from "./text";
 import { beginSpeechAttempt, finishSpeechAttempt, type SpeechUsageContext } from "./costs";
 
-export const CHAPTER_VOICES = VALID_AZURE_VOICES.filter(v => v.includes(":DragonHD"));
+// Generally available English single-narrator Dragon HD voices. Keep this
+// independent of the daily briefing's smaller curated voice selection.
+// Preview, multi-talker, and Omni models are intentionally excluded.
+export const CHAPTER_VOICES = [
+  "en-US-Andrew:DragonHDLatestNeural",
+  "en-US-Ava:DragonHDLatestNeural",
+  "en-US-Emma:DragonHDLatestNeural",
+  "en-US-Steffan:DragonHDLatestNeural",
+  "en-US-Aria:DragonHDLatestNeural",
+  "en-US-Adam:DragonHDLatestNeural",
+  "en-US-Alloy:DragonHDLatestNeural",
+  "en-US-Andrew2:DragonHDLatestNeural",
+  "en-US-Brian:DragonHDLatestNeural",
+  "en-US-Davis:DragonHDLatestNeural",
+  "en-US-Emma2:DragonHDLatestNeural",
+  "en-US-Jenny:DragonHDLatestNeural",
+  "en-US-Nova:DragonHDLatestNeural",
+  "en-US-Phoebe:DragonHDLatestNeural",
+  "en-US-Serena:DragonHDLatestNeural",
+] as const;
 export { isAzureTtsConfigured };
 export class ChapterSpeechError extends Error {
   constructor(message: string, readonly retryable: boolean) { super(message); }
