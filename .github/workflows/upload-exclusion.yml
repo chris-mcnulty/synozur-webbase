@@ -1,0 +1,70 @@
+name: Upload exclusion
+
+# This is post-transfer detection, NOT a push-time path restriction.
+# pull_request_target deliberately runs only trusted base-branch code.
+on:
+  push:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-exclusion:
+    name: upload-exclusion
+    if: github.event.deleted != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted checker and history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check tracked files and every incoming commit
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          GROUP_BASE: ${{ github.event.merge_group.base_sha }}
+          GROUP_HEAD: ${{ github.event.merge_group.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Save the trusted checker before inspecting any incoming commit.
+          checker="$RUNNER_TEMP/check-no-uploads.mjs"
+          cp scripts/check-no-uploads.mjs "$checker"
+          case "$EVENT_NAME" in
+            pull_request_target)
+              base="$PR_BASE"
+              head="$PR_HEAD"
+              ;;
+            push)
+              base="$BEFORE"
+              head="$(git rev-parse HEAD)"
+              ;;
+            merge_group)
+              base="$GROUP_BASE"
+              head="$GROUP_HEAD"
+              ;;
+            workflow_dispatch)
+              # Manual runs check the current tree; legacy history is a separate audit.
+              node "$checker"
+              exit 0
+              ;;
+            *) echo "Unsupported event" >&2; exit 1 ;;
+          esac
+          [[ "$base" =~ ^[0-9a-f]{40}$ && "$head" =~ ^[0-9a-f]{40}$ ]]
+          # Never check out or execute incoming PR code. Fetch commit objects only.
+          for sha in "$base" "$head"; do
+            if [[ ! "$sha" =~ ^0+$ ]] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+              git fetch --no-tags origin "$sha"
+            fi
+          done
+          printf 'refs/heads/incoming %s refs/heads/base %s\n' "$head" "$base" |
+            node "$checker" --push
