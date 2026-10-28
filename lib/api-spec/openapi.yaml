@@ -68,6 +68,36 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /cms/profile/avatar:
+    post:
+      tags: [CMS Users]
+      operationId: uploadProfileAvatar
+      summary: Upload a profile photo to Microsoft SharePoint Embedded
+      description: Returns a public photo URL. Apply it with Save profile. Accepts JPEG, PNG or WebP up to 5 MB.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Photo uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarUploadResult"
+        "400":
+          description: Invalid image
+        "401":
+          description: Sign-in required
+        "413":
+          description: Image exceeds 5 MB
+        "429":
+          description: Too many uploads
+        "503":
+          description: Microsoft storage unavailable
   /cms/chapter-audio/estimate:
     post:
       operationId: estimateChapterAudio
@@ -4798,6 +4828,13 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    AvatarUploadResult:
+      type: object
+      required: [avatarUrl]
+      properties:
+        avatarUrl:
+          type: string
+          description: Same-origin path to the uploaded public profile photo.
     ChapterAudioRateInput:
       type: object
       required: [perMillion, currency, effectiveFrom]

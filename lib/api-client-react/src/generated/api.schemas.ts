@@ -5,6 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AvatarUploadResult {
+  /** Same-origin path to the uploaded public profile photo. */
+  avatarUrl: string;
+}
+
 export interface ChapterAudioRateInput {
   /**
    * @minimum 0

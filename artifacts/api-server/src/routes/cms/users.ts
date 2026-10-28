@@ -1,4 +1,5 @@
-import { Router, type IRouter } from "express";
+import express, { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import {
@@ -11,14 +12,47 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
+import { AvatarImageError, storeProfileAvatar } from "../../lib/profileAvatar";
 
 const ProfileBody = z.object({
   displayName: z.string().min(1).max(120).optional(),
   bio: z.string().max(500).nullable().optional(),
-  avatarUrl: z.string().url().nullable().optional(),
+  avatarUrl: z.union([
+    z.string().url(),
+    z.string().regex(/^\/api\/storage\/objects\/uploads\/[0-9a-f-]{36}$/),
+  ]).nullable().optional(),
 });
 
 const router: IRouter = Router();
+
+router.post(
+  "/cms/profile/avatar",
+  requireAuth,
+  rateLimit({
+    windowMs: 15 * 60_000, limit: 10,
+    keyGenerator: (req) => req.authedUser!.id,
+    standardHeaders: "draft-7", legacyHeaders: false,
+    message: { error: "Too many photo uploads. Please try again later." },
+  }),
+  express.raw({ type: "application/octet-stream", limit: "5mb" }),
+  async (req, res) => {
+    if (!Buffer.isBuffer(req.body)) {
+      res.status(400).json({ error: "Send a JPEG, PNG or WebP photo as application/octet-stream." });
+      return;
+    }
+    try {
+      const avatarUrl = await storeProfileAvatar(req.body, req.authedUser!.id);
+      res.status(201).json({ avatarUrl });
+    } catch (err) {
+      if (err instanceof AvatarImageError) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      req.log.error({ err }, "SharePoint Embedded avatar upload failed");
+      res.status(503).json({ error: "The photo could not be uploaded to Microsoft SharePoint Embedded. Please try again." });
+    }
+  },
+);
 
 router.put(
   "/cms/profile",

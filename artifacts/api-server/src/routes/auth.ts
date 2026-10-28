@@ -439,7 +439,7 @@ router.get("/auth/callback", async (req, res): Promise<void> => {
         authProvider: "entra",
         email: identity.email ?? userRow.email,
         displayName: identity.displayName ?? userRow.displayName,
-        avatarUrl: identity.avatarUrl ?? userRow.avatarUrl,
+        avatarUrl: userRow.avatarUrl ?? identity.avatarUrl,
         entraTenantId: identity.entraTenantId ?? userRow.entraTenantId,
         entraObjectId: identity.entraObjectId ?? userRow.entraObjectId,
         lastSignInAt: new Date(),

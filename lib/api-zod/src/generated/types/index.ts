@@ -28,6 +28,7 @@ export * from "./assetCategory";
 export * from "./assetCategoryListResponse";
 export * from "./assetInput";
 export * from "./authorSummary";
+export * from "./avatarUploadResult";
 export * from "./badRequestResponse";
 export * from "./batchViewsResult";
 export * from "./batchViewsResultViews";

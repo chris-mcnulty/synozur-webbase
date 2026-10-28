@@ -31,6 +31,7 @@ import type {
   AssetCategory,
   AssetCategoryListResponse,
   AssetInput,
+  AvatarUploadResult,
   BadRequestResponse,
   BatchViewsResult,
   BookingRecord,
@@ -214,6 +215,96 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Returns a public photo URL. Apply it with Save profile. Accepts JPEG, PNG or WebP up to 5 MB.
+ * @summary Upload a profile photo to Microsoft SharePoint Embedded
+ */
+export const getUploadProfileAvatarUrl = () => {
+  return `/api/cms/profile/avatar`;
+};
+
+export const uploadProfileAvatar = async (
+  uploadProfileAvatarBody: Blob,
+  options?: RequestInit,
+): Promise<AvatarUploadResult> => {
+  return customFetch<AvatarUploadResult>(getUploadProfileAvatarUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      ...options?.headers,
+    },
+    body: JSON.stringify(uploadProfileAvatarBody),
+  });
+};
+
+export const getUploadProfileAvatarMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  const mutationKey = ["uploadProfileAvatar"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    { data: BodyType<Blob> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadProfileAvatar(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadProfileAvatarMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>
+>;
+export type UploadProfileAvatarMutationBody = BodyType<Blob>;
+export type UploadProfileAvatarMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a profile photo to Microsoft SharePoint Embedded
+ */
+export const useUploadProfileAvatar = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadProfileAvatar>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadProfileAvatar>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  return useMutation(getUploadProfileAvatarMutationOptions(options));
+};
 
 export const getEstimateChapterAudioUrl = () => {
   return `/api/cms/chapter-audio/estimate`;
