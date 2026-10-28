@@ -528,6 +528,26 @@ export interface CurrentUser {
   roles: RoleName[];
 }
 
+export type EntraUserInputRolesItem =
+  (typeof EntraUserInputRolesItem)[keyof typeof EntraUserInputRolesItem];
+
+export const EntraUserInputRolesItem = {
+  editor: "editor",
+  content_author: "content_author",
+} as const;
+
+export interface EntraUserInput {
+  email: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  displayName?: string;
+  objectId?: string;
+  /** @minItems 1 */
+  roles: EntraUserInputRolesItem[];
+}
+
 export interface CmsUser {
   id: string;
   externalSubject?: string | null;

@@ -13,9 +13,12 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   useListCmsUsers,
   useSetCmsUserRoles,
+  getListCmsUsersQueryKey,
   type CmsUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth";
+import { EntraUserForm } from "./EntraUserForm";
 
 // #110 — surface all eleven assignable roles. The generated `RoleName`
 // enum from api-zod is still on the legacy 4; rather than block on a
@@ -60,7 +63,13 @@ const PROVIDER_LABEL: Record<Exclude<ProviderFilter, "all">, string> = {
 
 export default function UsersAndRoles() {
   const { toast } = useToast();
-  const { data, isLoading, refetch } = useListCmsUsers();
+  const { user } = useAuth();
+  const canManage = user?.roles.some(role => role === "admin" || role === "site_admin") ?? false;
+  const [adding, setAdding] = useState(false);
+  const [createdMessage, setCreatedMessage] = useState("");
+  const { data, isLoading, isError, error, refetch } = useListCmsUsers({ query: {
+    queryKey: getListCmsUsersQueryKey(), refetchInterval: 30_000,
+  } });
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>("all");
   const set = useSetCmsUserRoles({
     mutation: {
@@ -95,6 +104,18 @@ export default function UsersAndRoles() {
       title="Users & Roles"
       crumbs={[{ label: "Admin", href: "/" }, { label: "Users" }]}
     >
+      <div className="mb-4 flex justify-between gap-4 items-center flex-wrap">
+        <p className="text-sm text-muted-foreground">Administrators can prepare Entra access before a user's first sign-in. Saved role choices are explicit assignments, not group-managed grants.</p>
+        {canManage && !adding && <Button onClick={() => { setCreatedMessage(""); setAdding(true); }}>Add Entra user</Button>}
+      </div>
+      {adding && canManage && <EntraUserForm onCancel={() => setAdding(false)} onCreated={() => {
+        setAdding(false);
+        setProviderFilter("entra");
+        setCreatedMessage("Website access prepared. The user can now choose Sign in with Microsoft using their existing work account. No invitation email was sent.");
+        void refetch();
+      }} />}
+      {createdMessage && <p role="status" className="mb-4 rounded-md border p-3 text-sm">{createdMessage}</p>}
+      {isError && <div role="alert" className="mb-4 text-destructive">Could not load users: {error.message} <Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>}
       <div className="mb-4 flex items-center gap-3 flex-wrap">
         <label className="text-sm text-muted-foreground" htmlFor="provider-filter">
           Provider
@@ -128,7 +149,7 @@ export default function UsersAndRoles() {
         <div className="space-y-3">
           {filtered.map((u: CmsUser) => (
             <UserRow
-              key={u.id}
+              key={`${u.id}:${[...u.roles].sort().join(",")}`}
               user={u}
               onSave={(roles) =>
                 set.mutate({
@@ -139,7 +160,7 @@ export default function UsersAndRoles() {
                   data: { roles: roles as unknown as CmsUser["roles"] },
                 })
               }
-              pending={set.isPending}
+              pending={set.isPending || !canManage}
             />
           ))}
         </div>
@@ -172,6 +193,9 @@ function UserRow({
           </Badge>
         </div>
       </div>
+      {user.authProvider === "entra" && !user.externalSubject && (
+        <Badge variant="outline">Access prepared · awaiting first Microsoft sign-in</Badge>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         {ALL_ROLES.map((r) => {
           const active = roles.has(r);

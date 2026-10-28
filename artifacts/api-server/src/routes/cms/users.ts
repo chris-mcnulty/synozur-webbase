@@ -13,6 +13,7 @@ import {
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
 import { AvatarImageError, storeProfileAvatar } from "../../lib/profileAvatar";
+import { EntraProvisionError, provisionEntraUser } from "../../lib/provisionEntraUser";
 
 const ProfileBody = z.object({
   displayName: z.string().min(1).max(120).optional(),
@@ -92,10 +93,36 @@ router.put(
 
 const CONTENT_ROLES: RoleName[] = ["admin", "site_admin", "editor", "content_author", "author"];
 
+router.post(
+  "/cms/users",
+  requireAuth,
+  requireRole("admin", "site_admin"),
+  async (req, res) => {
+    if (req.authedUser!.authProvider === "api_key") {
+      res.status(403).json({ error: "A signed-in site administrator is required." });
+      return;
+    }
+    try {
+      const user = await provisionEntraUser(req.body);
+      await audit({
+        actorId: req.authedUser!.id, action: "user.provision_entra",
+        entity: "user", entityId: user.id, diff: { roles: user.roles },
+      });
+      res.status(201).json(user);
+    } catch (err) {
+      if (err instanceof EntraProvisionError) {
+        res.status(err.status).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+  },
+);
+
 router.get(
   "/cms/users",
   requireAuth,
-  requireRole("admin", "editor"),
+  requireRole("admin", "site_admin", "editor"),
   async (_req, res) => {
     const users = await db.select().from(usersTable);
     const roleRows = await db
@@ -135,7 +162,7 @@ const RolesBody = z.object({
 router.put(
   "/cms/users/:id/roles",
   requireAuth,
-  requireRole("admin"),
+  requireRole("admin", "site_admin"),
   async (req, res) => {
     const parsed = RolesBody.safeParse(req.body);
     if (!parsed.success) {
@@ -155,13 +182,14 @@ router.put(
       .filter((r) => wantedNames.includes(r.name))
       .map((r) => r.id);
 
-    await db.delete(userRoles).where(eq(userRoles.userId, user.id));
-    if (wantedIds.length) {
-      await db
-        .insert(userRoles)
-        .values(wantedIds.map((roleId) => ({ userId: user.id, roleId })))
-        .onConflictDoNothing();
-    }
+    await db.transaction(async (tx) => {
+      await tx.delete(userRoles).where(eq(userRoles.userId, user.id));
+      if (wantedIds.length) {
+        await tx.insert(userRoles)
+          .values(wantedIds.map((roleId) => ({ userId: user.id, roleId, manuallyAssigned: true })))
+          .onConflictDoNothing();
+      }
+    });
 
     await audit({
       actorId: req.authedUser!.id,

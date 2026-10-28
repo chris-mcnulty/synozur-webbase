@@ -1191,6 +1191,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
   /cms/users:
+    post:
+      operationId: provisionEntraUser
+      tags: [CMS Users]
+      summary: Prepare website access for an existing Entra user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntraUserInput'
+      responses:
+        '201':
+          description: Website access prepared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CmsUser'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Administrator required
+        '409':
+          description: User already exists
+        '503':
+          description: Entra configuration or directory lookup unavailable
     get:
       operationId: listCmsUsers
       tags:
@@ -5465,6 +5492,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RoleName'
+    EntraUserInput:
+      type: object
+      required: [email, roles]
+      properties:
+        email: { type: string, format: email }
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        objectId: { type: string, format: uuid }
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [editor, content_author]
     CmsUser:
       type: object
       required:

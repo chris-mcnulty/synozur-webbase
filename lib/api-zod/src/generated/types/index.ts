@@ -94,6 +94,8 @@ export * from "./downloadPortalDocumentInline";
 export * from "./downloadPortalDocumentParams";
 export * from "./downloadPortalDocumentVersionInline";
 export * from "./downloadPortalDocumentVersionParams";
+export * from "./entraUserInput";
+export * from "./entraUserInputRolesItem";
 export * from "./errorEnvelope";
 export * from "./eventInput";
 export * from "./eventRegistrationBody";

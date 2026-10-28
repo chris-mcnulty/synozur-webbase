@@ -78,6 +78,7 @@ import type {
   DownloadChapterAudioParams,
   DownloadPortalDocumentParams,
   DownloadPortalDocumentVersionParams,
+  EntraUserInput,
   ErrorEnvelope,
   EventInput,
   EventRegistrationBody,
@@ -4002,6 +4003,92 @@ export function useExportAuditLogCsv<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const getProvisionEntraUserUrl = () => {
+  return `/api/cms/users`;
+};
+
+export const provisionEntraUser = async (
+  entraUserInput: EntraUserInput,
+  options?: RequestInit,
+): Promise<CmsUser> => {
+  return customFetch<CmsUser>(getProvisionEntraUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(entraUserInput),
+  });
+};
+
+export const getProvisionEntraUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    TError,
+    { data: BodyType<EntraUserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof provisionEntraUser>>,
+  TError,
+  { data: BodyType<EntraUserInput> },
+  TContext
+> => {
+  const mutationKey = ["provisionEntraUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    { data: BodyType<EntraUserInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return provisionEntraUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ProvisionEntraUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof provisionEntraUser>>
+>;
+export type ProvisionEntraUserMutationBody = BodyType<EntraUserInput>;
+export type ProvisionEntraUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const useProvisionEntraUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof provisionEntraUser>>,
+    TError,
+    { data: BodyType<EntraUserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof provisionEntraUser>>,
+  TError,
+  { data: BodyType<EntraUserInput> },
+  TContext
+> => {
+  return useMutation(getProvisionEntraUserMutationOptions(options));
+};
 
 export const getListCmsUsersUrl = () => {
   return `/api/cms/users`;

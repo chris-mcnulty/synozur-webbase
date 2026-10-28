@@ -1442,6 +1442,22 @@ export const ExportAuditLogCsvQueryParams = zod.object({
   to: zod.date().optional(),
 });
 
+/**
+ * @summary Prepare website access for an existing Entra user
+ */
+export const provisionEntraUserBodyDisplayNameMax = 120;
+
+export const ProvisionEntraUserBody = zod.object({
+  email: zod.string().email(),
+  displayName: zod
+    .string()
+    .min(1)
+    .max(provisionEntraUserBodyDisplayNameMax)
+    .optional(),
+  objectId: zod.string().uuid().optional(),
+  roles: zod.array(zod.enum(["editor", "content_author"])).min(1),
+});
+
 export const ListCmsUsersResponseItem = zod.object({
   id: zod.string().uuid(),
   externalSubject: zod.string().nullish(),

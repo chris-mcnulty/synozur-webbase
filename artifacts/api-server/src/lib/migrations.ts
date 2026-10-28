@@ -18,6 +18,9 @@ export async function runMigrations(): Promise<void> {
   logger.info("Running startup migrations");
 
   try {
+    await db.execute(sql`
+      ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS manually_assigned boolean NOT NULL DEFAULT false;
+    `);
     // #126 / #131 — PR 45: Entra SSO + HubSpot lead capture
     // -----------------------------------------------------------
 

@@ -24,3 +24,4 @@
 - [Graph Bookings staff assignment](graph-bookings-staff-assignment.md) — Graph-created appointments are unassigned (no staff invite) unless staffMemberIds is sent; resolve free staff at booking time.
 - [Event PATCH full-body overwrite](event-patch-full-body-overwrite.md) — events PATCH wiped omitted registration fields; now preserves stored values, explicit UNKNOWN still clears.
 - [Binary upload contracts](binary-upload-contracts.md) — named binary schema refs make Orval emit browser Blob types into the Node-only validation package; use inline binary schemas.
+- [Entra access provisioning](entra-access-provisioning.md) — preassigned privileges bind to tenant/object identity; explicit administrator assignments survive group syncing.
