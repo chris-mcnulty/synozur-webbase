@@ -12,7 +12,11 @@ containing it. Local ignored originals are no longer checkpoint-protected.
 Historical GitHub commits are not erased by untracking files. Their purge
 requires a separately coordinated repository-owner history cleanup, including
 old branches/tags, pull-request references, caches and LFS objects where relevant.
-Git hooks can be bypassed, so this policy also requires collaborator compliance.
+Git hooks can be bypassed. The
+[GitHub upload-exclusion check](github-upload-exclusion.md) provides post-push
+detection and a required-check gate on `main`, not file-transfer prevention.
+GitHub push path rules are unavailable for this public, personally owned
+repository, so collaborator compliance remains necessary on every ref.
 
 ## Original audit baseline (superseded where it retained uploads)
 
