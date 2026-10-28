@@ -24,6 +24,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
       - name: Check tracked files and every incoming commit
         env:
@@ -63,7 +64,7 @@ jobs:
           # Never check out or execute incoming PR code. Fetch commit objects only.
           for sha in "$base" "$head"; do
             if [[ ! "$sha" =~ ^0+$ ]] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
-              git fetch --no-tags origin "$sha"
+              git fetch --filter=blob:none --no-tags origin "$sha"
             fi
           done
           printf 'refs/heads/incoming %s refs/heads/base %s\n' "$head" "$base" |
