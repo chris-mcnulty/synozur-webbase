@@ -1,3 +1,4 @@
+- [Git sync and upload policy](git-sync-and-upload-policy.md) — uploads never go to GitHub; original recovery histories stay local, and older task merges need outgoing-history checks.
 - [Edit-wedge image snapshot fields](edit-wedge-image-snapshot.md) — public detail payloads carry image URLs but not image IDs; wedge display must key off URL, PATCH off ID.
 - [North Star Method phases](north-star-method-phases.md) — canonical phase names; live site + Galaxy are source of truth over the MPF proposal.
 - [OG image sizing](og-image-sizing.md) — og:image must be a resized same-origin JPEG (?w=1200&fmt=jpeg) via the storage route; WebP stays the in-page default; don't touch siteOrigin().
