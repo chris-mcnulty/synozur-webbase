@@ -53,3 +53,15 @@ $15-per-million-character estimate instead of requiring a historical bill.
 **How to apply:** Retain the rate basis for each estimate; distinguish retries,
 samples, cached/reused audio and unpriced usage. Do not add spending controls or
 claim invoice reconciliation without a separate request.
+
+Use the existing deployment type and SharePoint Embedded storage layer for
+production integration. The user states that the public website is ping-tested
+every five minutes and does not want its deployment type changed.
+
+**Why:** The user explicitly rejected introducing a different deployment type
+or treating existing storage and schema-publication facilities as missing
+infrastructure.
+
+**How to apply:** Integrate Chapter Audio into the site's established storage
+and publishing paths, preserving private access and interruption recovery.
+Do not propose replacing hosting or provisioning a second storage system.
