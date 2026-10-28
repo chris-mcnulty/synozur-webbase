@@ -7,6 +7,168 @@
  */
 import * as zod from "zod";
 
+export const estimateChapterAudioBodyTextMax = 200000;
+
+export const estimateChapterAudioBodyNotesMax = 100000;
+
+export const estimateChapterAudioBodyAppendNotesDefault = false;
+
+export const EstimateChapterAudioBody = zod.object({
+  text: zod.string().min(1).max(estimateChapterAudioBodyTextMax),
+  notes: zod.string().max(estimateChapterAudioBodyNotesMax).optional(),
+  appendNotes: zod
+    .boolean()
+    .default(estimateChapterAudioBodyAppendNotesDefault),
+  voice: zod.string(),
+});
+
+export const EstimateChapterAudioResponse = zod.object({
+  sourceCharacters: zod.number(),
+  billableCharacters: zod.number(),
+  estimatedCost: zod.number().nullable(),
+  currency: zod.string().nullable(),
+  rateId: zod.string().nullable(),
+});
+
+export const saveChapterAudioPricingBodyPerMillionMin = 0;
+export const saveChapterAudioPricingBodyPerMillionMax = 1000000;
+
+export const saveChapterAudioPricingBodyCurrencyRegExp = new RegExp(
+  "^[A-Z]{3}$",
+);
+
+export const SaveChapterAudioPricingBody = zod.object({
+  perMillion: zod
+    .number()
+    .min(saveChapterAudioPricingBodyPerMillionMin)
+    .max(saveChapterAudioPricingBodyPerMillionMax),
+  currency: zod.string().regex(saveChapterAudioPricingBodyCurrencyRegExp),
+  effectiveFrom: zod.string(),
+});
+
+export const saveChapterAudioPricingResponseOnePerMillionMin = 0;
+export const saveChapterAudioPricingResponseOnePerMillionMax = 1000000;
+
+export const saveChapterAudioPricingResponseOneCurrencyRegExp = new RegExp(
+  "^[A-Z]{3}$",
+);
+
+export const SaveChapterAudioPricingResponse = zod
+  .object({
+    perMillion: zod
+      .number()
+      .min(saveChapterAudioPricingResponseOnePerMillionMin)
+      .max(saveChapterAudioPricingResponseOnePerMillionMax),
+    currency: zod
+      .string()
+      .regex(saveChapterAudioPricingResponseOneCurrencyRegExp),
+    effectiveFrom: zod.string(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      savedAt: zod.string(),
+    }),
+  );
+
+export const getChapterAudioCostsQueryMonthRegExp = new RegExp(
+  "^\\d{4}-(0[1-9]|1[0-2])$",
+);
+
+export const GetChapterAudioCostsQueryParams = zod.object({
+  month: zod.coerce
+    .string()
+    .regex(getChapterAudioCostsQueryMonthRegExp)
+    .optional(),
+});
+
+export const GetChapterAudioCostsResponse = zod.object({
+  month: zod.string(),
+  timezone: zod.string(),
+  coverageStartedAt: zod.string(),
+  usage: zod.object({
+    attempts: zod.number(),
+    submittedCharacters: zod.number(),
+    successfulCharacters: zod.number(),
+    uncertainCharacters: zod.number(),
+    rejectedCharacters: zod.number(),
+    unpricedCharacters: zod.number(),
+    retryCharacters: zod.number(),
+    sampleAttempts: zod.number(),
+    reusedSections: zod.number(),
+    chapterCount: zod.number(),
+    costs: zod.array(
+      zod.object({
+        currency: zod.string(),
+        amount: zod.number(),
+        uncertainAmount: zod.number(),
+        retryAmount: zod.number(),
+        sampleAmount: zod.number(),
+      }),
+    ),
+  }),
+  byUser: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      usage: zod.object({
+        attempts: zod.number(),
+        submittedCharacters: zod.number(),
+        successfulCharacters: zod.number(),
+        uncertainCharacters: zod.number(),
+        rejectedCharacters: zod.number(),
+        unpricedCharacters: zod.number(),
+        retryCharacters: zod.number(),
+        sampleAttempts: zod.number(),
+        reusedSections: zod.number(),
+        chapterCount: zod.number(),
+        costs: zod.array(
+          zod.object({
+            currency: zod.string(),
+            amount: zod.number(),
+            uncertainAmount: zod.number(),
+            retryAmount: zod.number(),
+            sampleAmount: zod.number(),
+          }),
+        ),
+      }),
+    }),
+  ),
+  byVoice: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      usage: zod.object({
+        attempts: zod.number(),
+        submittedCharacters: zod.number(),
+        successfulCharacters: zod.number(),
+        uncertainCharacters: zod.number(),
+        rejectedCharacters: zod.number(),
+        unpricedCharacters: zod.number(),
+        retryCharacters: zod.number(),
+        sampleAttempts: zod.number(),
+        reusedSections: zod.number(),
+        chapterCount: zod.number(),
+        costs: zod.array(
+          zod.object({
+            currency: zod.string(),
+            amount: zod.number(),
+            uncertainAmount: zod.number(),
+            retryAmount: zod.number(),
+            sampleAmount: zod.number(),
+          }),
+        ),
+      }),
+    }),
+  ),
+});
+
+export const listChapterAudioResponsePricingCurrentRateOneOnePerMillionMin = 0;
+export const listChapterAudioResponsePricingCurrentRateOneOnePerMillionMax = 1000000;
+
+export const listChapterAudioResponsePricingCurrentRateOneOneCurrencyRegExp =
+  new RegExp("^[A-Z]{3}$");
+
 export const ListChapterAudioResponse = zod.object({
   jobs: zod.array(
     zod.object({
@@ -31,12 +193,73 @@ export const ListChapterAudioResponse = zod.object({
       error: zod.string().nullish(),
       durationSeconds: zod.number().nullish(),
       audioBytes: zod.number().nullish(),
+      cost: zod
+        .object({
+          initialEstimate: zod.union([
+            zod.object({
+              sourceCharacters: zod.number(),
+              billableCharacters: zod.number(),
+              estimatedCost: zod.number().nullable(),
+              currency: zod.string().nullable(),
+              rateId: zod.string().nullable(),
+            }),
+            zod.null(),
+          ]),
+          usage: zod.object({
+            attempts: zod.number(),
+            submittedCharacters: zod.number(),
+            successfulCharacters: zod.number(),
+            uncertainCharacters: zod.number(),
+            rejectedCharacters: zod.number(),
+            unpricedCharacters: zod.number(),
+            retryCharacters: zod.number(),
+            sampleAttempts: zod.number(),
+            reusedSections: zod.number(),
+            chapterCount: zod.number(),
+            costs: zod.array(
+              zod.object({
+                currency: zod.string(),
+                amount: zod.number(),
+                uncertainAmount: zod.number(),
+                retryAmount: zod.number(),
+                sampleAmount: zod.number(),
+              }),
+            ),
+          }),
+          legacyUsageGap: zod.boolean(),
+        })
+        .optional(),
     }),
   ),
   voices: zod.array(zod.string()),
   configured: zod.boolean(),
   maxWords: zod.number(),
   retentionDays: zod.number(),
+  pricing: zod.object({
+    currentRate: zod.union([
+      zod
+        .object({
+          perMillion: zod
+            .number()
+            .min(listChapterAudioResponsePricingCurrentRateOneOnePerMillionMin)
+            .max(listChapterAudioResponsePricingCurrentRateOneOnePerMillionMax),
+          currency: zod
+            .string()
+            .regex(
+              listChapterAudioResponsePricingCurrentRateOneOneCurrencyRegExp,
+            ),
+          effectiveFrom: zod.string(),
+        })
+        .and(
+          zod.object({
+            id: zod.string(),
+            savedAt: zod.string(),
+          }),
+        ),
+      zod.null(),
+    ]),
+    canManageRates: zod.boolean(),
+  }),
 });
 
 export const createChapterAudioBodyTitleMax = 200;

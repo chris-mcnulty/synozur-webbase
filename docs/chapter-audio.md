@@ -73,6 +73,51 @@ Sample/provider failures are explicit and never log manuscript/provider bodies.
 
 Focused tests: `pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/chapterAudio.test.ts`
 
+## Speech cost visibility (development only)
+
+Before generation, a debounced server estimate uses the same reviewed narration,
+optional chapter notes, section boundaries and SSML as the renderer. It counts
+Unicode code points, whitespace, escaped XML and pronunciation markup, excluding
+the speak/voice wrappers; CJK ideographs are weighted twice. This follows
+[Microsoft's billable-character guidance](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech#billable-characters)
+but remains an estimate, not Azure's authoritative meter.
+
+Only `admin` and `site_admin` can save manual rates or view the monthly spending
+summary. The rate must be checked against the Azure resource/region/contract and
+entered as currency per million characters with an effective date. No rate is
+preconfigured. Missing rates produce **Cost estimate unavailable**, not zero.
+Saving creates a new version. Initial job estimates and every request's rate
+snapshot are immutable: later settings never reprice historical usage. Future
+effective dates are supported; historical unpriced usage stays unpriced.
+
+A durable metadata-only intent is recorded before every paid speech request,
+including uncached standard samples. Recording failure prevents that request.
+Each request records its own character count and outcome. Successful responses
+are estimated as processed even if receiving/assembling audio later fails.
+Authentication, missing-resource and throttling rejections are separated.
+Other provider failures, timeouts and unfinished intents remain uncertain:
+Azure may have processed them. Their potential cost is included in totals and
+explicitly identified as a subset, not added twice. A crash before dispatch can
+therefore conservatively overestimate usage. Retries create additional entries.
+Cached sample reads create no new synthesis entry; reused chapter sections are
+recorded as zero-character reuse events. Chapter usage is attributed to its
+submitting user (including retries); sample generation to the initiating user.
+
+The administrator report uses UTC calendar months, separates currencies, and
+shows attempts, chapter activity, retries, samples, uncertain/unpriced usage,
+and grouping by user/voice. Coverage begins when metering is initialized:
+pre-existing jobs are labelled incomplete rather than inventing past usage.
+No Azure invoice integration, budgets, hard spending limits or hosting/storage
+cost estimates are implemented.
+
+Minimal usage metadata (IDs, user label, voice, counts, outcomes and rate
+snapshots) remains after job/audio deletion so monthly totals cannot disappear.
+It contains no manuscript, SSML, provider body or chapter title. Original
+manuscript/audio retention and private access are unchanged.
+
+Cost-focused checks:
+`pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/costMath.test.ts src/routes/chapterAudio.test.ts`
+
 Before approving production: resolve Git reconciliation separately; verify role
 mapping, configured-region voice availability, storage isolation and deletion,
 real chapter timing/cost, encoder packaging, and worker/cleanup hosting. Replace

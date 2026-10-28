@@ -5,6 +5,93 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ChapterAudioRateInput {
+  /**
+   * @minimum 0
+   * @maximum 1000000
+   */
+  perMillion: number;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  effectiveFrom: string;
+}
+
+export type ChapterAudioRate = ChapterAudioRateInput & {
+  id: string;
+  savedAt: string;
+};
+
+export interface ChapterAudioPricing {
+  currentRate: ChapterAudioRate | null;
+  canManageRates: boolean;
+}
+
+export interface ChapterAudioEstimateInput {
+  /**
+   * @minLength 1
+   * @maxLength 200000
+   */
+  text: string;
+  /** @maxLength 100000 */
+  notes?: string;
+  appendNotes?: boolean;
+  voice: string;
+}
+
+export interface ChapterAudioEstimate {
+  sourceCharacters: number;
+  billableCharacters: number;
+  /** @nullable */
+  estimatedCost: number | null;
+  /** @nullable */
+  currency: string | null;
+  /** @nullable */
+  rateId: string | null;
+}
+
+export interface ChapterAudioCurrencyCost {
+  currency: string;
+  amount: number;
+  uncertainAmount: number;
+  retryAmount: number;
+  sampleAmount: number;
+}
+
+export interface ChapterAudioUsage {
+  attempts: number;
+  submittedCharacters: number;
+  successfulCharacters: number;
+  uncertainCharacters: number;
+  rejectedCharacters: number;
+  unpricedCharacters: number;
+  retryCharacters: number;
+  sampleAttempts: number;
+  reusedSections: number;
+  chapterCount: number;
+  costs: ChapterAudioCurrencyCost[];
+}
+
+export interface ChapterAudioJobCost {
+  initialEstimate: ChapterAudioEstimate | null;
+  usage: ChapterAudioUsage;
+  legacyUsageGap: boolean;
+}
+
+export interface ChapterAudioUsageGroup {
+  id: string;
+  label: string;
+  usage: ChapterAudioUsage;
+}
+
+export interface ChapterAudioMonthlyCosts {
+  month: string;
+  timezone: string;
+  coverageStartedAt: string;
+  usage: ChapterAudioUsage;
+  byUser: ChapterAudioUsageGroup[];
+  byVoice: ChapterAudioUsageGroup[];
+}
+
 export interface ChapterAudioInput {
   /**
    * @minLength 1
@@ -52,6 +139,7 @@ export interface ChapterAudioJob {
   durationSeconds?: number | null;
   /** @nullable */
   audioBytes?: number | null;
+  cost?: ChapterAudioJobCost;
 }
 
 export interface ChapterAudioHistory {
@@ -60,6 +148,7 @@ export interface ChapterAudioHistory {
   configured: boolean;
   maxWords: number;
   retentionDays: number;
+  pricing: ChapterAudioPricing;
 }
 
 export interface ChapterAudioExtraction {
@@ -4010,6 +4099,13 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type GetChapterAudioCostsParams = {
+  /**
+   * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+   */
+  month?: string;
+};
 
 export type ExtractChapterAudioParams = {
   filename: string;

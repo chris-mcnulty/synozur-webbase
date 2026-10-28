@@ -7,7 +7,9 @@ import { eq, inArray } from "drizzle-orm";
 import app from "../app";
 import { createSession } from "../lib/sessions";
 import { initializeChapterAudio } from "../lib/chapterAudio/repository";
-import { ListChapterAudioResponse, ExtractChapterAudioResponse } from "@workspace/api-zod";
+import { ListChapterAudioResponse, ExtractChapterAudioResponse, EstimateChapterAudioResponse, GetChapterAudioCostsResponse, SaveChapterAudioPricingResponse } from "@workspace/api-zod";
+import { beginSpeechAttempt, finishSpeechAttempt, jobCostMap, recordReusedSection } from "../lib/chapterAudio/costs";
+import { renderChapterSection, isAzureTtsConfigured } from "../lib/chapterAudio/speech";
 
 const tag = randomUUID();
 const userIds: string[] = [];
@@ -15,11 +17,12 @@ const jobId = randomUUID();
 let server: ReturnType<typeof app.listen>;
 let base: string;
 const cookies: Record<string, string> = {};
+const rateIds: string[] = [];
 
 test.before(async () => {
   assert.notEqual(process.env.NODE_ENV, "production", "Tests must never run against production");
   await initializeChapterAudio();
-  for (const role of ["editor", "content_author", "author", "contributor", "registered"] as RoleName[]) {
+  for (const role of ["editor", "content_author", "author", "contributor", "registered", "admin"] as RoleName[]) {
     const [user] = await db.insert(usersTable).values({ email: `chapter-${role}-${tag}@example.invalid`, displayName: "Chapter integration test", authProvider: "test" }).returning();
     userIds.push(user.id);
     let existing = await db.query.rolesTable.findFirst({ where: eq(rolesTable.name, role) });
@@ -36,7 +39,9 @@ test.before(async () => {
 test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close(err => err ? reject(err) : resolve()));
   await pool.query("DELETE FROM chapter_audio_jobs WHERE id=$1", [jobId]);
+  if (rateIds.length) await pool.query("DELETE FROM chapter_audio_rates WHERE id=ANY($1::uuid[])", [rateIds]);
   if (userIds.length) {
+    await pool.query("DELETE FROM chapter_audio_usage WHERE actor_id=ANY($1::text[])", [userIds]);
     await db.delete(sessionsTable).where(inArray(sessionsTable.userId, userIds));
     await db.delete(userRoles).where(inArray(userRoles.userId, userIds));
     await db.delete(usersTable).where(inArray(usersTable.id, userIds));
@@ -48,6 +53,7 @@ test("anonymous and Guest/restricted roles cannot reach ANY chapter endpoint", a
   const requests: [string, string][] = [
     ["", "GET"], ["", "POST"], ["/extract?filename=chapter.txt", "POST"],
     ["/sample/en-US-Ava%3ADragonHDLatestNeural", "GET"], [`/${jobId}/audio`, "GET"], [`/${jobId}/delete`, "POST"],
+    ["/estimate", "POST"], ["/pricing", "POST"], ["/costs", "GET"],
   ];
   for (const [path, method] of requests) {
     assert.equal((await fetch(`${base}${path}`, { method })).status, 401);
@@ -55,6 +61,83 @@ test("anonymous and Guest/restricted roles cannot reach ANY chapter endpoint", a
       assert.equal((await fetch(`${base}${path}`, { method, headers: { cookie: cookies[role]! } })).status, 403, `${role} ${method} ${path}`);
     }
   }
+});
+
+test("editor estimates are free of provider calls, include notes and SSML, and never invent a missing price", async () => {
+  const response = await fetch(`${base}/estimate`, {
+    method: "POST", headers: { cookie: cookies.editor!, "content-type": "application/json" },
+    body: JSON.stringify({ text: "Hello, Synozur.", notes: "Useful note.", appendNotes: true, voice: "en-US-Ava:DragonHDLatestNeural" }),
+  });
+  assert.equal(response.status, 200);
+  const estimate = EstimateChapterAudioResponse.parse(await response.json());
+  assert.ok(estimate.sourceCharacters > 14);
+  assert.ok(estimate.billableCharacters > estimate.sourceCharacters);
+  const history = ListChapterAudioResponse.parse(await (await fetch(base, { headers: { cookie: cookies.editor! } })).json());
+  if (!history.pricing.currentRate) assert.equal(estimate.estimatedCost, null);
+  assert.equal(history.pricing.canManageRates, false);
+  for (const [path, method] of [["/pricing", "POST"], ["/costs", "GET"]]) {
+    assert.equal((await fetch(`${base}${path}`, { method, headers: { cookie: cookies.editor! } })).status, 403);
+  }
+});
+
+test("only administrators can version rates; invalid prices, currencies, dates and report months are rejected", async () => {
+  const request = (data: unknown) => fetch(`${base}/pricing`, { method: "POST",
+    headers: { cookie: cookies.admin!, "content-type": "application/json" }, body: JSON.stringify(data) });
+  for (const bad of [
+    { perMillion: -1, currency: "USD", effectiveFrom: "2098-01-01" },
+    { perMillion: 10, currency: "ZZZ", effectiveFrom: "2098-01-01" },
+    { perMillion: 10, currency: "USD", effectiveFrom: "not a date" },
+  ]) assert.equal((await request(bad)).status, 400);
+  const saved = await request({ perMillion: 17.5, currency: "USD", effectiveFrom: "2098-01-01T00:00:00Z" });
+  assert.equal(saved.status, 200);
+  const rate = SaveChapterAudioPricingResponse.parse(await saved.json()); rateIds.push(rate.id);
+  assert.equal(rate.perMillion, 17.5);
+  assert.equal((await fetch(`${base}/costs?month=2026-13`, { headers: { cookie: cookies.admin! } })).status, 400);
+  const summary = await fetch(`${base}/costs?month=${new Date().toISOString().slice(0, 7)}`, { headers: { cookie: cookies.admin! } });
+  assert.equal(summary.status, 200);
+  assert.equal(GetChapterAudioCostsResponse.parse(await summary.json()).timezone, "UTC");
+});
+
+test("usage is durable before requests, retries and reuse are distinct, and deleting a job cannot erase its cost audit", async () => {
+  const context = { jobId, sectionIndex: 0, actorId: userIds[0]!, actorLabel: "Usage verification" };
+  const first = await beginSpeechAttempt("Hello.", "en-US-Ava:DragonHDLatestNeural", context);
+  await finishSpeechAttempt(first, "succeeded");
+  await beginSpeechAttempt("Hello.", "en-US-Ava:DragonHDLatestNeural", context); // crashed/unfinished request
+  await recordReusedSection("en-US-Ava:DragonHDLatestNeural", context);
+  const cost = (await jobCostMap([{ id: jobId, metering_version: 0 }])).get(jobId)!;
+  assert.equal(cost.legacyUsageGap, true);
+  assert.equal(cost.usage.attempts, 2);
+  assert.equal(cost.usage.retryCharacters, 6);
+  assert.equal(cost.usage.uncertainCharacters, 6);
+  assert.equal(cost.usage.reusedSections, 1);
+  const orphan = randomUUID();
+  await pool.query("UPDATE chapter_audio_usage SET job_id=$1 WHERE id=$2", [orphan, first]);
+  assert.equal((await pool.query("SELECT 1 FROM chapter_audio_usage WHERE job_id=$1", [orphan])).rowCount, 1);
+});
+
+test("the actual synthesis wrapper records successful, throttled, uncertain and timed-out attempts without paid calls", { skip: !isAzureTtsConfigured() }, async () => {
+  const context = { jobId, sectionIndex: 99, actorId: userIds[0]!, actorLabel: "Mocked provider verification" };
+  const originalFetch = globalThis.fetch;
+  let status = 200;
+  let timeout = false;
+  globalThis.fetch = async () => {
+    const intent = await pool.query("SELECT outcome FROM chapter_audio_usage WHERE job_id=$1 AND section_index=99 ORDER BY started_at DESC LIMIT 1", [jobId]);
+    assert.equal(intent.rows[0].outcome, "started", "paid requests require a prior durable usage intent");
+    if (timeout) throw new DOMException("Simulated timeout", "AbortError");
+    return new Response(Buffer.alloc(160), { status });
+  };
+  try {
+    await renderChapterSection("Metering test.", "en-US-Ava:DragonHDLatestNeural", context);
+    status = 429;
+    await assert.rejects(renderChapterSection("Metering test.", "en-US-Ava:DragonHDLatestNeural", context));
+    status = 400;
+    await assert.rejects(renderChapterSection("Metering test.", "en-US-Ava:DragonHDLatestNeural", context));
+    timeout = true;
+    await assert.rejects(renderChapterSection("Metering test.", "en-US-Ava:DragonHDLatestNeural", context));
+  } finally { globalThis.fetch = originalFetch; }
+  const attempts = await pool.query("SELECT outcome,is_retry FROM chapter_audio_usage WHERE job_id=$1 AND section_index=99 ORDER BY started_at", [jobId]);
+  assert.deepEqual(attempts.rows.map(row => row.outcome), ["succeeded", "rejected", "uncertain", "uncertain"]);
+  assert.deepEqual(attempts.rows.map(row => row.is_retry), [false, true, true, true]);
 });
 
 test("both editorial roles can read shared history with private response headers", async () => {

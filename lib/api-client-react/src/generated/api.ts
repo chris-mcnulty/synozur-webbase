@@ -42,10 +42,15 @@ import type {
   CapabilityItemsResponse,
   Category,
   ChapterAudioActionResult,
+  ChapterAudioEstimate,
+  ChapterAudioEstimateInput,
   ChapterAudioExtraction,
   ChapterAudioHistory,
   ChapterAudioInput,
   ChapterAudioJob,
+  ChapterAudioMonthlyCosts,
+  ChapterAudioRate,
+  ChapterAudioRateInput,
   CmsGetSiteHealthParams,
   CmsListCollateralParams,
   CmsListPublishBlocksParams,
@@ -82,6 +87,7 @@ import type {
   ForbiddenResponse,
   FormSubmissionAck,
   GetActiveExperimentsResponse,
+  GetChapterAudioCostsParams,
   GetCmsAnalyticsOverviewParams,
   GetCmsBatchViewsParams,
   GetCmsPostAnalyticsParams,
@@ -208,6 +214,264 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getEstimateChapterAudioUrl = () => {
+  return `/api/cms/chapter-audio/estimate`;
+};
+
+export const estimateChapterAudio = async (
+  chapterAudioEstimateInput: ChapterAudioEstimateInput,
+  options?: RequestInit,
+): Promise<ChapterAudioEstimate> => {
+  return customFetch<ChapterAudioEstimate>(getEstimateChapterAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioEstimateInput),
+  });
+};
+
+export const getEstimateChapterAudioMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioEstimateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof estimateChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioEstimateInput> },
+  TContext
+> => {
+  const mutationKey = ["estimateChapterAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    { data: BodyType<ChapterAudioEstimateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return estimateChapterAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EstimateChapterAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof estimateChapterAudio>>
+>;
+export type EstimateChapterAudioMutationBody =
+  BodyType<ChapterAudioEstimateInput>;
+export type EstimateChapterAudioMutationError = ErrorType<unknown>;
+
+export const useEstimateChapterAudio = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof estimateChapterAudio>>,
+    TError,
+    { data: BodyType<ChapterAudioEstimateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof estimateChapterAudio>>,
+  TError,
+  { data: BodyType<ChapterAudioEstimateInput> },
+  TContext
+> => {
+  return useMutation(getEstimateChapterAudioMutationOptions(options));
+};
+
+export const getSaveChapterAudioPricingUrl = () => {
+  return `/api/cms/chapter-audio/pricing`;
+};
+
+export const saveChapterAudioPricing = async (
+  chapterAudioRateInput: ChapterAudioRateInput,
+  options?: RequestInit,
+): Promise<ChapterAudioRate> => {
+  return customFetch<ChapterAudioRate>(getSaveChapterAudioPricingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chapterAudioRateInput),
+  });
+};
+
+export const getSaveChapterAudioPricingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    TError,
+    { data: BodyType<ChapterAudioRateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+  TError,
+  { data: BodyType<ChapterAudioRateInput> },
+  TContext
+> => {
+  const mutationKey = ["saveChapterAudioPricing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    { data: BodyType<ChapterAudioRateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveChapterAudioPricing(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveChapterAudioPricingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>
+>;
+export type SaveChapterAudioPricingMutationBody =
+  BodyType<ChapterAudioRateInput>;
+export type SaveChapterAudioPricingMutationError = ErrorType<unknown>;
+
+export const useSaveChapterAudioPricing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+    TError,
+    { data: BodyType<ChapterAudioRateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveChapterAudioPricing>>,
+  TError,
+  { data: BodyType<ChapterAudioRateInput> },
+  TContext
+> => {
+  return useMutation(getSaveChapterAudioPricingMutationOptions(options));
+};
+
+export const getGetChapterAudioCostsUrl = (
+  params?: GetChapterAudioCostsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/chapter-audio/costs?${stringifiedParams}`
+    : `/api/cms/chapter-audio/costs`;
+};
+
+export const getChapterAudioCosts = async (
+  params?: GetChapterAudioCostsParams,
+  options?: RequestInit,
+): Promise<ChapterAudioMonthlyCosts> => {
+  return customFetch<ChapterAudioMonthlyCosts>(
+    getGetChapterAudioCostsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetChapterAudioCostsQueryKey = (
+  params?: GetChapterAudioCostsParams,
+) => {
+  return [`/api/cms/chapter-audio/costs`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetChapterAudioCostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChapterAudioCosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetChapterAudioCostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterAudioCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChapterAudioCostsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChapterAudioCosts>>
+  > = ({ signal }) =>
+    getChapterAudioCosts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChapterAudioCosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChapterAudioCostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChapterAudioCosts>>
+>;
+export type GetChapterAudioCostsQueryError = ErrorType<unknown>;
+
+export function useGetChapterAudioCosts<
+  TData = Awaited<ReturnType<typeof getChapterAudioCosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetChapterAudioCostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterAudioCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChapterAudioCostsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListChapterAudioUrl = () => {
   return `/api/cms/chapter-audio`;

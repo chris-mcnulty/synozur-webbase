@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { buildSsml, isAzureTtsConfigured, VALID_AZURE_VOICES } from "../azureTts";
 import { chapterFileExists, readChapterFile, saveChapterFile } from "./store";
 import { STANDARD_SAMPLE } from "./text";
+import { beginSpeechAttempt, finishSpeechAttempt, type SpeechUsageContext } from "./costs";
 
 export const CHAPTER_VOICES = VALID_AZURE_VOICES.filter(v => v.includes(":DragonHD"));
 export { isAzureTtsConfigured };
@@ -9,11 +10,12 @@ export class ChapterSpeechError extends Error {
   constructor(message: string, readonly retryable: boolean) { super(message); }
 }
 
-export async function renderChapterSection(text: string, voice: string): Promise<Buffer> {
+export async function renderChapterSection(text: string, voice: string, context: SpeechUsageContext): Promise<Buffer> {
   if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) throw new Error("Choose a supported Dragon HD voice.");
   if (!isAzureTtsConfigured()) throw new Error("Azure Speech is not configured.");
   const region = process.env.AZURE_SPEECH_REGION?.trim();
   if (!region || !/^[a-z0-9-]+$/.test(region)) throw new Error("Azure Speech region is invalid.");
+  const attemptId = await beginSpeechAttempt(text, voice, context);
   const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
     method: "POST",
     signal: AbortSignal.timeout(180_000),
@@ -24,7 +26,13 @@ export async function renderChapterSection(text: string, voice: string): Promise
       "User-Agent": "synozur-chapter-audio",
     },
     body: buildSsml(text, voice),
+  }).catch(async error => {
+    // An aborted/timed-out request may still have been processed by Azure.
+    await finishSpeechAttempt(attemptId, "uncertain").catch(() => {});
+    throw error;
   });
+  await finishSpeechAttempt(attemptId, response.ok ? "succeeded" :
+    [401, 403, 404, 429].includes(response.status) ? "rejected" : "uncertain");
   // Do not persist Azure bodies: these can echo manuscript content.
   if (!response.ok) {
     await response.body?.cancel();
@@ -38,7 +46,7 @@ export async function renderChapterSection(text: string, voice: string): Promise
 }
 
 const sampleRequests = new Map<string, Promise<Buffer>>();
-export async function getChapterSample(voice: string): Promise<Buffer> {
+export async function getChapterSample(voice: string, context: SpeechUsageContext): Promise<Buffer> {
   if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) throw new Error("Choose a supported Dragon HD voice.");
   const existing = sampleRequests.get(voice);
   if (existing) return existing;
@@ -46,7 +54,7 @@ export async function getChapterSample(voice: string): Promise<Buffer> {
     const hash = createHash("sha256").update(`sample-1|${voice}|${STANDARD_SAMPLE}`).digest("hex");
     const key = `samples/${hash}.mp3`;
     if (await chapterFileExists(key)) return readChapterFile(key);
-    const bytes = await renderChapterSection(STANDARD_SAMPLE, voice);
+    const bytes = await renderChapterSection(STANDARD_SAMPLE, voice, context);
     await saveChapterFile(key, bytes, "audio/mpeg");
     return bytes;
   })();

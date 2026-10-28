@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CostAdminPanel, JobCostDetails, NarrationEstimate } from "@/components/admin/ChapterAudioCosts";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -155,6 +156,7 @@ function ChapterAudioWorkspace() {
             configured={data.configured}
             maxWords={data.maxWords}
             retentionDays={data.retentionDays}
+            pricingRateId={data.pricing.currentRate?.id ?? null}
           />
         )}
       </section>
@@ -188,6 +190,7 @@ function ChapterAudioWorkspace() {
           )
         ) : null}
       </section>
+      {data?.pricing && <div className="xl:col-span-2"><CostAdminPanel pricing={data.pricing} /></div>}
     </div>
   );
 }
@@ -201,7 +204,7 @@ function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }
   );
 }
 
-function NewNarrationForm({ voices, configured, maxWords, retentionDays }: { voices: string[]; configured: boolean; maxWords: number; retentionDays: number }) {
+function NewNarrationForm({ voices, configured, maxWords, retentionDays, pricingRateId }: { voices: string[]; configured: boolean; maxWords: number; retentionDays: number; pricingRateId: string | null }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
@@ -330,6 +333,8 @@ function NewNarrationForm({ voices, configured, maxWords, retentionDays }: { voi
         <p className="text-xs text-muted-foreground">Sample is a standard passage, not your chapter.</p>
       </div>
 
+      <NarrationEstimate text={text} notes={notes} appendNotes={appendNotes} voice={effectiveVoice} disabled={over} rateId={pricingRateId} />
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="text-sm tabular-nums" data-testid="text-word-count">
           <span className={cn("font-semibold", over && "text-destructive")}>{words.toLocaleString()}</span>
@@ -415,6 +420,8 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
         </div>
       )}
       {job.error && <p className="mt-2 text-xs text-destructive" data-testid={`text-job-error-${job.id}`}>{job.error}</p>}
+
+      <JobCostDetails cost={job.cost} jobId={job.id} />
 
       {job.status === "completed" && showPlayer && (
         <audio controls autoPlay src={audioUrl} className="w-full mt-3" data-testid={`audio-job-${job.id}`} />

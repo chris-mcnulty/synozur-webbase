@@ -2,6 +2,9 @@ import type { RequestHandler } from "express";
 import { chapterAudioEnabled, chapterAudioReady } from "./repository";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
+export function canManageChapterCosts(user: { authProvider: string | null; roles: readonly string[] } | undefined) {
+  return !!user && user.authProvider !== "api_key" && user.roles.some(role => role === "admin" || role === "site_admin");
+}
 export function canUseChapterAudio(user: { authProvider: string | null; roles: readonly string[] } | undefined): boolean {
   // Legacy author/contributor are NOT approved editorial-audience roles.
   // API-key capability equivalence must not widen this private human workflow.

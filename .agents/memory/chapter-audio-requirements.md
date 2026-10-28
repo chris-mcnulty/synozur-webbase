@@ -7,7 +7,7 @@ The chapter narration feature is for site administrators and site editors/author
 
 **Why:** The user explicitly defined this access boundary and shared visibility.
 
-**How to apply:** Enforce access on both the interface and file/job endpoints; do not treat author ownership as the visibility boundary.
+**How to apply:** Enforce access on both the interface and file/job endpoints; do not treat author ownership as the visibility boundary. Editorial users must be able to enter the CMS without membership in the separate administrator allow-list; never solve an editor entry failure by granting administrator access.
 
 Use Microsoft Azure Dragon HD voices with a standard sample passage. Accept pasted text, text files, Markdown, and Word documents. MP3 is acceptable. Provide private downloads and job history rather than email notifications. The default retention is 30 days, with an explicit permanent-audio exception required under some circumstances.
 
@@ -38,3 +38,18 @@ Chapter narration must preserve reviewed wording and use the selected Azure Drag
 **Why:** The approved chapter design is faithful narration, not the separately established briefing-podcast adaptation workflow.
 
 **How to apply:** Do not reuse a podcast script-rewriting or fallback pipeline just because it already produces audio.
+
+Cost visibility is for speech-cost estimates, not claims about actual Azure
+charges. Use the user-approved standard estimate of **US$15 per million
+characters**. The user says their usage has never been sufficient to generate
+a bill; do not describe this estimate as a verified invoiced rate. Never show
+missing pricing as zero. Later rate changes must not rewrite historical
+estimates, and uncertain request outcomes must remain visibly uncertain.
+
+**Why:** The user approved pre-generation estimates, per-job usage tracking and
+an administrator monthly summary, then explicitly selected the standard
+$15-per-million-character estimate instead of requiring a historical bill.
+
+**How to apply:** Retain the rate basis for each estimate; distinguish retries,
+samples, cached/reused audio and unpriced usage. Do not add spending controls or
+claim invoice reconciliation without a separate request.

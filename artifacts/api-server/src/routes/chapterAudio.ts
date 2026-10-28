@@ -2,28 +2,65 @@ import { Router, raw, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { CreateChapterAudioBody, ListChapterAudioResponse, ExtractChapterAudioResponse, ActionChapterAudioParams } from "@workspace/api-zod";
-import { chapterAudioGuard } from "../lib/chapterAudio/access";
+import { CreateChapterAudioBody, ListChapterAudioResponse, ExtractChapterAudioResponse, ActionChapterAudioParams, EstimateChapterAudioBody, SaveChapterAudioPricingBody } from "@workspace/api-zod";
+import { chapterAudioGuard, canManageChapterCosts } from "../lib/chapterAudio/access";
 import { chapterAudioEnabled, publicChapter, getChapter, type ChapterRow } from "../lib/chapterAudio/repository";
 import { MAX_WORDS, MAX_UPLOAD_BYTES, wordCount, splitNarration, extractChapter } from "../lib/chapterAudio/text";
 import { CHAPTER_VOICES, isAzureTtsConfigured, getChapterSample } from "../lib/chapterAudio/speech";
 import { chapterStorageConfigured, saveChapterFile, readChapterFile, deleteChapterFiles } from "../lib/chapterAudio/store";
 import { chapterEncoderReady } from "../lib/chapterAudio/assemble";
+import { currentSpeechRate, saveSpeechRate, jobCostMap, monthlySpeechCosts } from "../lib/chapterAudio/costs";
+import { makeNarration, estimateSpeech, summarizeUsage } from "../lib/chapterAudio/costMath";
 
 const router: IRouter = Router();
 const root = "/cms/chapter-audio";
-const mutationLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many audio requests. Please try again later." } });
-const sampleLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many sample requests. Please try again later." } });
+const mutationLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, keyGenerator: req => req.authedUser!.id, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many audio requests. Please try again later." } });
+const sampleLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, keyGenerator: req => req.authedUser!.id, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many sample requests. Please try again later." } });
 router.use(root, chapterAudioGuard);
 
 function configured() { return chapterAudioEnabled() && isAzureTtsConfigured() && chapterStorageConfigured() && chapterEncoderReady(); }
 
-router.get(root, async (_req, res): Promise<void> => {
+router.get(root, async (req, res): Promise<void> => {
   const { rows } = await pool.query<ChapterRow>(`SELECT * FROM chapter_audio_jobs ORDER BY created_at DESC LIMIT 200`);
+  const costs = await jobCostMap(rows);
   res.json(ListChapterAudioResponse.parse({
-    jobs: rows.map(row => publicChapter(row.expires_at <= new Date() ? { ...row, status: row.status === "deleting" ? "deleting" : "expired" } : row)),
+    jobs: rows.map(row => publicChapter(row.expires_at <= new Date() ? { ...row, status: row.status === "deleting" ? "deleting" : "expired" } : row, costs.get(row.id))),
     voices: CHAPTER_VOICES, configured: configured(), maxWords: MAX_WORDS, retentionDays: 30,
+    pricing: { currentRate: await currentSpeechRate(), canManageRates: canManageChapterCosts(req.authedUser) },
   }));
+});
+
+const estimateLimit = rateLimit({ windowMs: 60_000, limit: 120, keyGenerator: req => req.authedUser!.id, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many estimate requests. Please pause before editing again." } });
+router.post(`${root}/estimate`, estimateLimit, async (req, res): Promise<void> => {
+  const parsed = EstimateChapterAudioBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Provide chapter text and a supported voice." }); return; }
+  const { text, notes, appendNotes, voice } = parsed.data;
+  if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) { res.status(400).json({ error: "Choose a supported Dragon HD voice." }); return; }
+  const narration = makeNarration(text, notes, appendNotes);
+  if (!text.trim() || wordCount(narration) > MAX_WORDS) { res.status(400).json({ error: "Provide 1–10,000 spoken words including any chapter notes." }); return; }
+  try { res.json(estimateSpeech(narration, voice, await currentSpeechRate())); }
+  catch { res.status(400).json({ error: "This text cannot be estimated. Check for an overlong word or URL." }); }
+});
+
+router.post(`${root}/pricing`, mutationLimit, async (req, res): Promise<void> => {
+  if (!canManageChapterCosts(req.authedUser)) { res.status(403).json({ error: "Only site administrators may change speech rates." }); return; }
+  const parsed = SaveChapterAudioPricingBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Provide a nonnegative rate, currency and effective date." }); return; }
+  const { perMillion, currency, effectiveFrom } = parsed.data;
+  const date = new Date(effectiveFrom);
+  if (!Number.isFinite(date.getTime()) || !Intl.supportedValuesOf("currency").includes(currency) || Math.round(perMillion * 1e6) / 1e6 !== perMillion) {
+    res.status(400).json({ error: "Use a valid effective date, ISO currency and rate with at most six decimal places." }); return;
+  }
+  res.json(await saveSpeechRate(perMillion, currency, date));
+});
+
+router.get(`${root}/costs`, async (req, res): Promise<void> => {
+  if (!canManageChapterCosts(req.authedUser)) { res.status(403).json({ error: "Only site administrators may view monthly speech spending." }); return; }
+  const month = req.query.month ?? new Date().toISOString().slice(0, 7);
+  if (typeof month !== "string" || !/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)) {
+    res.status(400).json({ error: "Use a month in YYYY-MM format (UTC)." }); return;
+  }
+  res.json(await monthlySpeechCosts(month));
 });
 
 router.post(`${root}/extract`, mutationLimit, raw({ type: "application/octet-stream", limit: MAX_UPLOAD_BYTES }), async (req, res): Promise<void> => {
@@ -46,7 +83,7 @@ router.post(root, mutationLimit, async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Provide a title, chapter text, and supported voice within the allowed limits." }); return; }
   const { title, text, notes, appendNotes, voice } = parsed.data;
   if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) { res.status(400).json({ error: "Select a supported Dragon HD voice." }); return; }
-  const narration = `${text.trim()}${appendNotes && notes?.trim() ? `\n\nChapter notes.\n\n${notes.trim()}` : ""}`;
+  const narration = makeNarration(text, notes, appendNotes);
   const count = wordCount(narration);
   if (!title.trim() || !text.trim() || count > MAX_WORDS) { res.status(400).json({ error: "Provide a title and chapter text, with no more than 10,000 words including spoken chapter notes." }); return; }
   let sections: string[];
@@ -68,12 +105,13 @@ router.post(root, mutationLimit, async (req, res): Promise<void> => {
     await saveChapterFile(`jobs/${id}/source.txt`, Buffer.from(narration), "text/plain; charset=utf-8");
     uploaded = true;
     const user = req.authedUser!;
+    const estimate = estimateSpeech(narration, voice, await currentSpeechRate());
     const result = await client.query<ChapterRow>(`INSERT INTO chapter_audio_jobs
-      (id,title,creator_id,creator_name,voice,word_count,total_chunks)
-      VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [id, title.trim(), user.id, user.displayName || user.email || "Editorial user", voice, count, sections.length]);
+      (id,title,creator_id,creator_name,voice,word_count,total_chunks,initial_estimate,metering_version)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,1) RETURNING *`,
+    [id, title.trim(), user.id, user.displayName || user.email || "Editorial user", voice, count, sections.length, JSON.stringify(estimate)]);
     await client.query("COMMIT");
-    res.status(201).json(ListChapterAudioResponse.shape.jobs.element.parse(publicChapter(result.rows[0]!)));
+    res.status(201).json(ListChapterAudioResponse.shape.jobs.element.parse(publicChapter(result.rows[0]!, { initialEstimate: estimate, usage: summarizeUsage([]), legacyUsageGap: false })));
   } catch {
     await client.query("ROLLBACK");
     if (uploaded) await deleteChapterFiles(id).catch(() => req.log.warn({ chapterId: id }, "Unsubmitted chapter cleanup failed"));
@@ -85,7 +123,8 @@ router.get(`${root}/sample/:voice`, sampleLimit, async (req, res): Promise<void>
   const voice = String(req.params.voice);
   if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) { res.status(400).json({ error: "Select a supported Dragon HD voice." }); return; }
   try {
-    const audio = await getChapterSample(voice);
+    const user = req.authedUser!;
+    const audio = await getChapterSample(voice, { actorId: user.id, actorLabel: user.displayName || "Editorial user" });
     res.type("audio/mpeg").setHeader("Content-Length", audio.length);
     res.send(audio);
   } catch {

@@ -6,6 +6,7 @@ import { readChapterFile, saveChapterFile, chapterFileExists, deleteChapterFiles
 import { splitNarration } from "./text";
 import { renderChapterSection, ChapterSpeechError } from "./speech";
 import { assembleChapter } from "./assemble";
+import { recordReusedSection } from "./costs";
 
 async function owned(id: string, token: string): Promise<boolean> {
   return (await pool.query("SELECT 1 FROM chapter_audio_jobs WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now() AND lease_until>now()", [id, token])).rowCount === 1;
@@ -23,12 +24,16 @@ async function processChapter(row: ChapterRow, token: string) {
     for (let i = 0; i < sections.length; i++) {
       if (!await owned(row.id, token)) return;
       const key = `jobs/${row.id}/section-${i}.mp3`;
+      const usageContext = { jobId: row.id, sectionIndex: i, actorId: row.creator_id, actorLabel: row.creator_name };
       let bytes: Buffer;
-      if (await chapterFileExists(key)) bytes = await readChapterFile(key);
+      if (await chapterFileExists(key)) {
+        bytes = await readChapterFile(key);
+        await recordReusedSection(row.voice, usageContext);
+      }
       else {
         let attempt = 0;
         for (;;) {
-          try { bytes = await renderChapterSection(sections[i]!, row.voice); break; }
+          try { bytes = await renderChapterSection(sections[i]!, row.voice, usageContext); break; }
           catch (error) {
             attempt++;
             const transient = !(error instanceof ChapterSpeechError) || error.retryable;

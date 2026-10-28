@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChapterAudioJobCost } from "./chapterAudioJobCost";
 import type { ChapterAudioJobStatus } from "./chapterAudioJobStatus";
 
 export interface ChapterAudioJob {
@@ -24,4 +25,5 @@ export interface ChapterAudioJob {
   durationSeconds?: number | null;
   /** @nullable */
   audioBytes?: number | null;
+  cost?: ChapterAudioJobCost;
 }

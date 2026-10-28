@@ -1,4 +1,6 @@
 import { pool } from "@workspace/db";
+import type { ChapterAudioEstimate, ChapterAudioJobCost } from "./costMath";
+import { initializeChapterCosts } from "./costs";
 
 export type ChapterStatus = "queued" | "processing" | "completed" | "failed" | "cancelled" | "expired" | "deleting";
 export interface ChapterRow {
@@ -6,6 +8,7 @@ export interface ChapterRow {
   status: ChapterStatus; word_count: number; total_chunks: number; completed_chunks: number;
   created_at: Date; expires_at: Date; error: string | null; duration_seconds: number | null;
   audio_bytes: number | null; lease_owner: string | null; lease_until: Date | null;
+  initial_estimate?: ChapterAudioEstimate | null; metering_version?: number;
 }
 export function chapterAudioEnabled() { return process.env.NODE_ENV !== "production"; }
 let initialized = false;
@@ -24,14 +27,16 @@ export async function initializeChapterAudio() {
     );
     CREATE INDEX IF NOT EXISTS chapter_audio_jobs_queue_idx ON chapter_audio_jobs(status, expires_at);
   `);
+  await initializeChapterCosts();
   initialized = true;
 }
-export function publicChapter(row: ChapterRow) {
+export function publicChapter(row: ChapterRow, cost?: ChapterAudioJobCost) {
   return {
     id: row.id, title: row.title, voice: row.voice, status: row.status, wordCount: row.word_count,
     totalChunks: row.total_chunks, completedChunks: row.completed_chunks,
     creatorName: row.creator_name, createdAt: row.created_at.toISOString(), expiresAt: row.expires_at.toISOString(),
     error: row.error, durationSeconds: row.duration_seconds, audioBytes: row.audio_bytes,
+    cost,
   };
 }
 export async function getChapter(id: string) {

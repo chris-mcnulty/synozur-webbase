@@ -68,6 +68,55 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /cms/chapter-audio/estimate:
+    post:
+      operationId: estimateChapterAudio
+      tags: [Chapter Audio]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterAudioEstimateInput"
+      responses:
+        "200":
+          description: Speech cost estimate, not an Azure invoice charge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioEstimate"
+  /cms/chapter-audio/pricing:
+    post:
+      operationId: saveChapterAudioPricing
+      tags: [Chapter Audio]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterAudioRateInput"
+      responses:
+        "200":
+          description: Administrator-maintained Azure rate saved as a new version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioRate"
+  /cms/chapter-audio/costs:
+    get:
+      operationId: getChapterAudioCosts
+      tags: [Chapter Audio]
+      parameters:
+        - in: query
+          name: month
+          schema: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+      responses:
+        "200":
+          description: Administrator-only monthly speech estimates in UTC, grouped by currency
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterAudioMonthlyCosts"
   /cms/chapter-audio:
     get:
       operationId: listChapterAudio
@@ -4728,6 +4777,104 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    ChapterAudioRateInput:
+      type: object
+      required: [perMillion, currency, effectiveFrom]
+      properties:
+        perMillion: { type: number, minimum: 0, maximum: 1000000 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        effectiveFrom: { type: string }
+    ChapterAudioRate:
+      allOf:
+        - $ref: "#/components/schemas/ChapterAudioRateInput"
+        - type: object
+          required: [id, savedAt]
+          properties:
+            id: { type: string }
+            savedAt: { type: string }
+    ChapterAudioPricing:
+      type: object
+      required: [currentRate, canManageRates]
+      properties:
+        currentRate:
+          oneOf:
+            - $ref: "#/components/schemas/ChapterAudioRate"
+            - { type: "null" }
+        canManageRates: { type: boolean }
+    ChapterAudioEstimateInput:
+      type: object
+      required: [text, voice]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 200000 }
+        notes: { type: string, maxLength: 100000 }
+        appendNotes: { type: boolean, default: false }
+        voice: { type: string }
+    ChapterAudioEstimate:
+      type: object
+      required: [sourceCharacters, billableCharacters, estimatedCost, currency, rateId]
+      properties:
+        sourceCharacters: { type: integer }
+        billableCharacters: { type: integer }
+        estimatedCost: { type: [number, "null"] }
+        currency: { type: [string, "null"] }
+        rateId: { type: [string, "null"] }
+    ChapterAudioCurrencyCost:
+      type: object
+      required: [currency, amount, uncertainAmount, retryAmount, sampleAmount]
+      properties:
+        currency: { type: string }
+        amount: { type: number }
+        uncertainAmount: { type: number }
+        retryAmount: { type: number }
+        sampleAmount: { type: number }
+    ChapterAudioUsage:
+      type: object
+      required: [attempts, submittedCharacters, successfulCharacters, uncertainCharacters, rejectedCharacters, unpricedCharacters, retryCharacters, sampleAttempts, reusedSections, chapterCount, costs]
+      properties:
+        attempts: { type: integer }
+        submittedCharacters: { type: integer }
+        successfulCharacters: { type: integer }
+        uncertainCharacters: { type: integer }
+        rejectedCharacters: { type: integer }
+        unpricedCharacters: { type: integer }
+        retryCharacters: { type: integer }
+        sampleAttempts: { type: integer }
+        reusedSections: { type: integer }
+        chapterCount: { type: integer }
+        costs:
+          type: array
+          items: { $ref: "#/components/schemas/ChapterAudioCurrencyCost" }
+    ChapterAudioJobCost:
+      type: object
+      required: [initialEstimate, usage, legacyUsageGap]
+      properties:
+        initialEstimate:
+          oneOf:
+            - $ref: "#/components/schemas/ChapterAudioEstimate"
+            - { type: "null" }
+        usage: { $ref: "#/components/schemas/ChapterAudioUsage" }
+        legacyUsageGap: { type: boolean }
+    ChapterAudioUsageGroup:
+      type: object
+      required: [id, label, usage]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        usage: { $ref: "#/components/schemas/ChapterAudioUsage" }
+    ChapterAudioMonthlyCosts:
+      type: object
+      required: [month, timezone, coverageStartedAt, usage, byUser, byVoice]
+      properties:
+        month: { type: string }
+        timezone: { type: string }
+        coverageStartedAt: { type: string }
+        usage: { $ref: "#/components/schemas/ChapterAudioUsage" }
+        byUser:
+          type: array
+          items: { $ref: "#/components/schemas/ChapterAudioUsageGroup" }
+        byVoice:
+          type: array
+          items: { $ref: "#/components/schemas/ChapterAudioUsageGroup" }
     ChapterAudioInput:
       type: object
       required: [title, text, voice]
@@ -4754,9 +4901,10 @@ components:
         error: { type: [string, "null"] }
         durationSeconds: { type: [number, "null"] }
         audioBytes: { type: [integer, "null"] }
+        cost: { $ref: "#/components/schemas/ChapterAudioJobCost" }
     ChapterAudioHistory:
       type: object
-      required: [jobs, voices, configured, maxWords, retentionDays]
+      required: [jobs, voices, configured, maxWords, retentionDays, pricing]
       properties:
         jobs:
           type: array
@@ -4767,6 +4915,7 @@ components:
         configured: { type: boolean }
         maxWords: { type: integer }
         retentionDays: { type: integer }
+        pricing: { $ref: "#/components/schemas/ChapterAudioPricing" }
     ChapterAudioExtraction:
       type: object
       required: [text, notes, warnings, wordCount]

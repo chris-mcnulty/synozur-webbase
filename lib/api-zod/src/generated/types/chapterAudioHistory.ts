@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ChapterAudioJob } from "./chapterAudioJob";
+import type { ChapterAudioPricing } from "./chapterAudioPricing";
 
 export interface ChapterAudioHistory {
   jobs: ChapterAudioJob[];
@@ -13,4 +14,5 @@ export interface ChapterAudioHistory {
   configured: boolean;
   maxWords: number;
   retentionDays: number;
+  pricing: ChapterAudioPricing;
 }
