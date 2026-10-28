@@ -1,10 +1,11 @@
-# Chapter Audio — development release
+# Chapter Audio
 
 ## Scope and access
 
-Dev/test only at `/admin/chapter-audio`, under the CMS Library group. The
-production route, API, schema initialization, and queue worker are disabled.
-Nothing here publishes content, pushes GitHub changes, or modifies production.
+Available at `/admin/chapter-audio`, under the CMS Library group, including
+production builds. The API initializes its additive schema at startup and runs
+the queue worker in the existing API service. Deploying the code is separate
+from publishing any audio: this feature does not publish content or push GitHub.
 
 Only signed-in `admin`, `site_admin`, `editor`, and `content_author` users may
 access the feature. Legacy restricted `author` and `contributor` roles, portal
@@ -38,14 +39,16 @@ Permanent promotion is reserved for later editorial work, not an expiry bypass.
 
 ## Private storage
 
-The existing object-storage client stores chapter content under a dedicated
-`synozur-private-chapter-audio/dev/` bucket namespace, separate from the public
-search roots and the generic `/objects` resolution root. Startup checks reject
-overlapping namespaces. All reads go through authenticated chapter endpoints,
-with `private, no-store` and `noindex` headers. Keys are not sent to browsers.
+Chapter content uses the existing SharePoint Embedded service, in its dedicated
+`chapter-audio` folder. The environment's existing dev/prod container setting
+selects the write destination. A private database registry retains both item
+and original container IDs, so container rotation does not break existing files.
+These records never enter the public media catalog. Generic public storage
+routes cannot resolve them; authenticated chapter endpoints supply
+`private, no-store` and `noindex` headers. SharePoint references are not sent to
+browsers. The SPE orphan reconciler preserves files in this registry.
 No manuscripts, original uploads, or generated audio enter GitHub or
-`attached_assets`. This adds new private files; it does not migrate existing
-GCS/SharePoint media or change the site's active storage backend.
+`attached_assets`. There is no GCS write or fallback in Chapter Audio.
 
 ## Queue and operations
 
@@ -57,10 +60,9 @@ Cancellation prevents final publication; retries never extend expiry.
 The queue accepts at most ten pending jobs at submission. Rate limits also
 apply to extraction, submissions/actions, and sample generation.
 
-The dev API process runs the worker. Browser closure is safe, but rendering
-pauses when the dev server is stopped and resumes after restart/lease expiry.
-Before production, provision an execution arrangement that stays available for
-long jobs and scheduled cleanup; do not assume an idle web process runs forever.
+The existing API process runs the worker. Browser closure is safe, but rendering
+pauses when the service is stopped and resumes after restart/lease expiry.
+Keep the existing deployment type and the site's five-minute ping checks.
 
 Azure Speech and private object storage must already be configured. Azure
 credentials are accessed only by the server. No alternate-provider fallback.
@@ -73,7 +75,7 @@ Sample/provider failures are explicit and never log manuscript/provider bodies.
 
 Focused tests: `pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/chapterAudio.test.ts`
 
-## Speech cost visibility (development only)
+## Speech cost visibility
 
 Before generation, a debounced server estimate uses the same reviewed narration,
 optional chapter notes, section boundaries and SSML as the renderer. It counts
@@ -83,9 +85,10 @@ the speak/voice wrappers; CJK ideographs are weighted twice. This follows
 but remains an estimate, not Azure's authoritative meter.
 
 Only `admin` and `site_admin` can save manual rates or view the monthly spending
-summary. The rate must be checked against the Azure resource/region/contract and
-entered as currency per million characters with an effective date. No rate is
-preconfigured. Missing rates produce **Cost estimate unavailable**, not zero.
+summary. An empty rate table is initialized once with the user-approved estimate
+of USD 15 per million characters; this is not a verified invoiced rate.
+Existing administrator rates are not overwritten. Rates have an effective date.
+Missing rates produce **Cost estimate unavailable**, not zero.
 Saving creates a new version. Initial job estimates and every request's rate
 snapshot are immutable: later settings never reprice historical usage. Future
 effective dates are supported; historical unpriced usage stays unpriced.
@@ -118,8 +121,16 @@ manuscript/audio retention and private access are unchanged.
 Cost-focused checks:
 `pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/costMath.test.ts src/routes/chapterAudio.test.ts`
 
-Before approving production: resolve Git reconciliation separately; verify role
-mapping, configured-region voice availability, storage isolation and deletion,
-real chapter timing/cost, encoder packaging, and worker/cleanup hosting. Replace
-the explicit development-only switches with an approved feature-enable plan and
-review additive schema setup. No production enablement is implicit in this work.
+## Publishing
+
+Use the existing publication process and deployment type. The shared database
+schema includes chapter jobs, private SPE file references, rate versions, and
+the usage ledger. API startup also idempotently creates these additive tables
+and initializes the USD 15 estimate only if no rate exists. Production uses its
+own SPE container setting and existing Azure Speech credentials.
+
+No manuscript, generated audio, dev job history, or production content/settings
+rows need to be copied between databases. Publishing this code enables the
+authorized CMS route and worker; it does not expose public audio. Verify a short
+chapter and its deletion after publication. A full 10,000-word timing benchmark
+has not been measured; it is not a promised completion time.

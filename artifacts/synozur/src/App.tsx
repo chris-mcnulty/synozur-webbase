@@ -498,7 +498,7 @@ function AdminRoutes() {
         <Route path="/integrations/spe" component={SpeAdminPage} />
 
         {/* Chapter Audio (dev only for this release) */}
-        {import.meta.env.DEV && <Route path="/chapter-audio" component={ChapterAudioPage} />}
+        <Route path="/chapter-audio" component={ChapterAudioPage} />
 
         {/* Account section */}
         <Route path="/account/profile" component={AdminProfile} />

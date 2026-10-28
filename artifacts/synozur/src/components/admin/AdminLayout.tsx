@@ -135,7 +135,7 @@ const SECTIONS: NavSection[] = [
       { href: "/library/white-papers", label: "White Papers", icon: BookOpenIcon, capability: "content.publish", testId: "nav-admin-white-papers" },
       { href: "/library/workshops", label: "Workshops", icon: GraduationCap, capability: "content.publish", testId: "nav-admin-workshops" },
       { href: "/library/polaris-episodes", label: "Polaris", icon: Headphones, capability: "content.publish", testId: "nav-admin-polaris" },
-      { href: "/chapter-audio", label: "Chapter Audio", icon: Headphones, roles: ["admin", "site_admin", "editor", "content_author"], devOnly: true, testId: "nav-admin-chapter-audio" },
+      { href: "/chapter-audio", label: "Chapter Audio", icon: Headphones, roles: ["admin", "site_admin", "editor", "content_author"], testId: "nav-admin-chapter-audio" },
       { href: "/site-config/landing-pages", label: "Landing Pages", icon: LayoutTemplate, capability: "site.manage", testId: "nav-admin-landing-pages" },
     ],
   },

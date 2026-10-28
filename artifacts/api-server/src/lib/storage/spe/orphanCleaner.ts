@@ -19,7 +19,7 @@
 // explicitly asks for it.
 
 import { isNotNull } from "drizzle-orm";
-import { db, mediaTable } from "@workspace/db";
+import { db, mediaTable, pool } from "@workspace/db";
 import { speFileStorage } from "./fileStorage";
 import type { SpeFileItem } from "./graphClient";
 
@@ -64,6 +64,13 @@ async function loadKnownSpeFileIds(): Promise<Set<string>> {
   const set = new Set<string>();
   for (const r of rows) {
     if (r.speFileId) set.add(r.speFileId);
+  }
+  // Chapter files deliberately have no media rows. Include their private
+  // registry or a media-only scan would incorrectly delete valid narration.
+  const exists = await pool.query("SELECT to_regclass('chapter_audio_files') AS relation");
+  if (exists.rows[0]?.relation) {
+    const chapters = await pool.query<{ item_id: string }>("SELECT item_id FROM chapter_audio_files");
+    for (const file of chapters.rows) set.add(file.item_id);
   }
   return set;
 }

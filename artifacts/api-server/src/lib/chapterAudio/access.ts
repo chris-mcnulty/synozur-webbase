@@ -17,6 +17,6 @@ export const chapterAudioGuard: RequestHandler = (req, res, next) => {
   if (!chapterAudioEnabled()) { res.status(404).json({ error: "Not found" }); return; }
   if (!req.authedUser) { res.status(401).json({ error: "Sign in to access Chapter Audio." }); return; }
   if (!canUseChapterAudio(req.authedUser)) { res.status(403).json({ error: "Chapter Audio is available only to site administrators and editorial authors/editors, not Guest authors." }); return; }
-  if (!chapterAudioReady()) { res.status(503).json({ error: "Chapter Audio is not initialized. Ask an administrator to check the dev service." }); return; }
+  if (!chapterAudioReady()) { res.status(503).json({ error: "Chapter Audio is not initialized. Ask an administrator to check the service." }); return; }
   next();
 };

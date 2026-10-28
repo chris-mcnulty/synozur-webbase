@@ -18,14 +18,14 @@ const mutationLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, keyGenerator
 const sampleLimit = rateLimit({ windowMs: 15 * 60_000, limit: 30, keyGenerator: req => req.authedUser!.id, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Too many sample requests. Please try again later." } });
 router.use(root, chapterAudioGuard);
 
-function configured() { return chapterAudioEnabled() && isAzureTtsConfigured() && chapterStorageConfigured() && chapterEncoderReady(); }
+async function configured() { return chapterAudioEnabled() && isAzureTtsConfigured() && await chapterStorageConfigured() && chapterEncoderReady(); }
 
 router.get(root, async (req, res): Promise<void> => {
   const { rows } = await pool.query<ChapterRow>(`SELECT * FROM chapter_audio_jobs ORDER BY created_at DESC LIMIT 200`);
   const costs = await jobCostMap(rows);
   res.json(ListChapterAudioResponse.parse({
     jobs: rows.map(row => publicChapter(row.expires_at <= new Date() ? { ...row, status: row.status === "deleting" ? "deleting" : "expired" } : row, costs.get(row.id))),
-    voices: CHAPTER_VOICES, configured: configured(), maxWords: MAX_WORDS, retentionDays: 30,
+    voices: CHAPTER_VOICES, configured: await configured(), maxWords: MAX_WORDS, retentionDays: 30,
     pricing: { currentRate: await currentSpeechRate(), canManageRates: canManageChapterCosts(req.authedUser) },
   }));
 });
@@ -89,7 +89,7 @@ router.post(root, mutationLimit, async (req, res): Promise<void> => {
   let sections: string[];
   try { sections = splitNarration(narration); }
   catch { res.status(400).json({ error: "The chapter contains a word or URL too long to narrate. Shorten it before generating." }); return; }
-  if (!configured()) { res.status(503).json({ error: "Chapter Audio needs Azure Speech, private storage, and the MP3 encoder configured before rendering." }); return; }
+  if (!await configured()) { res.status(503).json({ error: "Chapter Audio needs Azure Speech, SharePoint Embedded storage, and the MP3 encoder configured before rendering." }); return; }
   // A short transaction advisory lock serializes submissions and prevents queue floods across instances.
   const client = await pool.connect();
   const id = randomUUID();
@@ -147,7 +147,7 @@ router.post(`${root}/:id/:action`, mutationLimit, async (req, res): Promise<void
     const result = await pool.query("UPDATE chapter_audio_jobs SET status='cancelled',error=null WHERE id=$1 AND status IN ('queued','processing')", [id]);
     if (!result.rowCount) { res.status(409).json({ error: "Only queued or processing chapters can be cancelled." }); return; }
   } else {
-    if (!configured()) { res.status(503).json({ error: "The speech, storage, or encoder configuration is unavailable." }); return; }
+    if (!await configured()) { res.status(503).json({ error: "The speech, storage, or encoder configuration is unavailable." }); return; }
     const result = await pool.query(`UPDATE chapter_audio_jobs SET status='queued',error=null
       WHERE id=$1 AND status IN ('failed','cancelled') AND expires_at>now()
       AND (lease_until IS NULL OR lease_until<now())`, [id]);

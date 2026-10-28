@@ -65,3 +65,14 @@ infrastructure.
 **How to apply:** Integrate Chapter Audio into the site's established storage
 and publishing paths, preserving private access and interruption recovery.
 Do not propose replacing hosting or provisioning a second storage system.
+
+Private narration must not be registered as ordinary public media merely to
+reuse the site's file-serving routes. SPE orphan reconciliation must account
+for private consumers as well as the public media library.
+
+**Why:** The chapter access boundary is stricter than the site's existing
+generic storage endpoints. A media-only orphan definition would mistake
+legitimate private files for abandoned uploads and delete them.
+
+**How to apply:** Keep narration delivery behind editorial authorization and
+include durable private references whenever changing shared storage cleanup.

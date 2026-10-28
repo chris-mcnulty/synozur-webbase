@@ -174,11 +174,13 @@ test("expiry denies both playback and retry even before cleanup", async () => {
   assert.equal((await fetch(`${base}/${jobId}/retry`, { method: "POST", headers: { cookie: cookies.editor! } })).status, 410);
 });
 
-test("production refuses the complete feature before touching chapter data", async () => {
+test("production retains editorial access and denies guests and anonymous visitors", async () => {
   const previous = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";
   try {
-    assert.equal((await fetch(base, { headers: { cookie: cookies.editor! } })).status, 404);
+    assert.equal((await fetch(base, { headers: { cookie: cookies.editor! } })).status, 200);
+    assert.equal((await fetch(base)).status, 401);
+    assert.equal((await fetch(base, { headers: { cookie: cookies.registered! } })).status, 403);
   } finally {
     if (previous === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = previous;

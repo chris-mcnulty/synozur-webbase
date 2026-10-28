@@ -23,6 +23,10 @@ export async function initializeChapterCosts() {
     );
     CREATE INDEX IF NOT EXISTS chapter_audio_usage_job_idx ON chapter_audio_usage(job_id);
     CREATE INDEX IF NOT EXISTS chapter_audio_usage_month_idx ON chapter_audio_usage(started_at);
+    INSERT INTO chapter_audio_rates(id,per_million,currency,effective_from)
+      SELECT '813acb39-2c58-4efc-9662-d4c21fc119cd',15,'USD',now()
+      WHERE NOT EXISTS(SELECT 1 FROM chapter_audio_rates)
+      ON CONFLICT DO NOTHING;
   `);
 }
 function publicRate(row: { id: string; per_million: string; currency: string; effective_from: Date; saved_at: Date }): SpeechRate {

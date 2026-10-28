@@ -26,3 +26,11 @@ export const chapterAudioJobsTable = pgTable("chapter_audio_jobs", {
 }, table => [index("chapter_audio_jobs_queue_idx").on(table.status, table.expiresAt)]);
 export const insertChapterAudioJobSchema = createInsertSchema(chapterAudioJobsTable);
 export type ChapterAudioJobRecord = typeof chapterAudioJobsTable.$inferSelect;
+
+// Private SPE references; never included in public media or API responses.
+export const chapterAudioFilesTable = pgTable("chapter_audio_files", {
+  fileKey: text("file_key").primaryKey(),
+  itemId: text("item_id").notNull(),
+  containerId: text("container_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

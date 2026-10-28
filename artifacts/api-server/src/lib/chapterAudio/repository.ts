@@ -1,6 +1,7 @@
 import { pool } from "@workspace/db";
 import type { ChapterAudioEstimate, ChapterAudioJobCost } from "./costMath";
 import { initializeChapterCosts } from "./costs";
+import { initializeChapterStorage } from "./store";
 
 export type ChapterStatus = "queued" | "processing" | "completed" | "failed" | "cancelled" | "expired" | "deleting";
 export interface ChapterRow {
@@ -10,7 +11,7 @@ export interface ChapterRow {
   audio_bytes: number | null; lease_owner: string | null; lease_until: Date | null;
   initial_estimate?: ChapterAudioEstimate | null; metering_version?: number;
 }
-export function chapterAudioEnabled() { return process.env.NODE_ENV !== "production"; }
+export function chapterAudioEnabled() { return true; }
 let initialized = false;
 export function chapterAudioReady() { return initialized; }
 
@@ -28,6 +29,7 @@ export async function initializeChapterAudio() {
     CREATE INDEX IF NOT EXISTS chapter_audio_jobs_queue_idx ON chapter_audio_jobs(status, expires_at);
   `);
   await initializeChapterCosts();
+  await initializeChapterStorage();
   initialized = true;
 }
 export function publicChapter(row: ChapterRow, cost?: ChapterAudioJobCost) {
