@@ -27,8 +27,8 @@ Omit footnotes from narration by default and offer an option to append them as c
 
 **How to apply:** Preserve reviewable extracted text and flag uncertain note detection.
 
-Allow for generated audio to be saved permanently on the site in selected circumstances, such as an on-demand audio version of a white paper. Whether this is first-release scope, who approves permanence, and its publication workflow remain unconfirmed.
+Plan for a later addition allowing generated audio to be saved permanently on the site in selected circumstances, such as an on-demand audio version of a white paper. This is explicitly outside the first release. All authorized editors and administrators may save permanently when this capability is added; Guest authors remain excluded. Its publication workflow remains unconfirmed.
 
-**Why:** The user explicitly requested this exception to automatic expiry.
+**Why:** The user explicitly requested this exception to automatic expiry, deferred implementation, and selected all authorized editors and administrators.
 
-**How to apply:** Do not treat all generated audio as permanent or public; preserve the exception in the design without assuming permission to publish manuscripts or audio.
+**How to apply:** Apply automatic expiry to every first-release job. Preserve a future explicit promotion path without implementing permanent saving now or assuming permission to publish manuscripts or audio.
