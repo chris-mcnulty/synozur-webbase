@@ -36,6 +36,7 @@ const FORM_TYPES: { value: string; label: string }[] = [
   { value: "contact", label: "Contact" },
   { value: "subscribe", label: "Subscribe" },
   { value: "start", label: "Get Started" },
+  { value: "event_registration", label: "Event registrations" },
 ];
 
 function formatDateTime(value: string | Date): string {
@@ -65,6 +66,7 @@ export default function AdminSubmissionsList() {
   const queryClient = useQueryClient();
 
   const [formType, setFormType] = useState<string>("all");
+  const [eventSlug, setEventSlug] = useState<string>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -113,16 +115,23 @@ export default function AdminSubmissionsList() {
     }
   };
 
-  const effectiveType = formType === "all" ? undefined : formType;
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-submissions", effectiveType, search, page],
+  const { data: events, isLoading: eventsLoading, isError: eventsError, refetch: refetchEvents } = useQuery({
+    queryKey: ["admin-submission-events"],
+    queryFn: () => api.adminEvents(),
+  });
+  const effectiveEvent = eventSlug === "all" ? undefined : eventSlug;
+  const effectiveType = effectiveEvent ? "event_registration" : formType === "all" ? undefined : formType;
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-submissions", effectiveType, effectiveEvent, search, page],
     queryFn: () =>
       api.listSubmissions({
         formType: effectiveType,
+        eventSlug: effectiveEvent,
         search: search || undefined,
         page,
         pageSize: PAGE_SIZE,
       }),
+    refetchInterval: 30_000,
   });
 
   const invalidate = () =>
@@ -149,6 +158,7 @@ export default function AdminSubmissionsList() {
     mutationFn: () =>
       api.retryFailedSubmissions({
         formType: effectiveType,
+        eventSlug: effectiveEvent,
         search: search || undefined,
       }),
     onSuccess: (result) => {
@@ -172,6 +182,7 @@ export default function AdminSubmissionsList() {
 
   const csvHref = api.submissionsCsvUrl({
     formType: effectiveType,
+    eventSlug: effectiveEvent,
     search: search || undefined,
   });
 
@@ -217,6 +228,7 @@ export default function AdminSubmissionsList() {
             onValueChange={(v) => {
               setPage(1);
               setFormType(v);
+              if (v !== "all" && v !== "event_registration") setEventSlug("all");
             }}
           >
             <SelectTrigger data-testid="select-form-type">
@@ -231,6 +243,33 @@ export default function AdminSubmissionsList() {
             </SelectContent>
           </Select>
         </div>
+        {(formType === "all" || formType === "event_registration") && (
+          <div className="w-full sm:w-80">
+            <label htmlFor="submission-event" className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              Event
+            </label>
+            <Select
+              value={eventSlug}
+              onValueChange={(v) => {
+                setEventSlug(v);
+                setPage(1);
+              }}
+              disabled={eventsLoading || eventsError}
+            >
+              <SelectTrigger id="submission-event" data-testid="select-submission-event">
+                <SelectValue placeholder="All events" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{eventsLoading ? "Loading events…" : eventsError ? "Events unavailable" : "All events"}</SelectItem>
+                {[...(events ?? [])].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).map((event) => (
+                  <SelectItem key={event.id} value={event.slug}>
+                    {event.title} — {new Date(event.startDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: event.timezone || "UTC" })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex-1 min-w-[240px]">
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- Wraps the sibling Input below; not auto-detected by the rule. */}
           <label className="block text-xs uppercase tracking-wide text-muted-foreground mb-1">
@@ -246,7 +285,7 @@ export default function AdminSubmissionsList() {
         <Button type="submit" data-testid="button-search">
           <Search className="h-4 w-4 mr-2" /> Search
         </Button>
-        {(search || formType !== "all") && (
+        {(search || formType !== "all" || eventSlug !== "all") && (
           <Button
             type="button"
             variant="ghost"
@@ -254,6 +293,7 @@ export default function AdminSubmissionsList() {
               setSearchInput("");
               setSearch("");
               setFormType("all");
+              setEventSlug("all");
               setPage(1);
             }}
             data-testid="button-clear-filters"
@@ -262,6 +302,21 @@ export default function AdminSubmissionsList() {
           </Button>
         )}
       </form>
+      {eventsError && (
+        <div className="mb-3 text-sm text-destructive" role="alert">
+          Could not load the event selector. <Button variant="link" onClick={() => void refetchEvents()}>Try again</Button>
+        </div>
+      )}
+      {isError && (
+        <div className="mb-3 text-sm text-destructive" role="alert">
+          Could not load submissions. <Button variant="link" onClick={() => void refetch()}>Try again</Button>
+        </div>
+      )}
+      {effectiveEvent && !isError && !isLoading && (
+        <p className="mb-3 text-sm text-muted-foreground" role="status">
+          {total} registration{total === 1 ? "" : "s"}{search ? " matching your search" : ""}. Export CSV includes all matching registrations, not just this page.
+        </p>
+      )}
 
       {(retryMessage || retryError) && (
         <div
@@ -296,16 +351,17 @@ export default function AdminSubmissionsList() {
                 </TableCell>
               </TableRow>
             )}
-            {!isLoading && items.length === 0 && (
+            {!isLoading && !isError && items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No submissions found.
+                  {effectiveEvent ? "No registrations found for this event." : "No submissions found."}
                 </TableCell>
               </TableRow>
             )}
             {items.map((s) => {
               const payload = s.payload as Record<string, unknown>;
               const message =
+                (s.formType === "event_registration" && typeof payload.eventTitle === "string" && payload.eventTitle) ||
                 (typeof payload.message === "string" && payload.message) ||
                 (typeof payload.brief === "string" && payload.brief) ||
                 (typeof payload.source === "string" && `source: ${payload.source}`) ||

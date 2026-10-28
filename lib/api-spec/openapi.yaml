@@ -2983,6 +2983,13 @@ paths:
       operationId: listAdminFormSubmissions
       summary: List form submissions (admin)
       parameters:
+        - name: eventSlug
+          in: query
+          required: false
+          description: Only registrations for this exact event slug.
+          schema:
+            type: string
+            minLength: 1
         - name: formType
           in: query
           required: false
@@ -3067,6 +3074,13 @@ paths:
       operationId: exportAdminFormSubmissions
       summary: Export form submissions as CSV (admin)
       parameters:
+        - name: eventSlug
+          in: query
+          required: false
+          description: Only registrations for this exact event slug.
+          schema:
+            type: string
+            minLength: 1
         - name: formType
           in: query
           required: false
@@ -3138,6 +3152,13 @@ paths:
       operationId: retryFailedAdminFormSubmissions
       summary: Retry all failed webhook deliveries matching the current filters (admin)
       parameters:
+        - name: eventSlug
+          in: query
+          required: false
+          description: Only registrations for this exact event slug.
+          schema:
+            type: string
+            minLength: 1
         - name: formType
           in: query
           required: false

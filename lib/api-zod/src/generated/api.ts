@@ -5137,6 +5137,11 @@ export const DeleteTeamMemberParams = zod.object({
 export const listAdminFormSubmissionsQueryPageSizeMax = 200;
 
 export const ListAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
   page: zod.coerce.number().min(1).optional(),
@@ -5192,7 +5197,13 @@ export const ResendAdminFormSubmissionWebhookResponse = zod.object({
 /**
  * @summary Export form submissions as CSV (admin)
  */
+
 export const ExportAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
 });
@@ -5221,7 +5232,13 @@ export const RetryAdminFormSubmissionResponse = zod.object({
 /**
  * @summary Retry all failed webhook deliveries matching the current filters (admin)
  */
+
 export const RetryFailedAdminFormSubmissionsQueryParams = zod.object({
+  eventSlug: zod.coerce
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only registrations for this exact event slug."),
   formType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
 });

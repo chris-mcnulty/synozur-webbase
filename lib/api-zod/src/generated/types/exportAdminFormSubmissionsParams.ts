@@ -7,6 +7,11 @@
  */
 
 export type ExportAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
 };

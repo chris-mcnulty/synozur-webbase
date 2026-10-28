@@ -249,10 +249,16 @@ async function persist(args: PersistArgs): Promise<number> {
   return row!.id;
 }
 
-function buildSubmissionFilter(formType?: string, search?: string): SQL | undefined {
+export function buildSubmissionFilter(formType?: string, search?: string, eventSlug?: string): SQL | undefined {
   const conditions: SQL[] = [];
   if (formType && formType.length > 0) {
     conditions.push(eq(formSubmissionsTable.formType, formType));
+  }
+  if (eventSlug) {
+    conditions.push(
+      eq(formSubmissionsTable.formType, "event_registration"),
+      sql`${formSubmissionsTable.payload}->>'eventSlug' = ${eventSlug}`,
+    );
   }
   if (search && search.trim().length > 0) {
     const needle = `%${search.trim()}%`;
@@ -321,7 +327,7 @@ router.get("/admin/forms/submissions", requireAdmin, async (req, res): Promise<v
   }
   const page = parsed.data.page ?? 1;
   const pageSize = parsed.data.pageSize ?? 25;
-  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search, parsed.data.eventSlug);
 
   const baseQuery = db.select().from(formSubmissionsTable);
   const filtered = where ? baseQuery.where(where) : baseQuery;
@@ -367,7 +373,7 @@ router.get("/admin/forms/submissions.csv", requireAdmin, async (req, res): Promi
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+  const where = buildSubmissionFilter(parsed.data.formType, parsed.data.search, parsed.data.eventSlug);
   const baseQuery = db.select().from(formSubmissionsTable);
   const filtered = where ? baseQuery.where(where) : baseQuery;
   const rows = await filtered.orderBy(desc(formSubmissionsTable.createdAt));
@@ -383,6 +389,8 @@ router.get("/admin/forms/submissions.csv", requireAdmin, async (req, res): Promi
     "webhookStatus",
     "webhookError",
     "payload",
+    "eventTitle",
+    "eventSlug",
   ];
   const lines = [header.join(",")];
   for (const row of rows) {
@@ -398,6 +406,8 @@ router.get("/admin/forms/submissions.csv", requireAdmin, async (req, res): Promi
         row.webhookStatus,
         row.webhookError,
         row.payload,
+        (row.payload as Record<string, unknown> | null)?.eventTitle,
+        (row.payload as Record<string, unknown> | null)?.eventSlug,
       ]
         .map(csvEscape)
         .join(","),
@@ -452,7 +462,7 @@ router.post(
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const filter = buildSubmissionFilter(parsed.data.formType, parsed.data.search);
+    const filter = buildSubmissionFilter(parsed.data.formType, parsed.data.search, parsed.data.eventSlug);
     const failedClause = or(
       isNull(formSubmissionsTable.webhookStatus),
       notInArray(formSubmissionsTable.webhookStatus, ["ok", "skipped"]),

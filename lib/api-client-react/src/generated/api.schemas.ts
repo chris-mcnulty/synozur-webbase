@@ -4385,6 +4385,11 @@ export type ReplaceEventSessions200 = {
 };
 
 export type ListAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
   /**
@@ -4399,11 +4404,21 @@ export type ListAdminFormSubmissionsParams = {
 };
 
 export type ExportAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
 };
 
 export type RetryFailedAdminFormSubmissionsParams = {
+  /**
+   * Only registrations for this exact event slug.
+   * @minLength 1
+   */
+  eventSlug?: string;
   formType?: string;
   search?: string;
 };

@@ -64,6 +64,7 @@ export interface GenericFormInput {
 
 export interface SubmissionsQuery {
   formType?: string;
+  eventSlug?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -72,6 +73,7 @@ export interface SubmissionsQuery {
 function submissionsQueryString(q: SubmissionsQuery): string {
   const params = new URLSearchParams();
   if (q.formType) params.set("formType", q.formType);
+  if (q.eventSlug) params.set("eventSlug", q.eventSlug);
   if (q.search) params.set("search", q.search);
   if (q.page) params.set("page", String(q.page));
   if (q.pageSize) params.set("pageSize", String(q.pageSize));
@@ -1280,7 +1282,7 @@ export const api = {
     }),
   listSubmissions: (q: SubmissionsQuery = {}) =>
     jsonFetch<AdminFormSubmissionsPage>(url(`/admin/forms/submissions${submissionsQueryString(q)}`)),
-  submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+  submissionsCsvUrl: (q: Pick<SubmissionsQuery, "formType" | "search" | "eventSlug"> = {}) =>
     url(`/admin/forms/submissions.csv${submissionsQueryString(q)}`),
   resendSubmissionWebhook: (id: number) =>
     jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/resend-webhook`), {
@@ -1447,7 +1449,7 @@ export const api = {
     jsonFetch<AdminFormSubmission>(url(`/admin/forms/submissions/${id}/retry`), {
       method: "POST",
     }),
-  retryFailedSubmissions: (q: Pick<SubmissionsQuery, "formType" | "search"> = {}) =>
+  retryFailedSubmissions: (q: Pick<SubmissionsQuery, "formType" | "search" | "eventSlug"> = {}) =>
     jsonFetch<RetryFailedSubmissionsResult>(
       url(`/admin/forms/submissions/retry-failed${submissionsQueryString(q)}`),
       { method: "POST" },
