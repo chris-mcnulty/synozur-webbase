@@ -1,10 +1,10 @@
 name: Upload exclusion
 
 # This is post-transfer detection, NOT a push-time path restriction.
-# pull_request_target deliberately runs only trusted base-branch code.
+# PR checks use the base-branch checker, not incoming executable code.
 on:
   push:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
           checker="$RUNNER_TEMP/check-no-uploads.mjs"
           cp scripts/check-no-uploads.mjs "$checker"
           case "$EVENT_NAME" in
-            pull_request_target)
+            pull_request)
               base="$PR_BASE"
               head="$PR_HEAD"
               ;;
