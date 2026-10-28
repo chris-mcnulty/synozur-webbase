@@ -262,6 +262,10 @@ router.get("/site-settings", async (_req, res): Promise<void> => {
       tagGa4Id: settings.tagGa4Id,
       tagLinkedinPartnerId: settings.tagLinkedinPartnerId,
       tagMetaPixelId: settings.tagMetaPixelId,
+      // HubSpot portal ID is read from env (same source the sync worker uses)
+      // and exposed publicly — portal IDs appear in the tracking script URL
+      // so they are not sensitive.
+      tagHubspotPortalId: process.env["HUBSPOT_PORTAL_ID"] ?? null,
       orgName: settings.orgName,
       orgLegalName: settings.orgLegalName,
       orgLogoUrl: urls.orgLogoUrl,

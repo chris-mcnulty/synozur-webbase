@@ -45,10 +45,13 @@ function reportSearchClick(searchId: string, clickedSlug: string, clickedKind: s
 // These link OUT of the portal to the main Synozur app, so they use plain <a>
 // tags with root-absolute hrefs that bypass Galaxy's wouter base.
 const PRIMARY_NAV = [
-  { name: "Home", href: "/" },
+  { name: "Home",       href: "/" },
   { name: "The Sprint", href: "/sprint" },
-  { name: "Proof", href: "/proof" },
-  { name: "Fit", href: "/fit" },
+  { name: "Proof",      href: "/proof"  },
+  { name: "Fit",        href: "/fit"    },
+  { name: "Method",     href: "/services-overview/default" },
+  { name: "About",      href: "/about"  },
+  { name: "Resources",  href: "/resources" },
 ];
 
 const BOOK_HREF = "/book";

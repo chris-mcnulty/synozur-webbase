@@ -131,16 +131,20 @@ const CSP_DIRECTIVES = [
   // GA4, LinkedIn, Meta, and the inline pre-hydration theme script all need
   // 'unsafe-inline'; Vite-built JS bundles are same-origin so 'self' covers them.
   // Cloudflare Turnstile loads its widget JS from challenges.cloudflare.com.
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://snap.licdn.com https://connect.facebook.net https://challenges.cloudflare.com",
+  // HubSpot tracking pixel (js.hs-scripts.com) dynamically injects sub-scripts
+  // from hs-analytics.net, hs-banner.com, hscollectedforms.net, hsadspixel.net.
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://snap.licdn.com https://connect.facebook.net https://challenges.cloudflare.com https://js.hs-scripts.com https://*.hs-analytics.net https://*.hs-banner.com https://*.hscollectedforms.net https://*.hsadspixel.net",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
   // Cloudflare Turnstile renders its challenge inside a Turnstile-hosted iframe.
   // Libsyn player is embedded as an iframe on the Polaris page.
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://outlook.office365.com https://*.bookings.microsoft.com https://www.google.com https://challenges.cloudflare.com https://play.libsyn.com",
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://outlook.office365.com https://bookings.cloud.microsoft https://*.bookings.microsoft.com https://www.google.com https://challenges.cloudflare.com https://play.libsyn.com",
   // Cloudflare Turnstile makes validation XHR calls back to challenges.cloudflare.com.
-  "connect-src 'self' https://www.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://px.ads.linkedin.com https://www.facebook.com https://challenges.cloudflare.com",
+  // GA4 sends beacons to analytics.google.com (base) and subdomains — both needed.
+  // HubSpot pixel config calls go to *.hubapi.com and *.hscollectedforms.net.
+  "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net https://px.ads.linkedin.com https://www.facebook.com https://challenges.cloudflare.com https://*.hubapi.com https://*.hscollectedforms.net",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

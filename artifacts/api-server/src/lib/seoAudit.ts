@@ -1,4 +1,4 @@
-import { and, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { publishedAtNullOrReachedSql } from "./publishWindow";
 import {
   db,
@@ -82,12 +82,73 @@ export function clampDescription(raw: string): string {
   return base.replace(/[.,;:!?\-\s]+$/u, "") + "…";
 }
 
-function clampTitle(raw: string): string {
+function legacyClampTitle(raw: string): string {
   const text = raw.trim();
   if (text.length <= MAX_TITLE) return text;
   const hard = text.slice(0, MAX_TITLE);
   const cut = hard.lastIndexOf(" ");
   return (cut > 30 ? hard.slice(0, cut) : hard).replace(/[\s\-–—]+$/u, "") + "…";
+}
+
+/** Create a concise SEO title without leaving a dangling subtitle fragment. */
+export function shortenSeoTitle(raw: string): string {
+  const text = raw.trim();
+  if (text.length <= MAX_TITLE) return text;
+
+  // Prefer cutting at a semantic boundary so the shortened title stays a
+  // complete thought rather than a mid-phrase word cut:
+  //   "Synozur at TechCon 365 Seattle 2025: Transforming Business Together"
+  //   → "Synozur at TechCon 365 Seattle 2025"   (cut at colon)
+  //   "Polaris Podcast: Company Operating Systems - CoS It's Thanksgiving"
+  //   → "Polaris Podcast: Company Operating Systems"  (cut at spaced hyphen)
+  //
+  // Require the left side to be at least 20 chars so we don't produce a
+  // meaninglessly short title (e.g. "Polaris" from "Polaris: …").
+  const SEMANTIC_DELIMITERS = [
+    /\s*[—–]\s*/u, // em-dash / en-dash (highest info density on the left)
+    /\s*:\s*/u, // colon subtitle split
+    /\s+-\s+/u, // spaced hyphen
+  ];
+  for (const delim of SEMANTIC_DELIMITERS) {
+    const match = delim.exec(text);
+    if (match && match.index >= 20 && match.index <= MAX_TITLE) {
+      return text.slice(0, match.index).trimEnd();
+    }
+  }
+
+  // Fall back to word-boundary cut with ellipsis when no usable delimiter exists.
+  return legacyClampTitle(text);
+}
+
+/**
+ * Detect a title the SEO wand generated from a post's prior display title.
+ * Both versions are recognized so titles made before semantic splitting was
+ * introduced can be safely refreshed when a post is retitled.
+ */
+export function isGeneratedSeoTitle(
+  seoTitle: string | null | undefined,
+  priorPostTitle: string,
+): boolean {
+  const saved = seoTitle?.trim();
+  if (!saved) return false;
+  return (
+    saved === shortenSeoTitle(priorPostTitle) ||
+    saved === legacyClampTitle(priorPostTitle)
+  );
+}
+
+/** True when a post editor did not deliberately change its SEO-title field. */
+export function shouldRefreshGeneratedSeoTitle(args: {
+  priorPostTitle: string;
+  priorSeoTitle: string | null | undefined;
+  requestedSeoTitle: string | null | undefined;
+}): boolean {
+  const prior = args.priorSeoTitle?.trim() || null;
+  const requested = args.requestedSeoTitle?.trim() || null;
+  return (
+    requested === prior &&
+    isGeneratedSeoTitle(args.priorSeoTitle, args.priorPostTitle)
+  );
 }
 
 function firstNonEmpty(...candidates: Array<string | null | undefined>): string {
@@ -137,10 +198,10 @@ export function buildFinding(args: {
   const title = (args.seoTitle ?? "").trim();
   if (!title) {
     missing.push("seoTitle");
-    suggested.seoTitle = clampTitle(args.title);
+    suggested.seoTitle = shortenSeoTitle(args.title);
   } else if (title.length > MAX_TITLE) {
     missing.push("seoTitleLong");
-    suggested.seoTitle = clampTitle(title);
+    suggested.seoTitle = shortenSeoTitle(title);
   }
 
   const description = (args.seoDescription ?? "").trim();
@@ -729,13 +790,47 @@ async function auditCollateral(): Promise<{
       heroImage: collateralTable.heroImage,
       seoTitle: collateralTable.seoTitle,
       seoDescription: collateralTable.seoDescription,
+      sourceId: collateralTable.sourceId,
     })
     .from(collateralTable)
     .where(and(isNull(collateralTable.deletedAt), eq(collateralTable.active, true)));
 
+  // For synced library items, description fields on the collateral row are
+  // often blank (the content lives in the source table). Look up descriptions
+  // from posts and events so the autofill wand has something to work with.
+  const postIds = rows
+    .filter((r) => r.sourceId?.startsWith("post:"))
+    .map((r) => r.sourceId!.slice("post:".length));
+  const eventIds = rows
+    .filter((r) => r.sourceId?.startsWith("event:"))
+    .map((r) => Number.parseInt(r.sourceId!.slice("event:".length), 10))
+    .filter((n) => Number.isFinite(n));
+
+  const [sourcePosts, sourceEvents] = await Promise.all([
+    postIds.length > 0
+      ? db
+          .select({ id: postsTable.id, excerpt: postsTable.excerpt, subtitle: postsTable.subtitle })
+          .from(postsTable)
+          .where(inArray(postsTable.id, postIds))
+      : Promise.resolve([]),
+    eventIds.length > 0
+      ? db
+          .select({ id: eventsTable.id, teaser: eventsTable.teaser, description: eventsTable.description })
+          .from(eventsTable)
+          .where(inArray(eventsTable.id, eventIds))
+      : Promise.resolve([]),
+  ]);
+
+  const postDescMap = new Map<string, Array<string | null | undefined>>();
+  for (const sp of sourcePosts) postDescMap.set(`post:${sp.id}`, [sp.excerpt, sp.subtitle]);
+  const eventDescMap = new Map<string, Array<string | null | undefined>>();
+  for (const se of sourceEvents) eventDescMap.set(`event:${se.id}`, [se.teaser, se.description]);
+
   const findings: AuditFinding[] = [];
   for (const r of rows) {
     const path = r.type === "webinar" ? `/webinars/${r.slug}` : `/library/${r.slug}`;
+    const sourceDescs =
+      r.sourceId ? (postDescMap.get(r.sourceId) ?? eventDescMap.get(r.sourceId) ?? []) : [];
     const f = buildFinding({
       kind: "collateral",
       id: r.id,
@@ -746,7 +841,7 @@ async function auditCollateral(): Promise<{
       seoDescription: r.seoDescription ?? null,
       ogImage: null,
       fallbackImage: r.heroImage || null,
-      descriptionSources: [r.subtitle, r.description],
+      descriptionSources: [...sourceDescs, r.subtitle, r.description],
     });
     if (f) {
       f.missing = filterOgFindings("collateral", f.missing);
@@ -844,7 +939,10 @@ export function buildAutofillPatch(f: AuditFinding): {
     seoDescription?: string;
     ogImage?: string;
   } = {};
-  if (f.suggested.seoTitle && f.missing.includes("seoTitle")) {
+  if (
+    f.suggested.seoTitle &&
+    (f.missing.includes("seoTitle") || f.missing.includes("seoTitleLong"))
+  ) {
     patch.seoTitle = f.suggested.seoTitle;
   }
   const descIssue = f.missing.some((m) =>
@@ -888,18 +986,28 @@ export async function applyAutofill(
 
     switch (f.kind) {
       case "insight": {
+        const set: Record<string, unknown> = { updatedAt: new Date() };
+        const guards = [eq(postsTable.id, f.id)];
+        if (patch.seoTitle) {
+          // seoTitle on a post can be overridden separately from the post title;
+          // allow the wand to shorten it when it is blank or overlong.
+          set.seoTitle = patch.seoTitle;
+          guards.push(
+            sql`(${postsTable.seoTitle} is null or trim(${postsTable.seoTitle}) = '' or length(trim(${postsTable.seoTitle})) > 65)`,
+          );
+        }
         if (patch.seoDescription) {
-          // Always guard with the SQL empty check — never overwrite a
-          // manually-set seoDescription regardless of its length.
+          // Never overwrite a manually-set seoDescription regardless of its length.
+          set.seoDescription = patch.seoDescription;
+          guards.push(
+            sql`(${postsTable.seoDescription} is null or trim(${postsTable.seoDescription}) = '')`,
+          );
+        }
+        if (Object.keys(set).length > 1) {
           const updatedInsights = await dbInstance
             .update(postsTable)
-            .set({ seoDescription: patch.seoDescription, updatedAt: new Date() })
-            .where(
-              and(
-                eq(postsTable.id, f.id),
-                sql`(${postsTable.seoDescription} is null or trim(${postsTable.seoDescription}) = '')`,
-              ),
-            )
+            .set(set)
+            .where(and(...guards))
             .returning({ id: postsTable.id });
           if (updatedInsights.length > 0) touched.insight += 1;
         }
@@ -911,7 +1019,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${servicesTable.seoTitle} is null or trim(${servicesTable.seoTitle}) = '')`,
+            sql`(${servicesTable.seoTitle} is null or trim(${servicesTable.seoTitle}) = '' or length(trim(${servicesTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -936,7 +1044,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${solutionsTable.seoTitle} is null or trim(${solutionsTable.seoTitle}) = '')`,
+            sql`(${solutionsTable.seoTitle} is null or trim(${solutionsTable.seoTitle}) = '' or length(trim(${solutionsTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -961,7 +1069,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${applicationsTable.seoTitle} is null or trim(${applicationsTable.seoTitle}) = '')`,
+            sql`(${applicationsTable.seoTitle} is null or trim(${applicationsTable.seoTitle}) = '' or length(trim(${applicationsTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -992,7 +1100,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${caseStudiesTable.seoTitle} is null or trim(${caseStudiesTable.seoTitle}) = '')`,
+            sql`(${caseStudiesTable.seoTitle} is null or trim(${caseStudiesTable.seoTitle}) = '' or length(trim(${caseStudiesTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -1026,7 +1134,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${polarisEpisodesTable.seoTitle} is null or trim(${polarisEpisodesTable.seoTitle}) = '')`,
+            sql`(${polarisEpisodesTable.seoTitle} is null or trim(${polarisEpisodesTable.seoTitle}) = '' or length(trim(${polarisEpisodesTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -1057,7 +1165,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${modelsTable.seoTitle} is null or trim(${modelsTable.seoTitle}) = '')`,
+            sql`(${modelsTable.seoTitle} is null or trim(${modelsTable.seoTitle}) = '' or length(trim(${modelsTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -1095,10 +1203,10 @@ export async function applyAutofill(
         const next = { ...seo };
         const guards = [eq(workshopsTable.id, f.id), isNull(workshopsTable.deletedAt)];
         let changed = false;
-        if (patch.seoTitle && !(seo.title ?? "").trim()) {
+        if (patch.seoTitle && (!(seo.title ?? "").trim() || (seo.title ?? "").trim().length > 65)) {
           next.title = patch.seoTitle;
           guards.push(
-            sql`(((${workshopsTable.seo} ->> 'title') is null) or trim(${workshopsTable.seo} ->> 'title') = '')`,
+            sql`(((${workshopsTable.seo} ->> 'title') is null) or trim(${workshopsTable.seo} ->> 'title') = '' or length(trim(${workshopsTable.seo} ->> 'title')) > 65)`,
           );
           changed = true;
         }
@@ -1128,7 +1236,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${eventsTable.seoTitle} is null or trim(${eventsTable.seoTitle}) = '')`,
+            sql`(${eventsTable.seoTitle} is null or trim(${eventsTable.seoTitle}) = '' or length(trim(${eventsTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {
@@ -1153,7 +1261,7 @@ export async function applyAutofill(
         if (patch.seoTitle) {
           set.seoTitle = patch.seoTitle;
           guards.push(
-            sql`(${collateralTable.seoTitle} is null or trim(${collateralTable.seoTitle}) = '')`,
+            sql`(${collateralTable.seoTitle} is null or trim(${collateralTable.seoTitle}) = '' or length(trim(${collateralTable.seoTitle})) > 65)`,
           );
         }
         if (patch.seoDescription) {

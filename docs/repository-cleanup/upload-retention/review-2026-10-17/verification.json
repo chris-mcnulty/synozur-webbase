@@ -1,0 +1,20 @@
+{
+  "baseline": "docs/repository-cleanup/baseline-2026-10-16",
+  "verified_upload_count": 250,
+  "verified_bytes": 482540943,
+  "review_lanes": {
+    "DISTINCT_TRIBAL_SOURCE": 2,
+    "DUPLICATE_REVIEW": 40,
+    "LICENSED_ORIGINAL": 1,
+    "PROTECTED_INPUT": 43,
+    "SOURCE_REVIEW": 164
+  },
+  "all_uploads_match_baseline": true,
+  "duplicate_peers_rehashed": true,
+  "archive_destination": null,
+  "licenses_confirmed": false,
+  "archive_downloads_verified": false,
+  "restores_verified": false,
+  "approved_reduction_bytes": 0,
+  "actions_taken": []
+}

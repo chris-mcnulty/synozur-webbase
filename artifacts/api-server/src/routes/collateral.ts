@@ -71,6 +71,7 @@ const SYNCED_ROW_EDITABLE_FIELDS = new Set([
 const ListQuery = z.object({
   type: z.string().optional(),
   pillar: z.string().optional(),
+  urlPrefix: z.string().trim().min(1).max(200).optional(),
   topic: z.string().optional(),
   q: z.string().optional(),
   serviceId: z.string().uuid().optional(),
@@ -175,7 +176,7 @@ router.get("/collateral", async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const { type, pillar, topic, q, serviceId, solutionId, solutionIdIsNull, featured, page, pageSize } = parsed.data;
+  const { type, pillar, urlPrefix, topic, q, serviceId, solutionId, solutionIdIsNull, featured, page, pageSize } = parsed.data;
 
   const types = type
     ? (type
@@ -199,6 +200,7 @@ router.get("/collateral", async (req, res) => {
 
   if (types.length) filters.push(inArray(collateralTable.type, types));
   if (pillars.length) filters.push(inArray(collateralTable.pillar, pillars));
+  if (urlPrefix) filters.push(sql`${collateralTable.url} like ${`${urlPrefix}%`}`);
   if (featured) filters.push(eq(collateralTable.featured, true));
   if (serviceId) filters.push(eq(collateralTable.serviceId, serviceId));
   if (solutionId) filters.push(eq(collateralTable.solutionId, solutionId));
@@ -702,6 +704,7 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
           status: landingPagesTable.status,
           active: landingPagesTable.active,
           featured: landingPagesTable.featured,
+          libraryListed: landingPagesTable.libraryListed,
           publishedAt: landingPagesTable.publishedAt,
           unpublishedAt: landingPagesTable.unpublishedAt,
           deletedAt: landingPagesTable.deletedAt,
@@ -760,7 +763,7 @@ router.get("/cms/collateral/audit", ...readGuard, async (_req, res) => {
   // exactly so unfeatured / out-of-window pages aren't flagged as missing.
   const auditNow = new Date();
   const landingPageEligible = (r: (typeof landingPageRows)[number]) =>
-    r.featured === true &&
+    (r.featured === true || r.libraryListed === true) &&
     r.active === true &&
     r.status === "published" &&
     !r.deletedAt &&

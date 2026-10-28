@@ -6,6 +6,7 @@ import { Meta } from "@/lib/meta";
 import { sanitizeHtml } from "@/components/rich-text";
 import NotFound from "@/pages/not-found";
 import StartDetailNative from "@/pages/start-detail-native";
+import { SITE_NAME } from "@/lib/seo-config";
 
 interface Props {
   slug: string;
@@ -47,6 +48,8 @@ export default function StartDetail({ slug }: Props) {
     <>
       <Meta
         title={booking.seoTitle || booking.title}
+        rawTitle={Boolean(booking.seoTitle?.endsWith(` | ${SITE_NAME}`))}
+        image={booking.ogImageUrl ?? undefined}
         description={booking.seoDescription || booking.teaser || undefined}
       />
 
@@ -78,7 +81,7 @@ export default function StartDetail({ slug }: Props) {
       {description && (
         <div className="container mx-auto px-4 pt-12 md:pt-16 max-w-5xl">
           <div
-            className="prose prose-invert max-w-3xl"
+            className="prose dark:prose-invert max-w-3xl"
             dangerouslySetInnerHTML={{ __html: description }}
           />
         </div>

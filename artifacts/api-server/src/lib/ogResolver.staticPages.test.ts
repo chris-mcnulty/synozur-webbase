@@ -61,8 +61,11 @@ const REGISTERED: ReadonlyArray<{ path: string; file: string }> = [
   { path: "/trust", file: "trust.tsx" },
   { path: "/join", file: "join.tsx" },
   { path: "/careers", file: "careers.tsx" },
+  { path: "/resources", file: "resources.tsx" },
   { path: "/polaris", file: "polaris.tsx" },
   { path: "/events", file: "events.tsx" },
+  { path: "/faq", file: "faq.tsx" },
+  { path: "/start", file: "start.tsx" },
   // Multi-segment hand-coded routes now covered by STATIC_PAGE_OG.
   // The drift check reads the FIRST <Meta> in each file, which is the
   // hard-coded DefaultOverview / form meta (not the DB-driven branches).
@@ -130,9 +133,7 @@ const EXCLUDED: Readonly<Record<string, string>> = {
   "landing-page.tsx": "db-landing: /:slug via resolver landing-pages path",
 
   // dynamic (runtime-computed <Meta>, no single static value)
-  "faq.tsx": "dynamic: title/description computed per category/item",
   "search.tsx": "dynamic: query-based title + noindex",
-  "start.tsx": "dynamic: copy from list-page-copy",
   "start-detail.tsx": "dynamic: DB-driven start flow detail",
   "insights/ask.tsx": "dynamic: Q&A page, runtime-computed <Meta>",
   "event-schedule.tsx": "dynamic: /events/:slug/schedule (multi-segment, DB)",
@@ -177,6 +178,19 @@ interface MetaProps {
  * failure, not a silent skip.
  */
 function extractMetaProps(source: string, file: string): MetaProps {
+  // These hubs pass computed metadata to <Meta>; check their actual frontend
+  // fallback copy rather than duplicating the expected strings in this test.
+  if (file === "faq.tsx" || file === "start.tsx") {
+    const title = source.match(file === "start.tsx"
+      ? /seoTitle:\s*"([^"]+)"/
+      : /title:\s*"(Frequently Asked Questions)"/);
+    const description = source.match(file === "start.tsx"
+      ? /seoDescription:\s*"([^"]+)"/
+      : /description:\s*"(Answers to the questions[^"]+)"/);
+    assert.ok(title, `Missing default title in ${file}`);
+    assert.ok(description, `Missing default description in ${file}`);
+    return { title: title[1], description: description[1], image: null, rawTitle: false };
+  }
   const block = source.match(/<Meta\b([\s\S]*?)\/>/);
   assert.ok(block, `No self-closing <Meta .../> element found in ${file}`);
   const body = block[1];

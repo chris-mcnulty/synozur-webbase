@@ -1,5 +1,13 @@
-import { and, eq, max, sql } from "drizzle-orm";
-import { db, hubspotSyncEventsTable, siteSettingsTable, formSubmissionsTable, subscribersTable } from "@workspace/db";
+import { and, eq, inArray, isNull, max, sql } from "drizzle-orm";
+import {
+  db,
+  hubspotSyncEventsTable,
+  siteSettingsTable,
+  formSubmissionsTable,
+  subscribersTable,
+  clientOrganizationsTable,
+  engagementsTable,
+} from "@workspace/db";
 import { logger } from "./logger";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 
@@ -108,9 +116,6 @@ export interface ContactProperties {
   phone?: string;
   message?: string;
   lifecyclestage?: LifecycleStage;
-  // First-touch attribution.
-  hs_analytics_first_url?: string;
-  hs_analytics_first_referrer?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -124,9 +129,6 @@ export interface ContactProperties {
   // does not natively accept `hutk`; the HubSpot Forms API does, but we
   // use the CRM upsert path.
   synozur_hubspotutk?: string;
-  // HubSpot built-in opt-out toggle. We mirror our own
-  // `synozur_marketing_opt_in` onto it so list segmentation honours it.
-  hs_email_optout?: "true" | "false";
   // Custom Synozur properties (must exist on the portal — created via the
   // bootstrap script in scripts/bootstrapHubspotProperties.ts).
   synozur_form_type?: string;
@@ -231,15 +233,12 @@ export async function enqueueContactSubmission(args: EnqueueContactArgs): Promis
     lifecyclestage: lifecycle,
     synozur_form_type: args.formType,
     synozur_marketing_opt_in: args.marketingOptIn ? "true" : "false",
-    hs_email_optout: args.marketingOptIn ? "false" : "true",
     ...(args.hutk ? { synozur_hubspotutk: args.hutk } : {}),
     ...(args.utm.source ? { utm_source: args.utm.source } : {}),
     ...(args.utm.medium ? { utm_medium: args.utm.medium } : {}),
     ...(args.utm.campaign ? { utm_campaign: args.utm.campaign } : {}),
     ...(args.utm.term ? { utm_term: args.utm.term } : {}),
     ...(args.utm.content ? { utm_content: args.utm.content } : {}),
-    ...(args.utm.landingPage ? { hs_analytics_first_url: args.utm.landingPage } : {}),
-    ...(args.utm.referrer ? { hs_analytics_first_referrer: args.utm.referrer } : {}),
     ...(args.marketingOptIn ? { hs_legal_basis: "Consent" } : {}),
   };
 
@@ -249,6 +248,7 @@ export async function enqueueContactSubmission(args: EnqueueContactArgs): Promis
     payload: {
       submissionId: args.submissionId,
       formType: args.formType,
+      pageUri: args.utm.landingPage ?? null,
       properties,
     },
   });
@@ -289,6 +289,14 @@ interface UpsertResponse {
 async function callUpsertContact(
   properties: ContactProperties,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string; retryable: boolean }> {
+  // Older queued events may still contain HubSpot-owned/read-only properties.
+  // Strip them at send time so replaying dead-letter rows uses a valid payload.
+  const writableProperties = { ...properties } as ContactProperties &
+    Record<string, unknown>;
+  delete writableProperties["hs_analytics_first_url"];
+  delete writableProperties["hs_analytics_first_referrer"];
+  delete writableProperties["hs_email_optout"];
+
   // HubSpot exposes a PATCH /crm/v3/objects/contacts/{email}?idProperty=email
   // update path that 404s if the contact doesn't exist; create-then-update
   // is the documented idempotent pattern. We try the update first, then fall
@@ -296,7 +304,7 @@ async function callUpsertContact(
   try {
     const updateRes = await hubspotProxy(
       `/crm/v3/objects/contacts/${encodeURIComponent(properties.email)}?idProperty=email`,
-      { method: "PATCH", body: JSON.stringify({ properties }) },
+      { method: "PATCH", body: JSON.stringify({ properties: writableProperties }) },
     );
     if (updateRes.ok) {
       const json = (await updateRes.json()) as UpsertResponse;
@@ -305,7 +313,7 @@ async function callUpsertContact(
     if (updateRes.status === 404) {
       const createRes = await hubspotProxy("/crm/v3/objects/contacts", {
         method: "POST",
-        body: JSON.stringify({ properties }),
+        body: JSON.stringify({ properties: writableProperties }),
       });
       if (createRes.ok) {
         const json = (await createRes.json()) as UpsertResponse;
@@ -333,6 +341,94 @@ async function callUpsertContact(
   }
 }
 
+type ContactCompanyAssociationResult =
+  | { ok: true }
+  | { ok: false; error: string; retryable: boolean };
+
+async function associateContactWithCompany(
+  contactId: string,
+  email: string,
+): Promise<ContactCompanyAssociationResult> {
+  const at = email.lastIndexOf("@");
+  if (at < 0 || at === email.length - 1) return { ok: true };
+  const emailDomain = email.slice(at + 1).trim().toLowerCase();
+  if (!emailDomain) return { ok: true };
+
+  const organizations = await db
+    .select({
+      id: clientOrganizationsTable.id,
+      approvedEmailDomains: clientOrganizationsTable.approvedEmailDomains,
+      hubspotCompanyId: clientOrganizationsTable.hubspotCompanyId,
+    })
+    .from(clientOrganizationsTable)
+    .where(and(
+      eq(clientOrganizationsTable.isActive, true),
+      isNull(clientOrganizationsTable.deletedAt),
+    ));
+  const matches = organizations.filter((org) =>
+    !!org.hubspotCompanyId &&
+    (org.approvedEmailDomains ?? []).some(
+      (domain) => domain.trim().toLowerCase() === emailDomain,
+    ),
+  );
+  if (matches.length === 0) return { ok: true };
+  if (matches.length > 1) {
+    logger.warn(
+      { emailDomain, organizationIds: matches.map((org) => org.id) },
+      "HubSpot Contact → Company association skipped: domain matches multiple organizations",
+    );
+    return { ok: true };
+  }
+  const organization = matches[0]!;
+  const companyId = organization.hubspotCompanyId!;
+
+  try {
+    const response = await hubspotProxy(
+      `/crm/v4/objects/contacts/${encodeURIComponent(contactId)}/associations/companies/${encodeURIComponent(companyId)}`,
+      {
+        method: "PUT",
+        // typeId 1 = contact→company in HubSpot's default association schema.
+        body: JSON.stringify([
+          { associationCategory: "HUBSPOT_DEFINED", associationTypeId: 1 },
+        ]),
+      },
+    );
+    if (!response.ok) {
+      const body = (await response.text()).slice(0, 500);
+      const retryable = response.status === 429 || response.status >= 500;
+      logger.warn(
+        {
+          contactId,
+          companyId,
+          organizationId: organization.id,
+          status: response.status,
+          body,
+          retryable,
+        },
+        "HubSpot Contact → Company association failed (non-fatal)",
+      );
+      return {
+        ok: false,
+        error: `contact_company_assoc_${response.status}: ${body}`,
+        retryable,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    logger.warn(
+      {
+        err,
+        contactId,
+        companyId,
+        organizationId: organization.id,
+      },
+      "HubSpot Contact → Company association failed (non-fatal)",
+    );
+    return { ok: false, error, retryable: true };
+  }
+}
+
 // #131 — HubSpot Forms API submission used purely to stitch a contact's
 // pre-form anonymous browsing history (`hubspotutk` cookie) to the
 // contact record. Configured per form-type via env vars, e.g.
@@ -350,10 +446,19 @@ async function submitFormForStitching(
   formType: string,
   properties: ContactProperties,
   hutk: string,
+  pageUri?: string,
 ): Promise<void> {
   const formGuid = formGuidFor(formType);
   const portalId = process.env["HUBSPOT_PORTAL_ID"];
-  if (!formGuid || !portalId) return;
+  if (!formGuid || !portalId) {
+    // Log so admins can see in server logs why stitching was skipped.
+    // Missing GUID = env var not configured; missing portalId = no portal set.
+    logger.warn(
+      { formType, hasGuid: !!formGuid, hasPortalId: !!portalId },
+      "HubSpot Forms API stitching skipped: missing GUID or portal ID",
+    );
+    return;
+  }
   const fields: Array<{ name: string; value: string }> = [
     { name: "email", value: properties.email },
   ];
@@ -362,7 +467,7 @@ async function submitFormForStitching(
   if (properties.company) fields.push({ name: "company", value: properties.company });
   const body = {
     fields,
-    context: { hutk, pageUri: properties.hs_analytics_first_url ?? undefined },
+    context: { hutk, pageUri },
   };
   const url = `https://api.hsforms.com/submissions/v3/integration/submit/${encodeURIComponent(portalId)}/${encodeURIComponent(formGuid)}`;
   const res = await fetch(url, {
@@ -446,6 +551,18 @@ async function processOne(
   appId: string | null,
   row: typeof hubspotSyncEventsTable.$inferSelect,
 ): Promise<void> {
+  // Company and deal upserts do not require a contact email — route them
+  // before the email guard so they are never mistakenly dead-lettered.
+  if (row.kind === "company.upsert") {
+    await processCompanyUpsert(row);
+    return;
+  }
+
+  if (row.kind === "deal.upsert") {
+    await processDealUpsert(row);
+    return;
+  }
+
   const email = row.contactEmail;
   const payload = row.payload as Record<string, unknown>;
   if (!email) {
@@ -466,18 +583,36 @@ async function processOne(
     // is purely identity stitching, so failures are logged but never
     // dead-letter the row.
     const formType = typeof payload["formType"] === "string" ? (payload["formType"] as string) : null;
+    const queuedProperties = properties as ContactProperties & Record<string, unknown>;
+    const pageUri = typeof payload["pageUri"] === "string"
+      ? payload["pageUri"]
+      : typeof queuedProperties["hs_analytics_first_url"] === "string"
+        ? queuedProperties["hs_analytics_first_url"] as string
+        : undefined;
     const hutk = typeof properties.synozur_hubspotutk === "string" && properties.synozur_hubspotutk.length > 0
       ? properties.synozur_hubspotutk
       : null;
     if (formType && hutk) {
       try {
-        await submitFormForStitching(formType, properties, hutk);
+        await submitFormForStitching(formType, properties, hutk, pageUri);
       } catch (err) {
         logger.warn({ err, formType }, "HubSpot Forms API stitching failed (non-fatal)");
       }
+    } else {
+      // Log at debug level so admins can diagnose incomplete stitching
+      // without flooding logs when tracking cookies aren't set yet.
+      logger.debug(
+        { formType, hasHutk: !!hutk, email: properties.email },
+        "HubSpot Forms API stitching skipped: no hutk cookie or unknown form type",
+      );
     }
     const result = await callUpsertContact(properties);
     if (result.ok) {
+      const association = await associateContactWithCompany(result.id, properties.email);
+      if (!association.ok && association.retryable) {
+        await failOrDeadLetter(row, association.error, true);
+        return;
+      }
       await db
         .update(hubspotSyncEventsTable)
         .set({
@@ -847,29 +982,53 @@ export async function replayDeadLetter(eventId: string): Promise<boolean> {
   return !!row;
 }
 
-export async function queueDepth(): Promise<{ pending: number; deadLetter: number; succeeded: number }> {
+export async function queueDepth(): Promise<{
+  pending: number;
+  deadLetter: number;
+  succeeded: number;
+  companies: { pending: number; deadLetter: number };
+  deals: { pending: number; deadLetter: number };
+}> {
   const rows = await db
     .select({
       status: hubspotSyncEventsTable.status,
+      kind: hubspotSyncEventsTable.kind,
       count: sql<number>`count(*)::int`,
     })
     .from(hubspotSyncEventsTable)
-    .groupBy(hubspotSyncEventsTable.status);
+    .groupBy(hubspotSyncEventsTable.status, hubspotSyncEventsTable.kind);
+
   let pending = 0;
   let deadLetter = 0;
   let succeeded = 0;
+  const companies = { pending: 0, deadLetter: 0 };
+  const deals = { pending: 0, deadLetter: 0 };
+
   for (const r of rows) {
-    if (r.status === "pending" || r.status === "in_flight") pending += r.count;
-    else if (r.status === "dead_letter") deadLetter += r.count;
+    const isPending = r.status === "pending" || r.status === "in_flight";
+    const isDead = r.status === "dead_letter";
+    if (isPending) pending += r.count;
+    else if (isDead) deadLetter += r.count;
     else if (r.status === "succeeded") succeeded += r.count;
+
+    if (r.kind === "company.upsert") {
+      if (isPending) companies.pending += r.count;
+      else if (isDead) companies.deadLetter += r.count;
+    } else if (r.kind === "deal.upsert") {
+      if (isPending) deals.pending += r.count;
+      else if (isDead) deals.deadLetter += r.count;
+    }
   }
-  return { pending, deadLetter, succeeded };
+
+  return { pending, deadLetter, succeeded, companies, deals };
 }
 
-// #131: GDPR forget-me. HubSpot exposes a permanent-delete endpoint that
-// tombstones the contact and prevents re-creation under the same email; we
-// expose it through /admin/integrations/hubspot/erasure so legal can fulfill
-// erasure requests without leaving the admin shell.
+export interface EnqueueCompanyArgs {
+  orgId: string;
+  name: string;
+  slug: string;
+  approvedEmailDomains: string[];
+}
 export async function eraseContact(email: string): Promise<{ ok: boolean; error?: string }> {
   const configured = await isHubspotConfigured();
   if (!configured) return { ok: false, error: "no_access_token" };
@@ -936,3 +1095,388 @@ export function stopHubspotWorker(): void {
   }
 }
 
+
+export interface EnqueueDealArgs {
+  engagementId: string;
+  title: string;
+  status: string;
+  summary: string | null | undefined;
+  startedAt: Date | null | undefined;
+  clientOrganizationId: string;
+}
+
+export async function enqueueCompanyUpsert(args: EnqueueCompanyArgs): Promise<void> {
+  const settings = await loadSettings();
+  if (!settings || settings.hubspotEnabled !== true) return;
+  const newPayload = {
+    orgId: args.orgId,
+    name: args.name,
+    slug: args.slug,
+    approvedEmailDomains: args.approvedEmailDomains,
+  };
+  // Coalesce: if there is already a PENDING (not yet claimed) event for this
+  // org, overwrite its payload so the worker picks up the latest data. We
+  // intentionally do NOT coalesce into an in_flight row: the worker has already
+  // read its payload from memory; updating the DB row won't change what it
+  // processes, and we'd lose the newer values permanently once it marks the
+  // old payload as succeeded. If the event is in_flight, fall through and
+  // insert a fresh pending event so the updated data is not silently discarded.
+  const coalesced = await db
+    .update(hubspotSyncEventsTable)
+    .set({ payload: newPayload })
+    .where(
+      and(
+        eq(hubspotSyncEventsTable.kind, "company.upsert"),
+        eq(hubspotSyncEventsTable.status, "pending"),
+        sql`(payload->>'orgId') = ${args.orgId}`,
+      ),
+    )
+    .returning({ id: hubspotSyncEventsTable.id });
+  if (coalesced.length > 0) return;
+  await db.insert(hubspotSyncEventsTable).values({ kind: "company.upsert", payload: newPayload });
+}
+
+function dealStageFor(status: string): string {
+  switch (status) {
+    case "active":    return "presentationscheduled";
+    case "paused":    return "decisionmakerboughtin";
+    case "completed": return "closedwon";
+    case "archived":  return "closedlost";
+    default:          return "appointmentscheduled";
+  }
+}
+
+async function processCompanyUpsert(
+  row: typeof hubspotSyncEventsTable.$inferSelect,
+): Promise<void> {
+  const payload = row.payload as {
+    orgId: string;
+    name: string;
+    slug: string;
+    approvedEmailDomains: string[];
+  };
+
+  const properties: Record<string, unknown> = {
+    name: payload.name,
+    synozur_client_slug: payload.slug,
+  };
+  if (Array.isArray(payload.approvedEmailDomains) && payload.approvedEmailDomains.length > 0) {
+    properties["domain"] = payload.approvedEmailDomains[0];
+  }
+
+  // If the org already has a HubSpot Company ID from a previous sync, pass it
+  // so the upsert goes straight to PATCH and never issues a search that could
+  // race with a concurrent drain claiming the same event.
+  const org = await db.query.clientOrganizationsTable.findFirst({
+    where: eq(clientOrganizationsTable.id, payload.orgId),
+  });
+
+  const result = await callHubspotUpsertObject(
+    "companies",
+    "synozur_client_slug",
+    payload.slug,
+    properties,
+    org?.hubspotCompanyId,
+  );
+
+  if (result.ok) {
+    await db
+      .update(hubspotSyncEventsTable)
+      .set({
+        status: "succeeded",
+        succeededAt: new Date(),
+        hubspotResourceId: result.id,
+        attempts: row.attempts + 1,
+      })
+      .where(eq(hubspotSyncEventsTable.id, row.id));
+    // Write the HubSpot Company ID back to the org row so future deal
+    // upserts can resolve the association without an extra API call.
+    await db
+      .update(clientOrganizationsTable)
+      .set({ hubspotCompanyId: result.id })
+      .where(eq(clientOrganizationsTable.id, payload.orgId));
+    return;
+  }
+  await failOrDeadLetter(row, result.error, result.retryable);
+}
+
+function isMissingScope(status: number, body: string): boolean {
+  if (status !== 403) return false;
+  return body.includes("MISSING_SCOPES") || body.toLowerCase().includes("missing scope");
+}
+
+async function processDealUpsert(
+  row: typeof hubspotSyncEventsTable.$inferSelect,
+): Promise<void> {
+  const payload = row.payload as {
+    engagementId: string;
+    title: string;
+    status: string;
+    summary: string | null;
+    startedAt: string | null;
+    clientOrganizationId: string;
+  };
+
+  const properties: Record<string, unknown> = {
+    dealname: payload.title,
+    dealstage: dealStageFor(payload.status),
+    synozur_engagement_id: payload.engagementId,
+    synozur_engagement_status: payload.status,
+  };
+  if (payload.summary) properties["description"] = payload.summary;
+  if (payload.startedAt) properties["closedate"] = payload.startedAt;
+
+  // If the engagement already has a HubSpot Deal ID, pass it directly so the
+  // upsert skips the search and goes straight to PATCH. This is the primary
+  // guard against concurrent drains creating duplicate Deal objects.
+  const existingEngagement = await db.query.engagementsTable.findFirst({
+    where: eq(engagementsTable.id, payload.engagementId),
+  });
+
+  const result = await callHubspotUpsertObject(
+    "deals",
+    "synozur_engagement_id",
+    payload.engagementId,
+    properties,
+    existingEngagement?.hubspotDealId,
+  );
+
+  if (!result.ok) {
+    await failOrDeadLetter(row, result.error, result.retryable);
+    return;
+  }
+
+  const dealId = result.id;
+
+  // Persist the HubSpot Deal ID onto the engagement row immediately — before
+  // the association step — so that a retry triggered by a failed association
+  // will use the known ID and go straight to PATCH rather than searching again.
+  await db
+    .update(engagementsTable)
+    .set({ hubspotDealId: dealId })
+    .where(eq(engagementsTable.id, payload.engagementId));
+
+  // Associate the Deal with its parent Company using the Associations v4 API.
+  // typeId 5 = deal→company in HubSpot's default association schema.
+  const org = await db.query.clientOrganizationsTable.findFirst({
+    where: eq(clientOrganizationsTable.id, payload.clientOrganizationId),
+  });
+
+  if (!org?.hubspotCompanyId) {
+    // The parent company hasn't been synced to HubSpot yet. Re-queue this
+    // event with backoff so the association is retried after the company.upsert
+    // worker run completes. The deal itself is already created/updated above;
+    // the retry will search-and-patch the existing Deal before re-attempting
+    // the association.
+    const nextAttempts = row.attempts + 1;
+    const terminal = nextAttempts >= MAX_ATTEMPTS;
+    await db
+      .update(hubspotSyncEventsTable)
+      .set({
+        status: terminal ? "dead_letter" : "pending",
+        attempts: nextAttempts,
+        lastError: "company_not_yet_synced",
+        nextAttemptAt: terminal ? row.nextAttemptAt : nowPlus(backoffMs(nextAttempts)),
+        hubspotResourceId: dealId,
+      })
+      .where(eq(hubspotSyncEventsTable.id, row.id));
+    return;
+  }
+
+  // Perform the Deal → Company association and treat the response as a
+  // first-class failure surface (not a swallowed warning).
+  try {
+    const assocRes = await hubspotProxy(
+      `/crm/v4/objects/deals/${dealId}/associations/companies/${org.hubspotCompanyId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify([{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 5 }]),
+      },
+    );
+    if (!assocRes.ok) {
+      const body = (await assocRes.text()).slice(0, 500);
+      const error = isMissingScope(assocRes.status, body)
+        ? `missing_scope: ${body}`
+        : `assoc_${assocRes.status}: ${body}`;
+      const retryable = !isMissingScope(assocRes.status, body) && (assocRes.status === 429 || assocRes.status >= 500);
+      await failOrDeadLetter({ ...row, hubspotResourceId: dealId }, error, retryable);
+      return;
+    }
+  } catch (assocErr) {
+    const error = assocErr instanceof Error ? assocErr.message : String(assocErr);
+    await failOrDeadLetter({ ...row, hubspotResourceId: dealId }, error, true);
+    return;
+  }
+
+  // All steps succeeded.
+  await db
+    .update(hubspotSyncEventsTable)
+    .set({
+      status: "succeeded",
+      succeededAt: new Date(),
+      hubspotResourceId: dealId,
+      attempts: row.attempts + 1,
+    })
+    .where(eq(hubspotSyncEventsTable.id, row.id));
+}
+
+async function callHubspotUpsertObject(
+  kind: "companies" | "deals",
+  searchProperty: string,
+  searchValue: string,
+  properties: Record<string, unknown>,
+  /**
+   * When the caller already knows the HubSpot object ID (stored on the local
+   * row from a previous sync), pass it here. The search round-trip is skipped
+   * entirely, eliminating the race condition where two concurrent drains both
+   * see an empty search result and each issue a POST, creating duplicates.
+   */
+  knownHubspotId?: string | null,
+): Promise<{ ok: true; id: string } | { ok: false; error: string; retryable: boolean }> {
+  try {
+    let existingId: string | null = knownHubspotId ?? null;
+
+    if (!existingId) {
+      // Search for an existing object to patch rather than create a duplicate.
+      const searchRes = await hubspotProxy(`/crm/v3/objects/${kind}/search`, {
+        method: "POST",
+        body: JSON.stringify({
+          filterGroups: [
+            {
+              filters: [
+                { propertyName: searchProperty, operator: "EQ", value: searchValue },
+              ],
+            },
+          ],
+          limit: 1,
+        }),
+      });
+
+      if (searchRes.ok) {
+        const json = (await searchRes.json()) as { results?: Array<{ id: string }> };
+        existingId = json.results?.[0]?.id ?? null;
+      } else {
+        const body = (await searchRes.text()).slice(0, 500);
+        if (isMissingScope(searchRes.status, body)) {
+          return { ok: false, error: `missing_scope: ${body}`, retryable: false };
+        }
+        // Any non-scope search failure is treated as retryable. We never fall
+        // through to POST on a failed search — that would create a duplicate
+        // if the object already exists but the search was merely transient.
+        return {
+          ok: false,
+          error: `search_${searchRes.status}: ${body}`,
+          retryable: searchRes.status === 429 || searchRes.status >= 500,
+        };
+      }
+    }
+
+    if (existingId) {
+      const patchRes = await hubspotProxy(`/crm/v3/objects/${kind}/${existingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ properties }),
+      });
+      if (patchRes.ok) return { ok: true, id: existingId };
+      const body = (await patchRes.text()).slice(0, 500);
+      if (isMissingScope(patchRes.status, body)) {
+        return { ok: false, error: `missing_scope: ${body}`, retryable: false };
+      }
+      return {
+        ok: false,
+        error: `patch_${patchRes.status}: ${body}`,
+        retryable: patchRes.status === 429 || patchRes.status >= 500,
+      };
+    }
+
+    const createRes = await hubspotProxy(`/crm/v3/objects/${kind}`, {
+      method: "POST",
+      body: JSON.stringify({ properties }),
+    });
+    if (createRes.ok) {
+      const json = (await createRes.json()) as { id?: string };
+      return { ok: true, id: json.id ?? "" };
+    }
+    const createBody = (await createRes.text()).slice(0, 500);
+
+    // 409 CONFLICT: HubSpot rejected the create because the unique idempotency
+    // property (synozur_client_slug / synozur_engagement_id) already exists on
+    // another object — a concurrent drain beat us to the create. Resolve by
+    // searching for the conflicting object and patching it so both drains
+    // converge on the same ID without creating a duplicate.
+    if (createRes.status === 409) {
+      const deconflictRes = await hubspotProxy(`/crm/v3/objects/${kind}/search`, {
+        method: "POST",
+        body: JSON.stringify({
+          filterGroups: [
+            { filters: [{ propertyName: searchProperty, operator: "EQ", value: searchValue }] },
+          ],
+          limit: 1,
+        }),
+      });
+      if (deconflictRes.ok) {
+        const json = (await deconflictRes.json()) as { results?: Array<{ id: string }> };
+        const conflictId = json.results?.[0]?.id ?? null;
+        if (conflictId) {
+          const patchRes = await hubspotProxy(`/crm/v3/objects/${kind}/${conflictId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ properties }),
+          });
+          if (patchRes.ok) return { ok: true, id: conflictId };
+          const patchBody = (await patchRes.text()).slice(0, 500);
+          return {
+            ok: false,
+            error: `conflict_patch_${patchRes.status}: ${patchBody}`,
+            retryable: patchRes.status === 429 || patchRes.status >= 500,
+          };
+        }
+      }
+      // Couldn't resolve the conflict object yet — retry shortly.
+      return { ok: false, error: `create_conflict_unresolvable: ${createBody}`, retryable: true };
+    }
+
+    if (isMissingScope(createRes.status, createBody)) {
+      return { ok: false, error: `missing_scope: ${createBody}`, retryable: false };
+    }
+    return {
+      ok: false,
+      error: `create_${createRes.status}: ${createBody}`,
+      retryable: createRes.status === 429 || createRes.status >= 500,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+      retryable: true,
+    };
+  }
+}
+
+export async function enqueueDealUpsert(args: EnqueueDealArgs): Promise<void> {
+  const settings = await loadSettings();
+  if (!settings || settings.hubspotEnabled !== true) return;
+  const newPayload = {
+    engagementId: args.engagementId,
+    title: args.title,
+    status: args.status,
+    summary: args.summary ?? null,
+    startedAt: args.startedAt ? args.startedAt.toISOString() : null,
+    clientOrganizationId: args.clientOrganizationId,
+  };
+  // Coalesce: update an existing PENDING (not yet claimed) event for this
+  // engagement instead of inserting a second one. Do NOT coalesce into an
+  // in_flight row — same rationale as enqueueCompanyUpsert: the worker has
+  // already read its payload; updating only the DB row loses the newer values.
+  const coalesced = await db
+    .update(hubspotSyncEventsTable)
+    .set({ payload: newPayload })
+    .where(
+      and(
+        eq(hubspotSyncEventsTable.kind, "deal.upsert"),
+        eq(hubspotSyncEventsTable.status, "pending"),
+        sql`(payload->>'engagementId') = ${args.engagementId}`,
+      ),
+    )
+    .returning({ id: hubspotSyncEventsTable.id });
+  if (coalesced.length > 0) return;
+  await db.insert(hubspotSyncEventsTable).values({ kind: "deal.upsert", payload: newPayload });
+}

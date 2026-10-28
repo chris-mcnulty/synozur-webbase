@@ -81,6 +81,11 @@ export default function AdminSubmissionsList() {
       await queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
       if (updated.webhookStatus === "ok") {
         toast({ title: "Webhook resent", description: "Delivery succeeded." });
+      } else if (updated.webhookStatus === "skipped") {
+        toast({
+          title: "External webhook not configured",
+          description: "This submission remains saved locally; there is no FORMS_WEBHOOK_URL destination to resend it to.",
+        });
       } else {
         toast({
           title: "Webhook still failing",
@@ -460,7 +465,7 @@ export default function AdminSubmissionsList() {
 
                 <section>
                   <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                    Webhook
+                    External webhook (optional)
                   </h3>
                   <div className="flex items-start gap-2">
                     <span
@@ -478,7 +483,7 @@ export default function AdminSubmissionsList() {
                       </pre>
                     )}
                   </div>
-                  {selected.webhookStatus !== "ok" && (
+                  {isFailedStatus(selected.webhookStatus) && (
                     <div className="mt-3">
                       <Button
                         variant="outline"

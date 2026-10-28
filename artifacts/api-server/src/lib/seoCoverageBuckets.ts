@@ -12,6 +12,11 @@ export type CoverageBucket =
   | "soft-404"
   | "unknown"
   | "not-configured"
+  // Bing's Webmaster API throttles hard (~10-40 calls per run before HTTP
+  // 400 "ThrottleHost"); URLs whose probe was skipped or throttled are
+  // labelled "not-checked" rather than "error" so rate limiting doesn't
+  // masquerade as real failures.
+  | "not-checked"
   | "error";
 
 export interface GoogleIndexStatusResult {

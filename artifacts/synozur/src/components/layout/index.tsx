@@ -112,9 +112,10 @@ export function Layout({
         className={cn(
           "flex-1 flex flex-col w-full",
           // Hero pages supply their own top padding; utility pages under the
-          // fixed B header do not, so reserve space (64px mobile single-row,
-          // 100px desktop two-row) to avoid the header overlapping content.
-          isB && isLightTopRoute(location) && "pt-16 lg:pt-[100px]",
+          // fixed B header do not, so reserve space. Mobile: 64px (main bar
+          // only, utility strip is hidden on small screens). Desktop: 96px
+          // (32px utility strip + 64px main bar).
+          isB && isLightTopRoute(location) && "pt-16 lg:pt-24",
         )}
       >
         {children}

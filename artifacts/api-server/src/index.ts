@@ -14,6 +14,9 @@ import { logSecurityHeaderConfig } from "./lib/securityHeaders";
 import { logLaunchReadiness } from "./lib/launchReadiness";
 import { seedTestAdminIfConfigured } from "./lib/testAdminSeed";
 import { seedLandingPagesIfMissing } from "./lib/landingPagesSeed";
+import { seedEventSeoDescriptionsIfMissing } from "./lib/eventSeoDescriptionsSeed";
+import { seedWhitePaperAssignmentsIfMissing } from "./lib/whitePaperAssignmentsSeed";
+import { repairImportedVideoContent } from "./lib/videoContentSeed";
 
 const rawPort = process.env["PORT"];
 
@@ -38,6 +41,9 @@ await ensureSigningKey();
 await ensureGalaxyOAuthClient();
 await seedTestAdminIfConfigured();
 await seedLandingPagesIfMissing();
+await seedEventSeoDescriptionsIfMissing();
+await seedWhitePaperAssignmentsIfMissing();
+await repairImportedVideoContent();
 
 const server = app.listen(port, (err) => {
   if (err) {

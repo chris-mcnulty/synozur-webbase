@@ -3,3 +3,18 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Disposable outputs only; retain CSV seeds, release fixtures and public assets.
+# These root-specific paths intentionally do not exclude attached_assets as a whole.
+/generated-artifacts/
+/scripts/.tmp-link-check/
+/.link-check/
+/test-results/
+/playwright-report/
+/artifacts/synozur/test-results/
+/artifacts/synozur/playwright-report/
+/artifacts/galaxy/test-results/
+/artifacts/galaxy/playwright-report/
+/artifacts/mockup-sandbox/test-results/
+/artifacts/mockup-sandbox/playwright-report/
+/attached_assets/temporary/

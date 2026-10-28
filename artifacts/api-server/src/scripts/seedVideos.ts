@@ -14,6 +14,9 @@ import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
 import { db, videosTable } from "@workspace/db";
 import { parseCsvAsObjects } from "../lib/csv";
+import {
+  videoContentFieldsFromWix,
+} from "../lib/videoContentSeed";
 import type { VideoCategory } from "@workspace/db";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,27 +84,6 @@ function extractVideoFromRicos(json: string): VideoData {
   }
 }
 
-function ricosToShortText(json: string, maxLen = 300): string {
-  if (!json) return "";
-  try {
-    const doc = JSON.parse(json) as { nodes: RicosNode[] };
-    const texts: string[] = [];
-
-    function walk(node: RicosNode) {
-      if (node.type === "TEXT" && node.textData?.text) {
-        texts.push(node.textData.text as string);
-      }
-      for (const child of node.nodes ?? []) walk(child);
-    }
-
-    for (const node of doc.nodes) walk(node);
-    const raw = texts.join("").replace(/\s+/g, " ").trim();
-    return raw.length > maxLen ? raw.slice(0, maxLen - 1) + "…" : raw;
-  } catch {
-    return "";
-  }
-}
-
 function parseTags(raw: string): string[] {
   if (!raw) return [];
   try {
@@ -149,7 +131,10 @@ async function main() {
     const shortDescHtml = row["Short Description"] ?? "";
 
     const { videoUrl, thumbnailUrl, durationSeconds } = extractVideoFromRicos(ricosJson);
-    const shortDescription = ricosToShortText(ricosJson);
+    const { shortDescription, bodyHtml } = videoContentFieldsFromWix(
+      ricosJson,
+      shortDescHtml,
+    );
 
     const wixImageUri = row["Image"] ?? "";
     const heroImage = wixImageToCdn(wixImageUri);
@@ -170,7 +155,7 @@ async function main() {
       heroImage,
       heroImageAlt: title,
       shortDescription,
-      bodyHtml: shortDescHtml || ricosJson.slice(0, 2000),
+      bodyHtml,
       tags,
       pillar: null,
       recordedAt,

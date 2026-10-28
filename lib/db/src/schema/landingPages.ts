@@ -54,6 +54,7 @@ export const landingPagesTable = pgTable(
     // participate in /api/collateral/featured (home carousel) and the
     // /library listings when synced into the collateral table.
     featured: boolean("featured").notNull().default(false),
+    libraryListed: boolean("library_listed").notNull().default(false),
     featuredRank: integer("featured_rank"),
     pillar: collateralPillarEnum("pillar"),
     serviceId: uuid("service_id").references(() => servicesTable.id, {

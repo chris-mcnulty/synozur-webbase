@@ -11,7 +11,9 @@ import {
   Target,
   MessageSquare,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Meta } from "@/lib/meta";
+import { landingPagesApi } from "@/lib/api-landing-pages";
 
 const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -73,6 +75,19 @@ const EXPECTATIONS = [
 ];
 
 export default function Fit() {
+  const { data: tribalPage, isError: tribalUnavailable } = useQuery({
+    queryKey: ["fit-tribal-landing-page", "tribal-first-nations"],
+    queryFn: () => landingPagesApi.getPublic("tribal-first-nations"),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const showTribal =
+    !tribalUnavailable &&
+    !!tribalPage &&
+    tribalPage.slug === "tribal-first-nations" &&
+    tribalPage.status === "published" &&
+    tribalPage.active === true;
+
   return (
     <div className="w-full overflow-x-hidden selection:bg-primary/30">
       <Meta
@@ -215,6 +230,40 @@ export default function Fit() {
           </div>
         </div>
       </section>
+
+      {/* Audience callout — Tribal Nations & First Nations */}
+      {showTribal && (
+        <section className="py-20 bg-background border-t border-border">
+          <div className="container mx-auto px-4 md:px-6 max-w-5xl">
+            <motion.div
+              {...fadeUp}
+              className="rounded-3xl border border-primary/30 p-8 md:p-12 nebula-card grid md:grid-cols-[1.2fr_0.8fr] gap-8 items-center"
+            >
+              <div>
+                <p className="text-sm uppercase tracking-[0.25em] text-primary mb-3">
+                  Tribal Nations & First Nations
+                </p>
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">
+                  Working with U.S. Tribal Nations and Canadian First Nations
+                </h2>
+                <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
+                  Build trusted, sustainable AI capability through the Champion System—grounded
+                  in community priorities, designed in partnership, and governed by each Nation.
+                </p>
+              </div>
+              <div className="md:justify-self-end">
+                <Link
+                  href="/tribal-first-nations"
+                  data-testid="fit-tribal-link"
+                  className="h-12 px-8 inline-flex items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-foreground text-base font-medium transition-colors hover:bg-primary/20"
+                >
+                  Learn more <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* 5. CTA / Booking section */}
       <section id="book" className="relative overflow-hidden border-t border-border py-28">

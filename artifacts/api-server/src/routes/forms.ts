@@ -44,6 +44,7 @@ import {
   verifySubscriberUnsubscribeToken,
 } from "../lib/subscriberToken";
 import { siteOrigin } from "../lib/siteOrigin";
+import { lookupCountryCode, isEuCountry } from "../lib/geoIp.js";
 
 const router: IRouter = Router();
 
@@ -69,7 +70,8 @@ const MarketingExtension = z.object({
 });
 
 // Read the `hubspotutk` cookie or fall back to an explicit body field.
-function extractHutk(req: Request, body: { hubspotutk?: string | null | undefined }): string | null {
+// Exported for unit testing — not part of the public API surface.
+export function extractHutk(req: Request, body: { hubspotutk?: string | null | undefined }): string | null {
   if (body.hubspotutk && body.hubspotutk.trim().length > 0) return body.hubspotutk.trim();
   const cookie = (req as Request & { cookies?: Record<string, string> }).cookies?.["hubspotutk"];
   return cookie && cookie.length > 0 ? cookie : null;
@@ -92,20 +94,31 @@ interface AttributionFields {
   };
 }
 
-async function resolveAttribution(
+export async function resolveAttribution(
   formType: FormType,
   body: z.infer<typeof MarketingExtension>,
+  ip: string | null,
 ): Promise<AttributionFields> {
-  // EU-default opt-out is implemented as a server-side default flip when no
-  // explicit choice was made by the client. In Phase 1 we use a single global
-  // `hubspotEuOptInDefault` flag in site settings; geo-based defaults are a
-  // follow-up once we add a geo lookup.
+  // User-supplied explicit choice always wins — no geo override.
   let optIn = body.marketingOptIn ?? null;
   if (optIn === null) {
-    const settings = await db.query.siteSettingsTable.findFirst({
-      where: eq(siteSettingsTable.id, 1),
-    });
-    optIn = settings?.hubspotEuOptInDefault === true ? false : true;
+    // Per-request geo-IP consent detection. When the country is not
+    // explicitly resolved we default to NO tracking (opt-out) — this is the
+    // GDPR-safe fallback for visitors whose location cannot be confirmed:
+    //   - resolved + EU member state  → default opt-out (GDPR)
+    //   - resolved + non-EU           → global `hubspotEuOptInDefault` backstop
+    //   - unresolved (lookup failed / private IP / timeout) → opt-out (safe default)
+    const countryCode = await lookupCountryCode(ip);
+    if (countryCode === null) {
+      optIn = false;
+    } else if (isEuCountry(countryCode)) {
+      optIn = false;
+    } else {
+      const settings = await db.query.siteSettingsTable.findFirst({
+        where: eq(siteSettingsTable.id, 1),
+      });
+      optIn = settings?.hubspotEuOptInDefault === true ? false : true;
+    }
   }
   // Newsletter subscribe is itself an explicit opt-in even if the client didn't
   // toggle the flag — treat it as consent.
@@ -500,7 +513,7 @@ router.post("/forms/contact", async (req, res): Promise<void> => {
     referrer: _ref,
     ...payload
   } = data;
-  const attribution = await resolveAttribution("contact", data);
+  const attribution = await resolveAttribution("contact", data, ip);
   const webhook = await forwardToWebhook({ formType: "contact", ...payload });
   const id = await persist({
     formType: "contact",
@@ -589,7 +602,7 @@ router.post("/forms/subscribe", async (req, res): Promise<void> => {
     ...payload
   } = data;
   const email = payload.email.trim().toLowerCase();
-  const attribution = await resolveAttribution("subscribe", data);
+  const attribution = await resolveAttribution("subscribe", data, ip);
   const webhook = await forwardToWebhook({ formType: "subscribe", ...payload });
 
   // Always log the form submission for audit/attribution; it stays the
@@ -1048,7 +1061,7 @@ router.post("/forms/start", async (req, res): Promise<void> => {
     referrer: _ref,
     ...payload
   } = data;
-  const attribution = await resolveAttribution("start", data);
+  const attribution = await resolveAttribution("start", data, ip);
   const webhook = await forwardToWebhook({ formType: "start", ...payload });
   const id = await persist({
     formType: "start",
@@ -1151,7 +1164,7 @@ router.post("/forms/:formType", async (req, res): Promise<void> => {
     // contact upsert (with stable visitor identity) without a live cookie.
     ...payload
   } = data;
-  const attribution = await resolveAttribution(formType as FormType, data);
+  const attribution = await resolveAttribution(formType as FormType, data, ip);
   const webhook = await forwardToWebhook({ formType, ...payload });
   const id = await persist({
     formType,

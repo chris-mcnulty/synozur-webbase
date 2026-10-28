@@ -75,6 +75,8 @@ interface PropertyDefinition {
   fieldType: "text" | "textarea" | "select" | "number" | "booleancheckbox";
   groupName: string;
   description: string;
+  /** When true, HubSpot enforces uniqueness and returns 409 on duplicate creates. */
+  hasUniqueValue?: boolean;
   options?: Array<{ label: string; value: string; displayOrder?: number }>;
 }
 
@@ -232,6 +234,144 @@ async function ensureProperty(p: PropertyDefinition): Promise<"created" | "updat
     const text = await res.text();
     throw new Error(`Failed to create property ${p.name}: ${res.status} ${text.slice(0, 200)}`);
   }
+  return "created";
+}
+
+// ---------------------------------------------------------------------------
+// Custom Company properties (synozur_client_slug)
+// ---------------------------------------------------------------------------
+
+const COMPANY_PROPERTY_GROUP = "synozur_companies";
+
+const COMPANY_PROPERTIES: PropertyDefinition[] = [
+  {
+    name: "synozur_client_slug",
+    label: "Synozur — Client slug",
+    type: "string",
+    fieldType: "text",
+    groupName: COMPANY_PROPERTY_GROUP,
+    description: "Unique slug for this client organization in the Synozur platform. Used as the idempotency key for company upserts.",
+    hasUniqueValue: true,
+  },
+];
+
+async function ensureCompanyPropertyGroup(): Promise<void> {
+  const get = await hubspotProxy(`/crm/v3/properties/companies/groups/${COMPANY_PROPERTY_GROUP}`);
+  if (get.ok) return;
+  if (get.status !== 404) {
+    const text = await get.text();
+    throw new Error(`Failed to read company property group: ${get.status} ${text.slice(0, 200)}`);
+  }
+  if (!APPLY) {
+    console.log(`  [dry-run] would create company property group '${COMPANY_PROPERTY_GROUP}'`);
+    return;
+  }
+  const res = await hubspotProxy(`/crm/v3/properties/companies/groups`, {
+    method: "POST",
+    body: JSON.stringify({ name: COMPANY_PROPERTY_GROUP, label: "Synozur", displayOrder: -1 }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create company property group: ${res.status} ${text.slice(0, 200)}`);
+  }
+  console.log(`  ✓ created company property group '${COMPANY_PROPERTY_GROUP}'`);
+}
+
+async function ensureCompanyProperty(p: PropertyDefinition): Promise<"created" | "updated" | "ok" | "dry-run"> {
+  const get = await hubspotProxy(`/crm/v3/properties/companies/${p.name}`);
+  if (get.ok) {
+    const existing = (await get.json()) as HubspotPropertyResponse;
+    if (existing.label === p.label && existing.type === p.type && existing.fieldType === p.fieldType) return "ok";
+    if (!APPLY) { console.log(`  [dry-run] would update company property '${p.name}'`); return "dry-run"; }
+    const res = await hubspotProxy(`/crm/v3/properties/companies/${p.name}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label: p.label, description: p.description, groupName: p.groupName }),
+    });
+    if (!res.ok) { const text = await res.text(); throw new Error(`Failed to update company property ${p.name}: ${res.status} ${text.slice(0, 200)}`); }
+    return "updated";
+  }
+  if (get.status !== 404) { const text = await get.text(); throw new Error(`Failed to read company property ${p.name}: ${get.status} ${text.slice(0, 200)}`); }
+  if (!APPLY) { console.log(`  [dry-run] would create company property '${p.name}'`); return "dry-run"; }
+  const body: Record<string, unknown> = { name: p.name, label: p.label, type: p.type, fieldType: p.fieldType, groupName: p.groupName, description: p.description };
+  if (p.hasUniqueValue) body["hasUniqueValue"] = true;
+  const res = await hubspotProxy(`/crm/v3/properties/companies`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const text = await res.text(); throw new Error(`Failed to create company property ${p.name}: ${res.status} ${text.slice(0, 200)}`); }
+  return "created";
+}
+
+// ---------------------------------------------------------------------------
+// Custom Deal properties (synozur_engagement_id, synozur_engagement_status)
+// ---------------------------------------------------------------------------
+
+const DEAL_PROPERTY_GROUP = "synozur_deals";
+
+const DEAL_PROPERTIES: PropertyDefinition[] = [
+  {
+    name: "synozur_engagement_id",
+    label: "Synozur — Engagement ID",
+    type: "string",
+    fieldType: "text",
+    groupName: DEAL_PROPERTY_GROUP,
+    description: "UUID of the matching Synozur engagement row. Used as the idempotency key for deal upserts.",
+    hasUniqueValue: true,
+  },
+  {
+    name: "synozur_engagement_status",
+    label: "Synozur — Engagement status",
+    type: "string",
+    fieldType: "text",
+    groupName: DEAL_PROPERTY_GROUP,
+    description: "Current lifecycle status of the Synozur engagement (active | paused | completed | archived).",
+  },
+];
+
+async function ensureDealPropertyGroup(): Promise<void> {
+  const get = await hubspotProxy(`/crm/v3/properties/deals/groups/${DEAL_PROPERTY_GROUP}`);
+  if (get.ok) return;
+  if (get.status !== 404) {
+    const text = await get.text();
+    throw new Error(`Failed to read deal property group: ${get.status} ${text.slice(0, 200)}`);
+  }
+  if (!APPLY) {
+    console.log(`  [dry-run] would create deal property group '${DEAL_PROPERTY_GROUP}'`);
+    return;
+  }
+  const res = await hubspotProxy(`/crm/v3/properties/deals/groups`, {
+    method: "POST",
+    body: JSON.stringify({ name: DEAL_PROPERTY_GROUP, label: "Synozur", displayOrder: -1 }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create deal property group: ${res.status} ${text.slice(0, 200)}`);
+  }
+  console.log(`  ✓ created deal property group '${DEAL_PROPERTY_GROUP}'`);
+}
+
+async function ensureDealProperty(p: PropertyDefinition): Promise<"created" | "updated" | "ok" | "dry-run"> {
+  const get = await hubspotProxy(`/crm/v3/properties/deals/${p.name}`);
+  if (get.ok) {
+    const existing = (await get.json()) as HubspotPropertyResponse;
+    if (existing.label === p.label && existing.type === p.type && existing.fieldType === p.fieldType) return "ok";
+    if (!APPLY) { console.log(`  [dry-run] would update deal property '${p.name}'`); return "dry-run"; }
+    const res = await hubspotProxy(`/crm/v3/properties/deals/${p.name}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label: p.label, description: p.description, groupName: p.groupName }),
+    });
+    if (!res.ok) { const text = await res.text(); throw new Error(`Failed to update deal property ${p.name}: ${res.status} ${text.slice(0, 200)}`); }
+    return "updated";
+  }
+  if (get.status !== 404) { const text = await get.text(); throw new Error(`Failed to read deal property ${p.name}: ${get.status} ${text.slice(0, 200)}`); }
+  if (!APPLY) { console.log(`  [dry-run] would create deal property '${p.name}'`); return "dry-run"; }
+  const body: Record<string, unknown> = { name: p.name, label: p.label, type: p.type, fieldType: p.fieldType, groupName: p.groupName, description: p.description };
+  if (p.hasUniqueValue) body["hasUniqueValue"] = true;
+  const res = await hubspotProxy(`/crm/v3/properties/deals`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const text = await res.text(); throw new Error(`Failed to create deal property ${p.name}: ${res.status} ${text.slice(0, 200)}`); }
   return "created";
 }
 
@@ -423,6 +563,24 @@ async function main(): Promise<void> {
     await ensurePropertyGroup();
     for (const p of PROPERTIES) {
       const result = await ensureProperty(p);
+      const marker = result === "ok" ? "·" : result === "dry-run" ? "?" : "✓";
+      console.log(`  ${marker} ${p.name.padEnd(34)} (${result})`);
+    }
+    console.log();
+
+    console.log("Phase 1b: company properties (synozur_client_slug)");
+    await ensureCompanyPropertyGroup();
+    for (const p of COMPANY_PROPERTIES) {
+      const result = await ensureCompanyProperty(p);
+      const marker = result === "ok" ? "·" : result === "dry-run" ? "?" : "✓";
+      console.log(`  ${marker} ${p.name.padEnd(34)} (${result})`);
+    }
+    console.log();
+
+    console.log("Phase 1c: deal properties (synozur_engagement_id, synozur_engagement_status)");
+    await ensureDealPropertyGroup();
+    for (const p of DEAL_PROPERTIES) {
+      const result = await ensureDealProperty(p);
       const marker = result === "ok" ? "·" : result === "dry-run" ? "?" : "✓";
       console.log(`  ${marker} ${p.name.padEnd(34)} (${result})`);
     }

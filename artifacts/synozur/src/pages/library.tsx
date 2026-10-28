@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
 import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
@@ -50,11 +50,11 @@ function buildQuery(
 }
 
 export default function Library() {
-  const [location, navigate] = useLocation();
-  const search = typeof window !== "undefined" ? window.location.search : "";
+  const [, navigate] = useLocation();
+  const search = useSearch();
   const { types, pillars, page, featured, q } = useMemo(
     () => parseQuery(search),
-    [search, location],
+    [search],
   );
 
   const [result, setResult] = useState<ListResult | null>(null);

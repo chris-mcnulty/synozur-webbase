@@ -235,7 +235,7 @@ export default function ServiceDetail() {
       }
     : null;
   // Breadcrumbs trace the navigation path so search engines can render
-  // rich-result rails: Home › Services › {this service}.
+  // rich-result rails: Home › Solutions › {this service}.
   const breadcrumbJsonLd = service
     ? {
         "@context": "https://schema.org",
@@ -250,7 +250,7 @@ export default function ServiceDetail() {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Services",
+            name: "Solutions",
             item: `${SITE_ORIGIN}/services-overview/default`,
           },
           {

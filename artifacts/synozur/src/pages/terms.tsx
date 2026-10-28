@@ -14,7 +14,7 @@ export default function Terms() {
             Terms of Service
           </h1>
           <p className="text-zinc-300 text-lg">
-            The Synozur Alliance LLC &middot; Effective Date: May 25, 2026 &middot; Last Modified: May 25, 2026
+            The Synozur Alliance LLC &middot; Effective Date: May 25, 2026 &middot; Last Modified: August 31, 2026
           </p>
         </div>
       </section>
@@ -113,7 +113,7 @@ export default function Terms() {
             after any changes constitutes your acceptance of those changes.
           </p>
 
-          <h2>4. Commercial and Paid Software Subscriptions (Including Vega and Orbit)</h2>
+          <h2>4. Commercial and Paid Software Subscriptions (Including Vega)</h2>
           <p>
             Synozur also offers commercial software subscriptions and paid services, including
             Orbit (our market analytics and GTM platform), Vega (our strategic operating system
@@ -224,7 +224,12 @@ export default function Terms() {
           </ul>
           <p>
             We reserve the right to suspend or terminate accounts that violate these Terms or are
-            inactive for extended periods.
+            inactive for extended periods. You may request cancellation of your account by
+            contacting us at{" "}
+            <a href="mailto:contactus@synozur.com">contactus@synozur.com</a> or using any
+            account-management features made available through the Services. Synozur will not be
+            liable to you or any third party for suspension, termination, or cancellation of access
+            made in accordance with these Terms or a separate written agreement.
           </p>
 
           <h2>6. Your Consent and Our Communications</h2>
@@ -407,6 +412,38 @@ export default function Terms() {
               Not impersonate any person, organization, or entity, or misrepresent your affiliation
               with any person or entity, when publishing content through the Services
             </li>
+            <li>
+              Not probe, scan, test the vulnerability of, breach, or attempt to breach the security
+              or authentication measures of the Services, any Synozur system, or any connected
+              third-party system, except as expressly authorized in writing by Synozur
+            </li>
+            <li>
+              Not reverse engineer, decompile, disassemble, decipher, decrypt, modify, adapt,
+              circumvent, or otherwise attempt to derive the source code, underlying structure,
+              algorithms, models, workflows, prompts, or technical methods of the Services, except
+              to the extent such restriction is prohibited by applicable law
+            </li>
+            <li>
+              Not use, distribute, or assist others in using tools, scripts, bots,
+              credential-stuffing techniques, password guessing programs, cracking tools, network
+              probing tools, or similar mechanisms designed to compromise, disrupt, or bypass the
+              security or intended operation of the Services
+            </li>
+            <li>
+              Not take any action that imposes, or may impose in our sole judgment, an unreasonable
+              or disproportionately large load on the Services, Synozur&rsquo;s infrastructure, or
+              any connected third-party platform
+            </li>
+            <li>
+              Not collect, store, solicit, harvest, or process personal information about any person
+              through the Services unless you have all required rights, notices, consents, and
+              lawful authority to do so
+            </li>
+            <li>
+              Not reproduce, duplicate, copy, sell, resell, rent, lease, sublicense, white-label,
+              commercially exploit, or make available any portion of the Services except as
+              expressly authorized in a written agreement with Synozur
+            </li>
           </ul>
 
           <h2>9. Content You Publish Through the Services</h2>
@@ -464,13 +501,24 @@ export default function Terms() {
             unpublish content that has already been posted to the third-party platform.
           </p>
 
-          <h3>9.4 Enforcement</h3>
+          <h3>9.4 Sensitive Materials and Secure Submission</h3>
+          <p>
+            You should not submit confidential, sensitive, regulated, privileged, financial,
+            health, payment card, or highly restricted information through the Services unless the
+            applicable Service is expressly designed and authorized for that type of information
+            and you use the secure submission method we provide. Email is not a secure method for
+            transmitting sensitive information. If secure transfer is needed, please contact
+            Synozur for appropriate instructions before sending the information.
+          </p>
+
+          <h3>9.5 Enforcement</h3>
           <p>
             Synozur is not obligated to monitor Your Content, but we may review, remove, or refuse
-            to publish content that we believe in good faith violates these Terms or the policies
-            of a connected third-party platform. We may also suspend or terminate your access to
-            the Services, or to specific integrations, if your use causes a connected platform to
-            issue warnings, suspend the integration, or threaten enforcement against Synozur.
+            to publish content that we believe in good faith violates these Terms, applicable law,
+            or the policies of a connected third-party platform. We may also suspend or terminate
+            your access to the Services, or to specific integrations, if your use causes or may
+            cause a connected platform to issue warnings, suspend an integration, restrict
+            functionality, or threaten enforcement against Synozur.
           </p>
 
           <h2>10. Third-Party Services and Links</h2>
@@ -590,8 +638,9 @@ export default function Terms() {
           </p>
           <p>
             You may stop using the Services at any time. If you wish to terminate your account (if
-            applicable), please contact us at{" "}
-            <a href="mailto:contactus@synozur.com">contactus@synozur.com</a>.
+            applicable), you may contact us at{" "}
+            <a href="mailto:contactus@synozur.com">contactus@synozur.com</a> or use any
+            account-management features made available through the Services.
           </p>
           <p>
             For commercial subscriptions, termination will be governed by the terms of your
@@ -607,6 +656,13 @@ export default function Terms() {
               indemnification, and limitations of liability
             </li>
           </ul>
+          <p>
+            We may investigate suspected violations of these Terms, security incidents, or misuse
+            of the Services. We may cooperate with law enforcement, regulators, affected
+            third-party platforms, service providers, and other appropriate parties when we believe
+            a violation, security incident, unlawful activity, or threat to the Services has
+            occurred.
+          </p>
 
           <h2>15. Changes to These Terms</h2>
           <p>

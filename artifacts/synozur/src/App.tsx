@@ -156,6 +156,7 @@ import { AdminGate } from "@/components/admin/AdminGate";
 import { IdleWarningDialog } from "@/components/idle-warning-dialog";
 import { ErrorBoundary, RouteErrorFallback } from "@/components/error-boundary";
 import Library from "@/pages/library";
+import ResourcesHub from "@/pages/resources";
 import SearchPage from "@/pages/search";
 import LibraryDetail from "@/pages/library-detail";
 import Webinars from "@/pages/webinars";
@@ -579,6 +580,7 @@ function Router() {
             <Route path="/models/:slug" component={ModelDetail} />
             <Route path="/workshops" component={Workshops} />
             <Route path="/workshops/:slug" component={WorkshopDetail} />
+            <Route path="/resources" component={ResourcesHub} />
             <Route path="/library" component={Library} />
             <Route path="/search" component={SearchPage} />
             <Route path="/library/:slug" component={LibraryDetail} />

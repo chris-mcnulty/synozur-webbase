@@ -22,6 +22,9 @@ export const INDEXNOW_HOSTS = [
   "www.bing.com",
   "yandex.com",
 ];
+// Submission runs after every coverage scan. Keep each outbound request
+// bounded so a provider outage cannot strand the scanner lock.
+const SUBMISSION_TIMEOUT_MS = 10_000;
 
 export interface SubmitResult {
   target: string;
@@ -99,6 +102,7 @@ async function submitIndexNow(
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(SUBMISSION_TIMEOUT_MS),
     });
     return {
       target: "indexnow",
@@ -147,6 +151,7 @@ async function submitGoogleIndexingWithConcurrency(
           url: "https://indexing.googleapis.com/v3/urlNotifications:publish",
           method: "POST",
           data: googleNotifyPayload(u, mode),
+          timeout: SUBMISSION_TIMEOUT_MS,
         });
         ok += 1;
       } catch {
@@ -227,6 +232,7 @@ async function submitBing(urls: string[]): Promise<SubmitResult> {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({ siteUrl, urlList: urls }),
+        signal: AbortSignal.timeout(SUBMISSION_TIMEOUT_MS),
       },
     );
     return {

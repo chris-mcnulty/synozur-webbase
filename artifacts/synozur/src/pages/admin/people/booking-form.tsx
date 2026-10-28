@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { MediaPickerModal, mediaUrl } from "@/components/admin/MediaPickerModal";
+import { SocialCardPreview } from "@/components/admin/SocialCardPreview";
+import { DEFAULT_OG_IMAGE, PAGE_TYPES, SITE_NAME, SITE_ORIGIN } from "@/lib/seo-config";
+import { isResizableMediaUrl } from "@/lib/media-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +35,20 @@ function fromLocalInput(value: string): string | null {
   return new Date(value).toISOString();
 }
 
+// Preview the crawler-sized JPEG without storing the preview's resize parameters.
+function shareImagePreview(url: string): string {
+  const resolved = mediaUrl(url, { width: 1200 });
+  if (!isResizableMediaUrl(resolved)) return resolved;
+  // Keep a partially typed/invalid URL visible rather than crashing the form.
+  if (!URL.canParse(resolved, window.location.origin)) return resolved;
+  const parsed = new URL(resolved, window.location.origin);
+  if (parsed.origin !== window.location.origin && parsed.origin !== SITE_ORIGIN) {
+    return mediaUrl(url);
+  }
+  parsed.searchParams.set("fmt", "jpeg");
+  return resolved.startsWith("/") ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.href;
+}
+
 export default function BookingForm({ id }: Props) {
   const [, navigate] = useLocation();
   const qc = useQueryClient();
@@ -49,11 +67,20 @@ export default function BookingForm({ id }: Props) {
     active: true,
     seoTitle: null,
     seoDescription: null,
+    ogImageUrl: null,
     msBusinessId: null,
     msDefaultServiceId: null,
     msTimezone: "America/Los_Angeles",
   });
   const [error, setError] = useState<string | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+
+  const { data: siteSettings, isPending: settingsPending, isError: settingsError } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: () => api.getPublicSiteSettings(),
+    staleTime: 60_000,
+  });
 
   const { data: existing, isLoading } = useQuery({
     queryKey: ["admin-booking", id],
@@ -63,6 +90,7 @@ export default function BookingForm({ id }: Props) {
 
   useEffect(() => {
     if (existing) {
+      setSelectedImageId(null);
       setForm({
         slug: existing.slug,
         title: existing.title,
@@ -76,6 +104,7 @@ export default function BookingForm({ id }: Props) {
         active: existing.active,
         seoTitle: existing.seoTitle,
         seoDescription: existing.seoDescription,
+        ogImageUrl: existing.ogImageUrl ?? null,
         msBusinessId: existing.msBusinessId,
         msDefaultServiceId: existing.msDefaultServiceId,
         msTimezone: existing.msTimezone,
@@ -95,6 +124,12 @@ export default function BookingForm({ id }: Props) {
   });
 
   const title = isNew ? "Create Booking" : "Edit Booking";
+  const shareTitle = form.seoTitle || form.title;
+  const previewTitle = shareTitle.endsWith(` | ${SITE_NAME}`)
+    ? shareTitle
+    : shareTitle ? `${shareTitle} | ${SITE_NAME}` : SITE_NAME;
+  const previewImage = form.ogImageUrl?.trim() || "";
+  const defaultImage = shareImagePreview(siteSettings?.seoDefaultOgImageUrl || DEFAULT_OG_IMAGE);
   const crumbs = [
     { label: "Admin", href: "/" },
     { label: "Bookings", href: "/people/bookings" },
@@ -195,9 +230,13 @@ export default function BookingForm({ id }: Props) {
               <Label>Scope</Label>
               <Select
                 value={form.scope ?? "general"}
-                onValueChange={(v) =>
-                  setForm({ ...form, scope: v as BookingInput["scope"] })
-                }
+                onValueChange={(v) => {
+                  // Radix's hidden form control can emit "" while hydrating
+                  // an existing booking. It is not a valid scope selection.
+                  if (BOOKING_SCOPES.some((scope) => scope === v)) {
+                    setForm((current) => ({ ...current, scope: v as BookingInput["scope"] }));
+                  }
+                }}
               >
                 <SelectTrigger data-testid="select-scope">
                   <SelectValue />
@@ -368,6 +407,62 @@ export default function BookingForm({ id }: Props) {
                 data-testid="input-seoDescription"
               />
             </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="ogImageUrl">Social preview image URL</Label>
+              <Input
+                id="ogImageUrl"
+                value={form.ogImageUrl ?? ""}
+                onChange={(e) => {
+                  setSelectedImageId(null);
+                  setForm({ ...form, ogImageUrl: e.target.value.trim() || null });
+                }}
+                placeholder="/api/storage/objects/uploads/..."
+                data-testid="input-booking-og-image"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setImagePickerOpen(true)}
+                  data-testid="button-booking-og-image-picker"
+                >
+                  {previewImage ? "Change image from Media Library" : "Choose from Media Library"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!previewImage}
+                  onClick={() => {
+                    setSelectedImageId(null);
+                    setForm((current) => ({ ...current, ogImageUrl: null }));
+                  }}
+                  data-testid="button-booking-og-image-clear"
+                >
+                  Use site default
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use a 1200 × 630 image. Leave blank to use the site default.
+                Image changes only take effect after saving.
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              {settingsPending ? (
+                <p className="text-xs text-muted-foreground">Loading social preview defaults…</p>
+              ) : settingsError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  Could not load the site defaults for an accurate social preview. Reload to try again.
+                </p>
+              ) : (
+                <SocialCardPreview
+                  title={previewTitle}
+                  description={form.seoDescription || form.teaser || ""}
+                  defaultDescription={siteSettings?.seoDefaultDescription ?? PAGE_TYPES.home.defaultDescription}
+                  imageUrl={previewImage ? shareImagePreview(previewImage) : ""}
+                  defaultImageUrl={defaultImage}
+                />
+              )}
+            </div>
           </div>
 
           {error && (
@@ -397,6 +492,18 @@ export default function BookingForm({ id }: Props) {
             </Button>
           </div>
         </form>
+        <MediaPickerModal
+          open={imagePickerOpen}
+          onClose={() => setImagePickerOpen(false)}
+          title="Choose booking social preview image"
+          kind="image"
+          selectedId={selectedImageId}
+          onSelect={(media) => {
+            setSelectedImageId(media.id);
+            setForm((current) => ({ ...current, ogImageUrl: mediaUrl(media) || null }));
+            setImagePickerOpen(false);
+          }}
+        />
       </div>
     </AdminLayout>
   );

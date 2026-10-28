@@ -70,6 +70,12 @@ export interface PublicSiteSettings {
   tagLinkedinPartnerId?: string | null;
   /** @nullable */
   tagMetaPixelId?: string | null;
+  /**
+   * HubSpot portal ID used to load the tracking pixel on the public site. Populated from the HUBSPOT_PORTAL_ID env var; null when not configured. Portal IDs are public (they appear in the tracking script src) so it is safe to expose here.
+
+   * @nullable
+   */
+  tagHubspotPortalId?: string | null;
   /** @nullable */
   orgName?: string | null;
   /** @nullable */

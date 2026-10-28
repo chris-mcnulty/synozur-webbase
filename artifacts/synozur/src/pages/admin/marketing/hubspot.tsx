@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useToast } from "@/hooks/use-toast";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 // #131: HubSpot integration admin surface. Read-only health view + a small
 // settings form. Per-form-type toggles and lifecycle mappings are stored as
@@ -30,28 +31,55 @@ interface SyncEvent {
 
 interface HubspotStatus {
   configured: boolean;
+
   enabled: boolean;
+
   portalId: string | null;
+
   timelineAppId: string | null;
+
   formToggles: Record<string, boolean> | null;
+
   lifecycleMappings: Record<string, string> | null;
+
   euOptInDefault: boolean;
-  queue: { pending: number; deadLetter: number; succeeded: number };
+
+  queue: {
+    pending: number;
+    deadLetter: number;
+    succeeded: number;
+    companies?: { pending: number; deadLetter: number };
+    deals?: { pending: number; deadLetter: number };
+  };
+
+  skippedTimelineCount: number;
   // #131 — health surface. `connection` is a live probe of the HubSpot
   // account-info endpoint, `freshness` is the most-recent successful
   // sync per kind/form-type so we can flag stale or never-synced flows.
+
   connection?: {
     ok: boolean;
     portalId?: number | null;
     error?: string | null;
+
   } | null;
+
   freshness?: {
     lastContactUpsert: string | null;
     lastTimelineEvent: string | null;
     lastDeadLetter?: string | null;
     perFormType: Record<string, string | null>;
   } | null;
+
   recentEvents: Array<SyncEvent>;
+
+  // #549 — tracking pixel + Forms API stitching config health.
+  trackingConfig?: {
+    portalIdConfigured: boolean;
+    trackingScriptReady: boolean;
+    formGuids: Record<string, boolean>;
+    setupNote: string;
+  };
 }
 
 const FORM_TYPES = [
@@ -187,6 +215,19 @@ export default function HubspotAdminPage() {
     }
   }
 
+  async function retrySkipped() {
+    try {
+      const r = await apiFetch<{ reset: number }>("/admin/integrations/hubspot/retry-skipped", { method: "POST" });
+      toast({
+        title: "Skipped events re-queued",
+        description: `${r.reset} timeline event${r.reset === 1 ? "" : "s"} reset to pending.`,
+      });
+      await refresh();
+    } catch (e) {
+      toast({ title: "Retry failed", description: (e as Error).message, variant: "destructive" });
+    }
+  }
+
   async function erase() {
     if (!erasureEmail.trim()) return;
     if (!confirm(`Permanently delete the HubSpot contact for ${erasureEmail}? This cannot be undone.`)) return;
@@ -211,6 +252,36 @@ export default function HubspotAdminPage() {
         <div className="text-muted-foreground">Loading…</div>
       ) : (
         <>
+          {status.skippedTimelineCount > 0 && !status.timelineAppId && (
+            <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold">
+                    {status.skippedTimelineCount} timeline event{status.skippedTimelineCount === 1 ? "" : "s"} skipped — HubSpot App ID not set
+                  </p>
+                  <p>
+                    Timeline events (the richest behavioural signal sent to HubSpot) are being silently dropped
+                    because the <strong>Timeline app id</strong> is not configured. To find your App ID: open the
+                    HubSpot developer portal → <em>App Marketplace</em> → your app → the <em>App ID</em> shown at
+                    the top of the page.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <a
+                      href="#hs-app-id-section"
+                      className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+                    >
+                      Set App ID ↓
+                    </a>
+                    <Button size="sm" variant="outline" onClick={retrySkipped} disabled={saving}>
+                      Retry skipped events after setting the ID
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Card className="p-6 mb-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
@@ -239,9 +310,9 @@ export default function HubspotAdminPage() {
               </div>
             </div>
 
-            <div>
+            <div id="hs-app-id-section">
               <Label htmlFor="hs-app-id">Timeline app id</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Input
                   id="hs-app-id"
                   value={timelineAppIdDraft}
@@ -252,22 +323,80 @@ export default function HubspotAdminPage() {
                     if (v !== (status.timelineAppId ?? "")) save({ timelineAppId: v || null });
                   }}
                 />
+                {timelineAppIdDraft.trim() ? (
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" aria-label="App ID configured" />
+                ) : status.skippedTimelineCount > 0 ? (
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" aria-label="Skipped events exist" />
+                ) : null}
               </div>
+              {!timelineAppIdDraft.trim() && status.skippedTimelineCount > 0 && (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  {status.skippedTimelineCount} skipped event{status.skippedTimelineCount === 1 ? "" : "s"} waiting for this ID
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Required for timeline events. Without it, contact upserts still
                 run; timeline events are marked <code>skipped</code>.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Switch
-                id="hs-eu-default"
-                checked={status.euOptInDefault}
-                disabled={saving}
-                onCheckedChange={(v) => save({ euOptInDefault: v })}
-              />
-              <Label htmlFor="hs-eu-default">EU geo: default to opt-out</Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="hs-eu-default"
+                  checked={status.euOptInDefault}
+                  disabled={saving}
+                  onCheckedChange={(v) => save({ euOptInDefault: v })}
+                />
+                <Label htmlFor="hs-eu-default">Global opt-out backstop</Label>
+              </div>
+              <p className="text-xs text-muted-foreground ml-[52px]">
+                EU visitors are automatically defaulted to opt-out via per-request
+                geo-IP detection — this toggle is not needed for GDPR compliance.
+                It applies only to visitors whose country is explicitly resolved as
+                non-EU; enable it to default those visitors to opt-out (e.g. for
+                full-globe opt-out campaigns or testing). When the country cannot
+                be determined, visitors are tracked (opt-in) by default.
+              </p>
             </div>
+          </Card>
+
+          {/* #549 — Tracking pixel + Forms API stitching config health */}
+          <Card className="p-6 mb-6 space-y-4">
+            <div className="text-lg font-semibold">Tracking &amp; stitching</div>
+            <p className="text-sm text-muted-foreground">
+              The HubSpot tracking pixel sets the <code>hubspotutk</code> cookie and
+              records page views. The Forms API stitches that anonymous history to a
+              contact when a form is submitted.
+            </p>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-muted-foreground">Tracking script:</span>
+              {status.trackingConfig?.trackingScriptReady
+                ? <Badge>ready — portal ID configured</Badge>
+                : <Badge variant="destructive">not configured — set HUBSPOT_PORTAL_ID</Badge>}
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground mb-2">
+                Per-form stitching GUIDs
+                <span className="ml-1 text-xs">(set <code>HUBSPOT_FORM_GUID_&lt;FORM_TYPE&gt;</code> for each)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {Object.entries(status.trackingConfig?.formGuids ?? {}).map(([ft, configured]) => (
+                  <div key={ft} className="flex items-center justify-between border-b border-border py-1">
+                    <code>{ft}</code>
+                    {configured
+                      ? <Badge variant="default" className="text-xs">configured</Badge>
+                      : <Badge variant="secondary" className="text-xs">missing</Badge>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {!status.trackingConfig?.trackingScriptReady && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded p-3 leading-relaxed">
+                <strong>Setup:</strong> {status.trackingConfig?.setupNote}
+              </p>
+            )}
           </Card>
 
           <Card className="p-6 mb-6 space-y-3">
@@ -324,14 +453,34 @@ export default function HubspotAdminPage() {
           </Card>
 
           <Card className="p-6 mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
               <div>
                 <div className="text-lg font-semibold">Sync queue</div>
                 <div className="text-sm text-muted-foreground">
                   Pending: {status.queue.pending} · Succeeded: {status.queue.succeeded} · Dead-letter: {status.queue.deadLetter}
+                  {status.skippedTimelineCount > 0 && (
+                    <span className="ml-1 text-amber-600 font-medium">
+                      · Skipped (timeline): {status.skippedTimelineCount}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 space-x-4">
+                  <span>
+                    Companies — pending: {status.queue.companies?.pending ?? 0} · dead-letter: {status.queue.companies?.deadLetter ?? 0}
+                  </span>
+                  <span>
+                    Deals — pending: {status.queue.deals?.pending ?? 0} · dead-letter: {status.queue.deals?.deadLetter ?? 0}
+                  </span>
                 </div>
               </div>
-              <Button onClick={drainNow} disabled={saving}>Drain now</Button>
+              <div className="flex gap-2">
+                {status.skippedTimelineCount > 0 && (
+                  <Button variant="outline" onClick={retrySkipped} disabled={saving}>
+                    Retry {status.skippedTimelineCount} skipped
+                  </Button>
+                )}
+                <Button onClick={drainNow} disabled={saving}>Drain now</Button>
+              </div>
             </div>
             <div className="space-y-1">
               {status.recentEvents.slice(0, 10).map((e) => (

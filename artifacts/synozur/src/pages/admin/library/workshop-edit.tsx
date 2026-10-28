@@ -30,6 +30,7 @@ import {
   type WorkshopInput,
 } from "@/lib/api-workshops";
 import { api, type BookingDto } from "@/lib/api";
+import { workshopNoMetaDesc } from "./meta-desc-guard";
 
 interface Props {
   id?: string;
@@ -242,8 +243,7 @@ export default function WorkshopEdit({ id }: Props) {
     onError: (e: Error) => setError(e.message),
   });
 
-  const noMetaDesc =
-    !form.shortDescription.trim() && !form.seo.description.trim();
+  const noMetaDesc = workshopNoMetaDesc(form.shortDescription, form.seo.description);
 
   const update = <K extends keyof WorkshopInput>(key: K, value: WorkshopInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));

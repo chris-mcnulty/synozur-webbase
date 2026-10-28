@@ -11,7 +11,7 @@ export default function Privacy() {
       <section className="bg-[#0B0B1A] py-20">
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
-            Privacy Statement
+            Privacy Policy
           </h1>
           <p className="text-zinc-300 text-lg">
             Synozur &middot; Effective Date: May 25, 2026 &middot; Last Modified: May 25, 2026
@@ -23,7 +23,7 @@ export default function Privacy() {
         <div className="container mx-auto px-4 max-w-3xl prose prose-neutral dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:leading-relaxed prose-li:leading-relaxed prose-a:text-primary">
           <p>
             At Synozur, we are committed to protecting the privacy and security of our
-            customers and partners. This privacy statement outlines our practices regarding the
+            customers and partners. This privacy policy outlines our practices regarding the
             collection, use, and sharing of personal information.
           </p>
 
@@ -434,9 +434,9 @@ export default function Privacy() {
             information, and following up about related Synozur services.
           </p>
 
-          <h2>Changes to This Privacy Statement</h2>
+          <h2>Changes to This Privacy Policy</h2>
           <p>
-            We may update this privacy statement from time to time. We will notify you of any
+            We may update this privacy policy from time to time. We will notify you of any
             significant changes via updates to our website policy at{" "}
             <a href="/privacy">www.synozur.com/privacy</a>, and obtain your consent where required
             by law.
@@ -450,7 +450,7 @@ export default function Privacy() {
 
           <p>
             By providing your personal information to Synozur, you consent to the
-            collection, use, and sharing of your information as described in this privacy statement.
+            collection, use, and sharing of your information as described in this privacy policy.
           </p>
         </div>
       </section>

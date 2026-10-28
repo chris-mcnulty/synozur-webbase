@@ -3038,6 +3038,23 @@ export async function runMigrations(): Promise<void> {
       CREATE INDEX IF NOT EXISTS seo_coverage_runs_started_idx
         ON seo_coverage_runs (started_at);
     `);
+    // 55b. Task: Bing index checks erroring on most pages. Bing's Webmaster
+    //     API throttles hard (HTTP 400 "ThrottleHost" after ~10-40 calls),
+    //     so track when each URL last got a *successful* Bing probe so scans
+    //     can rotate quota to the least-recently-checked URLs, and relabel
+    //     the legacy throttle noise ({"httpStatus": 400} with no detail)
+    //     from "error" to "not-checked" so the dashboard doesn't report
+    //     rate-limited rows as failures.
+    await db.execute(sql`
+      ALTER TABLE seo_coverage_status
+        ADD COLUMN IF NOT EXISTS bing_checked_at timestamptz;
+    `);
+    await db.execute(sql`
+      UPDATE seo_coverage_status
+      SET bing_bucket = 'not-checked'
+      WHERE bing_bucket = 'error'
+        AND bing_raw = '{"httpStatus": 400}'::jsonb;
+    `);
 
     // Best-effort data backfill — runs after all schema DDL so the
     // collateral_type enum and landing_pages columns are guaranteed to
@@ -3883,6 +3900,109 @@ export async function runMigrations(): Promise<void> {
     // Aug 2026 — audience field for applications ("Who it's for").
     await db.execute(sql`
       ALTER TABLE applications ADD COLUMN IF NOT EXISTS audience TEXT;
+    `);
+
+    // Aug 2026 — count of not-indexed URLs resubmitted after each coverage scan.
+    await db.execute(sql`
+      ALTER TABLE seo_coverage_runs ADD COLUMN IF NOT EXISTS resubmitted_count integer;
+    `);
+
+    // Aug 2026 — preserve the actual Bing throttle outcome for each coverage
+    // scan. A zero checked count can also mean auth, timeout, or InvalidUrl,
+    // so the dashboard must never infer quota exhaustion from it.
+    await db.execute(sql`
+      ALTER TABLE seo_coverage_runs
+        ADD COLUMN IF NOT EXISTS bing_throttled boolean NOT NULL DEFAULT false;
+    `);
+
+    // Aug 2026 — durable per-run progress and heartbeat keep the coverage
+    // dashboard accurate across API replicas and make abandoned scans
+    // recoverable instead of spinning indefinitely in one process.
+    await db.execute(sql`
+      ALTER TABLE seo_coverage_runs
+        ADD COLUMN IF NOT EXISTS completed_url_count integer NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS last_progress_at timestamptz;
+    `);
+
+    // Track sitemap presence separately from provider inspection time. The
+    // coverage scanner can inspect only a capped subset per run, but every
+    // crawlable URL must remain in the dashboard inventory as pending.
+    await db.execute(sql`
+      ALTER TABLE seo_coverage_status
+        ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+    `);
+
+    // Aug 2026 — per-run list of resubmitted URLs so admins can drill into
+    // which URLs were nudged and whether they subsequently got indexed.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_resubmitted_urls (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        run_id UUID NOT NULL REFERENCES seo_coverage_runs(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        path TEXT NOT NULL,
+        artifact_kind TEXT NOT NULL,
+        resubmitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_resubmitted_urls_run_idx ON seo_resubmitted_urls (run_id);
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_resubmitted_urls_url_idx ON seo_resubmitted_urls (url);
+    `);
+
+    // Aug 2026 — Daily provider snapshots and conservative transition events
+    // make index-growth pace measurable rather than inferring it from the
+    // mutable current-status table.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_coverage_daily_snapshots (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        snapshot_date DATE NOT NULL,
+        provider TEXT NOT NULL,
+        run_id UUID NOT NULL REFERENCES seo_coverage_runs(id) ON DELETE CASCADE,
+        sitemap_url_count INTEGER NOT NULL,
+        checked_url_count INTEGER NOT NULL,
+        indexed_url_count INTEGER NOT NULL,
+        discovered_not_indexed_count INTEGER NOT NULL,
+        is_complete BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (snapshot_date, provider)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_daily_snapshots_provider_date_idx
+        ON seo_coverage_daily_snapshots (provider, snapshot_date);
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seo_coverage_index_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_date DATE NOT NULL,
+        provider TEXT NOT NULL,
+        run_id UUID NOT NULL REFERENCES seo_coverage_runs(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        artifact_kind TEXT NOT NULL,
+        previous_bucket TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (event_date, provider, url)
+      );
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS seo_coverage_index_events_provider_date_idx
+        ON seo_coverage_index_events (provider, event_date);
+    `);
+
+    // Aug 2026 — #463: HubSpot Company + Deal sync.
+    // Store the resulting HubSpot object IDs back on the local rows so the
+    // sync worker can PATCH instead of POST on subsequent runs (idempotent
+    // upsert) and admins can deep-link straight to the HubSpot record.
+    await db.execute(sql`
+      ALTER TABLE client_organizations
+        ADD COLUMN IF NOT EXISTS hubspot_company_id TEXT;
+    `);
+    await db.execute(sql`
+      ALTER TABLE engagements
+        ADD COLUMN IF NOT EXISTS hubspot_deal_id TEXT;
     `);
 
     logger.info("Startup migrations complete");

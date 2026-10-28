@@ -181,7 +181,7 @@ export function SiteFooterB() {
                     href="/services-overview/default"
                     className="hover:text-primary transition-colors"
                   >
-                    Consulting Services
+                    Solutions
                   </Link>
                 </li>
               )}

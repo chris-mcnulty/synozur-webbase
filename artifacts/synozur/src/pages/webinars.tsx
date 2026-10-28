@@ -1,11 +1,74 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Meta } from "@/lib/meta";
 import { useParentPage } from "@/lib/parent-page";
-import { CollateralCard, CollateralCardSkeleton } from "@/components/collateral-card";
-import { fetchLibrary, type ListResult } from "@/data/collateral";
+import { api, type VideoDto, type VideoListResult } from "@/lib/api";
+import { buildMediaSrcSet, resolveMediaUrl } from "@/lib/insights";
 
 const PAGE_SIZE = 9;
+const CARD_HERO_WIDTHS = [480, 640, 960, 1280] as const;
+
+function formatVideoDate(item: VideoDto): string | null {
+  const value = item.publishedAt || item.recordedAt;
+  if (!value) return null;
+  const parts = value.slice(0, 10).split("-");
+  if (parts.length !== 3) return null;
+  const [year, month, day] = parts.map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function WebinarVideoCard({ item }: { item: VideoDto }) {
+  const image = item.thumbnailUrl || item.heroImage;
+  const heroSrc = resolveMediaUrl(image, { width: 960 }) ?? image;
+  const heroSrcSet = buildMediaSrcSet(image, CARD_HERO_WIDTHS);
+  const formattedDate = formatVideoDate(item);
+
+  return (
+    <Link href={`/videos/${item.slug}`} className="block">
+      <div className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-card sm:aspect-[4/5]">
+        <img
+          src={heroSrc}
+          srcSet={heroSrcSet ?? undefined}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          alt={item.heroImageAlt || item.title}
+          width={960}
+          height={1200}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+        <div className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6 md:p-8">
+          <div className="mb-2 flex items-center gap-2 sm:mb-4">
+            <span className="inline-block rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-white backdrop-blur-md">
+              WEBINAR
+            </span>
+            {formattedDate && (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/80">
+                {formattedDate}
+              </span>
+            )}
+          </div>
+          <h3 className="text-xl font-bold leading-tight text-white md:text-2xl">{item.title}</h3>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function WebinarVideoCardSkeleton() {
+  return (
+    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-card sm:aspect-[4/5]">
+      <div className="absolute inset-0 animate-pulse bg-muted/40" />
+    </div>
+  );
+}
 
 export default function Webinars() {
   const [location, navigate] = useLocation();
@@ -15,7 +78,7 @@ export default function Webinars() {
   const q = params.get("q") ?? "";
   const page = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
 
-  const [result, setResult] = useState<ListResult | null>(null);
+  const [result, setResult] = useState<VideoListResult | null>(null);
   const [qInput, setQInput] = useState(q);
 
   useEffect(() => {
@@ -24,9 +87,20 @@ export default function Webinars() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchLibrary({ type: ["webinar"], topic, q, page, pageSize: PAGE_SIZE }).then((res) => {
-      if (!cancelled) setResult(res);
-    });
+    api
+      .listVideos({
+        category: "webinar",
+        tag: topic.trim() || undefined,
+        q: q.trim() || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
+      .then((res) => {
+        if (!cancelled) setResult(res);
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ total: 0, page, pageSize: PAGE_SIZE, items: [] });
+      });
     return () => {
       cancelled = true;
     };
@@ -122,8 +196,8 @@ export default function Webinars() {
 
           {!result ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <CollateralCardSkeleton key={i} />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <WebinarVideoCardSkeleton key={i} />
               ))}
             </div>
           ) : result.items.length === 0 ? (
@@ -136,7 +210,7 @@ export default function Webinars() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {result.items.map((item) => (
-                  <CollateralCard key={item.id} item={item} />
+                  <WebinarVideoCard key={item.id} item={item} />
                 ))}
               </div>
 

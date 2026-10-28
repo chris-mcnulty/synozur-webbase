@@ -1,0 +1,41 @@
+{
+  "baseline": "docs/repository-cleanup/baseline-2026-10-16",
+  "verified_upload_count": 247,
+  "verified_bytes": 297005961,
+  "review_lanes": {
+    "DUPLICATE_REVIEW": 40,
+    "PROTECTED_INPUT": 43,
+    "SOURCE_REVIEW": 164
+  },
+  "all_remaining_uploads_match_baseline": true,
+  "duplicate_peers_rehashed": true,
+  "archive_destination": null,
+  "owner_confirmed_video_rights_for_existing_m365_storage": true,
+  "archive_downloads_verified": false,
+  "restores_verified": false,
+  "verification_waived_by_owner": true,
+  "approved_reduction_bytes": 185534982,
+  "actions_taken": [
+    {
+      "action": "OWNER_APPROVED_REMOVAL",
+      "path": "attached_assets/AdobeStock_336446857_1777150682190.mov",
+      "bytes": 135484313,
+      "sha256": "9d0656b29bf3c73bce073eeffe9e9686530cd7e2a535e1e75414af73bb2ec4a9",
+      "provenance": "Original 4K Adobe Stock video; owner reports master in M365 and confirms license allows storage there"
+    },
+    {
+      "action": "OWNER_APPROVED_REMOVAL",
+      "path": "attached_assets/The_Champion_System_Making_AI_Adoption_Stick_-_First_Nations__1792021848284.pptx",
+      "bytes": 25024502,
+      "sha256": "a8469de6a2cbe793ee5a124a73a21fb0581627cdb89b88dc6a45343008e6dead",
+      "provenance": "Corrected controlling seven-slide Tribal deck; owner identifies upload as completed-work reference copy and reports external master"
+    },
+    {
+      "action": "OWNER_APPROVED_REMOVAL",
+      "path": "attached_assets/The_Champion_System_Making_AI_Adoption_Stick_-_First_Nations_1792014756727.pptx",
+      "bytes": 25026167,
+      "sha256": "14e3e9c9b3f5c7888ca31c5c7889c3003bf019c90a298fad0682e932161537d5",
+      "provenance": "Superseded eight-slide Tribal attachment, not content authority; owner reports external copy"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "git_head": "9856bdc04ee5df6e6b1524e13ff2d4ddc9a1402c",
+  "tracked_file_count": 2242,
+  "tracked_working_bytes": 984125664,
+  "uploads_count": 250,
+  "uploads_working_bytes": 482540943,
+  "local_task_plan_count": 122,
+  "local_task_plan_bytes": 449644,
+  "missing_tracked_paths": [],
+  "upload_only_duplicate_groups": 17,
+  "upload_or_public_duplicate_groups": 29,
+  "candidate_delete_bytes": 92810,
+  "dispositions": {
+    "Keep in GitHub": 2043,
+    "Needs decision": 193,
+    "Delete regenerable output": 6,
+    "Keep locally (already ignored)": 122
+  },
+  "limitations": [
+    "Literal filename hits include comments and task plans, not just executable imports.",
+    "No hit does not establish non-use: dynamic paths, globs, CMS references and external tools exist.",
+    "Hashes describe current working bytes, not Git LFS pointers or historical objects.",
+    "No external archives, licenses, production data or remote backup availability verified.",
+    "Git history, LFS objects, ignored platform tooling and private profile are untouched."
+  ]
+}

@@ -621,6 +621,9 @@ function SubmitResultRow({
 }) {
   const missingCredentials =
     !result.ok && !!result.error && /not set/i.test(result.error);
+  // 207 = partial success: some URLs hit Google's daily quota (200 URLs/day).
+  // Not a credential or configuration error — show as a quota warning, not failure.
+  const isPartial = !result.ok && result.status === 207 && result.submitted > 0;
 
   return (
     <li
@@ -629,6 +632,8 @@ function SubmitResultRow({
     >
       {result.ok ? (
         <CheckCircle2 className="h-4 w-4 text-green-700 dark:text-green-400 shrink-0" />
+      ) : isPartial ? (
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
       ) : (
         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
       )}
@@ -638,6 +643,11 @@ function SubmitResultRow({
           <div className="text-xs text-muted-foreground">
             Submitted {result.submitted} URL{result.submitted === 1 ? "" : "s"}
             {typeof result.status === "number" ? ` · HTTP ${result.status}` : ""}
+          </div>
+        ) : isPartial ? (
+          <div className="text-xs text-amber-600 dark:text-amber-400">
+            Submitted {result.submitted} URL{result.submitted === 1 ? "" : "s"} — remaining URLs hit the daily
+            quota (Google allows ~200/day). Re-submit tomorrow to continue.
           </div>
         ) : missingCredentials ? (
           <div className="text-xs text-muted-foreground">

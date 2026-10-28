@@ -68,6 +68,82 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /bookings:
+    get:
+      operationId: listPublicBookings
+      summary: List visible booking calendars
+      responses:
+        "200":
+          description: Visible calendars
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BookingRecord"
+  /bookings/{slug}:
+    get:
+      operationId: getPublicBooking
+      summary: Get a visible booking calendar
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRecord"
+        "404":
+          description: Calendar not publicly visible
+  /admin/bookings:
+    post:
+      operationId: createAdminBooking
+      summary: Create a booking calendar (admin authentication required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRecordInput"
+      responses:
+        "201":
+          description: Created calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRecord"
+  /admin/bookings/{id}:
+    patch:
+      operationId: patchAdminBooking
+      summary: Update a booking calendar (admin authentication required)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRecordFields"
+      responses:
+        "200":
+          description: Updated calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRecord"
   /healthz:
     get:
       operationId: healthCheck
@@ -4551,6 +4627,67 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    BookingRecordFields:
+      type: object
+      properties:
+        slug:
+          type: [string, "null"]
+        title:
+          type: string
+          minLength: 1
+        teaser:
+          type: [string, "null"]
+        descriptionHtml:
+          type: [string, "null"]
+        embedUrl:
+          type: string
+        scope:
+          type: string
+          enum: [general, offer, conference]
+        startsAt:
+          type: [string, "null"]
+          format: date-time
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+        displayOrder:
+          type: integer
+        active:
+          type: boolean
+        seoTitle:
+          type: [string, "null"]
+        seoDescription:
+          type: [string, "null"]
+        ogImageUrl:
+          type: [string, "null"]
+          description: Page-specific social preview image; null clears the override.
+        msBusinessId:
+          type: [string, "null"]
+        msDefaultServiceId:
+          type: [string, "null"]
+        msTimezone:
+          type: [string, "null"]
+    BookingRecordInput:
+      allOf:
+        - $ref: "#/components/schemas/BookingRecordFields"
+        - type: object
+          required: [title, embedUrl]
+    BookingRecord:
+      allOf:
+        - $ref: "#/components/schemas/BookingRecordFields"
+        - type: object
+          required: [id, slug, title, embedUrl, active, createdAt, updatedAt]
+          properties:
+            id:
+              type: string
+            slug:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
     HealthStatus:
       type: object
       required:
@@ -6152,6 +6289,15 @@ components:
           type:
             - string
             - 'null'
+        tagHubspotPortalId:
+          type:
+            - string
+            - 'null'
+          description: >
+            HubSpot portal ID used to load the tracking pixel on the public
+            site. Populated from the HUBSPOT_PORTAL_ID env var; null when not
+            configured. Portal IDs are public (they appear in the tracking
+            script src) so it is safe to expose here.
         orgName:
           type:
             - string

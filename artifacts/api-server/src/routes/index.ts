@@ -75,6 +75,7 @@ import adminExperimentsRouter from "./adminExperiments";
 import cmsApiKeysRouter from "./cms/apiKeys";
 import briefingPodcastRouter from "./briefingPodcast";
 import mcpRouter from "./mcp";
+import engagementsAdminRouter from "./engagementsAdmin";
 
 const router: IRouter = Router();
 
@@ -154,5 +155,6 @@ router.use(adminExperimentsRouter);
 router.use(cmsApiKeysRouter);
 router.use(briefingPodcastRouter);
 router.use(mcpRouter);
+router.use(engagementsAdminRouter);
 
 export default router;

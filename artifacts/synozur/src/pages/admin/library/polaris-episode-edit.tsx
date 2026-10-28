@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, Image as ImageIcon } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Save, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +19,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ActivityTab } from "@/components/admin/ActivityTab";
 import { useAdminAccess } from "@/components/admin/AdminGate";
 import { OgImagePreview } from "@/components/admin/OgImagePreview";
+import { SeoLivePreview } from "@/components/admin/SeoLivePreview";
 import { TaxonomyPicker } from "@/components/admin/TaxonomyPicker";
 import { CollateralSolutionsEditor } from "@/components/admin/CollateralSolutionsEditor";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ import {
   type ServiceWithSolutions,
 } from "@/lib/api";
 import { BookOpen, CheckCircle2, FileText, RefreshCw, Trash2, X } from "lucide-react";
+import { polarisEpisodeNoMetaDesc } from "./meta-desc-guard";
 
 interface Props {
   id?: string;
@@ -298,6 +300,8 @@ export default function PolarisEpisodeEdit({ id }: Props) {
       toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
+  const noMetaDesc = polarisEpisodeNoMetaDesc(form.seoDescription, form.summary);
+
   const onSave = () => {
     if (!form.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
@@ -306,6 +310,13 @@ export default function PolarisEpisodeEdit({ id }: Props) {
     if (form.episodeNumber === "" || Number.isNaN(Number(form.episodeNumber))) {
       toast({ title: "Episode number is required", variant: "destructive" });
       return;
+    }
+    if (form.active && noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This episode is active but has no summary or SEO meta description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
     }
     const body = toBody(form);
     if (id) updateMut.mutate(body);
@@ -355,6 +366,20 @@ export default function PolarisEpisodeEdit({ id }: Props) {
       {!canWrite && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
           You have read-only access. Only editors and admins can change episodes.
+        </div>
+      )}
+      {form.active && noMetaDesc && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          data-testid="banner-no-meta-desc"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">No meta description.</span>{" "}
+            This episode is active but neither a summary nor an SEO meta description is set.
+            Search engines will auto-generate a snippet.{" "}
+            Fill in at least one for best results.
+          </div>
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -534,33 +559,58 @@ export default function PolarisEpisodeEdit({ id }: Props) {
                 />
               </div>
             </div>
+          </Card>
+
+          <Card className="p-4 space-y-4">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+              SEO &amp; social preview
+            </h3>
             <div>
               <Label htmlFor="seoTitle">SEO title</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Overrides the episode title in search results. Leave blank to use the title above.
+              </p>
               <Input
                 id="seoTitle"
                 value={form.seoTitle}
                 onChange={(e) => update({ seoTitle: e.target.value })}
                 disabled={!canWrite}
+                data-testid="input-seo-title"
+                placeholder={form.title || "Episode title"}
               />
             </div>
             <div>
               <Label htmlFor="seoDescription">SEO description</Label>
+              <p className="text-xs text-muted-foreground mb-1">
+                Overrides the summary as the meta description. Leave blank to use the summary above.
+              </p>
               <Textarea
                 id="seoDescription"
                 value={form.seoDescription}
                 onChange={(e) => update({ seoDescription: e.target.value })}
                 disabled={!canWrite}
                 rows={2}
+                data-testid="input-seo-description"
+                placeholder={form.summary || "Episode summary"}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Auto-generated social share preview</Label>
-              <OgImagePreview
-                kind="polaris"
-                id={isNew ? null : (itemQ.data?.id ?? null)}
-                updatedAt={itemQ.data?.updatedAt}
-              />
-            </div>
+            <SeoLivePreview
+              title={form.seoTitle || form.title}
+              description={form.seoDescription || form.summary}
+              slug={form.slug}
+              imageUrl={form.ogImage || form.artworkUrl || null}
+            />
+            {!isNew && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Label>Auto-generated share image</Label>
+                <OgImagePreview
+                  kind="polaris"
+                  id={itemQ.data?.id ?? null}
+                  updatedAt={itemQ.data?.updatedAt}
+                  showOverrideHint={false}
+                />
+              </div>
+            )}
           </Card>
         </div>
 

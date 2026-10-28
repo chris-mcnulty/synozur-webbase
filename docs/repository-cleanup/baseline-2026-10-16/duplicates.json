@@ -1,0 +1,212 @@
+[
+  {
+    "sha256": "02f0dfe669ac903a0f6bc08a94929138509f9a5d60eed02b9b6ba277dffacfda",
+    "paths": [
+      "attached_assets/AdobeStock_485916628_1778029171603.jpeg",
+      "attached_assets/AdobeStock_485916628_1782389078597.jpeg"
+    ]
+  },
+  {
+    "sha256": "08c4ac3fbc4d34f9865aeac27c1f3845506187ed1470a62d655ef442e807db09",
+    "paths": [
+      "artifacts/synozur/public/logo-horizontal.png",
+      "attached_assets/SA-Logo-Horizontal-color_1779641081052.png"
+    ]
+  },
+  {
+    "sha256": "0924698340c40827289297ad9b9c5d36d3f91d2e7a7e75e76ae4b8d82c46616a",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-Regular.ttf",
+      "attached_assets/26301410506_1776704285393.ttf"
+    ]
+  },
+  {
+    "sha256": "0b4104db067200b4e5ff2598752fb1a4679c33b88191d2453efc2c06664300dc",
+    "paths": [
+      "attached_assets/image_1777219836954.png",
+      "attached_assets/image_1777222284555.png"
+    ]
+  },
+  {
+    "sha256": "0c74eb0b1ddd705c847ba4a0d28b6663c09f32d50a24089f420902442b4dda88",
+    "paths": [
+      "artifacts/synozur/public/email-header.jpg",
+      "attached_assets/SA_EmailHeader_short_1781623716242.jpg"
+    ]
+  },
+  {
+    "sha256": "0fed518ca41eddbf80338a1449e704e6074dd006801f6d93040b29a92d89e490",
+    "paths": [
+      "attached_assets/AdobeStock_113472808_1776708217614.jpeg",
+      "attached_assets/AdobeStock_113472808_1782389078593.jpeg"
+    ]
+  },
+  {
+    "sha256": "1350a6c72d3e66625f8d2b918be5aa7854be685f5af48d9c3da694db92c67121",
+    "paths": [
+      "attached_assets/AdobeStock_906941431_1776708217617.jpeg",
+      "attached_assets/AdobeStock_906941431_1778855534784.jpeg"
+    ]
+  },
+  {
+    "sha256": "17553b65dd9ccd3d99362c55e6b6d00c89d794b0471e7b3848112c85cb0b3db6",
+    "paths": [
+      "attached_assets/image_1790884389628.png",
+      "attached_assets/image_1790884409745.png"
+    ]
+  },
+  {
+    "sha256": "1d29a551ebe8f37abc85c9835e2c7bba209e86817692df6ae803ca56c2c3c67c",
+    "paths": [
+      "artifacts/synozur/public/careers-hero.jpg",
+      "artifacts/synozur/public/careers-hero.png",
+      "attached_assets/Firefly_Gemini_Flash_A_photorealistic_deep_night_sky_104518_mN_1778028961264.png",
+      "attached_assets/Firefly_Gemini_Flash_A_photorealistic_deep_night_sky_104518_mN_1779560201667.png"
+    ]
+  },
+  {
+    "sha256": "21b898ed148cdffd7611fec280d8ebfb9b3f316e2bbad5f4477316faccfa17ca",
+    "paths": [
+      "artifacts/synozur/public/images/sa-logo-horizontal-white.png",
+      "attached_assets/SynozurSolo-Logo-horizontal_1777205040978.png"
+    ]
+  },
+  {
+    "sha256": "27f9d9a019e266658d33f867f6ff9c730e8b745da8734ca5126a9a37eb9cfdbb",
+    "paths": [
+      "artifacts/synozur/public/favicon.png",
+      "artifacts/synozur/public/images/synozur-mark-color.png",
+      "attached_assets/SynozurMark_color1400_1776715102226.png",
+      "attached_assets/SynozurMark_color1400_1776736625563.png",
+      "attached_assets/SynozurMark_color1400_1777152876729.png",
+      "attached_assets/SynozurMark_color1400_1777153323152.png"
+    ]
+  },
+  {
+    "sha256": "28023b68e674f3be1ce0eeeb89d08129ec78d9a1f0bf3cacfb9bb9eec1ecc35e",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-Bold.ttf",
+      "attached_assets/25381880192_1776704285389.ttf"
+    ]
+  },
+  {
+    "sha256": "369d462095983874b394b9f7d17a5b6b389b967432f97ac4875c1fa73f0c4029",
+    "paths": [
+      "attached_assets/Pasted-Synozur-s-Manifesto-for-Transformation-in-the-AI-Era-At_1778855280707.txt",
+      "attached_assets/Pasted-Synozur-s-Manifesto-for-Transformation-in-the-AI-Era-At_1778961250469.txt"
+    ]
+  },
+  {
+    "sha256": "631fe913833a3a6c792d3c84b15031299dd78a47f7a1ea6128936824ceeb7162",
+    "paths": [
+      "attached_assets/Collateral_1776706603387.csv",
+      "attached_assets/Collateral_1776714742837.csv"
+    ]
+  },
+  {
+    "sha256": "693f67fbb98c7c10fa006248a17a14d4cd472805994973dc7deaeba0db6c825f",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-Italic.ttf",
+      "attached_assets/27926215584_1776704285394.ttf"
+    ]
+  },
+  {
+    "sha256": "6df824aaa8be50d95fa21ec3a4c9f7b654be36321e64a971ca55f2e2b0ea297b",
+    "paths": [
+      "attached_assets/Pasted--Replit-Agent-Integration-Brief-P2-Page-Specific-Fixes-_1779567997994.txt",
+      "attached_assets/Pasted--Replit-Agent-Integration-Brief-P2-Page-Specific-Fixes-_1779568045079.txt"
+    ]
+  },
+  {
+    "sha256": "70dd5bcc7a2aa828e2d06388092f0aa2709a9d2ec9d72833caeb55bb9655ff6f",
+    "paths": [
+      "artifacts/synozur/public/images/case-studies/synozur-manifesto.jpg",
+      "attached_assets/AdobeStock_1140542296_1778855534784.jpeg"
+    ]
+  },
+  {
+    "sha256": "91e8d92c1c80e1acabcad9c18e212c3d4a5fdd0f1635e507ba02ffcc26080eba",
+    "paths": [
+      "attached_assets/image_1779309560860.png",
+      "attached_assets/image_1779364964888.png"
+    ]
+  },
+  {
+    "sha256": "926ae8f7b6d86931f1f3248f9d1e1abee16b49b43a5ef2982a1d731b496f7afc",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-BoldItalic.ttf",
+      "attached_assets/25728576873_1776704285390.ttf"
+    ]
+  },
+  {
+    "sha256": "ac3539a05ed1079d0e4a921b9ea500d488132798b0547d87f1be60e19f48e690",
+    "paths": [
+      "attached_assets/Pasted--Terms-of-Service-The-Synozur-Alliance-LLC-Effective-Da_1779732302087.txt",
+      "attached_assets/Pasted--Terms-of-Service-The-Synozur-Alliance-LLC-Effective-Da_1779732628769.txt"
+    ]
+  },
+  {
+    "sha256": "bdfbb9c3ef8d836139f4fa3994d3d1922298034a1c2ddfac458af8bd1d5a5f22",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-Light.ttf",
+      "attached_assets/30716573843_1776704285395.ttf"
+    ]
+  },
+  {
+    "sha256": "c3632e609082b50d8af8030dd11743b47cc1f4c7c15241a56f7b7965ad3d5927",
+    "paths": [
+      "attached_assets/White+Papers+and+eBooks_1776707222797.csv",
+      "attached_assets/White+Papers+and+eBooks_1776733452234.csv"
+    ]
+  },
+  {
+    "sha256": "c6c314f3ae98f06dcdbc0fb485b2f327f017ef1f7fda1dc871209c315db98294",
+    "paths": [
+      "artifacts/synozur/public/logo-square.png",
+      "attached_assets/SynozurLogo_color_300_1779641081054.png"
+    ]
+  },
+  {
+    "sha256": "db00d99fa973d6d00908abc4786e9c0b2e17c18aa5d547d46ddcbbe0fec402ee",
+    "paths": [
+      "attached_assets/Pasted-We-Don-t-Just-Advise-on-AI-We-Operate-as-an-AI-Native-F_1778949464402.txt",
+      "attached_assets/Pasted-We-Don-t-Just-Advise-on-AI-We-Operate-as-an-AI-Native-F_1778949751188.txt"
+    ]
+  },
+  {
+    "sha256": "dfafe306f7f58d1af3b6b7e996d2d993920049c0fc4cc38603cf590e78f1cc89",
+    "paths": [
+      "attached_assets/image_1790884112123.png",
+      "attached_assets/image_1790884220885.png",
+      "attached_assets/image_1790884250456.png"
+    ]
+  },
+  {
+    "sha256": "e37cdbd6751df0d092ffe66721f840ee896f68fb146f4329f161fa294eaca41e",
+    "paths": [
+      "attached_assets/Videos_1776707204791.csv",
+      "attached_assets/Videos_1776733452229.csv"
+    ]
+  },
+  {
+    "sha256": "e3e46cb8b28a13c00f2a8c255eabafddbf54b0ede599b0152a2feee512f84e53",
+    "paths": [
+      "artifacts/synozur/public/images/who-we-work-with.png",
+      "attached_assets/Homepage-Filler-A_1776708217619.png"
+    ]
+  },
+  {
+    "sha256": "f2f1f3ad06e05d8350aa1d67de582592a575c984fcf3c35bca26d82fc1f7b5d1",
+    "paths": [
+      "artifacts/synozur/public/fonts/AvenirNextLTPro-Demi.ttf",
+      "attached_assets/26209118204_1776704285391.ttf"
+    ]
+  },
+  {
+    "sha256": "fd8d200f13b03f5d36cfbb5964e753a2870d2c404a27711f075bfcea792944ea",
+    "paths": [
+      "attached_assets/image_1777210064161.png",
+      "attached_assets/image_1777217931813.png"
+    ]
+  }
+]

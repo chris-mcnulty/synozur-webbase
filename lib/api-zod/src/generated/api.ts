@@ -8,6 +8,179 @@
 import * as zod from "zod";
 
 /**
+ * @summary List visible booking calendars
+ */
+
+export const ListPublicBookingsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        slug: zod.string().nullish(),
+        title: zod.string().min(1).optional(),
+        teaser: zod.string().nullish(),
+        descriptionHtml: zod.string().nullish(),
+        embedUrl: zod.string().optional(),
+        scope: zod.enum(["general", "offer", "conference"]).optional(),
+        startsAt: zod.coerce.date().nullish(),
+        endsAt: zod.coerce.date().nullish(),
+        displayOrder: zod.number().optional(),
+        active: zod.boolean().optional(),
+        seoTitle: zod.string().nullish(),
+        seoDescription: zod.string().nullish(),
+        ogImageUrl: zod
+          .string()
+          .nullish()
+          .describe(
+            "Page-specific social preview image; null clears the override.",
+          ),
+        msBusinessId: zod.string().nullish(),
+        msDefaultServiceId: zod.string().nullish(),
+        msTimezone: zod.string().nullish(),
+      })
+      .and(
+        zod.object({
+          id: zod.string(),
+          slug: zod.string(),
+          createdAt: zod.coerce.date(),
+          updatedAt: zod.coerce.date(),
+        }),
+      ),
+  ),
+});
+
+/**
+ * @summary Get a visible booking calendar
+ */
+export const GetPublicBookingParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetPublicBookingResponse = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+
+export const CreateAdminBookingBody = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(zod.object({}).passthrough());
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const PatchAdminBookingParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PatchAdminBookingBody = zod.object({
+  slug: zod.string().nullish(),
+  title: zod.string().min(1).optional(),
+  teaser: zod.string().nullish(),
+  descriptionHtml: zod.string().nullish(),
+  embedUrl: zod.string().optional(),
+  scope: zod.enum(["general", "offer", "conference"]).optional(),
+  startsAt: zod.coerce.date().nullish(),
+  endsAt: zod.coerce.date().nullish(),
+  displayOrder: zod.number().optional(),
+  active: zod.boolean().optional(),
+  seoTitle: zod.string().nullish(),
+  seoDescription: zod.string().nullish(),
+  ogImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Page-specific social preview image; null clears the override."),
+  msBusinessId: zod.string().nullish(),
+  msDefaultServiceId: zod.string().nullish(),
+  msTimezone: zod.string().nullish(),
+});
+
+export const PatchAdminBookingResponse = zod
+  .object({
+    slug: zod.string().nullish(),
+    title: zod.string().min(1).optional(),
+    teaser: zod.string().nullish(),
+    descriptionHtml: zod.string().nullish(),
+    embedUrl: zod.string().optional(),
+    scope: zod.enum(["general", "offer", "conference"]).optional(),
+    startsAt: zod.coerce.date().nullish(),
+    endsAt: zod.coerce.date().nullish(),
+    displayOrder: zod.number().optional(),
+    active: zod.boolean().optional(),
+    seoTitle: zod.string().nullish(),
+    seoDescription: zod.string().nullish(),
+    ogImageUrl: zod
+      .string()
+      .nullish()
+      .describe(
+        "Page-specific social preview image; null clears the override.",
+      ),
+    msBusinessId: zod.string().nullish(),
+    msDefaultServiceId: zod.string().nullish(),
+    msTimezone: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.string(),
+      slug: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -1381,6 +1554,12 @@ export const GetPublicSiteSettingsResponse = zod.object({
   tagGa4Id: zod.string().nullish(),
   tagLinkedinPartnerId: zod.string().nullish(),
   tagMetaPixelId: zod.string().nullish(),
+  tagHubspotPortalId: zod
+    .string()
+    .nullish()
+    .describe(
+      "HubSpot portal ID used to load the tracking pixel on the public site. Populated from the HUBSPOT_PORTAL_ID env var; null when not configured. Portal IDs are public (they appear in the tracking script src) so it is safe to expose here.\n",
+    ),
   orgName: zod.string().nullish(),
   orgLegalName: zod.string().nullish(),
   orgLogoUrl: zod.string().nullish(),

@@ -33,6 +33,9 @@ import type {
   AssetInput,
   BadRequestResponse,
   BatchViewsResult,
+  BookingRecord,
+  BookingRecordFields,
+  BookingRecordInput,
   BulkSetMediaCategoryBody,
   BulkSetMediaCategoryResponse,
   Capability,
@@ -100,6 +103,7 @@ import type {
   ListPortalApps200,
   ListPortalDocumentsParams,
   ListPortalEngagements200,
+  ListPublicBookings200,
   ListSolutionsParams,
   MediaItem,
   MediaListResponse,
@@ -197,6 +201,341 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List visible booking calendars
+ */
+export const getListPublicBookingsUrl = () => {
+  return `/api/bookings`;
+};
+
+export const listPublicBookings = async (
+  options?: RequestInit,
+): Promise<ListPublicBookings200> => {
+  return customFetch<ListPublicBookings200>(getListPublicBookingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPublicBookingsQueryKey = () => {
+  return [`/api/bookings`] as const;
+};
+
+export const getListPublicBookingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicBookings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicBookingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicBookings>>
+  > = ({ signal }) => listPublicBookings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicBookingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicBookings>>
+>;
+export type ListPublicBookingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List visible booking calendars
+ */
+
+export function useListPublicBookings<
+  TData = Awaited<ReturnType<typeof listPublicBookings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicBookings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicBookingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a visible booking calendar
+ */
+export const getGetPublicBookingUrl = (slug: string) => {
+  return `/api/bookings/${slug}`;
+};
+
+export const getPublicBooking = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getGetPublicBookingUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicBookingQueryKey = (slug: string) => {
+  return [`/api/bookings/${slug}`] as const;
+};
+
+export const getGetPublicBookingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicBooking>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicBookingQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicBooking>>
+  > = ({ signal }) => getPublicBooking(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicBooking>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicBookingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicBooking>>
+>;
+export type GetPublicBookingQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a visible booking calendar
+ */
+
+export function useGetPublicBooking<
+  TData = Awaited<ReturnType<typeof getPublicBooking>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicBooking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicBookingQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+export const getCreateAdminBookingUrl = () => {
+  return `/api/admin/bookings`;
+};
+
+export const createAdminBooking = async (
+  bookingRecordInput: BookingRecordInput,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getCreateAdminBookingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bookingRecordInput),
+  });
+};
+
+export const getCreateAdminBookingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    TError,
+    { data: BodyType<BookingRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminBooking>>,
+  TError,
+  { data: BodyType<BookingRecordInput> },
+  TContext
+> => {
+  const mutationKey = ["createAdminBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    { data: BodyType<BookingRecordInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAdminBooking(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdminBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminBooking>>
+>;
+export type CreateAdminBookingMutationBody = BodyType<BookingRecordInput>;
+export type CreateAdminBookingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a booking calendar (admin authentication required)
+ */
+export const useCreateAdminBooking = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminBooking>>,
+    TError,
+    { data: BodyType<BookingRecordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminBooking>>,
+  TError,
+  { data: BodyType<BookingRecordInput> },
+  TContext
+> => {
+  return useMutation(getCreateAdminBookingMutationOptions(options));
+};
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const getPatchAdminBookingUrl = (id: string) => {
+  return `/api/admin/bookings/${id}`;
+};
+
+export const patchAdminBooking = async (
+  id: string,
+  bookingRecordFields: BookingRecordFields,
+  options?: RequestInit,
+): Promise<BookingRecord> => {
+  return customFetch<BookingRecord>(getPatchAdminBookingUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bookingRecordFields),
+  });
+};
+
+export const getPatchAdminBookingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    TError,
+    { id: string; data: BodyType<BookingRecordFields> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchAdminBooking>>,
+  TError,
+  { id: string; data: BodyType<BookingRecordFields> },
+  TContext
+> => {
+  const mutationKey = ["patchAdminBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    { id: string; data: BodyType<BookingRecordFields> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchAdminBooking(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchAdminBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchAdminBooking>>
+>;
+export type PatchAdminBookingMutationBody = BodyType<BookingRecordFields>;
+export type PatchAdminBookingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a booking calendar (admin authentication required)
+ */
+export const usePatchAdminBooking = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminBooking>>,
+    TError,
+    { id: string; data: BodyType<BookingRecordFields> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchAdminBooking>>,
+  TError,
+  { id: string; data: BodyType<BookingRecordFields> },
+  TContext
+> => {
+  return useMutation(getPatchAdminBookingMutationOptions(options));
+};
 
 /**
  * @summary Health check

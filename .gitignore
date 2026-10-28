@@ -48,5 +48,19 @@ Thumbs.db
 .cache/
 .local/
 
-# Uploaded intake must NEVER be committed.
+# Upload intake is NEVER versioned. Promote required inputs to permanent paths.
 /attached_assets/
+
+# Disposable outputs only; permanent inputs belong outside upload intake.
+# See docs/repository-cleanup/README.md for the retention policy.
+/generated-artifacts/
+/scripts/.tmp-link-check/
+/.link-check/
+/test-results/
+/playwright-report/
+/artifacts/synozur/test-results/
+/artifacts/synozur/playwright-report/
+/artifacts/galaxy/test-results/
+/artifacts/galaxy/playwright-report/
+/artifacts/mockup-sandbox/test-results/
+/artifacts/mockup-sandbox/playwright-report/

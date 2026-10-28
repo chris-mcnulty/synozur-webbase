@@ -149,7 +149,7 @@ export default function SolutionDetail() {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Services",
+            name: "Solutions",
             item: `${SITE_ORIGIN}/services-overview/default`,
           },
           ...(sol.parentService

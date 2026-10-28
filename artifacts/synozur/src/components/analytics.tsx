@@ -65,14 +65,33 @@ function loadMetaPixel(id: string) {
   );
 }
 
-function loadMarketingTags(settings: { tagGa4Id?: string | null; tagLinkedinPartnerId?: string | null; tagMetaPixelId?: string | null }) {
+function loadHubSpotTracking(portalId: string) {
+  // The HubSpot tracking pixel sets the `hubspotutk` cookie on first
+  // load and records every subsequent page view against it. We inject
+  // the standard hs-script-loader asynchronously so it never blocks
+  // rendering. The script URL embeds the portal ID (public information).
+  injectScript(
+    "hs-script-loader",
+    `//js.hs-scripts.com/${encodeURIComponent(portalId)}.js`,
+    { defer: "true" },
+  );
+}
+
+function loadMarketingTags(settings: {
+  tagGa4Id?: string | null;
+  tagLinkedinPartnerId?: string | null;
+  tagMetaPixelId?: string | null;
+  tagHubspotPortalId?: string | null;
+}) {
   const env = import.meta.env as Record<string, string | undefined>;
   const ga4 = settings.tagGa4Id ?? env.VITE_GA4_ID;
   const li = settings.tagLinkedinPartnerId ?? env.VITE_LINKEDIN_PARTNER_ID ?? "7337793";
   const meta = settings.tagMetaPixelId ?? env.VITE_META_PIXEL_ID;
+  const hs = settings.tagHubspotPortalId ?? env.VITE_HUBSPOT_PORTAL_ID;
   if (ga4) loadGA4(ga4);
   if (li) loadLinkedIn(li);
   if (meta) loadMetaPixel(meta);
+  if (hs) loadHubSpotTracking(hs);
 }
 
 export function Analytics() {

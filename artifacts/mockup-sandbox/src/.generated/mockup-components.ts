@@ -4,6 +4,6 @@ export const modules: ModuleMap = {
   "./components/mockups/booking-redesign/BookingRedesign.tsx": () => import("../components/mockups/booking-redesign/BookingRedesign.tsx"),
   "./components/mockups/fit-redesign/FitRedesign.tsx": () => import("../components/mockups/fit-redesign/FitRedesign.tsx"),
   "./components/mockups/home-b-redesign/HomeBRedesign.tsx": () => import("../components/mockups/home-b-redesign/HomeBRedesign.tsx"),
-  "./components/mockups/proof-redesign/ProofRedesign.tsx": () => import("../components/mockups/proof-redesign/ProofRedesign.tsx"),
-  "./components/mockups/sprint-redesign/SprintRedesign.tsx": () => import("../components/mockups/sprint-redesign/SprintRedesign.tsx")
+  "./components/mockups/sprint-redesign/SprintRedesign.tsx": () => import("../components/mockups/sprint-redesign/SprintRedesign.tsx"),
+  "./components/mockups/proof-redesign/ProofRedesign.tsx": () => import("../components/mockups/proof-redesign/ProofRedesign.tsx")
 };

@@ -43,6 +43,7 @@ import {
   type UpsertCollateralBody,
 } from "@workspace/api-client-react";
 import { editorPathForSource } from "./_collateral-helpers";
+import { collateralNoMetaDesc, insightNoMetaDesc, eventNoMetaDesc } from "./meta-desc-guard";
 
 interface Props {
   id?: string;
@@ -303,7 +304,11 @@ export default function CollateralEdit({ id }: Props) {
   const update = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
   const noMetaDesc =
-    !form.description.trim() && !form.seoDescription.trim();
+    form.type === "insight"
+      ? insightNoMetaDesc(form.description, form.seoDescription)
+      : form.type === "event"
+        ? eventNoMetaDesc(form.description, form.seoDescription)
+        : collateralNoMetaDesc(form.description, form.seoDescription);
 
   const invalidatePublic = () => {
     qc.invalidateQueries({ queryKey: ["/api/cms/collateral"] });

@@ -31,8 +31,10 @@ import {
   faqCategoriesTable,
   faqItemsTable,
   jobPostingsTable,
+  bookingsTable,
 } from "@workspace/db";
 import { siteOrigin } from "./siteOrigin";
+import { bookingOgTitle } from "./bookingOgTitle";
 
 // ─── Public constants ─────────────────────────────────────────────────────────
 
@@ -172,6 +174,12 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
       "Join the transformation team. We guide organizations through change rooted in people, powered by technology, and driven by purpose.",
     image: DEFAULT_IMAGE_PATH,
   },
+  "/resources": {
+    title: "Resources",
+    description:
+      "Insights blog, events, podcast, webinars, workshops, frameworks, and case studies from Synozur — everything you need to lead an AI-first organization.",
+    image: DEFAULT_IMAGE_PATH,
+  },
   "/polaris": {
     title: "Polaris Podcast | The Synozur Alliance",
     description:
@@ -182,6 +190,18 @@ export const STATIC_PAGE_OG: Record<string, StaticPageOg> = {
     title: "Events | The Synozur Alliance",
     description:
       "Join The Synozur Alliance at upcoming conferences, webinars, and community gatherings — or browse highlights from our past events.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/faq": {
+    title: "Frequently Asked Questions | The Synozur Alliance",
+    description:
+      "Answers to the questions we hear most often about working with The Synozur Alliance — engagements, services, AI, Microsoft 365, and more.",
+    image: DEFAULT_IMAGE_PATH,
+  },
+  "/start": {
+    title: "Get Started | The Synozur Alliance",
+    description:
+      "Book time with The Synozur Alliance — general intros, offer-specific calendars, and conference windows.",
     image: DEFAULT_IMAGE_PATH,
   },
   // Multi-segment hand-coded routes that the single-segment key would miss.
@@ -577,12 +597,18 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
             )
             .limit(1);
           if (item) {
+            // Canonical consolidation: item pages point to their category page.
+            // The og:url / <link rel="canonical"> both use the category URL so
+            // crawlers and social platforms attribute signals to the category,
+            // not the thin single-question page.
+            const categoryUrl = `${origin}/faq/${slug}`;
             return {
               ...fallback,
               title:
                 item.seoTitle ||
                 `${item.question} | ${cat.name} | The Synozur Alliance`,
               description: item.seoDescription || defaults.description,
+              url: categoryUrl,
             };
           }
         }
@@ -986,6 +1012,31 @@ export async function resolveOgData(pathname: string): Promise<OgData> {
           description,
           image: ogImageVariant(absUrl(row.imageUrl, origin), origin) ?? defaults.image,
           ogType: "article",
+        };
+      }
+
+      case "start": {
+        const [booking] = await db
+          .select({
+            title: bookingsTable.title,
+            seoTitle: bookingsTable.seoTitle,
+            seoDescription: bookingsTable.seoDescription,
+            ogImageUrl: bookingsTable.ogImageUrl,
+            teaser: bookingsTable.teaser,
+            startsAt: bookingsTable.startsAt,
+            endsAt: bookingsTable.endsAt,
+          })
+          .from(bookingsTable)
+          .where(and(eq(bookingsTable.slug, slug), eq(bookingsTable.active, true)))
+          .limit(1);
+        if (!booking) break;
+        const title = bookingOgTitle(booking, SITE_NAME);
+        if (!title) break;
+        return {
+          ...fallback,
+          title,
+          description: booking.seoDescription || booking.teaser || defaults.description,
+          image: ogImageVariant(absUrl(booking.ogImageUrl, origin), origin) ?? fallback.image,
         };
       }
 

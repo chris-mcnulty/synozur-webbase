@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, X, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Save, X, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { videoNoMetaDesc } from "./meta-desc-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -261,10 +262,19 @@ export default function VideoEdit({ id }: Props) {
     onError: (e: Error) => setSyncStatus(`Sync failed: ${e.message}`),
   });
 
+  const noMetaDesc = videoNoMetaDesc(form.seoDescription, form.shortDescription);
+
   const onSave = () => {
     if (!form.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
+    }
+    if (form.active && noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This video is active but has no short description or SEO meta description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
     }
     const body = toBody(form);
     if (id) updateMut.mutate(body);
@@ -327,6 +337,20 @@ export default function VideoEdit({ id }: Props) {
       {!canWrite && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
           You have read-only access. Only editors and admins can change videos.
+        </div>
+      )}
+      {form.active && noMetaDesc && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          data-testid="banner-no-meta-desc"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">No meta description.</span>{" "}
+            This video is active but neither a short description nor an SEO meta description is set.
+            Search engines will auto-generate a snippet.{" "}
+            Fill in at least one for best results.
+          </div>
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">

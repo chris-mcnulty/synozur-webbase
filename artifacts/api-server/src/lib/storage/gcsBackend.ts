@@ -244,9 +244,8 @@ export class GcsAssetStorageBackend implements AssetStorageBackend {
   }
 
   async uploadObject(opts: UploadObjectOptions): Promise<AssetObjectRef> {
-    // Build the same `/objects/<uuid>` storageKey shape that the
-    // presigned-URL upload path produces, so downstream serializers
-    // don't have to care which path the bytes arrived through.
+    // Match the presigned-upload path: the key must include uploads/
+    // so getObjectEntityFile can reconstruct the saved object's path.
     const objectId = randomUUID();
     const privateObjectDir = this.getPrivateObjectDir();
     const fullPath = `${privateObjectDir}/uploads/${objectId}`;
@@ -257,7 +256,7 @@ export class GcsAssetStorageBackend implements AssetStorageBackend {
       metadata: { contentType: opts.contentType },
       resumable: opts.body.length > 5 * 1024 * 1024,
     });
-    const storageKey = `/objects/${objectId}`;
+    const storageKey = `/objects/uploads/${objectId}`;
     return makeRef(file, storageKey);
   }
 }

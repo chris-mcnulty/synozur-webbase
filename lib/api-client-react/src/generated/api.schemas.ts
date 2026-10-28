@@ -5,6 +5,62 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type BookingRecordFieldsScope =
+  (typeof BookingRecordFieldsScope)[keyof typeof BookingRecordFieldsScope];
+
+export const BookingRecordFieldsScope = {
+  general: "general",
+  offer: "offer",
+  conference: "conference",
+} as const;
+
+export interface BookingRecordFields {
+  /** @nullable */
+  slug?: string | null;
+  /** @minLength 1 */
+  title?: string;
+  /** @nullable */
+  teaser?: string | null;
+  /** @nullable */
+  descriptionHtml?: string | null;
+  embedUrl?: string;
+  scope?: BookingRecordFieldsScope;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  displayOrder?: number;
+  active?: boolean;
+  /** @nullable */
+  seoTitle?: string | null;
+  /** @nullable */
+  seoDescription?: string | null;
+  /**
+   * Page-specific social preview image; null clears the override.
+   * @nullable
+   */
+  ogImageUrl?: string | null;
+  /** @nullable */
+  msBusinessId?: string | null;
+  /** @nullable */
+  msDefaultServiceId?: string | null;
+  /** @nullable */
+  msTimezone?: string | null;
+}
+
+export type BookingRecordInput = BookingRecordFields & {
+  [key: string]: unknown;
+} & Required<
+    Pick<BookingRecordFields & { [key: string]: unknown }, "title" | "embedUrl">
+  >;
+
+export type BookingRecord = BookingRecordFields & {
+  id: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export interface HealthStatus {
   status: string;
 }
@@ -929,6 +985,12 @@ export interface PublicSiteSettings {
   tagLinkedinPartnerId?: string | null;
   /** @nullable */
   tagMetaPixelId?: string | null;
+  /**
+   * HubSpot portal ID used to load the tracking pixel on the public site. Populated from the HUBSPOT_PORTAL_ID env var; null when not configured. Portal IDs are public (they appear in the tracking script src) so it is safe to expose here.
+
+   * @nullable
+   */
+  tagHubspotPortalId?: string | null;
   /** @nullable */
   orgName?: string | null;
   /** @nullable */
@@ -3880,6 +3942,10 @@ export type NotFoundResponse = ErrorEnvelope;
  * Bad request
  */
 export type BadRequestResponse = ErrorEnvelope;
+
+export type ListPublicBookings200 = {
+  items: BookingRecord[];
+};
 
 export type ListCmsPostsParams = {
   status?: PostStatus;

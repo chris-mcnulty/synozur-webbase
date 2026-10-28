@@ -1,0 +1,413 @@
+{
+  "observedAt": "2026-10-15T02:19:02.844Z",
+  "warning": "Public content snapshot for review only. Not a CMS import or restoration backup. Take fresh full CMS exports and check for later edits before applying.",
+  "landingPage": {
+    "url": "/tribal-first-nations",
+    "before": {
+      "title": "Tribal Nations & First Nations",
+      "subtitle": "Synozur advises U.S. Tribal Nations and Canadian First Nations on priorities, governance, and responsible transformation.",
+      "description": "Synozur advises U.S. Tribal Nations and Canadian First Nations on priorities, governance, and responsible transformation.",
+      "seoTitle": "Tribal Nations & First Nations AI Advisory | The Synozur Alliance",
+      "seoDescription": "AI and transformation advisory for U.S. Tribal Nations and Canadian First Nations. Define priorities, governance, and adoption with Synozur’s North Star Sprint.",
+      "ogImageUrl": "/og/tribal-first-nations.jpg",
+      "tags": [
+        "Tribal Nations",
+        "First Nations",
+        "AI",
+        "Governance"
+      ],
+      "blocks": [
+        {
+          "eyebrow": "Tribal Nations & First Nations",
+          "subtitle": "Synozur advises U.S. Tribal Nations and Canadian First Nations on priorities, governance, and responsible transformation.",
+          "theme": "nebula",
+          "title": "AI and transformation shaped by your Nation’s priorities.",
+          "type": "hero"
+        },
+        {
+          "body": "Start a conversation about what matters most to your Nation, then decide where AI belongs.",
+          "buttons": [
+            {
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "label": "Discuss your priorities",
+              "variant": "primary"
+            },
+            {
+              "href": "#turn-a-priority-into-a-working-prototype-and-roadmap",
+              "label": "Explore the AI & North Star Sprint",
+              "variant": "secondary"
+            }
+          ],
+          "heading": "Begin with your priorities.",
+          "theme": "nebula",
+          "type": "cta"
+        },
+        {
+          "cards": [
+            {
+              "description": "Make services easier for members to reach and for staff to deliver, on terms your government sets.",
+              "title": "Government and member services"
+            },
+            {
+              "description": "Explore where AI can support enterprise operations and planning, guided by your economic priorities.",
+              "title": "Economic development and Nation-owned enterprises"
+            },
+            {
+              "description": "Help teams use AI tools confidently and consistently, with clear expectations and support.",
+              "title": "Workforce effectiveness and adoption"
+            },
+            {
+              "description": "Set direction, policy, and accountability for AI before tools are chosen.",
+              "title": "AI strategy and governance"
+            }
+          ],
+          "heading": "Start with the outcome that matters.",
+          "intro": "Illustrative starting points, not assumptions about your Nation. Your leaders define the priority.",
+          "type": "cardGrid"
+        },
+        {
+          "cards": [
+            {
+              "description": "Decide which data may be used, by whom, and in which systems, before any tool touches it.",
+              "title": "Permitted data and access"
+            },
+            {
+              "description": "Define where people review, override, or stop AI-assisted work, and who is accountable.",
+              "title": "Human oversight"
+            },
+            {
+              "description": "Agree who approves new uses, changes, and exceptions, and how those decisions are recorded.",
+              "title": "Approvals"
+            }
+          ],
+          "heading": "Define the decisions before choosing the tools.",
+          "intro": "For leaders and advisers who want AI use to follow the Nation's own rules.",
+          "type": "cardGrid"
+        },
+        {
+          "cards": [
+            {
+              "description": "The scope is set with your leaders at the start and stays within what you agree.",
+              "title": "One agreed priority"
+            },
+            {
+              "description": "Something your people can see and test, built around the chosen priority.",
+              "title": "A working prototype"
+            },
+            {
+              "description": "Next steps, sequencing, and decisions for your leaders to take forward.",
+              "title": "An AI-first roadmap"
+            }
+          ],
+          "heading": "Turn a priority into a working prototype and roadmap.",
+          "intro": "The AI & North Star Sprint is a fixed-fee engagement of four to six weeks. It delivers a working prototype and an AI-first roadmap within the scope agreed up front. It is not production implementation or ongoing support.",
+          "type": "cardGrid"
+        },
+        {
+          "body": "Discuss your priorities. If the Sprint is a fit, we can define an agreed scope together.",
+          "buttons": [
+            {
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "label": "Discuss your priorities",
+              "variant": "primary"
+            }
+          ],
+          "heading": "Bring one priority to the table.",
+          "theme": "light",
+          "type": "cta"
+        },
+        {
+          "cards": [
+            {
+              "code": "01",
+              "description": "Understand your priorities, current work, and the constraints your leaders set.",
+              "title": "Assess"
+            },
+            {
+              "code": "02",
+              "description": "Agree the use case, data requirements, oversight, and approvals.",
+              "title": "Define"
+            },
+            {
+              "code": "03",
+              "description": "Build the prototype and roadmap within the agreed scope.",
+              "title": "Deliver"
+            },
+            {
+              "code": "04",
+              "description": "Review results against the priority you began with and decide what comes next.",
+              "title": "Outcomes"
+            }
+          ],
+          "heading": "A clear method, with people responsible for the decisions.",
+          "intro": "Synozur is woman-owned, AI-native, and vendor-independent, with deep Microsoft experience and fluency across other platforms.",
+          "type": "cardGrid"
+        },
+        {
+          "cards": [
+            {
+              "title": "Tribal Nations, AI, and the Sovereignty Question",
+              "url": "https://www.synozur.com/insights/tribal-nations-ai-and-the-sovereignty-question"
+            }
+          ],
+          "heading": "Explore the sovereignty question.",
+          "type": "cardGrid"
+        },
+        {
+          "heading": "Questions before we begin.",
+          "items": [
+            {
+              "a": "No. Priorities vary by Nation, and the work can address government, member services, enterprises, workforce, or AI governance.",
+              "q": "Is this only for gaming and hospitality?"
+            },
+            {
+              "a": "No. Platform selection is not required to begin. We start with priorities and decisions.",
+              "q": "Do we need to choose a platform first?"
+            },
+            {
+              "a": "Your Nation's leaders and advisers set data requirements. We do not guarantee sovereignty or compliance outcomes.",
+              "q": "Who decides what data can be used?"
+            },
+            {
+              "a": "No. The Sprint produces a prototype and a roadmap, not a production deployment.",
+              "q": "Does the Sprint deploy AI into production?"
+            }
+          ],
+          "type": "faq"
+        },
+        {
+          "buttons": [
+            {
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "label": "Discuss your priorities",
+              "variant": "primary"
+            }
+          ],
+          "heading": "What would you like to make possible?",
+          "theme": "nebula",
+          "type": "cta"
+        }
+      ]
+    },
+    "after": {
+      "title": "Tribal Nations & First Nations",
+      "subtitle": "The Champion System helps U.S. Tribal Nations and Canadian First Nations build sustainable AI capability—designed in partnership, grounded in community priorities, and governed by each Nation.",
+      "description": "Explore the Champion System: a community-centered approach to champion networks, practical AI adoption, and sustained capability governed by each Nation.",
+      "seoTitle": "Tribal Nations & First Nations AI | The Synozur Alliance",
+      "seoDescription": "Build trusted AI capability with the Champion System for Tribal Nations and First Nations—community-centered, measured responsibly, and locally governed.",
+      "ogImageUrl": "/og/tribal-first-nations-champion-system.jpg",
+      "tags": [
+        "Tribal Nations",
+        "First Nations",
+        "AI Adoption",
+        "Governance"
+      ],
+      "blocks": [
+        {
+          "type": "hero",
+          "eyebrow": "Tribal Nations & First Nations",
+          "title": "Build trusted AI capability. Governed by your Nation.",
+          "subtitle": "The Champion System helps U.S. Tribal Nations and Canadian First Nations build sustainable AI capability—designed in partnership, grounded in community priorities, and governed by each Nation.",
+          "theme": "nebula"
+        },
+        {
+          "type": "cta",
+          "heading": "",
+          "theme": "nebula",
+          "buttons": [
+            {
+              "label": "Start a context conversation",
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "variant": "primary"
+            },
+            {
+              "label": "Explore the Champion System",
+              "href": "#one-system-capability-built-within-your-nation",
+              "variant": "secondary"
+            }
+          ]
+        },
+        {
+          "type": "richText",
+          "heading": "Access to AI is only the beginning.",
+          "bodyHtml": "<p>AI creates value when it fits real work, reflects community priorities, and earns people’s trust. Introducing tools alone does not build the skills, relationships, or local ownership needed to sustain their use.</p><p>Your Nation defines the priorities. Together, we build the shared vision, champion capacity, practical experience, and governance that help turn those priorities into lasting capability.</p>"
+        },
+        {
+          "type": "richText",
+          "heading": "One system. Capability built within your Nation.",
+          "bodyHtml": "<p>The Champion System brings leadership alignment, foundational skills, champion development, and focused AI Labs into one coordinated approach.</p><p>It supports the full North Star Method™ journey—from understanding your starting point to sustaining trusted adoption. Aurora™, our standalone champion-network program, is the flagship offer; a Champion Module can also be delivered within the AI &amp; North Star Sprint.</p>"
+        },
+        {
+          "type": "cardGrid",
+          "heading": "Five roles that support local capability",
+          "cards": [
+            {
+              "title": "Community Vision Holder",
+              "description": "Connects practical AI opportunities to the Nation’s priorities and long-term direction."
+            },
+            {
+              "title": "Relationship Steward",
+              "description": "Builds the relationships and shared understanding that support trust and participation."
+            },
+            {
+              "title": "Capacity Builder",
+              "description": "Helps people develop skills, confidence, and the ability to support others."
+            },
+            {
+              "title": "Solution Creator",
+              "description": "Co-creates practical tools and approaches around community and departmental needs."
+            },
+            {
+              "title": "Trusted Voice",
+              "description": "Brings questions, experience, and community perspectives into decisions about adoption."
+            }
+          ]
+        },
+        {
+          "type": "cardGrid",
+          "heading": "A starting point shaped around your context.",
+          "intro": "Begin with a conversation about your priorities. From there, we define the appropriate next step together. Each offer is scoped and fixed-fee, designed around community-defined benefit—not billable hours.",
+          "cards": [
+            {
+              "code": "Relationship & Context",
+              "title": "Context Session + Champion Readout",
+              "description": "Listen to leadership and program stakeholders, understand priorities, and assess the champion landscape through Orion. A shared readout provides a starting point for deciding what comes next."
+            },
+            {
+              "code": "Readout & Activation",
+              "title": "Champion Module inside the AI & North Star Sprint",
+              "description": "Embed a champion track within the Sprint cadence. DLT canvases on Nebula help frame opportunities and move from context to structured activation."
+            },
+            {
+              "code": "Flagship program",
+              "title": "Aurora™",
+              "description": "Stand up, run, and sustain a champion network with a Nation-defined governance model. Focused AI Labs bring people together to co-create agents, Copilot skills, and templates for practical use."
+            },
+            {
+              "code": "Sustain & Scale",
+              "title": "Champion Sustain + License & Certify",
+              "description": "Support a Nation-run program with continued measurement, training, Synozur IP, and enabling tools. Quarterly Orion assessments help track progress. Capability can extend across departments, related entities, or partner Nations when invited."
+            }
+          ]
+        },
+        {
+          "type": "cta",
+          "heading": "",
+          "theme": "light",
+          "buttons": [
+            {
+              "label": "Discuss your starting point",
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "variant": "primary"
+            }
+          ]
+        },
+        {
+          "type": "cardGrid",
+          "heading": "From shared understanding to sustained capability.",
+          "intro": "North Star Method™",
+          "cards": [
+            {
+              "code": "01",
+              "title": "Assess",
+              "description": "Understand community priorities and practical opportunities. Orion establishes a baseline for champion archetypes and adoption maturity; AI Art of the Possible helps align leadership."
+            },
+            {
+              "code": "02",
+              "title": "Define",
+              "description": "Agree outcomes, champion opportunities, and an operating rhythm. Vega supports the plan, while DLT canvases help frame the work."
+            },
+            {
+              "code": "03",
+              "title": "Deliver",
+              "description": "Put the plan into practice through Vega’s Focus Rhythm and focused AI Labs, with Solution Creators co-creating around community needs."
+            },
+            {
+              "code": "04",
+              "title": "Outcomes",
+              "description": "Sustain a trusted AI operating model with Zenith, Orion, Vega, and Nebula. Reinforce governance through day-to-day operations and use pre/post assessment to understand progress."
+            }
+          ]
+        },
+        {
+          "type": "richText",
+          "heading": "Measure what matters to your Nation.",
+          "bodyHtml": "<p>Success should reflect the outcomes your Nation values: stronger staff capacity, time returned to community priorities, and practical capability that remains locally owned.</p><p>Together, we agree what to measure and how the evidence will inform decisions. Measures can include:</p><ul><li>Changes in adoption maturity through Orion pre/post assessment.</li><li>Active use and activation of Trusted Voices.</li><li>Sentiment and reuse of practical artifacts.</li><li>Governance telemetry through Zenith.</li></ul><p>These are measures of progress—not promises of a predetermined result.</p><h3>Your Nation defines the boundaries.</h3><p>Your Nation’s designated leaders and advisers guide the requirements for data access, human oversight, approvals, and accountability. The program is shaped around those decisions, with governance reinforced through operations.</p>"
+        },
+        {
+          "type": "cardGrid",
+          "heading": "Trust and sovereignty are part of the context.",
+          "intro": "Explore perspectives on AI, sovereignty, and the relationships that shape responsible adoption.",
+          "cards": [
+            {
+              "title": "Tribal Nations, AI, and the Sovereignty Question",
+              "url": "https://www.synozur.com/insights/tribal-nations-ai-and-the-sovereignty-question"
+            }
+          ]
+        },
+        {
+          "type": "faq",
+          "heading": "FAQs",
+          "items": [
+            {
+              "q": "Who is this for?",
+              "a": "U.S. Tribal Nations, Canadian First Nations, and Indigenous organizations seeking practical AI adoption with local ownership. Participants may include leadership, program teams, educators, digital leads, and Nation-owned enterprises."
+            },
+            {
+              "q": "Do we need to choose an AI platform first?",
+              "a": "No. The initial conversation starts with your priorities, constraints, and context—not a predetermined platform."
+            },
+            {
+              "q": "What happens in the first conversation?",
+              "a": "We listen to your goals, discuss where AI could support community priorities, and consider appropriate next steps. An assessment and shared readout are scoped separately; they are not included simply by booking the initial conversation."
+            },
+            {
+              "q": "How is Aurora different from the Sprint Champion Module?",
+              "a": "Aurora is a standalone program to establish, run, and sustain a champion network. The Champion Module embeds a champion track within the AI & North Star Sprint."
+            },
+            {
+              "q": "Who governs the program?",
+              "a": "The governance model is defined with your Nation. Your designated leaders and advisers guide decision rights, data requirements, oversight, and approvals."
+            },
+            {
+              "q": "Can the program grow beyond one department?",
+              "a": "Yes. Capability can extend across departments, related entities, or partner Nations when invited, while remaining locally governed."
+            }
+          ]
+        },
+        {
+          "type": "cta",
+          "heading": "Start with your priorities.",
+          "body": "One conversation to understand your context. A practical next step defined together.",
+          "theme": "nebula",
+          "buttons": [
+            {
+              "label": "Start a context conversation",
+              "href": "/start/tribal-nations-first-nations-workshop",
+              "variant": "primary"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "booking": {
+    "url": "/start/tribal-nations-first-nations-workshop",
+    "before": {
+      "title": "Tribal Nations & First Nations Workshop",
+      "teaser": "Discuss AI and transformation priorities for your Tribal Nation or First Nation—from government and member services to enterprise growth, governance, and workforce adoption.",
+      "descriptionHtml": "<h2>AI and transformation shaped by your Nation’s priorities</h2><p>Every Nation has its own priorities. This conversation is a starting point for U.S. Tribal Nations and Canadian First Nations to explore how AI and transformation could support government services, community priorities, and Nation-owned enterprises.</p><h3>What we can discuss</h3><ul><li>The outcomes your Nation wants to achieve and where to begin.</li><li>Opportunities to improve government and member services.</li><li>Economic development and enterprise strategy.</li><li>AI governance, information access, and human oversight.</li><li>Workforce readiness, adoption, and organizational change.</li></ul><p>We’ll start with your priorities—not a predetermined platform or solution. Your Nation’s designated leaders and advisers guide the requirements, decision rights, and boundaries for any potential work.</p><h3>Explore a practical next step</h3><p>If there is a fit, we can discuss the AI &amp; North Star Sprint: a 4–6-week, fixed-fee engagement that delivers a working prototype and an AI-first roadmap within an agreed scope. The Sprint is distinct from production implementation and ongoing support.</p><h3>Before the conversation</h3><p>Bring a priority you would like to explore and consider who should join the discussion. You do not need to have selected an AI platform. Please keep booking notes high-level and do not include sensitive community information, personal records, or restricted cultural material.</p><p>Your appointment may be with any available Synozur adviser. Michelle Boyd coordinates follow-up for tribal-business inquiries.</p>",
+      "seoTitle": null,
+      "seoDescription": null,
+      "ogImageUrl": null
+    },
+    "after": {
+      "title": "Tribal Nations & First Nations — Context Conversation",
+      "teaser": "Start with your Nation’s priorities. Discuss trusted AI adoption, local capability, and governance, then explore an appropriate next step together.",
+      "descriptionHtml": "<h2>A conversation grounded in your Nation’s priorities</h2><p>For U.S. Tribal Nations and Canadian First Nations, practical AI adoption begins with context, relationships, and trust. This initial conversation is a listening session to understand your goals, constraints, and where AI could support community priorities.</p><h3>What we can discuss</h3><ul><li>Your priorities and the people or programs the work should support.</li><li>Current AI use, foundational skills, and opportunities to build local capability.</li><li>Trust, data boundaries, human oversight, and Nation-defined governance.</li><li>Whether a Champion Readout, the Aurora champion-network program, or a Champion Module within the AI &amp; North Star Sprint could be an appropriate next step.</li></ul><h3>What this appointment includes</h3><p>We will listen to your priorities, discuss your context, and consider next steps together. An Orion assessment, Champion Readout, or delivery engagement is scoped separately and is not included simply by booking this conversation.</p><h3>Before we meet</h3><p>Bring a priority you would like to explore and consider which leadership, program, or digital colleagues should join. You do not need to have selected an AI platform.</p><p>Please keep booking notes high-level. Do not include sensitive community information, personal records, or restricted cultural material.</p><p>Your appointment may be with any available Synozur adviser. Michelle Boyd coordinates follow-up for tribal-business inquiries.</p>",
+      "seoTitle": "Tribal AI Context Conversation | The Synozur Alliance",
+      "seoDescription": "Book an initial conversation about your Nation’s AI priorities, local capability, and governance. Assessment and shared readout are scoped separately.",
+      "ogImageUrl": "/og/tribal-first-nations-context-conversation.jpg"
+    }
+  }
+}

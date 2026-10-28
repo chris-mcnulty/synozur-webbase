@@ -18,6 +18,8 @@ import Gone from "./gone";
 import { CommentThread } from "@/components/comments/comment-thread";
 import {
   useListInsightComments,
+  useListInsights,
+  getListInsightsQueryKey,
   getListInsightCommentsQueryKey,
   getGetInsightQueryKey,
   trackInsightView,
@@ -65,10 +67,34 @@ const HERO_SIZES = "(min-width: 768px) min(64rem, 100vw - 2rem), 100vw";
 
 function RelatedRail({ post }: { post: PublicPost }) {
   const categorySlug = post.categories?.[0]?.slug;
-  const { data } = useInsightsList(
+  const { data: catData } = useInsightsList(
     categorySlug ? { categorySlug, page: 1, pageSize: 6 } : { page: 1, pageSize: 6 },
   );
-  const related = (data?.items ?? []).filter((p) => p.id !== post.id).slice(0, 3);
+
+  // Category results (excluding the current post), capped at 3.
+  const catRelated = (catData?.items ?? []).filter((p) => p.id !== post.id).slice(0, 3);
+
+  // Tag-based fallback: only fires after the category query has settled and
+  // returned fewer than 3 results. Pick the first tag on the post.
+  const catSettled = catData !== undefined;
+  const needsMore = catSettled && catRelated.length < 3;
+  const firstTagSlug = post.tags?.[0]?.slug ?? null;
+  const tagParams = firstTagSlug ? { tagSlug: firstTagSlug, page: 1, pageSize: 8 } : undefined;
+  const { data: tagData } = useListInsights(tagParams, {
+    query: {
+      enabled: needsMore && !!firstTagSlug,
+      queryKey: getListInsightsQueryKey(tagParams),
+    },
+  });
+
+  // Merge: category posts first, then tag posts to fill the gap, deduped.
+  const seenIds = new Set([post.id, ...catRelated.map((p) => p.id)]);
+  const tagRelated = (tagData?.items ?? []).filter((p) => !seenIds.has(p.id));
+  const needed = 3 - catRelated.length;
+  const related = catSettled
+    ? [...catRelated, ...tagRelated.slice(0, needed)]
+    : [];
+
   if (!related.length) return null;
   return (
     <section aria-label="Related posts" className="border-t border-border bg-card py-16">

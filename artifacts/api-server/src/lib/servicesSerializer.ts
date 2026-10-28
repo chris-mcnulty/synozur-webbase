@@ -18,6 +18,7 @@ import {
   type TaxonomyEntityType,
 } from "@workspace/db";
 import { loadLinkedBooking, type LinkedBookingDto } from "./bookingUtils";
+import { mergeSolutionResources } from "./solutionResources";
 
 type IconRef = { id: string; publicUrl: string } | null;
 type TagRef = { id: string; slug: string; name: string };
@@ -532,9 +533,12 @@ export async function getSolutionWithCapabilities(
       asc(collateralSolutionsTable.displayOrder),
       asc(collateralTable.title),
     );
-  const visibleLinked = opts.preview
-    ? linkedRows
-    : linkedRows.filter((r) => r.link.active && r.c.active && !r.c.deletedAt);
+  const assignedRows = await db
+    .select()
+    .from(collateralTable)
+    .where(eq(collateralTable.solutionId, solution.id))
+    .orderBy(asc(collateralTable.title));
+  const visibleLinked = mergeSolutionResources(linkedRows, assignedRows, opts.preview);
   const linkedCollateral: LinkedCollateralDto[] = visibleLinked.map((r) => ({
     collateralId: r.c.id,
     displayOrder: r.link.displayOrder,

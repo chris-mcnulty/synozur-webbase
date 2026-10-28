@@ -104,6 +104,7 @@ export function editorHref(kind: SeoArtifactKind, id: string): string {
  */
 export const FILLABLE_KEYS = new Set([
   "seoTitle",
+  "seoTitleLong",
   "seoDescription",
   "seoDescriptionShort",
   "seoDescriptionLong",

@@ -46,6 +46,7 @@ export const bookingsTable = pgTable(
     active: boolean("active").notNull().default(true),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
+    ogImageUrl: text("og_image_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

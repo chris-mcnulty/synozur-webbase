@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Save,
   Eye,
@@ -310,17 +311,26 @@ export default function PostEditor({ id }: Props) {
     setDirty(true);
   }, []);
 
+  const noMetaDesc = !form.seoDescription.trim() && !form.excerpt.trim();
+
   const saveDraft = useCallback(async () => {
     if (!form.title) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
+    }
+    if (noMetaDesc) {
+      toast({
+        title: "Missing meta description",
+        description:
+          "This post has no excerpt or SEO meta description. Search engines will auto-generate a snippet — fill in at least one for better results.",
+      });
     }
     if (postId) {
       await updateMut.mutateAsync({ id: postId, data: toBody(form) });
     } else {
       await createMut.mutateAsync({ data: toBody(form) });
     }
-  }, [form, postId, createMut, updateMut, toast]);
+  }, [form, noMetaDesc, postId, createMut, updateMut, toast]);
 
   // Autosave every 15s when dirty
   const dirtyRef = useRef(dirty);
@@ -450,6 +460,20 @@ export default function PostEditor({ id }: Props) {
         </div>
       }
     >
+      {noMetaDesc && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+          data-testid="banner-no-meta-desc"
+        >
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">No meta description.</span>{" "}
+            This post has no excerpt or SEO meta description. Search engines will auto-generate a snippet.{" "}
+            Fill in at least one for best results.
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-4 min-w-0">
           <Card className="p-4 space-y-4">
@@ -760,6 +784,16 @@ export default function PostEditor({ id }: Props) {
                 </Button>
               )}
             </div>
+          </Card>
+
+          <Card className="p-4 space-y-3" data-testid="sidebar-og-preview-card">
+            <Label className="text-sm font-medium">Social card preview</Label>
+            <OgImagePreview
+              kind="insight"
+              id={postId}
+              updatedAt={savedAt}
+              showOverrideHint={!!form.ogImageUrl || !!form.ogImageId}
+            />
           </Card>
 
           {canManageAuthor && (

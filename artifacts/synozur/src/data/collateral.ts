@@ -111,6 +111,8 @@ export const PILLAR_LABELS: Record<Pillar, string> = {
 export interface ListOptions {
   type?: CollateralType[];
   pillar?: Pillar[];
+  /** Only return items whose canonical URL begins with this path prefix. */
+  urlPrefix?: string;
   /** Foreign key filter — matches `collateral.service_id`. Replaces the pillar heuristic (#100). */
   serviceId?: string;
   /** Foreign key filter — matches `collateral.solution_id`. */
@@ -157,6 +159,7 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
   const {
     type = [],
     pillar = [],
+    urlPrefix,
     serviceId,
     solutionId,
     solutionIdIsNull,
@@ -170,6 +173,7 @@ export async function fetchLibrary(options: ListOptions = {}): Promise<ListResul
   const params = new URLSearchParams();
   if (type.length) params.set("type", type.join(","));
   if (pillar.length) params.set("pillar", pillar.join(","));
+  if (urlPrefix) params.set("urlPrefix", urlPrefix);
   if (serviceId) params.set("serviceId", serviceId);
   if (solutionId) params.set("solutionId", solutionId);
   if (solutionIdIsNull) params.set("solutionIdIsNull", "true");
