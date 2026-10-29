@@ -13,4 +13,12 @@ export const RoleName = {
   editor: "editor",
   author: "author",
   contributor: "contributor",
+  client: "client",
+  site_admin: "site_admin",
+  content_author: "content_author",
+  hr: "hr",
+  internal: "internal",
+  customer: "customer",
+  registered: "registered",
+  account_manager: "account_manager",
 } as const;

@@ -36,6 +36,27 @@ test("dev API enforces provisioning permissions, identity binding and durable ro
       });
     }
     const admin = await actor("site_admin"), editor = await actor("editor"), guest = await actor("author");
+    const [noRoles] = await db.insert(usersTable).values({
+      email: `no-roles-${suffix}@example.invalid`, authProvider: "entra", entraObjectId: randomUUID(),
+    }).returning();
+    ids.push(noRoles.id);
+    assert.equal((await request("GET", `${endpoint}?scope=all`)).status, 401);
+    assert.equal((await request("GET", `${endpoint}?scope=all`, undefined, editor)).status, 403);
+    assert.equal((await request("GET", `${endpoint}?scope=all`, undefined, guest)).status, 403);
+    assert.equal((await request("GET", `${endpoint}?scope=invalid`, undefined, admin)).status, 400);
+    const allUsers = ListCmsUsersResponse.parse(await (await request("GET", `${endpoint}?scope=all`, undefined, admin)).json());
+    assert.ok(allUsers.some(user => user.id === noRoles.id && user.roles.length === 0));
+    const contentUsers = ListCmsUsersResponse.parse(await (await request("GET", endpoint, undefined, admin)).json());
+    assert.ok(!contentUsers.some(user => user.id === noRoles.id));
+    // Existing email requires no Object ID or Graph lookup, and points to the
+    // exact no-role account so the administrator can edit rather than duplicate.
+    const existingResponse = await request("POST", endpoint, { email: noRoles.email!.toUpperCase(), roles: ["editor"] }, admin);
+    assert.equal(existingResponse.status, 409);
+    assert.equal((await existingResponse.json() as { existingUserId: string }).existingUserId, noRoles.id);
+    const assignExisting = await request("PUT", `${endpoint}/${noRoles.id}/roles`, { roles: ["content_author"] }, admin);
+    assert.equal(assignExisting.status, 200);
+    const existingGranted = ListCmsUsersResponse.parse(await (await request("GET", `${endpoint}?scope=all`, undefined, admin)).json());
+    assert.ok(existingGranted.some(user => user.id === noRoles.id && user.roles.includes("content_author")));
     const body = {
       email: `prepared-${suffix}@example.invalid`, displayName: "Temporary provisioning test",
       objectId: randomUUID(), roles: ["editor", "content_author"],
@@ -53,7 +74,9 @@ test("dev API enforces provisioning permissions, identity binding and durable ro
     const list = ListCmsUsersResponse.parse(await (await request("GET", endpoint, undefined, admin)).json());
     assert.ok(list.some(user => user.id === result.id && user.roles.includes("editor")));
     assert.equal((await request("POST", endpoint, { ...body, email: body.email.toUpperCase() }, admin)).status, 409);
-    assert.equal((await request("POST", endpoint, { ...body, email: `other-${suffix}@example.invalid` }, admin)).status, 409);
+    const identityConflict = await request("POST", endpoint, { ...body, email: `other-${suffix}@example.invalid` }, admin);
+    assert.equal(identityConflict.status, 409);
+    assert.equal((await identityConflict.json() as { existingUserId: string }).existingUserId, result.id);
     const row = await db.query.usersTable.findFirst({ where: eq(usersTable.id, result.id) });
     const identity = {
       externalSubject: `verified-${suffix}`, entraTenantId: row!.entraTenantId, entraObjectId: body.objectId,
@@ -68,6 +91,10 @@ test("dev API enforces provisioning permissions, identity binding and durable ro
     const grants = await db.select().from(userRoles).where(eq(userRoles.userId, result.id));
     assert.equal(grants.length, 1);
     assert.equal(grants[0].manuallyAssigned, true);
+    const removed = await request("PUT", `${endpoint}/${result.id}/roles`, { roles: [] }, admin);
+    assert.equal(removed.status, 200);
+    const afterRemoval = ListCmsUsersResponse.parse(await (await request("GET", `${endpoint}?scope=all`, undefined, admin)).json());
+    assert.ok(afterRemoval.some(user => user.id === result.id && user.roles.length === 0));
   } finally {
     if (targetEmail) {
       const leftovers = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, targetEmail));

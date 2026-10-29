@@ -14,6 +14,7 @@ import { requireAuth, requireRole } from "../../middlewares/auth";
 import { audit } from "../../lib/audit";
 import { AvatarImageError, storeProfileAvatar } from "../../lib/profileAvatar";
 import { EntraProvisionError, provisionEntraUser } from "../../lib/provisionEntraUser";
+import { ListCmsUsersQueryParams } from "@workspace/api-zod";
 
 const ProfileBody = z.object({
   displayName: z.string().min(1).max(120).optional(),
@@ -111,7 +112,7 @@ router.post(
       res.status(201).json(user);
     } catch (err) {
       if (err instanceof EntraProvisionError) {
-        res.status(err.status).json({ error: err.message });
+        res.status(err.status).json({ error: err.message, ...(err.existingUserId ? { existingUserId: err.existingUserId } : {}) });
         return;
       }
       throw err;
@@ -123,7 +124,17 @@ router.get(
   "/cms/users",
   requireAuth,
   requireRole("admin", "site_admin", "editor"),
-  async (_req, res) => {
+  async (req, res) => {
+    const params = ListCmsUsersQueryParams.safeParse(req.query);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid user list scope." });
+      return;
+    }
+    const showAll = params.data.scope === "all";
+    if (showAll && !req.authedUser!.roles.some(role => role === "admin" || role === "site_admin")) {
+      res.status(403).json({ error: "Only administrators can list all website accounts." });
+      return;
+    }
     const users = await db.select().from(usersTable);
     const roleRows = await db
       .select({ userId: userRoles.userId, name: rolesTable.name })
@@ -136,6 +147,7 @@ router.get(
       rolesByUser.set(r.userId, arr);
     }
     const contentUsers = users.filter((u) => {
+      if (showAll) return true;
       const roles = rolesByUser.get(u.id) ?? [];
       return roles.some((r) => CONTENT_ROLES.includes(r));
     });

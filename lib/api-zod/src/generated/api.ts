@@ -501,7 +501,22 @@ export const GetCurrentUserResponse = zod.object({
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
   bio: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
 });
 
 /**
@@ -1458,6 +1473,17 @@ export const ProvisionEntraUserBody = zod.object({
   roles: zod.array(zod.enum(["editor", "content_author"])).min(1),
 });
 
+export const listCmsUsersQueryScopeDefault = `content`;
+
+export const ListCmsUsersQueryParams = zod.object({
+  scope: zod
+    .enum(["content", "all"])
+    .default(listCmsUsersQueryScopeDefault)
+    .describe(
+      "All accounts is restricted to administrators. Content remains the default for author selectors.",
+    ),
+});
+
 export const ListCmsUsersResponseItem = zod.object({
   id: zod.string().uuid(),
   externalSubject: zod.string().nullish(),
@@ -1465,7 +1491,22 @@ export const ListCmsUsersResponseItem = zod.object({
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
   createdAt: zod.coerce.date().optional(),
 });
 export const ListCmsUsersResponse = zod.array(ListCmsUsersResponseItem);
@@ -1475,7 +1516,22 @@ export const SetCmsUserRolesParams = zod.object({
 });
 
 export const SetCmsUserRolesBody = zod.object({
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
 });
 
 export const SetCmsUserRolesResponse = zod.object({
@@ -1485,7 +1541,22 @@ export const SetCmsUserRolesResponse = zod.object({
   email: zod.string().nullish(),
   displayName: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  roles: zod.array(zod.enum(["admin", "editor", "author", "contributor"])),
+  roles: zod.array(
+    zod.enum([
+      "admin",
+      "editor",
+      "author",
+      "contributor",
+      "client",
+      "site_admin",
+      "content_author",
+      "hr",
+      "internal",
+      "customer",
+      "registered",
+      "account_manager",
+    ]),
+  ),
   createdAt: zod.coerce.date().optional(),
 });
 

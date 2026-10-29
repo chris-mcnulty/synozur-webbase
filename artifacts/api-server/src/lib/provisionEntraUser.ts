@@ -5,7 +5,7 @@ import { tenantAuthority } from "./entraOidc";
 import { lookupEntraUser } from "./entra";
 
 export class EntraProvisionError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public existingUserId?: string) { super(message); }
 }
 
 export async function provisionEntraUser(body: unknown) {
@@ -16,6 +16,12 @@ export async function provisionEntraUser(body: unknown) {
   const guid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!guid.test(tenantId)) throw new EntraProvisionError(503, "A specific Entra tenant ID must be configured before preparing internal website access.");
   const email = input.email.trim().toLowerCase();
+  // Resolve local duplicates before directory lookup: a user who has already
+  // signed in can have no editorial roles and needs editing, not provisioning.
+  const [byEmail] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${email}`).limit(1);
+  if (byEmail) throw new EntraProvisionError(409,
+    "This user already has a website record. Open the existing user to assign roles.", byEmail.id);
   let objectId = input.objectId?.toLowerCase();
   let displayName = input.displayName?.trim();
   if (!objectId) {
@@ -37,7 +43,8 @@ export async function provisionEntraUser(body: unknown) {
       sql`lower(${usersTable.email}) = ${email}`,
       and(eq(usersTable.entraTenantId, tenantId), eq(usersTable.entraObjectId, objectId!)),
     )).limit(1);
-    if (existing.length) throw new EntraProvisionError(409, "This email or Entra identity already has a website record. Edit its roles in Users & Roles instead.");
+    if (existing.length) throw new EntraProvisionError(409,
+      "This email or Entra identity already has a website record. Open the existing user to assign roles.", existing[0].id);
     const roleRows = await tx.select().from(rolesTable);
     const wanted = roleRows.filter(r => roles.includes(r.name as typeof roles[number]));
     if (wanted.length !== roles.length) throw new EntraProvisionError(503, "The editorial roles are not configured on this site.");

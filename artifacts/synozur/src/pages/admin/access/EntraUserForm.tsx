@@ -5,7 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function EntraUserForm({ onCreated, onCancel }: { onCreated: () => void; onCancel: () => void }) {
+export function EntraUserForm({ onCreated, onCancel, onExisting }: {
+  onCreated: () => void; onCancel: () => void; onExisting: (id: string) => void;
+}) {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [objectId, setObjectId] = useState("");
@@ -54,7 +56,14 @@ export function EntraUserForm({ onCreated, onCancel }: { onCreated: () => void; 
           <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={author} onChange={e => setAuthor(e.target.checked)} />Content author (not Guest author)</label>
           <p className="text-xs text-muted-foreground">Explicitly saved roles remain assigned when Entra groups are refreshed. You can change or remove them here later.</p>
         </fieldset>
-        {create.isError && <p role="alert" className="text-sm text-destructive">{create.error.message}</p>}
+        {create.isError && <div role="alert" className="space-y-2">
+          <p className="text-sm text-destructive">{create.error.message}</p>
+          {create.error.status === 409 && create.error.data?.existingUserId && (
+            <Button type="button" variant="outline" onClick={() => onExisting(create.error.data!.existingUserId)}>
+              Show existing user
+            </Button>
+          )}
+        </div>}
         <div className="flex gap-2">
           <Button type="submit" disabled={create.isPending || (!editor && !author)}>{create.isPending ? "Preparing access…" : "Prepare website access"}</Button>
           <Button type="button" variant="outline" disabled={create.isPending} onClick={onCancel}>Cancel</Button>

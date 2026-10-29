@@ -497,6 +497,14 @@ export const RoleName = {
   editor: "editor",
   author: "author",
   contributor: "contributor",
+  client: "client",
+  site_admin: "site_admin",
+  content_author: "content_author",
+  hr: "hr",
+  internal: "internal",
+  customer: "customer",
+  registered: "registered",
+  account_manager: "account_manager",
 } as const;
 
 export type PostStatus = (typeof PostStatus)[keyof typeof PostStatus];
@@ -526,6 +534,11 @@ export interface CurrentUser {
   avatarUrl?: string | null;
   bio?: string | null;
   roles: RoleName[];
+}
+
+export interface EntraUserConflict {
+  error: string;
+  existingUserId: string;
 }
 
 export type EntraUserInputRolesItem =
@@ -4300,6 +4313,21 @@ export type ExportAuditLogCsvParams = {
   from?: string;
   to?: string;
 };
+
+export type ListCmsUsersParams = {
+  /**
+   * All accounts is restricted to administrators. Content remains the default for author selectors.
+   */
+  scope?: ListCmsUsersScope;
+};
+
+export type ListCmsUsersScope =
+  (typeof ListCmsUsersScope)[keyof typeof ListCmsUsersScope];
+
+export const ListCmsUsersScope = {
+  content: "content",
+  all: "all",
+} as const;
 
 export type SetCmsUserRolesBody = {
   roles: RoleName[];

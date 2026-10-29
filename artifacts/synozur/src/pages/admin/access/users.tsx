@@ -19,11 +19,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { EntraUserForm } from "./EntraUserForm";
+import { Input } from "@/components/ui/input";
 
-// #110 — surface all eleven assignable roles. The generated `RoleName`
-// enum from api-zod is still on the legacy 4; rather than block on a
-// codegen pass, source the canonical list locally. The server validates
-// against the same list via z.enum(ROLE_NAMES).
+// Keep the displayed order stable; the API validates against the canonical roles.
 const ALL_ROLES = [
   "site_admin",
   "admin",
@@ -67,8 +65,11 @@ export default function UsersAndRoles() {
   const canManage = user?.roles.some(role => role === "admin" || role === "site_admin") ?? false;
   const [adding, setAdding] = useState(false);
   const [createdMessage, setCreatedMessage] = useState("");
-  const { data, isLoading, isError, error, refetch } = useListCmsUsers({ query: {
-    queryKey: getListCmsUsersQueryKey(), refetchInterval: 30_000,
+  const [search, setSearch] = useState("");
+  const [existingUserId, setExistingUserId] = useState<string | null>(null);
+  const listParams = { scope: canManage ? "all" as const : "content" as const };
+  const { data, isLoading, isError, error, refetch } = useListCmsUsers(listParams, { query: {
+    queryKey: getListCmsUsersQueryKey(listParams), refetchInterval: 30_000,
   } });
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>("all");
   const set = useSetCmsUserRoles({
@@ -83,10 +84,12 @@ export default function UsersAndRoles() {
   });
 
   const filtered = useMemo(() => {
-    const all = data ?? [];
+    const query = search.trim().toLowerCase();
+    const all = (data ?? []).filter(u => (!existingUserId || u.id === existingUserId)
+      && (!query || `${u.displayName ?? ""} ${u.email ?? ""}`.toLowerCase().includes(query)));
     if (providerFilter === "all") return all;
     return all.filter((u) => classifyProvider(u.authProvider) === providerFilter);
-  }, [data, providerFilter]);
+  }, [data, providerFilter, search, existingUserId]);
 
   const counts = useMemo(() => {
     const acc: Record<Exclude<ProviderFilter, "all">, number> = {
@@ -108,8 +111,17 @@ export default function UsersAndRoles() {
         <p className="text-sm text-muted-foreground">Administrators can prepare Entra access before a user's first sign-in. Saved role choices are explicit assignments, not group-managed grants.</p>
         {canManage && !adding && <Button onClick={() => { setCreatedMessage(""); setAdding(true); }}>Add Entra user</Button>}
       </div>
-      {adding && canManage && <EntraUserForm onCancel={() => setAdding(false)} onCreated={() => {
+      {adding && canManage && <EntraUserForm onCancel={() => setAdding(false)} onExisting={(id) => {
         setAdding(false);
+        setProviderFilter("all");
+        setSearch("");
+        setExistingUserId(id);
+        setCreatedMessage("Existing website account found. Select the required roles below and save; no new account is needed.");
+        void refetch();
+      }} onCreated={() => {
+        setAdding(false);
+        setSearch("");
+        setExistingUserId(null);
         setProviderFilter("entra");
         setCreatedMessage("Website access prepared. The user can now choose Sign in with Microsoft using their existing work account. No invitation email was sent.");
         void refetch();
@@ -117,6 +129,9 @@ export default function UsersAndRoles() {
       {createdMessage && <p role="status" className="mb-4 rounded-md border p-3 text-sm">{createdMessage}</p>}
       {isError && <div role="alert" className="mb-4 text-destructive">Could not load users: {error.message} <Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>}
       <div className="mb-4 flex items-center gap-3 flex-wrap">
+        <label className="text-sm text-muted-foreground" htmlFor="user-search">Find user</label>
+        <Input id="user-search" className="w-full sm:w-[280px]" value={search} placeholder="Search name or email"
+          onChange={event => { setSearch(event.target.value); setExistingUserId(null); }} />
         <label className="text-sm text-muted-foreground" htmlFor="provider-filter">
           Provider
         </label>
@@ -135,6 +150,11 @@ export default function UsersAndRoles() {
             <SelectItem value="unknown">{PROVIDER_LABEL.unknown} ({counts.unknown})</SelectItem>
           </SelectContent>
         </Select>
+        {(search || existingUserId || providerFilter !== "all") && (
+          <Button variant="outline" onClick={() => {
+            setSearch(""); setExistingUserId(null); setProviderFilter("all"); setCreatedMessage("");
+          }}>Show all users</Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -143,7 +163,7 @@ export default function UsersAndRoles() {
         <Card className="p-12 text-center text-muted-foreground">No users yet.</Card>
       ) : filtered.length === 0 ? (
         <Card className="p-12 text-center text-muted-foreground">
-          No users match this provider filter.
+          No users match the selected filters.
         </Card>
       ) : (
         <div className="space-y-3">
@@ -154,10 +174,7 @@ export default function UsersAndRoles() {
               onSave={(roles) =>
                 set.mutate({
                   id: u.id,
-                  // The generated body type still wants the legacy RoleName enum,
-                  // so widen via a deliberate cast at the boundary. Server-side
-                  // z.enum(ROLE_NAMES) is the actual authority.
-                  data: { roles: roles as unknown as CmsUser["roles"] },
+                  data: { roles },
                 })
               }
               pending={set.isPending || !canManage}
@@ -216,6 +233,7 @@ function UserRow({
           );
         })}
       </div>
+      {user.roles.length === 0 && <Badge variant="outline">No roles assigned</Badge>}
       {user.roles.length > 0 && !dirty && (
         <div className="flex items-center gap-1">
           {user.roles.map((r) => (

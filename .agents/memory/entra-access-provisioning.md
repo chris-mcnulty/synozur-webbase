@@ -14,3 +14,9 @@ Explicit administrator role assignments are independent of Entra group-managed g
 **Why:** Group reconciliation previously treated every instance of a mapped role as group-owned, which could silently remove an administrator's deliberate assignment at sign-in.
 
 **How to apply:** Preserve explicitly assigned grants during group refresh. Do not retroactively mark all legacy or automatic grants as manual. Explain that group-managed grants can return while the user remains in their mapped group.
+
+The administrator account directory must include accounts with no roles, not just eligible content authors. Keep content-author selectors separately restricted.
+
+**Why:** A previously signed-in Entra user can legitimately have no roles. Hiding that record from access management leaves administrators unable to act on a duplicate-account conflict.
+
+**How to apply:** Check existing website records before directory lookup, return an actionable conflict without creating or granting access automatically, and let administrators find and edit the existing account.

@@ -78,6 +78,7 @@ import type {
   DownloadChapterAudioParams,
   DownloadPortalDocumentParams,
   DownloadPortalDocumentVersionParams,
+  EntraUserConflict,
   EntraUserInput,
   ErrorEnvelope,
   EventInput,
@@ -108,6 +109,7 @@ import type {
   ListCmsMediaParams,
   ListCmsPolarisEpisodes200,
   ListCmsPostsParams,
+  ListCmsUsersParams,
   ListInsightsParams,
   ListLibraryAssetsParams,
   ListPolarisEpisodesParams,
@@ -4024,7 +4026,7 @@ export const provisionEntraUser = async (
 };
 
 export const getProvisionEntraUserMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | EntraUserConflict>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4065,13 +4067,14 @@ export type ProvisionEntraUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof provisionEntraUser>>
 >;
 export type ProvisionEntraUserMutationBody = BodyType<EntraUserInput>;
-export type ProvisionEntraUserMutationError = ErrorType<void>;
+export type ProvisionEntraUserMutationError =
+  ErrorType<void | EntraUserConflict>;
 
 /**
  * @summary Prepare website access for an existing Entra user
  */
 export const useProvisionEntraUser = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | EntraUserConflict>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4090,41 +4093,57 @@ export const useProvisionEntraUser = <
   return useMutation(getProvisionEntraUserMutationOptions(options));
 };
 
-export const getListCmsUsersUrl = () => {
-  return `/api/cms/users`;
+export const getListCmsUsersUrl = (params?: ListCmsUsersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cms/users?${stringifiedParams}`
+    : `/api/cms/users`;
 };
 
 export const listCmsUsers = async (
+  params?: ListCmsUsersParams,
   options?: RequestInit,
 ): Promise<CmsUser[]> => {
-  return customFetch<CmsUser[]>(getListCmsUsersUrl(), {
+  return customFetch<CmsUser[]>(getListCmsUsersUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListCmsUsersQueryKey = () => {
-  return [`/api/cms/users`] as const;
+export const getListCmsUsersQueryKey = (params?: ListCmsUsersParams) => {
+  return [`/api/cms/users`, ...(params ? [params] : [])] as const;
 };
 
 export const getListCmsUsersQueryOptions = <
   TData = Awaited<ReturnType<typeof listCmsUsers>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCmsUsers>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListCmsUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListCmsUsersQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListCmsUsersQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listCmsUsers>>> = ({
     signal,
-  }) => listCmsUsers({ signal, ...requestOptions });
+  }) => listCmsUsers(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listCmsUsers>>,
@@ -4141,15 +4160,18 @@ export type ListCmsUsersQueryError = ErrorType<unknown>;
 export function useListCmsUsers<
   TData = Awaited<ReturnType<typeof listCmsUsers>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCmsUsers>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListCmsUsersQueryOptions(options);
+>(
+  params?: ListCmsUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCmsUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCmsUsersQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

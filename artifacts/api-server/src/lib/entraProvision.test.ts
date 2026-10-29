@@ -122,6 +122,9 @@ test("manual Object ID provisioning creates an unclaimed Entra record and explic
         },
       }),
     };
+    mock.method(db, "select", (() => ({
+      from: () => ({ where: () => ({ limit: async () => [] }) }),
+    })) as unknown as typeof db.select);
     mock.method(db, "transaction", (async (callback: (tx: unknown) => unknown) => callback(tx)) as unknown as typeof db.transaction);
     const result = await provisionEntraUser({ email: "EDITOR@example.invalid", objectId: object, roles: ["editor"] });
     assert.equal(result.email, "editor@example.invalid");
@@ -131,6 +134,23 @@ test("manual Object ID provisioning creates an unclaimed Entra record and explic
       authProvider: "entra", entraTenantId: tenant, entraObjectId: object,
     });
     assert.deepEqual(writes[1].values, [{ userId: "new-user", roleId: "editor-role", manuallyAssigned: true }]);
+  } finally {
+    if (originalTenant === undefined) delete process.env.ENTRA_TENANT_ID;
+    else process.env.ENTRA_TENANT_ID = originalTenant;
+  }
+});
+
+test("existing email returns an actionable conflict before directory lookup or insert", async () => {
+  const originalTenant = process.env.ENTRA_TENANT_ID;
+  process.env.ENTRA_TENANT_ID = tenant;
+  try {
+    mock.method(db, "select", (() => ({
+      from: () => ({ where: () => ({ limit: async () => [{ id: "existing-with-no-roles" }] }) }),
+    })) as unknown as typeof db.select);
+    const transaction = mock.method(db, "transaction");
+    await assert.rejects(provisionEntraUser({ email: "editor@example.invalid", roles: ["editor"] }), err =>
+      err instanceof EntraProvisionError && err.status === 409 && err.existingUserId === "existing-with-no-roles");
+    assert.equal(transaction.mock.callCount(), 0);
   } finally {
     if (originalTenant === undefined) delete process.env.ENTRA_TENANT_ID;
     else process.env.ENTRA_TENANT_ID = originalTenant;

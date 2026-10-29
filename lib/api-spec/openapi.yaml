@@ -1216,12 +1216,24 @@ paths:
           description: Administrator required
         '409':
           description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntraUserConflict'
         '503':
           description: Entra configuration or directory lookup unavailable
     get:
       operationId: listCmsUsers
       tags:
         - CMS Users
+      parameters:
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [content, all]
+            default: content
+          description: All accounts is restricted to administrators. Content remains the default for author selectors.
       responses:
         '200':
           description: Users
@@ -5447,6 +5459,14 @@ components:
         - editor
         - author
         - contributor
+        - client
+        - site_admin
+        - content_author
+        - hr
+        - internal
+        - customer
+        - registered
+        - account_manager
     PostStatus:
       type: string
       enum:
@@ -5492,6 +5512,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RoleName'
+    EntraUserConflict:
+      type: object
+      required: [error, existingUserId]
+      properties:
+        error: { type: string }
+        existingUserId: { type: string, format: uuid }
     EntraUserInput:
       type: object
       required: [email, roles]
