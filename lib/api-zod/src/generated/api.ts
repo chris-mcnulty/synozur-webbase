@@ -191,6 +191,19 @@ export const ListChapterAudioResponse = zod.object({
       expiresAt: zod.string(),
       creatorName: zod.string(),
       error: zod.string().nullish(),
+      processingStage: zod.string().nullish(),
+      diagnostics: zod
+        .array(
+          zod.object({
+            at: zod.string(),
+            stage: zod.string(),
+            code: zod.string(),
+            attempt: zod.number(),
+            elapsedMs: zod.number(),
+            willRetry: zod.boolean(),
+          }),
+        )
+        .optional(),
       durationSeconds: zod.number().nullish(),
       audioBytes: zod.number().nullish(),
       cost: zod

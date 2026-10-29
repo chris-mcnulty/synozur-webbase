@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import ffmpeg from "ffmpeg-static";
 import { existsSync } from "node:fs";
+import { ChapterProcessingError } from "./diagnostics";
 
 export function chapterEncoderReady() { return !!ffmpeg && existsSync(ffmpeg); }
 
 export async function assembleChapter(sections: Buffer[]): Promise<{ audio: Buffer; duration: number }> {
-  if (!chapterEncoderReady()) throw new Error("The chapter MP3 encoder is not installed.");
+  if (!chapterEncoderReady()) throw new ChapterProcessingError("encoder_unavailable", false);
   const directory = await mkdtemp(join(tmpdir(), "synozur-chapter-"));
   try {
     for (let i = 0; i < sections.length; i++) await writeFile(join(directory, `${i}.mp3`), sections[i]!);
@@ -21,7 +22,7 @@ export async function assembleChapter(sections: Buffer[]): Promise<{ audio: Buff
         "-progress", "pipe:1", "-nostats", "-y", "audio.mp3",
       ], { cwd: directory, stdio: ["ignore", "pipe", "pipe"] });
       let output = "";
-      const timeout = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("Audio assembly timed out. Retry the chapter.")); }, 300_000);
+      const timeout = setTimeout(() => { child.kill("SIGKILL"); reject(new ChapterProcessingError("encoder_timeout", true)); }, 300_000);
       child.stdout.on("data", (data: Buffer) => {
         output = (output + data.toString()).slice(-16000);
         const values = [...output.matchAll(/out_time_us=(\d+)/g)];
@@ -30,15 +31,16 @@ export async function assembleChapter(sections: Buffer[]): Promise<{ audio: Buff
       });
       // Consume stderr without logging filenames or content.
       child.stderr.resume();
-      child.on("error", () => { clearTimeout(timeout); reject(new Error("The MP3 encoder could not start.")); });
+      child.on("error", () => { clearTimeout(timeout); reject(new ChapterProcessingError("encoder_start_failed", false)); });
       child.on("close", code => {
         clearTimeout(timeout);
-        if (code !== 0 || duration <= 0) reject(new Error("Audio validation failed during MP3 assembly. Retry the chapter."));
+        if (code !== 0) reject(new ChapterProcessingError("encoder_exit_failed", false));
+        else if (duration <= 0) reject(new ChapterProcessingError("encoder_invalid_output", false));
         else resolve();
       });
     });
     const audio = await readFile(join(directory, "audio.mp3"));
-    if (audio.length < 100) throw new Error("The assembled chapter audio is empty.");
+    if (audio.length < 100) throw new ChapterProcessingError("encoder_invalid_output", false);
     return { audio, duration };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

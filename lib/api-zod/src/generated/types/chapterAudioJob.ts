@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChapterAudioFailure } from "./chapterAudioFailure";
 import type { ChapterAudioJobCost } from "./chapterAudioJobCost";
 import type { ChapterAudioJobStatus } from "./chapterAudioJobStatus";
 
@@ -21,6 +22,9 @@ export interface ChapterAudioJob {
   creatorName: string;
   /** @nullable */
   error?: string | null;
+  /** @nullable */
+  processingStage?: string | null;
+  diagnostics?: ChapterAudioFailure[];
   /** @nullable */
   durationSeconds?: number | null;
   /** @nullable */

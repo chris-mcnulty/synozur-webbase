@@ -4981,6 +4981,16 @@ components:
         notes: { type: string, maxLength: 100000 }
         appendNotes: { type: boolean, default: false }
         voice: { type: string }
+    ChapterAudioFailure:
+      type: object
+      required: [at, stage, code, attempt, elapsedMs, willRetry]
+      properties:
+        at: { type: string }
+        stage: { type: string }
+        code: { type: string }
+        attempt: { type: integer }
+        elapsedMs: { type: integer }
+        willRetry: { type: boolean }
     ChapterAudioJob:
       type: object
       required: [id, title, voice, status, wordCount, totalChunks, completedChunks, createdAt, expiresAt, creatorName]
@@ -4996,6 +5006,10 @@ components:
         expiresAt: { type: string }
         creatorName: { type: string }
         error: { type: [string, "null"] }
+        processingStage: { type: [string, "null"] }
+        diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/ChapterAudioFailure" }
         durationSeconds: { type: [number, "null"] }
         audioBytes: { type: [integer, "null"] }
         cost: { $ref: "#/components/schemas/ChapterAudioJobCost" }

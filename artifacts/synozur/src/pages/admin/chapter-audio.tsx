@@ -52,7 +52,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CostAdminPanel, JobCostDetails, NarrationEstimate } from "@/components/admin/ChapterAudioCosts";
-import { chapterStatusText } from "@/lib/chapter-audio-status";
+import { chapterStatusText, chapterStageLabel } from "@/lib/chapter-audio-status";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -468,9 +468,30 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
             <div className="h-full bg-primary origin-left transition-transform duration-500" style={{ transform: `scaleX(${pct / 100})` }} />
           </div>
           <p className="text-[11px] text-muted-foreground mt-1 tabular-nums">{job.completedChunks} / {job.totalChunks || "?"} segments</p>
+          {job.status === "processing" && job.processingStage && <p role="status" className="text-xs text-muted-foreground mt-1">{chapterStageLabel(job.processingStage)}</p>}
         </div>
       )}
       {job.error && <p className="mt-2 text-xs text-destructive" data-testid={`text-job-error-${job.id}`}>{job.error}</p>}
+      {!!job.diagnostics?.length && (
+        <details className="mt-3 text-xs" data-testid={`diagnostics-job-${job.id}`}>
+          <summary className="cursor-pointer font-medium">
+            Processing diagnostics ({job.diagnostics.length}){job.status === "completed" ? " — recovered; MP3 ready" : ""}
+          </summary>
+          <p className="mt-2 text-muted-foreground">Earlier failures remain visible after a successful retry. This history contains no manuscript text. Up to 20 recent failures are retained.</p>
+          <ol className="mt-2 space-y-2">
+            {job.diagnostics.map((entry, index) => (
+              <li key={`${entry.at}-${index}`} className="rounded border border-border p-2">
+                <span className="font-medium">{chapterStageLabel(entry.stage)}</span>
+                {" · "}{new Date(entry.at).toLocaleString()}
+                <div className="text-muted-foreground mt-1">
+                  {entry.code} · attempt {entry.attempt} · {(entry.elapsedMs / 1000).toFixed(1)}s
+                  {entry.willRetry ? " · automatic retry requested" : " · automatic retries stopped"}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
 
       <JobCostDetails cost={job.cost} jobId={job.id} />
 

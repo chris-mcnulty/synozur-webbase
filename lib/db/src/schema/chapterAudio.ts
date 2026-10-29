@@ -18,6 +18,8 @@ export const chapterAudioJobsTable = pgTable("chapter_audio_jobs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull().default(sql`now() + interval '30 days'`),
   error: text("error"),
+  processingStage: text("processing_stage"),
+  diagnostics: jsonb("diagnostics").notNull().default(sql`'[]'::jsonb`),
   durationSeconds: doublePrecision("duration_seconds"),
   audioBytes: integer("audio_bytes"),
   leaseOwner: text("lease_owner"),

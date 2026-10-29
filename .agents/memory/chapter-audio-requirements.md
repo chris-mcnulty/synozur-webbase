@@ -97,3 +97,25 @@ long form were insufficient confirmation.
 
 **How to apply:** Keep the submission action explicit and show durable,
 server-backed queue/progress/error status near the top of the editorial page.
+
+Recover finalization independently from speech synthesis, reusing saved sections
+and already assembled audio whenever possible. Automatic recovery must be
+bounded and stop when cancellation, expiry or loss of worker ownership occurs.
+
+**Why:** The user approved finalization recovery after a chapter completed
+narration but failed before delivery; manual retry reused every saved section.
+Retrying unrelated stages would add avoidable speech usage and duplicate work.
+
+**How to apply:** Retry only recoverable failures in the failed assembly,
+finished-file save or completion step. Preserve private SharePoint storage and
+the existing retention and ownership boundaries.
+
+Keep sanitized failure history after successful automatic or manual recovery.
+Do not log raw exceptions, encoder stderr, manuscript text or provider bodies.
+
+**Why:** The user approved persistent diagnostics because clearing the current
+error on retry left the original finalization failure indistinguishable.
+
+**How to apply:** Record stage, allowlisted error category, attempt and timing;
+keep history bounded and visible to the same authorized editorial audience.
+Do not infer an old failure's exact cause from newly added diagnostics.

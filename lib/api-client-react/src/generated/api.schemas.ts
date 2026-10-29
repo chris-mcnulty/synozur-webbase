@@ -114,6 +114,15 @@ export interface ChapterAudioInput {
   voice: string;
 }
 
+export interface ChapterAudioFailure {
+  at: string;
+  stage: string;
+  code: string;
+  attempt: number;
+  elapsedMs: number;
+  willRetry: boolean;
+}
+
 export type ChapterAudioJobStatus =
   (typeof ChapterAudioJobStatus)[keyof typeof ChapterAudioJobStatus];
 
@@ -140,6 +149,9 @@ export interface ChapterAudioJob {
   creatorName: string;
   /** @nullable */
   error?: string | null;
+  /** @nullable */
+  processingStage?: string | null;
+  diagnostics?: ChapterAudioFailure[];
   /** @nullable */
   durationSeconds?: number | null;
   /** @nullable */

@@ -1,23 +1,46 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { logger } from "../logger";
-import { chapterAudioEnabled, chapterAudioReady, type ChapterRow } from "./repository";
+import { chapterAudioEnabled, chapterAudioReady, appendChapterFailure, type ChapterRow } from "./repository";
 import { readChapterFile, saveChapterFile, chapterFileExists, deleteChapterFiles } from "./store";
 import { splitNarration } from "./text";
 import { renderChapterSection, ChapterSpeechError } from "./speech";
 import { assembleChapter } from "./assemble";
 import { recordReusedSection } from "./costs";
+import { finalizeChapter } from "./finalize";
+import { ChapterLeaseLost, CHAPTER_STAGE_LABELS, classifyChapterFailure, type ChapterFailure, type ChapterStage } from "./diagnostics";
 
 async function owned(id: string, token: string): Promise<boolean> {
   return (await pool.query("SELECT 1 FROM chapter_audio_jobs WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now() AND lease_until>now()", [id, token])).rowCount === 1;
 }
 
 async function processChapter(row: ChapterRow, token: string) {
+  let stage: ChapterStage = "source_read";
+  let stageStarted = Date.now();
+  let failureRecorded = false;
+  async function setStage(next: ChapterStage) {
+    stage = next; stageStarted = Date.now(); failureRecorded = false;
+    const result = await pool.query(`UPDATE chapter_audio_jobs SET processing_stage=$3
+      WHERE id=$1 AND lease_owner=$2 AND status='processing' AND lease_until>now() AND expires_at>now()`,
+    [row.id, token, stage]);
+    if (!result.rowCount) throw new ChapterLeaseLost();
+    logger.info({ chapterId: row.id, stage }, "Chapter audio stage started");
+  }
+  async function recordFailure(event: ChapterFailure) {
+    // Only allowlisted classifications and numeric timing go to logs/history.
+    // Keep the last 20 failures across automatic and manual retries.
+    logger.warn({ chapterId: row.id, ...event }, "Chapter audio stage failed");
+    failureRecorded = true;
+    try {
+      await appendChapterFailure(row.id, token, event);
+    } catch { logger.warn({ chapterId: row.id, stage: event.stage }, "Chapter diagnostic persistence unavailable"); }
+  }
   const heartbeat = setInterval(() => {
     void pool.query("UPDATE chapter_audio_jobs SET lease_until=now()+interval '5 minutes' WHERE id=$1 AND lease_owner=$2 AND status='processing'", [row.id, token])
       .catch(() => logger.warn({ chapterId: row.id }, "Chapter lease renewal failed"));
   }, 20_000);
   try {
+    await setStage("source_read");
     const text = (await readChapterFile(`jobs/${row.id}/source.txt`)).toString("utf8");
     const sections = splitNarration(text);
     const buffers: Buffer[] = [];
@@ -26,11 +49,13 @@ async function processChapter(row: ChapterRow, token: string) {
       const key = `jobs/${row.id}/section-${i}.mp3`;
       const usageContext = { jobId: row.id, sectionIndex: i, actorId: row.creator_id, actorLabel: row.creator_name };
       let bytes: Buffer;
+      await setStage("section_read");
       if (await chapterFileExists(key)) {
         bytes = await readChapterFile(key);
         await recordReusedSection(row.voice, usageContext);
       }
       else {
+        await setStage("speech");
         let attempt = 0;
         for (;;) {
           try { bytes = await renderChapterSection(sections[i]!, row.voice, usageContext); break; }
@@ -42,20 +67,36 @@ async function processChapter(row: ChapterRow, token: string) {
           }
         }
         if (!await owned(row.id, token)) return;
+        await setStage("section_save");
         await saveChapterFile(key, bytes!, "audio/mpeg");
       }
       buffers.push(bytes!);
+      await setStage("section_progress");
       await pool.query("UPDATE chapter_audio_jobs SET completed_chunks=$3 WHERE id=$1 AND lease_owner=$2 AND status='processing'", [row.id, token, i + 1]);
     }
     if (!await owned(row.id, token)) return;
-    const result = await assembleChapter(buffers);
-    if (!await owned(row.id, token)) return;
-    await saveChapterFile(`jobs/${row.id}/audio.mp3`, result.audio, "audio/mpeg");
-    await pool.query(`UPDATE chapter_audio_jobs SET status='completed',error=null,duration_seconds=$3,audio_bytes=$4
-      WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now()`, [row.id, token, result.duration, result.audio.length]);
+    await finalizeChapter(buffers, {
+      assemble: assembleChapter,
+      save: result => saveChapterFile(`jobs/${row.id}/audio.mp3`, result.audio, "audio/mpeg"),
+      complete: async result => {
+        const updated = await pool.query(`UPDATE chapter_audio_jobs SET status='completed',error=null,duration_seconds=$3,audio_bytes=$4
+          WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now() AND lease_until>now()`,
+        [row.id, token, result.duration, result.audio.length]);
+        if (!updated.rowCount) throw new ChapterLeaseLost();
+      },
+      owned: () => owned(row.id, token),
+      stage: setStage, failure: recordFailure,
+      success: (stage, attempt, elapsedMs) => logger.info({ chapterId: row.id, stage, attempt, elapsedMs }, "Chapter audio stage completed"),
+    });
     logger.info({ chapterId: row.id }, "Chapter audio completed");
   } catch (error) {
-    const message = error instanceof ChapterSpeechError ? error.message : "Chapter rendering failed. Completed sections are retained; retry to resume. If this continues, ask an administrator to check speech, storage, and the encoder.";
+    if (error instanceof ChapterLeaseLost) return;
+    if (!failureRecorded) await recordFailure({
+      at: new Date().toISOString(), stage, code: error instanceof ChapterSpeechError ? "speech_request_failed" : classifyChapterFailure(error).code,
+      attempt: 1, elapsedMs: Date.now() - stageStarted, willRetry: false,
+    });
+    const message = error instanceof ChapterSpeechError ? error.message :
+      `${CHAPTER_STAGE_LABELS[stage]} failed. Completed sections are retained; retry to resume. See processing diagnostics for the failure stage.`;
     await pool.query("UPDATE chapter_audio_jobs SET status='failed',error=$3 WHERE id=$1 AND lease_owner=$2 AND status='processing'", [row.id, token, message]);
     // Do not log raw errors or provider bodies that might contain chapter text.
     logger.warn({ chapterId: row.id }, "Chapter audio processing failed");

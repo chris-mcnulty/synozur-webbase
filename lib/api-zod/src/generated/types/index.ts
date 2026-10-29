@@ -47,6 +47,7 @@ export * from "./chapterAudioCurrencyCost";
 export * from "./chapterAudioEstimate";
 export * from "./chapterAudioEstimateInput";
 export * from "./chapterAudioExtraction";
+export * from "./chapterAudioFailure";
 export * from "./chapterAudioHistory";
 export * from "./chapterAudioInput";
 export * from "./chapterAudioJob";

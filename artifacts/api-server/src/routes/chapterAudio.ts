@@ -148,7 +148,7 @@ router.post(`${root}/:id/:action`, mutationLimit, async (req, res): Promise<void
     if (!result.rowCount) { res.status(409).json({ error: "Only queued or processing chapters can be cancelled." }); return; }
   } else {
     if (!await configured()) { res.status(503).json({ error: "The speech, storage, or encoder configuration is unavailable." }); return; }
-    const result = await pool.query(`UPDATE chapter_audio_jobs SET status='queued',error=null
+    const result = await pool.query(`UPDATE chapter_audio_jobs SET status='queued',error=null,processing_stage=null
       WHERE id=$1 AND status IN ('failed','cancelled') AND expires_at>now()
       AND (lease_until IS NULL OR lease_until<now())`, [id]);
     if (!result.rowCount) { res.status(409).json({ error: "This chapter cannot be retried yet. Wait for any in-progress section to stop, then try again." }); return; }
