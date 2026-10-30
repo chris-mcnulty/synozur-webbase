@@ -152,9 +152,9 @@ export default function EventForm({ id }: Props) {
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [sessionSaveStatus, setSessionSaveStatus] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const formInitializedRef = useRef(false);
+  const [initializedEventId, setInitializedEventId] = useState<number | null>(null);
 
-  const { data: existing, isLoading } = useQuery({
+  const { data: existing, isLoading, error: loadError } = useQuery({
     queryKey: ["admin-event", eventId],
     queryFn: () => api.getEvent(eventId!),
     enabled: eventId != null,
@@ -162,8 +162,7 @@ export default function EventForm({ id }: Props) {
   });
 
   useEffect(() => {
-    if (existing && !formInitializedRef.current) {
-      formInitializedRef.current = true;
+    if (existing && existing.id === eventId && initializedEventId !== eventId) {
       setForm({
         title: existing.title,
         slug: existing.slug,
@@ -191,8 +190,9 @@ export default function EventForm({ id }: Props) {
         seoDescription: existing.seoDescription ?? null,
       });
       setImagePreview(existing.imageUrl ?? null);
+      setInitializedEventId(eventId);
     }
-  }, [existing]);
+  }, [existing, eventId, initializedEventId]);
 
   const scheduleQ = useQuery({
     queryKey: ["event-schedule-admin", existing?.slug],
@@ -358,7 +358,16 @@ export default function EventForm({ id }: Props) {
     { label: title },
   ];
 
-  if (!isNew && isLoading) {
+  if (!isNew && loadError) {
+    return (
+      <AdminLayout title={title} crumbs={crumbs}>
+        <p role="alert" className="text-destructive">Could not load this event. Reload the page before editing; no changes have been saved.</p>
+      </AdminLayout>
+    );
+  }
+  // Do not mount form selects with new-event defaults while the saved event
+  // is waiting to hydrate. Mount-time select callbacks must not overwrite it.
+  if (!isNew && (isLoading || initializedEventId !== eventId)) {
     return (
       <AdminLayout title={title} crumbs={crumbs}>
         <div className="text-muted-foreground">Loading…</div>
@@ -489,7 +498,7 @@ export default function EventForm({ id }: Props) {
           <Select
             value={form.timezone ?? "__unset__"}
             onValueChange={(v) =>
-              setForm((f) => ({ ...f, timezone: v === "__unset__" ? null : v }))
+              v && setForm((f) => ({ ...f, timezone: v === "__unset__" ? null : v }))
             }
           >
             <SelectTrigger id="timezone" data-testid="select-timezone">
@@ -540,7 +549,7 @@ export default function EventForm({ id }: Props) {
           <Label>Event Status</Label>
           <Select
             value={form.status || "UPCOMING"}
-            onValueChange={(v) => setForm({ ...form, status: v })}
+            onValueChange={(v) => { if (v) setForm((f) => ({ ...f, status: v })); }}
           >
             <SelectTrigger data-testid="select-status">
               <SelectValue />
@@ -582,7 +591,7 @@ export default function EventForm({ id }: Props) {
               <Label>Registration status</Label>
               <Select
                 value={form.registrationStatus || "UNKNOWN_REGISTRATION_STATUS"}
-                onValueChange={(v) => setForm({ ...form, registrationStatus: v })}
+                onValueChange={(v) => { if (v) setForm((f) => ({ ...f, registrationStatus: v })); }}
               >
                 <SelectTrigger data-testid="select-registrationStatus">
                   <SelectValue />
@@ -599,7 +608,7 @@ export default function EventForm({ id }: Props) {
               <Label>Event type</Label>
               <Select
                 value={form.eventType ?? "RSVP"}
-                onValueChange={(v) => setForm({ ...form, eventType: v })}
+                onValueChange={(v) => { if (v) setForm((f) => ({ ...f, eventType: v })); }}
               >
                 <SelectTrigger data-testid="select-eventType">
                   <SelectValue />
@@ -687,7 +696,7 @@ export default function EventForm({ id }: Props) {
               <Select
                 value={form.recordingVideoId ?? "__none__"}
                 onValueChange={(v) =>
-                  setForm({ ...form, recordingVideoId: v === "__none__" ? null : v })
+                  v && setForm((f) => ({ ...f, recordingVideoId: v === "__none__" ? null : v }))
                 }
               >
                 <SelectTrigger data-testid="select-recordingVideo">
