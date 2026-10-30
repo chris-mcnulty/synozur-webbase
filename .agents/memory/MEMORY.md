@@ -25,3 +25,4 @@
 - [Event PATCH full-body overwrite](event-patch-full-body-overwrite.md) — events PATCH wiped omitted registration fields; now preserves stored values, explicit UNKNOWN still clears.
 - [Binary upload contracts](binary-upload-contracts.md) — named binary schema refs make Orval emit browser Blob types into the Node-only validation package; use inline binary schemas.
 - [Entra access provisioning](entra-access-provisioning.md) — preassigned privileges bind to tenant/object identity; explicit administrator assignments survive group syncing.
+- [HubSpot timeline eligibility](hubspot-timeline-eligibility.md) — an App ID alone is insufficient; verify existing public-app event types and app-bound authentication.
