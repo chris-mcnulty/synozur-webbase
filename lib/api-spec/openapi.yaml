@@ -242,12 +242,28 @@ paths:
         - in: query
           name: download
           schema: { type: boolean }
+        - in: header
+          name: Range
+          description: Single byte range. Responses may be capped to 1 MiB; continue at the returned end offset plus one.
+          schema: { type: string }
       responses:
         "200":
           description: Authorized chapter MP3
           content:
             audio/mpeg:
               schema: { type: string, format: binary }
+        "206":
+          description: Authorized partial MP3, with Content-Range and Accept-Ranges headers
+          headers:
+            Content-Range:
+              schema: { type: string }
+            Accept-Ranges:
+              schema: { type: string }
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+        "416":
+          description: Unsatisfiable or unsupported byte range
   /bookings:
     get:
       operationId: listPublicBookings

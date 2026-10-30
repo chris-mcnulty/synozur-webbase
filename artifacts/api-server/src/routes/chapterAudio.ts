@@ -7,7 +7,8 @@ import { chapterAudioGuard, canManageChapterCosts } from "../lib/chapterAudio/ac
 import { chapterAudioEnabled, publicChapter, getChapter, type ChapterRow } from "../lib/chapterAudio/repository";
 import { MAX_WORDS, MAX_UPLOAD_BYTES, wordCount, splitNarration, extractChapter } from "../lib/chapterAudio/text";
 import { CHAPTER_VOICES, isAzureTtsConfigured, getChapterSample } from "../lib/chapterAudio/speech";
-import { chapterStorageConfigured, saveChapterFile, readChapterFile, deleteChapterFiles } from "../lib/chapterAudio/store";
+import { chapterStorageConfigured, saveChapterFile, readChapterFile, readChapterAudioRange, deleteChapterFiles } from "../lib/chapterAudio/store";
+import { chapterAudioRange } from "../lib/chapterAudio/delivery";
 import { chapterEncoderReady } from "../lib/chapterAudio/assemble";
 import { currentSpeechRate, saveSpeechRate, jobCostMap, monthlySpeechCosts } from "../lib/chapterAudio/costs";
 import { makeNarration, estimateSpeech, summarizeUsage } from "../lib/chapterAudio/costMath";
@@ -164,24 +165,34 @@ router.get(`${root}/:id/audio`, async (req, res): Promise<void> => {
   if (row.expires_at <= new Date()) { res.status(410).json({ error: "This chapter has expired." }); return; }
   if (row.status !== "completed") { res.status(409).json({ error: "This chapter audio is not available." }); return; }
   try {
+    // Media requests use small, verified SPE ranges instead of downloading and
+    // returning the entire chapter on every browser seek/metadata request.
+    if (req.headers.range) {
+      const size = row.audio_bytes ?? 0;
+      const range = chapterAudioRange(req.headers.range, size);
+      if (!range) {
+        res.status(416).setHeader("Content-Range", `bytes */${size}`); res.end(); return;
+      }
+      const bytes = await readChapterAudioRange(`jobs/${id}/audio.mp3`, range.start, range.end, size);
+      res.status(206).type("audio/mpeg");
+      res.setHeader("Cache-Control", "private, no-store, no-transform");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
+      res.setHeader("Content-Length", bytes.length);
+      req.log.info({ chapterId: id, start: range.start, end: range.end, totalBytes: size }, "Chapter audio range delivered");
+      res.send(bytes); return;
+    }
     const bytes = await readChapterFile(`jobs/${id}/audio.mp3`);
     res.type("audio/mpeg").setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "private, no-store, no-transform");
     const filename = `${row.title.replace(/[^\w -]/g, "").trim().slice(0, 100) || "chapter"}.mp3`;
     res.setHeader("Content-Disposition", `${req.query.download === "true" ? "attachment" : "inline"}; filename="${filename}"`);
-    if (req.headers.range) {
-      const match = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range);
-      const start = match ? Number(match[1]) : -1;
-      const end = match?.[2] ? Number(match[2]) : bytes.length - 1;
-      if (start < 0 || start >= bytes.length || end < start || end >= bytes.length) {
-        res.status(416).setHeader("Content-Range", `bytes */${bytes.length}`); res.end(); return;
-      }
-      res.status(206).setHeader("Content-Range", `bytes ${start}-${end}/${bytes.length}`);
-      res.setHeader("Content-Length", end - start + 1);
-      res.send(bytes.subarray(start, end + 1)); return;
-    }
     res.setHeader("Content-Length", bytes.length);
     res.send(bytes);
-  } catch { res.status(503).json({ error: "The chapter audio could not be downloaded. Please try again." }); }
+  } catch {
+    req.log.warn({ chapterId: id, ranged: !!req.headers.range }, "Chapter audio delivery failed");
+    res.status(503).json({ error: "The chapter audio could not be downloaded. Please try again." });
+  }
 });
 
 export default router;

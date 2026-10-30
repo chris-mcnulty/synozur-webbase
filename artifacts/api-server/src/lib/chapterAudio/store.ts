@@ -65,6 +65,18 @@ export async function readChapterFile(key: string): Promise<Buffer> {
   if (!response.ok) throw new Error("SharePoint could not return the chapter file.");
   return Buffer.from(await response.arrayBuffer());
 }
+export async function readChapterAudioRange(key: string, start: number, end: number, size: number): Promise<Buffer> {
+  const file = await findFile(key);
+  if (!file) throw new Error("Chapter file is unavailable.");
+  const response = await speFileStorage.getFile(file.item_id, file.container_id, `bytes=${start}-${end}`);
+  if (response.status !== 206 || response.headers.get("content-range") !== `bytes ${start}-${end}/${size}`) {
+    await response.body?.cancel();
+    throw new Error("SharePoint did not return the requested audio range.");
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length !== end - start + 1) throw new Error("Incomplete chapter audio range.");
+  return bytes;
+}
 export async function chapterFileExists(key: string): Promise<boolean> {
   const file = await findFile(key);
   if (!file) return false;

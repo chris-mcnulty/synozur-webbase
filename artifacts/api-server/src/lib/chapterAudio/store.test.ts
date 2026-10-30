@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import { speFileStorage } from "../storage/spe/fileStorage";
 import { SpeGraphRequestError } from "../storage/spe/graphClient";
-import { initializeChapterStorage, saveChapterFile, readChapterFile, chapterFileExists, deleteChapterFiles } from "./store";
+import { initializeChapterStorage, saveChapterFile, readChapterFile, readChapterAudioRange, chapterFileExists, deleteChapterFiles } from "./store";
 
 test("private chapter SPE references survive container changes and cleanup retries", async () => {
   assert.notEqual(process.env.NODE_ENV, "production");
@@ -42,6 +42,19 @@ test("private chapter SPE references survive container changes and cleanup retri
     await saveChapterFile(key, bytes, "text/plain");
     assert.deepEqual(removed, ["private-1"]);
     assert.deepEqual(await readChapterFile(key), bytes);
+    const savedGetFile = speFileStorage.getFile;
+    speFileStorage.getFile = async (item, container, range) => {
+      assert.equal(item, "private-2");
+      assert.equal(container, "original-container");
+      assert.equal(range, "bytes=0-4");
+      return new Response(bytes.subarray(0, 5), { status: 206, headers: { "content-range": `bytes 0-4/${bytes.length}` } });
+    };
+    assert.deepEqual(await readChapterAudioRange(key, 0, 4, bytes.length), bytes.subarray(0, 5));
+    speFileStorage.getFile = async () => new Response(bytes);
+    await assert.rejects(readChapterAudioRange(key, 0, 4, bytes.length), /requested audio range/);
+    speFileStorage.getFile = async () => new Response(bytes.subarray(0, 1), { status: 206, headers: { "content-range": `bytes 0-4/${bytes.length}` } });
+    await assert.rejects(readChapterAudioRange(key, 0, 4, bytes.length), /Incomplete/);
+    speFileStorage.getFile = savedGetFile;
     assert.equal(await chapterFileExists(key), false);
     failDelete = true;
     await assert.rejects(deleteChapterFiles(id));

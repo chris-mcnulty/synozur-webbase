@@ -119,3 +119,15 @@ error on retry left the original finalization failure indistinguishable.
 **How to apply:** Record stage, allowlisted error category, attempt and timing;
 keep history bounded and visible to the same authorized editorial audience.
 Do not infer an old failure's exact cause from newly added diagnostics.
+
+Treat completed narration and successful browser delivery as separate outcomes.
+Do not advise regenerating a completed chapter solely because its player shows
+0:00; inspect saved bytes and the authorized delivery path first.
+
+**Why:** Completed production MP3s, including a full-length chapter, decoded
+successfully directly from SharePoint while browser delivery was failing.
+Regenerating valid narration would add speech charges without fixing delivery.
+
+**How to apply:** Preserve saved audio, use bounded private byte-range transfers,
+verify returned offsets and lengths, and distinguish playback/download errors
+from synthesis errors. Do not assume a specific proxy size limit without evidence.

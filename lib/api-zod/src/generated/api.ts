@@ -323,6 +323,15 @@ export const DownloadChapterAudioQueryParams = zod.object({
   download: zod.coerce.boolean().optional(),
 });
 
+export const DownloadChapterAudioHeader = zod.object({
+  Range: zod
+    .string()
+    .optional()
+    .describe(
+      "Single byte range. Responses may be capped to 1 MiB; continue at the returned end offset plus one.",
+    ),
+});
+
 /**
  * @summary List visible booking calendars
  */

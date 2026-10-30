@@ -146,9 +146,9 @@ export class SpeFileStorage {
   // `media.spe_container_id`. Falls back to the active container when
   // omitted, which is the right thing for the migration script and
   // any caller that just wrote a fresh item.
-  async getFile(itemId: string, containerIdOverride?: string): Promise<Response> {
+  async getFile(itemId: string, containerIdOverride?: string, range?: string): Promise<Response> {
     const containerId = containerIdOverride ?? (await this.resolveContainerId());
-    return this.getGraph().downloadFile(containerId, itemId);
+    return this.getGraph().downloadFile(containerId, itemId, range);
   }
 
   async deleteFile(itemId: string, containerIdOverride?: string): Promise<void> {

@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CostAdminPanel, JobCostDetails, NarrationEstimate } from "@/components/admin/ChapterAudioCosts";
 import { chapterStatusText, chapterStageLabel } from "@/lib/chapter-audio-status";
+import { fetchChapterAudio } from "@/lib/chapter-audio-download";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -431,10 +432,28 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
   const action = useActionChapterAudio();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const expired = new Date(job.expiresAt).getTime() < Date.now() || job.status === "expired";
   const pct = job.totalChunks > 0 ? Math.round((job.completedChunks / job.totalChunks) * 100) : 0;
   const audioUrl = `${BASE}/api/cms/chapter-audio/${encodeURIComponent(job.id)}/audio`;
   const busy = action.isPending;
+  const download = async () => {
+    setDownloadProgress(0);
+    try {
+      const blob = await fetchChapterAudio(audioUrl, job.audioBytes ?? 0, setDownloadProgress);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${job.title.replace(/[^\w -]/g, "").trim().slice(0, 100) || "chapter"}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      toast({ title: "Could not download audio", description: errMessage(error, "Please try Download again. Your saved narration has not been changed."), variant: "destructive" });
+    } finally { setDownloadProgress(null); }
+  };
 
   const run = (a: "cancel" | "retry" | "delete") =>
     action.mutate({ id: job.id, action: a }, {
@@ -496,8 +515,12 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
       <JobCostDetails cost={job.cost} jobId={job.id} />
 
       {job.status === "completed" && showPlayer && (
-        <audio controls autoPlay src={audioUrl} className="w-full mt-3" data-testid={`audio-job-${job.id}`} />
+        <audio controls autoPlay preload="metadata" src={audioUrl} className="w-full mt-3" data-testid={`audio-job-${job.id}`}
+          onLoadStart={() => setPlaybackError(false)} onError={() => setPlaybackError(true)} />
       )}
+      {playbackError && showPlayer && <p role="alert" className="mt-2 text-sm text-destructive">
+        The player could not load the saved MP3. This is a playback/delivery error, not a new narration failure. Try Download below; do not regenerate the chapter.
+      </p>}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {job.status === "completed" && !expired && (
@@ -505,8 +528,8 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
             <Button size="sm" variant="outline" onClick={() => setShowPlayer((s) => !s)} data-testid={`button-play-${job.id}`}>
               {showPlayer ? <Pause className="h-3.5 w-3.5 mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}{showPlayer ? "Hide" : "Play"}
             </Button>
-            <Button size="sm" variant="outline" asChild>
-              <a href={`${audioUrl}?download=true`} data-testid={`link-download-${job.id}`}><Download className="h-3.5 w-3.5 mr-1" />Download</a>
+            <Button size="sm" variant="outline" disabled={downloadProgress !== null} onClick={() => void download()} data-testid={`link-download-${job.id}`}>
+              <Download className="h-3.5 w-3.5 mr-1" />{downloadProgress === null ? "Download" : `Downloading ${downloadProgress}%`}
             </Button>
           </>
         )}

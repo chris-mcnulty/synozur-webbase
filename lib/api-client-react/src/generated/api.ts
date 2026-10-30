@@ -1024,7 +1024,7 @@ export const getDownloadChapterAudioQueryKey = (
 
 export const getDownloadChapterAudioQueryOptions = <
   TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
 >(
   id: string,
   params?: DownloadChapterAudioParams,
@@ -1062,11 +1062,11 @@ export const getDownloadChapterAudioQueryOptions = <
 export type DownloadChapterAudioQueryResult = NonNullable<
   Awaited<ReturnType<typeof downloadChapterAudio>>
 >;
-export type DownloadChapterAudioQueryError = ErrorType<unknown>;
+export type DownloadChapterAudioQueryError = ErrorType<void>;
 
 export function useDownloadChapterAudio<
   TData = Awaited<ReturnType<typeof downloadChapterAudio>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
 >(
   id: string,
   params?: DownloadChapterAudioParams,

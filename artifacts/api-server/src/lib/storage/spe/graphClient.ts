@@ -453,9 +453,10 @@ export class SpeGraphClient {
       : this.uploadResumable(containerId, path, body, contentType);
   }
 
-  async downloadFile(containerId: string, itemId: string): Promise<Response> {
+  async downloadFile(containerId: string, itemId: string, range?: string): Promise<Response> {
     const driveId = await this.getContainerDriveId(containerId);
-    return this.requestRaw(`${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/content`);
+    return this.requestRaw(`${GRAPH_V1_URL}/drives/${driveId}/items/${itemId}/content`,
+      range ? { headers: { Range: range } } : {});
   }
 
   // Mint a short-lived, tokenized embed URL for the M365 web viewer.
