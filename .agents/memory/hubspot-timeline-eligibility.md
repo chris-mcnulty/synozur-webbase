@@ -28,3 +28,13 @@ apps.
 
 **How to apply:** Do not assume Orbit's HubSpot App ID or authorization belongs
 in the public website's settings merely because both carry Synozur branding.
+
+The user confirmed that Synozur's HubSpot subscription is “Free or Starter.”
+The exact tier and subscribed products have not been established.
+
+**Why:** The user selected this subscription range during the read-only
+website event-integration assessment.
+
+**How to apply:** Do not assume Professional/Enterprise custom-event entitlement
+or approval to upgrade. Preserve queued behavioral data and distinguish contact
+sync or readable notes from equivalent event reporting and automation.

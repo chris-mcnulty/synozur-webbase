@@ -195,7 +195,7 @@ export default function HubspotAdminPage() {
   async function replay(id: string) {
     try {
       await apiFetch(`/admin/integrations/hubspot/replay/${id}`, { method: "POST" });
-      toast({ title: "Re-queued", description: "The event will retry on the next worker tick." });
+      toast({ title: "HubSpot event re-queued", description: "The event will retry on the next worker tick. The optional external webhook is not retried." });
       await refresh();
     } catch (e) {
       toast({ title: "Replay failed", description: (e as Error).message, variant: "destructive" });
@@ -206,8 +206,8 @@ export default function HubspotAdminPage() {
     try {
       await apiFetch(`/admin/integrations/hubspot/resync/${submissionId}`, { method: "POST" });
       toast({
-        title: "Re-sync queued",
-        description: "Contact upsert and the matching timeline event have been re-enqueued.",
+        title: "HubSpot re-sync queued",
+        description: "Contact sync and the matching timeline event have been re-enqueued. Timeline delivery still requires an eligible setup. The optional external webhook is not retried.",
       });
       await refresh();
     } catch (e) {
@@ -258,23 +258,31 @@ export default function HubspotAdminPage() {
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" aria-hidden />
                 <div className="flex-1 space-y-1">
                   <p className="font-semibold">
-                    {status.skippedTimelineCount} timeline event{status.skippedTimelineCount === 1 ? "" : "s"} skipped — HubSpot App ID not set
+                    {status.skippedTimelineCount} timeline event{status.skippedTimelineCount === 1 ? "" : "s"} retained — delivery not configured
                   </p>
                   <p>
-                    Timeline events (the richest behavioural signal sent to HubSpot) are being silently dropped
-                    because the <strong>Timeline app id</strong> is not configured. To find your App ID: open the
-                    HubSpot developer portal → <em>App Marketplace</em> → your app → the <em>App ID</em> shown at
-                    the top of the page.
+                    These events remain saved in the website queue as <code>skipped</code>; they have not
+                    been delivered to HubSpot. An App ID alone does not enable delivery. Legacy timeline
+                    events require an eligible public app with existing event types and matching authorization.
+                  </p>
+                  <p>
+                    HubSpot custom events are a separate integration path requiring a qualifying Professional
+                    or Enterprise subscription and event permissions, not Free or Starter. Do not reuse
+                    another application's App ID without verifying eligibility and authorization.
+                  </p>
+                  <p>
+                    Contact sync is separate. Check its queue status below; skipped timeline events do not
+                    establish whether a contact synced successfully.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <a
                       href="#hs-app-id-section"
                       className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
                     >
-                      Set App ID ↓
+                      Review timeline requirements ↓
                     </a>
                     <Button size="sm" variant="outline" onClick={retrySkipped} disabled={saving}>
-                      Retry skipped events after setting the ID
+                      Retry skipped timeline events
                     </Button>
                   </div>
                 </div>
@@ -311,20 +319,20 @@ export default function HubspotAdminPage() {
             </div>
 
             <div id="hs-app-id-section">
-              <Label htmlFor="hs-app-id">Timeline app id</Label>
+              <Label htmlFor="hs-app-id">Legacy timeline App ID</Label>
               <div className="flex gap-2 items-center">
                 <Input
                   id="hs-app-id"
                   value={timelineAppIdDraft}
                   onChange={(e) => setTimelineAppIdDraft(e.target.value)}
-                  placeholder="HubSpot Public App id (numeric)"
+                   placeholder="Eligible HubSpot public App ID (numeric)"
                   onBlur={() => {
                     const v = timelineAppIdDraft.trim();
                     if (v !== (status.timelineAppId ?? "")) save({ timelineAppId: v || null });
                   }}
                 />
                 {timelineAppIdDraft.trim() ? (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" aria-label="App ID configured" />
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" aria-label="App ID entered; eligibility and permissions not verified" />
                 ) : status.skippedTimelineCount > 0 ? (
                   <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" aria-label="Skipped events exist" />
                 ) : null}
@@ -332,12 +340,14 @@ export default function HubspotAdminPage() {
               {!timelineAppIdDraft.trim() && status.skippedTimelineCount > 0 && (
                 <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3 shrink-0" />
-                  {status.skippedTimelineCount} skipped event{status.skippedTimelineCount === 1 ? "" : "s"} waiting for this ID
+                  {status.skippedTimelineCount} skipped event{status.skippedTimelineCount === 1 ? "" : "s"} retained; delivery requirements must be verified
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Required for timeline events. Without it, contact upserts still
-                run; timeline events are marked <code>skipped</code>.
+                Applies only to the legacy timeline integration, not custom events. An ID is not proof
+                of app eligibility, existing event types, or permissions. Contact sync runs independently;
+                timeline events without an ID remain saved as <code>skipped</code>. Retrying alone does
+                not resolve eligibility, authorization, or API compatibility issues.
               </p>
             </div>
 
@@ -456,6 +466,11 @@ export default function HubspotAdminPage() {
             <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
               <div>
                 <div className="text-lg font-semibold">Sync queue</div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  These actions retry HubSpot only, not the optional external webhook.
+                  Retrying a failed event reuses its queue entry; re-syncing a submission creates new
+                  contact and timeline queue entries.
+                </p>
                 <div className="text-sm text-muted-foreground">
                   Pending: {status.queue.pending} · Succeeded: {status.queue.succeeded} · Dead-letter: {status.queue.deadLetter}
                   {status.skippedTimelineCount > 0 && (
@@ -476,10 +491,10 @@ export default function HubspotAdminPage() {
               <div className="flex gap-2">
                 {status.skippedTimelineCount > 0 && (
                   <Button variant="outline" onClick={retrySkipped} disabled={saving}>
-                    Retry {status.skippedTimelineCount} skipped
+                    Retry {status.skippedTimelineCount} skipped timeline events
                   </Button>
                 )}
-                <Button onClick={drainNow} disabled={saving}>Drain now</Button>
+                <Button onClick={drainNow} disabled={saving}>Process HubSpot queue</Button>
               </div>
             </div>
             <div className="space-y-1">
@@ -501,11 +516,11 @@ export default function HubspotAdminPage() {
                     </span>
                   )}
                   {e.status === "dead_letter" && (
-                    <Button size="sm" variant="ghost" onClick={() => replay(e.id)}>Replay</Button>
+                    <Button size="sm" variant="ghost" onClick={() => replay(e.id)}>Retry HubSpot event</Button>
                   )}
                   {e.submissionId ? (
                     <Button size="sm" variant="ghost" onClick={() => resyncSubmission(e.submissionId!)}>
-                      Re-sync
+                      Re-sync HubSpot submission
                     </Button>
                   ) : null}
                 </div>

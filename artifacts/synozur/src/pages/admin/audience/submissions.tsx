@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import type { AdminFormSubmission } from "@workspace/api-zod/types";
+import { webhookBulkRetryFeedback, webhookRetryFeedback } from "./submissions-webhook-feedback";
 
 const PAGE_SIZE = 25;
 const FORM_TYPES: { value: string; label: string }[] = [
@@ -82,22 +84,22 @@ export default function AdminSubmissionsList() {
       setSelected(updated);
       await queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
       if (updated.webhookStatus === "ok") {
-        toast({ title: "Webhook resent", description: "Delivery succeeded." });
+        toast({ title: "External webhook resent", description: "Delivery succeeded. HubSpot was not retried." });
       } else if (updated.webhookStatus === "skipped") {
         toast({
           title: "External webhook not configured",
-          description: "This submission remains saved locally; there is no FORMS_WEBHOOK_URL destination to resend it to.",
+          description: webhookRetryFeedback(updated),
         });
       } else {
         toast({
-          title: "Webhook still failing",
+          title: "External webhook still failing",
           description: updated.webhookError ?? updated.webhookStatus ?? "Unknown error",
           variant: "destructive",
         });
       }
     } catch (err) {
       toast({
-        title: "Resend failed",
+        title: "External webhook resend failed",
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -140,17 +142,14 @@ export default function AdminSubmissionsList() {
   const retryOne = useMutation({
     mutationFn: (id: number) => api.retrySubmission(id),
     onSuccess: (row) => {
-      setRetryError(null);
-      setRetryMessage(
-        row.webhookStatus === "ok"
-          ? `Retry succeeded for #${row.id}.`
-          : `Retry for #${row.id} returned “${row.webhookStatus ?? "error"}”.`,
-      );
+      const message = webhookRetryFeedback(row);
+      setRetryError(isFailedStatus(row.webhookStatus) ? message : null);
+      setRetryMessage(isFailedStatus(row.webhookStatus) ? null : message);
       void invalidate();
     },
     onError: (err) => {
       setRetryMessage(null);
-      setRetryError(err instanceof Error ? err.message : "Retry failed");
+      setRetryError(err instanceof Error ? err.message : "External webhook retry failed");
     },
   });
 
@@ -163,16 +162,12 @@ export default function AdminSubmissionsList() {
       }),
     onSuccess: (result) => {
       setRetryError(null);
-      setRetryMessage(
-        result.retried === 0
-          ? "No failed submissions to retry."
-          : `Retried ${result.retried}: ${result.succeeded} succeeded, ${result.failed} failed.`,
-      );
+      setRetryMessage(webhookBulkRetryFeedback(result));
       void invalidate();
     },
     onError: (err) => {
       setRetryMessage(null);
-      setRetryError(err instanceof Error ? err.message : "Bulk retry failed");
+      setRetryError(err instanceof Error ? err.message : "Bulk external webhook retry failed");
     },
   });
 
@@ -199,7 +194,7 @@ export default function AdminSubmissionsList() {
             data-testid="button-retry-all-failed"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${retryAll.isPending ? "animate-spin" : ""}`} />
-            {retryAll.isPending ? "Retrying…" : "Retry all failed"}
+            {retryAll.isPending ? "Retrying webhooks…" : "Retry failed webhooks"}
           </Button>
           <a href={csvHref} download data-testid="link-export-csv">
             <Button variant="outline">
@@ -209,6 +204,12 @@ export default function AdminSubmissionsList() {
         </>
       }
     >
+      <p className="mb-4 text-sm text-muted-foreground">
+        Webhook status and retry actions apply only to the optional external webhook, not HubSpot.
+        A skipped webhook means no external destination is configured; the submission remains saved.
+        For HubSpot delivery status and retries, open{" "}
+        <Link href="/admin/integrations/hubspot" className="underline">HubSpot integration</Link>.
+      </p>
 
       <form
         className="flex flex-wrap items-end gap-3 mb-4"
@@ -339,7 +340,7 @@ export default function AdminSubmissionsList() {
               <TableHead className="w-[100px]">Form</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Message / Details</TableHead>
-              <TableHead className="w-[120px]">Webhook</TableHead>
+              <TableHead className="w-[120px]">External webhook</TableHead>
               <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -418,7 +419,7 @@ export default function AdminSubmissionsList() {
                             retryOne.isPending && retryOne.variables === s.id ? "animate-spin" : ""
                           }`}
                         />
-                        Retry
+                        Retry webhook
                       </Button>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
@@ -523,6 +524,11 @@ export default function AdminSubmissionsList() {
                   <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
                     External webhook (optional)
                   </h3>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    This delivery channel is separate from HubSpot. Resending here does not retry
+                    HubSpot contact sync or timeline events. Skipped means no external webhook
+                    destination is configured; the submission remains saved.
+                  </p>
                   <div className="flex items-start gap-2">
                     <span
                       className={`text-xs uppercase tracking-wide px-2 py-1 rounded ${statusBadgeClass(selected.webhookStatus)}`}
@@ -553,7 +559,7 @@ export default function AdminSubmissionsList() {
                         ) : (
                           <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        {resending ? "Resending…" : "Resend webhook"}
+                        {resending ? "Resending…" : "Resend external webhook"}
                       </Button>
                     </div>
                   )}
