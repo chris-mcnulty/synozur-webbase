@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { processNextPublication } from "./publication";
 import { pool } from "@workspace/db";
 import { logger } from "../logger";
 import { chapterAudioEnabled, chapterAudioReady, appendChapterFailure, type ChapterRow } from "./repository";
@@ -131,6 +132,8 @@ export function startChapterAudioWorker() {
     busy = true;
     try {
       await cleanupChapters();
+      // One local encoder task at a time; publication never requests speech.
+      if (await processNextPublication()) return;
       const token = randomUUID();
       // SKIP LOCKED and persisted leases make this safe across API instances and restarts.
       const result = await pool.query<ChapterRow>(`UPDATE chapter_audio_jobs SET status='processing',

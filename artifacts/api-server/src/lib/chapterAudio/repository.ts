@@ -34,6 +34,11 @@ export async function initializeChapterAudio() {
   `);
   await initializeChapterCosts();
   await initializeChapterStorage();
+  await pool.query(`CREATE TABLE IF NOT EXISTS chapter_audio_publications (
+    job_id uuid PRIMARY KEY REFERENCES chapter_audio_jobs(id) ON DELETE CASCADE,
+    status text NOT NULL DEFAULT 'queued', created_at timestamptz NOT NULL DEFAULT now(),
+    file_key text, audio_bytes integer, report jsonb, error text
+  )`);
   initialized = true;
 }
 export function publicChapter(row: ChapterRow, cost?: ChapterAudioJobCost) {

@@ -12,6 +12,8 @@ import { chapterAudioRange } from "../lib/chapterAudio/delivery";
 import { chapterEncoderReady } from "../lib/chapterAudio/assemble";
 import { currentSpeechRate, saveSpeechRate, jobCostMap, monthlySpeechCosts } from "../lib/chapterAudio/costs";
 import { makeNarration, estimateSpeech, summarizeUsage } from "../lib/chapterAudio/costMath";
+import { getPublication } from "../lib/chapterAudio/publication";
+import { GetChapterPublicationParams, GetChapterPublicationResponse, PrepareChapterPublicationParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 const root = "/cms/chapter-audio";
@@ -133,6 +135,34 @@ router.get(`${root}/sample/:voice`, sampleLimit, async (req, res): Promise<void>
   }
 });
 
+router.get(`${root}/:id/publication`, async (req, res): Promise<void> => {
+  const params = GetChapterPublicationParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid chapter id." }); return; }
+  const row = await getChapter(params.data.id);
+  if (!row) { res.status(404).json({ error: "Chapter not found." }); return; }
+  if (row.expires_at <= new Date()) { res.status(410).json({ error: "This chapter has expired." }); return; }
+  if (row.status !== "completed") { res.status(409).json({ error: "The original narration is not available." }); return; }
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(GetChapterPublicationResponse.parse(await getPublication(row.id)));
+});
+
+router.post(`${root}/:id/publication`, mutationLimit, async (req, res): Promise<void> => {
+  const params = PrepareChapterPublicationParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid chapter id." }); return; }
+  const result = await pool.query(`INSERT INTO chapter_audio_publications(job_id)
+    SELECT id FROM chapter_audio_jobs WHERE id=$1 AND status='completed' AND expires_at>now()
+    ON CONFLICT(job_id) DO UPDATE SET status='queued',error=null,created_at=now()
+      WHERE chapter_audio_publications.status='failed'
+    RETURNING job_id`, [params.data.id]);
+  const row = await getChapter(params.data.id);
+  if (!row) { res.status(404).json({ error: "Chapter not found." }); return; }
+  if (row.expires_at <= new Date()) { res.status(410).json({ error: "This chapter has expired." }); return; }
+  if (row.status !== "completed") { res.status(409).json({ error: "Finish narration before preparing a publication copy." }); return; }
+  if (result.rowCount) req.log.info({ chapterId: row.id }, "Publication export queued");
+  res.setHeader("Cache-Control", "private, no-store");
+  res.status(202).json(GetChapterPublicationResponse.parse(await getPublication(row.id)));
+});
+
 router.post(`${root}/:id/:action`, mutationLimit, async (req, res): Promise<void> => {
   const params = ActionChapterAudioParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid chapter action." }); return; }
@@ -157,7 +187,7 @@ router.post(`${root}/:id/:action`, mutationLimit, async (req, res): Promise<void
   res.json({ ok: true });
 });
 
-router.get(`${root}/:id/audio`, async (req, res): Promise<void> => {
+router.get([`${root}/:id/audio`, `${root}/:id/publication/audio`], async (req, res): Promise<void> => {
   const id = String(req.params.id);
   if (!/^[0-9a-f-]{36}$/i.test(id)) { res.status(400).json({ error: "Invalid chapter id." }); return; }
   const row = await getChapter(id);
@@ -165,15 +195,20 @@ router.get(`${root}/:id/audio`, async (req, res): Promise<void> => {
   if (row.expires_at <= new Date()) { res.status(410).json({ error: "This chapter has expired." }); return; }
   if (row.status !== "completed") { res.status(409).json({ error: "This chapter audio is not available." }); return; }
   try {
+    const publication = req.path.endsWith("/publication/audio") ? await getPublication(id) : null;
+    if (publication && publication.status !== "ready") {
+      res.status(409).json({ error: "The publication export is not ready." }); return;
+    }
+    const size = publication ? publication.audioBytes ?? 0 : row.audio_bytes ?? 0;
+    const key = publication ? publication.file_key : `jobs/${id}/audio.mp3`;
     // Media requests use small, verified SPE ranges instead of downloading and
     // returning the entire chapter on every browser seek/metadata request.
     if (req.headers.range) {
-      const size = row.audio_bytes ?? 0;
       const range = chapterAudioRange(req.headers.range, size);
       if (!range) {
         res.status(416).setHeader("Content-Range", `bytes */${size}`); res.end(); return;
       }
-      const bytes = await readChapterAudioRange(`jobs/${id}/audio.mp3`, range.start, range.end, size);
+      const bytes = await readChapterAudioRange(key, range.start, range.end, size);
       res.status(206).type("audio/mpeg");
       res.setHeader("Cache-Control", "private, no-store, no-transform");
       res.setHeader("Accept-Ranges", "bytes");
@@ -181,6 +216,9 @@ router.get(`${root}/:id/audio`, async (req, res): Promise<void> => {
       res.setHeader("Content-Length", bytes.length);
       req.log.info({ chapterId: id, start: range.start, end: range.end, totalBytes: size }, "Chapter audio range delivered");
       res.send(bytes); return;
+    }
+    if (publication) {
+      res.status(416).setHeader("Content-Range", `bytes */${size}`); res.end(); return;
     }
     const bytes = await readChapterFile(`jobs/${id}/audio.mp3`);
     res.type("audio/mpeg").setHeader("Accept-Ranges", "bytes");

@@ -7,7 +7,7 @@ import { readSpeGraphConfigFromEnv, SpeGraphRequestError } from "../storage/spe/
 // endpoints cannot resolve these references; only chapter routes serve bytes.
 interface ChapterFile { file_key: string; item_id: string; container_id: string }
 function validateKey(key: string) {
-  if (!/^(?:jobs\/[a-f0-9-]{36}\/(?:source\.txt|section-\d+\.mp3|audio\.mp3)|samples\/[a-f0-9]+\.mp3)$/.test(key)) {
+  if (!/^(?:jobs\/[a-f0-9-]{36}\/(?:source\.txt|section-\d+\.mp3|audio\.mp3|publication-[a-f0-9-]{36}\.mp3)|samples\/[a-f0-9]+\.mp3)$/.test(key)) {
     throw new Error("Invalid chapter storage key.");
   }
 }

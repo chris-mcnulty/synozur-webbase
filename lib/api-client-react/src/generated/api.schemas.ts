@@ -10,6 +10,39 @@ export interface AvatarUploadResult {
   avatarUrl: string;
 }
 
+export type ChapterPublicationStatus =
+  (typeof ChapterPublicationStatus)[keyof typeof ChapterPublicationStatus];
+
+export const ChapterPublicationStatus = {
+  idle: "idle",
+  queued: "queued",
+  processing: "processing",
+  ready: "ready",
+  failed: "failed",
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChapterPublicationReport = {
+  rmsDb: number;
+  peakDb: number;
+  durationSeconds: number;
+  sampleRate: number;
+  bitrateKbps: number;
+  channels: number;
+} | null;
+
+export interface ChapterPublication {
+  status: ChapterPublicationStatus;
+  /** @nullable */
+  error?: string | null;
+  /** @nullable */
+  audioBytes?: number | null;
+  /** @nullable */
+  report?: ChapterPublicationReport;
+}
+
 export interface ChapterAudioRateInput {
   /**
    * @minimum 0

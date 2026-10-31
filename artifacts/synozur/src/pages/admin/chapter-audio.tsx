@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { CostAdminPanel, JobCostDetails, NarrationEstimate } from "@/components/admin/ChapterAudioCosts";
 import { chapterStatusText, chapterStageLabel } from "@/lib/chapter-audio-status";
 import { fetchChapterAudio } from "@/lib/chapter-audio-download";
+import { ChapterPublication } from "@/components/admin/ChapterPublication";
 
 export const CHAPTER_AUDIO_ROLES = ["admin", "site_admin", "editor", "content_author"] as const;
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -513,6 +514,7 @@ function JobRow({ job }: { job: ChapterAudioJob }) {
       )}
 
       <JobCostDetails cost={job.cost} jobId={job.id} />
+      {job.status === "completed" && !expired && <ChapterPublication id={job.id} title={job.title} />}
 
       {job.status === "completed" && showPlayer && (
         <audio controls autoPlay preload="metadata" src={audioUrl} className="w-full mt-3" data-testid={`audio-job-${job.id}`}

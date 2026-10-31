@@ -23,6 +23,12 @@ AI-narration authorization before promising ACX acceptance. A new export profile
 or changes to existing recordings still need agreed scope; this use case alone
 does not approve production file replacement.
 
+ACX authorization for Dragon narration is not confirmed.
+
+**Why:** When asked whether ACX had authorized these submissions, the user answered “Not sure.”
+
+**How to apply:** Keep technical export checks separate from publishing eligibility; never describe a technically passing export as ACX-approved.
+
 **How to apply:** Keep uploaded manuscripts and generated audio private and out of GitHub. The approved design measures 30 days from initial submission, without extending expiry on retry.
 
 The first release is English-only, with additional languages possible later. The user expects chapters of approximately 5,000–10,000 words, not entire books; the approved implementation design caps spoken text at 10,000 words including appended notes.

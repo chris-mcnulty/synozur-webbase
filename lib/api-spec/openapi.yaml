@@ -230,6 +230,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChapterAudioActionResult"
+  /cms/chapter-audio/{id}/publication:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getChapterPublication
+      tags: [ChapterAudio]
+      responses:
+        "200":
+          description: Publication export status and measured technical report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterPublication"
+    post:
+      operationId: prepareChapterPublication
+      tags: [ChapterAudio]
+      responses:
+        "202":
+          description: Export queued, processing or already available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChapterPublication"
+  /cms/chapter-audio/{id}/publication/audio:
+    get:
+      operationId: downloadChapterPublication
+      tags: [ChapterAudio]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "206":
+          description: Private bounded byte range of publication MP3; requires Range header
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
   /cms/chapter-audio/{id}/audio:
     get:
       operationId: downloadChapterAudio
@@ -4890,6 +4931,25 @@ components:
         avatarUrl:
           type: string
           description: Same-origin path to the uploaded public profile photo.
+    ChapterPublication:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [idle, queued, processing, ready, failed]
+        error: { type: [string, "null"] }
+        audioBytes: { type: [integer, "null"] }
+        report:
+          type: [object, "null"]
+          required: [rmsDb, peakDb, durationSeconds, sampleRate, bitrateKbps, channels]
+          properties:
+            rmsDb: { type: number }
+            peakDb: { type: number }
+            durationSeconds: { type: number }
+            sampleRate: { type: integer }
+            bitrateKbps: { type: integer }
+            channels: { type: integer }
     ChapterAudioRateInput:
       type: object
       required: [perMillion, currency, effectiveFrom]

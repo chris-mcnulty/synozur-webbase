@@ -52,6 +52,7 @@ import type {
   ChapterAudioMonthlyCosts,
   ChapterAudioRate,
   ChapterAudioRateInput,
+  ChapterPublication,
   CmsGetSiteHealthParams,
   CmsListCollateralParams,
   CmsListPublishBlocksParams,
@@ -981,6 +982,247 @@ export const useActionChapterAudio = <
 > => {
   return useMutation(getActionChapterAudioMutationOptions(options));
 };
+
+export const getGetChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication`;
+};
+
+export const getChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ChapterPublication> => {
+  return customFetch<ChapterPublication>(getGetChapterPublicationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChapterPublicationQueryKey = (id: string) => {
+  return [`/api/cms/chapter-audio/${id}/publication`] as const;
+};
+
+export const getGetChapterPublicationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChapterPublicationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChapterPublication>>
+  > = ({ signal }) => getChapterPublication(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChapterPublication>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChapterPublicationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChapterPublication>>
+>;
+export type GetChapterPublicationQueryError = ErrorType<unknown>;
+
+export function useGetChapterPublication<
+  TData = Awaited<ReturnType<typeof getChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChapterPublicationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getPrepareChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication`;
+};
+
+export const prepareChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ChapterPublication> => {
+  return customFetch<ChapterPublication>(getPrepareChapterPublicationUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPrepareChapterPublicationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof prepareChapterPublication>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["prepareChapterPublication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return prepareChapterPublication(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PrepareChapterPublicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof prepareChapterPublication>>
+>;
+
+export type PrepareChapterPublicationMutationError = ErrorType<unknown>;
+
+export const usePrepareChapterPublication = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof prepareChapterPublication>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof prepareChapterPublication>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getPrepareChapterPublicationMutationOptions(options));
+};
+
+export const getDownloadChapterPublicationUrl = (id: string) => {
+  return `/api/cms/chapter-audio/${id}/publication/audio`;
+};
+
+export const downloadChapterPublication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getDownloadChapterPublicationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadChapterPublicationQueryKey = (id: string) => {
+  return [`/api/cms/chapter-audio/${id}/publication/audio`] as const;
+};
+
+export const getDownloadChapterPublicationQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getDownloadChapterPublicationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadChapterPublication>>
+  > = ({ signal }) =>
+    downloadChapterPublication(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadChapterPublication>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadChapterPublicationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadChapterPublication>>
+>;
+export type DownloadChapterPublicationQueryError = ErrorType<unknown>;
+
+export function useDownloadChapterPublication<
+  TData = Awaited<ReturnType<typeof downloadChapterPublication>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadChapterPublication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadChapterPublicationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getDownloadChapterAudioUrl = (
   id: string,

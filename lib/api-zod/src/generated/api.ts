@@ -315,6 +315,34 @@ export const ActionChapterAudioResponse = zod.object({
   ok: zod.boolean(),
 });
 
+export const GetChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetChapterPublicationResponse = zod.object({
+  status: zod.enum(["idle", "queued", "processing", "ready", "failed"]),
+  error: zod.string().nullish(),
+  audioBytes: zod.number().nullish(),
+  report: zod
+    .object({
+      rmsDb: zod.number(),
+      peakDb: zod.number(),
+      durationSeconds: zod.number(),
+      sampleRate: zod.number(),
+      bitrateKbps: zod.number(),
+      channels: zod.number(),
+    })
+    .nullish(),
+});
+
+export const PrepareChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const DownloadChapterPublicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
 export const DownloadChapterAudioParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
