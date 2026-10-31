@@ -13,6 +13,16 @@ Use Microsoft Azure Dragon HD voices with a standard sample passage. Accept past
 
 **Why:** These were the user's selected first-release requirements.
 
+Generated chapter audio is also being submitted to Audible/ACX.
+
+**Why:** The user reported ACX rejections for bitrate, sample rate and RMS.
+
+**How to apply:** Treat publication mastering as a distinct requirement from
+ordinary MP3 playback. Verify current technical requirements and third-party
+AI-narration authorization before promising ACX acceptance. A new export profile
+or changes to existing recordings still need agreed scope; this use case alone
+does not approve production file replacement.
+
 **How to apply:** Keep uploaded manuscripts and generated audio private and out of GitHub. The approved design measures 30 days from initial submission, without extending expiry on retry.
 
 The first release is English-only, with additional languages possible later. The user expects chapters of approximately 5,000–10,000 words, not entire books; the approved implementation design caps spoken text at 10,000 words including appended notes.
