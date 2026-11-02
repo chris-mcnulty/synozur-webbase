@@ -2,12 +2,12 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/booking-redesign/BookingRedesign.tsx": () => import("../components/mockups/booking-redesign/BookingRedesign.tsx"),
+  "./components/mockups/fit-redesign/FitRedesign.tsx": () => import("../components/mockups/fit-redesign/FitRedesign.tsx"),
   "./components/mockups/home-b-redesign/HomeBRedesign.tsx": () => import("../components/mockups/home-b-redesign/HomeBRedesign.tsx"),
   "./components/mockups/nav-reorg/Current.tsx": () => import("../components/mockups/nav-reorg/Current.tsx"),
   "./components/mockups/nav-reorg/Proposed.tsx": () => import("../components/mockups/nav-reorg/Proposed.tsx"),
   "./components/mockups/nav-reorg/ProposedMobile.tsx": () => import("../components/mockups/nav-reorg/ProposedMobile.tsx"),
   "./components/mockups/nav-reorg/ResourcesHub.tsx": () => import("../components/mockups/nav-reorg/ResourcesHub.tsx"),
   "./components/mockups/proof-redesign/ProofRedesign.tsx": () => import("../components/mockups/proof-redesign/ProofRedesign.tsx"),
-  "./components/mockups/sprint-redesign/SprintRedesign.tsx": () => import("../components/mockups/sprint-redesign/SprintRedesign.tsx"),
-  "./components/mockups/fit-redesign/FitRedesign.tsx": () => import("../components/mockups/fit-redesign/FitRedesign.tsx")
+  "./components/mockups/sprint-redesign/SprintRedesign.tsx": () => import("../components/mockups/sprint-redesign/SprintRedesign.tsx")
 };
