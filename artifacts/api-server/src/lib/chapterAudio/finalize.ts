@@ -1,7 +1,7 @@
 import { ChapterLeaseLost, classifyChapterFailure, type ChapterFailure } from "./diagnostics";
 
 type FinalStage = "assembly" | "final_save" | "complete";
-export interface FinalAudio { audio: Buffer; duration: number }
+export interface FinalAudio { audio: Buffer; duration: number; source?: Buffer }
 export interface ChapterFinalization {
   assemble: (sections: Buffer[]) => Promise<FinalAudio>;
   save: (result: FinalAudio) => Promise<void>;

@@ -23,8 +23,29 @@ Footnotes default to omitted; users may append notes, announced as "Chapter note
 The total spoken text, including this announcement, is capped at 10,000 words.
 
 Azure Dragon HD English voices render bounded sentence/paragraph sections.
-MP3 is 24 kHz, mono, 96 kbit/s. Standard voice samples are generated on demand
-and cached separately; no manuscript samples are used.
+For newly submitted chapters, Azure is requested to return 48 kHz, 16-bit mono
+RIFF PCM (`riff-48khz-16bit-mono-pcm`). Versioned WAV sections are retained, and
+assembly preserves their PCM samples in a private FLAC publication source.
+The listening MP3 remains 24 kHz, mono, 96 kbit/s. Standard voice samples remain
+MP3, are generated on demand and keep their unchanged separate MP3 cache;
+no manuscript samples are used.
+
+Azure support was checked against Microsoft's current
+[HD voice documentation](https://learn.microsoft.com/azure/ai-services/speech-service/high-definition-voices)
+and [REST output formats](https://learn.microsoft.com/azure/ai-services/speech-service/rest-text-to-speech).
+Both document PCM and 48 kHz support. This is a documented output-format choice,
+not a claim about native model training resolution or guaranteed publication
+eligibility. No paid live synthesis or existing-chapter regeneration is part of
+this change.
+
+Existing jobs (including incomplete jobs and their saved sections) retain their
+legacy 24 kHz/96 kbit/s MP3 format. The format is pinned at submission, so retry
+does not discard previously paid sections. New-format publication exports read
+the retained FLAC through bounded private range transfers and fail explicitly if
+that source is unavailable, rather than falling back to the listening MP3.
+Legacy publication exports continue to use their existing MP3. Resampling or
+higher-bitrate export cannot recover detail already lost in that MP3.
+Export remains a separate local encoding step with no speech request.
 
 Chapter Audio offers 15 generally available English single-narrator Dragon HD
 voices, independently of the Briefing Podcast selection: Adam, Alloy, Andrew,
@@ -34,7 +55,9 @@ Omni models are excluded. Every option uses the same standard-sample control.
 
 Every job expires 30 days after submission, even after retries. All content
 access is refused at expiry. Cleanup retries deletion of the source narration,
-section MP3s, and final MP3. Expired rows retain minimal operational metadata;
+section MP3s/WAVs, lossless FLAC sources, final MP3s and publication copies.
+Lossless sources share the same expiry and private storage as the job; they do
+not introduce permanent retention. Expired rows retain minimal operational metadata;
 their titles/creator labels are cleared after successful content cleanup.
 Delete marks a job inaccessible immediately, and retries storage removal.
 Active rendering may take up to the outstanding section/encoder timeout to stop.
@@ -126,6 +149,13 @@ manuscript/audio retention and private access are unchanged.
 
 Cost-focused checks:
 `pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/costMath.test.ts src/routes/chapterAudio.test.ts`
+
+Lossless preservation checks (synthetic audio only, no Azure requests):
+`pnpm --filter @workspace/api-server exec node --import tsx --test src/lib/chapterAudio/lossless.test.ts src/lib/chapterAudio/publicationMaster.test.ts src/lib/chapterAudio/publication.integration.test.ts`
+
+Speech estimates and request/reuse accounting are unchanged. Lossless storage
+uses more space and transfer bandwidth; the displayed speech estimate does not
+include storage, transfer or encoding costs.
 
 ## Publishing
 

@@ -10,6 +10,7 @@ import { initializeChapterAudio } from "../lib/chapterAudio/repository";
 import { ListChapterAudioResponse, ExtractChapterAudioResponse, EstimateChapterAudioResponse, GetChapterAudioCostsResponse, SaveChapterAudioPricingResponse } from "@workspace/api-zod";
 import { beginSpeechAttempt, finishSpeechAttempt, jobCostMap, recordReusedSection } from "../lib/chapterAudio/costs";
 import { renderChapterSection, isAzureTtsConfigured } from "../lib/chapterAudio/speech";
+import { PCM_OUTPUT } from "../lib/chapterAudio/formats";
 
 const tag = randomUUID();
 const userIds: string[] = [];
@@ -120,11 +121,18 @@ test("the actual synthesis wrapper records successful, throttled, uncertain and 
   const originalFetch = globalThis.fetch;
   let status = 200;
   let timeout = false;
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (_input, init) => {
+    assert.equal(new Headers(init?.headers).get("X-Microsoft-OutputFormat"), PCM_OUTPUT);
     const intent = await pool.query("SELECT outcome FROM chapter_audio_usage WHERE job_id=$1 AND section_index=99 ORDER BY started_at DESC LIMIT 1", [jobId]);
     assert.equal(intent.rows[0].outcome, "started", "paid requests require a prior durable usage intent");
     if (timeout) throw new DOMException("Simulated timeout", "AbortError");
-    return new Response(Buffer.alloc(160), { status });
+    const wav = Buffer.alloc(160);
+    wav.write("RIFF", 0); wav.writeUInt32LE(152, 4); wav.write("WAVEfmt ", 8);
+    wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(48000, 24); wav.writeUInt32LE(96000, 28);
+    wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+    wav.write("data", 36); wav.writeUInt32LE(116, 40);
+    return new Response(wav, { status });
   };
   try {
     await renderChapterSection("Metering test.", "en-US-Ava:DragonHDLatestNeural", context);

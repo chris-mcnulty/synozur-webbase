@@ -3,6 +3,7 @@ import { buildSsml, isAzureTtsConfigured } from "../azureTts";
 import { chapterFileExists, readChapterFile, saveChapterFile } from "./store";
 import { STANDARD_SAMPLE } from "./text";
 import { beginSpeechAttempt, finishSpeechAttempt, type SpeechUsageContext } from "./costs";
+import { PCM_OUTPUT, MP3_OUTPUT, isChapterPcm } from "./formats";
 
 // Generally available English single-narrator Dragon HD voices. Keep this
 // independent of the daily briefing's smaller curated voice selection.
@@ -29,7 +30,7 @@ export class ChapterSpeechError extends Error {
   constructor(message: string, readonly retryable: boolean) { super(message); }
 }
 
-export async function renderChapterSection(text: string, voice: string, context: SpeechUsageContext): Promise<Buffer> {
+export async function renderChapterSection(text: string, voice: string, context: SpeechUsageContext, outputFormat: typeof PCM_OUTPUT | typeof MP3_OUTPUT = PCM_OUTPUT): Promise<Buffer> {
   if (!(CHAPTER_VOICES as readonly string[]).includes(voice)) throw new Error("Choose a supported Dragon HD voice.");
   if (!isAzureTtsConfigured()) throw new Error("Azure Speech is not configured.");
   const region = process.env.AZURE_SPEECH_REGION?.trim();
@@ -41,7 +42,7 @@ export async function renderChapterSection(text: string, voice: string, context:
     headers: {
       "Ocp-Apim-Subscription-Key": process.env.AZURE_SPEECH_KEY!,
       "Content-Type": "application/ssml+xml",
-      "X-Microsoft-OutputFormat": "audio-24khz-96kbitrate-mono-mp3",
+      "X-Microsoft-OutputFormat": outputFormat,
       "User-Agent": "synozur-chapter-audio",
     },
     body: buildSsml(text, voice),
@@ -61,6 +62,9 @@ export async function renderChapterSection(text: string, voice: string, context:
   }
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 100) throw new ChapterSpeechError("Azure returned incomplete audio. Retry this chapter.", true);
+  if (outputFormat === PCM_OUTPUT && !isChapterPcm(bytes)) {
+    throw new ChapterSpeechError("Azure did not return the required 48 kHz lossless PCM source. Ask an administrator to check speech format support.", false);
+  }
   return bytes;
 }
 
@@ -70,10 +74,12 @@ export async function getChapterSample(voice: string, context: SpeechUsageContex
   const existing = sampleRequests.get(voice);
   if (existing) return existing;
   const request = (async () => {
+    // Samples remain lightweight MP3s, never publication sources. Keep their
+    // existing cache version because their synthesis format has not changed.
     const hash = createHash("sha256").update(`sample-1|${voice}|${STANDARD_SAMPLE}`).digest("hex");
     const key = `samples/${hash}.mp3`;
     if (await chapterFileExists(key)) return readChapterFile(key);
-    const bytes = await renderChapterSection(STANDARD_SAMPLE, voice, context);
+    const bytes = await renderChapterSection(STANDARD_SAMPLE, voice, context, MP3_OUTPUT);
     await saveChapterFile(key, bytes, "audio/mpeg");
     return bytes;
   })();

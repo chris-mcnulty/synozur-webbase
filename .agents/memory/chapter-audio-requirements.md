@@ -67,6 +67,18 @@ Chapter narration must preserve reviewed wording and use the selected Azure Drag
 
 **How to apply:** Do not reuse a podcast script-rewriting or fallback pipeline just because it already produces audio.
 
+Preserve higher-quality narration sources only for future chapter submissions;
+do not regenerate existing chapters or claim upsampling restores lost detail.
+Keep incomplete legacy jobs on their original format so recovery reuses paid
+sections. Missing new lossless sources must fail explicitly, not silently
+master from the listening copy.
+
+**Why:** The approved quality improvement is prospective and must preserve
+existing recordings, recovery, retention and speech cost accounting.
+
+**How to apply:** Pin the source format per submission and version its caches.
+Keep every source private in SharePoint under the chapter's original expiry.
+
 Cost visibility is for speech-cost estimates, not claims about actual Azure
 charges. Use the user-approved standard estimate of **US$15 per million
 characters**. The user says their usage has never been sufficient to generate

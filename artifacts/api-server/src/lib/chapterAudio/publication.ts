@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { logger } from "../logger";
 import { readChapterAudioRange, saveChapterFile } from "./store";
 import { masterPublication, PublicationError } from "./publicationMaster";
+import { LOSSLESS_SOURCE, LEGACY_SOURCE } from "./formats";
 
 export async function getPublication(id: string) {
   return (await pool.query(`SELECT status,error,audio_bytes AS "audioBytes",report,file_key
@@ -13,12 +14,12 @@ export async function getPublication(id: string) {
 // leases resume after restarts, and stop retention deletion while a copy is made.
 export async function processNextPublication(): Promise<boolean> {
   const token = randomUUID();
-  const { rows } = await pool.query<{ id: string; audio_bytes: number }>(`
+  const { rows } = await pool.query<{ id: string; audio_bytes: number; source_format: string; source_bytes: number | null }>(`
     UPDATE chapter_audio_jobs SET lease_owner=$1,lease_until=now()+interval '5 minutes'
     WHERE id=(SELECT j.id FROM chapter_audio_jobs j JOIN chapter_audio_publications p ON p.job_id=j.id
       WHERE j.status='completed' AND j.expires_at>now() AND p.status IN ('queued','processing')
       AND (j.lease_until IS NULL OR j.lease_until<now()) ORDER BY p.created_at
-      FOR UPDATE OF j SKIP LOCKED LIMIT 1) RETURNING id,audio_bytes`, [token]);
+      FOR UPDATE OF j SKIP LOCKED LIMIT 1) RETURNING id,audio_bytes,source_format,source_bytes`, [token]);
   const row = rows[0];
   if (!row) return false;
   async function owned() {
@@ -36,12 +37,17 @@ export async function processNextPublication(): Promise<boolean> {
     await pool.query(`UPDATE chapter_audio_publications SET status='processing',error=null
       WHERE job_id=$1 AND EXISTS(SELECT 1 FROM chapter_audio_jobs
         WHERE id=$1 AND lease_owner=$2 AND lease_until>now() AND status='completed' AND expires_at>now())`, [row.id, token]);
-    if (!Number.isSafeInteger(row.audio_bytes) || row.audio_bytes <= 0) throw new PublicationError("The original recording has no valid file size.");
+    const lossless = row.source_format === LOSSLESS_SOURCE;
+    if (!lossless && row.source_format !== LEGACY_SOURCE) throw new PublicationError("The recording has an unsupported source format.");
+    const size = lossless ? row.source_bytes : row.audio_bytes;
+    const sourceKey = `jobs/${row.id}/${lossless ? "source-pcm48-v1.flac" : "audio.mp3"}`;
+    // Never silently master a new chapter from its lossy listening copy.
+    if (!size || !Number.isSafeInteger(size) || size <= 0) throw new PublicationError("The original recording has no valid source file size.");
     const parts: Buffer[] = [];
-    for (let start = 0; start < row.audio_bytes; start += 1024 * 1024) {
+    for (let start = 0; start < size; start += 1024 * 1024) {
       if (!await owned()) return true;
-      parts.push(await readChapterAudioRange(`jobs/${row.id}/audio.mp3`, start,
-        Math.min(start + 1024 * 1024 - 1, row.audio_bytes - 1), row.audio_bytes));
+      parts.push(await readChapterAudioRange(sourceKey, start,
+        Math.min(start + 1024 * 1024 - 1, size - 1), size));
     }
     const result = await masterPublication(Buffer.concat(parts));
     if (!await owned()) return true;

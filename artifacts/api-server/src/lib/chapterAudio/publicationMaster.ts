@@ -61,15 +61,17 @@ async function measure(filename: string, cwd: string) {
 export async function masterPublication(source: Buffer) {
   const cwd = await mkdtemp(join(tmpdir(), "synozur-publication-"));
   try {
-    await writeFile(join(cwd, "source.mp3"), source);
-    const original = await measure("source.mp3", cwd);
+    // ffmpeg detects FLAC or legacy MP3 by content. Resampling older MP3s
+    // meets the export spec; it cannot restore detail lost to compression.
+    await writeFile(join(cwd, "source.audio"), source);
+    const original = await measure("source.audio", cwd);
     if (original.durationSeconds <= 0 || original.durationSeconds > 7200 || original.rmsDb < -70) {
       throw new PublicationError("The recording is silent, empty, or longer than the 120-minute publication limit.");
     }
     let gain = -20.5 - original.rmsDb;
     for (let pass = 0; pass < 4; pass++) {
       await run([
-        "-v", "error", "-xerror", "-i", "source.mp3", "-map", "0:a:0",
+        "-v", "error", "-xerror", "-i", "source.audio", "-map", "0:a:0",
         "-map_metadata", "-1", "-vn", "-ac", "1", "-ar", "44100",
         // A peak limiter is not a LUFS normalizer: measure the finished MP3's RMS below.
         "-af", `volume=${gain.toFixed(3)}dB,alimiter=limit=0.562341:level=false`,

@@ -12,6 +12,7 @@ export interface ChapterRow {
   audio_bytes: number | null; lease_owner: string | null; lease_until: Date | null;
   initial_estimate?: ChapterAudioEstimate | null; metering_version?: number;
   processing_stage?: ChapterStage | null; diagnostics?: ChapterFailure[];
+  source_format?: string; source_bytes?: number | null;
 }
 export function chapterAudioEnabled() { return true; }
 let initialized = false;
@@ -31,6 +32,8 @@ export async function initializeChapterAudio() {
     CREATE INDEX IF NOT EXISTS chapter_audio_jobs_queue_idx ON chapter_audio_jobs(status, expires_at);
     ALTER TABLE chapter_audio_jobs ADD COLUMN IF NOT EXISTS processing_stage text,
       ADD COLUMN IF NOT EXISTS diagnostics jsonb NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE chapter_audio_jobs ADD COLUMN IF NOT EXISTS source_format text NOT NULL DEFAULT 'mp3-24-v1',
+      ADD COLUMN IF NOT EXISTS source_bytes integer;
   `);
   await initializeChapterCosts();
   await initializeChapterStorage();

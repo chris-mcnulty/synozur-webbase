@@ -14,6 +14,7 @@ import { speFileStorage } from "../storage/spe/fileStorage";
 import router from "../../routes/chapterAudio";
 import { logger } from "../logger";
 import { GetChapterPublicationResponse } from "@workspace/api-zod";
+import { assembleChapter } from "./assemble";
 
 test("private publication queue, restart recovery, encoded report, range download and retention use synthetic audio only", async () => {
   assert.notEqual(process.env.NODE_ENV, "production");
@@ -116,6 +117,29 @@ test("private publication queue, restart recovery, encoded report, range downloa
     assert.deepEqual(await readChapterFile(`jobs/${id}/audio.mp3`), source);
     // Repeated preparation never re-encodes an already ready copy.
     assert.equal(GetChapterPublicationResponse.parse(await (await request("POST")).json()).status, "ready");
+    // Future jobs must master from the lossless source, not their listening MP3.
+    const { stdout: wav } = await promisify(execFile)(ffmpeg!, [
+      "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+      "-t", "1", "-c:a", "pcm_s16le", "-f", "wav", "pipe:1",
+    ], { encoding: "buffer", timeout: 10000 });
+    const lossless = await assembleChapter([wav], true);
+    assert.ok(lossless.source);
+    await saveChapterFile(`jobs/${id}/section-pcm48-v1-0.wav`, wav, "audio/wav");
+    await saveChapterFile(`jobs/${id}/source-pcm48-v1.flac`, lossless.source, "audio/flac");
+    await saveChapterFile(`jobs/${id}/audio.mp3`, Buffer.from("Not a valid mastering source"), "audio/mpeg");
+    await query("UPDATE chapter_audio_jobs SET source_format='pcm48-v1',source_bytes=$2 WHERE id=$1", [id, lossless.source.length]);
+    await query("UPDATE chapter_audio_publications SET status='queued' WHERE job_id=$1", [id]);
+    assert.equal(await processNextPublication(), true);
+    assert.equal(GetChapterPublicationResponse.parse(await (await request()).json()).status, "ready");
+    // Missing lossless metadata fails explicitly; no silent MP3 downgrade.
+    await query("UPDATE chapter_audio_jobs SET source_bytes=null WHERE id=$1", [id]);
+    await query("UPDATE chapter_audio_publications SET status='queued' WHERE job_id=$1", [id]);
+    assert.equal(await processNextPublication(), true);
+    assert.equal(GetChapterPublicationResponse.parse(await (await request()).json()).status, "failed");
+    await query("UPDATE chapter_audio_jobs SET source_bytes=$2 WHERE id=$1", [id, lossless.source.length]);
+    assert.equal((await request("POST")).status, 202);
+    assert.equal(await processNextPublication(), true);
+    assert.equal(GetChapterPublicationResponse.parse(await (await request()).json()).status, "ready");
     await query("UPDATE chapter_audio_jobs SET expires_at=now()-interval '1 second' WHERE id=$1", [id]);
     assert.equal((await request()).status, 410);
     assert.equal((await request("POST")).status, 410);

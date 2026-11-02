@@ -22,6 +22,9 @@ export const chapterAudioJobsTable = pgTable("chapter_audio_jobs", {
   diagnostics: jsonb("diagnostics").notNull().default(sql`'[]'::jsonb`),
   durationSeconds: doublePrecision("duration_seconds"),
   audioBytes: integer("audio_bytes"),
+  // Existing/incomplete jobs keep their original format and paid section cache.
+  sourceFormat: text("source_format").notNull().default("mp3-24-v1"),
+  sourceBytes: integer("source_bytes"),
   leaseOwner: text("lease_owner"),
   leaseUntil: timestamp("lease_until", { withTimezone: true }),
   cleanedAt: timestamp("cleaned_at", { withTimezone: true }),

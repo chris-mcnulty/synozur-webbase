@@ -10,6 +10,7 @@ import { assembleChapter } from "./assemble";
 import { recordReusedSection } from "./costs";
 import { finalizeChapter } from "./finalize";
 import { ChapterLeaseLost, CHAPTER_STAGE_LABELS, classifyChapterFailure, type ChapterFailure, type ChapterStage } from "./diagnostics";
+import { LOSSLESS_SOURCE, LEGACY_SOURCE, PCM_OUTPUT, MP3_OUTPUT, sectionKey } from "./formats";
 
 async function owned(id: string, token: string): Promise<boolean> {
   return (await pool.query("SELECT 1 FROM chapter_audio_jobs WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now() AND lease_until>now()", [id, token])).rowCount === 1;
@@ -44,10 +45,12 @@ async function processChapter(row: ChapterRow, token: string) {
     await setStage("source_read");
     const text = (await readChapterFile(`jobs/${row.id}/source.txt`)).toString("utf8");
     const sections = splitNarration(text);
+    const format = row.source_format ?? LEGACY_SOURCE;
+    const lossless = format === LOSSLESS_SOURCE;
     const buffers: Buffer[] = [];
     for (let i = 0; i < sections.length; i++) {
       if (!await owned(row.id, token)) return;
-      const key = `jobs/${row.id}/section-${i}.mp3`;
+      const key = sectionKey(row.id, i, format);
       const usageContext = { jobId: row.id, sectionIndex: i, actorId: row.creator_id, actorLabel: row.creator_name };
       let bytes: Buffer;
       await setStage("section_read");
@@ -59,7 +62,7 @@ async function processChapter(row: ChapterRow, token: string) {
         await setStage("speech");
         let attempt = 0;
         for (;;) {
-          try { bytes = await renderChapterSection(sections[i]!, row.voice, usageContext); break; }
+          try { bytes = await renderChapterSection(sections[i]!, row.voice, usageContext, lossless ? PCM_OUTPUT : MP3_OUTPUT); break; }
           catch (error) {
             attempt++;
             const transient = !(error instanceof ChapterSpeechError) || error.retryable;
@@ -69,7 +72,7 @@ async function processChapter(row: ChapterRow, token: string) {
         }
         if (!await owned(row.id, token)) return;
         await setStage("section_save");
-        await saveChapterFile(key, bytes!, "audio/mpeg");
+        await saveChapterFile(key, bytes!, lossless ? "audio/wav" : "audio/mpeg");
       }
       buffers.push(bytes!);
       await setStage("section_progress");
@@ -77,12 +80,19 @@ async function processChapter(row: ChapterRow, token: string) {
     }
     if (!await owned(row.id, token)) return;
     await finalizeChapter(buffers, {
-      assemble: assembleChapter,
-      save: result => saveChapterFile(`jobs/${row.id}/audio.mp3`, result.audio, "audio/mpeg"),
+      assemble: sections => assembleChapter(sections, lossless),
+      save: async result => {
+        if (lossless) {
+          if (!result.source) throw new Error("Lossless chapter source is missing.");
+          await saveChapterFile(`jobs/${row.id}/source-pcm48-v1.flac`, result.source, "audio/flac");
+          if (!await owned(row.id, token)) throw new ChapterLeaseLost();
+        }
+        await saveChapterFile(`jobs/${row.id}/audio.mp3`, result.audio, "audio/mpeg");
+      },
       complete: async result => {
-        const updated = await pool.query(`UPDATE chapter_audio_jobs SET status='completed',error=null,duration_seconds=$3,audio_bytes=$4
+        const updated = await pool.query(`UPDATE chapter_audio_jobs SET status='completed',error=null,duration_seconds=$3,audio_bytes=$4,source_bytes=$5
           WHERE id=$1 AND lease_owner=$2 AND status='processing' AND expires_at>now() AND lease_until>now()`,
-        [row.id, token, result.duration, result.audio.length]);
+        [row.id, token, result.duration, result.audio.length, result.source?.length ?? null]);
         if (!updated.rowCount) throw new ChapterLeaseLost();
       },
       owned: () => owned(row.id, token),
@@ -118,7 +128,7 @@ async function cleanupChapters() {
       await deleteChapterFiles(row.id);
       if (row.status === "deleting") await pool.query("DELETE FROM chapter_audio_jobs WHERE id=$1 AND status='deleting'", [row.id]);
       else await pool.query(`UPDATE chapter_audio_jobs SET cleaned_at=now(), title='Expired chapter', creator_name='',
-        creator_id='', completed_chunks=0,audio_bytes=null,duration_seconds=null
+        creator_id='', completed_chunks=0,audio_bytes=null,duration_seconds=null,source_bytes=null
         WHERE id=$1 AND status='expired'`, [row.id]);
     } catch { logger.warn({ chapterId: row.id }, "Chapter deletion will be retried"); }
   }

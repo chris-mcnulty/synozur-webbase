@@ -110,8 +110,8 @@ router.post(root, mutationLimit, async (req, res): Promise<void> => {
     const user = req.authedUser!;
     const estimate = estimateSpeech(narration, voice, await currentSpeechRate());
     const result = await client.query<ChapterRow>(`INSERT INTO chapter_audio_jobs
-      (id,title,creator_id,creator_name,voice,word_count,total_chunks,initial_estimate,metering_version)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,1) RETURNING *`,
+      (id,title,creator_id,creator_name,voice,word_count,total_chunks,initial_estimate,metering_version,source_format)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,1,'pcm48-v1') RETURNING *`,
     [id, title.trim(), user.id, user.displayName || user.email || "Editorial user", voice, count, sections.length, JSON.stringify(estimate)]);
     await client.query("COMMIT");
     res.status(201).json(ListChapterAudioResponse.shape.jobs.element.parse(publicChapter(result.rows[0]!, { initialEstimate: estimate, usage: summarizeUsage([]), legacyUsageGap: false })));
