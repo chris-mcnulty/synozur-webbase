@@ -102,6 +102,9 @@ test("private publication queue, restart recovery, encoded report, range downloa
     assert.equal(ready.report.sampleRate, 44100);
     assert.ok(ready.report.rmsDb >= -23 && ready.report.rmsDb <= -18);
     assert.ok(ready.report.peakDb <= -3);
+    assert.equal(ready.report.listeningChecks?.noiseFloor.status, "unmeasurable");
+    assert.equal(ready.report.listeningChecks?.leadingRoomTone.status, "unmeasurable");
+    assert.ok(ready.report.listeningChecks?.requirementsUrl.startsWith("https://help.acx.com/"));
     assert.ok(typeof raw === "object" && raw !== null && !("file_key" in raw)); // Storage references stay server-side.
     assert.match(response.headers.get("cache-control")!, /private.*no-store/);
     response = await request("GET", "editor", "/audio", "bytes=0-999");

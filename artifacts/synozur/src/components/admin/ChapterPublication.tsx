@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getGetChapterPublicationQueryKey, useGetChapterPublication, usePrepareChapterPublication } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { fetchChapterAudio } from "@/lib/chapter-audio-download";
+import { ChapterPublicationReview } from "./ChapterPublicationReview";
 
 const BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
 
@@ -51,7 +52,9 @@ export function ChapterPublication({ id, title }: { id: string; title: string })
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
         This is not an ACX acceptance guarantee. Confirm ACX authorization for Dragon/AI narration before submission.
-        Noise floor, room tone, spoken headers, credits and listening quality still require review.
+        Noise-floor and room-tone estimates are advisory, not proof of compliance. Spoken headers, credits
+        and listening quality still require human review. Wording and spacing changes require explicit editorial
+        approval; no trimming, padding or content edits are performed by this export.
       </p>
       <div role="status" aria-live="polite" className="mt-3">
         {status.isLoading && <p>Loading export status…</p>}
@@ -61,12 +64,13 @@ export function ChapterPublication({ id, title }: { id: string; title: string })
         {data?.status === "failed" && <p className="text-destructive">{data.error ?? "Export failed. The original recording is unchanged."}</p>}
         {data?.status === "ready" && data.report && (
           <p data-testid={`publication-report-${id}`}>
-            Ready · {data.report.bitrateKbps} kbps CBR · {(data.report.sampleRate / 1000).toFixed(1)} kHz · mono
+            Export ready — listening review required · {data.report.bitrateKbps} kbps CBR · {(data.report.sampleRate / 1000).toFixed(1)} kHz · mono
             {" · "}RMS {data.report.rmsDb.toFixed(1)} dB · peak {data.report.peakDb.toFixed(1)} dB
             {" · "}{Math.floor(data.report.durationSeconds / 60)}:{String(Math.floor(data.report.durationSeconds % 60)).padStart(2, "0")}
           </p>
         )}
       </div>
+      {data?.status === "ready" && <ChapterPublicationReview key={id} checks={data.report?.listeningChecks} />}
       {data?.status === "ready" ? (
         <Button className="mt-3" size="sm" variant="outline" disabled={downloadProgress !== null}
           onClick={() => void download()} data-testid={`download-publication-${id}`}>

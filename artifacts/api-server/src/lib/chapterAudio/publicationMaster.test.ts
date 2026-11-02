@@ -25,6 +25,8 @@ test("masters a low-RMS 24kHz/96kbps source and measures the actual finished MP3
   assert.ok(report.peakDb <= -3);
   assert.ok(report.durationSeconds >= 3 && report.durationSeconds < 3.2);
   assert.ok(audio.length > input.length * 1.7);
+  assert.equal(report.listeningChecks.noiseFloor.status, "unmeasurable");
+  assert.equal(report.listeningChecks.leadingRoomTone.status, "unmeasurable");
   assert.throws(() => inspectPublicationMp3(input), /192 kbps/);
   assert.throws(() => inspectPublicationMp3(audio.subarray(0, audio.length - 50)), /truncated/);
 });
@@ -39,4 +41,14 @@ test("limits peaks while bringing a higher-crest-factor recording into RMS range
 test("fails safely on silence or corrupt source, rather than offering a misleading export", async () => {
   await assert.rejects(masterPublication(await source("anullsrc=r=24000:cl=mono")), /silent/);
   await assert.rejects(masterPublication(Buffer.from("not audio")), /processing failed/);
+});
+
+test("finished MP3 edge checks reject digital padding as proof of room tone without changing duration", async () => {
+  const input = await source("sine=frequency=440:sample_rate=24000,atrim=duration=3,adelay=2000,apad=pad_dur=2", "7");
+  const original = Buffer.from(input);
+  const { report } = await masterPublication(input);
+  assert.deepEqual(input, original);
+  assert.ok(report.durationSeconds >= 7 && report.durationSeconds < 7.2);
+  assert.equal(report.listeningChecks.noiseFloor.status, "unmeasurable");
+  assert.equal(report.listeningChecks.leadingRoomTone.status, "unmeasurable");
 });

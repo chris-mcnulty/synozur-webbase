@@ -331,6 +331,33 @@ export const GetChapterPublicationResponse = zod.object({
       sampleRate: zod.number(),
       bitrateKbps: zod.number(),
       channels: zod.number(),
+      listeningChecks: zod
+        .object({
+          method: zod.string(),
+          requirementsUrl: zod.string(),
+          noiseFloor: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+          leadingRoomTone: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+          trailingRoomTone: zod.object({
+            status: zod.enum(["review", "warning", "unmeasurable"]),
+            detail: zod.string(),
+            seconds: zod.number().nullable(),
+            rmsDb: zod.number().nullable(),
+          }),
+        })
+        .optional()
+        .describe(
+          "Advisory checks on the finished export, not ACX approval. Absent on older exports.",
+        ),
     })
     .nullish(),
 });

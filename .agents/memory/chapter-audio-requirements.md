@@ -23,6 +23,18 @@ AI-narration authorization before promising ACX acceptance. A new export profile
 or changes to existing recordings still need agreed scope; this use case alone
 does not approve production file replacement.
 
+Publication recording checks must not automatically trim or pad spacing, add
+room tone, or change content. Such edits need explicit editorial approval and
+must preserve the original recording.
+
+**Why:** The user requires original preservation and explicit approval for
+content/spacing changes. Quiet synthetic edges or digital silence are not proof
+of genuine room tone, and technical checks do not authorize AI submissions.
+
+**How to apply:** Keep publication analysis advisory and distinguish unavailable
+noise/room-tone measurements from passing checks. Do not infer noise floor from
+full-track narration RMS.
+
 ACX authorization for Dragon narration is not confirmed.
 
 **Why:** When asked whether ACX had authorized these submissions, the user answered “Not sure.”

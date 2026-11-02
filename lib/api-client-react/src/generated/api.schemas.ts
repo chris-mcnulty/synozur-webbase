@@ -21,6 +21,32 @@ export const ChapterPublicationStatus = {
   failed: "failed",
 } as const;
 
+export type ChapterPublicationCheckStatus =
+  (typeof ChapterPublicationCheckStatus)[keyof typeof ChapterPublicationCheckStatus];
+
+export const ChapterPublicationCheckStatus = {
+  review: "review",
+  warning: "warning",
+  unmeasurable: "unmeasurable",
+} as const;
+
+export interface ChapterPublicationCheck {
+  status: ChapterPublicationCheckStatus;
+  detail: string;
+  /** @nullable */
+  seconds: number | null;
+  /** @nullable */
+  rmsDb: number | null;
+}
+
+export interface ChapterPublicationListeningChecks {
+  method: string;
+  requirementsUrl: string;
+  noiseFloor: ChapterPublicationCheck;
+  leadingRoomTone: ChapterPublicationCheck;
+  trailingRoomTone: ChapterPublicationCheck;
+}
+
 /**
  * @nullable
  */
@@ -31,6 +57,8 @@ export type ChapterPublicationReport = {
   sampleRate: number;
   bitrateKbps: number;
   channels: number;
+  /** Advisory checks on the finished export, not ACX approval. Absent on older exports. */
+  listeningChecks?: ChapterPublicationListeningChecks;
 } | null;
 
 export interface ChapterPublication {

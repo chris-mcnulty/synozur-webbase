@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChapterPublicationListeningChecks } from "./chapterPublicationListeningChecks";
 
 /**
  * @nullable
@@ -16,4 +17,6 @@ export type ChapterPublicationReport = {
   sampleRate: number;
   bitrateKbps: number;
   channels: number;
+  /** Advisory checks on the finished export, not ACX approval. Absent on older exports. */
+  listeningChecks?: ChapterPublicationListeningChecks;
 } | null;

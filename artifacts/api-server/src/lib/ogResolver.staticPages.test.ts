@@ -146,6 +146,7 @@ const EXCLUDED: Readonly<Record<string, string>> = {
   "careers-applied.tsx": "multiseg: careers application confirmation",
 
   // noindex (auth / utility / error / embed — not meant to unfurl)
+  "admin/chapter-audio.tsx": "noindex: private editorial narration page behind admin sign-in",
   "careers-embed-jobs.tsx": "noindex: iframe embed of open positions",
   "careers-embed-job.tsx": "noindex: iframe embed of a single position",
   "sign-in.tsx": "noindex: auth page",

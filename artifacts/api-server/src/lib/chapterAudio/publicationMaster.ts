@@ -4,6 +4,7 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import ffmpeg from "ffmpeg-static";
+import { analyzePublicationEdges } from "./publicationChecks";
 
 const execute = promisify(execFile);
 export class PublicationError extends Error {}
@@ -81,7 +82,15 @@ export async function masterPublication(source: Buffer) {
       const audio = await readFile(join(cwd, "publication.mp3"));
       const encoding = inspectPublicationMp3(audio);
       if (report.rmsDb >= -23 && report.rmsDb <= -18 && report.peakDb <= -3) {
-        return { audio, report: { ...report, ...encoding } };
+        // Decode only bounded edge excerpts, not a two-hour PCM buffer.
+        for (const [name, start] of [["leading", 0], ["trailing", Math.max(0, report.durationSeconds - 10)]] as const) {
+          await run(["-v", "error", "-xerror", "-i", "publication.mp3", "-ss", String(start),
+            "-t", "10", "-map", "0:a:0", "-ac", "1", "-ar", "44100",
+            "-f", "f32le", "-y", `${name}.pcm`], cwd);
+        }
+        const listeningChecks = analyzePublicationEdges(
+          await readFile(join(cwd, "leading.pcm")), await readFile(join(cwd, "trailing.pcm")));
+        return { audio, report: { ...report, ...encoding, listeningChecks } };
       }
       gain += -20.5 - report.rmsDb;
     }

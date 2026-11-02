@@ -4950,6 +4950,29 @@ components:
             sampleRate: { type: integer }
             bitrateKbps: { type: integer }
             channels: { type: integer }
+            listeningChecks:
+              description: Advisory checks on the finished export, not ACX approval. Absent on older exports.
+              $ref: "#/components/schemas/ChapterPublicationListeningChecks"
+    ChapterPublicationCheck:
+      type: object
+      required: [status, detail, seconds, rmsDb]
+      properties:
+        status: { type: string, enum: [review, warning, unmeasurable] }
+        detail: { type: string }
+        seconds: { type: [number, "null"] }
+        rmsDb: { type: [number, "null"] }
+    ChapterPublicationListeningChecks:
+      type: object
+      required: [method, requirementsUrl, noiseFloor, leadingRoomTone, trailingRoomTone]
+      properties:
+        method: { type: string }
+        requirementsUrl: { type: string }
+        noiseFloor:
+          $ref: "#/components/schemas/ChapterPublicationCheck"
+        leadingRoomTone:
+          $ref: "#/components/schemas/ChapterPublicationCheck"
+        trailingRoomTone:
+          $ref: "#/components/schemas/ChapterPublicationCheck"
     ChapterAudioRateInput:
       type: object
       required: [perMillion, currency, effectiveFrom]
