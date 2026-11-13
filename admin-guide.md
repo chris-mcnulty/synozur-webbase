@@ -6,6 +6,44 @@
 
 ---
 
+## Board of Advisors: preview, management and release
+
+Go to **Admin → People → Board**. Only signed-in users with an explicit
+`admin` or `site_admin` role can manage or preview this section. Other roles,
+email allowlists, and API-key capabilities do not grant Board access.
+
+- The section starts **Admins only**. Use **Preview Board** to open `/board`;
+  individual biographies use `/board/<slug>`. Private previews are noindex and
+  no-store. Sharing a preview URL does not give the recipient access.
+- Add an **external advisor** only when approved names, biographies and
+  portraits are supplied. Set the name and unique slug, role/title, short
+  description, biography and optional profile/social links. Select portraits
+  using the existing media library; no new storage configuration is needed.
+- To add an existing colleague, choose **Linked Team member** and select the
+  existing Team profile. The identity, portrait and biography remain maintained
+  in **People → Team** and changes there appear on Board automatically.
+  Michelle Caldwell and Chris McNulty are linked during first initialization.
+- Use **Active** to include or hide a membership and **Sort order** to order it
+  within its group. External advisors always appear ahead of linked Team
+  members, regardless of sort order. Removing a Board membership never deletes
+  the underlying Team profile or changes Team ordering.
+- **Publish Board** is an explicit release action with confirmation. It opens
+  the same URLs to everyone and enables Board navigation, sitemap entries,
+  crawler biographies and social metadata. Do not use it before announcement
+  approval. No migration, seed or redeploy publishes this section.
+- **Restrict to admins** closes the entire section again. Direct URLs, roster
+  APIs, crawler endpoints and social previews stop exposing Board content.
+  External search engines may retain content they previously indexed while the
+  section was public; restriction cannot erase third-party copies.
+- Board mutations and visibility changes are recorded in the audit log.
+  Signing out or switching accounts removes private Board query data.
+
+Initial installation adds no external advisors and never copies Team bios.
+Initialization is idempotent: later restarts preserve publication status and
+membership edits/removals. If the two exact existing profiles were absent on
+first installation, link them through Board management rather than creating
+duplicate Team records.
+
 ## Table of Contents
 
 1. [System Overview](#system-overview)

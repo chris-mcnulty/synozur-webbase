@@ -1,3 +1,4 @@
+import { useBoardNav } from "@/hooks/use-board-nav";
 import { ArrowRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -125,6 +126,7 @@ function FooterSubscribeForm() {
 }
 
 export function PortalSiteFooter() {
+  const showBoard = useBoardNav();
   const year = new Date().getFullYear();
 
   const applicationsQuery = useQuery({
@@ -221,7 +223,7 @@ export function PortalSiteFooter() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">Company</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              {FOOTER_COMPANY_LINKS.map((link) => {
+              {(showBoard ? [...FOOTER_COMPANY_LINKS, { label: "Board", href: "/board" }] : FOOTER_COMPANY_LINKS).map((link) => {
                 const isExternal = /^https?:\/\//.test(link.href);
                 return (
                   <li key={link.href}>

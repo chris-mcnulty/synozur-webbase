@@ -14,7 +14,7 @@ paths = [
   "/case-studies", "/applications", "/models",
   "/workshops", "/library", "/webinars",
   "/white-papers", "/polaris", "/team",
-  "/events",
+  "/events", "/board",
   "/sprint", "/proof", "/fit", "/book",
   "/faq", "/about", "/careers", "/services-overview",
   "/privacy", "/terms",

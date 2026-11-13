@@ -35,6 +35,11 @@ import Workshops from "@/pages/workshops";
 import WorkshopDetail from "@/pages/workshop-detail";
 import Team from "@/pages/team";
 import TeamDetail from "@/pages/team-detail";
+import Board from "@/pages/board";
+import BoardDetail from "@/pages/board-detail";
+import AdminBoardList from "@/pages/admin/people/board-list";
+import BoardForm from "@/pages/admin/people/board-form";
+import { BoardAuthSync } from "@/lib/board";
 import Partners from "@/pages/partners";
 import Insights from "@/pages/insights";
 import InsightDetail from "@/pages/insight-detail";
@@ -381,6 +386,13 @@ function AdminRoutes() {
         <Route path="/people/team-members/:id">
           {(params) => <TeamForm id={params.id} />}
         </Route>
+        <Route path="/people/board" component={AdminBoardList} />
+        <Route path="/people/board/new">
+          <BoardForm />
+        </Route>
+        <Route path="/people/board/:id">
+          {(params) => <BoardForm id={params.id} />}
+        </Route>
         <Route path="/people/events" component={AdminEventsList} />
         <Route path="/people/events/new">
           <EventForm />
@@ -599,6 +611,8 @@ function Router() {
             <Route path="/faq" component={Faq} />
             <Route path="/faq/:category" component={Faq} />
             <Route path="/faq/:category/:item" component={Faq} />
+            <Route path="/board" component={Board} />
+            <Route path="/board/:slug" component={BoardDetail} />
             <Route path="/team" component={Team} />
             <Route path="/team/:slug" component={TeamDetail} />
             <Route path="/partners" component={Partners} />
@@ -681,6 +695,7 @@ function App() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
+      <BoardAuthSync />
       <ThemeProvider>
         <TooltipProvider>
           <AppShell />

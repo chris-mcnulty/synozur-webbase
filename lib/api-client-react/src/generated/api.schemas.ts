@@ -5,6 +5,70 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface BoardVisibility {
+  public: boolean;
+}
+
+export interface BoardTeamOption {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export type BoardProfileInputGroup =
+  (typeof BoardProfileInputGroup)[keyof typeof BoardProfileInputGroup];
+
+export const BoardProfileInputGroup = {
+  external: "external",
+  internal: "internal",
+} as const;
+
+export interface BoardProfileInput {
+  group: BoardProfileInputGroup;
+  /** @nullable */
+  teamMemberId?: number | null;
+  /**
+   * @maxLength 100
+   * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+   */
+  slug?: string;
+  /** @maxLength 200 */
+  name?: string;
+  /**
+   * @maxLength 300
+   * @nullable
+   */
+  jobTitle?: string | null;
+  /** @nullable */
+  shortDescription?: string | null;
+  /** @nullable */
+  longDescription?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  linkedinUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  speakerBookingUrl?: string | null;
+  active: boolean;
+  /** @minimum 0 */
+  sortOrder: number;
+}
+
+export type BoardProfile = BoardProfileInput & {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+export interface BoardRoster {
+  public: boolean;
+  items: BoardProfile[];
+}
+
 export interface AvatarUploadResult {
   /** Same-origin path to the uploaded public profile photo. */
   avatarUrl: string;

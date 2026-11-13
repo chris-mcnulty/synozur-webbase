@@ -31,6 +31,7 @@ export type PageType =
   | "event"
   | "faq"
   | "company"
+  | "board"
   | "legal"
   | "utility"
   | "not-found";
@@ -57,6 +58,13 @@ export const PAGE_TYPES: Record<PageType, PageTypeConfig> = {
       "Strategy, AI, and Microsoft 365 advisory from The Synozur Alliance — practical guidance for leaders shaping the modern workplace.",
     ogType: "website",
     useSectionInTitle: false,
+  },
+  board: {
+    section: "Board of Advisors",
+    defaultDescription:
+      "The Board of Advisors of The Synozur Alliance — independent advisors and Synozur leaders who counsel our work.",
+    ogType: "website",
+    useSectionInTitle: true,
   },
   solution: {
     section: "Solutions",
@@ -209,6 +217,8 @@ export function derivePageType(pathname: string): PageType {
       return "event";
     case "faq":
       return "faq";
+    case "board":
+      return "board";
     case "about":
     case "team":
     case "partners":
@@ -234,6 +244,7 @@ export function derivePageType(pathname: string): PageType {
  * `/services-overview/default`) are hub pages, not detail pages.
  */
 export const DETAIL_PREFIXES = new Set<string>([
+  "board",
   "services",
   "solutions",
   "case-studies",

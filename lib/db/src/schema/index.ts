@@ -1,3 +1,4 @@
+export * from "./board";
 export * from "./chapterAudio";
 export * from "./chapterAudioCosts";
 export * from "./_artifactBase";

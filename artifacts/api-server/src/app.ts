@@ -17,6 +17,7 @@ import oauthRouter from "./routes/oauth";
 import { matchIndexNowKeyPath } from "./lib/seoSubmit";
 import { securityHeadersMiddleware } from "./lib/securityHeaders";
 import { spaFallbackMiddleware } from "./middlewares/spaFallback";
+import { boardPageGuard } from "./lib/board";
 
 const app: Express = express();
 
@@ -72,6 +73,7 @@ app.use(express.urlencoded({ extended: true }));
 // Native session resolver — populates `req.authedUser` and `req.session` if a
 // valid `sid` cookie is present.
 app.use(attachUserIfPresent);
+app.use(boardPageGuard);
 
 // Branded short links (aka.synozur.com/<slug>). Runs before any other host
 // handling so a `aka.synozur.com/foo` request never falls through to the

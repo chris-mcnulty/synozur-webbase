@@ -1,3 +1,4 @@
+import { boardIsPublic, boardRoster, privateBoardHeaders } from "../lib/board";
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -124,6 +125,10 @@ export function classifyArtifactKind(path: string): string {
 export async function collectEntries(): Promise<Entry[]> {
   const origin = siteOrigin();
   const entries: Entry[] = [];
+  if (await boardIsPublic()) {
+    entries.push({ loc: "/board", changefreq: "monthly", priority: 0.6 });
+    for (const person of await boardRoster()) entries.push({ loc: `/board/${encodeURIComponent(person.slug)}` });
+  }
 
   for (const r of STATIC_ROUTES) entries.push(r);
 
@@ -490,7 +495,7 @@ async function handleSitemap(_req: import("express").Request, res: import("expre
 
   const xml = renderSitemap(filtered);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("Cache-Control", "no-store");
   res.send(xml);
 }
 
@@ -547,10 +552,11 @@ function renderLlmsTxt(): string {
   ].join("\n");
 }
 
-function handleLlmsTxt(_req: import("express").Request, res: import("express").Response) {
+async function handleLlmsTxt(_req: import("express").Request, res: import("express").Response) {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  res.send(renderLlmsTxt());
+  res.setHeader("Cache-Control", "no-store");
+  const boardLink = await boardIsPublic() ? `\n- [Board of Advisors](${siteOrigin()}/board): advisor profiles.\n` : "";
+  res.send(renderLlmsTxt() + boardLink);
 }
 
 router.get("/sitemap.xml", handleSitemap);
@@ -569,6 +575,25 @@ router.get("/llms.txt", handleLlmsTxt);
  * No authentication required — the response contains only public content.
  * Short Cache-Control mirrors the socialBotRenderer middleware (5 min).
  */
+router.use(["/og", "/seo/page", "/seo/route-status"], async (req, res, next): Promise<void> => {
+  const raw = typeof req.query.path === "string" ? req.query.path : "/";
+  let pathname: string;
+  try { pathname = decodeURIComponent(raw).split(/[?#]/)[0].replace(/^\/+/, "/"); }
+  catch { res.status(400).json({ error: "Invalid path" }); return; }
+  if (/^\/board(?:\/|$)/i.test(pathname)) {
+    privateBoardHeaders(req, res, () => {});
+    if (!await boardIsPublic()) {
+      res.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+      res.status(404).json({ error: "Not found" }); return;
+    }
+    // Do not permit downstream metadata handlers to overwrite no-store.
+    const setHeader = res.setHeader.bind(res);
+    res.setHeader = ((name: string, value: string | number | readonly string[]) =>
+      setHeader(name, name.toLowerCase() === "cache-control" ? "private, no-store" : value)) as typeof res.setHeader;
+  }
+  next();
+});
+
 router.get("/og", async (req, res): Promise<void> => {
   const rawPath = typeof req.query.path === "string" ? req.query.path : "/";
   const pathname = ("/" + rawPath.replace(/^\/+/, "")).split("?")[0].split("#")[0] || "/";

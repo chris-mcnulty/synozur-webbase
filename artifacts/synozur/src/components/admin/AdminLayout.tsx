@@ -145,6 +145,7 @@ const SECTIONS: NavSection[] = [
     icon: UsersRound,
     items: [
       { href: "/people/team-members", label: "Team", icon: UserSquare2, capability: "site.manage", testId: "nav-admin-team" },
+      { href: "/people/board", label: "Board", icon: UserSquare2, roles: ["admin", "site_admin"], testId: "nav-admin-board" },
       { href: "/people/events", label: "Events", icon: CalendarDays, capability: "site.manage", testId: "nav-admin-events" },
       { href: "/people/bookings", label: "Bookings", icon: CalendarClock, capability: "site.manage", testId: "nav-admin-bookings" },
     ],

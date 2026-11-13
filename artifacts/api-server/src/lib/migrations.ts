@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
 import { backfillLandingPageCollateral } from "./syncCollateral";
+import { migrateBoard } from "./boardMigration";
 
 /**
  * Idempotent schema migrations that run on every server startup.
@@ -16,6 +17,7 @@ import { backfillLandingPageCollateral } from "./syncCollateral";
  */
 export async function runMigrations(): Promise<void> {
   logger.info("Running startup migrations");
+  await migrateBoard();
 
   try {
     await db.execute(sql`

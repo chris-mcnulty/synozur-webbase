@@ -68,6 +68,116 @@ tags:
   - name: CmsApiKeys
     description: Admin API key management for machine-to-machine access.
 paths:
+  /board:
+    get:
+      operationId: listBoard
+      responses:
+        "200":
+          description: Visible active board profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardRoster"
+  /board/status:
+    get:
+      operationId: getBoardStatus
+      responses:
+        "200":
+          description: Section visibility only, never roster data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardVisibility"
+  /board/{slug}:
+    get:
+      operationId: getBoardProfile
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Visible profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+  /admin/board:
+    get:
+      operationId: listAdminBoard
+      responses:
+        "200":
+          description: All board profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardRoster"
+    post:
+      operationId: createBoardProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+  /admin/board/team-options:
+    get:
+      operationId: listBoardTeamOptions
+      responses:
+        "200":
+          description: Existing Team profiles for linking
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BoardTeamOption"
+  /admin/board/visibility:
+    put:
+      operationId: setBoardVisibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardVisibility"
+      responses:
+        "200":
+          description: Explicit publication or restriction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardVisibility"
+  /admin/board/{id}:
+    put:
+      operationId: updateBoardProfile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardProfileInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardProfile"
+    delete:
+      operationId: deleteBoardProfile
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "204":
+          description: Removed board membership only
   /cms/profile/avatar:
     post:
       tags: [CMS Users]
@@ -4924,6 +5034,54 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    BoardVisibility:
+      type: object
+      required: [public]
+      properties:
+        public: { type: boolean }
+    BoardTeamOption:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+    BoardProfileInput:
+      type: object
+      required: [group, active, sortOrder]
+      properties:
+        group: { type: string, enum: [external, internal] }
+        teamMemberId: { type: [integer, "null"] }
+        slug: { type: string, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", maxLength: 100 }
+        name: { type: string, maxLength: 200 }
+        jobTitle: { type: [string, "null"], maxLength: 300 }
+        shortDescription: { type: [string, "null"] }
+        longDescription: { type: [string, "null"] }
+        imageUrl: { type: [string, "null"] }
+        linkedinUrl: { type: [string, "null"] }
+        website: { type: [string, "null"] }
+        email: { type: [string, "null"] }
+        speakerBookingUrl: { type: [string, "null"] }
+        active: { type: boolean }
+        sortOrder: { type: integer, minimum: 0 }
+    BoardProfile:
+      allOf:
+        - $ref: "#/components/schemas/BoardProfileInput"
+        - type: object
+          required: [id, name, slug]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            slug: { type: string }
+    BoardRoster:
+      type: object
+      required: [public, items]
+      properties:
+        public: { type: boolean }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BoardProfile"
     AvatarUploadResult:
       type: object
       required: [avatarUrl]

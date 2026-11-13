@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { useBoardNavVisible } from "@/lib/board";
 import { getActiveApplications } from "@/data/applications";
 import { FooterSubscribeForm } from "./footer";
 import {
@@ -38,6 +39,7 @@ const RESOURCES_LINKS = [
 // Applications columns are data-driven — mirroring the mainline footer so the
 // two stay in sync.
 export function SiteFooterB() {
+  const showBoard = useBoardNavVisible();
   const applicationsQuery = useQuery({
     queryKey: ["applications", "nav"],
     queryFn: () => api.listApplications(true),
@@ -137,7 +139,12 @@ export function SiteFooterB() {
           <div>
             <h3 className="font-semibold mb-4 text-foreground">About</h3>
             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-              {FOOTER_COMPANY_LINKS.map((link) => {
+              {(showBoard
+                ? FOOTER_COMPANY_LINKS.flatMap((l) =>
+                    l.href === "/team" ? [l, { label: "Board", href: "/board" }] : [l],
+                  )
+                : FOOTER_COMPANY_LINKS
+              ).map((link) => {
                 const isExternal = /^https?:\/\//.test(link.href);
                 return (
                   <li key={link.href}>

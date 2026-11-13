@@ -1,3 +1,4 @@
+import { useBoardNav } from "@/hooks/use-board-nav";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Search, LayoutDashboard, LogOut, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, FormEvent } from "react";
@@ -174,6 +175,8 @@ function UserButton({ user, signOut }: { user: AuthedUser; signOut: () => Promis
 }
 
 export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: boolean } = {}) {
+  const showBoard = useBoardNav();
+  const primaryNav = showBoard ? [...PRIMARY_NAV, { name: "Board", href: "/board" }] : PRIMARY_NAV;
   const { user, signOut } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -288,7 +291,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
           {/* Center: Primary nav (desktop) */}
           <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
-            {PRIMARY_NAV.map((link) => (
+            {primaryNav.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
@@ -358,7 +361,7 @@ export function PortalSiteHeader({ hidePortalNav = false }: { hidePortalNav?: bo
 
               {/* Primary (main site) */}
               <div className="flex flex-col gap-1">
-                {PRIMARY_NAV.map((link) => (
+                {primaryNav.map((link) => (
                   <a
                     key={link.name}
                     href={link.href}
