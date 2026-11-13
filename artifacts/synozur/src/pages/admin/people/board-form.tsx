@@ -267,8 +267,9 @@ function BoardFormInner({ id }: { id?: string }) {
                 <Input id="name" required value={form.name} onChange={(e) => set("name", e.target.value)} data-testid="input-name" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="slug">Slug (auto-generated if empty)</Label>
-                <Input id="slug" value={form.slug} onChange={(e) => set("slug", e.target.value.toLowerCase())} data-testid="input-slug" />
+                <Label htmlFor="slug">Slug (optional)</Label>
+                <Input id="slug" value={form.slug} onChange={(e) => set("slug", e.target.value.toLowerCase())} placeholder="Generated from name when saved" data-testid="input-slug" />
+                <p className="text-xs text-muted-foreground">Leave blank to generate on creation or keep the existing slug when editing.</p>
               </div>
             </div>
             <div className="space-y-2">

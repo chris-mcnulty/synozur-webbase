@@ -179,6 +179,26 @@ test("Board strict roles, CRUD, grouping, live Team links and private/public dis
         assert.equal((await request(boardPath, "admin")).status, 200, "Redeploy preserves explicit membership");
         assert.equal((await request(`/api/team-members/${memberInput.slug}`)).status, 404);
 
+        const autoInput = { group: "external", name: `Auto Advisor ${tag}`, active: true, sortOrder: 0 };
+        const autoCreate = await request("/api/admin/board", "admin", "POST", autoInput);
+        assert.equal(autoCreate.status, 201, await autoCreate.clone().text());
+        const autoAdvisor = await autoCreate.json() as { id: number; slug: string };
+        assert.match(autoAdvisor.slug, /^auto-advisor-/);
+        const duplicateCreate = await request("/api/admin/board", "admin", "POST", autoInput);
+        assert.equal(duplicateCreate.status, 201, await duplicateCreate.clone().text());
+        const duplicateAdvisor = await duplicateCreate.json() as { id: number; slug: string };
+        assert.equal(duplicateAdvisor.slug, `${autoAdvisor.slug}-2`);
+        const autoUpdate = await request(`/api/admin/board/${autoAdvisor.id}`, "admin", "PUT", { ...autoInput, name: "Changed advisor name" });
+        assert.equal(autoUpdate.status, 200, await autoUpdate.clone().text());
+        assert.equal((await autoUpdate.json() as { slug: string }).slug, autoAdvisor.slug, "Editing without a slug preserves the existing URL");
+        const reservedCreate = await request("/api/admin/board", "admin", "POST", { ...autoInput, name: memberInput.slug });
+        assert.equal(reservedCreate.status, 201, await reservedCreate.clone().text());
+        const reservedAdvisor = await reservedCreate.json() as { id: number; slug: string };
+        assert.equal(reservedAdvisor.slug, `${memberInput.slug}-2`, "Generated slug must not reserve a Team profile URL");
+        for (const profile of [autoAdvisor, duplicateAdvisor, reservedAdvisor]) {
+          assert.equal((await request(`/api/admin/board/${profile.id}`, "admin", "DELETE")).status, 204);
+        }
+
         const external = { group: "external", name: `Disposable advisor ${tag}`, slug: `board-test-${tag}`,
           jobTitle: "Test advisor", active: true, sortOrder: 999, shortDescription: "<p>Test summary</p>",
           longDescription: "<p>Test biography</p>", website: "https://example.com", linkedinUrl: null };

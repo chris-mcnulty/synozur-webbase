@@ -7,6 +7,7 @@ import {
   GetBoardProfileResponse, ListBoardTeamOptionsResponse,
 } from "@workspace/api-zod";
 import { boardIsPublic, boardRoster, privateBoardHeaders, requireBoardAdmin, requireBoardRead } from "../lib/board";
+import { toSlug } from "../lib/slug";
 
 const router: IRouter = Router();
 router.use(["/board", "/admin/board"], privateBoardHeaders);
@@ -50,8 +51,8 @@ for (const method of ["post", "put"] as const) {
       res.status(400).json({ error: "Invalid board profile" }); return;
     }
     const d = parsed.data;
-    if (d.group === "internal" ? !d.teamMemberId : !!d.teamMemberId || !d.name?.trim() || !d.slug) {
-      res.status(400).json({ error: "External advisors need a name and slug; internal members must link a Team profile." }); return;
+    if (d.group === "internal" ? !d.teamMemberId : !!d.teamMemberId || !d.name?.trim()) {
+      res.status(400).json({ error: "External advisors need a name; internal members must link a Team profile." }); return;
     }
     for (const value of [d.website, d.linkedinUrl, d.speakerBookingUrl]) {
       if (value && !/^https?:\/\/[^\s]+$/i.test(value)) { res.status(400).json({ error: "Links must use http or https" }); return; }
@@ -62,6 +63,23 @@ for (const method of ["post", "put"] as const) {
     if (d.teamMemberId) {
       const [team] = await db.select().from(teamMembersTable).where(eq(teamMembersTable.id, d.teamMemberId));
       if (!team) { res.status(400).json({ error: "Team member does not exist" }); return; }
+    }
+    if (d.group === "external" && !d.slug) {
+      const currentId = method === "put" && params.success ? params.data.id : null;
+      const profiles = await db.select({ id: boardProfilesTable.id, slug: boardProfilesTable.slug }).from(boardProfilesTable);
+      const current = profiles.find(profile => profile.id === currentId);
+      // Omission on edit must not change an existing public URL.
+      if (current?.slug) {
+        d.slug = current.slug;
+      } else {
+        const team = await db.select({ slug: teamMembersTable.slug }).from(teamMembersTable);
+        const used = new Set([...team, ...profiles.filter(profile => profile.id !== currentId)].map(profile => profile.slug));
+        const base = toSlug(d.name!.trim()).slice(0, 90).replace(/-+$/, "");
+        let candidate = base;
+        let suffix = 2;
+        while (used.has(candidate)) candidate = `${base}-${suffix++}`;
+        d.slug = candidate;
+      }
     }
     if (d.group === "external" && d.slug) {
       const [reserved] = await db.select({ id: teamMembersTable.id }).from(teamMembersTable).where(eq(teamMembersTable.slug, d.slug));
