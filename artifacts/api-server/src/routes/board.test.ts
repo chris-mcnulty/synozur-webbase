@@ -62,9 +62,13 @@ test("Board strict roles, CRUD, grouping, live Team links and private/public dis
       assert.equal(await boardIsPublic(), false);
       const seeded = await tx.select().from(database.boardProfilesTable);
       assert.equal(seeded.filter(p => p.group === "external").length, 0);
-      assert.equal(seeded.length, 2, "Verified Michelle and Chris linked once");
+      assert.equal(seeded.length, 0, "Initialization must not automatically enroll anyone");
       await migrateBoard();
-      assert.equal((await tx.select().from(database.boardProfilesTable)).length, 2);
+      assert.equal((await tx.select().from(database.boardProfilesTable)).length, 0);
+      // Explicit fixture membership; production initialization never does this.
+      const [chrisFixture] = await tx.select().from(database.teamMembersTable).where(eq(database.teamMembersTable.slug, "chris-mcnulty"));
+      assert.ok(chrisFixture, "Existing Team fixture");
+      await tx.insert(database.boardProfilesTable).values({ group: "internal", teamMemberId: chrisFixture.id });
       const [actor] = await tx.insert(database.usersTable).values({ displayName: "Disposable Board test" }).returning();
       const app = express();
       app.use(express.json());
@@ -139,6 +143,42 @@ test("Board strict roles, CRUD, grouping, live Team links and private/public dis
         assert.equal((await resolveOgData("/board/chris-mcnulty")).title, "Not found");
 
         const tag = randomUUID().slice(0, 8);
+        const memberInput = { name: `Membership fixture ${tag}`, slug: `membership-${tag}`, active: false, showOnBoard: true,
+          shortDescription: "<p>Shared summary</p>", longDescription: "<p>Shared biography</p>" };
+        for (const role of [undefined, "editor", "api_key"]) {
+          assert.equal((await request("/api/admin/team-members", role, "POST", memberInput)).status, role ? 403 : 401);
+        }
+        const added = await request("/api/admin/team-members", "admin", "POST", memberInput);
+        assert.equal(added.status, 201, await added.clone().text());
+        const shared = await added.json() as { id: number; active: boolean };
+        assert.equal(shared.active, false, "Board-only creation must not activate Team");
+        const teamPath = `/api/admin/team-members/${shared.id}`;
+        const boardPath = `/api/board/${memberInput.slug}`;
+        const sharedBoard = await request(boardPath, "admin");
+        assert.equal(sharedBoard.status, 200, "Inactive Team profiles can appear on Board");
+        assert.match(await sharedBoard.text(), /Shared biography/);
+        assert.equal((await request(`/api/team-members/${memberInput.slug}`)).status, 404);
+        assert.equal((await request(boardPath)).status, 404, "Membership cannot publish a private Board");
+        const [membership] = await tx.select().from(database.boardProfilesTable).where(eq(database.boardProfilesTable.teamMemberId, shared.id));
+        await tx.update(database.boardProfilesTable).set({ sortOrder: 42 }).where(eq(database.boardProfilesTable.id, membership!.id));
+        for (const [team, board] of [[true, true], [true, false], [false, false], [false, true]] as const) {
+          const saved = await request(teamPath, "site_admin", "PATCH", { ...memberInput, active: team, showOnBoard: board });
+          assert.equal(saved.status, 200, await saved.clone().text());
+          assert.equal((await request(boardPath, "admin")).status, board ? 200 : 404);
+          assert.equal((await request(`/api/team-members/${memberInput.slug}`)).status, team ? 200 : 404);
+          const [stored] = await tx.select().from(database.boardProfilesTable).where(eq(database.boardProfilesTable.teamMemberId, shared.id));
+          assert.equal(stored!.id, membership!.id, "Switching off must not delete membership");
+          assert.equal(stored!.sortOrder, 42, "Switching membership preserves ordering");
+        }
+        const { showOnBoard: _omitted, ...profileOnly } = memberInput;
+        assert.equal((await request(teamPath, "admin", "PATCH", { ...profileOnly, name: `${memberInput.name} edited` })).status, 200);
+        assert.equal((await request(boardPath, "admin")).status, 200, "Omitted Board control preserves membership");
+        assert.equal((await request(teamPath, "editor", "PATCH", memberInput)).status, 403);
+        assert.equal((await request(teamPath, "api_key", "PATCH", memberInput)).status, 403);
+        await migrateBoard();
+        assert.equal((await request(boardPath, "admin")).status, 200, "Redeploy preserves explicit membership");
+        assert.equal((await request(`/api/team-members/${memberInput.slug}`)).status, 404);
+
         const external = { group: "external", name: `Disposable advisor ${tag}`, slug: `board-test-${tag}`,
           jobTitle: "Test advisor", active: true, sortOrder: 999, shortDescription: "<p>Test summary</p>",
           longDescription: "<p>Test biography</p>", website: "https://example.com", linkedinUrl: null };

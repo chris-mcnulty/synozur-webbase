@@ -169,7 +169,7 @@ function BoardListInner() {
         <div className="rounded-lg border border-dashed border-border p-10 text-center" data-testid="board-admin-empty">
           <p className="font-semibold mb-1">No advisors yet</p>
           <p className="text-sm text-muted-foreground mb-4">
-            Add an external advisor with their own bio, or link an existing Team member.
+            Add an external advisor with their own bio, or link an existing profile without changing Team visibility.
           </p>
           <Link href="/people/board/new">
             <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Add the first advisor</Button>
@@ -196,7 +196,7 @@ function BoardListInner() {
                   </TableCell>
                   <TableCell>
                     <span className={`text-xs rounded-full px-2 py-0.5 border ${p.group === "external" ? "border-primary/40 text-primary" : "border-border text-muted-foreground"}`}>
-                      {p.group === "external" ? "External" : "Synozur team"}
+                      {p.group === "external" ? "External" : "Shared profile"}
                     </span>
                   </TableCell>
                   <TableCell className="tabular-nums">{p.sortOrder ?? 0}</TableCell>

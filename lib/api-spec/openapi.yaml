@@ -10123,6 +10123,9 @@ components:
           description: URL for the speaker booking or inquiry page.
         active:
           type: boolean
+        showOnBoard:
+          type: boolean
+          description: Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.
         manualSort:
           type: string
         tags:

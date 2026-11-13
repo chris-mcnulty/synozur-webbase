@@ -136,7 +136,7 @@ export default function BoardDetail() {
               className="md:col-span-3"
             >
               <p className="text-sm uppercase tracking-widest text-primary mb-3">
-                {person.group === "internal" ? "Board of Advisors · Synozur" : "Board of Advisors"}
+                Board of Advisors
               </p>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-3" data-testid="text-board-name">
                 {person.name}

@@ -5489,6 +5489,12 @@ export const CreateTeamMemberBody = zod.object({
     .nullish()
     .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
+  showOnBoard: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.",
+    ),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
   userId: zod.string().uuid().nullish(),
@@ -5542,6 +5548,12 @@ export const UpdateTeamMemberBody = zod.object({
     .nullish()
     .describe("URL for the speaker booking or inquiry page."),
   active: zod.boolean().optional(),
+  showOnBoard: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board.",
+    ),
   manualSort: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
   userId: zod.string().uuid().nullish(),

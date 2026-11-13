@@ -203,8 +203,8 @@ export default function Board() {
               )}
               {internal.length > 0 && (
                 <div>
-                  <p className="text-sm uppercase tracking-widest text-primary mb-3">Synozur</p>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-12">From the Synozur team</h2>
+                  <p className="text-sm uppercase tracking-widest text-primary mb-3">Advisors</p>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-12">Board members</h2>
                   <BoardGrid people={internal} testId="board-grid-internal" />
                 </div>
               )}

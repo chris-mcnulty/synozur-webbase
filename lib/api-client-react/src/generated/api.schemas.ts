@@ -3153,6 +3153,8 @@ export interface TeamMemberInput {
    */
   speakerBookingUrl?: string | null;
   active?: boolean;
+  /** Admin-only independent Board visibility. Omit to preserve existing membership. Does not publish the Board. */
+  showOnBoard?: boolean;
   manualSort?: string;
   tags?: string[];
   userId?: string | null;

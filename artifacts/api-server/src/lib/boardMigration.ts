@@ -21,19 +21,10 @@ export async function migrateBoard() {
         OR (member_group = 'external' AND team_member_id IS NULL AND name IS NOT NULL AND slug IS NOT NULL))
     );
   `);
-  // A single initialization statement: redeploys never reset visibility, edits,
-  // removals or ordering. Exact verified identities, never "first Michelle".
+  // Initialize privacy only. Membership is always an explicit CMS decision;
+  // redeploys must not enroll named people or undo existing editorial choices.
   await db.execute(sql`
-    WITH initialized AS (
-      INSERT INTO board_settings (id, public) VALUES (1, false)
-      ON CONFLICT (id) DO NOTHING RETURNING id
-    )
-    INSERT INTO board_profiles (member_group, team_member_id, sort_order)
-    SELECT 'internal', t.id,
-      CASE WHEN t.slug = 'michelle-caldwell' THEN 0 ELSE 1 END
-    FROM team_members t, initialized
-    WHERE (t.slug = 'michelle-caldwell' AND t.name = 'Michelle Caldwell')
-       OR (t.slug = 'chris-mcnulty' AND t.name = 'Chris McNulty')
-    ON CONFLICT (team_member_id) DO NOTHING;
+    INSERT INTO board_settings (id, public) VALUES (1, false)
+    ON CONFLICT (id) DO NOTHING;
   `);
 }

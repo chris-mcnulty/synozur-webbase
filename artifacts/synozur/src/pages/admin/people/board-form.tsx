@@ -209,7 +209,7 @@ function BoardFormInner({ id }: { id?: string }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([
               ["external", "External advisor", "Has their own name, photo and bio managed here."],
-              ["internal", "Synozur team member", "Links an existing Team profile. Identity is edited on Team."],
+              ["internal", "Existing person", "Shares an existing profile, whether or not it appears on Team."],
             ] as const).map(([val, title, desc]) => (
               <button
                 key={val}
@@ -229,7 +229,7 @@ function BoardFormInner({ id }: { id?: string }) {
 
         {form.group === "internal" ? (
           <div className="space-y-2">
-            <Label htmlFor="teamMemberId">Team member *</Label>
+            <Label htmlFor="teamMemberId">Existing person *</Label>
             <select
               id="teamMemberId"
               value={form.teamMemberId ?? ""}
@@ -250,8 +250,14 @@ function BoardFormInner({ id }: { id?: string }) {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Name, photo, title, bio and links come from the Team profile. Edit them under People → Team.
+              Name, photo, title, bio and links come from the existing profile under People → Team.
+              This does not turn on Show on Team. A person can appear on Board only.
             </p>
+            {form.teamMemberId != null && (
+              <a className="text-sm text-primary underline" href={`${BASE_PATH}/admin/people/team-members/${form.teamMemberId}`}>
+                Edit shared profile and Team / Board visibility
+              </a>
+            )}
           </div>
         ) : (
           <>
@@ -327,11 +333,11 @@ function BoardFormInner({ id }: { id?: string }) {
           <div className="space-y-2">
             <Label htmlFor="sortOrder">Order within group</Label>
             <Input id="sortOrder" type="number" step={1} value={form.sortOrder} onChange={(e) => set("sortOrder", e.target.value)} data-testid="input-sortOrder" />
-            <p className="text-xs text-muted-foreground">Lower numbers first. External advisors always list before Synozur team.</p>
+            <p className="text-xs text-muted-foreground">Lower numbers first. External advisors always list before shared profiles.</p>
           </div>
           <div className="flex items-center gap-2 pb-6">
             <input id="active" type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} data-testid="input-active" />
-            <Label htmlFor="active">Active (show on the board page)</Label>
+            <Label htmlFor="active">Show on Board</Label>
           </div>
         </div>
 

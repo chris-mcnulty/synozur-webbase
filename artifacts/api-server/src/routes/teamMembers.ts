@@ -10,6 +10,8 @@ import {
   eventsTable,
   eventSpeakersTable,
   assetsTable,
+  boardProfilesTable,
+  auditLogTable,
   type TeamMember,
 } from "@workspace/db";
 import {
@@ -28,8 +30,36 @@ import {
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { ricosToHtml } from "../lib/ricos";
 import { audit, buildAuditDiff } from "../lib/audit";
+import { isBoardAdmin } from "../lib/board";
 
 const router: IRouter = Router();
+
+// This runs in the same transaction as the profile save. An omitted control
+// leaves Board membership alone; switching off preserves the existing listing.
+async function saveBoardMembership(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  teamMemberId: number,
+  active: boolean | undefined,
+  actorId: string,
+) {
+  if (active === undefined) return;
+  const [before] = await tx.select().from(boardProfilesTable)
+    .where(eq(boardProfilesTable.teamMemberId, teamMemberId));
+  if (!before && !active) return;
+  const [after] = await tx.insert(boardProfilesTable)
+    .values({ group: "internal", teamMemberId, active })
+    .onConflictDoUpdate({
+      target: boardProfilesTable.teamMemberId,
+      set: { active, updatedAt: new Date() },
+    }).returning();
+  if (!before || before.active !== active) {
+    await tx.insert(auditLogTable).values({
+      actorId, action: before ? "board.update" : "board.create",
+      entity: "board_profile", entityId: String(after.id),
+      diffJson: { before, after },
+    });
+  }
+}
 
 function slugify(text: string): string {
   return text
@@ -336,9 +366,14 @@ router.post("/admin/team-members", requireAdmin, async (req, res): Promise<void>
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.showOnBoard !== undefined && !isBoardAdmin(req.authedUser)) {
+    res.status(403).json({ error: "Only site administrators may change Board membership" });
+    return;
+  }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.name);
   const slug = await ensureUniqueSlug(slugBase);
-  const [m] = await db
+  const m = await db.transaction(async tx => {
+  const [m] = await tx
     .insert(teamMembersTable)
     .values({
       name: parsed.data.name,
@@ -358,6 +393,9 @@ router.post("/admin/team-members", requireAdmin, async (req, res): Promise<void>
       userId: parsed.data.userId ?? null,
     })
     .returning();
+  await saveBoardMembership(tx, m.id, parsed.data.showOnBoard, req.authedUser!.id);
+  return m;
+  });
   await audit({
     actorId: req.authedUser?.id,
     action: "team_member.create",
@@ -379,13 +417,18 @@ router.patch("/admin/team-members/:id", requireAdmin, async (req, res): Promise<
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.showOnBoard !== undefined && !isBoardAdmin(req.authedUser)) {
+    res.status(403).json({ error: "Only site administrators may change Board membership" });
+    return;
+  }
   const slugBase = parsed.data.slug?.trim() || slugify(parsed.data.name);
   const slug = await ensureUniqueSlug(slugBase, params.data.id);
   const [before] = await db
     .select()
     .from(teamMembersTable)
     .where(eq(teamMembersTable.id, params.data.id));
-  const [m] = await db
+  const m = await db.transaction(async tx => {
+  const [m] = await tx
     .update(teamMembersTable)
     .set({
       name: parsed.data.name,
@@ -406,6 +449,9 @@ router.patch("/admin/team-members/:id", requireAdmin, async (req, res): Promise<
     })
     .where(eq(teamMembersTable.id, params.data.id))
     .returning();
+  if (m) await saveBoardMembership(tx, m.id, parsed.data.showOnBoard, req.authedUser!.id);
+  return m;
+  });
   if (!m) {
     res.status(404).json({ error: "Team member not found" });
     return;

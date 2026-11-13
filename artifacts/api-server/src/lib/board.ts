@@ -45,7 +45,7 @@ export async function boardRoster(includeInactive = false) {
     .from(boardProfilesTable)
     .leftJoin(teamMembersTable, eq(boardProfilesTable.teamMemberId, teamMembersTable.id))
     .orderBy(asc(boardProfilesTable.sortOrder), asc(boardProfilesTable.id));
-  return rows.filter(({ board, team }) => includeInactive || (board.active && (!board.teamMemberId || team?.active)))
+  return rows.filter(({ board }) => includeInactive || board.active)
     .map(({ board: b, team: t }) => {
       const p = b.teamMemberId ? t : b;
       if (!p) throw new Error("Missing linked Team profile");
